@@ -7,6 +7,7 @@ import argparse
 import json
 import math
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any, Sequence
@@ -20,8 +21,10 @@ RECEIPT_KEYS = frozenset(
         "caseCount",
         "locale",
         "maximumSeconds",
+        "measurementPolicy",
         "p50Seconds",
         "p95Seconds",
+        "runtimeAdjustments",
         "schemaVersion",
         "selectorCount",
         "testDurationSeconds",
@@ -30,6 +33,26 @@ RECEIPT_KEYS = frozenset(
     }
 )
 TEST_KEYS = frozenset({"durationSeconds", "identifier", "result"})
+ADJUSTMENT_KEYS = frozenset(
+    {
+        "attributedDurationSeconds",
+        "excludedHarnessSeconds",
+        "identifier",
+        "reason",
+        "reportedDurationSeconds",
+    }
+)
+RECEIPT_SCHEMA_VERSION = 2
+MEASUREMENT_POLICY = "xcresult-duration-with-post-teardown-exclusion-v1"
+POST_TEARDOWN_NOISE_THRESHOLD_SECONDS = 1.0
+CASE_RUNTIME_DRIFT_PATTERN = re.compile(
+    r"^(?P<identifier>[^:]+): "
+    r"[0-9]+(?:\.[0-9]+)?s > [0-9]+(?:\.[0-9]+)?s$"
+)
+SUITE_RUNTIME_DRIFT_PATTERNS = (
+    re.compile(r"^full suite: [0-9]+(?:\.[0-9]+)?s > [0-9]+(?:\.[0-9]+)?s$"),
+    re.compile(r"^full suite p95: [0-9]+(?:\.[0-9]+)?s > [0-9]+(?:\.[0-9]+)?s$"),
+)
 SUPPORTED_LOCALES = ("en", "es")
 SUPPORTED_OUTCOMES = frozenset({"success", "failure", "cancelled", "skipped"})
 
@@ -57,6 +80,21 @@ def finite_nonnegative(value: Any) -> bool:
     )
 
 
+def is_runtime_drift_violation(
+    value: str,
+    case_identifiers: set[str],
+) -> bool:
+    if any(
+        pattern.fullmatch(value)
+        for pattern in SUITE_RUNTIME_DRIFT_PATTERNS
+    ):
+        return True
+    case_match = CASE_RUNTIME_DRIFT_PATTERN.fullmatch(value)
+    if case_match is not None:
+        return case_match.group("identifier") in case_identifiers
+    return False
+
+
 def load_receipt(path: Path, expected_locale: str) -> dict[str, Any]:
     try:
         receipt = json.loads(path.read_text(encoding="utf-8"))
@@ -64,7 +102,11 @@ def load_receipt(path: Path, expected_locale: str) -> dict[str, Any]:
         raise GateError(f"{expected_locale}: runtime receipt is unreadable") from error
     if not isinstance(receipt, dict) or set(receipt) != RECEIPT_KEYS:
         raise GateError(f"{expected_locale}: runtime receipt shape differs")
-    if receipt["schemaVersion"] != 1 or receipt["locale"] != expected_locale:
+    if (
+        receipt["schemaVersion"] != RECEIPT_SCHEMA_VERSION
+        or receipt["measurementPolicy"] != MEASUREMENT_POLICY
+        or receipt["locale"] != expected_locale
+    ):
         raise GateError(f"{expected_locale}: runtime receipt identity differs")
     cases = receipt["tests"]
     if (
@@ -86,6 +128,40 @@ def load_receipt(path: Path, expected_locale: str) -> dict[str, Any]:
             or not finite_nonnegative(case["durationSeconds"])
         ):
             raise GateError(f"{expected_locale}: runtime test case is invalid")
+    tests_by_identifier = {case["identifier"]: case for case in cases}
+    if len(tests_by_identifier) != len(cases):
+        raise GateError(f"{expected_locale}: runtime receipt repeats a test case")
+    adjustments = receipt["runtimeAdjustments"]
+    if not isinstance(adjustments, list):
+        raise GateError(f"{expected_locale}: runtime adjustments are invalid")
+    adjusted_identifiers: set[str] = set()
+    for adjustment in adjustments:
+        if not isinstance(adjustment, dict) or set(adjustment) != ADJUSTMENT_KEYS:
+            raise GateError(f"{expected_locale}: runtime adjustment shape differs")
+        identifier = adjustment["identifier"]
+        if (
+            not isinstance(identifier, str)
+            or identifier not in tests_by_identifier
+            or identifier in adjusted_identifiers
+            or tests_by_identifier[identifier]["result"] != "Passed"
+            or adjustment["reason"] != "post-teardown-unattributed-time"
+        ):
+            raise GateError(f"{expected_locale}: runtime adjustment identity differs")
+        reported = adjustment["reportedDurationSeconds"]
+        attributed = adjustment["attributedDurationSeconds"]
+        excluded = adjustment["excludedHarnessSeconds"]
+        if (
+            not finite_nonnegative(reported)
+            or not finite_nonnegative(attributed)
+            or not finite_nonnegative(excluded)
+            or attributed > reported
+            or excluded < POST_TEARDOWN_NOISE_THRESHOLD_SECONDS
+            or abs((reported - attributed) - excluded) > 0.002
+            or abs(tests_by_identifier[identifier]["durationSeconds"] - attributed)
+            > 0.002
+        ):
+            raise GateError(f"{expected_locale}: runtime adjustment values differ")
+        adjusted_identifiers.add(identifier)
     for key in (
         "buildDurationSeconds",
         "maximumSeconds",
@@ -110,6 +186,15 @@ def load_receipt(path: Path, expected_locale: str) -> dict[str, Any]:
         or (receipt["budgetStatus"] == "passed") != (not violations)
     ):
         raise GateError(f"{expected_locale}: runtime budget classification differs")
+    non_runtime_violations = [
+        violation
+        for violation in violations
+        if not is_runtime_drift_violation(violation, set(tests_by_identifier))
+    ]
+    if non_runtime_violations:
+        raise GateError(
+            f"{expected_locale}: runtime receipt has evidence-contract violations"
+        )
     return receipt
 
 
@@ -133,8 +218,11 @@ def write_summary(path: Path | None, rows: Sequence[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as output:
         output.write("## Scoped UI evidence\n\n")
-        output.write("| Locale | Step | Cases | Functional | Hosted runtime |\n")
-        output.write("| --- | --- | ---: | --- | --- |\n")
+        output.write(
+            "| Locale | Step | Cases | Functional | Hosted runtime | "
+            "Excluded harness stalls |\n"
+        )
+        output.write("| --- | --- | ---: | --- | --- | ---: |\n")
         for row in rows:
             output.write(row + "\n")
 
@@ -160,7 +248,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         if locale not in selected:
             if outcome != "skipped":
                 failures.append(f"{locale}: unselected locale ran with outcome {outcome}")
-            summary_rows.append(f"| {locale} | {outcome} | - | not selected | - |")
+            summary_rows.append(
+                f"| {locale} | {outcome} | - | not selected | - | - |"
+            )
             continue
 
         receipt: dict[str, Any] | None = None
@@ -177,7 +267,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             summary_rows.append(
                 f"| {locale} | {outcome} | "
                 f"{receipt['caseCount'] if receipt else '-'} | "
-                f"{classification} | unavailable |"
+                f"{classification} | unavailable | - |"
             )
             continue
 
@@ -197,7 +287,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         summary_rows.append(
             f"| {locale} | {outcome} | {receipt['caseCount']} | "
-            f"{functional} | advisory {runtime_status} |"
+            f"{functional} | advisory {runtime_status} | "
+            f"{len(receipt['runtimeAdjustments'])} |"
         )
 
     summary_path = arguments.summary

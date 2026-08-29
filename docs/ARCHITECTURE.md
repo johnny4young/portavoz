@@ -666,9 +666,35 @@ owners. Adopted read surfaces do not observe a global invalidation counter.
 | Private sync | `MeetingSyncModel` | application process |
 | Whole-library backup | `LibraryMarkdownBackupModel` | application process |
 | Skills Settings | policy/activity snapshot + independent proposal snapshot + receipt inspection | one Settings window |
+| Background work status | `BackgroundWorkCenterModel` | application process |
 | Spotlight reconciliation | `SpotlightIndexer` | application process |
 | Post-capture processing | `PostCaptureProcessingSupervisor` | application process |
 | Whisper preparation | shared readiness owner | application process |
+
+### Background work projection
+
+`AppServices` owns one `@MainActor @Observable` content-free projection of
+launch recovery, durable post-capture processing, Spotlight reconciliation,
+semantic-corpus maintenance, and memory-graph maintenance. Those five existing
+owners publish typed start, observation, retry, failure, and settlement events;
+the projection does not query their stores, create a task, persist state, poll,
+or replace any scheduler. Monotonic per-owner run tokens reject late events.
+
+Snapshots contain only closed phases/stages/outcomes/failure categories,
+aggregate counts, attempt numbers, retry dates, and timestamps. They cannot
+carry a meeting identity, title, transcript or note text, path, model payload,
+or raw error. A processing lease heartbeat remains ownership liveness and is
+never presented as percentage progress. The Settings **Background activity**
+pane renders indeterminate progress only while an owner reports running, shows
+exact safe counts/retry metadata, and routes recovery actions back to the
+original owner. A compact main-toolbar indicator exists only while work is
+active, waiting, retrying, or needs attention and deep-links to that pane.
+
+Protected recording keeps semantic and memory-graph maintenance in an explicit
+waiting state; capture-stop reconciliation resumes their durable cursors.
+This visibility layer is available on Sequoia and Tahoe without Foundation
+Models. Its deterministic UI fixture requires both disposable storage and the
+background-work seed, so a production launch cannot replace live owner state.
 
 The Ask workflow, not a model provider or SwiftUI, owns progressive admission.
 It accepts only one exact final fused citation set, coalesces cumulative answer
@@ -4797,6 +4823,19 @@ exit status; malformed, non-finite, negative, missing, or unreadable runtime
 input fails closed into a content-free error receipt. Per-journey and full-suite
 budgets are versioned in `docs/evidence/ui-test-runtime-budget.json`.
 
+Runtime receipts use a closed schema-2 attribution policy. XCTest's outer case
+duration remains the conservative default. Only a passing case that threatens
+an individual or complete-catalogue aggregate budget is inspected further, and
+only its exact xcresult may provide that evidence. One unambiguous top-level
+`Start Test` to later top-level `Tear Down` span can exclude at least one second
+that XCTest attributed after teardown; the receipt retains the reported,
+attributed, and excluded durations plus the closed reason. Missing or
+ambiguous activities, failed cases, sub-second differences, and activity spans
+that still cross a budget retain the reported duration and fail closed. Hosted
+and candidate classifiers validate the adjustment identity and arithmetic.
+The raw xcresult remains available, and no adjustment changes a functional
+result, selector, assertion, timeout, locale, or retry policy.
+
 The UI bundle uses one main-actor, run-loop-driven bounded predicate helper for
 accessibility state instead of XCTest's one-second first-poll floor or fixed
 sleeps. Negative and inequality waits require element existence so absence
@@ -4867,8 +4906,13 @@ After startup activation, the main shell uses one bounded hittability proof;
 the window is not itself clicked, while every interactive control keeps its
 own stable or contained readiness boundary. Settings owns one stable General
 anchor when its window opens. Static category changes then reassert activation,
-require category hittability, and prove the exact destination instead of
-repeating whole-window placement for every sidebar click. Seed readiness uses
+identify the category-list viewport, geometrically bring a clipped localized
+row fully inside it with at most three bounded wheel corrections, require
+category hittability, and prove the exact pane-specific destination instead of
+repeating whole-window placement for every sidebar click. This containment
+step is required because macOS can report a SwiftUI row below the clipped
+viewport as hittable while synthesizing a click that does not change panes.
+Seed readiness uses
 the meeting row's same bounded hittability predicate to prove both publication
 and actionability before any later foreground/stable-row click boundary.
 Skills controls whose geometry helper already proves full viewport containment
@@ -4901,14 +4945,13 @@ journeys own cross-window Settings receipt projection. Architecture ratchets
 reject restoration of these measured duplicate chains.
 
 The current consolidated local candidate on macOS 26.5.2 (25F84), arm64, and
-Xcode 26.6 uses one 13-second build for the complete 101-case catalogue in both
-locales. English measures 837.187 summed XCTest seconds, 862 seconds wall, p50
-6.655, p95 17.505, and maximum 36.449. Spanish measures 841.151 summed XCTest
-seconds, 867 seconds wall, p50 6.692, p95 18.092, and maximum 36.805. Both pass
+Xcode 26.6 uses one 13-second build for the complete 103-case catalogue in both
+locales. English measures 853.399 summed XCTest seconds, 879 seconds wall, p50
+6.379, p95 17.811, and maximum 36.339. Spanish measures 859.154 summed XCTest
+seconds, 888 seconds wall, p50 6.554, p95 18.181, and maximum 36.890. Both pass
 the unchanged 1,300-second aggregate, 30-second p95, and independent per-
-journey ceilings without retry. Relative to the last pre-consolidation
-local receipt, English saves 68.130 seconds (7.53%) and Spanish saves 64.519
-seconds (7.12%).
+journey ceilings without retry or runtime adjustment. These are one-host
+measurements, not physical Sequoia or separate-hardware Tahoe evidence.
 
 The published hosted predecessor passed its four CI jobs and all 106 English
 real-app journeys functionally, but the first hosted UI receipt remained red:
@@ -5274,12 +5317,12 @@ silently.
 
 ## Quality evidence
 
-The current 27 Aug 2026 local acceptance inventory, with longer-running
+The current 29 Aug 2026 local acceptance inventory, with longer-running
 reliability evidence retained from 9 Aug, is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,789 XCTest package cases are defined, with 15 real-model/environment cases
+- 2,799 XCTest package cases are defined, with 15 real-model/environment cases
   gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
@@ -5288,16 +5331,17 @@ reliability evidence retained from 9 Aug, is:
   passed its fail-closed 25-iteration gate (5,525 executions); the generic
   runner refuses fewer than 90 and the release wrapper raises that floor to
   108; focused Thread Sanitizer and Address Sanitizer gates also passed;
-- strict SwiftLint remains a blocking CI gate and is clean across all 742
+- strict SwiftLint remains a blocking CI gate and is clean across all 744
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
 - the deterministic tooling suites and the 220-case architecture subset pass;
 - the Meeting Detail interaction contract contains 431 signals, 15 feature
   owners, and 30 explicitly owned UI journeys;
-- 101 XCUITest cases per locale define the 202-case bilingual release gate;
-- the latest controlled phased run reused one 5-second build and passed all
-  101 English cases in 815.706 summed seconds (p95 17.835) and all 101 Spanish
-  cases in 819.278 seconds (p95 17.505), with every unchanged budget green;
+- 103 XCUITest cases per locale define the 206-case bilingual release gate;
+- the latest controlled run reused one 13-second build and passed all 103
+  English cases in 853.399 summed seconds (p95 17.811) and all 103 Spanish
+  cases in 859.154 seconds (p95 18.181), with every unchanged budget green,
+  no retry, and no runtime adjustment;
 - pull requests run only their minimum-safe selected feature evidence; shared
   localization/harness changes and release closure expand to the complete
   bilingual gate, while unknown production paths fail safe to complete English;

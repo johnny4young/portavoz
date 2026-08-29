@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 101
+    "expectedCaseCount": 103
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -18,6 +18,8 @@
   "testBudgetsSeconds": {
     "AutomationUITests/testAppEntitiesOpenExactVisibleDestinations()": 20.0,
     "AutomationUITests/testRecordingAutomationRoutesStartAndStopThroughVisibleApp()": 20.0,
+    "BackgroundWorkUITests/testBackgroundWorkCenterShowsAllOwnersAndRecoversExactFailures()": 25.0,
+    "BackgroundWorkUITests/testRecordingDefersDerivedWorkAndStopResumesIt()": 25.0,
     "CommitmentRadarUITests/testFieldQualityObservesARealReviewWithoutAutomatingDecisions()": 20.0,
     "CommitmentRadarUITests/testRadarFiltersConfirmedWorkAndOpensItsExactSourceMeeting()": 20.0,
     "CommitmentRadarUITests/testReminderAlertOpensCommitmentRadar()": 20.0,
@@ -61,8 +63,8 @@
     "MeetingDetailUITests/testFailedSkillEffectRetriesItsOriginalProposal()": 20.524,
     "MeetingDetailUITests/testFiveThousandSegmentDetailRendersFromDisposableScaleFixture()": 20.0,
     "MeetingDetailUITests/testFreshQualifyingMeetingShowsThePostMeetingMirror()": 20.0,
-    "MeetingDetailUITests/testMostRecentRecipeRemainsVisibleAfterReload()": 20.0,
     "MeetingDetailUITests/testMeetingReviewSurfacesRemainCompleteAndActionable()": 20.0,
+    "MeetingDetailUITests/testMostRecentRecipeRemainsVisibleAfterReload()": 20.0,
     "MeetingDetailUITests/testNamedSpeakerCanBeRememberedAsCanonicalPerson()": 20.0,
     "MeetingDetailUITests/testPlayerExposesSkipAndOnlyMyVoice()": 20.0,
     "MeetingDetailUITests/testRecapSheetDraftsFromTheSummaryWithoutTheTranscript()": 20.0,

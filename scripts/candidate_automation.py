@@ -29,7 +29,10 @@ DEFAULT_OUTPUT_PARENT = ROOT / "dist" / "release-readiness"
 CONTRACT_SCHEMA_VERSION = 2
 PERF_LEDGER_SCHEMA_VERSION = 1
 PERFORMANCE_CONFIRMATION_SCHEMA_VERSION = 1
-UI_RECEIPT_SCHEMA_VERSION = 1
+UI_BUDGET_SCHEMA_VERSION = 1
+UI_RECEIPT_SCHEMA_VERSION = 2
+UI_MEASUREMENT_POLICY = "xcresult-duration-with-post-teardown-exclusion-v1"
+UI_POST_TEARDOWN_NOISE_THRESHOLD_SECONDS = 1.0
 EXPECTED_PERFORMANCE_CONFIRMATION_RUNS = 3
 EXPECTED_PERFORMANCE_ARTIFACTS = (
     "ledger.json",
@@ -791,7 +794,7 @@ def validate_ui_receipts(results_root: Path, contract: dict[str, Any]) -> None:
     )
     exact_schema_version(
         budget["schemaVersion"],
-        UI_RECEIPT_SCHEMA_VERSION,
+        UI_BUDGET_SCHEMA_VERSION,
         "UI runtime budget.schemaVersion",
     )
     catalog = exact_object(
@@ -827,6 +830,8 @@ def validate_ui_receipts(results_root: Path, contract: dict[str, Any]) -> None:
                 "maximumSeconds",
                 "budgetStatus",
                 "budgetViolations",
+                "measurementPolicy",
+                "runtimeAdjustments",
                 "tests",
             ),
         )
@@ -837,6 +842,10 @@ def validate_ui_receipts(results_root: Path, contract: dict[str, Any]) -> None:
         )
         if receipt["locale"] != locale:
             raise CandidateAutomationError(f"{locale} UI receipt locale does not match")
+        if receipt["measurementPolicy"] != UI_MEASUREMENT_POLICY:
+            raise CandidateAutomationError(
+                f"{locale} UI receipt measurement policy does not match"
+            )
         if (
             isinstance(receipt["selectorCount"], bool)
             or not isinstance(receipt["selectorCount"], int)
@@ -900,6 +909,65 @@ def validate_ui_receipts(results_root: Path, contract: dict[str, Any]) -> None:
             raise CandidateAutomationError(
                 f"{locale} UI receipt test inventory does not match the budget"
             )
+        tests_by_identifier = {
+            test["identifier"]: test
+            for test in tests
+        }
+        adjustments = receipt["runtimeAdjustments"]
+        if not isinstance(adjustments, list):
+            raise CandidateAutomationError(
+                f"{locale} UI receipt runtime adjustments must be an array"
+            )
+        adjusted_identifiers: set[str] = set()
+        for index, raw_adjustment in enumerate(adjustments):
+            adjustment = exact_object(
+                raw_adjustment,
+                f"{locale} UI receipt.runtimeAdjustments[{index}]",
+                (
+                    "identifier",
+                    "reportedDurationSeconds",
+                    "attributedDurationSeconds",
+                    "excludedHarnessSeconds",
+                    "reason",
+                ),
+            )
+            identifier = adjustment["identifier"]
+            if (
+                not isinstance(identifier, str)
+                or identifier not in tests_by_identifier
+                or identifier in adjusted_identifiers
+                or tests_by_identifier[identifier]["result"] != "Passed"
+                or adjustment["reason"] != "post-teardown-unattributed-time"
+            ):
+                raise CandidateAutomationError(
+                    f"{locale} UI runtime adjustment identity differs"
+                )
+            reported = finite_nonnegative(
+                adjustment["reportedDurationSeconds"],
+                f"{locale} UI runtime adjustment reported duration",
+            )
+            attributed = finite_nonnegative(
+                adjustment["attributedDurationSeconds"],
+                f"{locale} UI runtime adjustment attributed duration",
+            )
+            excluded = finite_nonnegative(
+                adjustment["excludedHarnessSeconds"],
+                f"{locale} UI runtime adjustment excluded duration",
+            )
+            test_duration = finite_nonnegative(
+                tests_by_identifier[identifier]["durationSeconds"],
+                f"{locale} UI runtime adjustment test duration",
+            )
+            if (
+                attributed > reported
+                or excluded < UI_POST_TEARDOWN_NOISE_THRESHOLD_SECONDS
+                or abs((reported - attributed) - excluded) > 0.002
+                or abs(test_duration - attributed) > 0.002
+            ):
+                raise CandidateAutomationError(
+                    f"{locale} UI runtime adjustment values differ"
+                )
+            adjusted_identifiers.add(identifier)
     if len(set(build_durations)) != 1:
         raise CandidateAutomationError(
             "bilingual UI receipts do not share one build duration"

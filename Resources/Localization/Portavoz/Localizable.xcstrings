@@ -1,6 +1,106 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Attempt: %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intento: %d"
+          }
+        }
+      }
+    },
+    "Interrupted recording scan": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Análisis de grabaciones interrumpidas"
+          }
+        }
+      }
+    },
+    "Job claim": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reclamación de trabajos"
+          }
+        }
+      }
+    },
+    "Lease recovery": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperación de concesiones"
+          }
+        }
+      }
+    },
+    "Next attempt: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siguiente intento: %@"
+          }
+        }
+      }
+    },
+    "Owner coordination": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coordinación del responsable"
+          }
+        }
+      }
+    },
+    "Processing evidence": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evidencia de procesamiento"
+          }
+        }
+      }
+    },
+    "Reason: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motivo: %@"
+          }
+        }
+      }
+    },
+    "Recovery evidence": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evidencia de recuperación"
+          }
+        }
+      }
+    },
+    "Retry scheduling": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Programación del reintento"
+          }
+        }
+      }
+    },
     "Bring this objective back": {
       "localizations": {
         "es": {
@@ -8036,7 +8136,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abrir biblioteca"
+            "value": "Abrir Biblioteca"
           }
         }
       }
@@ -15597,6 +15697,306 @@
           "stringUnit": {
             "state": "translated",
             "value": "Notas originales más cercanas:"
+          }
+        }
+      }
+    },
+    "Background activity": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actividad en segundo plano"
+          }
+        }
+      }
+    },
+    "Recovery · processing · local indexes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperación · procesamiento · índices locales"
+          }
+        }
+      }
+    },
+    "Recovery and local indexing continue safely in the background. Recording always comes first; Portavoz never invents progress.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La recuperación y los índices locales continúan de forma segura en segundo plano. La grabación siempre tiene prioridad; Portavoz nunca inventa el progreso."
+          }
+        }
+      }
+    },
+    "Background work needs attention": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El trabajo en segundo plano requiere atención"
+          }
+        }
+      }
+    },
+    "Background work active": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trabajo en segundo plano activo"
+          }
+        }
+      }
+    },
+    "Open background activity": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir actividad en segundo plano"
+          }
+        }
+      }
+    },
+    "Interrupted recordings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grabaciones interrumpidas"
+          }
+        }
+      }
+    },
+    "Meeting processing": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Procesamiento de reuniones"
+          }
+        }
+      }
+    },
+    "Spotlight search": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Búsqueda de Spotlight"
+          }
+        }
+      }
+    },
+    "Memory graph": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grafo de memoria"
+          }
+        }
+      }
+    },
+    "Idle": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inactivo"
+          }
+        }
+      }
+    },
+    "Waiting for recording to end": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esperando a que termine la grabación"
+          }
+        }
+      }
+    },
+    "Retry scheduled": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reintento programado"
+          }
+        }
+      }
+    },
+    "Recovering safely": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperando de forma segura"
+          }
+        }
+      }
+    },
+    "Transcribing": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcribiendo"
+          }
+        }
+      }
+    },
+    "Identifying speakers": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Identificando hablantes"
+          }
+        }
+      }
+    },
+    "Creating summary": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Creando resumen"
+          }
+        }
+      }
+    },
+    "Updating search": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizando búsqueda"
+          }
+        }
+      }
+    },
+    "Processing meetings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Procesando reuniones"
+          }
+        }
+      }
+    },
+    "Scheduled": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Programado"
+          }
+        }
+      }
+    },
+    "Preparing local search": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando búsqueda local"
+          }
+        }
+      }
+    },
+    "Publishing local search": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publicando búsqueda local"
+          }
+        }
+      }
+    },
+    "Indexing locally": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indexando localmente"
+          }
+        }
+      }
+    },
+    "Rebuilding memory links": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconstruyendo vínculos de memoria"
+          }
+        }
+      }
+    },
+    "Working": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trabajando"
+          }
+        }
+      }
+    },
+    "Reconciled: %d · leases recovered: %d · deferred: %d · attention: %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconciliadas: %d · concesiones recuperadas: %d · diferidas: %d · atención: %d"
+          }
+        }
+      }
+    },
+    "Jobs completed: %d · latest attempt: %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tareas completadas: %d · último intento: %d"
+          }
+        }
+      }
+    },
+    "Keeps meetings, people, and commitments findable in macOS.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permite encontrar reuniones, personas y compromisos en macOS."
+          }
+        }
+      }
+    },
+    "Indexed: %d · excluded: %d · skipped: %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indexados: %d · excluidos: %d · omitidos: %d"
+          }
+        }
+      }
+    },
+    "Scopes rebuilt: %d · relationships published: %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ámbitos reconstruidos: %d · relaciones publicadas: %d"
           }
         }
       }

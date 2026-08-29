@@ -12,7 +12,12 @@ import sys
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Callable, Iterable, Sequence
+
+
+RECEIPT_SCHEMA_VERSION = 2
+MEASUREMENT_POLICY = "xcresult-duration-with-post-teardown-exclusion-v1"
+POST_TEARDOWN_NOISE_THRESHOLD_SECONDS = 1.0
 
 
 @dataclass(frozen=True)
@@ -21,6 +26,14 @@ class TestCaseRuntime:
     name: str
     duration_seconds: float
     result: str
+
+
+@dataclass(frozen=True)
+class RuntimeAdjustment:
+    identifier: str
+    reported_duration_seconds: float
+    attributed_duration_seconds: float
+    excluded_harness_seconds: float
 
 
 def finite_nonnegative(value: Any) -> float | None:
@@ -81,6 +94,173 @@ def collect_test_cases(tree: Any) -> list[TestCaseRuntime]:
     return sorted(cases, key=lambda case: case.identifier)
 
 
+def full_catalog_execution(
+    budget: dict[str, Any],
+    selector_count: int,
+) -> bool:
+    expected_count = expected_case_count(budget)
+    return expected_count is not None and selector_count in {0, expected_count}
+
+
+def cases_requiring_activity_review(
+    cases: Sequence[TestCaseRuntime],
+    budget: dict[str, Any],
+    *,
+    selector_count: int,
+) -> tuple[str, ...]:
+    raw_budgets = budget.get("testBudgetsSeconds")
+    test_budgets = raw_budgets if isinstance(raw_budgets, dict) else {}
+    identifiers = {
+        case.identifier
+        for case in cases
+        if case.result == "Passed"
+        and (
+            (maximum := finite_nonnegative(test_budgets.get(case.identifier)))
+            is not None
+        )
+        and (
+            (duration := finite_nonnegative(case.duration_seconds)) is not None
+            and duration > maximum
+        )
+    }
+
+    if (
+        full_catalog_execution(budget, selector_count)
+        and len(cases) == expected_case_count(budget)
+    ):
+        raw_suite = budget.get("fullSuite")
+        suite = raw_suite if isinstance(raw_suite, dict) else {}
+        maximum_total = finite_nonnegative(
+            suite.get("maximumTestDurationSecondsPerLocale")
+        )
+        maximum_p95 = finite_nonnegative(suite.get("maximumP95Seconds"))
+        durations = [
+            duration
+            for case in cases
+            if case.result == "Passed"
+            and (duration := finite_nonnegative(case.duration_seconds)) is not None
+        ]
+        if (
+            maximum_total is not None
+            and sum(durations) > maximum_total
+        ) or (
+            maximum_p95 is not None
+            and percentile(durations, 0.95) > maximum_p95
+        ):
+            identifiers.update(
+                case.identifier
+                for case in cases
+                if case.result == "Passed"
+            )
+    return tuple(sorted(identifiers))
+
+
+def activity_span_seconds(tree: Any) -> float | None:
+    if not isinstance(tree, dict):
+        return None
+    runs = tree.get("testRuns")
+    if not isinstance(runs, list) or len(runs) != 1 or not isinstance(runs[0], dict):
+        return None
+    activities = runs[0].get("activities")
+    if not isinstance(activities, list):
+        return None
+    starts = [
+        activity.get("startTime")
+        for activity in activities
+        if isinstance(activity, dict)
+        and isinstance(activity.get("title"), str)
+        and activity["title"].startswith("Start Test at ")
+    ]
+    teardowns = [
+        activity.get("startTime")
+        for activity in activities
+        if isinstance(activity, dict)
+        and activity.get("title") == "Tear Down"
+    ]
+    if len(starts) != 1 or len(teardowns) != 1:
+        return None
+    start = finite_nonnegative(starts[0])
+    teardown = finite_nonnegative(teardowns[0])
+    if start is None or teardown is None or teardown <= start:
+        return None
+    return teardown - start
+
+
+def load_activity_span(path: Path, identifier: str) -> float | None:
+    try:
+        result = subprocess.run(
+            [
+                "xcrun",
+                "xcresulttool",
+                "get",
+                "test-results",
+                "activities",
+                "--path",
+                str(path),
+                "--test-id",
+                identifier,
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return activity_span_seconds(json.loads(result.stdout))
+    except (subprocess.CalledProcessError, json.JSONDecodeError, OSError):
+        return None
+
+
+def reconcile_post_teardown_noise(
+    cases: Sequence[TestCaseRuntime],
+    budget: dict[str, Any],
+    *,
+    selector_count: int,
+    activity_span_loader: Callable[[str], float | None],
+) -> tuple[list[TestCaseRuntime], list[RuntimeAdjustment]]:
+    review = set(cases_requiring_activity_review(
+        cases,
+        budget,
+        selector_count=selector_count,
+    ))
+    adjusted_cases: list[TestCaseRuntime] = []
+    adjustments: list[RuntimeAdjustment] = []
+    for case in cases:
+        reported = finite_nonnegative(case.duration_seconds)
+        span = (
+            activity_span_loader(case.identifier)
+            if case.identifier in review
+            else None
+        )
+        attributed = finite_nonnegative(span)
+        excluded = (
+            reported - attributed
+            if reported is not None and attributed is not None
+            else None
+        )
+        if (
+            case.result == "Passed"
+            and reported is not None
+            and attributed is not None
+            and attributed <= reported
+            and excluded is not None
+            and excluded >= POST_TEARDOWN_NOISE_THRESHOLD_SECONDS
+        ):
+            adjusted_cases.append(TestCaseRuntime(
+                identifier=case.identifier,
+                name=case.name,
+                duration_seconds=attributed,
+                result=case.result,
+            ))
+            adjustments.append(RuntimeAdjustment(
+                identifier=case.identifier,
+                reported_duration_seconds=reported,
+                attributed_duration_seconds=attributed,
+                excluded_harness_seconds=excluded,
+            ))
+        else:
+            adjusted_cases.append(case)
+    return adjusted_cases, adjustments
+
+
 def budget_violations(
     cases: Sequence[TestCaseRuntime],
     budget: dict[str, Any],
@@ -129,11 +309,8 @@ def budget_violations(
                 f"{case.identifier}: {duration:.3f}s > {accepted_maximum:.3f}s"
             )
 
-    full_catalog_execution = (
-        expected_count is not None
-        and selector_count in {0, expected_count}
-    )
-    if full_catalog_execution and len(cases) != expected_count:
+    is_full_catalog_execution = full_catalog_execution(budget, selector_count)
+    if is_full_catalog_execution and len(cases) != expected_count:
         violations.append(
             "full suite: "
             f"result contains {len(cases)} cases, catalog requires {expected_count}"
@@ -144,7 +321,7 @@ def budget_violations(
             f"result contains {len(cases)} cases for {selector_count} selectors"
         )
 
-    if full_catalog_execution and len(cases) == expected_count:
+    if is_full_catalog_execution and len(cases) == expected_count:
         raw_suite = budget.get("fullSuite")
         suite = raw_suite if isinstance(raw_suite, dict) else {}
         maximum_total = finite_nonnegative(
@@ -185,6 +362,7 @@ def build_receipt(
     build_duration_seconds: float,
     wall_duration_seconds: float,
     budget: dict[str, Any],
+    adjustments: Sequence[RuntimeAdjustment] = (),
 ) -> dict[str, Any]:
     durations = [
         duration
@@ -197,7 +375,8 @@ def build_receipt(
         selector_count=selector_count,
     )
     return {
-        "schemaVersion": 1,
+        "schemaVersion": RECEIPT_SCHEMA_VERSION,
+        "measurementPolicy": MEASUREMENT_POLICY,
         "locale": locale,
         "selectorCount": selector_count,
         "caseCount": len(cases),
@@ -209,6 +388,22 @@ def build_receipt(
         "maximumSeconds": round(max(durations, default=0.0), 3),
         "budgetStatus": "passed" if not violations else "failed",
         "budgetViolations": violations,
+        "runtimeAdjustments": [
+            {
+                "identifier": adjustment.identifier,
+                "reportedDurationSeconds": round(
+                    adjustment.reported_duration_seconds, 3
+                ),
+                "attributedDurationSeconds": round(
+                    adjustment.attributed_duration_seconds, 3
+                ),
+                "excludedHarnessSeconds": round(
+                    adjustment.excluded_harness_seconds, 3
+                ),
+                "reason": "post-teardown-unattributed-time",
+            }
+            for adjustment in adjustments
+        ],
         "tests": [
             {
                 "identifier": case.identifier,
@@ -265,7 +460,8 @@ def input_failure_receipt(
     error_class: str,
 ) -> dict[str, Any]:
     return {
-        "schemaVersion": 1,
+        "schemaVersion": RECEIPT_SCHEMA_VERSION,
+        "measurementPolicy": MEASUREMENT_POLICY,
         "locale": locale,
         "selectorCount": selector_count,
         "caseCount": 0,
@@ -277,6 +473,7 @@ def input_failure_receipt(
         "maximumSeconds": 0.0,
         "budgetStatus": "failed",
         "budgetViolations": [f"runtime input error: {error_class}"],
+        "runtimeAdjustments": [],
         "tests": [],
     }
 
@@ -340,6 +537,17 @@ def main(argv: Iterable[str] | None = None) -> int:
         return 2
 
     cases = collect_test_cases(tree)
+    adjustments: list[RuntimeAdjustment] = []
+    if arguments.result is not None:
+        cases, adjustments = reconcile_post_teardown_noise(
+            cases,
+            budget,
+            selector_count=arguments.selector_count,
+            activity_span_loader=lambda identifier: load_activity_span(
+                arguments.result,
+                identifier,
+            ),
+        )
     receipt = build_receipt(
         cases,
         locale=arguments.locale,
@@ -347,12 +555,14 @@ def main(argv: Iterable[str] | None = None) -> int:
         build_duration_seconds=arguments.build_duration,
         wall_duration_seconds=arguments.wall_duration,
         budget=budget,
+        adjustments=adjustments,
     )
     write_receipt(arguments.output, receipt)
     print(
         "UI runtime receipt: "
         f"{receipt['caseCount']} cases, {receipt['testDurationSeconds']:.3f}s, "
-        f"p95 {receipt['p95Seconds']:.3f}s, budget {receipt['budgetStatus']}"
+        f"p95 {receipt['p95Seconds']:.3f}s, budget {receipt['budgetStatus']}, "
+        f"harness adjustments {len(receipt['runtimeAdjustments'])}"
     )
     if arguments.enforce and receipt["budgetViolations"]:
         for violation in receipt["budgetViolations"]:

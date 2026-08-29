@@ -37,6 +37,16 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "testDatabaseLaunchFailureOffersSafeRecovery",
         ),
     ),
+    "background-work": (
+        test_id(
+            "BackgroundWorkUITests",
+            "testBackgroundWorkCenterShowsAllOwnersAndRecoversExactFailures",
+        ),
+        test_id(
+            "BackgroundWorkUITests",
+            "testRecordingDefersDerivedWorkAndStopResumesIt",
+        ),
+    ),
     "automation-entry": (
         test_id(
             "AutomationUITests",
@@ -422,6 +432,7 @@ RETIRED_DUPLICATE_TESTS = frozenset({
 # no longer silently validates the catalog.
 FEATURE_SOURCE_SENTINELS: dict[str, str] = {
     "launch-recovery": "Sources/portavoz-app/AppLaunchRecoveryView.swift",
+    "background-work": "Sources/portavoz-app/BackgroundWorkCenterView.swift",
     "automation-entry": "Sources/portavoz-app/PortavozAppIntents.swift",
     "library": "Sources/portavoz-app/LibraryView.swift",
     "meeting-brief": "Sources/portavoz-app/MeetingBriefView.swift",
@@ -506,12 +517,17 @@ def tests_for_ui_test_file(path: str) -> set[str]:
 
 def app_features(filename: str) -> set[str]:
     lowered = filename.lower()
+    if "backgroundwork" in lowered:
+        return {"background-work"}
     if lowered == "uitestfeaturehandshake.swift":
         return {"ask", "settings-skills"}
     if "automationentit" in lowered:
         return {"automation-entry", "commitment-radar"}
     if lowered in {"applaunchmodel.swift", "applaunchrecoveryview.swift"}:
-        return {"launch-recovery", "main-shell"}
+        features = {"launch-recovery", "main-shell"}
+        if lowered == "applaunchmodel.swift":
+            features.add("background-work")
+        return features
     if lowered in {
         "benchmode.swift",
         "benchmode+resourcerefinepreparation.swift",
@@ -533,7 +549,16 @@ def app_features(filename: str) -> set[str]:
         # Root composition changes can affect every destination, but one
         # deterministic canary per route is sufficient; do not rerun all
         # feature permutations merely because a route was added or wired.
-        return {"main-shell"}
+        return {"background-work", "main-shell"}
+    if lowered in {
+        "postcaptureprocessingcoordinator.swift",
+        "recordingrecoverycoordinator.swift",
+        "semanticcorpusindexingsupervisor.swift",
+        "spotlightindexer.swift",
+    }:
+        return {"background-work"}
+    if lowered == "appservices+ask.swift":
+        return {"ask", "background-work", "library"}
     if lowered == "portavozappdelegate.swift":
         # The delegate owns external entry routes. Exercise the automation
         # handoff and the exact reminder-to-Radar path without expanding an
@@ -544,7 +569,7 @@ def app_features(filename: str) -> set[str]:
     if lowered in {"appservices.swift", "portavozapp.swift"}:
         # Process composition/startup changes need one deterministic canary per
         # route, not every feature permutation behind those destinations.
-        return {"launch-recovery", "main-shell", "menu-bar-brief"}
+        return {"background-work", "launch-recovery", "main-shell", "menu-bar-brief"}
     if "commitmentreminder" in lowered:
         return {"commitment-radar", "meeting-commitments"}
     if any(token in lowered for token in (
@@ -723,6 +748,13 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if any(token in lowered for token in (
+        "processsemanticcorpusmaintenance",
+        "processmeetingmemorygraphmaintenance",
+        "recoverinterruptedmeetings",
+        "derivedmaintenance",
+    )):
+        return {"background-work"}
     if "proactivemeetingassist" in lowered:
         # The deterministic policy is rendered only by the consolidated live-
         # assist journey; it has no model, Settings, detail, or Library route.

@@ -223,6 +223,12 @@ struct AppSemanticSearchComposition {
     let memoryGraphBackground: MeetingMemoryGraphProjectionSupervisor
 }
 
+struct AppBackgroundWorkComposition {
+    let model: BackgroundWorkCenterModel
+    let captureState: AppResourceCaptureState
+    let enablesFixture: Bool
+}
+
 extension AppServices {
     static func makeAskModelClient(
         composition: AppSemanticSearchComposition,
@@ -250,11 +256,11 @@ extension AppServices {
         semanticRuntime: any SemanticEmbeddingRuntimeClient,
         selectedAnswering: any AskMeetingAnswering & AskNoteAnswering & AskWebAnswering,
         telemetry: ResourceWorkloadTelemetry,
-        pipelineTelemetry: AskPipelineTelemetry = AppAskPipelineTelemetry.shared.telemetry,
-        captureState: AppResourceCaptureState
+        backgroundWork: AppBackgroundWorkComposition
     ) -> AppSemanticSearchComposition {
+        let pipelineTelemetry = AppAskPipelineTelemetry.shared.telemetry
         let maintenanceGate = AppResourceGovernorMaintenanceGate.make(
-            captureState: captureState)
+            captureState: backgroundWork.captureState)
         let coordinator = SemanticCorpusIndexingCoordinator(
             operation: IndexSemanticCorpus(
                 store: store,
@@ -286,13 +292,13 @@ extension AppServices {
             runtime: semanticRuntime,
             coordinator: coordinator,
             maintenanceState: maintenanceState,
-            captureState: captureState)
+            backgroundWork: backgroundWork)
         let memoryGraphBackground = makeMemoryGraphBackground(
             store: store,
             usesTemporaryStore: usesTemporaryStore,
             telemetry: telemetry,
             maintenanceGate: maintenanceGate,
-            captureState: captureState)
+            backgroundWork: backgroundWork)
         return AppSemanticSearchComposition(
             coordinator: coordinator,
             ask: ask,
@@ -358,16 +364,27 @@ extension AppServices {
         runtime: any SemanticEmbeddingRuntimeClient,
         coordinator: SemanticCorpusIndexingCoordinator,
         maintenanceState: SemanticCorpusMaintenanceState,
-        captureState: AppResourceCaptureState
+        backgroundWork: AppBackgroundWorkComposition
     ) -> SemanticCorpusIndexingSupervisor {
         let indexer = AppSemanticCorpusBackgroundIndexer(
             store: store,
             runtime: runtime,
             coordinator: coordinator,
-            captureState: captureState)
+            captureState: backgroundWork.captureState)
         return SemanticCorpusIndexingSupervisor(
-            isEnabled: !usesTemporaryStore,
+            isEnabled: !usesTemporaryStore || backgroundWork.enablesFixture,
             maintenanceState: maintenanceState,
+            didStart: {
+                backgroundWork.model.begin(
+                    .semanticIndex,
+                    stage: .semanticIndexing)
+            },
+            didObserve: { token, run in
+                backgroundWork.model.observeSemantic(token, run: run)
+            },
+            didSettle: { token, run in
+                backgroundWork.model.finishSemantic(token, run: run)
+            },
             drain: indexer.drain(owner:))
     }
 
@@ -376,7 +393,7 @@ extension AppServices {
         usesTemporaryStore: Bool,
         telemetry: ResourceWorkloadTelemetry,
         maintenanceGate: DurableMaintenanceGate,
-        captureState: AppResourceCaptureState
+        backgroundWork: AppBackgroundWorkComposition
     ) -> MeetingMemoryGraphProjectionSupervisor {
         let projector = AppMeetingMemoryGraphBackgroundProjector(
             store: store,
@@ -384,9 +401,20 @@ extension AppServices {
                 store: store,
                 telemetry: telemetry,
                 maintenanceGate: maintenanceGate),
-            captureState: captureState)
+            captureState: backgroundWork.captureState)
         return MeetingMemoryGraphProjectionSupervisor(
-            isEnabled: !usesTemporaryStore,
+            isEnabled: !usesTemporaryStore || backgroundWork.enablesFixture,
+            didStart: {
+                backgroundWork.model.begin(
+                    .memoryGraph,
+                    stage: .projectingMemoryGraph)
+            },
+            didObserve: { token, run in
+                backgroundWork.model.observeMemoryGraph(token, run: run)
+            },
+            didSettle: { token, run in
+                backgroundWork.model.finishMemoryGraph(token, run: run)
+            },
             drain: projector.drain(owner:))
     }
 

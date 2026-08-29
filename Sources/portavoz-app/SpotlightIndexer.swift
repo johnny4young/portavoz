@@ -41,6 +41,8 @@ actor SpotlightIndexer {
     private let debounce: Duration
     private let retryDelays: [Duration]
     private let sleep: @Sendable (Duration) async throws -> Void
+    private let now: @Sendable () -> Date
+    private let statusChanged: @Sendable (Status, Date?) async -> Void
     private let telemetry: ResourceWorkloadTelemetry
     private let logger = Logger(subsystem: "app.portavoz", category: "Spotlight")
 
@@ -59,9 +61,11 @@ actor SpotlightIndexer {
         debounce: Duration = .milliseconds(250),
         retryDelays: [Duration] = [.seconds(1), .seconds(5)],
         telemetry: ResourceWorkloadTelemetry = .disabled,
+        now: @escaping @Sendable () -> Date = Date.init,
         sleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
-        }
+        },
+        statusChanged: @escaping @Sendable (Status, Date?) async -> Void = { _, _ in }
     ) {
         self.store = store
         self.enabled = enabled
@@ -71,7 +75,9 @@ actor SpotlightIndexer {
         self.debounce = debounce
         self.retryDelays = retryDelays
         self.telemetry = telemetry
+        self.now = now
         self.sleep = sleep
+        self.statusChanged = statusChanged
     }
 
     func requestReindex() {
@@ -98,11 +104,11 @@ actor SpotlightIndexer {
                 attempt = 0
                 attemptedGeneration = targetGeneration
             }
-            status = .scheduled
+            await publish(.scheduled)
             do {
                 try await sleep(debounce)
             } catch {
-                finish(status: .idle)
+                await finish(status: .idle)
                 return
             }
             guard targetGeneration == generation else { continue }
@@ -116,34 +122,37 @@ actor SpotlightIndexer {
                 attempt = 0
                 telemetry.finish(span, outcome: .completed)
                 guard targetGeneration == generation else { continue }
-                finish(status: .idle)
+                await finish(status: .idle)
                 return
             } catch is CancellationError {
                 telemetry.finish(span, outcome: .cancelled)
-                finish(status: .idle)
+                await finish(status: .idle)
                 return
             } catch {
                 telemetry.finish(span, outcome: .failed)
                 attempt += 1
                 logger.error("Spotlight reconciliation failed; attempt=\(attempt, privacy: .public)")
                 guard attempt <= retryDelays.count else {
-                    finish(status: .failed(attempts: attempt))
+                    await finish(status: .failed(attempts: attempt))
                     return
                 }
-                status = .retrying(attempt: attempt)
+                let retryDelay = retryDelays[attempt - 1]
+                await publish(
+                    .retrying(attempt: attempt),
+                    retryAt: now().addingTimeInterval(retryDelay.timeInterval))
                 do {
-                    try await sleep(retryDelays[attempt - 1])
+                    try await sleep(retryDelay)
                 } catch {
-                    finish(status: .idle)
+                    await finish(status: .idle)
                     return
                 }
             }
         }
-        finish(status: .idle)
+        await finish(status: .idle)
     }
 
     private func reconcile() async throws {
-        status = .projecting
+        await publish(.projecting)
         let snapshot: SpotlightIndexSnapshot
         switch backend.mode {
         case .meetingDocuments:
@@ -155,7 +164,7 @@ actor SpotlightIndexer {
             snapshot = try await store.spotlightIndexSnapshot()
         }
         let clientState = Self.clientState(for: snapshot, mode: backend.mode)
-        status = .publishing
+        await publish(.publishing)
         if try await backend.lastClientState() != clientState {
             try await backend.replace(snapshot, clientState: clientState)
         }
@@ -171,9 +180,14 @@ actor SpotlightIndexer {
         }
     }
 
-    private func finish(status: Status) {
-        self.status = status
+    private func finish(status: Status) async {
+        await publish(status)
         worker = nil
+    }
+
+    private func publish(_ status: Status, retryAt: Date? = nil) async {
+        self.status = status
+        await statusChanged(status, retryAt)
     }
 
     static func clientState(
@@ -241,6 +255,14 @@ actor SpotlightIndexer {
         if let optionalDate {
             update(&hasher, date: optionalDate)
         }
+    }
+}
+
+private extension Duration {
+    var timeInterval: TimeInterval {
+        let value = self.components
+        return TimeInterval(value.seconds)
+            + TimeInterval(value.attoseconds) / 1_000_000_000_000_000_000
     }
 }
 

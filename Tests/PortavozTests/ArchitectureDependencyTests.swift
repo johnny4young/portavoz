@@ -2613,8 +2613,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,788 cases "
-                + "(15 environment-gated) + 101"))
+            "package inventory contains 2,799 cases "
+                + "(15 environment-gated) + 103"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
         XCTAssertTrue(gaps.contains(
@@ -9439,7 +9439,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         let workflow = try Self.contents(of: ".github/workflows/ui-tests.yml")
         let makefile = try Self.contents(of: "Makefile")
         let runner = try Self.contents(of: "scripts/run-ui-tests.sh")
+        let runtime = try Self.contents(of: "scripts/ui_test_runtime.py")
         let gate = try Self.contents(of: "scripts/ui_test_ci_gate.py")
+        let candidate = try Self.contents(of: "scripts/candidate_automation.py")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertEqual(
@@ -9484,8 +9486,26 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(gate.contains("hosted-runtime-drift"))
         XCTAssertTrue(gate.contains("product-or-test-regression"))
         XCTAssertTrue(gate.contains("infrastructure-or-harness"))
+        XCTAssertTrue(gate.contains("evidence-contract violations"))
         XCTAssertTrue(gate.contains("wall-clock budgets remain advisory"))
+        XCTAssertTrue(runtime.contains("RECEIPT_SCHEMA_VERSION = 2"))
+        XCTAssertTrue(runtime.contains(
+            "POST_TEARDOWN_NOISE_THRESHOLD_SECONDS = 1.0"))
+        XCTAssertTrue(runtime.contains(
+            "activity[\"title\"].startswith(\"Start Test at \""))
+        XCTAssertTrue(runtime.contains(
+            "activity.get(\"title\") == \"Tear Down\""))
+        XCTAssertTrue(runtime.contains("case.result == \"Passed\""))
+        XCTAssertTrue(runtime.contains("attributed <= reported"))
+        XCTAssertTrue(runtime.contains(
+            "reason\": \"post-teardown-unattributed-time"))
+        XCTAssertTrue(gate.contains("RECEIPT_SCHEMA_VERSION = 2"))
+        XCTAssertTrue(gate.contains("runtime adjustment values differ"))
+        XCTAssertTrue(candidate.contains("UI_RECEIPT_SCHEMA_VERSION = 2"))
+        XCTAssertTrue(candidate.contains(
+            "UI_POST_TEARDOWN_NOISE_THRESHOLD_SECONDS = 1.0"))
         XCTAssertTrue(decisions.contains("## D425"))
+        XCTAssertTrue(decisions.contains("## D428"))
     }
 
     func testXCUITestRuntimeOptimizationRetainsRiskOwnersWithoutDuplicateWork() throws {
@@ -12128,6 +12148,96 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D423"))
         XCTAssertTrue(gaps.contains("T32 | ~~Database-open failure"))
         XCTAssertTrue(gaps.contains("RESOLVED in code (D319)"))
+    }
+
+    func testBackgroundWorkCenterRemainsOneContentFreeOwnerFedProjection() throws {
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/BackgroundWorkCenterModel.swift")
+        let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
+        let ask = try Self.contents(of: "Sources/portavoz-app/AppServices+Ask.swift")
+        let recovery = try Self.contents(
+            of: "Sources/portavoz-app/RecordingRecoveryCoordinator.swift")
+        let processing = try Self.contents(
+            of: "Sources/portavoz-app/PostCaptureProcessingCoordinator.swift")
+        let spotlight = try Self.contents(
+            of: "Sources/portavoz-app/SpotlightIndexer.swift")
+        let view = try Self.contents(
+            of: "Sources/portavoz-app/BackgroundWorkCenterView.swift")
+        let scope = try Self.contents(of: "scripts/ui_test_scope.py")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
+        let qualitySpec = try Self.contents(of: "docs/specs/08-quality.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let gaps = try Self.contents(of: "docs/GAPS.md")
+
+        XCTAssertTrue(model.contains("@MainActor\n@Observable\nfinal class BackgroundWorkCenterModel"))
+        XCTAssertFalse(model.contains("Task {"))
+        XCTAssertFalse(model.contains("Task.sleep"))
+        XCTAssertFalse(model.contains("Timer"))
+        XCTAssertFalse(model.contains("0.25"))
+        XCTAssertEqual(
+            services.components(separatedBy:
+                "let backgroundWork: BackgroundWorkCenterModel").count - 1,
+            1,
+            "AppServices must own exactly one process-wide projection")
+
+        let metricsStart = try XCTUnwrap(model.range(
+            of: "struct BackgroundWorkMetrics"))
+        let tokenStart = try XCTUnwrap(model.range(
+            of: "struct BackgroundWorkRunToken",
+            range: metricsStart.upperBound..<model.endIndex))
+        let projectionContract = model[
+            metricsStart.lowerBound..<tokenStart.lowerBound]
+        for forbidden in [
+            "String", "URL", "MeetingID", "Transcript", "relativePath",
+            "localizedDescription", "Error",
+        ] {
+            XCTAssertFalse(
+                projectionContract.contains(forbidden),
+                "Background status must not admit content field \(forbidden)")
+        }
+
+        XCTAssertTrue(recovery.contains("backgroundWork.begin(\n            .recovery"))
+        XCTAssertTrue(recovery.contains("backgroundWork.finishRecovery"))
+        XCTAssertTrue(processing.contains("backgroundWork.begin(\n                .processing"))
+        XCTAssertTrue(processing.contains("backgroundWork.finishProcessingJob"))
+        XCTAssertTrue(processing.contains("backgroundWork?.finishProcessingDrain"))
+        XCTAssertEqual(
+            processing.components(separatedBy:
+                "guard generation == kickGeneration, drainTask == nil else { return }")
+                .count - 1,
+            2,
+            "both wake success and failure must fence an obsolete drain")
+        XCTAssertTrue(spotlight.contains("statusChanged: @Sendable (Status, Date?)"))
+        XCTAssertTrue(spotlight.contains("await statusChanged(status, retryAt)"))
+        XCTAssertTrue(ask.contains("backgroundWork.model.observeSemantic"))
+        XCTAssertTrue(ask.contains("backgroundWork.model.finishSemantic"))
+        XCTAssertTrue(ask.contains("backgroundWork.model.observeMemoryGraph"))
+        XCTAssertTrue(ask.contains("backgroundWork.model.finishMemoryGraph"))
+
+        for identifier in [
+            "background-work-row-\\(snapshot.owner.rawValue)",
+            "background-work-status-\\(snapshot.owner.rawValue)",
+            "background-work-detail-\\(snapshot.owner.rawValue)",
+            "background-work-action-\\(snapshot.owner.rawValue)",
+        ] {
+            XCTAssertTrue(view.contains(identifier))
+        }
+        XCTAssertTrue(scope.contains(#""background-work": ("#))
+        XCTAssertEqual(
+            scope.components(separatedBy: #""BackgroundWorkUITests""#).count - 1,
+            2)
+        XCTAssertTrue(scope.contains(
+            #""testBackgroundWorkCenterShowsAllOwnersAndRecoversExactFailures""#))
+        XCTAssertTrue(scope.contains(
+            #""testRecordingDefersDerivedWorkAndStopResumesIt""#))
+        XCTAssertTrue(model.contains("arguments.contains(\"-use-temp-store\")"))
+        XCTAssertTrue(model.contains("arguments.contains(\"-seed-background-work\")"))
+        XCTAssertTrue(architecture.contains("### Background work projection"))
+        XCTAssertTrue(appSpec.contains("### Background activity center (D427)"))
+        XCTAssertTrue(qualitySpec.contains("D427 background-owner projection evidence"))
+        XCTAssertTrue(decisions.contains("## D427"))
+        XCTAssertTrue(gaps.contains("BACKGROUND WORK CENTER IMPLEMENTED IN CODE (D427)"))
     }
 
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {

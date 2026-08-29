@@ -133,6 +133,10 @@ struct SettingsView: View {
                     GitHubSection()
                 case .sync:
                     MeetingSyncSettingsSection()
+                case .backgroundWork:
+                    BackgroundWorkCenterSection(
+                        model: services.backgroundWork,
+                        performAction: performBackgroundWorkAction)
                 case .data:
                     LedgerSection(model: services.localDataLedger)
                     SupportDiagnosticsSection()
@@ -203,6 +207,32 @@ struct SettingsView: View {
         guard let requested = services.pendingSettingsCategory else { return }
         category = requested
         services.pendingSettingsCategory = nil
+    }
+
+    @MainActor
+    private func performBackgroundWorkAction(_ owner: BackgroundWorkOwner) {
+        if services.backgroundWork.resolveUITestActionIfNeeded(for: owner) {
+            return
+        }
+        switch owner {
+        case .recovery:
+            services.pendingRoute = .library
+            openWindow(id: "main", value: MainWindowIdentity.primary)
+            settingsWindowReference.window?.close()
+        case .processing:
+            services.kickPostCaptureProcessing()
+        case .spotlight:
+            let indexer = services.spotlightIndexer
+            Task { await indexer.requestReindex() }
+        case .semanticIndex:
+            if services.resourceCaptureState.current == .inactive {
+                services.semanticIndexingSupervisor.kick()
+            } else {
+                services.backgroundWork.markWaitingForRecording(.semanticIndex)
+            }
+        case .memoryGraph:
+            services.requestMemoryGraphReconciliation()
+        }
     }
 
     @MainActor

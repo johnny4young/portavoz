@@ -31,6 +31,7 @@ enum CommitmentRadarRouteFocus: Hashable {
 struct ContentView: View {
     let services: AppServices
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
     @State private var route: Route?
     @State private var libraryModel: LibraryModel
     @State private var insightsModel: InsightsModel
@@ -129,6 +130,16 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background { AuroraDetailBackground() }
+        }
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                BackgroundWorkIndicator(
+                    model: services.backgroundWork,
+                    openCenter: {
+                        services.pendingSettingsCategory = .backgroundWork
+                        openSettings()
+                    })
+            }
         }
         .task {
             // The value-scoped main WindowGroup reuses its primary window

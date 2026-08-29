@@ -74,6 +74,8 @@ extension XCUIApplication {
         seedCommitmentRadar: Bool = false,
         seedAskMemory: Bool = false,
         seedAskTopicMemory: Bool = false,
+        seedBackgroundWork: Bool = false,
+        enableBackgroundWorkFixture: Bool = false,
         simulateSequoiaCapabilities: Bool = false,
         simulateRecordingStartFailure: Bool = false,
         simulateSystemCaptureStall: Bool = false,
@@ -132,6 +134,10 @@ extension XCUIApplication {
         if seedCommitmentRadar { app.launchArguments.append("-seed-commitment-radar") }
         if seedAskMemory { app.launchArguments.append("-seed-ask-memory") }
         if seedAskTopicMemory { app.launchArguments.append("-seed-ask-topic-memory") }
+        if seedBackgroundWork { app.launchArguments.append("-seed-background-work") }
+        if enableBackgroundWorkFixture {
+            app.launchArguments.append("-enable-background-work-fixture")
+        }
         if simulateSequoiaCapabilities {
             app.launchArguments.append("-simulate-sequoia-capabilities")
         }
@@ -334,12 +340,11 @@ extension XCUIApplication {
         timeout: TimeInterval = 10
     ) -> Bool {
         let category = control(withIdentifier: identifier)
+        let categoryList = control(withIdentifier: "settings-category-list")
         let expectedControl = control(withIdentifier: expectedControlIdentifier)
         for attempt in 0..<2 {
             guard prepareForInteraction(timeout: timeout) else { continue }
-            // `openSettingsWindow` owns the one placement proof for the
-            // whole static sidebar. Each category only needs to remain
-            // actionable after the explicit foreground reassertion.
+            bringSettingsCategoryIntoView(category, inside: categoryList)
             guard category.waitForHittable(timeout: timeout) else { continue }
             category.click()
             if expectedControl.waitForExistenceFast(timeout: attempt == 0 ? 2 : 5) {
@@ -347,6 +352,39 @@ extension XCUIApplication {
             }
         }
         return false
+    }
+
+    /// SwiftUI can report a clipped sidebar button as hittable even when its
+    /// synthesized click lands outside the scroll viewport. Bring the whole
+    /// row into the identified viewport before clicking; this is required when
+    /// localized two-line labels make the category list taller than the window.
+    @MainActor
+    private func bringSettingsCategoryIntoView(
+        _ category: XCUIElement,
+        inside categoryList: XCUIElement
+    ) {
+        guard categoryList.exists, category.exists else { return }
+
+        for _ in 0..<3 {
+            let viewport = categoryList.frame
+            let row = category.frame
+            guard !viewport.isEmpty, !row.isEmpty else { return }
+            if row.minY >= viewport.minY && row.maxY <= viewport.maxY {
+                return
+            }
+
+            let deltaY: CGFloat
+            if row.maxY > viewport.maxY {
+                let distance = row.maxY - viewport.maxY + 12
+                deltaY = -min(max(distance, 120), 600)
+            } else if row.minY < viewport.minY {
+                let distance = viewport.minY - row.minY + 12
+                deltaY = min(max(distance, 120), 600)
+            } else {
+                return
+            }
+            categoryList.scroll(byDeltaX: 0, deltaY: deltaY)
+        }
     }
 
     /// Seeded-library launches mutate the sidebar once after the first frame.

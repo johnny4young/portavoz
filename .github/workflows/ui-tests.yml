@@ -75,7 +75,7 @@ jobs:
     if: needs.scope.outputs.required == 'true'
     runs-on: macos-latest
     # Localization/shared-harness and manual integration runs legitimately
-    # select all 101 tests in both locales. One build feeds independent locale
+    # select all 103 tests in both locales. One build feeds independent locale
     # attempts; both receipts are preserved before the deterministic gate.
     timeout-minutes: 60
     steps:

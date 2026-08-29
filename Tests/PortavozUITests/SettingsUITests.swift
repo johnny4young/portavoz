@@ -43,7 +43,7 @@ final class SettingsUITests: PortavozUITestCase {
         app.typeKey(",", modifierFlags: .command)
         openCategory(
             "settings-category-data",
-            revealing: "settings-privacy-seal",
+            revealing: "settings-ledger-meetings",
             in: app)
 
         let localFirstSeal = Locale.current.identifier.hasPrefix("es")

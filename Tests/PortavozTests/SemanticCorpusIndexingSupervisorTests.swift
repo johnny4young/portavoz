@@ -104,6 +104,41 @@ final class SemanticCorpusIndexingSupervisorTests: XCTestCase {
         XCTAssertEqual(state.current, .idle)
     }
 
+    func testSupervisorFeedsOneTypedProjectionFromStartThroughSettlement() async {
+        let model = BackgroundWorkCenterModel()
+        let run = SemanticCorpusMaintenanceRun(indexing: .init(
+            invalidatedSegments: 1,
+            embeddedSegments: 3,
+            excludedSegments: 2,
+            skippedSegments: 1))
+        let supervisor = SemanticCorpusIndexingSupervisor(
+            didStart: {
+                model.begin(.semanticIndex, stage: .semanticIndexing)
+            },
+            didObserve: { token, observed in
+                model.observeSemantic(token, run: observed)
+            },
+            didSettle: { token, settled in
+                model.finishSemantic(token, run: settled)
+            },
+            drain: { _ in run })
+
+        supervisor.kick()
+        await waitUntil {
+            await MainActor.run {
+                model.snapshots[.semanticIndex]?.metrics.embeddedSegments == 3
+                    && model.snapshots[.semanticIndex]?.phase == .idle
+            }
+        }
+
+        let snapshot = model.snapshots[.semanticIndex]
+        XCTAssertEqual(snapshot?.lastOutcome, .succeeded)
+        XCTAssertEqual(snapshot?.metrics.invalidatedSegments, 1)
+        XCTAssertEqual(snapshot?.metrics.embeddedSegments, 3)
+        XCTAssertEqual(snapshot?.metrics.excludedSegments, 2)
+        XCTAssertEqual(snapshot?.metrics.skippedSegments, 1)
+    }
+
     func testSupervisorPublishesFailureUntilTheNextKickRecovers() async {
         let probe = FailingThenSuccessfulSemanticDrainProbe()
         let state = SemanticCorpusMaintenanceState()

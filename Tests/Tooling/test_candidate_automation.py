@@ -1249,7 +1249,10 @@ class CandidateAutomationTests(unittest.TestCase):
                 for identifier in identifiers
             ]
             receipt = {
-                "schemaVersion": 1,
+                "schemaVersion": 2,
+                "measurementPolicy": (
+                    "xcresult-duration-with-post-teardown-exclusion-v1"
+                ),
                 "locale": locale,
                 "selectorCount": 0,
                 "caseCount": len(tests),
@@ -1261,6 +1264,7 @@ class CandidateAutomationTests(unittest.TestCase):
                 "maximumSeconds": 1.0,
                 "budgetStatus": "passed",
                 "budgetViolations": [],
+                "runtimeAdjustments": [],
                 "tests": tests,
             }
             (root / f"{locale}-runtime.json").write_text(json.dumps(receipt))

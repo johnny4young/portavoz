@@ -115,6 +115,43 @@ final class SpotlightIndexerTests: XCTestCase {
         XCTAssertEqual(status, .idle)
     }
 
+    func testStatusCallbackPublishesEveryPhaseAndExactRetryDate() async throws {
+        let store = try await seededStore()
+        let backend = SpotlightBackendSpy(replacementFailures: 1)
+        let recorder = SpotlightStatusRecorder()
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let indexer = SpotlightIndexer(
+            store: store,
+            enabled: true,
+            backend: backend,
+            legacyCleanupState: SpotlightLegacyCleanupStateSpy(),
+            debounce: .zero,
+            retryDelays: [.seconds(2)],
+            now: { now },
+            sleep: { _ in },
+            statusChanged: { status, retryAt in
+                await recorder.record(status, retryAt: retryAt)
+            })
+
+        await indexer.requestReindex()
+        await indexer.waitUntilIdle()
+
+        let events = await recorder.events
+        XCTAssertEqual(events.map(\.status), [
+            .scheduled,
+            .projecting,
+            .publishing,
+            .retrying(attempt: 1),
+            .scheduled,
+            .projecting,
+            .publishing,
+            .idle,
+        ])
+        XCTAssertEqual(
+            events.compactMap(\.retryAt),
+            [now.addingTimeInterval(2)])
+    }
+
     func testExhaustedRetriesRemainVisibleAndANewRequestCanRecover() async throws {
         let store = try await seededStore()
         let backend = SpotlightBackendSpy(replacementFailures: 2)
@@ -476,6 +513,19 @@ private actor SpotlightLegacyCleanupStateSpy: SpotlightLegacyCleanupState {
 
     func markComplete() {
         complete = true
+    }
+}
+
+private actor SpotlightStatusRecorder {
+    struct Event: Sendable {
+        let status: SpotlightIndexer.Status
+        let retryAt: Date?
+    }
+
+    private(set) var events: [Event] = []
+
+    func record(_ status: SpotlightIndexer.Status, retryAt: Date?) {
+        events.append(Event(status: status, retryAt: retryAt))
     }
 }
 

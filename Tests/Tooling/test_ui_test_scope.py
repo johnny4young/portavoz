@@ -600,9 +600,28 @@ class UITestScopeTests(unittest.TestCase):
 
     def test_content_composition_selects_one_canary_per_root_route(self):
         selection = select_paths(["Sources/portavoz-app/ContentView.swift"])
-        self.assertEqual(set(selection.tests), set(FEATURE_TESTS["main-shell"]))
+        expected = set(FEATURE_TESTS["main-shell"])
+        expected.update(FEATURE_TESTS["background-work"])
+        self.assertEqual(set(selection.tests), expected)
         self.assertEqual(selection.locales, ("en",))
         self.assertLess(len(selection.tests), len(ALL_TESTS))
+
+    def test_background_work_owners_select_only_the_consolidated_journeys(self):
+        expected = FEATURE_TESTS["background-work"]
+        for path in (
+            "Sources/portavoz-app/BackgroundWorkCenterModel.swift",
+            "Sources/portavoz-app/BackgroundWorkCenterView.swift",
+            "Sources/portavoz-app/PostCaptureProcessingCoordinator.swift",
+            "Sources/portavoz-app/RecordingRecoveryCoordinator.swift",
+            "Sources/portavoz-app/SemanticCorpusIndexingSupervisor.swift",
+            "Sources/portavoz-app/SpotlightIndexer.swift",
+            "Sources/ApplicationKit/ProcessSemanticCorpusMaintenance.swift",
+            "Sources/ApplicationKit/ProcessMeetingMemoryGraphMaintenance.swift",
+            "Sources/ApplicationKit/RecoverInterruptedMeetings.swift",
+        ):
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, expected, path)
+            self.assertEqual(selection.locales, ("en",), path)
 
     def test_window_placement_expands_to_the_complete_bilingual_catalog(self):
         selection = select_paths(

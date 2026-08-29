@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,788 cases (15 environment-gated) + 101
+Status: the package inventory contains 2,799 cases (15 environment-gated) + 103
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -11,7 +11,7 @@ gate). `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
-Meeting Detail tests. The English and Spanish release gates each cover all 101
+Meeting Detail tests. The English and Spanish release gates each cover all 103
 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
@@ -26,7 +26,8 @@ regeneration, Library/search, Insights, post-meeting mirror, proactive Whisper
 Settings, Sequoia intelligence setup, explicit correction-aware Apuntador
 refresh and unsupported-Sequoia preservation, private-sync opt-in/older-
 library separation, whole-library Markdown backup, privacy receipt, redacted
-support, durable post-capture recovery, processing recovery, and typed
+support, the five-owner Background Work Center, recording-priority deferral and
+resume, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
@@ -5965,4 +5966,64 @@ non-passing case. After D426, the focused real-app journey passed EN/ES with
 hard budgets, and the required shared-harness qualification passed 101/101 in
 both locales without retry from one build: English 815.706 summed seconds (p95
 17.835), Spanish 819.278 seconds (p95 17.505), and every unchanged hard budget
-green. Replacement-head hosted evidence remains separate and pending.
+green. Exact head `19084e4e` then passed hosted CI run `33237174306` and Scoped
+UI run `33237174304` on their first attempts; PR #30 remained open, clean, and
+mergeable with no unresolved review threads.
+
+**Attributed runtime evidence.** Runtime receipt schema 2 prevents a proven
+post-teardown runner stall from masquerading as product work without making a
+slow or failed journey green. The reported XCTest duration remains the default.
+Only a passing case that crosses an individual ceiling, or participates in a
+complete-catalogue total/p95 overage, is inspected. Its exact activity tree
+must contain one top-level `Start Test` and one later top-level `Tear Down`;
+only a finite span that leaves at least one second after teardown may become
+the budget duration. The receipt retains the test identifier, reported span,
+attributed span, excluded span, and closed reason. Hosted and candidate gates
+reject forged identity, duplicate adjustments, arithmetic drift, non-passing
+owners, unknown reasons, or a shorter exclusion. Missing or ambiguous activity
+evidence keeps the reported duration and fails closed. No retry, timeout,
+budget, assertion, selector, or locale changes.
+
+This policy was introduced after the first OBS-0 complete English run passed
+103/103 but reported one 40.353-second Summary-feedback case. Its exact
+activities occupied 10.338 seconds through teardown and left 30.015 seconds
+unattributed afterward; the next eleven longest cases differed by at most
+0.087 seconds, and retained prior observations of that owner were
+10.751–11.336 seconds. Reprocessing the retained xcresult reports 830.357
+attributed seconds, p50 6.389, p95 17.335, maximum 36.109, one explicit harness
+adjustment, and an unchanged-budget pass. The fresh final run then passed
+103/103 English in 853.399 seconds (p50 6.379, p95 17.811, maximum 36.339) and
+103/103 Spanish in 859.154 seconds (p50 6.554, p95 18.181, maximum 36.890),
+with zero adjustments, zero retries, and every unchanged budget green.
+
+**D427 background-owner projection evidence.** The Background Work Center has
+one feature scope with exactly two consolidated real-app journeys rather than
+one microtest per owner. The first journey opens the compact indicator into the
+real Settings scene, verifies all five owner rows, exact content-free recovery
+and semantic aggregates, processing attempt/retry/closed-failure metadata, and
+owner-local recovery actions. The second starts a disposable simulated system
+capture, requires semantic and memory-graph work to wait, closes Settings,
+stops through the real recording control, and requires both owners to resume
+until the indicator disappears.
+
+Both journeys use stable `background-work-*` identifiers and one content-free
+seed admitted only with disposable storage. English and Spanish reuse one
+build, use exact localized assertions where text is the contract, contain no
+fixed sleep or retry, and retain independent 25-second hard budgets. The final
+focused run passed 2/2 English in 13.768 summed seconds (p95 7.308) and 2/2
+Spanish in 12.537 seconds (p95 6.338). Unit coverage fences stale owner events,
+exact retry dates, closed failure categories, capture suspension, deallocation,
+Spotlight phase callbacks, and semantic start/observe/settle wiring. A source
+ratchet forbids task/timer ownership, payload-bearing snapshot fields, invented
+`0.25` progress, missing owner hooks, and one-sided scheduling-result fencing.
+The first complete Spanish run then exposed a deterministic harness defect:
+localized two-line category copy clipped `Your data`, while macOS still called
+the row hittable and synthesized a click that left the prior pane selected.
+The shared helper now identifies `settings-category-list`, performs one bounded
+geometry-based reveal when needed, and requires pane-specific destination
+evidence. The fixed four-journey Spanish scope passed without retry, followed
+by the full bilingual result above. The warnings-as-errors build, all 2,799
+package tests with 15 explicit asset skips, strict lint over 744 files,
+repository hygiene, localization, and Dev installation also pass before D427
+closes. Automation does not certify physical Sequoia/Tahoe, VoiceOver/Voice
+Control, signed distribution, CloudKit, or field behavior.

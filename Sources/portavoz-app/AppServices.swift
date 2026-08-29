@@ -121,6 +121,9 @@ final class AppServices {
     let firstRun: FirstRunModel
     /// One process-wide truthful receipt is shared by every Settings window.
     let localDataLedger: LocalDataLedgerModel
+    /// One content-free projection receives typed events from the five
+    /// existing background owners. It never polls or schedules work itself.
+    let backgroundWork: BackgroundWorkCenterModel
     /// One Ask application workflow feeds every macOS Ask presentation model.
     @ObservationIgnored let askClient: AppAskModelClient
     /// Pull-based live interview answers reuse the exact selected Ask engine
@@ -225,7 +228,7 @@ final class AppServices {
     /// Process-scoped ownership of the durable post-capture worker and its
     /// single scheduled retry wake. The supervisor deduplicates launch and
     /// producer kicks without polling SQLite.
-    let postCaptureProcessing = PostCaptureProcessingSupervisor()
+    let postCaptureProcessing: PostCaptureProcessingSupervisor
     /// System-wide dictation (⌥⌘D): lives here so the hotkey and its
     /// session survive any window coming and going.
     let dictation = DictationController()
@@ -274,7 +277,7 @@ final class AppServices {
         return shares.reduce(0, +) / Double(shares.count)
     }
 
-    init(
+    init( // swiftlint:disable:this function_body_length
         arguments: [String] = ProcessInfo.processInfo.arguments,
         environment: [String: String] = ProcessInfo.processInfo.environment,
         storagePolicy: AppStorageIsolationPolicy? = nil
@@ -289,6 +292,10 @@ final class AppServices {
         // global telemetry. A failed retry therefore leaves no half-composed
         // service graph, model task, sensitive store, or background owner.
         store = try Self.makeMeetingStore(storagePolicy: storagePolicy)
+        let backgroundWork = BackgroundWorkCenterModel()
+        self.backgroundWork = backgroundWork
+        postCaptureProcessing = PostCaptureProcessingSupervisor(
+            backgroundWork: backgroundWork)
         let workloadTelemetry = AppResourceWorkloadTelemetry.shared.telemetry
         self.workloadTelemetry = workloadTelemetry
         transcriptionScheduler = Self.makeTranscriptionScheduler(telemetry: workloadTelemetry)
@@ -309,7 +316,11 @@ final class AppServices {
             arguments: arguments, selectedAnswering: selectedAskAnswering)
         let semanticSearch = Self.makeSemanticSearchComposition(
             store: store, usesTemporaryStore: usesTemporaryMeetingStore, semanticRuntime: semanticEmbeddingRuntime,
-            selectedAnswering: selectedAskAnswering, telemetry: workloadTelemetry, captureState: resourceCaptureState)
+            selectedAnswering: selectedAskAnswering, telemetry: workloadTelemetry,
+            backgroundWork: AppBackgroundWorkComposition(
+                model: backgroundWork,
+                captureState: resourceCaptureState,
+                enablesFixture: arguments.contains("-enable-background-work-fixture")))
         semanticIndexingCoordinator = semanticSearch.coordinator
         semanticIndexingSupervisor = semanticSearch.background
         memoryGraphProjectionSupervisor = semanticSearch.memoryGraphBackground
@@ -338,7 +349,12 @@ final class AppServices {
         spotlightIndexer = SpotlightIndexer(
             store: store,
             enabled: !usesTemporaryStore && SpotlightIndexer.indexingAvailable,
-            telemetry: workloadTelemetry)
+            telemetry: workloadTelemetry,
+            statusChanged: { [weak backgroundWork] status, retryAt in
+                await backgroundWork?.receiveSpotlight(
+                    status,
+                    retryAt: retryAt)
+            })
         installSelectedAskResolver(on: selectedAskAnswering)
         scheduleInitialReadinessRefresh()
     }
@@ -445,7 +461,11 @@ final class AppServices {
     func requestSearchReconciliation() {
         let indexer = spotlightIndexer
         Task { await indexer.requestReindex() }
-        guard resourceCaptureState.current == .inactive else { return }
+        guard resourceCaptureState.current == .inactive else {
+            backgroundWork.markWaitingForRecording(.semanticIndex)
+            backgroundWork.markWaitingForRecording(.memoryGraph)
+            return
+        }
         semanticIndexingSupervisor.kick()
         requestMemoryGraphReconciliation()
     }
@@ -453,7 +473,10 @@ final class AppServices {
     /// Topology-only mutations wake no text index. Durable graph triggers keep
     /// the cursor safe during capture; capture-stop reconciliation runs it.
     func requestMemoryGraphReconciliation() {
-        guard resourceCaptureState.current == .inactive else { return }
+        guard resourceCaptureState.current == .inactive else {
+            backgroundWork.markWaitingForRecording(.memoryGraph)
+            return
+        }
         memoryGraphProjectionSupervisor.kick()
     }
 

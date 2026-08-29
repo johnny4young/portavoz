@@ -4,6 +4,10 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## August 29, 2026
+
+- **⚙️ Background work stays visible** — Follow recovery, meeting processing, Spotlight, semantic search, and memory-graph activity from one private status center, with recording always taking priority.
+
 ## August 28, 2026
 
 - **🎯 New objectives stay in view** — Add a live meeting or interview objective and Portavoz brings the accepted row into view automatically, even in a compact recording window.

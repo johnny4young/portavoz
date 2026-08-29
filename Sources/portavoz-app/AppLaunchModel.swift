@@ -191,6 +191,8 @@ final class AppLaunchModel {
             await RecordingRecoveryCoordinator.runIfNeeded(services: services)
             await PostCaptureProcessingCoordinator.resumeAfterRecovery(
                 services: services)
+            services.backgroundWork.installUITestFixtureIfRequested(
+                arguments: arguments)
             await services.configureInitialSummaryProviderIfNeeded()
         }
         services.dictation.syncHotkey(services: services)

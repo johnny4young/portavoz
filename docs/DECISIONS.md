@@ -16307,3 +16307,105 @@ from one 5-second build: English 101/101 in 815.706 summed seconds (p50 6.339,
 p95 17.835, maximum 37.262) and Spanish 101/101 in 819.278 seconds (p50 6.469,
 p95 17.505, maximum 35.363). All unchanged individual, aggregate, and p95
 budgets passed. Fresh replacement-head hosted evidence remains required.
+
+## D427 — Project background owners; do not centralize their work (Aug 2026)
+
+**Context:** launch recovery, durable meeting processing, Spotlight, semantic
+indexing, and memory-graph projection already had separate replay, coalescing,
+lease, capture, and retry authorities. Users could not see their combined state
+or know whether capture had deferred derived maintenance. Adding a central job
+runner or polling stores from Settings would duplicate those authorities,
+weaken crash recovery, create unnecessary work, and tempt the UI to invent a
+percentage from heartbeats that prove only lease liveness. Copying identifiers,
+titles, paths, transcript text, or raw errors into a dashboard would also widen
+the privacy boundary.
+
+**Decision:** `AppServices` owns one process-lifetime `@MainActor @Observable`
+`BackgroundWorkCenterModel`. Each of the five existing owners pushes typed
+begin, observation, retry/failure, and settlement events into it. Monotonic
+per-owner tokens reject completions from superseded work. The model never
+polls, persists, queries a store, starts a task or timer, schedules work, owns a
+runtime, or replaces an owner. Its snapshots contain only closed phase, stage,
+outcome and failure-category values, aggregate counts, attempt numbers, retry
+dates, and timestamps. Meeting identity/content, paths, provider payloads,
+owner lease strings, and raw errors are excluded. The 0.25 post-capture
+heartbeat remains invisible and cannot become percentage progress.
+
+Settings receives one searchable **Background activity** pane with one stable
+row per owner. Running state is indeterminate; terminal counts, exact attempt,
+localized next-wake time, and a closed safe failure reason remain inspectable.
+Actions invoke only the original owner. A compact toolbar control appears only
+for active, waiting, retry, or attention state and deep-links to the pane.
+Protected capture explicitly defers semantic and graph work, and the existing
+capture-stop reconciliation resumes both. The surface has no Foundation Models
+dependency and therefore works on Sequoia and Tahoe.
+
+The content-free presentation fixture requires both `-use-temp-store` and
+`-seed-background-work`. A separate disposable-only supervisor flag drives the
+real capture exclusion/resume path. Two consolidated bilingual XCUITest
+journeys cover all owners plus recording priority, with stable identifiers and
+hard per-case budgets; unit and architecture tests fence privacy, stale events,
+retry dates, callback wiring, no-owned-task lifetime, and all five publishers.
+
+**Consequences:** users gain one truthful operational view without introducing
+a second scheduler, extra background polling, payload retention, or fabricated
+progress. Closing a Settings window cannot cancel an owner or lose durable
+work. The projection deallocates with its service graph and callbacks avoid a
+cycle through weak owner edges where needed. A status is operational evidence,
+not release certification: physical Sequoia/Tahoe, assistive technology,
+signed distribution, CloudKit, and field behavior remain independent gates.
+The focused final run passed 2/2 English in 13.768 summed seconds (p95 7.308)
+and 2/2 Spanish in 12.537 seconds (p95 6.338), from one build with no retry and
+both hard budgets green. Final current-tree qualification passed the warnings-
+as-errors build, all 2,799 package tests with 15 explicit asset skips, strict
+lint over 744 production files, repository hygiene, and one-build sequential
+103/103 English plus 103/103 Spanish XCUITest without retry. Automation still
+does not close the independent physical or distribution gates above.
+
+## D428 — Attribute UI runtime to the test, not a post-teardown runner stall (Aug 2026)
+
+**Context:** the first complete OBS-0 English run passed all 103 real-app
+journeys. Its raw XCTest tree nevertheless reported 40.353 seconds for
+`testSummaryFeedbackIsExplicitReversibleAndLocal`, crossing the unchanged
+20-second local ceiling. The exact activity tree began at `Start Test` and
+reached `Tear Down` in 10.338 seconds; all product waits, interactions,
+assertions, screenshot capture, and application termination were inside that
+span. XCTest added another 30.015 seconds to the outer case duration after the
+teardown boundary. The next eleven longest cases differed from their activity
+spans by only 0.002–0.087 seconds, and four retained prior observations of this
+same journey measured 10.751–11.336 seconds. This was a runner accounting
+stall, not a product performance regression.
+
+**Decision:** runtime receipt schema 2 retains XCTest's reported case duration
+as its conservative default. A passing case is eligible for activity review
+only when it crosses its individual budget, or when a complete-catalogue total
+or p95 crosses its aggregate budget. The exact result bundle must contain one
+run, one top-level `Start Test`, and one later top-level `Tear Down`. Only a
+finite attributed span no greater than the reported duration, with at least
+one second left after teardown, may replace the reported duration for budget
+calculation. The receipt records the identifier, reported duration, attributed
+duration, excluded harness duration, and closed
+`post-teardown-unattributed-time` reason. Missing, ambiguous, malformed, failed,
+sub-second, or still-slow evidence keeps the reported duration and therefore
+fails closed.
+
+Hosted and release-candidate classifiers validate the schema, closed
+measurement policy, exact case ownership, unique adjustment identity, passing
+functional result, one-second floor, and duration algebra within the
+three-decimal receipt precision. The xcresult remains the raw evidence. No
+test is retried, no budget or timeout changes, and no product assertion is
+converted into an advisory. D425's hosted separation remains unchanged:
+functional, completeness, receipt, and infrastructure uncertainty are
+blocking; heterogeneous hosted runtime drift alone is advisory.
+
+**Consequences:** reprocessing the retained OBS-0 result yields 830.357
+attributed seconds, p50 6.389, p95 17.335, maximum 36.109, and one explicit
+30.015-second harness exclusion under the unchanged budgets. The functional
+103/103 result does not become stronger or weaker; the hard performance gate
+now measures work attributable to the test boundary instead of a proven
+post-teardown runner stall. A real 40-second activity span, a failed case, or
+an unreadable activity tree remains red. The fresh final bilingual run did not
+need the exclusion path: English passed 103/103 in 853.399 seconds (p50 6.379,
+p95 17.811, maximum 36.339) and Spanish passed 103/103 in 859.154 seconds (p50
+6.554, p95 18.181, maximum 36.890), with zero adjustments, zero retries, and
+every unchanged budget green.
