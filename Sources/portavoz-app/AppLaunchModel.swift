@@ -85,7 +85,8 @@ final class AppLaunchModel {
                 storagePolicy: storagePolicy)
         }
         guard !ProductionSyncQualificationConfiguration.isRequested(
-            arguments: arguments)
+            arguments: arguments),
+              !BenchMode.runsBeforeAppServices(arguments: arguments)
         else { return }
         openServices()
     }

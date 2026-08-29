@@ -16469,3 +16469,56 @@ of test retries. This local implementation is not hosted evidence: a fresh
 published first-attempt run is still required. Physical Sequoia/Tahoe,
 VoiceOver/Voice Control, signed distribution, production CloudKit, provider
 accounts, and field behavior remain separate gates.
+
+## D430 — Measure live assistance before replacing its serving policy (Aug 2026)
+
+**Context:** live question detection, Interview Assist, rolling-summary window
+selection, and live-translation routing already have bounded production owners,
+but they lacked one comparable bilingual quality/reliability authority. The
+released question path also depended on Foundation Models after its deterministic
+prefilter, making anecdotes or private meetings an unsafe basis for the planned
+Sequoia replacement. A model benchmark that bypassed app-private coordinators
+would not characterize cancellation, relaunch, or late publication in the
+shipping composition.
+
+**Decision:** freeze `public-bilingual-v1`, a public-synthetic corpus with 32
+question events across English, Spanish, code switching, and noisy ASR; seven
+interview scenarios; five rolling-summary windows; six translation routes; and
+eight cancel/relaunch faults. Bind it by SHA-256 to a separate budget for
+precision, recall, false prompts per hour, abstention, exact policy results,
+zero late publication, first/steady latency, footprint growth, and thermal
+state. The strict Python authority validates complete identities and writes a
+content-free, owner-only, non-replacing scorecard. Completing a measurement is
+separate from passing serving targets.
+
+Run the production policies from a hidden Release app mode, not a parallel
+test implementation. The app-target runner uses `TurnEndpointPolicy`,
+`InterviewQuestionPolicy`, `LiveSummaryWindowPolicy`, and
+`LiveTranslationRouting`; its reliability pass exercises the actual companion,
+interview, summary, and translation lifecycle owners with controlled
+continuations. It records only stable scenario IDs, closed decisions, timings,
+and aggregate process CPU, footprint, energy, thermal, and power state. Fixture
+ground truth is not decoded into the serving measurement path. The mode starts
+before `AppServices`, so it never opens a meeting database or starts ordinary
+background work.
+
+The released model-free prefilter lane runs on Sequoia and Tahoe and is a
+baseline, not a claim that every target passes. The Foundation Models lane is
+an explicit macOS 26 challenger over already-installed system assets: it fails
+before measurement when unavailable, never prepares/downloads a model, never
+reads a private meeting, and may become a serving candidate only when the
+checksum-bound scorer passes with `--require-targets`. A dirty worktree remains
+informational; only a clean observation on stable AC power, nominal thermal
+state, and without Low Power Mode can become controlled local evidence. Every
+timing domain must contain exactly one aggregate sample per declared iteration.
+Neither lane proves physical Sequoia/Tahoe behavior, model prose
+quality, signed distribution, accessibility, CloudKit, or field reliability.
+
+**Consequences:** LIVE-1 can select a Sequoia detector against a reproducible
+control instead of replacing Foundation Models by preference. LIVE-2 can reuse
+the same exact policy and resource boundary for provider-neutral summary and
+translation challengers. `make test-live-assist-validation`,
+`make live-assist-baseline`, and the opt-in
+`make live-assist-foundation-models` keep contract testing, observation, and
+serving admission distinct. One bounded bilingual real-app journey remains the
+mandatory UI canary; the hidden benchmark adds no user-facing control.

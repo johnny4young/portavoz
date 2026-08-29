@@ -470,6 +470,26 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertLess(len(selection.tests), len(ALL_TESTS), path)
 
+    def test_live_assist_validation_uses_one_bounded_real_app_journey(self):
+        expected = FEATURE_TESTS["live-assist"]
+        for path in (
+            "Sources/IntelligenceKit/Companion.swift",
+            "Sources/portavoz-app/LiveAssistValidationContract.swift",
+            "Sources/portavoz-app/LiveAssistValidationFaultRunner.swift",
+            "Sources/portavoz-app/LiveAssistValidationRunner.swift",
+        ):
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, expected, path)
+            self.assertEqual(selection.locales, ("en",), path)
+
+        for path in (
+            "Fixtures/LiveAssistValidation/public-bilingual-v1.json",
+            "docs/evidence/live-assist-validation-budget.json",
+        ):
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, expected, path)
+            self.assertEqual(selection.locales, ("en", "es"), path)
+
     def test_legacy_scroll_bridge_selects_only_recording_recovery_evidence(self):
         selection = select_paths(
             ["Sources/portavoz-app/LegacyScrollInteractionTracker.swift"]

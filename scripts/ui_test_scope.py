@@ -82,6 +82,12 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testLaunchRecoversInterruptedStagingAudio"),
         test_id("LibraryUITests", "testLaunchResumesDurablePostCaptureProcessing"),
     ),
+    "live-assist": (
+        test_id(
+            "LibraryUITests",
+            "testRecordingOffersObjectivesNextQuestionAndTalkBalance",
+        ),
+    ),
     "recording-interview": (
         test_id(
             "InterviewAssistUITests",
@@ -431,6 +437,7 @@ RETIRED_DUPLICATE_TESTS = frozenset({
 # owner is an orphan; a renamed owner that falls through to the broad default
 # no longer silently validates the catalog.
 FEATURE_SOURCE_SENTINELS: dict[str, str] = {
+    "live-assist": "Sources/portavoz-app/LiveAssistValidationRunner.swift",
     "launch-recovery": "Sources/portavoz-app/AppLaunchRecoveryView.swift",
     "background-work": "Sources/portavoz-app/BackgroundWorkCenterView.swift",
     "automation-entry": "Sources/portavoz-app/PortavozAppIntents.swift",
@@ -517,6 +524,8 @@ def tests_for_ui_test_file(path: str) -> set[str]:
 
 def app_features(filename: str) -> set[str]:
     lowered = filename.lower()
+    if "liveassistvalidation" in lowered:
+        return {"live-assist"}
     if "backgroundwork" in lowered:
         return {"background-work"}
     if lowered == "uitestfeaturehandshake.swift":
@@ -748,6 +757,8 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if lowered == "sources/intelligencekit/companion.swift":
+        return {"live-assist"}
     if any(token in lowered for token in (
         "processsemanticcorpusmaintenance",
         "processmeetingmemorygraphmaintenance",
@@ -922,6 +933,17 @@ def select_paths(paths: Iterable[str]) -> Selection:
             locales.add("es")
             reasons.append(
                 f"{path}: bilingual deterministic Web Ask journey"
+            )
+            continue
+
+        if path in {
+            "Fixtures/LiveAssistValidation/public-bilingual-v1.json",
+            "docs/evidence/live-assist-validation-budget.json",
+        }:
+            selected.update(feature_tests({"live-assist"}))
+            locales.add("es")
+            reasons.append(
+                f"{path}: bilingual live-assistance evidence journey"
             )
             continue
 

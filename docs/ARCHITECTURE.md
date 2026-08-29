@@ -4990,6 +4990,35 @@ late-publication, and latency gates against the checksum-bound budget in
 `docs/evidence/apuntador-validation-budget.json`. Its scorecard explicitly
 leaves prose, memory/leaks, physical hardware, and field behavior unevaluated.
 
+LIVE-0 adds a narrower product-path authority for live assistance. The frozen
+`Fixtures/LiveAssistValidation/public-bilingual-v1.json` corpus contains 32
+bilingual/code-switched/noisy-ASR question events, seven interview contexts,
+five rolling-summary windows, six translation routes, and eight
+cancellation/relaunch faults. A checksum-bound budget separates completed
+measurement from serving admission and gates question precision/recall, false
+prompts per hour, explicit abstention, exact deterministic policy results,
+zero late publication, first/steady latency, footprint growth, and thermal
+state. `scripts/live_assist_validation.py` accepts only complete content-free
+observations with one sample per declared iteration and publishes its scorecard
+without replacing an existing file. Controlled-local authority additionally
+requires a clean source, stable AC power, nominal thermal state, and Low Power
+Mode off.
+
+The observation owner is a hidden Release app mode because its policies cross
+three target boundaries. It invokes the released `TurnEndpointPolicy`,
+`InterviewQuestionPolicy`, `LiveSummaryWindowPolicy`, and
+`LiveTranslationRouting`, then exercises the real companion, interview,
+summary, and translation lifecycle coordinators with controlled continuations.
+It records stable IDs, closed decisions, timings, and aggregate process
+resource counters; it never decodes expected fixture decisions into the
+adapter path. `--bench-live-assist` is admitted before `AppServices`, so this
+process opens no meeting store and starts no normal recovery, indexing, sync,
+provider-discovery, or input owner. The released prefilter is the
+Sequoia/Tahoe baseline. The separately requested Foundation Models challenger
+requires already-available macOS 26 system assets and never prepares or
+downloads them. Neither a complete run nor a below-target score changes the
+serving engine.
+
 `Fixtures/ApuntadorWeb/public-local-v1.json` and
 `scripts/apuntador_web_fixture.py` provide a separate deterministic HTTP
 authority bound only to IPv4 loopback. Fourteen exact routes cover fresh,

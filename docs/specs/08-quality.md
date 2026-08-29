@@ -110,6 +110,7 @@ local justification.
 | AudioCaptureTests / LongCaptureBenchmarkTests / RecordingLevelBufferTests / RecordingLevelRelayTests | CaptureFileWriter staging CAF, reusable grow-only PCM storage, explicit idempotent close, exact frame conservation, atomic no-overwrite publication, persisted-PCM recovery measurement, complete streaming checksum/media/health evidence, accelerated bounded-heap dual-channel publication, same-pass compact per-chunk level evidence including accepted duration, drift summary, callback-liveness and two-minute Stop-nudge policy, mic-heartbeat stall/retry/recovery integration, post-close utility-queue publication with independent channel outcomes, recoverable-source invocation, one-slot 20 Hz level presentation with complete diagnostic ingestion, duration-stable sustained-ceiling hysteresis, isolated-peak rejection, clean-audio recovery, and cancellation fencing, Downmix, **Resample.linear**, startup cleanup |
 | LiveTranscriptionAttacherTests / LiveTranslationRoutingTests / LiveTranslationStateTests / LiveTranslationWakeHubTests | Bounded newest-only hot attachment, shared cold-model join and failure cancellation, pre-attachment recovery requirement, matched live-consumer workload intervals, target-fenced translation state/results, growing-row source-revision refresh, eight-row chronological framework batches, one-wake broadcast buffering and cancellation, consent-driven lane wakeup, automatic failure-retry copy, unsupported-lane passthrough with later supported-lane progress, partial-support persistence, distinct recoverable-outage versus terminal-failure presentation, and explicit live-reader versus playback follow ownership |
 | LiveCompanionWorkCoordinatorTests / LiveSummaryWorkCoordinatorTests / LiveSummaryWindowPolicyTests | One complete active Apuntador request plus one newest pending candidate; lifecycle cancellation and fresh-session handoff; one delayed summary cycle for burst signals, one retained wake during active work, successful bounded-backlog continuation, cancelled-worker replacement, oldest-unseen 32-row/6,000-character admission, and oversized-head progress |
+| LiveAssistValidationRunnerTests / `test_live_assist_validation.py` | Strict checksum-bound bilingual corpus and budget loading; released-prefilter product-path observations without decoded ground truth or content; exact Interview, summary, and translation policies; real-owner cancel/relaunch and obsolete-publication outcomes; bounded resource samples; owner-only non-replacing observations and scorecards; and explicit installed-Foundation-Models capability refusal |
 | LegacyScrollInteractionTrackerTests | macOS 14.4 AppKit reader-intent observer scope, unrelated-scroll isolation, disconnect, and exact reconnect behavior |
 | WaveformTests / AudioTranscoderTests / MeetingAudioWorkflowTests | Exact range-aligned Accelerate envelopes, deterministic fixed-chunk cancellation, already-cancelled caller rejection, one 600-default/2,000-maximum immutable waveform snapshot, host AAC integration, canonical-output collision preservation, all-channel verification before raw deletion, rollback after later-channel failure, live filesystem byte accounting, text-only playback degradation, role-aware reversible clear-mix ranges, injected application codec semantics, and matched waveform/media-export work |
 | AudioProcessCatalogTests | direct tap scope by bundle ID: exact app/allowed helpers accepted, lookalikes and unrelated apps rejected |
@@ -2364,6 +2365,39 @@ dismissing, or automating a user permission. Real socket, partial-response,
 disconnect, cancellation, and receipt behavior remains independently covered
 by the package integration lane. This fixture is test infrastructure, not
 product web authority or evidence that a real provider behaves the same way.
+
+### LIVE-0 live-assistance comparison authority (D430)
+
+`Fixtures/LiveAssistValidation/public-bilingual-v1.json` freezes 32 English,
+Spanish, code-switched, and noisy-ASR question events plus Interview, rolling-
+summary, translation, cancellation, and relaunch scenarios. Its canonical
+digest and `docs/evidence/live-assist-validation-budget.json` bind precision,
+recall, false prompts per hour, abstention, exact policy decisions, zero late
+publication, latency, footprint growth, and thermal admission. The public
+fixture is synthetic and may be redistributed; no user meeting or account is
+needed.
+
+The app-owned Release runner receives scenario inputs but not expected outputs.
+Its model-free lane measures the released deterministic endpoint prefilter on
+Sequoia and Tahoe. Its explicit Foundation Models lane runs only when macOS 26
+reports already-installed availability; it never prepares or downloads an
+asset. The same process exercises production Interview, summary, and
+translation policies and the actual cancellation/relaunch owners with
+controlled continuations rather than sleeps. One content-free observation
+contains stable scenario IDs, closed decisions, timings, adapter/build/host
+identity, and bounded CPU/footprint/energy/thermal samples, never source or
+generated text. Each timing domain carries exactly one complete-corpus aggregate
+per declared iteration; count drift is malformed rather than silently changing
+the percentile population.
+
+`scripts/live_assist_validation.py` validates complete identities and produces
+an owner-only, atomic, non-replacing scorecard. A completed baseline can be
+`belowTarget`; only an explicit `--require-targets` run grants scorecard target
+authority, and it still does not select a serving adapter. Dirty-source runs,
+battery/unknown power, non-nominal thermal state, and Low Power Mode remain
+diagnostic. Memory growth is measured but Instruments leak analysis,
+physical Sequoia/Tahoe, private meetings, installed-model quality, signed
+distribution, accessibility, and field reliability remain separate gates.
 
 Sequoia's Xcode 26.3 image carries Swift 6.2.4, whose XCTest synchronous-test
 teardown can abort while releasing a `@MainActor` value with `isolated deinit`

@@ -18,6 +18,17 @@ import TranscriptionKit
 /// The process exits when the bench finishes — it never touches the UI,
 /// the library or the database.
 enum BenchMode {
+    /// Hidden app-bundle modes that own the process before AppServices exists.
+    /// They must never open the user's library or start ordinary background
+    /// owners beside the measurement they are collecting.
+    static func runsBeforeAppServices(
+        arguments: [String] = ProcessInfo.processInfo.arguments
+    ) -> Bool {
+        arguments.contains("--bench-live")
+            || arguments.contains("--mlx-smoke")
+            || arguments.contains("--bench-live-assist")
+    }
+
     static func runsIsolatedBenchmark(
         arguments: [String] = ProcessInfo.processInfo.arguments
     ) -> Bool {
@@ -33,8 +44,12 @@ enum BenchMode {
             || arguments.contains("--bench-graph-queries")
     }
 
+    @MainActor
     static func runIfRequested() {
         let arguments = ProcessInfo.processInfo.arguments
+        if LiveAssistValidationRunner.runIfRequested(arguments: arguments) {
+            return
+        }
         guard let flag = arguments.firstIndex(of: "--bench-live"),
             arguments.indices.contains(flag + 1)
         else { return }

@@ -12,7 +12,9 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 # SHA-1 disambiguates the Portavoz one. Override with the env var.
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
-.PHONY: build test test-ask-quality test-apuntador-validation ask-quality-pair \
+.PHONY: build test test-ask-quality test-apuntador-validation \
+	test-live-assist-validation live-assist-baseline \
+	live-assist-foundation-models ask-quality-pair \
 	test-meeting-memory-graph-query-receipt meeting-memory-graph-query-receipt \
 	test-retrieval-chunk-evidence retrieval-chunk-evidence \
 	test-commitment-quality commitment-quality-deterministic \
@@ -160,6 +162,37 @@ test-apuntador-validation:
 		--budget docs/evidence/apuntador-validation-budget.json
 	python3 scripts/apuntador_web_fixture.py verify-public \
 		--fixture Fixtures/ApuntadorWeb/public-local-v1.json
+
+## Validate LIVE-0 fixture/scorer policy plus the app-target production-policy
+## runner without loading an installed model or touching a meeting library.
+test-live-assist-validation:
+	python3 -m unittest Tests.Tooling.test_live_assist_validation
+	python3 scripts/live_assist_validation.py verify-public \
+		--fixture Fixtures/LiveAssistValidation/public-bilingual-v1.json \
+		--budget docs/evidence/live-assist-validation-budget.json
+	$(XCODE) swift test --filter LiveAssistValidationRunnerTests
+
+PORTAVOZ_LIVE_ASSIST_ITERATIONS ?= 5
+PORTAVOZ_LIVE_ASSIST_OUTPUT ?=
+
+## Collect a Release-app observation for the current model-free product gate.
+## A dirty tree remains useful but the scorecard labels it informational.
+live-assist-baseline:
+	PORTAVOZ_SIGN_IDENTITY=$(PORTAVOZ_SIGN_IDENTITY) \
+		scripts/run-live-assist-validation.sh \
+			--adapter released-prefilter \
+			--iterations "$(PORTAVOZ_LIVE_ASSIST_ITERATIONS)" \
+			$(if $(PORTAVOZ_LIVE_ASSIST_OUTPUT),--output "$(PORTAVOZ_LIVE_ASSIST_OUTPUT)",--output "dist/live-assist/$$(git rev-parse --short=12 HEAD)/released-prefilter")
+
+## Explicit opt-in installed-model challenger. It never downloads assets and
+## exits below target unless every frozen serving budget passes.
+live-assist-foundation-models:
+	PORTAVOZ_SIGN_IDENTITY=$(PORTAVOZ_SIGN_IDENTITY) \
+		scripts/run-live-assist-validation.sh \
+			--adapter foundation-models \
+			--iterations "$(PORTAVOZ_LIVE_ASSIST_ITERATIONS)" \
+			--require-targets \
+			$(if $(PORTAVOZ_LIVE_ASSIST_OUTPUT),--output "$(PORTAVOZ_LIVE_ASSIST_OUTPUT)",--output "dist/live-assist/$$(git rev-parse --short=12 HEAD)/foundation-models")
 
 ## Validate the public bilingual commitment-candidate benchmark and its
 ## deterministic research control without loading a model or user data.

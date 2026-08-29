@@ -2143,6 +2143,35 @@ waits for the cancelled operation to unwind instead of overlapping it. This
 bound applies only to ephemeral generation work: accepted visible cards remain
 unlimited history until the user dismisses them or the recording resets.
 
+### LIVE-0 comparison boundary (D430)
+
+Live-assistance model selection is measured against one frozen public-
+synthetic authority before any serving policy changes. The hidden Release-app
+runner feeds only scenario inputs from the checksum-bound bilingual corpus into
+the released endpoint prefilter, Interview question selection, rolling-summary
+windowing, and translation routing. It does not decode expected decisions into
+the product path. Question observations carry only the scenario identity,
+closed decision, latency, and adapter identity; no caption, question, note,
+translation, or generated text enters the observation.
+
+`FoundationModelLiveQuestionDetector` exposes the existing detect-only
+classifier as a benchmark adapter while retaining the exact production prompt,
+guided-generation schema, and post-classification normalization. It is an
+explicit macOS 26 lane over already-installed Apple Intelligence assets. The
+released deterministic prefilter remains the Sequoia/Tahoe baseline, and
+neither adapter replaces `LiveCompanion` serving authority merely because a
+measurement completed.
+
+Reliability scenarios exercise the actual `LiveCompanionWorkCoordinator`,
+`RecordingInterviewAssistModel`, `LiveSummaryWorkCoordinator`, and
+`LiveTranslationWakeHub` with controlled suspended operations. Cancellation,
+relaunch, and obsolete-publication outcomes therefore characterize the owners
+that ship instead of a parallel simulator. The runner starts before
+`AppServices`, never opens the meeting store, never prepares or downloads a
+model, and writes one owner-only non-replacing content-free observation for the
+external scorer. Physical hosts, real providers, model prose quality, and
+field behavior remain separate evidence lanes.
+
 ### Bounded source-closed proactive assistance (D390)
 
 `ProactiveMeetingAssistPolicy` is pure deterministic admission, not another

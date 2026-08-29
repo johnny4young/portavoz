@@ -12277,6 +12277,47 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(gaps.contains("BACKGROUND WORK CENTER IMPLEMENTED IN CODE (D427)"))
     }
 
+    func testLiveAssistBaselineStaysPublicContentFreeAndNonServing() throws {
+        let contract = try Self.contents(
+            of: "Sources/portavoz-app/LiveAssistValidationContract.swift")
+        let runner = try Self.contents(
+            of: "Sources/portavoz-app/LiveAssistValidationRunner.swift")
+        let faults = try Self.contents(
+            of: "Sources/portavoz-app/LiveAssistValidationFaultRunner.swift")
+        let bench = try Self.contents(of: "Sources/portavoz-app/BenchMode.swift")
+        let launch = try Self.contents(
+            of: "Sources/portavoz-app/AppLaunchModel.swift")
+        let wrapper = try Self.contents(
+            of: "scripts/run-live-assist-validation.sh")
+        let scorer = try Self.contents(of: "scripts/live_assist_validation.py")
+        let makefile = try Self.contents(of: "Makefile")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(contract.contains(
+            "287e77db9d9a277c3243c2ce3d7be37f1ada65379e8dae62bb1ed60aba466cb4"))
+        XCTAssertTrue(contract.contains("public-synthetic-only"))
+        XCTAssertFalse(runner.contains("expectedDecision"))
+        XCTAssertFalse(runner.contains("referenceSummary"))
+        XCTAssertTrue(runner.contains("FoundationModelsCapability.current().isAvailable"))
+        XCTAssertTrue(runner.contains("outputAlreadyExists"))
+        XCTAssertTrue(faults.contains("LiveCompanionWorkCoordinator"))
+        XCTAssertTrue(faults.contains("RecordingInterviewAssistModel"))
+        XCTAssertTrue(faults.contains("LiveSummaryWorkCoordinator"))
+        XCTAssertTrue(faults.contains("LiveTranslationWakeHub"))
+
+        XCTAssertTrue(bench.contains("--bench-live-assist"))
+        XCTAssertTrue(launch.contains("!BenchMode.runsBeforeAppServices"))
+        XCTAssertTrue(wrapper.contains("--live-assist-source-state"))
+        XCTAssertTrue(wrapper.contains("--require-targets"))
+        XCTAssertFalse(wrapper.contains("-seed-demo"))
+        XCTAssertFalse(wrapper.contains("MeetingStore"))
+        XCTAssertTrue(scorer.contains("os.link(temporary, path)"))
+        XCTAssertFalse(scorer.contains("os.replace(temporary, path)"))
+        XCTAssertTrue(makefile.contains("test-live-assist-validation:"))
+        XCTAssertTrue(makefile.contains("live-assist-foundation-models:"))
+        XCTAssertTrue(decisions.contains("## D430"))
+    }
+
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
         let result = try await CharacterCount().execute("Portavoz")
         let callableResult = try await CharacterCount()("local first")

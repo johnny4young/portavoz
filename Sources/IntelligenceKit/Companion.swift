@@ -208,6 +208,43 @@ enum CompanionQuestionPresentation {
 #if canImport(FoundationModels)
 import FoundationModels
 
+/// Provider result used by the opt-in LIVE-0 measurement lane. It exposes no
+/// model/session object and keeps serving decisions independent from fixture
+/// ground truth; receipts retain only the closed decision and never this text.
+public struct LiveQuestionDetection: Equatable, Sendable {
+    public let isQuestion: Bool
+    public let question: String
+    public let kind: String
+
+    public init(isQuestion: Bool, question: String, kind: String) {
+        self.isQuestion = isQuestion
+        self.question = question
+        self.kind = kind
+    }
+}
+
+/// The released Foundation Models classifier as an explicit, detect-only
+/// adapter. It never prepares or downloads an asset; callers must opt in only
+/// after capability preflight. LiveCompanion and the validation runner share
+/// the exact prompt, scheduler priority, and structured response path.
+@available(macOS 26.0, iOS 26.0, *)
+public struct FoundationModelLiveQuestionDetector: Sendable {
+    public init() {}
+
+    public func detect(
+        candidate: String,
+        ownerName: String? = nil
+    ) async throws -> LiveQuestionDetection {
+        let detected = try await LiveCompanion.classifyCandidate(
+            candidate,
+            ownerName: ownerName)
+        return LiveQuestionDetection(
+            isQuestion: detected.isQuestion,
+            question: detected.question,
+            kind: detected.kind)
+    }
+}
+
 public struct CompanionProcessTrace: Equatable, Sendable {
     public internal(set) var classifierInvoked = false
     public internal(set) var answerProviderID: String?
@@ -500,9 +537,9 @@ public struct LiveCompanion: Sendable {
         return text
     }
 
-    private func classify(
+    static func classifyCandidate(
         _ candidate: String, ownerName: String?
-    ) async throws -> DetectedQuestion? {
+    ) async throws -> DetectedQuestion {
         let session = LanguageModelSession(
             instructions: Self.classifierInstructions(ownerName: ownerName))
         return try await IntelligenceScheduler.shared.run(.live, key: "companion-detect") {
@@ -512,6 +549,13 @@ public struct LiveCompanion: Sendable {
                 options: GenerationOptions(sampling: .greedy))
             return response.content
         }
+    }
+
+    private func classify(
+        _ candidate: String,
+        ownerName: String?
+    ) async throws -> DetectedQuestion? {
+        try await Self.classifyCandidate(candidate, ownerName: ownerName)
     }
 
     /// Shared by the on-device and BYOK paths, so switching provider never
