@@ -3309,6 +3309,33 @@ the route retry, and the independent Waiting revocation action. Both source and
 recovery navigation use the generic weak Settings-window bridge after the sheet
 dismisses; neither route carries content or effect authority into Settings.
 
+### Standing-rule control plane (D435)
+
+ApplicationKit now owns a separate, bounded standing-rule authority boundary;
+it does not reinterpret the Suggested-actions toggle or one-shot confirmation.
+The closed catalogue contains one template: automatically prepare the existing
+local pre-meeting brief for each upcoming calendar event. Creation requires the
+exact current `PreMeetingBriefSkill` version, reversible capabilities, no
+external effect, and no file writing. The default daily ceiling is three and
+the persisted contract admits at most eight per rule.
+
+`CreateStandingSkillRule` is idempotent on the closed
+trigger/predicate/action tuple. `LoadStandingSkillRules` concurrently reads the
+bounded rule set and existing Skill policy, then marks a rule effectively
+enabled only when its template/version is current, its own switch is on, and
+neither global pause nor per-Skill disablement blocks it. A stale rule can be
+disabled or deleted but cannot be re-enabled. Control mutations contain no
+event title, attendee, transcript, meeting identity, provider, destination,
+prompt, credential, or result, and they create no execution receipt.
+
+No SwiftUI surface or execution scheduler is included in this slice. Settings
+still cannot create or run a standing rule, and the app observes no calendar
+event on its behalf. Event admission, exact-event idempotency, daily accounting,
+duplicate/recursion prevention, crash/relaunch recovery, cancellation,
+immutable execution evidence, and bilingual rule/history controls remain the
+next AUTO-5 slices. Clipboard, export, reminders, email, Gist, GitHub, network,
+and destructive effects remain explicit-per-proposal only.
+
 D379 freezes the 0.8.0 public catalogue at these six actions. Public copy uses
 action vocabulary consistently while internal `Skill` types, IDs, migrations,
 telemetry, and accessibility identifiers stay stable. User-authored actions,

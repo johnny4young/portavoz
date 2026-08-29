@@ -2216,7 +2216,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Tests.Tooling.test_meeting_memory_graph_quality"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("graph database"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
-        XCTAssertTrue(schema.contains("public static let version = 45"))
+        XCTAssertTrue(schema.contains("public static let version = 46"))
         XCTAssertTrue(decisions.contains("## D270"))
     }
 
@@ -2603,7 +2603,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let quality = try Self.contents(of: "docs/specs/08-quality.md")
         let gaps = try Self.contents(of: "docs/GAPS.md")
 
-        XCTAssertTrue(architecture.contains("current schema version is 41"))
+        XCTAssertTrue(architecture.contains("current schema version is 46"))
         XCTAssertTrue(architecture.contains(
             "delegates to all six source-backed"))
         XCTAssertTrue(architecture.contains(
@@ -2615,7 +2615,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,852 cases "
+            "package inventory contains 2,861 cases "
                 + "(15 environment-gated) + 103"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -4066,7 +4066,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 45"))
+        XCTAssertTrue(schema.contains("public static let version = 46"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))
@@ -4108,7 +4108,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "docs/specs/04-intelligence.md")
         let storageSpec = try Self.contents(of: "docs/specs/05-storage.md")
         let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
-        XCTAssertTrue(architecture.contains("current schema version is 41"))
+        XCTAssertTrue(architecture.contains("current schema version is 46"))
         XCTAssertTrue(architecture.contains(
             "Every persisted semantic vector also carries one SHA-256"))
         XCTAssertTrue(decisions.contains("## D199"))
@@ -6578,6 +6578,63 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D434"))
     }
 
+    func testStandingRuleAuthorityStaysClosedLocalAndNonExecuting() throws {
+        let domain = try Self.contents(
+            of: "Sources/PortavozCore/StandingSkillRule.swift")
+        let application = try Self.contents(
+            of: "Sources/ApplicationKit/StandingSkillRules.swift")
+        let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")
+        let ruleSchema = try Self.contents(
+            of: "Sources/StorageKit/Schema+StandingSkillRule.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+StandingSkillRule.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(domain.contains("maximumRuleCount = 32"))
+        XCTAssertTrue(domain.contains("maximumDailyExecutionCount = 8"))
+        XCTAssertTrue(domain.contains("case upcomingCalendarEvent"))
+        XCTAssertTrue(domain.contains("case anyUpcomingCalendarEvent"))
+        XCTAssertTrue(domain.contains("case preparePreMeetingBrief"))
+        for forbidden in [
+            "public let meetingID", "public let title", "public let attendees",
+            "public let transcript", "public let destination",
+            "public let provider", "public let credentials", "URLSession",
+            "import StorageKit",
+        ] {
+            XCTAssertFalse(domain.contains(forbidden), forbidden)
+        }
+
+        XCTAssertTrue(application.contains(
+            "case prepareEveryUpcomingBrief"))
+        XCTAssertTrue(application.contains(
+            "PreMeetingBriefSkill.definition"))
+        XCTAssertTrue(application.contains("definition.isReversible"))
+        XCTAssertTrue(application.contains(
+            "!definition.declaresExternalEffect"))
+        XCTAssertTrue(application.contains(
+            "!definition.capabilities.contains(.writeLocalFile)"))
+        XCTAssertTrue(application.contains("case staleDefinition"))
+        for forbidden in [
+            "ExecuteSkill", "SkillEffectPerforming", "URLSession",
+            "EventKit", "AppKit", "SwiftUI",
+        ] {
+            XCTAssertFalse(application.contains(forbidden), forbidden)
+        }
+
+        XCTAssertTrue(schema.contains("public static let version = 46"))
+        XCTAssertTrue(schema.contains(
+            "registerStandingSkillRuleMigration"))
+        XCTAssertTrue(ruleSchema.contains(
+            "registerMigration(\"v46\")"))
+        XCTAssertTrue(ruleSchema.contains(
+            "table.uniqueKey([\"trigger\", \"subjectPredicate\", \"action\"])"))
+        XCTAssertTrue(storage.contains("SELECT COUNT(*)"))
+        XCTAssertTrue(storage.contains("maximumRuleCount"))
+        XCTAssertTrue(storage.contains("invalid persisted row"))
+        XCTAssertFalse(storage.contains("SELECT *"))
+        XCTAssertTrue(decisions.contains("## D435"))
+    }
+
     func testCommandLibraryReadsEnterThroughApplicationKitComposition() throws {
         for file in ["CLIAsk.swift", "CLIMcp.swift", "CLIMeetings.swift"] {
             let source = try Self.contents(of: "Sources/portavoz-cli/\(file)")
@@ -8846,7 +8903,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(search.contains("contextItem.deletedAt IS NULL"))
         XCTAssertTrue(search.contains("meeting.deletedAt IS NULL"))
         XCTAssertFalse(search.contains("FROM enhancedNote"))
-        XCTAssertTrue(schema.contains("public static let version = 45"))
+        XCTAssertTrue(schema.contains("public static let version = 46"))
         XCTAssertTrue(migration.contains("virtualTable: \"contextItemSearch\""))
         XCTAssertTrue(migration.contains("VALUES ('rebuild')"))
 
@@ -11636,7 +11693,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 45"))
+        XCTAssertTrue(schema.contains("public static let version = 46"))
         XCTAssertTrue(schema.contains("registerTranscriptCorrectionSearchMigration"))
         XCTAssertTrue(correctionSchema.contains("transcriptCorrectionSearchState"))
         XCTAssertTrue(correctionSchema.contains("SELECT DISTINCT meetingID"))
@@ -11679,7 +11736,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let intelligenceSpec = try Self.contents(
             of: "docs/specs/04-intelligence.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 45"))
+        XCTAssertTrue(schema.contains("public static let version = 46"))
         XCTAssertTrue(schema.contains("registerSegmentCorrectedEmbeddingMigration"))
         XCTAssertTrue(correctedSchema.contains("registerMigration(\"v37\")"))
         XCTAssertTrue(correctedSchema.contains("table.add(column: \"embedding\", .blob)"))
@@ -11729,7 +11786,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 45"))
+        XCTAssertTrue(schema.contains("public static let version = 46"))
         XCTAssertTrue(schema.contains("registerTranscriptStructuralSearchMigration"))
         XCTAssertTrue(structuralSchema.contains("registerMigration(\"v38\")"))
         XCTAssertTrue(structuralSchema.contains("transcriptStructuralSearchRow"))

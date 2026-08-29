@@ -182,3 +182,9 @@ public struct DataEgressEventID: Hashable, Codable, Sendable, RawRepresentable {
     public init(rawValue: UUID) { self.rawValue = rawValue }
     public init() { self.rawValue = UUID() }
 }
+
+public struct StandingSkillRuleID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}

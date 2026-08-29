@@ -27,12 +27,12 @@ final class DecisionContinuityTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { db in
-            XCTAssertEqual(StorageSchema.version, 45)
+            XCTAssertEqual(StorageSchema.version, 46)
             XCTAssertEqual(
                 try String.fetchAll(
                     db,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid").last,
-                "v45")
+                "v46")
             XCTAssertEqual(
                 try Set(db.columns(in: "decisionContinuity").map(\.name)),
                 ["id", "statement", "status", "createdAt", "updatedAt", "deletedAt"])

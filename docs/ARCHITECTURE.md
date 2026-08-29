@@ -659,6 +659,33 @@ and confirmation. Swift `Skill` symbols, catalogue IDs, persistence, telemetry,
 and stable accessibility identifiers remain unchanged. The release candidate
 adds no user-authored action, standing rule, or new execution authority.
 
+### Standing-rule control plane
+
+Schema v46 and the application boundary persist device-local,
+content-free authority for future unattended Skills without changing the
+one-shot proposal contract. `StandingSkillRule` carries only a UUID, exact Skill
+ID/version, closed trigger/predicate/action values, a 1...8 daily ceiling,
+enabled state, and timestamps. The store returns at most 32 rules, makes the
+trigger/predicate/action tuple unique, and rejects malformed persisted rows
+rather than manufacturing authority.
+
+The closed template catalogue currently contains only preparation of the local
+pre-meeting brief for each upcoming calendar event. Creation rechecks that the
+current definition is reversible, has no external effect, and does not write a
+file. The loaded control projection combines the rule with the existing global
+pause and per-Skill disablement; an unknown or version-stale definition is
+never effectively enabled and may only be disabled or deleted. No meeting,
+event, title, attendee, transcript, provider, destination, prompt, credential,
+or result is stored.
+
+This is an authority substrate, not an executor or released Settings surface.
+It observes no calendar events, performs no Skill, consumes no daily budget,
+writes no execution receipt, and adds no background task. Event admission,
+duplicate/recursion fencing, crash-safe daily accounting, relaunch recovery,
+execution receipts, and bilingual user controls remain explicit later slices.
+External, destructive, clipboard, file, reminder, email, Gist, and GitHub work
+still require their exact per-proposal confirmation.
+
 Application failures cross into presentation as bounded categories or stable
 workflow codes. Raw filesystem paths, localized dependency errors, model
 payloads, and storage implementation details do not form the UI contract.
@@ -1193,7 +1220,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 41. It includes:
+The current schema version is 46. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
@@ -1241,6 +1268,9 @@ The current schema version is 41. It includes:
 - one content-free device-local skill-control singleton, a sparse disablement
   set, and a direction-matched recent-execution index shared by proposal and
   execution admission;
+- one bounded content-free standing-rule table with exact Skill/version,
+  closed trigger/predicate/action identity, per-rule daily ceiling, and
+  device-local enabled state; it currently owns no execution or receipt path;
 - immutable generation-run provenance;
 - one regenerable enhanced-notes document per meeting (raw notes stay
   untouched; provenance commits atomically with the artifact);

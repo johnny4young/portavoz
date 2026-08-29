@@ -16751,3 +16751,52 @@ repository adapter, OpenAI-compatible mutation, mutable MCP operation, batch
 issue creation, or standing rule requires a separate named contract and cannot
 reuse this proposal's consent. AUTO-5 remains limited to reversible local
 effects and cannot invoke this Skill.
+
+## D435 — Persist standing rules as closed local authority before execution (Aug 2026)
+
+**Context:** AUTO-5 introduces user-authored “always run” behavior. Reusing an
+ordinary enabled-Skill bit or `explicitPerProposal` confirmation would blur the
+difference between catalogue availability, one reviewed execution, and durable
+unattended authority. Starting with arbitrary prompts, content predicates, or
+external effects would also make upgrades, duplicate delivery, and relaunch
+recovery impossible to fence before an executor exists.
+
+**Decision:** create a separate device-local `StandingSkillRule` contract and
+schema-v46 table. A rule stores only its UUID, exact Skill ID/version, one
+closed trigger, one content-free subject predicate, one closed action, a daily
+execution ceiling, enabled state, and timestamps. It stores no event, meeting,
+attendee, transcript, title, provider, destination, credential, prompt, or
+result. Reads and writes are bounded to 32 rules; each daily ceiling is 1...8.
+The trigger/predicate/action tuple is unique, so creating the same template is
+idempotent rather than silently changing the existing authority.
+
+The first and only admitted template is **prepare every upcoming pre-meeting
+brief**, mapped to the exact current `PreMeetingBriefSkill` definition with a
+default daily ceiling of three. Creation requires a valid reversible
+definition with neither an external effect nor local-file writing. Clipboard,
+file export, reminders, network handoff, destructive work, GitHub, Gist, email,
+and user-supplied executable predicates remain per-proposal-only. Adding any
+template or enum case is an authority expansion that requires its own product
+and evidence gate.
+
+Standing-rule authority remains independent from the global pause and
+per-Skill disablement controls. The control projection reports the rule's own
+state but considers it effectively enabled only when the exact template/version
+is current and both existing controls admit that Skill. A stale definition can
+be disabled or deleted but never re-enabled. Persisted malformed identities,
+unknown enum values, invalid bounds, and non-finite or reversed timestamps fail
+closed.
+
+This slice adds no event observer, scheduler, execution claim, daily accounting,
+receipt, model call, network operation, or SwiftUI control. Creating, disabling,
+or deleting authority writes no Skill execution event. AUTO-5b must separately
+bind the exact calendar event, duplicate/recursion fences, daily accounting,
+crash/relaunch recovery, cancellation, and immutable receipts before any rule
+may perform work; AUTO-5c owns bilingual user controls and history/recovery.
+
+**Consequences:** Portavoz now has a migration-safe, inspectable authority
+boundary that cannot accidentally authorize today's external Skills or become
+valid merely because a stale Skill is re-enabled. It is not yet an automation
+feature a user can activate, and it does not prove event delivery, relaunch
+execution, UI, physical Sequoia/Tahoe behavior, accessibility, signed
+distribution, CloudKit, or field usefulness.

@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,852 cases (15 environment-gated) + 103
+Status: the package inventory contains 2,861 cases (15 environment-gated) + 103
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -4533,6 +4533,42 @@ launched from its exact executable. This is controlled local Tahoe-family
 evidence, not a real GitHub account/permission/network proof, physical
 Sequoia/Tahoe qualification, VoiceOver/Voice Control evidence, provisioned
 CloudKit, signed distribution, or field behavior.
+
+**D435 closed standing-rule authority gate.** Eight focused domain,
+application, and storage cases cover the exact reversible local brief template,
+daily and read bounds, duplicate-create idempotency, zero execution receipts,
+global pause and per-Skill disablement composition, file-backed relaunch,
+disable/delete persistence, stale-version refusal, and malformed persisted
+identity rejection. The schema case migrates v45 to v46, requires the exact
+content-free columns and ordered trigger/predicate/action unique index, and
+rejects content-bearing columns. Its index assertion identifies the required
+ordered columns instead of counting SQLite's primary-key autoindex as a product
+index.
+
+One architecture ratchet keeps Core free of persistence and content fields,
+admits only the current `PreMeetingBriefSkill`, requires reversible/no-external/
+no-file creation checks, prohibits execution/model/network/UI framework
+ownership in the Application boundary, pins schema v46 and the bounded store,
+and requires D435. This slice deliberately has no XCUITest-only fixture or UI:
+its mandatory real-app canary uses the existing bilingual Suggested-actions
+Settings journey to prove the surrounding global/per-Skill controls remain
+intact. The first complete run correctly rejected four stale migration-history
+expectations that still ended at v45; the repaired v43/v44/v45 contracts passed
+23/23 focused cases, then the exact candidate passed all 2,861 package cases
+with 15 explicit environment/model skips and zero failures in 131.769 seconds
+of XCTest execution. The 225 architecture ratchets, current-SDK
+warnings-as-errors build, strict SwiftLint over 763 production Swift files, and
+repository hygiene also passed. One shared UI build then passed the mandatory
+canary without retry or harness adjustment: 1/1 English in 7.036 seconds and
+1/1 Spanish in 5.690 seconds, both within their unchanged runtime budget. The
+Developer-ID-signed `app.portavoz.mac.dev` bundle was rebuilt, deeply verified,
+installed, and launched only as `/Applications/Portavoz Dev.app`; the release
+copy was untouched.
+
+This evidence cannot certify event delivery, autonomous execution, daily
+accounting, cancellation, relaunch recovery of work, physical Sequoia/Tahoe,
+assistive technology, signed distribution, CloudKit, or field usefulness;
+those remain AUTO-5b/AUTO-5c and release authorities.
 
 **D335 content-free Skill receipt inspection gate.** Sixteen Skills control
 center cases, including six D335 cases, cover a valid retry timeline plus

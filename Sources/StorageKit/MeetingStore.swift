@@ -15,6 +15,7 @@ public enum StorageError: Error, LocalizedError {
     case invalidMeetingQuestion(String)
     case invalidDecisionCommitmentBlocker(String)
     case invalidSkillOffer(String)
+    case invalidStandingSkillRule(String)
     case staleRefineDraft(meetingID: MeetingID, expected: Int, actual: Int)
     case invalidRecordingReservation(String)
     case invalidProcessingJob(String)
@@ -59,6 +60,8 @@ public enum StorageError: Error, LocalizedError {
             return "invalid decision-to-commitment blocker continuity: \(reason)"
         case .invalidSkillOffer(let reason):
             return "invalid Skill offer authority: \(reason)"
+        case .invalidStandingSkillRule(let reason):
+            return "invalid standing Skill rule: \(reason)"
         case .staleRefineDraft(let meetingID, let expected, let actual):
             return "refine draft for \(meetingID.rawValue.uuidString) expected transcript revision "
                 + "\(expected), current revision is \(actual)"
