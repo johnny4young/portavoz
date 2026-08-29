@@ -503,14 +503,42 @@ def ui_test_catalog(root: Path) -> dict[str, list[str]]:
             raise ContractError(f"duplicate UI test method: {name}")
         end = matches[index + 1].start() if index + 1 < len(matches) else len(source)
         body = source[match.start():end]
-        screenshots = sorted(
-            set(
-                re.findall(
-                    r'attachScreenshot\([^\n]*named:\s*"([^"]+)"',
-                    body,
-                )
+        screenshot_names: list[str] = []
+        screenshot_calls = list(
+            re.finditer(
+                r'attachScreenshot\(\s*of:\s*[^,\n]+,\s*'
+                r'(named|names):\s*(.*?)\s*\)',
+                body,
+                flags=re.DOTALL,
             )
         )
+        if len(screenshot_calls) != body.count("attachScreenshot("):
+            raise ContractError(f"{name} uses an unsupported screenshot attachment")
+        for call in screenshot_calls:
+            label, argument = call.groups()
+            if label == "named":
+                literal = re.fullmatch(r'"([^"\n]+)"', argument)
+                if literal is None:
+                    raise ContractError(
+                        f"{name} uses a non-literal screenshot attachment"
+                    )
+                screenshot_names.append(literal.group(1))
+                continue
+
+            literal_list = re.fullmatch(r"\[(.*)\]", argument, flags=re.DOTALL)
+            if literal_list is None:
+                raise ContractError(
+                    f"{name} uses a non-literal multi-name screenshot attachment"
+                )
+            contents = literal_list.group(1)
+            names = re.findall(r'"([^"\n]+)"', contents)
+            residual = re.sub(r'"[^"\n]+"', "", contents)
+            if not names or re.fullmatch(r"[\s,]*", residual) is None:
+                raise ContractError(
+                    f"{name} uses a non-literal multi-name screenshot attachment"
+                )
+            screenshot_names.extend(names)
+        screenshots = sorted(set(screenshot_names))
         catalog[name] = screenshots
     return catalog
 

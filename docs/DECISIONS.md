@@ -16090,3 +16090,118 @@ repository hygiene, catalogue/contract policy, and diff checks are green.
 Fresh exact-head hosted evidence remains required. This is a runtime
 optimization, not permission to combine tests that need fresh process,
 permission, failure-injection, persistence, or destructive state.
+
+## D422 — Reset shared evidence through a stable chapter boundary (Aug 2026)
+
+**Context:** exact D420/D421 head `2a4f9823` passed hosted current-SDK,
+Sequoia, lint, and repository-hygiene CI. Its first Scoped UI run completed all
+101 English journeys with the global runtime gates now green at 1,073.362
+summed seconds and 25.181 seconds p95. It still failed three reset assertions
+inside the consolidated evidence journey and stopped before Spanish. The
+retained result bundle showed every transcript `00:00` reset synthesizing the
+same pointer event outside the visible timestamp target while playback stayed
+at `0:03` and the cited row stayed selected. The failed polling added fifteen
+seconds and pushed that owner over its unchanged 20-second budget.
+
+The same run found the 20,000-segment scale owner functionally green but 1.364
+seconds above its individual budget. Its activity log attributed the remaining
+cost to application-wide text queries for summary revisions across the lazy
+20,000-row accessibility tree, not to the typed handshake or product
+projection.
+
+**Decision:** a shared-evidence reset uses the existing `chapter-0` control,
+whose full visible button owns a stable accessibility identifier, then pauses
+the player through its existing transport control. It separately requires the
+playhead to leave `0:03` and the cited row to become unselected before the next
+source activation. Summary, decision, action-item, and Apuntador sources still
+must each restore the exact row and `0:03`, and all four screenshots remain.
+
+The 20,000-segment owner resolves `detail-generated-document` once and queries
+both summary revisions only inside that semantic boundary. The fixture title,
+transcript readiness, chapter projection, revision handshake, selectors,
+timeouts, retries, locales, and all runtime budgets are unchanged. The hosted
+workflow's explanatory catalogue count is corrected from 106 to the
+authoritative 101; executable scope policy was already correct.
+
+**Consequences:** the first corrected focused English run passed both affected
+real-app journeys without retry. Evidence navigation passed in 17.364 seconds
+under its 20-second budget; the 20,000-segment owner passed in 16.211 seconds
+under 23.817 seconds. Their 33.575-second aggregate and 17.364-second p95 were
+green. After D423/D424 corrected two independently exposed test owners, one
+shared seven-second build fed the complete real-app catalogue: English passed
+101/101 in 851.326 summed seconds (p50 6.720, p95 18.533, maximum 35.965) and
+Spanish passed 101/101 in 848.513 seconds (p50 6.795, p95 18.094, maximum
+36.213). Evidence navigation passed in 16.073/15.620 seconds and the 20,000-
+segment owner in 15.222/14.612 seconds. Every unchanged budget passed. First
+replacement-head hosted evidence remains required before the PR is green. This
+correction does not convert automated evidence into physical Sequoia/Tahoe,
+assistive-technology, distribution, CloudKit, or field certification.
+
+## D423 — Classify launch-recovery artifacts by their publication contract (Aug 2026)
+
+**Context:** D422's first complete English real-app run passed all 30 Meeting
+Detail owners and the unchanged global runtime budgets, but retained one
+independent Library failure before Spanish. The launch-recovery view reported a
+successful copy, while its XCUITest counted two entries in the selected
+directory and expected one. That assertion treated every filesystem entry as a
+published recovery and then indexed an unspecified first entry. It could not
+distinguish one visible recovery directory from hidden filesystem metadata or
+identify a leaked hidden publication stage.
+
+**Decision:** the test classifies destination artifacts according to the
+storage boundary. Any `.portavoz-recovery-*` directory is a leaked private
+stage and fails explicitly. A published copy must be a non-hidden directory;
+exactly one must exist after one activation, and that identified directory
+must contain the verified `portavoz.sqlite`. Unrelated hidden metadata is not
+a product publication and is excluded. The selected copy is unwrapped instead
+of indexing an unordered filesystem result. An architecture ratchet preserves
+the stage-leak check, visible-copy cardinality, and safe unwrap.
+
+**Consequences:** the correction does not change launch-recovery product code,
+repeat-click behavior, the source-preservation assertion, selectors, timeout,
+retry policy, locale, or runtime budget. It makes a failure identify the
+violated product contract rather than an undifferentiated directory count.
+The focused English real-app journey passed 1/1 without retry in 4.186 seconds
+under its unchanged budget. The complete bilingual catalogue then passed this
+owner in 3.791 seconds English and 3.960 seconds Spanish. Automated evidence
+still does not certify physical Sequoia/Tahoe, assistive technology,
+distribution, CloudKit, or field behavior.
+
+## D424 — Bound the consolidated review journey to its semantic owners (Aug 2026)
+
+**Context:** after D423 corrected launch-recovery artifact classification, the
+second complete English real-app run passed all 101 journeys functionally with
+the aggregate and p95 gates green at 872.823 and 18.836 seconds. The retained
+policy failure was one 21.400-second review journey against its unchanged
+20-second budget. Its activity tree showed repeated application-wide lookups
+for controls already owned by the notes, secondary-rail, and generated-document
+boundaries. It also captured the unchanged window twice in succession solely
+to retain the two evidence names inherited from the pre-consolidation tests.
+
+**Decision:** the journey resolves each semantic owner once and queries only
+its descendants. Notes own their title, raw text, and enhancement control; the
+secondary rail owns health, privacy, chapters, and Apuntador; the generated
+document owns its overview, tabs, and action item. The action item uses one
+stronger stable-and-hittable wait rather than a preceding existence lookup plus
+the same stability proof. Privacy and transcript-navigation evidence still
+produce both named attachments, but both are created from one immutable
+`XCUIScreenshot` because no product state changes between them. The shared
+screenshot helper supports one or several names while capturing the window
+exactly once. The executable Meeting Detail contract derives ownership from
+both single-name calls and literal multi-name arrays, rejects dynamic arrays,
+and keeps the canonical evidence snapshot unchanged.
+
+**Consequences:** every original content assertion, exact navigation/mutation
+postcondition, evidence name, selector, timeout, locale, and runtime budget is
+retained. The slice removes redundant accessibility discovery and an identical
+window capture; it does not hide slowness with retries or a larger ceiling.
+The first corrected focused English run passed 1/1 without retry in 12.992
+seconds under the unchanged 20-second budget, 8.408 seconds (39.29%) below the
+retained complete-suite observation. The complete bilingual catalogue passed
+the owner in 13.126 seconds English and 13.709 seconds Spanish, with every
+unchanged individual and aggregate budget green. The complete package passed
+2,788 tests with 15 explicit skips and zero failures in 138.125 seconds;
+warnings-as-errors, strict lint over 742 files, repository hygiene, and the
+ownership policy suite are green. Replacement-head hosted evidence remains
+required. Automated evidence does not certify physical Sequoia/Tahoe,
+assistive technology, distribution, CloudKit, or field behavior.

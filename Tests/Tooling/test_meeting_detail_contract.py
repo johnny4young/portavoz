@@ -105,6 +105,17 @@ class MeetingDetailContractTests(unittest.TestCase):
             contract.validate_contract(duplicated, REPOSITORY)
 
     def test_screenshot_ownership_is_derived_from_each_test_body(self):
+        catalog = contract.ui_test_catalog(REPOSITORY)
+        self.assertEqual(
+            catalog["testMeetingReviewSurfacesRemainCompleteAndActionable"],
+            [
+                "meeting-detail-generated-document",
+                "meeting-detail-my-notes",
+                "meeting-detail-privacy-receipt",
+                "meeting-detail-transcript-navigation",
+            ],
+        )
+
         changed = copy.deepcopy(self.document)
         owner = next(
             item
@@ -115,6 +126,40 @@ class MeetingDetailContractTests(unittest.TestCase):
 
         with self.assertRaisesRegex(contract.ContractError, "screenshot ownership differs"):
             contract.validate_contract(changed, self.root)
+
+    def test_screenshot_ownership_rejects_dynamic_attachment_names(self):
+        tests_source = self.root / "Tests/PortavozUITests/MeetingDetailUITests.swift"
+        source = tests_source.read_text(encoding="utf-8")
+        tests_source.write_text(
+            source.replace(
+                'named: "meeting-detail-my-notes"',
+                "named: dynamicEvidenceName",
+                1,
+            ),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(
+            contract.ContractError,
+            "non-literal screenshot attachment",
+        ):
+            contract.ui_test_catalog(self.root)
+
+        tests_source.write_text(
+            source.replace(
+                "names: [\n"
+                '                "meeting-detail-privacy-receipt",\n'
+                '                "meeting-detail-transcript-navigation",\n'
+                "            ]",
+                "names: dynamicEvidenceNames",
+                1,
+            ),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(
+            contract.ContractError,
+            "non-literal multi-name screenshot attachment",
+        ):
+            contract.ui_test_catalog(self.root)
 
     def test_feature_source_anchors_must_exist_inside_the_boundary(self):
         changed = copy.deepcopy(self.document)

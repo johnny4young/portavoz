@@ -74,7 +74,7 @@ jobs:
     if: needs.scope.outputs.required == 'true'
     runs-on: macos-latest
     # Localization/shared-harness and manual integration runs legitimately
-    # select all 106 tests in both locales. Preserve that sequential evidence
+    # select all 101 tests in both locales. Preserve that sequential evidence
     # and leave time to upload both result bundles instead of weakening it.
     timeout-minutes: 60
     steps:

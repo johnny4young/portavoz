@@ -62,8 +62,12 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.control(withIdentifier: "detail-transcript-title")
                 .waitForExistenceFast(timeout: 15),
             "Meeting Detail must render first content for 20,000 segments")
+        let generatedDocument = app.control(withIdentifier: "detail-generated-document")
         XCTAssertTrue(
-            app.staticTexts["Scale baseline summary revision 1."]
+            generatedDocument.waitForExistenceFast(timeout: 15),
+            "the scale detail must expose one bounded generated-document surface")
+        XCTAssertTrue(
+            generatedDocument.staticTexts["Scale baseline summary revision 1."]
                 .waitForExistenceFast(timeout: 15),
             "the first subscribed summary must render before the fixture updates it")
         XCTAssertTrue(
@@ -76,9 +80,34 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.control(withIdentifier: "detail-chapters").waitForExistenceFast(timeout: 15),
             "the 20,000-segment detail must complete its chapter projection")
         XCTAssertTrue(
-            app.staticTexts["Scale baseline summary revision 2."]
+            generatedDocument.staticTexts["Scale baseline summary revision 2."]
                 .waitForExistenceFast(timeout: 15),
             "the 20,000-segment detail must stay subscribed to scoped summary updates")
+    }
+
+    @MainActor
+    private func resetEvidenceNavigation(
+        chapter: XCUIElement,
+        playbackToggle: XCUIElement,
+        citedRow: XCUIElement,
+        currentTime: XCUIElement
+    ) {
+        XCTAssertTrue(
+            chapter.waitForHittable(timeout: 5),
+            "the stable opening chapter must be actionable before resetting evidence")
+        chapter.click()
+        XCTAssertTrue(
+            playbackToggle.waitForHittable(timeout: 5),
+            "playback must expose its stable toggle after the reset seek")
+        playbackToggle.click()
+        XCTAssertTrue(
+            currentTime.waitForValueOtherThan("0:03", timeout: 5),
+            "the reset must visibly leave the shared evidence timestamp")
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 5) {
+                citedRow.exists && !citedRow.isSelected
+            },
+            "the reset must visibly deselect the shared evidence row")
     }
 
     /// Launches the app on the seeded meeting with isolated audio. Point
@@ -628,39 +657,40 @@ final class MeetingDetailUITests: PortavozUITestCase {
         // One launch owns the static review surfaces for this exact seeded
         // meeting. The notes, right rail, and generated document remain
         // independently asserted before the only durable mutation below.
+        let notesSection = app.control(withIdentifier: "detail-notes-section")
         XCTAssertTrue(
-            app.control(withIdentifier: "detail-notes-section")
-                .waitForExistenceFast(timeout: 10),
+            notesSection.waitForExistenceFast(timeout: 10),
             "notes must retain one explicit presentation boundary")
         XCTAssertTrue(
-            app.control(withIdentifier: "detail-notes-title")
+            notesSection.descendants(matching: .any)["detail-notes-title"]
                 .waitForExistenceFast(timeout: 10),
             "a meeting with notes must surface the My notes section")
         XCTAssertTrue(
-            app.staticTexts["revisar budget Q3"].exists,
+            notesSection.staticTexts["revisar budget Q3"].exists,
             "the raw seeded note is shown verbatim before any enhancement")
         XCTAssertTrue(
-            app.control(withIdentifier: "detail-enhance-notes")
+            notesSection.descendants(matching: .any)["detail-enhance-notes"]
                 .waitForExistenceFast(timeout: 5),
             "a meeting with transcript and notes must offer the enhance menu")
         attachScreenshot(of: app, named: "meeting-detail-my-notes")
 
+        let secondaryRail = app.control(withIdentifier: "detail-secondary-rail")
         XCTAssertTrue(
-            app.control(withIdentifier: "detail-secondary-rail")
-                .waitForExistenceFast(timeout: 10),
+            secondaryRail.waitForExistenceFast(timeout: 10),
             "secondary review panels must retain one independently scrolling boundary")
         XCTAssertTrue(
-            app.control(withIdentifier: "detail-meeting-health")
+            secondaryRail.descendants(matching: .any)["detail-meeting-health"]
                 .waitForExistenceFast(timeout: 10),
             "the right rail must show meeting health")
         XCTAssertTrue(
-            app.control(withIdentifier: "detail-privacy-receipt")
+            secondaryRail.descendants(matching: .any)["detail-privacy-receipt"]
                 .waitForExistenceFast(timeout: 10),
             "the right rail must show the local privacy receipt")
         XCTAssertTrue(
-            app.control(withIdentifier: "privacy-remote-event-0").exists,
+            secondaryRail.descendants(matching: .any)["privacy-remote-event-0"].exists,
             "the fixture's content-free remote summary attempt must be auditable")
-        let syncDisclosure = app.control(withIdentifier: "detail-privacy-receipt-sync")
+        let syncDisclosure = secondaryRail.descendants(matching: .any)[
+            "detail-privacy-receipt-sync"]
         XCTAssertTrue(
             syncDisclosure.exists,
             "the receipt must disclose the acknowledged private iCloud copy")
@@ -676,9 +706,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.control(withIdentifier: "detail-transcript-section").exists,
             "the transcript must expose its correction-ready reading boundary")
         XCTAssertTrue(
-            app.control(withIdentifier: "detail-chapters").exists,
+            secondaryRail.descendants(matching: .any)["detail-chapters"].exists,
             "the right rail must show the ✦ chapters (the seed has a second chapter)")
-        let laterChapter = app.control(withIdentifier: "chapter-200")
+        let laterChapter = secondaryRail.descendants(matching: .any)["chapter-200"]
         XCTAssertTrue(
             laterChapter.exists,
             "a chapter must mark the later turn the seed placed at 200 s")
@@ -695,19 +725,23 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let currentTime = app.control(withIdentifier: "player-current-time")
         XCTAssertTrue(currentTime.waitForValueOtherThan("0:00", timeout: 5))
         XCTAssertTrue(
-            app.control(withIdentifier: "detail-apuntador")
+            secondaryRail.descendants(matching: .any)["detail-apuntador"]
                 .waitForExistenceFast(timeout: 5),
             "the right rail must show the persisted Apuntador answers")
         XCTAssertTrue(
-            app.control(withIdentifier: "apuntador-card-6")
+            secondaryRail.descendants(matching: .any)["apuntador-card-6"]
                 .waitForExistenceFast(timeout: 5),
             "the answered Apuntador card must render for review")
-        attachScreenshot(of: app, named: "meeting-detail-privacy-receipt")
-        attachScreenshot(of: app, named: "meeting-detail-transcript-navigation")
+        attachScreenshot(
+            of: app,
+            names: [
+                "meeting-detail-privacy-receipt",
+                "meeting-detail-transcript-navigation",
+            ])
 
+        let generatedDocument = app.control(withIdentifier: "detail-generated-document")
         XCTAssertTrue(
-            app.control(withIdentifier: "detail-generated-document")
-                .waitForExistenceFast(timeout: 10),
+            generatedDocument.waitForExistenceFast(timeout: 10),
             "generated claims and commitments must stay inside one document section")
         // The transcript rendered (this line is unique to the transcript).
         XCTAssertTrue(
@@ -717,16 +751,17 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
         // The default "Summary" tab shows the intro/overview.
         XCTAssertTrue(
-            app.staticTexts["El equipo revisó el presupuesto y fijó el rollout."]
+            generatedDocument.staticTexts[
+                "El equipo revisó el presupuesto y fijó el rollout."]
                 .waitForExistenceFast(timeout: 10),
             "the summary's Summary tab must show the overview")
         XCTAssertFalse(
-            app.control(withIdentifier: "summary-tab-2").exists,
+            generatedDocument.descendants(matching: .any)["summary-tab-2"].exists,
             "the canonical commitment appendix must not duplicate the typed To-dos tab")
 
         // The ▸ coauthoring marker lives under the Decisiones section, now
         // behind its own tab — switching to it reveals the bullet.
-        let decisionsTab = app.control(withIdentifier: "summary-tab-1")
+        let decisionsTab = generatedDocument.descendants(matching: .any)["summary-tab-1"]
         XCTAssertTrue(app.prepareForInteraction())
         XCTAssertTrue(decisionsTab.waitForStableFrame(timeout: 5))
         decisionsTab.click()
@@ -736,19 +771,19 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
         // A real mutation crosses MeetingDetailModel's client and the scoped
         // summary observation returns the completed count to the same view.
-        let todosTab = app.control(withIdentifier: "summary-tab-todos")
+        let todosTab = generatedDocument.descendants(matching: .any)["summary-tab-todos"]
         XCTAssertTrue(todosTab.waitForStableFrame(timeout: 5))
         todosTab.click()
-        let actionItem = app.descendants(matching: .any)
+        let actionItem = generatedDocument.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'action-item-'"))
             .firstMatch
-        guard actionItem.waitForExistenceFast(timeout: 10) else {
-            XCTFail("the seeded action item must expose its stable control boundary")
+        guard actionItem.waitForStableFrame(timeout: 10) else {
+            XCTFail("the seeded action item must expose a stable actionable boundary")
             return
         }
-        XCTAssertTrue(actionItem.waitForStableFrame(timeout: 5))
         actionItem.click()
-        let updatedTodosTab = app.control(withIdentifier: "summary-tab-todos")
+        let updatedTodosTab = generatedDocument.descendants(matching: .any)[
+            "summary-tab-todos"]
         XCTAssertTrue(updatedTodosTab.waitForLabelContaining("1/1", timeout: 10))
         attachScreenshot(of: app, named: "meeting-detail-generated-document")
     }
@@ -785,17 +820,13 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 5))
         attachScreenshot(of: app, named: "meeting-detail-summary-evidence")
 
-        let firstTranscriptTime = app
-            .control(withIdentifier: "detail-transcript-scroll")
-            .buttons["00:00"]
-            .firstMatch
-        XCTAssertTrue(firstTranscriptTime.waitForHittable(timeout: 5))
-        firstTranscriptTime.click()
-        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
-            currentTime.exists
-                && !citedRow.isSelected
-                && String(describing: currentTime.value) != "0:03"
-        })
+        let resetChapter = app.control(withIdentifier: "chapter-0")
+        let playbackToggle = app.control(withIdentifier: "player-play-pause")
+        resetEvidenceNavigation(
+            chapter: resetChapter,
+            playbackToggle: playbackToggle,
+            citedRow: citedRow,
+            currentTime: currentTime)
 
         let decisions = app.control(withIdentifier: "summary-tab-1")
         XCTAssertTrue(decisions.waitForExistenceFast(timeout: 10))
@@ -814,13 +845,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 5))
         attachScreenshot(of: app, named: "meeting-detail-decision-evidence")
 
-        XCTAssertTrue(firstTranscriptTime.waitForHittable(timeout: 5))
-        firstTranscriptTime.click()
-        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
-            currentTime.exists
-                && !citedRow.isSelected
-                && String(describing: currentTime.value) != "0:03"
-        })
+        resetEvidenceNavigation(
+            chapter: resetChapter,
+            playbackToggle: playbackToggle,
+            citedRow: citedRow,
+            currentTime: currentTime)
 
         let todos = app.control(withIdentifier: "summary-tab-todos")
         XCTAssertTrue(todos.waitForExistenceFast(timeout: 10))
@@ -840,13 +869,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 5))
         attachScreenshot(of: app, named: "meeting-detail-action-item-evidence")
 
-        XCTAssertTrue(firstTranscriptTime.waitForHittable(timeout: 5))
-        firstTranscriptTime.click()
-        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
-            currentTime.exists
-                && !citedRow.isSelected
-                && String(describing: currentTime.value) != "0:03"
-        })
+        resetEvidenceNavigation(
+            chapter: resetChapter,
+            playbackToggle: playbackToggle,
+            citedRow: citedRow,
+            currentTime: currentTime)
 
         XCTAssertTrue(
             app.control(withIdentifier: "detail-apuntador-section")

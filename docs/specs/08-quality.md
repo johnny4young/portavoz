@@ -5838,6 +5838,34 @@ Warnings-as-errors, strict SwiftLint across 742 files, repository hygiene,
 catalogue/contract policy, and diff checks are green. Fresh exact-head hosted
 evidence remains required.
 
+**D422 hosted reset and scale-query correction.** Exact D420/D421 commit
+`2a4f9823` passed the four hosted CI owners. Its first Scoped UI run completed
+all 101 English journeys and brought the unchanged global gates under budget at
+1,073.362 summed seconds and 25.181 seconds p95. It retained a narrower red
+receipt: three reset assertions failed in the consolidated evidence journey,
+that owner took 31.715 seconds, and the otherwise passing 20,000-segment owner
+took 25.181 seconds against its 23.817-second budget. Spanish did not start.
+
+The retained result bundle and synthesized events showed that the lazy
+transcript's text-labelled `00:00` button reported hittable but every reset
+landed at the same non-timestamp pointer coordinate. Playback remained at
+`0:03` and the cited row remained selected, so three five-second polling windows
+expired. Resets now activate the already identified `chapter-0` button, pause
+through `player-play-pause`, then independently require a non-`0:03` playhead
+and deselected cited row. Every following source still has to reselect that
+exact row and restore `0:03`; all source values and screenshots are unchanged.
+
+The scale activity log separately showed application-wide summary-text lookup
+traversing the 20,000-row accessibility tree. Both revision assertions are now
+scoped below `detail-generated-document`; the typed file handshake, fixture,
+chapter assertion, and observed live revision remain unchanged. The first
+corrected focused English run passed 2/2 without retry: evidence navigation in
+17.364 seconds and the 20,000-segment owner in 16.211 seconds, with every
+unchanged individual and aggregate budget green. The final complete bilingual
+head passed evidence navigation in 16.073/15.620 seconds and the 20,000-segment
+owner in 15.222/14.612 seconds for English/Spanish. First replacement-head
+hosted authority remains required.
+
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch
 COPY of a real recording: point `PORTAVOZ_TEST_AUDIO_ROOT` at a folder shaped
@@ -5847,3 +5875,36 @@ app's live data, and `run-ui-tests.sh` exports the override in both plain and
 `TEST_RUNNER_`-prefixed forms so it reaches the runner process regardless of
 how xcodebuild spawns it. This lane is owner-run evidence — real recordings
 never enter the repository.
+
+**Launch-recovery publication artifacts.** The real-app recovery journey treats
+`.portavoz-recovery-*` as a private staging namespace that must be empty after
+publication. It identifies published copies only as visible directories,
+requires exactly one after one button activation, safely unwraps that result,
+and verifies its `portavoz.sqlite` before comparing the failed source bytes.
+Hidden filesystem metadata in a user-selected destination is not a published
+copy and must not create a false failure. This classification is source-
+ratcheted so future test refactors cannot replace it with an unordered raw
+directory count. The complete bilingual gate passed this owner in 3.791 seconds
+English and 3.960 seconds Spanish.
+
+**Consolidated review-query ownership.** The Meeting Detail review journey
+resolves its notes, secondary rail, and generated document once, then limits
+child assertions and interactions to the owning accessibility subtree. An
+action item is admitted by one stable-and-hittable proof rather than an
+existence query followed by the stronger proof. When two retained evidence
+names represent the same unchanged window state, the harness captures one
+immutable screenshot and creates both attachments from it. Policy ratchets
+preserve the semantic boundaries, the two names, the single capture, the
+strong interaction gate, and the unchanged 20-second owner budget. The
+ownership parser accepts only literal multi-name arrays and fails closed on a
+dynamic alias list; the canonical ownership document therefore remains exact.
+The first corrected focused English run passed without retry in 12.992 seconds,
+down from the retained 21.400-second complete-suite observation while keeping
+the 20-second ceiling unchanged. The complete bilingual gate passed it in
+13.126 seconds English and 13.709 seconds Spanish. Across the full catalogue,
+English passed 101/101 in 851.326 summed seconds (p50 6.720, p95 18.533,
+maximum 35.965) and Spanish passed 101/101 in 848.513 seconds (p50 6.795, p95
+18.094, maximum 36.213), with every unchanged budget green. The package suite
+passed 2,788 tests with 15 explicit skips, warnings-as-errors and strict lint
+were green, and repository hygiene accepted the literal multi-name ownership
+contract.

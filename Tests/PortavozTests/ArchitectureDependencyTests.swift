@@ -9716,6 +9716,26 @@ final class ArchitectureDependencyTests: XCTestCase {
         ] {
             XCTAssertTrue(reviewJourney.contains(evidenceName), evidenceName)
         }
+        for semanticBoundary in [
+            "let notesSection = app.control(withIdentifier: \"detail-notes-section\")",
+            "let secondaryRail = app.control(withIdentifier: \"detail-secondary-rail\")",
+            "let generatedDocument = app.control(withIdentifier: \"detail-generated-document\")",
+        ] {
+            XCTAssertTrue(reviewJourney.contains(semanticBoundary), semanticBoundary)
+        }
+        XCTAssertTrue(reviewJourney.contains(
+            "generatedDocument.descendants(matching: .any)"))
+        XCTAssertTrue(reviewJourney.contains(
+            "guard actionItem.waitForStableFrame(timeout: 10)"))
+        XCTAssertTrue(reviewJourney.contains(
+            "names: [\n"
+                + "                \"meeting-detail-privacy-receipt\",\n"
+                + "                \"meeting-detail-transcript-navigation\","))
+        XCTAssertEqual(
+            support.components(
+                separatedBy: "let screenshot = window.screenshot()").count - 1,
+            1,
+            "named evidence aliases must reuse one immutable window capture")
 
         let decisionJourneyStart = try XCTUnwrap(meeting.range(
             of: "func testDecisionCanBeConfirmedAboutATopic()",
@@ -9742,9 +9762,21 @@ final class ArchitectureDependencyTests: XCTestCase {
             "each source must prove its exact audio seek")
         XCTAssertEqual(
             evidenceJourney.components(
-                separatedBy: "firstTranscriptTime.click()").count - 1,
+                separatedBy: "resetEvidenceNavigation(").count - 1,
             3,
             "later source checks must first move to a distinguishable transcript target")
+        let resetHelperStart = try XCTUnwrap(meeting.range(
+            of: "private func resetEvidenceNavigation("))
+        let launchHelperStart = try XCTUnwrap(meeting.range(
+            of: "private func launchOnSeededMeeting(",
+            range: resetHelperStart.upperBound..<meeting.endIndex))
+        let resetHelper = meeting[
+            resetHelperStart.lowerBound..<launchHelperStart.lowerBound]
+        XCTAssertTrue(resetHelper.contains("chapter.waitForHittable(timeout: 5)"))
+        XCTAssertTrue(resetHelper.contains("playbackToggle.click()"))
+        XCTAssertTrue(resetHelper.contains(
+            "currentTime.waitForValueOtherThan(\"0:03\", timeout: 5)"))
+        XCTAssertTrue(resetHelper.contains("citedRow.exists && !citedRow.isSelected"))
         for retiredJourney in [
             "testTabbedSummaryRevealsTheCoauthoringBullet",
             "testMyNotesSectionShowsRawNotesAndOffersEnhancement",
@@ -9765,6 +9797,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D419"))
         XCTAssertTrue(decisions.contains("## D420"))
         XCTAssertTrue(decisions.contains("## D421"))
+        XCTAssertTrue(decisions.contains("## D422"))
+        XCTAssertTrue(decisions.contains("## D424"))
     }
 
     func testMeetingDetailCompositionKeepsEffectsOutOfPresentationChildren() throws {
@@ -11972,6 +12006,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         let gaps = try Self.contents(of: "docs/GAPS.md")
+        let uiTests = try Self.contents(
+            of: "Tests/PortavozUITests/LibraryUITests.swift")
 
         XCTAssertFalse(services.contains("fatalError"))
         XCTAssertTrue(services.contains(") throws {"))
@@ -12014,9 +12050,16 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(storage.contains(".portavoz-recovery-"))
         XCTAssertTrue(storage.contains("manager.moveItem(at: stageURL, to: finalURL)"))
         XCTAssertFalse(storage.contains("removeItem(at: canonicalSource"))
+        XCTAssertTrue(uiTests.contains(
+            "let leakedStages = destinationArtifacts.filter"))
+        XCTAssertTrue(uiTests.contains(
+            "one activation must publish one visible recovery directory"))
+        XCTAssertTrue(uiTests.contains(
+            "let recoveryCopy = try XCTUnwrap(copies.first)"))
 
         XCTAssertTrue(architecture.contains("Database launch recovery"))
         XCTAssertTrue(decisions.contains("## D319"))
+        XCTAssertTrue(decisions.contains("## D423"))
         XCTAssertTrue(gaps.contains("T32 | ~~Database-open failure"))
         XCTAssertTrue(gaps.contains("RESOLVED in code (D319)"))
     }

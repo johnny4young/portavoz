@@ -50,12 +50,27 @@ final class LibraryUITests: PortavozUITestCase {
             : "Recovery copy saved"
         XCTAssertTrue(
             copyStatus.waitForLabelOrValue(expectedCopyStatus, timeout: 15))
-        let copies = try FileManager.default.contentsOfDirectory(
+        let destinationArtifacts = try FileManager.default.contentsOfDirectory(
             at: recoveryRoot,
             includingPropertiesForKeys: nil)
-        XCTAssertEqual(copies.count, 1)
+        let leakedStages = destinationArtifacts.filter {
+            $0.lastPathComponent.hasPrefix(".portavoz-recovery-")
+        }
+        XCTAssertTrue(
+            leakedStages.isEmpty,
+            "recovery publication must not leak a hidden stage: \(leakedStages)")
+        let copies = destinationArtifacts.filter { artifact in
+            guard !artifact.lastPathComponent.hasPrefix(".") else { return false }
+            let values = try? artifact.resourceValues(forKeys: [.isDirectoryKey])
+            return values?.isDirectory == true
+        }
+        XCTAssertEqual(
+            copies.count,
+            1,
+            "one activation must publish one visible recovery directory: \(copies)")
+        let recoveryCopy = try XCTUnwrap(copies.first)
         XCTAssertTrue(FileManager.default.fileExists(
-            atPath: copies[0].appendingPathComponent("portavoz.sqlite").path))
+            atPath: recoveryCopy.appendingPathComponent("portavoz.sqlite").path))
         XCTAssertEqual(try Data(contentsOf: databaseURL), originalDatabase)
 
         app.buttons["launch-recovery-export-diagnostics"].click()

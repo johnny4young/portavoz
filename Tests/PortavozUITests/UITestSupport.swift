@@ -729,11 +729,19 @@ extension XCUIElement {
 extension XCTestCase {
     @MainActor
     func attachScreenshot(of app: XCUIApplication, named name: String) {
+        attachScreenshot(of: app, names: [name])
+    }
+
+    @MainActor
+    func attachScreenshot(of app: XCUIApplication, names: [String]) {
         let window = app.windows.firstMatch
-        let attachment = XCTAttachment(screenshot: window.screenshot())
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
+        let screenshot = window.screenshot()
+        for name in names {
+            let attachment = XCTAttachment(screenshot: screenshot)
+            attachment.name = name
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
     }
 
     @MainActor
