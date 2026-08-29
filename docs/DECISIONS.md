@@ -16587,12 +16587,17 @@ localization changes still expand fail-safe to the complete bilingual gate.
 Sequoia floor, while richer Tahoe answers remain an additive enhancement. The
 first dirty-tree real-app candidate run passed all frozen targets with 1.0
 precision/recall/abstention, zero false prompts and late publication, 3.284 ms
-cold latency, 0.606 ms steady p95, and 1,556,528 bytes footprint growth, but it
-is diagnostic only until repeated from the clean exact commit. Model/corpus
-changes must intentionally update every digest and rerun the same authority.
-Physical Sequoia/Tahoe, real-meeting usefulness, answer prose, signed
-distribution, Instruments leaks, and assistive technology remain explicit
-external gates; deterministic or hosted tests cannot certify them.
+cold latency, 0.606 ms steady p95, and 1,556,528 bytes footprint growth. The
+clean exact feature commit `b660eff8` then passed the same complete authority
+with 1.0 precision/recall/abstention, zero false prompts and late publication,
+48.380 ms cold latency, 1.716 ms steady p95, and 5,537,888 bytes footprint
+growth. Its controlled-local serving-candidate scorecard SHA-256 is
+`db33d1a3d12f5115185faa27f34946e55e4771a151a23b7d1dd18dfe23ce5f65`.
+Model/corpus changes must intentionally update every digest and rerun the same
+authority; a later source commit cannot inherit this receipt. Physical
+Sequoia/Tahoe, real-meeting usefulness, answer prose, signed distribution,
+Instruments leaks, and assistive technology remain explicit external gates;
+deterministic or hosted tests cannot certify them.
 
 ## D432 — Keep Notification Center bypass local and category-scoped (Aug 2026)
 

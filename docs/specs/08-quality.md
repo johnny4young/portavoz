@@ -2411,10 +2411,15 @@ scenario with precision, recall, and abstention accuracy 1.0, zero false
 prompts per hour, zero late publication, 3.284 ms cold question latency,
 0.606 ms steady p95, and 1,556,528 bytes of footprint growth. It used nominal
 thermal state, AC power, and Low Power Mode off, but the source tree was dirty;
-the scorecard is diagnostic and not controlled-local authority. Exact-commit
-recollection after the feature commit remains mandatory. This result does not
-measure answer prose, Instruments leaks, real meetings, physical
-Sequoia/Tahoe, signed installation, or assistive technology.
+the scorecard was diagnostic only. Clean exact feature commit `b660eff8` then
+passed the same complete authority with precision, recall, and abstention
+accuracy 1.0, zero false prompts per hour, zero late publication, 48.380 ms
+cold question latency, 1.716 ms steady p95, and 5,537,888 bytes of footprint
+growth. Its controlled-local serving-candidate scorecard SHA-256 is
+`db33d1a3d12f5115185faa27f34946e55e4771a151a23b7d1dd18dfe23ce5f65`.
+This result does not measure answer prose, Instruments leaks, real meetings,
+physical Sequoia/Tahoe, signed installation, or assistive technology, and no
+later source commit may inherit it without exact-head recollection.
 
 The accepted current-tree closure passed all 2,817 package tests with 15
 explicit model/asset skips and zero failures, the current-SDK
@@ -2425,8 +2430,8 @@ summed seconds (p95 17.851) and Spanish passed 103/103 in 854.580 seconds (p95
 17.901); both unchanged budgets passed with zero harness adjustment and no
 retry. The Notification Center-only local preflight override from D432 was
 explicitly enabled for this run; every other blocker stayed fail-closed. The
-Release-app scorecard remains diagnostic until recollected from the clean exact
-feature commit.
+Release-app serving evidence is controlled-local at clean feature commit
+`b660eff8`; later source changes remain independently exact-head gated.
 
 Sequoia's Xcode 26.3 image carries Swift 6.2.4, whose XCTest synchronous-test
 teardown can abort while releasing a `@MainActor` value with `isolated deinit`
