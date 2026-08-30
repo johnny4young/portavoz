@@ -6555,3 +6555,28 @@ adjustment, or Notification Center override. A new exact committed candidate
 must still execute all eight proofs; these fixtures do not certify physical
 capture, Sequoia/Tahoe hardware, TCC, VoiceOver/Voice Control, signed
 distribution, production CloudKit, provider behavior, or field use.
+
+**D445 fail-closed release appcast.** A retained red orchestration test ran the
+real release shell owner inside an isolated repository with deterministic Git,
+build, DMG, cask, and signer stubs. Before the fix, a missing signer still
+invoked the expensive build, rendered a cask, printed the readiness message,
+and exited zero. The repaired owner rejects that prerequisite before build and
+passes the generated XML through `verify_release_appcast.py` before cask
+rendering. The bounded parser requires one regular feed item with exact release
+version/build, exact GitHub DMG URL and byte length, and one valid-base64
+64-byte EdDSA enclosure signature. Nine isolated cases cover missing signer,
+zero-exit missing output, symlinked output, malformed signature, stale version,
+wrong build, wrong URL, wrong length, and exact success. Repository hygiene runs
+those cases and syntax-checks the shell owner. This deterministic boundary does
+not sign, notarize, publish, access the Sparkle Keychain key, exercise a real
+updater, or certify a physical Sequoia/Tahoe installation.
+
+Final local closure passed all nine focused release-orchestration cases in
+8.080 seconds, the complete 780-case Tooling suite in 39.797 seconds, repository
+hygiene, shell/Python syntax checks, the focused release architecture ratchet,
+and the documentation/source-language gate. The unchanged production tree also
+retains its current-SDK warnings-as-errors build and 2,910-case package result
+with 15 explicit environment skips and zero failures. The minimum-safe real-app
+journey passed 1/1 in English in 2.592 seconds and 1/1 in Spanish in 2.363
+seconds from one build, without retry, adjusted budget, or Notification Center
+override. No release, notarization, publication, or installation occurred.

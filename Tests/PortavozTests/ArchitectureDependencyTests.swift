@@ -11100,6 +11100,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         let verifier = try Self.contents(of: "scripts/verify-distribution.sh")
         let packager = try Self.contents(of: "scripts/make-app.sh")
         let releaseScript = try Self.contents(of: "scripts/make-release.sh")
+        let appcastVerifier = try Self.contents(
+            of: "scripts/verify_release_appcast.py")
         let hygiene = try Self.contents(
             of: "scripts/check-repository-hygiene.sh")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
@@ -11181,6 +11183,26 @@ final class ArchitectureDependencyTests: XCTestCase {
             "git status --porcelain --untracked-files=no"))
         XCTAssertTrue(releaseScript.contains(
             "PORTAVOZ_RELEASE_COMMIT=\"$SOURCE_COMMIT\""))
+        let signerPreflight = try XCTUnwrap(releaseScript.range(
+            of: "if [[ ! -x \"$GENERATE_APPCAST\" ]]"))
+        let appBuild = try XCTUnwrap(releaseScript.range(
+            of: "scripts/make-app.sh --release"))
+        XCTAssertLessThan(signerPreflight.lowerBound, appBuild.lowerBound)
+        let appcastGeneration = try XCTUnwrap(releaseScript.range(
+            of: "\"$GENERATE_APPCAST\" --account portavoz"))
+        let appcastVerification = try XCTUnwrap(releaseScript.range(
+            of: "scripts/verify_release_appcast.py"))
+        let caskRendering = try XCTUnwrap(releaseScript.range(
+            of: "# Homebrew cask with real version + sha256."))
+        XCTAssertLessThan(appcastGeneration.lowerBound, appcastVerification.lowerBound)
+        XCTAssertLessThan(appcastVerification.lowerBound, caskRendering.lowerBound)
+        XCTAssertTrue(appcastVerifier.contains("SPARKLE_NAMESPACE"))
+        XCTAssertTrue(appcastVerifier.contains("actual_version != version"))
+        XCTAssertTrue(appcastVerifier.contains("actual_build != build"))
+        XCTAssertTrue(appcastVerifier.contains("enclosure.get(\"url\")"))
+        XCTAssertTrue(appcastVerifier.contains("enclosure.get(\"length\")"))
+        XCTAssertTrue(appcastVerifier.contains("edSignature"))
+        XCTAssertTrue(appcastVerifier.contains("base64.b64decode"))
         XCTAssertEqual(
             releaseScript.components(
                 separatedBy: "require_exact_source_checkout").count,
@@ -11189,16 +11211,21 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(hygiene.contains(
             "Tests.Tooling.test_release_reliability"))
         XCTAssertTrue(hygiene.contains(
+            "Tests.Tooling.test_make_release"))
+        XCTAssertTrue(hygiene.contains(
             "Tests.Tooling.test_source_integration_qualification"))
         XCTAssertTrue(hygiene.contains(
             "Tests.Tooling.test_swift_test_failure_summary"))
         XCTAssertTrue(hygiene.contains(
             "bash -n scripts/run-release-reliability-gates.sh"))
+        XCTAssertTrue(hygiene.contains(
+            "bash -n scripts/make-release.sh"))
         XCTAssertTrue(decisions.contains("## D147"))
         XCTAssertTrue(decisions.contains("## D391"))
         XCTAssertTrue(decisions.contains("## D394"))
         XCTAssertTrue(decisions.contains("## D395"))
         XCTAssertTrue(decisions.contains("## D402"))
+        XCTAssertTrue(decisions.contains("## D445"))
     }
 
     func testCandidateAutomationOwnsEightSpecializedProofs() throws {

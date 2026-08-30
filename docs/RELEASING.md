@@ -239,18 +239,23 @@ scripts/make-release.sh "$PORTAVOZ_RELEASE_VERSION"
 ```
 
 `scripts/make-release.sh` (see its header) does, in order:
-1. `make-app.sh --release --version <v> --build <YYYYMMDDHHMM>` — requires the exported release commit to match a clean `HEAD` before and after the app build, stamps it as `PortavozSourceCommit`, version-stamps, embeds the supplied Developer ID profile, signs the `.app` with the exact production CloudKit/APNs entitlements, and rejects a missing, expired, or mismatched profile.
-2. `make-dmg.sh --skip-build` — archives and notarizes the signed app, staples
+1. Requires the configured `generate_appcast` executable before starting the
+   expensive build. A warning or manually omitted feed is not a release mode.
+2. `make-app.sh --release --version <v> --build <YYYYMMDDHHMM>` — requires the exported release commit to match a clean `HEAD` before and after the app build, stamps it as `PortavozSourceCommit`, version-stamps, embeds the supplied Developer ID profile, signs the `.app` with the exact production CloudKit/APNs entitlements, and rejects a missing, expired, or mismatched profile.
+3. `make-dmg.sh --skip-build` — archives and notarizes the signed app, staples
    and verifies it, packages that app into the DMG, then independently
    notarizes/staples the DMG. It mounts the result and verifies a copied-out
    app exactly as Homebrew will consume it.
-3. Generates the **EdDSA-signed `appcast.xml`** (`generate_appcast --account portavoz`).
-4. Renders the Homebrew **cask** with the real version + sha256.
+4. Generates the **EdDSA-signed `appcast.xml`** (`generate_appcast --account portavoz`), then fails closed unless one regular XML item has the exact version,
+   build, GitHub DMG URL, DMG byte length, and a valid-base64 64-byte EdDSA
+   signature.
+5. Renders the Homebrew **cask** with the real version + sha256.
 
 Output lands in **`dist/release/`**: `Portavoz-<version>.dmg`, `appcast.xml`, `portavoz.rb`.
 
 It takes several minutes (the Swift release build + Apple notarization). Run it
 in the background and wait for `Release <version> ready in dist/release/`.
+That message is emitted only after the appcast contract and cask rendering pass.
 
 ### Verify the artifacts before publishing
 
@@ -258,7 +263,11 @@ in the background and wait for `Release <version> ready in dist/release/`.
 scripts/verify-distribution.sh \
   "dist/release/Portavoz-$PORTAVOZ_RELEASE_VERSION.dmg" \
   --receipt dist/release-readiness/distribution.json
-grep -E 'sparkle:version|edSignature' dist/release/appcast.xml # version + signature present
+scripts/verify_release_appcast.py \
+  --appcast dist/release/appcast.xml \
+  --version "$PORTAVOZ_RELEASE_VERSION" \
+  --build "$PORTAVOZ_RELEASE_BUILD" \
+  --dmg "dist/release/Portavoz-$PORTAVOZ_RELEASE_VERSION.dmg"
 grep -E 'version |sha256 ' dist/release/portavoz.rb            # match the DMG
 ```
 

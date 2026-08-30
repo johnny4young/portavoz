@@ -17147,3 +17147,33 @@ clean committed candidate must still pass all eight proofs from the beginning.
 This benchmark-only source does not certify physical capture, TCC, routes,
 acoustics, Sequoia/Tahoe hardware, accessibility, distribution, CloudKit,
 provider behavior, or field use.
+
+## D445 — Validate the exact signed appcast before declaring a release ready (Aug 2026)
+
+**Context:** the canonical release runbook made Sparkle's `generate_appcast`
+binary and its dedicated Keychain key prerequisites, and promised a signed
+`appcast.xml` beside every DMG and cask. The one-command script nevertheless
+treated a missing signer as a warning, rendered the cask, exited successfully,
+and printed `Release <version> ready`. It also trusted a zero signer exit without
+checking that the expected feed existed or described the exact artifact. A
+release could therefore appear complete while existing users had no valid
+Sparkle update path.
+
+**Decision:** `make-release.sh` requires an executable signer before the
+expensive signed build. After the signer exits, a separate standard-library XML
+verifier admits exactly one regular feed item and requires its
+`sparkle:shortVersionString`, `sparkle:version`, enclosure URL, and enclosure
+byte length to match the requested version, build, and DMG. The enclosure must
+also carry a valid-base64 64-byte EdDSA signature. Missing, symlinked, empty,
+oversized, malformed, unsigned, duplicate, stale, or mismatched evidence exits
+64 before cask rendering or the readiness message.
+
+**Consequences:** release completion now means the exact DMG has a structurally
+complete signed Sparkle feed rather than merely that the signer process was
+attempted. Nine isolated tooling cases run the real orchestration against
+temporary stubs and cover missing signer, absent output, symlinked output,
+malformed signature, wrong version, wrong build, wrong URL, wrong length, and
+exact success without signing, notarizing, publishing, or touching either
+installed app. Cryptographic trust still depends on the protected Sparkle
+Keychain key and final real updater/distribution validation; deterministic
+tests do not certify those external boundaries.

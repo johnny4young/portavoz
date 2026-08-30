@@ -5289,6 +5289,13 @@ extracts and checks the inner application rather than trusting the mounted DMG.
 After those checks succeed, it can atomically emit the signed-build receipt
 consumed by the reliability ledger; it never emits a receipt for a
 partially verified artifact.
+The one-command release owner also fails before the signed build when Sparkle's
+appcast signer is unavailable. After signing, a separate bounded parser requires
+one regular XML feed item whose short version, build, enclosure URL, and byte
+length match the exact DMG and whose enclosure carries a valid-base64 64-byte
+EdDSA signature. Cask rendering and the final readiness message occur
+only after that contract passes; signer exit status or a merely present XML
+file is not release evidence.
 The script-built app also carries native App Intents metadata extracted
 separately from one SDK-only source under the shipping module name. Packaging
 fails unless metadata declares exactly five actions — Start/Stop recording and

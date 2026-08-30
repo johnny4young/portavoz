@@ -86,6 +86,7 @@ done
 python3 scripts/ui_test_scope.py --validate-catalog
 python3 -m unittest Tests.Tooling.test_collect_field_evidence
 python3 -m unittest Tests.Tooling.test_release_reliability
+python3 -m unittest Tests.Tooling.test_make_release
 python3 -m unittest Tests.Tooling.test_candidate_automation
 python3 -m unittest Tests.Tooling.test_source_integration_qualification
 python3 -m unittest Tests.Tooling.test_verify_cloudkit_capabilities
@@ -100,6 +101,7 @@ python3 -m unittest Tests.Tooling.test_ui_test_execution
 python3 -m unittest Tests.Tooling.test_ui_test_verified_base
 python3 -m unittest Tests.Tooling.test_ui_test_verification_anchor
 bash -n scripts/make-app.sh
+bash -n scripts/make-release.sh
 bash -n scripts/make-production-sync-qualification-app.sh
 bash -n scripts/verify-cloudkit-capabilities.sh
 bash -n scripts/run-release-reliability-gates.sh

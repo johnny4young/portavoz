@@ -47,6 +47,10 @@ if [[ "$PORTAVOZ_SIGN_IDENTITY" == "-" ]]; then
   echo "A release cannot use an ad-hoc signing identity." >&2
   exit 64
 fi
+if [[ ! -x "$GENERATE_APPCAST" ]]; then
+  echo "A release requires an executable generate_appcast at $GENERATE_APPCAST." >&2
+  exit 64
+fi
 
 PORTAVOZ_RELEASE_COMMIT="$SOURCE_COMMIT" PORTAVOZ_REQUIRE_CLOUDKIT_PROFILE=1 \
   scripts/make-app.sh --release --version "$VERSION" --build "$BUILD"
@@ -61,12 +65,12 @@ mkdir -p "$RELEASE_DIR"
 mv "dist/Portavoz-$VERSION.dmg" "$RELEASE_DIR/"
 
 # Sparkle appcast (EdDSA-signed with the 'portavoz' Keychain key).
-if [[ -x "$GENERATE_APPCAST" ]]; then
-  "$GENERATE_APPCAST" --account portavoz "$RELEASE_DIR"
-else
-  echo "⚠️  generate_appcast not found ($GENERATE_APPCAST)."
-  echo "   Download it from the Sparkle release and export it in GENERATE_APPCAST."
-fi
+"$GENERATE_APPCAST" --account portavoz "$RELEASE_DIR"
+scripts/verify_release_appcast.py \
+  --appcast "$RELEASE_DIR/appcast.xml" \
+  --version "$VERSION" \
+  --build "$BUILD" \
+  --dmg "$RELEASE_DIR/Portavoz-$VERSION.dmg"
 
 # Homebrew cask with real version + sha256.
 SHA256="$(shasum -a 256 "$RELEASE_DIR/Portavoz-$VERSION.dmg" | cut -d' ' -f1)"
