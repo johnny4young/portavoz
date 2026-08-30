@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,907 cases (15 environment-gated) + 105
+Status: the package inventory contains 2,908 cases (15 environment-gated) + 105
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -6466,3 +6466,30 @@ fixtures do not certify physical Sequoia/Tahoe, VoiceOver/Voice Control, signed
 distribution, production CloudKit, provider behavior, or field use. The signed
 Dev app was rebuilt, reinstalled, and verified under its separate bundle
 identity; the notarized release copy remained untouched.
+
+**D442 fail-closed GitHub citation clocks.** An adversarial adapter fixture
+supplies one finite transcript timestamp at `Double.greatestFiniteMagnitude`.
+Before the fix, draft preparation reached the unchecked floating-point-to-Int
+conversion and terminated XCTest with signal 5 and the exact fatal diagnostic
+that the value exceeded `Int.max`; this retained red result is a product crash,
+not a runner timeout or retry candidate. The citation boundary and formatter
+now independently require finite, nonnegative time below the platform-derived
+safety ceiling, and return typed unavailable evidence without clamping or
+touching credentials, egress receipts, or transport.
+
+The repaired characterization passes 1/1 in 0.002 seconds and the complete
+nine-case GitHub Issue slice passes in 0.012 seconds. Warnings-as-errors,
+strict cache-free SwiftLint with zero violations across 774 files, repository
+hygiene, diff-check, and the complete 2,908-case package suite are green with
+15 explicit asset-gated skips and zero failures in 136.531 seconds. The
+minimum-safe selector owns the 33 affected Commitment Radar, Meeting Detail,
+Menu Bar, and Skills Settings journeys. One 23-second build passed 33/33
+English cases in 403.783 summed seconds (416 seconds wall, p95 30.970,
+maximum 39.881) and 33/33 Spanish cases in 411.508 seconds (426 seconds wall,
+p95 31.234, maximum 40.051). Both execution receipts are complete, every
+unchanged budget is green, and there was no retry or runtime adjustment. These
+local fixtures do not certify real GitHub, Keychain, network, physical
+Sequoia/Tahoe, VoiceOver/Voice Control, signed distribution, production
+CloudKit, provider behavior, or field use. The separately signed Dev app was
+rebuilt, reinstalled, and verified under `app.portavoz.mac.dev`; the notarized
+release copy retained its exact modification time.

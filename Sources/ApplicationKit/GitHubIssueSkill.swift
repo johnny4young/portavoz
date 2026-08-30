@@ -5,6 +5,11 @@ public typealias GitHubIssueRepository = GitHubRepository
 
 /// One exact source excerpt that will be included in the reviewed issue body.
 public struct GitHubIssueCitation: Equatable, Sendable, Identifiable {
+    /// Leaves a wide, platform-derived safety margin before converting a
+    /// rendered clock value to `Int`; ordinary meeting durations are many
+    /// orders of magnitude smaller.
+    public static let maximumTimestamp = TimeInterval(Int.max / 2)
+
     public let segmentID: UUID
     public let timestamp: TimeInterval
     public let speaker: String
@@ -69,6 +74,7 @@ public struct GitHubIssueDraft: Equatable, Sendable {
             && citations.allSatisfy {
                 $0.timestamp.isFinite
                     && $0.timestamp >= 0
+                    && $0.timestamp <= GitHubIssueCitation.maximumTimestamp
                     && !$0.speaker.isEmpty
                     && !$0.excerpt.isEmpty
                     && $0.excerpt.count <= Self.maximumCitationLength
@@ -235,7 +241,7 @@ public struct PrepareGitHubIssueDraft: ApplicationUseCase {
             detail.speakers.first(where: { $0.id == ownerID })
         }.map { $0.displayName ?? $0.label }
         let title = Self.title(item.text)
-        let body = Self.body(
+        let body = try Self.body(
             meetingTitle: detail.meeting.title,
             owner: owner,
             language: summary.language,
@@ -329,7 +335,7 @@ public struct PrepareGitHubIssueDraft: ApplicationUseCase {
         owner: String?,
         language: String?,
         citations: [GitHubIssueCitation]
-    ) -> String {
+    ) throws -> String {
         let labels = GitHubIssueLabels.forLanguage(language)
         var lines = [
             "\(labels.meetingActionItem) **\(escapeMarkdown(meetingTitle))**."
@@ -338,8 +344,8 @@ public struct PrepareGitHubIssueDraft: ApplicationUseCase {
             lines.append("\(labels.owner): **\(escapeMarkdown(owner))**.")
         }
         lines.append("## \(labels.evidence)")
-        lines.append(contentsOf: citations.map { citation in
-            "- `\(timestamp(citation.timestamp))` **\(escapeMarkdown(citation.speaker))**: \(escapeMarkdown(citation.excerpt))"
+        lines.append(contentsOf: try citations.map { citation in
+            "- `\(try timestamp(citation.timestamp))` **\(escapeMarkdown(citation.speaker))**: \(escapeMarkdown(citation.excerpt))"
         })
         lines.append("_\(labels.provenance)_")
         return lines.joined(separator: "\n\n")
@@ -362,7 +368,11 @@ public struct PrepareGitHubIssueDraft: ApplicationUseCase {
         }
     }
 
-    private static func timestamp(_ seconds: TimeInterval) -> String {
+    private static func timestamp(_ seconds: TimeInterval) throws -> String {
+        guard seconds.isFinite,
+              seconds >= 0,
+              seconds <= GitHubIssueCitation.maximumTimestamp
+        else { throw GitHubIssueSkillError.citationsUnavailable }
         let total = max(0, Int(seconds.rounded(.down)))
         let hours = total / 3_600
         let minutes = (total % 3_600) / 60

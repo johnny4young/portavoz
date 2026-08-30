@@ -136,6 +136,19 @@ final class GitHubIssueSkillTests: XCTestCase {
             equals: GitHubIssueSkillError.citationsUnavailable)
     }
 
+    func testFiniteOutOfRangeCitationTimestampFailsClosed() async throws {
+        let fixture = try GitHubIssueFixture(
+            citationStartTime: .greatestFiniteMagnitude)
+
+        await XCTAssertThrowsErrorAsync(
+            try await fixture.prepare().execute(
+                PrepareGitHubIssueDraftRequest(
+                    meetingID: fixture.meeting.id,
+                    actionItemID: fixture.actionItem.id,
+                    repository: "portavoz/demo")),
+            equals: GitHubIssueSkillError.citationsUnavailable)
+    }
+
     func testProposalAndEffectBindExactItemRepositoryAndDraft() async throws {
         let fixture = try GitHubIssueFixture()
         let draft = try await fixture.prepare().execute(
@@ -210,7 +223,8 @@ private struct GitHubIssueFixture {
         evidenceCount: Int = 1,
         correctedText: String? = nil,
         summaryMatchesCorrection: Bool = true,
-        summaryLanguage: String = "en"
+        summaryLanguage: String = "en",
+        citationStartTime: TimeInterval = 3
     ) throws {
         let meeting = Meeting(
             id: MeetingID(rawValue: UUID(uuidString: "A1000000-0000-4000-8000-000000000001")!),
@@ -230,8 +244,8 @@ private struct GitHubIssueFixture {
             channel: .system,
             text: "The rollout stays on Friday [review](now).",
             language: "en",
-            startTime: 3,
-            endTime: 7,
+            startTime: citationStartTime,
+            endTime: max(citationStartTime, 7),
             isFinal: true)
         let actionItem = ActionItem(
             id: UUID(uuidString: "A1000000-0000-4000-8000-000000000004")!,

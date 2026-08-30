@@ -47,8 +47,11 @@ specific publisher. ApplicationKit owns a bounded correction-aware
 `GitHubIssueDraft` for one current pending action item and exactly one current
 evidence record. The two-stage app sheet first admits a canonical ASCII
 `owner/repository`, then shows the exact destination, title, body, citations,
-and egress disclosure. Confirmation recomputes every reviewed byte before the
-Keychain token, durable claim, or egress event can exist. The proposal UUID is
+and egress disclosure. Citation time is finite, nonnegative, and bounded below
+the platform integer-conversion limit; the formatter revalidates that contract
+and returns typed unavailable evidence instead of converting corrupt timing.
+Confirmation recomputes every reviewed byte before the Keychain token, durable
+claim, or egress event can exist. The proposal UUID is
 the data-egress event UUID; the event insert precedes transport and the
 idempotency key includes action item plus repository. The production adapter
 uses an ephemeral no-cookie/no-cache session with 15-second request and

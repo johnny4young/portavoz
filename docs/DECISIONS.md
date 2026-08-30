@@ -17065,3 +17065,25 @@ proves a second request receives successful durable artifact settlement. This
 does not claim forceful pre-emption of arbitrary model code or certify physical
 macOS, EventKit/TCC, accessibility technologies, distribution, CloudKit, or
 field behavior.
+
+## D442 — Bound GitHub citation clocks before integer rendering (Aug 2026)
+
+**Context:** the reviewed GitHub issue draft required citation timestamps to be
+finite and nonnegative, then rendered the clock through an unchecked
+floating-point-to-`Int` conversion. A corrupt but finite transcript offset above
+`Int.max` therefore passed the draft boundary and terminated the process before
+the issue review could fail closed. The adversarial characterization reproduced
+the exact Swift trap and signal 5.
+
+**Decision:** `GitHubIssueCitation` owns one platform-derived maximum timestamp
+with a wide margin below `Int.max`. Draft validation and the private clock
+formatter both enforce finite, nonnegative, in-range time. Formatting is
+throwing and maps an invalid value to `citationsUnavailable`; it never clamps,
+lies about evidence time, reads credentials, or reaches transport.
+
+**Consequences:** impossible imported or corrupted timing can no longer close
+Portavoz while a user prepares an issue. Ordinary meeting offsets remain many
+orders of magnitude below the bound, and reviewed content, correction lineage,
+idempotency, egress consent, and response validation remain unchanged. This
+does not certify real GitHub, Keychain, network, physical macOS, accessibility,
+distribution, CloudKit, or field behavior.

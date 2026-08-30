@@ -6,6 +6,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 29, 2026
 
+- **🧱 Corrupt issue evidence fails safely** — An impossible meeting timestamp can no longer close Portavoz while you prepare a reviewed GitHub issue.
 - **⚡ Cancelled automatic-action waits release immediately** — Leaving a request no longer keeps its Settings waiter alive, while the shared private brief can still finish safely in the background.
 - **🛑 Automatic-action errors lock stale controls** — Even cancellation-shaped local failures now require one verified reload before another automatic-rule change can run.
 - **🧭 Automatic actions never fake success** — A failed local reconciliation now stays queued and Settings asks you to reload instead of pretending the automatic brief was verified.

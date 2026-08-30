@@ -2660,7 +2660,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,907 cases "
+            "package inventory contains 2,908 cases "
                 + "(15 environment-gated) + 105"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -6583,6 +6583,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(domain.contains(".actionItem(draft.actionItemID)"))
         XCTAssertTrue(domain.contains("case outcomeUnknown"))
         XCTAssertTrue(domain.contains(".explicitPerProposal"))
+        XCTAssertTrue(domain.contains("maximumTimestamp"))
+        XCTAssertTrue(domain.contains(
+            "seconds <= GitHubIssueCitation.maximumTimestamp"))
         XCTAssertFalse(domain.contains("import IntegrationsKit"))
         XCTAssertFalse(domain.contains("URLSession"))
         XCTAssertFalse(domain.contains("GitHubIssuesExporter("))
@@ -6629,6 +6632,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(actionItems.contains(
             #"action-item-\(item.id.uuidString)-github"#))
         XCTAssertTrue(decisions.contains("## D434"))
+        XCTAssertTrue(decisions.contains("## D442"))
     }
 
     func testStandingRuleAuthorityStaysClosedLocalAndInspectable() throws {

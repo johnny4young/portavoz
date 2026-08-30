@@ -318,9 +318,12 @@ row opens a two-stage sheet: first a canonical ASCII `owner/repository`, then
 the exact repository, title, body, bounded transcript citations, and remote-
 egress boundary. `ApplicationKit` composes the correction-aware draft from one
 coherent meeting projection and follows the summary language for the English
-or Spanish issue scaffolding. Confirmation recomputes the complete draft before
-reading the existing Keychain GitHub token, claiming the Skill, writing an
-egress receipt, or starting transport. The proposal UUID is also the
+or Spanish issue scaffolding. Citation clocks reject finite values outside the
+platform-safe integer rendering range before formatting, so corrupt transcript
+timing fails closed instead of trapping the process. Confirmation recomputes
+the complete draft before reading the existing Keychain GitHub token, claiming
+the Skill, writing an egress receipt, or starting transport. The proposal UUID
+is also the
 `DataEgressEventID`; the durable insert precedes `GitHubIssuesExporter`, and the
 idempotency key includes the action item plus canonical repository. Production
 uses an ephemeral no-cookie/no-cache session with 15-second request and
