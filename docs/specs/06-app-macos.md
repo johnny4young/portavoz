@@ -3388,6 +3388,11 @@ the rule restores the preview but retains immutable history and artifacts.
 Create, enable, delete, and explicit retry propagate an unexpected supervisor
 failure into the existing fail-closed mutation state before read-back; Settings
 retains its last verified snapshot and offers only a read reload.
+The presentation boundary checks `Task.isCancelled` rather than treating every
+thrown `CancellationError` as caller cancellation. A cancellation-shaped
+dependency failure therefore shows the mutation error and disables create,
+enable, delete, and retry until a verified reload replaces the stale snapshot.
+Read-only artifact inspection remains available.
 
 Temporary-store XCUITest composition uses the production store and supervisor
 with a public/synthetic bilingual brief, an empty host-calendar adapter, a

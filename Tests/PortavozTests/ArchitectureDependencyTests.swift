@@ -2660,8 +2660,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,903 cases "
-                + "(15 environment-gated) + 104"))
+            "package inventory contains 2,906 cases "
+                + "(15 environment-gated) + 105"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
         XCTAssertTrue(gaps.contains(
@@ -6659,6 +6659,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/AppServices+StandingSkills.swift")
         let settings = try Self.contents(
             of: "Sources/portavoz-app/StandingSkillRulesSection.swift")
+        let eventSource = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MenuBar.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(domain.contains("maximumRuleCount = 32"))
@@ -6785,6 +6787,17 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(executionApplication.contains(
             "try await cancelConfirmedClaim(record.proposalID)"))
         XCTAssertTrue(decisions.contains("## D439"))
+        XCTAssertTrue(settings.contains(
+            "guard !isBusy, !externalMutationInFlight, !mutationFailed"))
+        XCTAssertTrue(settings.contains(
+            "let callerCancelled = Task.isCancelled"))
+        XCTAssertTrue(settings.contains(
+            "private var durableMutationDisabled: Bool"))
+        XCTAssertTrue(settings.contains(
+            "isBusy || externalMutationInFlight || mutationFailed"))
+        XCTAssertTrue(eventSource.contains(
+            "-simulate-standing-reconciliation-cancellation-once"))
+        XCTAssertTrue(decisions.contains("## D440"))
     }
 
     func testCommandLibraryReadsEnterThroughApplicationKitComposition() throws {

@@ -93,6 +93,10 @@ private extension StandingSkillRulesSection {
         isLoading || isMutating || loadingBriefID != nil
     }
 
+    private var durableMutationDisabled: Bool {
+        isBusy || externalMutationInFlight || mutationFailed
+    }
+
     private var loadingContent: some View {
         HStack(spacing: 8) {
             ProgressView().controlSize(.small)
@@ -150,7 +154,7 @@ private extension StandingSkillRulesSection {
             }
             .buttonStyle(.borderedProminent)
             .accessibilityIdentifier("settings-standing-create")
-            .disabled(isBusy || externalMutationInFlight)
+            .disabled(durableMutationDisabled)
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .contain)
@@ -183,9 +187,7 @@ private extension StandingSkillRulesSection {
                     .labelsHidden()
                     .accessibilityLabel("Automatic pre-meeting briefs")
                     .accessibilityIdentifier("settings-standing-enabled")
-                    .disabled(
-                        isBusy || externalMutationInFlight
-                            || cannotChangeRule(item))
+                    .disabled(durableMutationDisabled || cannotChangeRule(item))
             }
 
             if deleteConfirmationID == item.id {
@@ -209,13 +211,14 @@ private extension StandingSkillRulesSection {
                         }
                     }
                     .accessibilityIdentifier("settings-standing-delete-confirm")
+                    .disabled(durableMutationDisabled)
                 }
             } else {
                 Button("Delete automatic action", role: .destructive) {
                     deleteConfirmationID = item.id
                 }
                 .accessibilityIdentifier("settings-standing-delete")
-                .disabled(isBusy || externalMutationInFlight)
+                .disabled(durableMutationDisabled)
             }
         }
         .padding(.vertical, 4)
@@ -302,7 +305,7 @@ private extension StandingSkillRulesSection {
                 .accessibilityIdentifier(
                     "settings-standing-history-retry-"
                         + receipt.record.proposalID.uuidString.lowercased())
-                .disabled(isBusy || externalMutationInFlight)
+                .disabled(durableMutationDisabled)
             }
             if briefLoadFailedID == receipt.record.proposalID {
                 Text("The prepared brief could not be verified.")
@@ -422,9 +425,8 @@ private extension StandingSkillRulesSection {
                 historyLimit: historyLimit)
             loadFailed = false
             mutationFailed = false
-        } catch is CancellationError {
-            return
         } catch {
+            guard !Task.isCancelled else { return }
             snapshot = nil
             loadFailed = true
         }
@@ -434,7 +436,7 @@ private extension StandingSkillRulesSection {
     private func mutate(
         _ operation: () async throws -> StandingSkillAutomationCenterSnapshot
     ) async {
-        guard !isBusy, !externalMutationInFlight else { return }
+        guard !isBusy, !externalMutationInFlight, !mutationFailed else { return }
         isMutating = true
         externalMutationInFlight = true
         mutationFailed = false
@@ -445,10 +447,11 @@ private extension StandingSkillRulesSection {
             isMutating = false
             externalMutationInFlight = false
             didChangeExecutionAuthority()
-        } catch is CancellationError {
+        } catch {
+            let callerCancelled = Task.isCancelled
             isMutating = false
             externalMutationInFlight = false
-        } catch {
+            guard !callerCancelled else { return }
             if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
                 Self.logger.error(
                     "Disposable standing mutation failed: \(String(reflecting: error), privacy: .public)")
@@ -481,9 +484,8 @@ private extension StandingSkillRulesSection {
             selectedBrief = StandingSkillBriefTarget(
                 id: proposalID,
                 brief: brief)
-        } catch is CancellationError {
-            return
         } catch {
+            guard !Task.isCancelled else { return }
             briefLoadFailedID = proposalID
         }
     }

@@ -380,6 +380,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "settings-standing-skills": (
         test_id(
             "SkillsSettingsUITests",
+            "testAutomaticBriefCancellationFailureRequiresVerifiedReload",
+        ),
+        test_id(
+            "SkillsSettingsUITests",
             "testAutomaticBriefRuleRecoversAndKeepsInspectableHistory",
         ),
     ),

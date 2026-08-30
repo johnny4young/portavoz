@@ -109,6 +109,7 @@ extension AppServices: MenuBarModelClient {
 actor AppUpcomingEventSource: StandingPreMeetingBriefEventSource {
     private let usesTemporaryStore: Bool
     private let seededEvent: UpcomingEvent?
+    private var simulatedReconciliationCancellationCount: Int
 
     init(arguments: [String], usesTemporaryStore: Bool) {
         self.usesTemporaryStore = usesTemporaryStore
@@ -119,6 +120,11 @@ actor AppUpcomingEventSource: StandingPreMeetingBriefEventSource {
                 startDate: Date().addingTimeInterval(15 * 60),
                 attendees: ["Ana"])
             : nil
+        simulatedReconciliationCancellationCount = usesTemporaryStore
+            && arguments.contains(
+                "-simulate-standing-reconciliation-cancellation-once")
+            ? 1
+            : 0
     }
 
     func nextEvent() -> UpcomingEvent? {
@@ -129,6 +135,10 @@ actor AppUpcomingEventSource: StandingPreMeetingBriefEventSource {
 
     func upcomingEvent(matching identifier: String) throws -> UpcomingEvent? {
         if usesTemporaryStore {
+            if simulatedReconciliationCancellationCount > 0 {
+                simulatedReconciliationCancellationCount -= 1
+                throw CancellationError()
+            }
             return seededEvent?.id == identifier ? seededEvent : nil
         }
         return CalendarAttendeeSource().event(matching: identifier)

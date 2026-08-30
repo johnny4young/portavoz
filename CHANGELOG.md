@@ -6,6 +6,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 29, 2026
 
+- **🛑 Automatic-action errors lock stale controls** — Even cancellation-shaped local failures now require one verified reload before another automatic-rule change can run.
 - **🧭 Automatic actions never fake success** — A failed local reconciliation now stays queued and Settings asks you to reload instead of pretending the automatic brief was verified.
 - **🤖 Automatic briefs stay under your control** — Create, pause, inspect, retry, and delete one private local pre-meeting rule, with every prepared brief and run status visible in Suggested actions.
 - **🐙 Review-first GitHub issues** — Turn one cited pending action item into an exact issue only after reviewing its repository, title, body, and evidence.

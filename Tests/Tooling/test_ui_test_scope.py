@@ -778,7 +778,7 @@ class UITestScopeTests(unittest.TestCase):
             selection = select_paths([path])
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
-            self.assertEqual(len(selection.tests), 1, path)
+            self.assertEqual(len(selection.tests), 2, path)
 
     def test_harness_change_expands_to_the_complete_bilingual_catalog(self):
         selection = select_paths(["Makefile"])

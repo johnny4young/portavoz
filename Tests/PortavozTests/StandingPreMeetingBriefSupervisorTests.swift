@@ -310,6 +310,42 @@ final class StandingPreMeetingBriefSupervisorTests: XCTestCase {
         await supervisor.stop()
     }
 
+    func testDependencyCancellationIsNotMistakenForWorkerCancellation() async throws {
+        let store = try MeetingStore.inMemory()
+        let rule = try await createRule(in: store)
+        let event = upcomingEvent(id: "dependency-cancellation", offset: 30 * 60)
+        let source = StandingSupervisorEventSource(events: [event])
+        let proposalID = UUID()
+        let firstRun = makeExecutor(
+            store: store,
+            preparer: AlwaysFailingStandingBriefPreparer(),
+            source: source,
+            proposalID: proposalID)
+        let firstOutcome = try await firstRun.execute((rule, event))
+        XCTAssertEqual(firstOutcome, .failed(proposalID))
+
+        let supervisor = makeSupervisor(
+            store: store,
+            preparer: RecordingStandingBriefPreparer(),
+            source: source)
+        await source.cancelNextResolution()
+
+        do {
+            try await supervisor.reconcileNow()
+            XCTFail("dependency cancellation must not report worker success")
+        } catch is CancellationError {
+            XCTAssertFalse(
+                Task.isCancelled,
+                "the caller remains active and must present this as a failure")
+        }
+
+        await supervisor.kick()
+        await waitUntil {
+            (try? await store.standingSkillArtifact(proposalID: proposalID)) != nil
+        }
+        await supervisor.stop()
+    }
+
     private func makeSupervisor(
         store: MeetingStore,
         preparer: any StandingPreMeetingBriefPreparing,
@@ -391,6 +427,7 @@ private actor StandingSupervisorEventSource:
     StandingPreMeetingBriefEventSource {
     private var events: [UpcomingEvent]
     private var resolutionFailureCount = 0
+    private var resolutionCancellationCount = 0
     private let changes: AsyncStream<Void>
     private let continuation: AsyncStream<Void>.Continuation
 
@@ -408,6 +445,10 @@ private actor StandingSupervisorEventSource:
     }
 
     func upcomingEvent(matching identifier: String) throws -> UpcomingEvent? {
+        if resolutionCancellationCount > 0 {
+            resolutionCancellationCount -= 1
+            throw CancellationError()
+        }
         if resolutionFailureCount > 0 {
             resolutionFailureCount -= 1
             throw StandingSupervisorTestError.failed
@@ -417,6 +458,10 @@ private actor StandingSupervisorEventSource:
 
     func failNextResolution() {
         resolutionFailureCount += 1
+    }
+
+    func cancelNextResolution() {
+        resolutionCancellationCount += 1
     }
 
     func replaceEvents(_ events: [UpcomingEvent]) {

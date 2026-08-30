@@ -724,6 +724,14 @@ history, bounded retry, and a private artifact sheet. Rule deletion preserves
 history. External, destructive, clipboard, file, reminder, email, Gist, and
 GitHub work still require their exact per-proposal confirmation.
 
+The Settings boundary distinguishes cancellation of its own task from a
+dependency that merely throws `CancellationError`: only `Task.isCancelled`
+silently abandons presentation. Any other cancellation-shaped reconciliation
+failure enters the same ambiguous-mutation state as other errors. Create,
+enable, delete, and retry stay disabled against the stale snapshot until a
+verified read replaces it; artifact inspection and the explicit reload remain
+read-only recovery paths.
+
 Application failures cross into presentation as bounded categories or stable
 workflow codes. Raw filesystem paths, localized dependency errors, model
 payloads, and storage implementation details do not form the UI contract.

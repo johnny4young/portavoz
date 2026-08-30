@@ -1063,6 +1063,50 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         assertRecentReceiptInSettings(in: app)
     }
 
+    /// A dependency may use `CancellationError` without cancelling the caller.
+    /// The real Settings boundary must keep the stale snapshot fail-closed
+    /// until one verified read replaces it.
+    @MainActor
+    func testAutomaticBriefCancellationFailureRequiresVerifiedReload() {
+        let app = XCUIApplication.portavoz(
+            seedDemo: true,
+            seedBrief: true)
+        app.launchArguments.append(
+            "-simulate-standing-reconciliation-cancellation-once")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSkillsSettings(in: app)
+
+        let create = app.buttons["settings-standing-create"]
+        XCTAssertTrue(scrollToVisible(create, in: app))
+        XCTAssertTrue(create.waitForHittable(timeout: 5))
+        create.click()
+
+        let error = app.control(
+            withIdentifier: "settings-standing-mutation-error")
+        XCTAssertTrue(
+            error.waitForExistenceFast(timeout: 10),
+            "dependency cancellation must remain an unverified mutation")
+        XCTAssertFalse(
+            create.isEnabled,
+            "stale automatic-action controls must not accept another mutation")
+
+        let reload = app.buttons["settings-standing-mutation-reload"]
+        XCTAssertTrue(scrollToVisible(reload, in: app))
+        XCTAssertTrue(reload.waitForHittable(timeout: 5))
+        reload.click()
+
+        XCTAssertTrue(
+            waitForDisappearance(error),
+            "only a verified durable read may clear the mutation failure")
+        let toggle = app.control(withIdentifier: "settings-standing-enabled")
+        XCTAssertTrue(scrollToVisible(toggle, in: app))
+        XCTAssertTrue(toggle.waitForHittable(timeout: 5))
+        XCTAssertFalse(create.exists)
+    }
+
     /// AUTO-5c — one disposable, bilingual-capable journey covers the entire
     /// standing-rule lifecycle without Calendar, a model download, or private
     /// meeting data. The injected first-attempt failure is deterministic and

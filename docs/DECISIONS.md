@@ -17011,3 +17011,29 @@ durable owner, one injected event-resolution failure, and one later signal to
 prove the same proposal succeeds on attempt two. This does not make host
 EventKit/TCC, physical Sequoia/Tahoe, assistive technology, distribution,
 CloudKit, or field behavior automated evidence.
+
+## D440 — Treat cancellation-shaped dependency errors as unverified mutations (Aug 2026)
+
+**Context:** D439 correctly distinguished a cancelled reconciliation worker
+from a dependency that throws `CancellationError` while that worker remains
+active. The Settings presentation boundary still caught the error type alone
+and silently treated both cases as caller cancellation. Its stale Create,
+enable, delete, and retry controls also remained enabled despite copy requiring
+a reload. A resolver or store adapter could therefore preserve the work yet
+hide the unverified mutation and accept another mutation against stale state.
+
+**Decision:** a standing Settings operation is silently abandoned only when
+`Task.isCancelled` is true. Any error from an active presentation task,
+including `CancellationError`, enters the existing ambiguous-mutation state.
+That state rejects and disables every durable standing-rule mutation until one
+verified read replaces the snapshot. Read-only artifact review and the explicit
+reload remain available. A temporary-store-only event-source fixture injects
+one cancellation-shaped resolution failure for a complete real-app recovery
+journey; it never reaches EventKit or private data.
+
+**Consequences:** cancellation remains responsive when SwiftUI actually removes
+the task, but an adapter cannot erase its own failure by choosing a cancellation
+error type. The UI and application authority now agree that only a verified
+read re-enables mutations. This automated fixture does not certify physical
+macOS behavior, TCC, accessibility technologies, distribution, CloudKit, or
+field evidence.
