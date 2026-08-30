@@ -1,5 +1,4 @@
 {
-  "liveAssistIterations": 100,
   "kind": "apuntador-leak-baseline-contract",
   "maximumLeakedBytes": 0,
   "maximumLeaks": 0,
@@ -18,6 +17,7 @@
         "observations"
       ],
       "id": "live-assist-released",
+      "iterations": 100,
       "kind": "live-assist",
       "successMarker": "live-assist-validation: observations written"
     },
@@ -27,6 +27,7 @@
         "observations"
       ],
       "id": "live-assist-bundled-question",
+      "iterations": 100,
       "kind": "live-assist",
       "successMarker": "live-assist-validation: observations written"
     },
@@ -37,6 +38,7 @@
         "resource"
       ],
       "id": "ask",
+      "iterations": 10,
       "kind": "ask",
       "successMarker": "bench-ask: resource sample complete"
     },
@@ -46,9 +48,10 @@
         "resource"
       ],
       "id": "semantic-indexing",
+      "iterations": 10,
       "kind": "semantic-indexing",
       "successMarker": "bench-indexing: resource sample complete"
     }
   ],
-  "schemaVersion": 1
+  "schemaVersion": 2
 }

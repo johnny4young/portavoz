@@ -6,6 +6,8 @@ VERSION=""
 BUILD=""
 OUTPUT=""
 ITERATIONS=100
+ASK_ITERATIONS=10
+INDEXING_ITERATIONS=10
 TIMEOUT_SECONDS="${PORTAVOZ_LEAK_TIMEOUT_SECONDS:-1200}"
 
 usage() {
@@ -233,6 +235,7 @@ run_under_leaks ask \
     --bench-resource-ask \
     --bench-resource-output "$ask_root" \
     --bench-resource-run 1 \
+    --bench-resource-iterations "$ASK_ITERATIONS" \
     --bench-resource-timeout 900 \
     --bench-resource-process-timeout "$TIMEOUT_SECONDS"
 ask_log="$LEAK_LOG"
@@ -252,6 +255,7 @@ run_under_leaks semantic-indexing \
     --bench-resource-indexing \
     --bench-resource-output "$indexing_root" \
     --bench-resource-run 1 \
+    --bench-resource-iterations "$INDEXING_ITERATIONS" \
     --bench-resource-timeout 900 \
     --bench-resource-process-timeout "$TIMEOUT_SECONDS"
 indexing_log="$LEAK_LOG"

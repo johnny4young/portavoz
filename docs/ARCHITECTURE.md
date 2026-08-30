@@ -4747,18 +4747,26 @@ Assist policy, the bundled Sequoia/Tahoe question classifier, deep Ask, and
 semantic indexing over public synthetic/disposable state. A zero tool exit is
 insufficient: every path must publish its fresh product completion artifact,
 the parser rejects fatal launch/tool markers, and the receipt requires zero
-leaks and zero leaked bytes. Schema-2 fragments and receipts also bind each
-workload's exact repetition: 100 in-process rounds for each Live Assist lane
-and one canonical workload for Ask and indexing. The observation validator
-checks the Live Assist resource count rather than trusting the runner argument.
+leaks and zero leaked bytes. Schema-3 fragments and receipts bind the exact
+100/100/10/10 repetition matrix. The observation validator checks the two Live
+Assist resource counts, ten complete Ask queue/execution spans, and ten real
+index-maintenance spans rather than trusting runner arguments. Ask retains one
+strict canonical pipeline trace while every answer must preserve exact fixture
+citations and nonempty output. Indexing prepares fresh disposable file-backed
+stores before measurement so later operations cannot become post-drain no-ops.
 This strengthens the existing owner without adding a duplicate workflow. The
 runner is current-host high-iteration evidence, not a temporal soak or a claim
 about retained cycles outside the tool's reach or physical platform coverage.
-The leak parser, runner, and contract map to the exact bilingual Ask,
-background-work, and Live Assist UI scopes (12 unique journeys per locale), not
-the shared-harness fallback. Candidate automation remains a full bilingual
-harness owner because it validates the final UI receipt itself. Selector or
-other shared-harness changes still run the complete catalogue.
+`BenchMode+ResourceAsk.swift` owns the repeated Ask workload and its exact
+answer/citation evidence, while `BenchMode+ResourceIndexing.swift` owns the ten
+isolated file-backed stores and real publication passes; `BenchMode.swift` keeps
+only the shared benchmark composition and fixture surface.
+The leak parser, runner, contract, and benchmark workload owners map to the
+exact bilingual Ask, background-work, and Live Assist UI scopes (12 unique
+journeys per locale), not the shared-harness fallback. Candidate automation
+remains a full bilingual harness owner because it validates the final UI
+receipt itself. Selector or other shared-harness changes still run the complete
+catalogue.
 
 The installed-model lane synthesizes one bounded spoken fixture from tracked
 public English text. Its bilingual conversation is not one `say` process with
@@ -4782,7 +4790,7 @@ identity and bounded process watchdog, so a new TCC prompt or suspended app
 cannot delegate routine candidate QA to the user or wait indefinitely.
 
 The performance proof is deliberately named candidate automation rather than
-universal performance certification. Candidate contract schema 3 pins the
+universal performance certification. Candidate contract schema 4 pins the
 same three-run confirmation count as PERF-008. The runner begins with one
 non-strict authoritative ledger. A clean ledger is canonical immediately; a
 regression candidate opens exactly two more sequential ledgers on the same

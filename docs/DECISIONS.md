@@ -17311,3 +17311,42 @@ launches per locale. This change modifies only selection cost, not assertions,
 budgets, retries, locale coverage, product code, candidate closure, or the final
 105-plus-105 release gate. D449 itself changes the selector and therefore must
 pass the complete bilingual catalogue once.
+
+## D450 — Repeat real Ask and indexing work inside the existing leak owner (Aug 2026)
+
+**Context:** D448 proved high-iteration stability for the inexpensive Live
+Assist lanes but retained one Ask and one indexing operation. Reusing
+`--bench-resource-run` as intensity would corrupt its receipt-identity meaning.
+Repeated Ask telemetry also cannot enter the strict one-trace pipeline probe,
+and rerunning indexing after its first drain would report success over an empty
+corpus. A second soak workflow would duplicate ownership and CI cost.
+
+**Decision:** keep the same four-scenario Release-app owner and add the separate
+bounded `--bench-resource-iterations` option, accepted only from 1 through 10.
+The tracked contract moves repetition onto every scenario and fixes the matrix
+at 100/100/10/10. Deep Ask runs the same current production workflow ten times
+inside one resource window. The first operation remains the canonical complete
+pipeline trace; every operation must return nonempty generated text, exact
+valid fixture citations, and the same citation-identity digest. Resource
+telemetry must contain exactly ten completed queue-wait and execution spans.
+
+Semantic indexing prepares ten 1,024-segment public-synthetic corpora before
+measurement. Iteration one retains the canonical temporary app store; the
+other nine use distinct disposable file-backed GRDB stores under the private
+benchmark root. Every iteration therefore executes the real embedding and
+publication path rather than an empty maintenance pass, and resource telemetry
+must contain exactly ten completed maintenance spans. Leak receipt schema 3,
+candidate contract schema 4, and contract schema 2 reject missing, extra,
+failed, or count-drifted workloads. The benchmark Swift owners join the same
+12-test bilingual product-path scope; selector changes still require one full
+bilingual qualification.
+
+**Consequences:** one clean current-host candidate can now prove zero detected
+at-exit leaks plus no crash across repeated installed Foundation Models Ask and
+installed Apple-embedding indexing, without retries or another workflow. A
+pre-change Release calibration measured one Ask resource window at 1.109
+seconds and one 1,024-segment indexing window at 8.161 seconds, so ten is a
+bounded evidence load rather than an arbitrary CI soak. This still does not
+prove hours-long temporal stability, every retained cycle, thermal behavior,
+cross-hardware or physical Sequoia/Tahoe coverage, other installed providers,
+or field usefulness; those authorities remain open.

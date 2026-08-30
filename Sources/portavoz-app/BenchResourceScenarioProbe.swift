@@ -89,6 +89,7 @@ struct BenchSummaryResourceConfiguration: Equatable {
 }
 
 struct BenchAskResourceConfiguration: Equatable {
+    let iterations: Int
     let timeoutSeconds: Int
 
     static func requested(
@@ -97,8 +98,14 @@ struct BenchAskResourceConfiguration: Equatable {
         guard arguments.contains("--bench-resource-ask") else {
             return nil
         }
-        return BenchAskResourceConfiguration(timeoutSeconds:
-            try BenchResourceArguments.integer(
+        return BenchAskResourceConfiguration(
+            iterations: try BenchResourceArguments.integer(
+                "--bench-resource-iterations",
+                arguments: arguments,
+                defaultValue: 1,
+                allowed: 1...10,
+                error: BenchAskResourceError.invalidIterations),
+            timeoutSeconds: try BenchResourceArguments.integer(
                 "--bench-resource-timeout",
                 arguments: arguments,
                 defaultValue: 900,
@@ -108,6 +115,7 @@ struct BenchAskResourceConfiguration: Equatable {
 }
 
 struct BenchIndexingResourceConfiguration: Equatable {
+    let iterations: Int
     let timeoutSeconds: Int
 
     static func requested(
@@ -116,8 +124,14 @@ struct BenchIndexingResourceConfiguration: Equatable {
         guard arguments.contains("--bench-resource-indexing") else {
             return nil
         }
-        return BenchIndexingResourceConfiguration(timeoutSeconds:
-            try BenchResourceArguments.integer(
+        return BenchIndexingResourceConfiguration(
+            iterations: try BenchResourceArguments.integer(
+                "--bench-resource-iterations",
+                arguments: arguments,
+                defaultValue: 1,
+                allowed: 1...10,
+                error: BenchIndexingResourceError.invalidIterations),
+            timeoutSeconds: try BenchResourceArguments.integer(
                 "--bench-resource-timeout",
                 arguments: arguments,
                 defaultValue: 900,
@@ -134,8 +148,12 @@ enum BenchResourceArguments {
         allowed: ClosedRange<Int>,
         error: Failure
     ) throws(Failure) -> Int {
-        guard let index = arguments.firstIndex(of: option) else {
+        let indices = arguments.indices.filter { arguments[$0] == option }
+        guard !indices.isEmpty else {
             return defaultValue
+        }
+        guard indices.count == 1, let index = indices.first else {
+            throw error
         }
         guard arguments.indices.contains(index + 1),
               let value = Int(arguments[index + 1]),
@@ -340,11 +358,13 @@ enum BenchSummaryResourceError: Error, Equatable, LocalizedError {
 enum BenchAskResourceError: Error, Equatable, LocalizedError {
     case assetsNotReady
     case invalidCitations
+    case invalidIterations
     case invalidTimeout
     case noCitations
     case noGeneratedAnswer
     case operationFailed(String)
     case timedOut(Int)
+    case unstableCitations
 
     var errorDescription: String? {
         switch self {
@@ -352,6 +372,8 @@ enum BenchAskResourceError: Error, Equatable, LocalizedError {
             "Ask requires installed Apple embedding assets and available Foundation Models"
         case .invalidCitations:
             "Ask resource operation returned invalid citations"
+        case .invalidIterations:
+            "--bench-resource-iterations must be between 1 and 10"
         case .invalidTimeout:
             "--bench-resource-timeout must be between 60 and 3600 seconds"
         case .noCitations:
@@ -362,6 +384,8 @@ enum BenchAskResourceError: Error, Equatable, LocalizedError {
             "Ask resource operation failed: \(message)"
         case .timedOut(let seconds):
             "Ask resource operation exceeded \(seconds) seconds"
+        case .unstableCitations:
+            "Ask resource operation changed citation identity across repetitions"
         }
     }
 }
@@ -369,6 +393,7 @@ enum BenchAskResourceError: Error, Equatable, LocalizedError {
 enum BenchIndexingResourceError: Error, Equatable, LocalizedError {
     case assetsNotReady
     case incomplete(expected: Int, actual: Int)
+    case invalidIterations
     case invalidTimeout
     case operationFailed(String)
     case timedOut(Int)
@@ -379,6 +404,8 @@ enum BenchIndexingResourceError: Error, Equatable, LocalizedError {
             "Indexing requires installed Apple Latin embedding assets"
         case .incomplete(let expected, let actual):
             "Indexing completed \(actual) of \(expected) fixed segments"
+        case .invalidIterations:
+            "--bench-resource-iterations must be between 1 and 10"
         case .invalidTimeout:
             "--bench-resource-timeout must be between 60 and 3600 seconds"
         case .operationFailed(let message):

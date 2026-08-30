@@ -1642,7 +1642,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let indexingBench = try Self.contents(
             of: "Sources/portavoz-app/BenchMode+ResourceIndexing.swift")
         let askBench = try Self.contents(
-            of: "Sources/portavoz-app/BenchMode.swift")
+            of: "Sources/portavoz-app/BenchMode+ResourceAsk.swift")
 
         XCTAssertTrue(protocolSource.contains(
             "public protocol SemanticEmbeddingRuntimeClient: Sendable"))
@@ -5036,6 +5036,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/BenchResourceScenarioProbe.swift")
         let benchMode = try Self.contents(
             of: "Sources/portavoz-app/BenchMode.swift")
+        let askBench = try Self.contents(
+            of: "Sources/portavoz-app/BenchMode+ResourceAsk.swift")
         let refinePreparationMode = try Self.contents(
             of: "Sources/portavoz-app/BenchMode+ResourceRefinePreparation.swift")
         let recordingRunner = try Self.contents(
@@ -5203,14 +5205,14 @@ final class ArchitectureDependencyTests: XCTestCase {
             "services.regenerateSummary.execute"))
         XCTAssertTrue(benchMode.contains(
             "providerOverride: .mlx"))
-        XCTAssertTrue(benchMode.contains(
+        XCTAssertTrue(askBench.contains(
             "runAskResourceBenchIfRequested"))
-        XCTAssertTrue(benchMode.contains(
+        XCTAssertTrue(askBench.contains(
             "services.semanticIndexingCoordinator.all"))
-        XCTAssertTrue(benchMode.contains(
+        XCTAssertTrue(askBench.contains(
             "allowAssetDownload: false"))
-        XCTAssertTrue(benchMode.contains("pendingAtSeed"))
-        XCTAssertTrue(benchMode.contains(
+        XCTAssertTrue(askBench.contains("pendingAtSeed"))
+        XCTAssertTrue(askBench.contains(
             "source: .library"))
         XCTAssertTrue(indexingBench.contains(
             "runIndexingResourceBenchIfRequested"))
@@ -11245,7 +11247,7 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testCandidateAutomationOwnsEightSpecializedProofs() throws {
         let contract = try Self.jsonObject(
             at: "docs/evidence/candidate-automation.json")
-        XCTAssertEqual(contract["schemaVersion"] as? Int, 3)
+        XCTAssertEqual(contract["schemaVersion"] as? Int, 4)
         XCTAssertEqual(
             contract["kind"] as? String,
             "candidate-automation-contract")
@@ -11289,7 +11291,14 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertEqual(
             memoryLeaks["contract"] as? String,
             "docs/evidence/apuntador-leak-baseline.json")
-        XCTAssertEqual(memoryLeaks["liveAssistIterations"] as? Int, 100)
+        XCTAssertEqual(
+            memoryLeaks["scenarioIterations"] as? [String: Int],
+            [
+                "live-assist-released": 100,
+                "live-assist-bundled-question": 100,
+                "ask": 10,
+                "semantic-indexing": 10,
+            ])
         XCTAssertEqual(
             memoryLeaks["requiredScenarios"] as? [String],
             [
@@ -11356,9 +11365,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(leakRunner.contains("ITERATIONS=100"))
         XCTAssertTrue(leakRunner.contains(
             "--live-assist-iterations must match the fixed value 100"))
-        XCTAssertTrue(leakValidator.contains("SCHEMA_VERSION = 2"))
+        XCTAssertTrue(leakValidator.contains("SCHEMA_VERSION = 3"))
         XCTAssertTrue(leakValidator.contains(
-            "LIVE_ASSIST_ITERATIONS = 100"))
+            "\"ask\": 10"))
         XCTAssertTrue(leakValidator.contains(
             "live-assist evidence iteration count does not match the contract"))
         XCTAssertTrue(makefile.contains(
@@ -11373,6 +11382,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D447"))
         XCTAssertTrue(decisions.contains("## D448"))
         XCTAssertTrue(decisions.contains("## D449"))
+        XCTAssertTrue(decisions.contains("## D450"))
     }
 
     func testRealModelGateReservesContextAndNeverEchoesTranscriptContent() throws {

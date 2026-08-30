@@ -27,7 +27,7 @@ class CandidateAutomationTests(unittest.TestCase):
         self.contract = candidate.load_contract()
 
     def test_tracked_contract_is_exact_and_complete(self):
-        self.assertEqual(self.contract_document["schemaVersion"], 3)
+        self.assertEqual(self.contract_document["schemaVersion"], 4)
         self.assertEqual(
             self.contract["proofs"],
             (
@@ -75,7 +75,8 @@ class CandidateAutomationTests(unittest.TestCase):
             ROOT / "docs" / "evidence" / "apuntador-leak-baseline.json",
         )
         self.assertEqual(
-            self.contract["memoryLeaks"]["liveAssistIterations"], 100
+            self.contract["memoryLeaks"]["scenarioIterations"],
+            candidate.apuntador_leak_baseline.EXPECTED_ITERATIONS,
         )
         self.assertEqual(
             self.contract["memoryLeaks"]["requiredScenarios"],
@@ -156,6 +157,14 @@ class CandidateAutomationTests(unittest.TestCase):
             "leak scenarios drifted",
         ):
             candidate.validate_contract(weak_leaks)
+
+        weak_leak_iterations = copy.deepcopy(self.contract_document)
+        weak_leak_iterations["memoryLeaks"]["scenarioIterations"]["ask"] = 9
+        with self.assertRaisesRegex(
+            candidate.CandidateAutomationError,
+            "leak iterations must match",
+        ):
+            candidate.validate_contract(weak_leak_iterations)
 
     def test_duplicate_json_keys_fail_closed(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1339,13 +1348,9 @@ class CandidateAutomationTests(unittest.TestCase):
                 {
                     "id": identifier,
                     "state": "pass",
-                    "iterations": (
-                        leak_contract["liveAssistIterations"]
-                        if leak_contract["scenarios"][identifier]["kind"]
-                        == "live-assist"
-                        else candidate.apuntador_leak_baseline
-                        .SINGLE_WORKLOAD_ITERATIONS
-                    ),
+                    "iterations": leak_contract["scenarios"][identifier][
+                        "iterations"
+                    ],
                     "leakCount": 0,
                     "leakedBytes": 0,
                     "evidenceSHA256": {

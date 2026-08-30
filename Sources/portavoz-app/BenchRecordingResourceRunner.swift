@@ -340,9 +340,7 @@ private enum BenchConcurrentRecordingWorkload {
         case .indexing(let workload):
             let result = try await workload.run(
                 timeoutSeconds: timeoutSeconds)
-            try await workload.validate(
-                result,
-                store: services.store)
+            try await workload.validate(result)
             return "bench-record: concurrent semantic indexing complete"
         }
     }

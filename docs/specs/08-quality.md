@@ -2901,7 +2901,7 @@ Specialized validation is fail closed. The performance ledger must be
 authoritative, contain its exact 25-metric inventory, measure all twelve
 scale/semantic/Spotlight metrics in `pass` or budgetless `diagnostic` state,
 and retain exactly thirteen declared non-autonomous metrics as
-`not-measured`. Candidate contract schema 3 also pins PERF-008's three-run
+`not-measured`. Candidate contract schema 4 also pins PERF-008's three-run
 authority. One clean first ledger proceeds without repetition. A first
 `regression-candidate` runs exactly two additional sequential non-strict
 ledgers on the identical host and toolchain; every ledger and its SHA-256 is
@@ -6607,9 +6607,9 @@ journey passed 1/1 in English in 2.592 seconds and 1/1 in Spanish in 2.363
 seconds from one build, without retry, adjusted budget, or Notification Center
 override. No release, notarization, publication, or installation occurred.
 
-**D447/D448 content-free real-app leak and repetition authority.** Candidate
-contract schema 3 adds one current-host memory-leak receipt without inventing a
-ninth high-level proof.
+**D447/D448/D450 content-free real-app leak and repetition authority.**
+Candidate contract schema 4 adds one current-host memory-leak receipt without
+inventing a ninth high-level proof.
 The clean-source runner builds one Release application and copies it into a
 mode-0700 scratch root. Only that disposable copy is renamed and ad-hoc signed
 with the existing resource-benchmark library-validation exception; the shipped
@@ -6617,26 +6617,34 @@ signature and both installed application bundles remain untouched. Apple's
 `leaks --atExit` runs with `--noContent --nostacks` over four public-synthetic
 product paths: a fixed 100-iteration released Live Assist workload, a fixed
 100-iteration bundled Sequoia/Tahoe question-classifier workload, one canonical
-deep Ask workload, and one canonical semantic-indexing workload. No network,
-private library, user transcript, or caller-supplied evidence state is admitted.
+deep Ask pipeline trace across ten complete Ask operations, and ten real
+semantic-indexing operations. No network, private library, user transcript, or
+caller-supplied evidence state is admitted.
 
 A tool exit alone is never accepted. Each scenario must exit zero, contain its
 unique product completion marker exactly once, and produce a fresh bounded
 regular evidence artifact accepted by the existing Live Assist or resource
 validator. Fatal task-port, dynamic-library, signal, and process-launch markers
 block even if `leaks` itself returns zero. Any reported leak or leaked byte
-blocks. The owner-only schema-2 fragment and receipt bind the exact release
+blocks. The owner-only schema-3 fragment and receipt bind the exact release
 version, build, clean commit, host, Xcode build, closed instrumentation policy,
-canonical scenario order, exact per-scenario iteration count, and SHA-256 of
+canonical scenario order, exact 100/100/10/10 iteration matrix, and SHA-256 of
 every content-free evidence fragment. The Live Assist adapter requires the
-resource observation itself to report the tracked 100 iterations; Ask and
-indexing require one. Missing, symlinked, oversized, duplicated, reordered,
-malformed, workload-drifted, fatal, incomplete, leaking, or identity-mismatched
-evidence produces no candidate qualification.
+resource observation itself to report the tracked 100 iterations. Ask requires
+ten completed queue-wait/execution spans, one canonical complete pipeline trace,
+nonempty generated output, and stable exact fixture citations across all ten
+answers. Indexing prepares one canonical temporary-store corpus plus nine
+independent disposable file-backed corpora before measurement, each with 1,024
+pending public-synthetic segments, and requires ten completed maintenance
+spans. Reusing the receipt run identifier as an iteration count or accepting
+post-drain no-op indexing is forbidden. Missing, symlinked, oversized,
+duplicated, reordered, malformed, workload-drifted, fatal, incomplete, leaking,
+or identity-mismatched evidence produces no candidate qualification.
 
-This closes a deterministic current-host leak check for those four paths plus
-high-iteration in-process stability for the two Live Assist lanes only.
-The three leak-specific evidence owners select the exact existing Ask,
+This closes a deterministic current-host leak check for those four paths,
+high-iteration in-process stability for both Live Assist lanes, and bounded
+repeated installed-model Ask/indexing stability. The leak-specific evidence and
+benchmark workload owners select the exact existing Ask,
 background-work, and Live Assist journeys in both locales: 12 tests per locale.
 They are not UI receipt/build/runtime harness owners, so expanding them to every
 unrelated surface would be duplicate coverage. Candidate automation remains in
@@ -6644,6 +6652,6 @@ the complete bilingual shared-harness class because it validates the UI receipt;
 the final integration/RC/release gate also remains the complete catalogue.
 It is not an Instruments allocation/lifetime trace, proof that no retained
 cycle exists outside `leaks` detection, a long-duration stress/thermal result,
-an installed Foundation Models or provider result, physical Sequoia/Tahoe
-evidence, VoiceOver/Voice Control evidence, signed distribution, production
-CloudKit, or field reliability. Those gates remain separate and explicit.
+cross-hardware provider qualification, physical Sequoia/Tahoe evidence,
+VoiceOver/Voice Control evidence, signed distribution, production CloudKit, or
+field reliability. Those gates remain separate and explicit.

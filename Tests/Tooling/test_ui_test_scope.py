@@ -97,11 +97,9 @@ class UITestScopeTests(unittest.TestCase):
         expected = set(FEATURE_TESTS["launch-recovery"])
         expected.update(FEATURE_TESTS["main-shell"])
         for path in (
-            "Sources/portavoz-app/BenchMode.swift",
             "Sources/portavoz-app/BenchMode+ResourceRefinePreparation.swift",
             "Sources/portavoz-app/BenchResourceLaunchProbe.swift",
             "Sources/portavoz-app/BenchResourceProcessWatchdog.swift",
-            "Sources/portavoz-app/BenchResourceScenarioProbe.swift",
         ):
             selection = select_paths([path])
             self.assertEqual(selection.locales, ("en",), path)

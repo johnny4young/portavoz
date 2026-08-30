@@ -462,6 +462,10 @@ FULL_BILINGUAL_HARNESS_FILES = frozenset({
 # unrelated UI journey. Candidate automation remains a full bilingual harness
 # owner above because it validates the UI receipt itself.
 APUNTADOR_LEAK_EVIDENCE_FILES = frozenset({
+    "Sources/portavoz-app/BenchMode.swift",
+    "Sources/portavoz-app/BenchMode+ResourceAsk.swift",
+    "Sources/portavoz-app/BenchMode+ResourceIndexing.swift",
+    "Sources/portavoz-app/BenchResourceScenarioProbe.swift",
     "scripts/apuntador_leak_baseline.py",
     "scripts/run-apuntador-leak-baseline.sh",
     "docs/evidence/apuntador-leak-baseline.json",

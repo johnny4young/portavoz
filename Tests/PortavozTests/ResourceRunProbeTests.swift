@@ -350,6 +350,15 @@ final class ResourceRunProbeTests: XCTestCase {
                 "--bench-resource-timeout", "480",
             ]))
         XCTAssertEqual(configuration.timeoutSeconds, 480)
+        XCTAssertEqual(configuration.iterations, 1)
+
+        let repeated = try XCTUnwrap(
+            BenchAskResourceConfiguration.requested(arguments: [
+                "Portavoz",
+                "--bench-resource-ask",
+                "--bench-resource-iterations", "10",
+            ]))
+        XCTAssertEqual(repeated.iterations, 10)
 
         XCTAssertThrowsError(
             try BenchAskResourceConfiguration.requested(arguments: [
@@ -362,6 +371,29 @@ final class ResourceRunProbeTests: XCTestCase {
                 $0 as? BenchAskResourceError,
                 .invalidTimeout)
         }
+        XCTAssertThrowsError(
+            try BenchAskResourceConfiguration.requested(arguments: [
+                "Portavoz",
+                "--bench-resource-ask",
+                "--bench-resource-iterations", "11",
+            ])
+        ) {
+            XCTAssertEqual(
+                $0 as? BenchAskResourceError,
+                .invalidIterations)
+        }
+        XCTAssertThrowsError(
+            try BenchAskResourceConfiguration.requested(arguments: [
+                "Portavoz",
+                "--bench-resource-ask",
+                "--bench-resource-iterations", "10",
+                "--bench-resource-iterations", "10",
+            ])
+        ) {
+            XCTAssertEqual(
+                $0 as? BenchAskResourceError,
+                .invalidIterations)
+        }
     }
 
     func testIndexingResourceConfigurationBoundsTimeout() throws {
@@ -372,6 +404,15 @@ final class ResourceRunProbeTests: XCTestCase {
                 "--bench-resource-timeout", "360",
             ]))
         XCTAssertEqual(configuration.timeoutSeconds, 360)
+        XCTAssertEqual(configuration.iterations, 1)
+
+        let repeated = try XCTUnwrap(
+            BenchIndexingResourceConfiguration.requested(arguments: [
+                "Portavoz",
+                "--bench-resource-indexing",
+                "--bench-resource-iterations", "10",
+            ]))
+        XCTAssertEqual(repeated.iterations, 10)
 
         XCTAssertThrowsError(
             try BenchIndexingResourceConfiguration.requested(arguments: [
@@ -383,6 +424,17 @@ final class ResourceRunProbeTests: XCTestCase {
             XCTAssertEqual(
                 $0 as? BenchIndexingResourceError,
                 .invalidTimeout)
+        }
+        XCTAssertThrowsError(
+            try BenchIndexingResourceConfiguration.requested(arguments: [
+                "Portavoz",
+                "--bench-resource-indexing",
+                "--bench-resource-iterations", "11",
+            ])
+        ) {
+            XCTAssertEqual(
+                $0 as? BenchIndexingResourceError,
+                .invalidIterations)
         }
     }
 

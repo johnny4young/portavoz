@@ -7,6 +7,7 @@ import StorageKit
 struct BenchIndexingResourceWorkload {
     let operation: IndexSemanticCorpus
     let runtime: any SemanticEmbeddingRuntimeClient
+    let store: MeetingStore
     let expectedSegments: Int
 
     @MainActor
@@ -33,8 +34,7 @@ struct BenchIndexingResourceWorkload {
     }
 
     func validate(
-        _ result: SemanticCorpusIndexingResult,
-        store: MeetingStore
+        _ result: SemanticCorpusIndexingResult
     ) async throws {
         let completed = result.embeddedSegments + result.excludedSegments
         guard completed == expectedSegments else {
@@ -85,15 +85,18 @@ extension BenchMode {
         setbuf(stdout, nil)
         Task { @MainActor in
             do {
-                let workload = try await prepareIndexingResourceWorkload(
-                    services: services)
-                let result = try await probe.measure(scenario: "indexing") {
-                    try await workload.run(
-                        timeoutSeconds: configuration.timeoutSeconds)
+                let workloads = try await prepareIndexingResourceWorkloads(
+                    services: services,
+                    iterations: configuration.iterations,
+                    scratchRoot: probe.outputURL(named: "indexing-stores"))
+                try await probe.measure(scenario: "indexing") {
+                    for workload in workloads {
+                        try Task.checkCancellation()
+                        let result = try await workload.run(
+                            timeoutSeconds: configuration.timeoutSeconds)
+                        try await workload.validate(result)
+                    }
                 }
-                try await workload.validate(
-                    result,
-                    store: services.store)
                 emitIndexing("bench-indexing: resource sample complete")
                 exit(0)
             } catch {
@@ -109,37 +112,81 @@ extension BenchMode {
     static func prepareIndexingResourceWorkload(
         services: AppServices
     ) async throws -> BenchIndexingResourceWorkload {
-        let runtime = services.semanticEmbeddingRuntime
+        try await prepareIndexingResourceWorkload(
+            store: services.store,
+            runtime: services.semanticEmbeddingRuntime,
+            telemetry: services.workloadTelemetry,
+            iteration: 1,
+            prepareRuntime: true)
+    }
+
+    @MainActor
+    private static func prepareIndexingResourceWorkloads(
+        services: AppServices,
+        iterations: Int,
+        scratchRoot: URL
+    ) async throws -> [BenchIndexingResourceWorkload] {
+        var workloads = [try await prepareIndexingResourceWorkload(
+            services: services)]
+        guard iterations > 1 else { return workloads }
+        for iteration in 2...iterations {
+            let databaseURL = scratchRoot.appendingPathComponent(
+                "iteration-\(iteration).sqlite")
+            let store = try MeetingStore(databaseURL: databaseURL)
+            workloads.append(try await prepareIndexingResourceWorkload(
+                store: store,
+                runtime: services.semanticEmbeddingRuntime,
+                telemetry: services.workloadTelemetry,
+                iteration: iteration,
+                prepareRuntime: false))
+        }
+        return workloads
+    }
+
+    @MainActor
+    private static func prepareIndexingResourceWorkload(
+        store: MeetingStore,
+        runtime: any SemanticEmbeddingRuntimeClient,
+        telemetry: ResourceWorkloadTelemetry,
+        iteration: Int,
+        prepareRuntime: Bool
+    ) async throws -> BenchIndexingResourceWorkload {
         guard await runtime.hasAvailableAssets else {
             throw BenchIndexingResourceError.assetsNotReady
         }
-        do {
-            try await runtime.prepare(allowAssetDownload: false)
-        } catch {
-            throw BenchIndexingResourceError.assetsNotReady
+        if prepareRuntime {
+            do {
+                try await runtime.prepare(allowAssetDownload: false)
+            } catch {
+                throw BenchIndexingResourceError.assetsNotReady
+            }
         }
-        let fixture = makeIndexingBenchmarkFixture()
-        try await services.store.saveImportedMeeting(
+        let fixture = makeIndexingBenchmarkFixture(iteration: iteration)
+        try await store.saveImportedMeeting(
             fixture.meeting,
             speakers: fixture.speakers,
             segments: fixture.segments)
         return BenchIndexingResourceWorkload(
             operation: IndexSemanticCorpus(
-                store: services.store,
-                telemetry: services.workloadTelemetry),
+                store: store,
+                telemetry: telemetry),
             runtime: runtime,
+            store: store,
             expectedSegments: fixture.segments.count)
     }
 
-    private static func makeIndexingBenchmarkFixture() -> (
+    private static func makeIndexingBenchmarkFixture(iteration: Int) -> (
         meeting: Meeting,
         speakers: [Speaker],
         segments: [TranscriptSegment]
     ) {
         let segmentCount = 1_024
         let now = Date()
+        let title = iteration == 1
+            ? "Semantic indexing resource benchmark"
+            : "Semantic indexing resource benchmark \(iteration)"
         let meeting = Meeting(
-            title: "Semantic indexing resource benchmark",
+            title: title,
             startedAt: now.addingTimeInterval(-TimeInterval(segmentCount * 3)),
             endedAt: now,
             language: "en")
@@ -148,12 +195,15 @@ extension BenchMode {
             label: "S1",
             displayName: "Public fixture")
         let segments = (0..<segmentCount).map { index in
-            TranscriptSegment(
+            let prefix = iteration == 1
+                ? "Public indexing turn \(index)"
+                : "Public indexing run \(iteration), turn \(index)"
+            return TranscriptSegment(
                 meetingID: meeting.id,
                 speakerID: speaker.id,
                 channel: .system,
                 text: """
-                    Public indexing turn \(index): local search preserves cited \
+                    \(prefix): local search preserves cited \
                     evidence while optional maintenance yields to active recording.
                     """,
                 language: "en",

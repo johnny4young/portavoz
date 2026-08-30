@@ -20,13 +20,18 @@
   ],
   "memoryLeaks": {
     "contract": "docs/evidence/apuntador-leak-baseline.json",
-    "liveAssistIterations": 100,
     "requiredScenarios": [
       "live-assist-released",
       "live-assist-bundled-question",
       "ask",
       "semantic-indexing"
-    ]
+    ],
+    "scenarioIterations": {
+      "ask": 10,
+      "live-assist-bundled-question": 100,
+      "live-assist-released": 100,
+      "semantic-indexing": 10
+    }
   },
   "performance": {
     "acceptedMeasuredStates": [
@@ -90,7 +95,7 @@
       "summary"
     ]
   },
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "ui": {
     "budget": "docs/evidence/ui-test-runtime-budget.json",
     "locales": [

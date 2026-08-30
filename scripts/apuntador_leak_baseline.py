@@ -21,9 +21,13 @@ import resource_baseline
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONTRACT = ROOT / "docs" / "evidence" / "apuntador-leak-baseline.json"
-SCHEMA_VERSION = 2
-LIVE_ASSIST_ITERATIONS = 100
-SINGLE_WORKLOAD_ITERATIONS = 1
+SCHEMA_VERSION = 3
+EXPECTED_ITERATIONS = {
+    "live-assist-released": 100,
+    "live-assist-bundled-question": 100,
+    "ask": 10,
+    "semantic-indexing": 10,
+}
 CONTRACT_KIND = "apuntador-leak-baseline-contract"
 FRAGMENT_KIND = "apuntador-leak-observation"
 RECEIPT_KIND = "apuntador-leak-baseline"
@@ -151,21 +155,15 @@ def validate_contract(document: Any) -> dict[str, Any]:
         (
             "schemaVersion",
             "kind",
-            "liveAssistIterations",
             "maximumLeaks",
             "maximumLeakedBytes",
             "policies",
             "scenarios",
         ),
     )
-    exact_integer(contract["schemaVersion"], "leak contract.schemaVersion", 1)
+    exact_integer(contract["schemaVersion"], "leak contract.schemaVersion", 2)
     if contract["kind"] != CONTRACT_KIND:
         raise ApuntadorLeakBaselineError("leak contract kind drifted")
-    exact_integer(
-        contract["liveAssistIterations"],
-        "leak contract.liveAssistIterations",
-        LIVE_ASSIST_ITERATIONS,
-    )
     exact_integer(contract["maximumLeaks"], "leak contract.maximumLeaks", 0)
     exact_integer(
         contract["maximumLeakedBytes"],
@@ -183,7 +181,7 @@ def validate_contract(document: Any) -> dict[str, Any]:
         scenario = exact_object(
             raw,
             f"leak contract.scenarios[{index}]",
-            ("id", "kind", "adapter", "successMarker", "evidence"),
+            ("id", "kind", "adapter", "iterations", "successMarker", "evidence"),
         )
         identifier = safe_identifier(
             scenario["id"], f"leak contract.scenarios[{index}].id"
@@ -197,6 +195,11 @@ def validate_contract(document: Any) -> dict[str, Any]:
         )
         adapter = safe_identifier(
             scenario["adapter"], f"leak contract.scenarios[{index}].adapter"
+        )
+        iterations = exact_integer(
+            scenario["iterations"],
+            f"leak contract.scenarios[{index}].iterations",
+            EXPECTED_ITERATIONS.get(identifier),
         )
         marker = scenario["successMarker"]
         if (
@@ -234,6 +237,7 @@ def validate_contract(document: Any) -> dict[str, Any]:
         scenarios[identifier] = {
             **scenario,
             "evidence": evidence,
+            "iterations": iterations,
         }
     if tuple(ordered_ids) != EXPECTED_SCENARIOS:
         raise ApuntadorLeakBaselineError("leak contract scenario order drifted")
@@ -311,9 +315,10 @@ def validate_live_assist_evidence(
 def validate_resource_evidence(
     scenario_id: str,
     evidence: dict[str, Path],
+    expected_iterations: int,
 ) -> int:
     try:
-        run, _, _ = resource_baseline.validate_sample(
+        run, _, workloads = resource_baseline.validate_sample(
             resource_baseline.load_json(
                 evidence["resource"], f"{scenario_id} resource evidence"
             ),
@@ -324,6 +329,36 @@ def validate_resource_evidence(
     if run != 1:
         raise ApuntadorLeakBaselineError(
             f"{scenario_id} resource evidence must be run 1"
+        )
+    expected_workloads = {
+        "ask": {
+            (
+                "userInitiated",
+                "languageInference",
+                "queueWait",
+                "completed",
+            ),
+            (
+                "userInitiated",
+                "languageInference",
+                "execute",
+                "completed",
+            ),
+        },
+        "semantic-indexing": {
+            ("maintenance", "searchIndex", "execute", "completed"),
+        },
+    }[scenario_id]
+    if set(workloads) != expected_workloads:
+        raise ApuntadorLeakBaselineError(
+            f"{scenario_id} resource workload inventory drifted"
+        )
+    if any(
+        workload["count"] != expected_iterations
+        for workload in workloads.values()
+    ):
+        raise ApuntadorLeakBaselineError(
+            f"{scenario_id} resource workload count must be {expected_iterations}"
         )
     if scenario_id == "ask":
         try:
@@ -337,7 +372,7 @@ def validate_resource_evidence(
             raise ApuntadorLeakBaselineError(str(error)) from error
         if pipeline_run != 1:
             raise ApuntadorLeakBaselineError("Ask pipeline evidence must be run 1")
-    return SINGLE_WORKLOAD_ITERATIONS
+    return expected_iterations
 
 
 def read_log(path: Path) -> str:
@@ -413,10 +448,14 @@ def observe_run(
             adapter=scenario["adapter"],
             commit=commit,
             build=build,
-            expected_iterations=contract["liveAssistIterations"],
+            expected_iterations=scenario["iterations"],
         )
     else:
-        iterations = validate_resource_evidence(scenario_id, evidence)
+        iterations = validate_resource_evidence(
+            scenario_id,
+            evidence,
+            expected_iterations=scenario["iterations"],
+        )
     digests = {key: file_sha256(path) for key, path in evidence.items()}
     return {
         "schemaVersion": SCHEMA_VERSION,
@@ -457,11 +496,7 @@ def validate_fragment(
     scenario_id = fragment["scenario"]
     if scenario_id not in contract["scenarios"]:
         raise ApuntadorLeakBaselineError(f"{label}.scenario is unknown")
-    expected_iterations = (
-        contract["liveAssistIterations"]
-        if contract["scenarios"][scenario_id]["kind"] == "live-assist"
-        else SINGLE_WORKLOAD_ITERATIONS
-    )
+    expected_iterations = contract["scenarios"][scenario_id]["iterations"]
     exact_integer(
         fragment["iterations"],
         f"{label}.iterations",
@@ -684,11 +719,7 @@ def validate_receipt(document: Any, contract: dict[str, Any]) -> dict[str, Any]:
             raise ApuntadorLeakBaselineError(
                 f"leak receipt scenario {identifier} did not pass"
             )
-        expected_iterations = (
-            contract["liveAssistIterations"]
-            if contract["scenarios"][identifier]["kind"] == "live-assist"
-            else SINGLE_WORKLOAD_ITERATIONS
-        )
+        expected_iterations = contract["scenarios"][identifier]["iterations"]
         exact_integer(
             scenario["iterations"],
             f"leak receipt.scenarios[{index}].iterations",

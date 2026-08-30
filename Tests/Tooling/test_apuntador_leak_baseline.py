@@ -39,7 +39,7 @@ class ApuntadorLeakBaselineTests(unittest.TestCase):
         return path
 
     @staticmethod
-    def resource_sample():
+    def resource_sample(iterations=10):
         return {
             "run": 1,
             "wallDurationMilliseconds": 20.0,
@@ -52,7 +52,20 @@ class ApuntadorLeakBaselineTests(unittest.TestCase):
             "maximumThermalState": "nominal",
             "powerSource": "ac",
             "lowPowerModeEnabled": False,
-            "workloads": [],
+            "workloads": [
+                {
+                    "workloadClass": "maintenance",
+                    "kind": "searchIndex",
+                    "operation": "execute",
+                    "outcome": "completed",
+                    "count": iterations,
+                    "durationMilliseconds": {
+                        "p50": 1.0,
+                        "p95": 2.0,
+                        "maximum": 3.0,
+                    },
+                }
+            ],
         }
 
     @staticmethod
@@ -65,12 +78,7 @@ class ApuntadorLeakBaselineTests(unittest.TestCase):
             "schemaVersion": leaks.SCHEMA_VERSION,
             "kind": "apuntador-leak-observation",
             "scenario": identifier,
-            "iterations": (
-                leaks.LIVE_ASSIST_ITERATIONS
-                if leaks.load_contract()["scenarios"][identifier]["kind"]
-                == "live-assist"
-                else leaks.SINGLE_WORKLOAD_ITERATIONS
-            ),
+            "iterations": leaks.EXPECTED_ITERATIONS[identifier],
             "leaksExitCode": 0,
             "leakCount": 0,
             "leakedBytes": 0,
@@ -98,8 +106,11 @@ class ApuntadorLeakBaselineTests(unittest.TestCase):
         )
         self.assertEqual(self.contract["policies"], leaks.EXPECTED_POLICIES)
         self.assertEqual(
-            self.contract["liveAssistIterations"],
-            leaks.LIVE_ASSIST_ITERATIONS,
+            {
+                identifier: scenario["iterations"]
+                for identifier, scenario in self.contract["scenarios"].items()
+            },
+            leaks.EXPECTED_ITERATIONS,
         )
         self.assertEqual(self.contract["maximumLeaks"], 0)
         self.assertEqual(self.contract["maximumLeakedBytes"], 0)
@@ -109,6 +120,29 @@ class ApuntadorLeakBaselineTests(unittest.TestCase):
         self.assertEqual(fragment["scenario"], "semantic-indexing")
         self.assertEqual(fragment["leakCount"], 0)
         self.assertRegex(fragment["evidenceSHA256"]["resource"], r"^[0-9a-f]{64}$")
+
+    def test_observe_rejects_forged_repeated_workload_count(self):
+        with self.assertRaisesRegex(
+            leaks.ApuntadorLeakBaselineError,
+            "resource workload count must be 10",
+        ):
+            self.observe_indexing_with_iterations(9)
+
+    def observe_indexing_with_iterations(self, iterations):
+        resource = self.write_json(
+            "indexing-forged-1.json",
+            self.resource_sample(iterations=iterations),
+        )
+        log = self.write_log("bench-indexing: resource sample complete\n")
+        return leaks.observe_run(
+            self.contract,
+            scenario_id="semantic-indexing",
+            log_path=log,
+            evidence={"resource": resource},
+            exit_code=0,
+            commit=COMMIT,
+            build=BUILD,
+        )
 
     def test_observe_rejects_nonzero_exit(self):
         with self.assertRaisesRegex(
@@ -165,7 +199,9 @@ class ApuntadorLeakBaselineTests(unittest.TestCase):
                 "sourceState": "clean",
             },
             "adapter": {"class": "released-prefilter"},
-            "resources": {"iterations": leaks.LIVE_ASSIST_ITERATIONS - 1},
+            "resources": {
+                "iterations": leaks.EXPECTED_ITERATIONS["live-assist-released"] - 1
+            },
         }
         with mock.patch.object(
             leaks.live_assist_validation,
@@ -180,7 +216,9 @@ class ApuntadorLeakBaselineTests(unittest.TestCase):
                 adapter="released-prefilter",
                 commit=COMMIT,
                 build=BUILD,
-                expected_iterations=leaks.LIVE_ASSIST_ITERATIONS,
+                expected_iterations=leaks.EXPECTED_ITERATIONS[
+                    "live-assist-released"
+                ],
             )
 
     def test_assemble_and_validate_exact_four_scenario_receipt(self):
@@ -216,10 +254,10 @@ class ApuntadorLeakBaselineTests(unittest.TestCase):
         self.assertEqual(
             [item["iterations"] for item in validated["scenarios"]],
             [
-                leaks.LIVE_ASSIST_ITERATIONS,
-                leaks.LIVE_ASSIST_ITERATIONS,
-                leaks.SINGLE_WORKLOAD_ITERATIONS,
-                leaks.SINGLE_WORKLOAD_ITERATIONS,
+                100,
+                100,
+                10,
+                10,
             ],
         )
         self.assertEqual(
@@ -310,6 +348,10 @@ class ApuntadorLeakBaselineTests(unittest.TestCase):
         self.assertIn("xcrun leaks -q --noContent --nostacks --atExit", runner)
         self.assertIn("Portavoz Leak Bench.app", runner)
         self.assertIn("portavoz-resource-bench.entitlements", runner)
+        self.assertRegex(runner, r"(?m)^ASK_ITERATIONS=10$")
+        self.assertRegex(runner, r"(?m)^INDEXING_ITERATIONS=10$")
+        self.assertIn('--bench-resource-iterations "$ASK_ITERATIONS"', runner)
+        self.assertIn('--bench-resource-iterations "$INDEXING_ITERATIONS"', runner)
         self.assertIn("git status --porcelain --untracked-files=all", runner)
         cleanup = runner.split("cleanup() {", 1)[1].split("}\n", 1)[0]
         self.assertIn("terminate_probe_processes", cleanup)

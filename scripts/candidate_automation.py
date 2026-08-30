@@ -27,7 +27,7 @@ import resource_baseline
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONTRACT = ROOT / "docs" / "evidence" / "candidate-automation.json"
 DEFAULT_OUTPUT_PARENT = ROOT / "dist" / "release-readiness"
-CONTRACT_SCHEMA_VERSION = 3
+CONTRACT_SCHEMA_VERSION = 4
 PERF_LEDGER_SCHEMA_VERSION = 1
 PERFORMANCE_CONFIRMATION_SCHEMA_VERSION = 1
 UI_BUDGET_SCHEMA_VERSION = 1
@@ -469,7 +469,7 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
     memory_leaks = exact_object(
         contract["memoryLeaks"],
         "candidate contract.memoryLeaks",
-        ("contract", "liveAssistIterations", "requiredScenarios"),
+        ("contract", "requiredScenarios", "scenarioIterations"),
     )
     leak_contract_path = tracked_path(
         root,
@@ -485,15 +485,6 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
         )
     except apuntador_leak_baseline.ApuntadorLeakBaselineError as error:
         raise CandidateAutomationError(str(error)) from error
-    leak_iterations = memory_leaks["liveAssistIterations"]
-    if (
-        isinstance(leak_iterations, bool)
-        or not isinstance(leak_iterations, int)
-        or leak_iterations != leak_contract["liveAssistIterations"]
-    ):
-        raise CandidateAutomationError(
-            "candidate leak iterations must match the tracked contract"
-        )
     leak_scenarios = string_list(
         memory_leaks["requiredScenarios"],
         "candidate contract.memoryLeaks.requiredScenarios",
@@ -503,6 +494,21 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
         or leak_scenarios != leak_contract["orderedScenarioIDs"]
     ):
         raise CandidateAutomationError("candidate leak scenarios drifted")
+    leak_iterations = exact_object(
+        memory_leaks["scenarioIterations"],
+        "candidate contract.memoryLeaks.scenarioIterations",
+        EXPECTED_LEAK_SCENARIOS,
+    )
+    for identifier in EXPECTED_LEAK_SCENARIOS:
+        iterations = leak_iterations[identifier]
+        if (
+            isinstance(iterations, bool)
+            or not isinstance(iterations, int)
+            or iterations != leak_contract["scenarios"][identifier]["iterations"]
+        ):
+            raise CandidateAutomationError(
+                "candidate leak iterations must match the tracked contract"
+            )
 
     ui = exact_object(
         contract["ui"],
@@ -550,7 +556,7 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
         "memoryLeaks": {
             "contractPath": leak_contract_path,
             "contract": leak_contract,
-            "liveAssistIterations": leak_iterations,
+            "scenarioIterations": leak_iterations,
             "requiredScenarios": leak_scenarios,
         },
         "ui": {
@@ -2092,7 +2098,9 @@ def _run_candidate(
             "--build",
             build,
             "--live-assist-iterations",
-            str(contract["memoryLeaks"]["liveAssistIterations"]),
+            str(contract["memoryLeaks"]["scenarioIterations"][
+                "live-assist-released"
+            ]),
             "--output",
             str(memory_leak_root),
         ],
