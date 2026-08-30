@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,908 cases (15 environment-gated) + 105
+Status: the package inventory contains 2,909 cases (15 environment-gated) + 105
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -6493,3 +6493,30 @@ Sequoia/Tahoe, VoiceOver/Voice Control, signed distribution, production
 CloudKit, provider behavior, or field use. The separately signed Dev app was
 rebuilt, reinstalled, and verified under `app.portavoz.mac.dev`; the notarized
 release copy retained its exact modification time.
+
+**D443 capture-signal ordering.** An adversarial supervisor sequence starts
+with authoritative active capture, lets the first worker defer, publishes the
+authoritative inactive state, and then delivers the obsolete suspend signal.
+Before the fix, the initial characterization left pending work without a worker
+and failed its bounded wait after 3.183 seconds. Its final form uses the real
+explicit waiter instead of a fixed delay to prove the active worker has
+deferred. The repaired boundary re-reads the shared capture state when it
+executes: that no-sleep characterization passes in 0.112 seconds, and the
+complete eleven-case supervisor slice passes in 1.287 seconds while preserving
+real capture preemption, same-owner resume, caller
+cancellation, relaunch, and stopped-worker fencing.
+
+Warnings-as-errors, strict cache-free SwiftLint with zero violations across
+774 files, repository hygiene, diff-check, and the complete 2,909-case package
+suite pass with 15 explicit asset-gated skips and zero failures in 133.688
+seconds. The final no-sleep source rerun passed the same 2,909 cases with 15
+skips and zero failures in 132.686 seconds. The minimum-safe UI selector remains the two automatic-brief Settings
+journeys. One 20-second build passed 2/2 English cases in 23.646 summed seconds
+(36 seconds wall, p95 and maximum 15.566) and 2/2 Spanish cases in 23.002
+seconds (34 seconds wall, p95 and maximum 15.558). Both execution receipts are
+complete, every unchanged budget is green, and there was no retry or runtime
+adjustment. These local fixtures do not certify physical Sequoia/Tahoe capture
+timing, EventKit/TCC, VoiceOver/Voice Control, signed distribution, production
+CloudKit, provider behavior, or field use. The separately signed Dev app was
+rebuilt, reinstalled, and verified under `app.portavoz.mac.dev`; the notarized
+release app retained its exact modification time.

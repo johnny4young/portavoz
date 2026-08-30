@@ -23,7 +23,9 @@ control/history surface and millisecond-canonical relaunch identity. D439 makes
 unexpected reconciliation failure observable to explicit controls, preserves
 the exact pending scope for a later real signal, and fences stopped workers.
 D441 gives each explicit reconciliation caller a cancellation-safe waiter that
-can leave without cancelling or delaying the shared process owner.
+can leave without cancelling or delaying the shared process owner. D443 makes
+capture preemption re-read the shared current capture state so an out-of-order
+active-phase task cannot suspend work after recording already ended.
 D373/D374 compose exact-Skill and rolling update-time activity filters at query
 time while keeping the Settings window bounded and generation-fenced.
 D384 makes full Ask latest-submission-wins, displays bounded cumulative answer
@@ -3359,7 +3361,11 @@ That wake also considers the next local midnight so the bounded
 today-plus-tomorrow EventKit horizon refreshes even without a calendar edit.
 Signals coalesce behind one actor worker; there is no polling or retry timer.
 Recording cancels background preparation while preserving its exact confirmed
-owner, and the inactive transition resumes reconciliation. Global pause and an
+owner, and the inactive transition resumes reconciliation. The synchronous
+recording bridge may enqueue active and inactive actor calls independently, so
+the suspend boundary rechecks the shared current capture state when it executes:
+a stale suspend observed after capture ended is converted into an idempotent
+kick and cannot strand the pending owner. Global pause and an
 empty enabled-rule set cancel any stale boundary wake. Temporary-store launches
 install an empty event source and never read the user's host calendar.
 Unexpected store or event-resolution failure is different from an exact event

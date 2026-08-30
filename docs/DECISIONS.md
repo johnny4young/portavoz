@@ -17087,3 +17087,27 @@ orders of magnitude below the bound, and reviewed content, correction lineage,
 idempotency, egress consent, and response validation remain unchanged. This
 does not certify real GitHub, Keychain, network, physical macOS, accessibility,
 distribution, CloudKit, or field behavior.
+
+## D443 — Recheck capture authority inside delayed standing suspends (Aug 2026)
+
+**Context:** the synchronous recording controller updates one lock-protected
+capture state, then bridges the standing supervisor through independent
+unstructured tasks. Actor isolation serializes whichever task arrives first;
+it does not preserve their creation order. A delayed active-phase suspend could
+therefore arrive after the inactive transition had already kicked the worker,
+cancel that worker, preserve `needsReconciliation`, and leave no owner running
+until an unrelated calendar invalidation or relaunch. The adversarial sequence
+reproduced this as a deterministic timeout.
+
+**Decision:** `suspendForCapture()` must re-read the shared authoritative
+capture state when it executes. A truly active capture preserves the existing
+preemption behavior. If capture is already inactive, the stale suspend becomes
+an idempotent `kick()` and returns without cancelling the current worker or its
+scheduled recovery authority.
+
+**Consequences:** rapid recording start/stop transitions cannot strand a
+confirmed automatic brief merely because task scheduling inverted their actor
+arrival. Capture still has priority, no polling or retry timer is added, and
+the standing executor remains single-flight. This local characterization does
+not certify physical Sequoia/Tahoe capture timing, EventKit/TCC, accessibility,
+distribution, CloudKit, or field behavior.

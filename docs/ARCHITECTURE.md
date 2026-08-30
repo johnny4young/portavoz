@@ -704,8 +704,12 @@ and holds at most one future wake for the next two-hour preparation boundary
 or local-day calendar-horizon refresh, whichever comes first.
 Concurrent wakes coalesce behind one serialized worker. Recording preempts the
 worker but preserves its confirmed durable owner, and the inactive transition
-resumes it. The supervisor never polls EventKit or SQLite, never asks for
-Calendar permission, and disposable automation never reads the host calendar.
+resumes it. Because synchronous recording phases reach the actor through
+independent tasks, a delayed suspend re-reads the authoritative shared capture
+state; if capture is already inactive it becomes an idempotent kick instead of
+cancelling the only drain worker. The supervisor never polls EventKit or SQLite,
+never asks for Calendar permission, and disposable automation never reads the
+host calendar.
 An unexpected store or event-resolution failure restores the exact full or
 proposal-scoped reconciliation request but does not spin a retry timer. Explicit
 Settings callers receive that failure and retain their last verified snapshot;

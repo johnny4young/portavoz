@@ -121,6 +121,14 @@ actor StandingPreMeetingBriefSupervisor {
     }
 
     func suspendForCapture() {
+        // AppServices bridges the synchronous recording phase into this actor
+        // through an unstructured task. That task may arrive after a newer
+        // inactive phase, so re-read the shared authority instead of letting a
+        // stale suspend cancel the only worker that can drain pending work.
+        guard captureState.current != .inactive else {
+            kick()
+            return
+        }
         needsReconciliation = true
         worker?.cancel()
         cancelScheduledWake()

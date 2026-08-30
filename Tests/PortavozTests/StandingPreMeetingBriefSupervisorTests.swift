@@ -162,6 +162,33 @@ final class StandingPreMeetingBriefSupervisorTests: XCTestCase {
         await supervisor.stop()
     }
 
+    func testDelayedSuspendAfterCaptureEndsCannotStrandPendingWork() async throws {
+        let store = try MeetingStore.inMemory()
+        _ = try await createRule(in: store)
+        let event = upcomingEvent(id: "stale-capture-signal", offset: 30 * 60)
+        let source = StandingSupervisorEventSource(events: [event])
+        let preparer = RecordingStandingBriefPreparer()
+        let capture = AppResourceCaptureState()
+        capture.update(.active)
+        let supervisor = makeSupervisor(
+            store: store,
+            preparer: preparer,
+            source: source,
+            capture: capture)
+
+        try await supervisor.reconcileNow()
+        let eventIDsWhileActive = await preparer.eventIDs
+        XCTAssertEqual(eventIDsWhileActive, [])
+
+        capture.update(.inactive)
+        // Simulates the old active-phase Task arriving after the inactive
+        // phase already published its authoritative state.
+        await supervisor.suspendForCapture()
+
+        await waitUntil { await preparer.eventIDs == [event.id] }
+        await supervisor.stop()
+    }
+
     func testCapturePreemptionPreservesOwnerAndResumesSameOccurrence() async throws {
         let store = try MeetingStore.inMemory()
         _ = try await createRule(in: store)
