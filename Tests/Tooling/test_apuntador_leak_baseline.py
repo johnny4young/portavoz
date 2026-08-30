@@ -62,9 +62,15 @@ class ApuntadorLeakBaselineTests(unittest.TestCase):
             for key in leaks.load_contract()["scenarios"][identifier]["evidence"]
         }
         return {
-            "schemaVersion": 1,
+            "schemaVersion": leaks.SCHEMA_VERSION,
             "kind": "apuntador-leak-observation",
             "scenario": identifier,
+            "iterations": (
+                leaks.LIVE_ASSIST_ITERATIONS
+                if leaks.load_contract()["scenarios"][identifier]["kind"]
+                == "live-assist"
+                else leaks.SINGLE_WORKLOAD_ITERATIONS
+            ),
             "leaksExitCode": 0,
             "leakCount": 0,
             "leakedBytes": 0,
@@ -91,7 +97,10 @@ class ApuntadorLeakBaselineTests(unittest.TestCase):
             self.contract["orderedScenarioIDs"], leaks.EXPECTED_SCENARIOS
         )
         self.assertEqual(self.contract["policies"], leaks.EXPECTED_POLICIES)
-        self.assertEqual(self.contract["liveAssistIterations"], 5)
+        self.assertEqual(
+            self.contract["liveAssistIterations"],
+            leaks.LIVE_ASSIST_ITERATIONS,
+        )
         self.assertEqual(self.contract["maximumLeaks"], 0)
         self.assertEqual(self.contract["maximumLeakedBytes"], 0)
 
@@ -147,6 +156,33 @@ class ApuntadorLeakBaselineTests(unittest.TestCase):
                 build=BUILD,
             )
 
+    def test_live_assist_evidence_must_match_contract_iterations(self):
+        evidence = self.write_json("live-assist.json", {})
+        observation = {
+            "run": {
+                "commit": COMMIT,
+                "build": BUILD,
+                "sourceState": "clean",
+            },
+            "adapter": {"class": "released-prefilter"},
+            "resources": {"iterations": leaks.LIVE_ASSIST_ITERATIONS - 1},
+        }
+        with mock.patch.object(
+            leaks.live_assist_validation,
+            "validate_observations",
+            return_value=observation,
+        ), self.assertRaisesRegex(
+            leaks.ApuntadorLeakBaselineError,
+            "iteration count does not match",
+        ):
+            leaks.validate_live_assist_evidence(
+                evidence,
+                adapter="released-prefilter",
+                commit=COMMIT,
+                build=BUILD,
+                expected_iterations=leaks.LIVE_ASSIST_ITERATIONS,
+            )
+
     def test_assemble_and_validate_exact_four_scenario_receipt(self):
         fragments = [self.fragment(identifier) for identifier in leaks.EXPECTED_SCENARIOS]
         with mock.patch.object(
@@ -177,6 +213,15 @@ class ApuntadorLeakBaselineTests(unittest.TestCase):
         validated = leaks.validate_receipt(receipt, self.contract)
         self.assertEqual(validated["summary"]["scenarioCount"], 4)
         self.assertEqual(validated["summary"]["leakCount"], 0)
+        self.assertEqual(
+            [item["iterations"] for item in validated["scenarios"]],
+            [
+                leaks.LIVE_ASSIST_ITERATIONS,
+                leaks.LIVE_ASSIST_ITERATIONS,
+                leaks.SINGLE_WORKLOAD_ITERATIONS,
+                leaks.SINGLE_WORKLOAD_ITERATIONS,
+            ],
+        )
         self.assertEqual(
             [item["id"] for item in validated["scenarios"]],
             list(leaks.EXPECTED_SCENARIOS),
@@ -212,6 +257,40 @@ class ApuntadorLeakBaselineTests(unittest.TestCase):
         receipt["scenarios"][0]["leakCount"] = 1
         with self.assertRaisesRegex(
             leaks.ApuntadorLeakBaselineError, "leakCount must be 0"
+        ):
+            leaks.validate_receipt(receipt, self.contract)
+
+    def test_receipt_rejects_forged_iteration_count(self):
+        fragments = [self.fragment(identifier) for identifier in leaks.EXPECTED_SCENARIOS]
+        with mock.patch.object(
+            leaks,
+            "host_identity",
+            return_value={
+                "platform": "macOS",
+                "version": "26.5.2",
+                "build": "25F84",
+                "architecture": "arm64",
+            },
+        ), mock.patch.object(
+            leaks,
+            "toolchain_identity",
+            return_value={
+                "xcode": "26.6",
+                "build": "17F113",
+                "leaksMode": "at-exit-no-content-no-stacks",
+            },
+        ):
+            receipt = leaks.assemble_receipt(
+                self.contract,
+                version="1.0.0",
+                build=BUILD,
+                commit=COMMIT,
+                fragments=fragments,
+            )
+        receipt["scenarios"][0]["iterations"] -= 1
+        with self.assertRaisesRegex(
+            leaks.ApuntadorLeakBaselineError,
+            "iterations must be 100",
         ):
             leaks.validate_receipt(receipt, self.contract)
 

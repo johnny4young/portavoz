@@ -1,5 +1,5 @@
 {
-  "liveAssistIterations": 5,
+  "liveAssistIterations": 100,
   "kind": "apuntador-leak-baseline-contract",
   "maximumLeakedBytes": 0,
   "maximumLeaks": 0,

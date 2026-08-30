@@ -11289,7 +11289,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertEqual(
             memoryLeaks["contract"] as? String,
             "docs/evidence/apuntador-leak-baseline.json")
-        XCTAssertEqual(memoryLeaks["liveAssistIterations"] as? Int, 5)
+        XCTAssertEqual(memoryLeaks["liveAssistIterations"] as? Int, 100)
         XCTAssertEqual(
             memoryLeaks["requiredScenarios"] as? [String],
             [
@@ -11300,6 +11300,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             ])
 
         let runner = try Self.contents(of: "scripts/candidate_automation.py")
+        let leakRunner = try Self.contents(
+            of: "scripts/run-apuntador-leak-baseline.sh")
+        let leakValidator = try Self.contents(
+            of: "scripts/apuntador_leak_baseline.py")
         let makefile = try Self.contents(of: "Makefile")
         let hygiene = try Self.contents(
             of: "scripts/check-repository-hygiene.sh")
@@ -11349,6 +11353,14 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(makefile.contains("candidate-automation:"))
         XCTAssertTrue(makefile.contains("test-apuntador-leak-baseline:"))
         XCTAssertTrue(makefile.contains("apuntador-leak-baseline:"))
+        XCTAssertTrue(leakRunner.contains("ITERATIONS=100"))
+        XCTAssertTrue(leakRunner.contains(
+            "--live-assist-iterations must match the fixed value 100"))
+        XCTAssertTrue(leakValidator.contains("SCHEMA_VERSION = 2"))
+        XCTAssertTrue(leakValidator.contains(
+            "LIVE_ASSIST_ITERATIONS = 100"))
+        XCTAssertTrue(leakValidator.contains(
+            "live-assist evidence iteration count does not match the contract"))
         XCTAssertTrue(makefile.contains(
             "release-reliability long-capture-baseline candidate-automation"))
         XCTAssertTrue(hygiene.contains(
@@ -11359,6 +11371,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D393"))
         XCTAssertTrue(decisions.contains("## D401"))
         XCTAssertTrue(decisions.contains("## D447"))
+        XCTAssertTrue(decisions.contains("## D448"))
+        XCTAssertTrue(decisions.contains("## D449"))
     }
 
     func testRealModelGateReservesContextAndNeverEchoesTranscriptContent() throws {

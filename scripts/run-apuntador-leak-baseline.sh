@@ -5,14 +5,14 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION=""
 BUILD=""
 OUTPUT=""
-ITERATIONS=5
+ITERATIONS=100
 TIMEOUT_SECONDS="${PORTAVOZ_LEAK_TIMEOUT_SECONDS:-1200}"
 
 usage() {
     cat >&2 <<'EOF'
 usage: scripts/run-apuntador-leak-baseline.sh \
   --version <version> --build <build> \
-  [--live-assist-iterations 5] [--output <directory>]
+  [--live-assist-iterations 100] [--output <directory>]
 EOF
 }
 
@@ -58,8 +58,8 @@ done
     fail "--version must be a safe release identity"
 [[ "$BUILD" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]{0,95}$ ]] || \
     fail "--build must be a safe release identity"
-[[ "$ITERATIONS" == "5" ]] || \
-    fail "--live-assist-iterations must match the fixed value 5"
+[[ "$ITERATIONS" == "100" ]] || \
+    fail "--live-assist-iterations must match the fixed value 100"
 [[ "$TIMEOUT_SECONDS" =~ ^[0-9]+$ ]] || \
     fail "PORTAVOZ_LEAK_TIMEOUT_SECONDS must be an integer"
 (( TIMEOUT_SECONDS >= 60 && TIMEOUT_SECONDS <= 7200 )) || \

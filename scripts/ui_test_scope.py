@@ -441,12 +441,10 @@ FULL_BILINGUAL_HARNESS_FILES = frozenset({
     ".github/workflows/ui-tests.yml",
     "Makefile",
     "project.yml",
-    "scripts/apuntador_leak_baseline.py",
     "scripts/candidate_automation.py",
     "scripts/check-ui-test-host.py",
     "scripts/check-url-scheme-handlers.sh",
     "scripts/run-ui-tests.sh",
-    "scripts/run-apuntador-leak-baseline.sh",
     "scripts/ui_test_ci_gate.py",
     "scripts/ui_test_execution.py",
     "scripts/ui_test_runtime.py",
@@ -454,9 +452,24 @@ FULL_BILINGUAL_HARNESS_FILES = frozenset({
     "scripts/ui_test_verification_anchor.py",
     "scripts/ui_test_verified_base.py",
     "docs/evidence/ui-test-runtime-budget.json",
-    "docs/evidence/apuntador-leak-baseline.json",
     "Sources/portavoz-app/UITestWindowPlacement.swift",
     "Tests/PortavozUITests/UITestSupport.swift",
+})
+
+# These owners can change which real Apuntador workloads qualify, but they do
+# not build, select, measure, or accept XCUITest itself. Exercise the exact
+# user-visible owners reached by the leak matrix instead of paying for every
+# unrelated UI journey. Candidate automation remains a full bilingual harness
+# owner above because it validates the UI receipt itself.
+APUNTADOR_LEAK_EVIDENCE_FILES = frozenset({
+    "scripts/apuntador_leak_baseline.py",
+    "scripts/run-apuntador-leak-baseline.sh",
+    "docs/evidence/apuntador-leak-baseline.json",
+})
+APUNTADOR_LEAK_UI_FEATURES = frozenset({
+    "ask",
+    "background-work",
+    "live-assist",
 })
 
 RETIRED_DUPLICATE_TESTS = frozenset({
@@ -997,6 +1010,14 @@ def select_paths(paths: Iterable[str]) -> Selection:
             selected.update(HARNESS_TESTS)
             locales.add("es")
             reasons.append(f"{path}: complete bilingual shared-harness fallback")
+            continue
+
+        if path in APUNTADOR_LEAK_EVIDENCE_FILES:
+            selected.update(feature_tests(APUNTADOR_LEAK_UI_FEATURES))
+            locales.add("es")
+            reasons.append(
+                f"{path}: bilingual Apuntador leak-matrix journeys"
+            )
             continue
 
         if path in {

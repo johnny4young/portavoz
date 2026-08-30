@@ -75,7 +75,7 @@ class CandidateAutomationTests(unittest.TestCase):
             ROOT / "docs" / "evidence" / "apuntador-leak-baseline.json",
         )
         self.assertEqual(
-            self.contract["memoryLeaks"]["liveAssistIterations"], 5
+            self.contract["memoryLeaks"]["liveAssistIterations"], 100
         )
         self.assertEqual(
             self.contract["memoryLeaks"]["requiredScenarios"],
@@ -629,6 +629,21 @@ class CandidateAutomationTests(unittest.TestCase):
             with self.assertRaisesRegex(
                 candidate.CandidateAutomationError,
                 "leakCount must be 0",
+            ):
+                candidate.validate_memory_leak_receipt(
+                    path,
+                    self.contract,
+                    version=self.version,
+                    build=self.build,
+                    commit=self.commit,
+                )
+
+            wrong_iterations = self.memory_leak_receipt()
+            wrong_iterations["scenarios"][0]["iterations"] = 99
+            path.write_text(json.dumps(wrong_iterations))
+            with self.assertRaisesRegex(
+                candidate.CandidateAutomationError,
+                "iterations must be 100",
             ):
                 candidate.validate_memory_leak_receipt(
                     path,
@@ -1300,7 +1315,7 @@ class CandidateAutomationTests(unittest.TestCase):
     def memory_leak_receipt(self):
         leak_contract = self.contract["memoryLeaks"]["contract"]
         return {
-            "schemaVersion": 1,
+            "schemaVersion": candidate.apuntador_leak_baseline.SCHEMA_VERSION,
             "kind": "apuntador-leak-baseline",
             "collectedAt": "2026-08-30T18:00:00Z",
             "release": {
@@ -1324,6 +1339,13 @@ class CandidateAutomationTests(unittest.TestCase):
                 {
                     "id": identifier,
                     "state": "pass",
+                    "iterations": (
+                        leak_contract["liveAssistIterations"]
+                        if leak_contract["scenarios"][identifier]["kind"]
+                        == "live-assist"
+                        else candidate.apuntador_leak_baseline
+                        .SINGLE_WORKLOAD_ITERATIONS
+                    ),
                     "leakCount": 0,
                     "leakedBytes": 0,
                     "evidenceSHA256": {

@@ -781,15 +781,29 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(len(selection.tests), 2, path)
 
     def test_harness_change_expands_to_the_complete_bilingual_catalog(self):
-        self.assertTrue({
-            "docs/evidence/apuntador-leak-baseline.json",
-            "scripts/apuntador_leak_baseline.py",
+        self.assertIn(
             "scripts/candidate_automation.py",
-            "scripts/run-apuntador-leak-baseline.sh",
-        }.issubset(ui_scope.FULL_BILINGUAL_HARNESS_FILES))
+            ui_scope.FULL_BILINGUAL_HARNESS_FILES,
+        )
         for path in sorted(ui_scope.FULL_BILINGUAL_HARNESS_FILES):
             selection = select_paths([path])
             self.assertEqual(selection.tests, HARNESS_TESTS, path)
+            self.assertEqual(selection.locales, ("en", "es"), path)
+
+    def test_leak_evidence_owners_select_only_bilingual_product_paths(self):
+        expected_set = set(
+            FEATURE_TESTS["ask"]
+            + FEATURE_TESTS["background-work"]
+            + FEATURE_TESTS["live-assist"]
+        )
+        expected = tuple(test for test in ALL_TESTS if test in expected_set)
+        self.assertEqual(len(expected), 12)
+        self.assertTrue(ui_scope.APUNTADOR_LEAK_EVIDENCE_FILES.isdisjoint(
+            ui_scope.FULL_BILINGUAL_HARNESS_FILES
+        ))
+        for path in sorted(ui_scope.APUNTADOR_LEAK_EVIDENCE_FILES):
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en", "es"), path)
 
     def test_app_intents_selects_only_the_bilingual_recording_handoff(self):

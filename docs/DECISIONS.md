@@ -17258,3 +17258,56 @@ retained cycle, long-duration memory stability, installed Foundation Models or
 provider behavior, physical Sequoia/Tahoe, accessibility technologies, signed
 distribution, production CloudKit, or field reliability. Those gates remain
 explicitly open.
+
+## D448 — Bind leak evidence to maximum Live Assist repetition (Aug 2026)
+
+**Context:** D447's trusted runner passed its fixed five-iteration value to the
+real application, but the retained schema-1 fragment and receipt did not carry
+that value and the Live Assist evidence adapter did not compare the observed
+resource iteration count with the tracked contract. A caller assembling forged
+fragments could therefore preserve valid-looking digests and zero-leak fields
+while omitting proof of the declared workload. Adding another soak workflow
+would duplicate the same product paths and contradict the scoped, owner-based
+CI design.
+
+**Decision:** keep one leak/stability owner and raise both in-process Live Assist
+lanes to the application's supported maximum of 100 iterations. Receipt schema
+2 records the exact iteration count on every fragment and scenario. The parser
+requires the released and bundled observation artifacts to report exactly 100;
+deep Ask and semantic indexing remain one canonical workload each and must
+report exactly one. Candidate automation continues to pass the tracked value to
+the runner and rejects any workload-count drift. No retry, second workflow, new
+product mode, or broader CI job is introduced.
+
+**Consequences:** the same inexpensive Release-app gate now proves zero detected
+at-exit leaks plus no crash across 100 repeated released-prefilter rounds and
+100 repeated bundled-classifier rounds, and the retained receipt can no longer
+overstate that intensity. This is high-iteration in-process stability, not an
+hours-long temporal soak, Instruments lifetime trace, installed provider/model
+memory result, Ask/indexing repetition matrix, or physical Sequoia/Tahoe claim;
+those authorities remain open.
+
+## D449 — Scope leak-owner UI evidence to its product paths (Aug 2026)
+
+**Context:** D447 initially classified the leak parser, runner, and contract as
+shared XCUITest harness, forcing all 105 journeys in both locales for changes
+that cannot build, select, measure, or accept UI evidence. That duplicated
+unrelated Settings, Meeting Detail, Skills, and showcase coverage and conflicted
+with the project's feature-PR scoping policy. Candidate automation itself does
+validate final UI receipts and must remain a full shared-harness owner.
+
+**Decision:** give the three leak-specific evidence owners one explicit
+bilingual UI scope containing the existing Ask, background-work, and Live
+Assist product journeys: 12 unique tests per locale. Keep
+`scripts/candidate_automation.py`, the selector, runtime classifier, runner,
+budget, localization, and shared seed owners in the full bilingual fallback.
+Policy tests require the leak set to stay disjoint from shared harness and pin
+the exact 12-test union. Complete bilingual remains mandatory for integration,
+RC, release, and any selector/shared-harness change.
+
+**Consequences:** future leak-contract/parser/runner changes retain real-app
+coverage of every visible product path they qualify while avoiding 93 unrelated
+launches per locale. This change modifies only selection cost, not assertions,
+budgets, retries, locale coverage, product code, candidate closure, or the final
+105-plus-105 release gate. D449 itself changes the selector and therefore must
+pass the complete bilingual catalogue once.

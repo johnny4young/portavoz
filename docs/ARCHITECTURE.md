@@ -4747,8 +4747,18 @@ Assist policy, the bundled Sequoia/Tahoe question classifier, deep Ask, and
 semantic indexing over public synthetic/disposable state. A zero tool exit is
 insufficient: every path must publish its fresh product completion artifact,
 the parser rejects fatal launch/tool markers, and the receipt requires zero
-leaks and zero leaked bytes. The runner is current-host evidence, not a claim
+leaks and zero leaked bytes. Schema-2 fragments and receipts also bind each
+workload's exact repetition: 100 in-process rounds for each Live Assist lane
+and one canonical workload for Ask and indexing. The observation validator
+checks the Live Assist resource count rather than trusting the runner argument.
+This strengthens the existing owner without adding a duplicate workflow. The
+runner is current-host high-iteration evidence, not a temporal soak or a claim
 about retained cycles outside the tool's reach or physical platform coverage.
+The leak parser, runner, and contract map to the exact bilingual Ask,
+background-work, and Live Assist UI scopes (12 unique journeys per locale), not
+the shared-harness fallback. Candidate automation remains a full bilingual
+harness owner because it validates the final UI receipt itself. Selector or
+other shared-harness changes still run the complete catalogue.
 
 The installed-model lane synthesizes one bounded spoken fixture from tracked
 public English text. Its bilingual conversation is not one `say` process with

@@ -20,7 +20,7 @@
   ],
   "memoryLeaks": {
     "contract": "docs/evidence/apuntador-leak-baseline.json",
-    "liveAssistIterations": 5,
+    "liveAssistIterations": 100,
     "requiredScenarios": [
       "live-assist-released",
       "live-assist-bundled-question",

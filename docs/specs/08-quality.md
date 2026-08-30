@@ -6607,15 +6607,16 @@ journey passed 1/1 in English in 2.592 seconds and 1/1 in Spanish in 2.363
 seconds from one build, without retry, adjusted budget, or Notification Center
 override. No release, notarization, publication, or installation occurred.
 
-**D447 content-free real-app leak authority.** Candidate contract schema 3 adds
-one current-host memory-leak receipt without inventing a ninth high-level proof.
+**D447/D448 content-free real-app leak and repetition authority.** Candidate
+contract schema 3 adds one current-host memory-leak receipt without inventing a
+ninth high-level proof.
 The clean-source runner builds one Release application and copies it into a
 mode-0700 scratch root. Only that disposable copy is renamed and ad-hoc signed
 with the existing resource-benchmark library-validation exception; the shipped
 signature and both installed application bundles remain untouched. Apple's
 `leaks --atExit` runs with `--noContent --nostacks` over four public-synthetic
-product paths: a fixed five-iteration released Live Assist workload, a fixed
-five-iteration bundled Sequoia/Tahoe question-classifier workload, one canonical
+product paths: a fixed 100-iteration released Live Assist workload, a fixed
+100-iteration bundled Sequoia/Tahoe question-classifier workload, one canonical
 deep Ask workload, and one canonical semantic-indexing workload. No network,
 private library, user transcript, or caller-supplied evidence state is admitted.
 
@@ -6624,13 +6625,23 @@ unique product completion marker exactly once, and produce a fresh bounded
 regular evidence artifact accepted by the existing Live Assist or resource
 validator. Fatal task-port, dynamic-library, signal, and process-launch markers
 block even if `leaks` itself returns zero. Any reported leak or leaked byte
-blocks. The owner-only receipt binds the exact release version, build, clean
-commit, host, Xcode build, closed instrumentation policy, canonical scenario
-order, and SHA-256 of every content-free evidence fragment. Missing, symlinked,
-oversized, duplicated, reordered, malformed, fatal, incomplete, leaking, or
-identity-mismatched evidence produces no candidate qualification.
+blocks. The owner-only schema-2 fragment and receipt bind the exact release
+version, build, clean commit, host, Xcode build, closed instrumentation policy,
+canonical scenario order, exact per-scenario iteration count, and SHA-256 of
+every content-free evidence fragment. The Live Assist adapter requires the
+resource observation itself to report the tracked 100 iterations; Ask and
+indexing require one. Missing, symlinked, oversized, duplicated, reordered,
+malformed, workload-drifted, fatal, incomplete, leaking, or identity-mismatched
+evidence produces no candidate qualification.
 
-This closes a deterministic current-host leak check for those four paths only.
+This closes a deterministic current-host leak check for those four paths plus
+high-iteration in-process stability for the two Live Assist lanes only.
+The three leak-specific evidence owners select the exact existing Ask,
+background-work, and Live Assist journeys in both locales: 12 tests per locale.
+They are not UI receipt/build/runtime harness owners, so expanding them to every
+unrelated surface would be duplicate coverage. Candidate automation remains in
+the complete bilingual shared-harness class because it validates the UI receipt;
+the final integration/RC/release gate also remains the complete catalogue.
 It is not an Instruments allocation/lifetime trace, proof that no retained
 cycle exists outside `leaks` detection, a long-duration stress/thermal result,
 an installed Foundation Models or provider result, physical Sequoia/Tahoe
