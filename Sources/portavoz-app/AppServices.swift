@@ -243,7 +243,8 @@ final class AppServices {
     /// ⌘K palette (design system 6a-1): floats over any view; state and owned
     /// tasks live here so it works safely with the library window closed.
     let palette: CommandPaletteController
-    /// One-shot, meeting-scoped seek consumed only by its destination detail.
+    /// One-shot, meeting-scoped seek acknowledged only after its destination
+    /// player applies it.
     /// Existing details observe it too, so navigating to the already-open
     /// meeting cannot strand the request waiting for a route reconstruction.
     var pendingMeetingSeek: MeetingSeekRequest?

@@ -2017,6 +2017,20 @@ def _run_candidate(
         "TEST_RUNNER_PORTAVOZ_TEST_AUDIO_ROOT": None,
     }
 
+    # Measure latency-sensitive evidence before XCTest, model execution,
+    # Apple's leak instrumentation, or resource collection can leave unrelated
+    # compiler, symbolication, or model work competing with the fixed PERF-008
+    # observation set. The ledger still rejects external host contention; this
+    # ordering only prevents the candidate runner from creating that contention
+    # itself and makes a noisy-host failure happen before the expensive gates.
+    run_candidate_performance_gate(
+        root,
+        commit,
+        performance_root,
+        contract,
+        environment=private_fixture_environment,
+    )
+
     run_command(
         root,
         commit,
@@ -2115,14 +2129,6 @@ def _run_candidate(
         version=version,
         build=build,
         commit=commit,
-    )
-
-    run_candidate_performance_gate(
-        root,
-        commit,
-        performance_root,
-        contract,
-        environment=private_fixture_environment,
     )
 
     run_command(

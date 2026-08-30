@@ -17350,3 +17350,68 @@ bounded evidence load rather than an arbitrary CI soak. This still does not
 prove hours-long temporal stability, every retained cycle, thermal behavior,
 cross-hardware or physical Sequoia/Tahoe coverage, other installed providers,
 or field usefulness; those authorities remain open.
+
+## D451 — Measure candidate performance before instrumentation-heavy gates (Aug 2026)
+
+**Context:** the first exact `9a98196d` candidate passed deterministic scope,
+recording stress, scoped bilingual UI, public validation, all installed-model
+classes, and the repeated Apuntador leak owner. Its first performance ledger
+was authoritative and passed every hard budget, with one budgetless Detail-core
+candidate. Confirmation run two kept semantic CPU p95 inside budget at 76.04
+milliseconds but semantic wall p95 rose to 113.97 milliseconds and 1.55 times
+its own median. The ledger correctly withheld a verdict as informational and
+the candidate wrote no qualification receipt. The runner had executed Apple
+leak instrumentation immediately before the latency-sensitive ledger; the host
+audit afterward found no residual Portavoz process but did find active system
+symbolication and unrelated host load. Repeating unchanged until green would
+not be evidence.
+
+**Decision:** preserve one sequential fail-closed candidate owner, but run the
+authoritative performance ledger and its fixed PERF-008 confirmation as its
+first specialized gate. Deterministic XCTest, model execution, Apple leak
+instrumentation, resource collection, long capture, upgrade/recovery, and full
+bilingual XCUITest follow only after performance succeeds. A characterization
+test pins performance ahead of the deterministic, leak, and resource gates.
+The performance contract, budgets, stability rules, exact three-run set,
+retained adverse observations, source/host/toolchain identity, and accepted
+exit states do not change.
+
+**Consequences:** the candidate no longer creates compiler, model,
+symbolication, or resource competition before measuring latency, and a host
+that is already noisy fails early instead of wasting the full qualification
+run. External contention, an unstable sample, a hard miss, an unresolved
+metric, or a confirmed regression still blocks; the order change is neither a
+retry, a baseline change, nor permission to discard adverse evidence. It does
+not convert hosted CI, other hardware tiers, physical Sequoia/Tahoe,
+distribution, CloudKit, assistive technology, or field evidence into local
+proof.
+
+## D452 — Acknowledge citation seeks only after playback applies them (Aug 2026)
+
+**Context:** the first complete bilingual UI run after D451 passed all 105
+English journeys but the Spanish command-palette journey timed out waiting for
+the cited three-second playhead. The palette answer, citation, destination
+detail, and player all existed. The identical assertion had failed on an older
+PR and then passed isolated reruns; that retained diagnosis explicitly required
+a pending-state correction if it recurred. The process mailbox was being
+cleared as soon as a matching detail copied the request into view-local state.
+If SwiftUI reconstructed that detail before playback preparation completed, the
+new view had neither the process request nor the old local pending seek.
+
+**Decision:** keep each identity-bearing `MeetingSeekRequest` in `AppServices`
+until the matching Meeting Detail has both accepted it into transcript
+navigation and applied it to a non-nil prepared playback session. The playback
+navigation owner returns whether application actually occurred. Only that true
+result acknowledges the exact request UUID; a stale acknowledgement cannot
+clear a newer seek. View appearance, model revision, request observation, and
+playback completion may all attempt delivery idempotently. A missing player
+retains both the process mailbox and the view-local pending target. No timeout,
+retry, locale exception, assertion, or UI budget changes.
+
+**Consequences:** command-palette, Ask, Library, and Spotlight citation routes
+survive same-route delivery and route/view reconstruction without extending
+test waits. A later request wins by identity, and a playback preparation
+failure remains pending rather than being falsely acknowledged. Pure tests
+characterize no-player retention, architecture ratchets require acknowledgement-
+after-application and UUID fencing, and the existing bilingual same-route
+XCUITest remains the end-to-end authority.

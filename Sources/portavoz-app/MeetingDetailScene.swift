@@ -99,12 +99,9 @@ struct MeetingDetailScene: View {
             averageMyShare: {
                 await services.averageMyShare(excluding: meetingID)
             },
-            consumePendingSeek: {
-                guard let request = services.pendingMeetingSeek,
-                      request.meetingID == meetingID
-                else { return nil }
+            acknowledgePendingSeek: { requestID in
+                guard services.pendingMeetingSeek?.id == requestID else { return }
                 services.pendingMeetingSeek = nil
-                return request
             },
             clearJustRecorded: {
                 services.justRecorded = nil
@@ -153,7 +150,7 @@ struct MeetingDetailSceneActions {
     let applyRefine:
         @MainActor (ApplyRefinedMeetingRequest) async throws -> ApplyRefinedMeetingResult
     let averageMyShare: @MainActor () async -> Double?
-    let consumePendingSeek: @MainActor () -> MeetingSeekRequest?
+    let acknowledgePendingSeek: @MainActor (UUID) -> Void
     let clearJustRecorded: @MainActor () -> Void
     let closeDetail: @MainActor () -> Void
     let showInsights: @MainActor () -> Void

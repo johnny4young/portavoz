@@ -207,6 +207,34 @@ final class MeetingDetailFlowStateTests: XCTestCase {
         XCTAssertEqual(navigation.focusedRowID, rowID)
     }
 
+    func testPlaybackNavigationRetainsRequestedSeekUntilPlaybackExists() async {
+        let rowID = UUID()
+        let content = MeetingTranscriptContent(
+            baseTranscriptRevision: 1,
+            rows: [MeetingTranscriptContent.Row(
+                id: rowID,
+                sourceSegmentIDs: [rowID],
+                speakerID: nil,
+                channel: .system,
+                text: "Evidence",
+                language: "en",
+                startTime: 3,
+                endTime: 5,
+                confidence: nil,
+                isFinal: true)],
+            chapters: [])
+        let navigation = MeetingDetailPlaybackNavigation()
+
+        let didApply = navigation.requestSeek(
+            to: 3,
+            content: content,
+            player: nil)
+
+        XCTAssertFalse(didApply)
+        XCTAssertEqual(navigation.focusedRowID, rowID)
+        XCTAssertFalse(navigation.applyPendingSeek(to: nil))
+    }
+
     private func makeMirrorDetail(
         duration: TimeInterval,
         includeRemoteSpeaker: Bool

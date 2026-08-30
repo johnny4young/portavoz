@@ -46,7 +46,7 @@ struct MeetingDetailView: View {
         .task(id: playbackTaskID) { await refreshPlayback() }
         .task(id: model.state.revision) { await refreshPresentation() }
         .onChange(of: sceneValues.pendingSeek) { _, _ in
-            consumePendingMeetingSeekIfMatching()
+            deliverPendingMeetingSeekIfPossible()
         }
         .onDisappear { model.invalidatePlayback() }
     }
@@ -432,24 +432,29 @@ private extension MeetingDetailView {
 
     private func refreshPresentation() async {
         guard detail != nil else { return }
-        consumePendingMeetingSeekIfMatching()
+        deliverPendingMeetingSeekIfPossible()
         await coordinator.loadPresentationSuggestions()
     }
 
-    private func consumePendingMeetingSeekIfMatching() {
+    private func deliverPendingMeetingSeekIfPossible() {
         guard let detail,
-              let request = sceneActions.consumePendingSeek()
+              let request = sceneValues.pendingSeek,
+              request.meetingID == meetingID
         else { return }
-        playbackNavigation.requestSeek(
+        let didApply = playbackNavigation.requestSeek(
             to: request.timestamp,
             content: transcriptContent(detail),
             player: player)
+        if didApply {
+            sceneActions.acknowledgePendingSeek(request.id)
+        }
     }
 
     private func refreshPlayback() async {
         guard playbackTaskID != nil else { return }
         await coordinator.loadPlayback()
         guard !Task.isCancelled else { return }
+        deliverPendingMeetingSeekIfPossible()
         playbackNavigation.applyPendingSeek(to: player)
         playbackNavigation.runPerformanceSeekIfRequested(
             profile: sceneValues.performanceProfile,

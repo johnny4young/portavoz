@@ -1102,6 +1102,82 @@ class CandidateAutomationTests(unittest.TestCase):
             ui.assert_called_once()
             self.assertEqual(os.stat(receipt_path).st_mode & 0o777, 0o600)
 
+    def test_run_measures_performance_before_instrumentation_heavy_gates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "candidate"
+            events = []
+
+            def command_side_effect(_, __, label, ___, **____):
+                events.append(label)
+
+            def performance_side_effect(*_, **__):
+                events.append("performance")
+
+            with mock.patch.object(
+                candidate,
+                "exact_checkout",
+                return_value=self.commit,
+            ), mock.patch.object(
+                candidate,
+                "physical_memory_bytes",
+                return_value=36 * 1024**3,
+            ), mock.patch.object(
+                candidate,
+                "run_command",
+                side_effect=command_side_effect,
+            ), mock.patch.object(
+                candidate,
+                "render_public_conversation",
+            ), mock.patch.object(
+                candidate,
+                "run_swift_test_classes",
+            ), mock.patch.object(
+                candidate,
+                "validate_public_model_fixture",
+            ), mock.patch.object(
+                candidate,
+                "validate_deterministic_receipt",
+            ), mock.patch.object(
+                candidate,
+                "run_candidate_performance_gate",
+                side_effect=performance_side_effect,
+            ), mock.patch.object(
+                candidate,
+                "validate_resource_receipt",
+            ), mock.patch.object(
+                candidate,
+                "validate_memory_leak_receipt",
+            ), mock.patch.object(
+                candidate,
+                "validate_long_capture",
+            ), mock.patch.object(
+                candidate,
+                "validate_ui_receipts",
+            ), contextlib.redirect_stdout(io.StringIO()):
+                candidate.run_candidate(
+                    version=self.version,
+                    build=self.build,
+                    output_path=output,
+                )
+
+            self.assertEqual(events[0], "performance")
+            self.assertLess(
+                events.index("performance"),
+                events.index("Finite deterministic release scope"),
+            )
+            self.assertLess(
+                events.index("performance"),
+                events.index("Content-free real-app Apuntador leak baseline"),
+            )
+            self.assertLess(
+                events.index("performance"),
+                next(
+                    index
+                    for index, event in enumerate(events)
+                    if event.startswith("Release resource baseline")
+                ),
+            )
+
     def test_model_failure_removes_both_public_scratch_audio_files(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "candidate"
@@ -1136,6 +1212,9 @@ class CandidateAutomationTests(unittest.TestCase):
             ), mock.patch.object(
                 candidate,
                 "validate_deterministic_receipt",
+            ), mock.patch.object(
+                candidate,
+                "run_candidate_performance_gate",
             ), mock.patch.object(
                 candidate,
                 "run_swift_test_classes",

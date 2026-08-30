@@ -466,7 +466,10 @@ visible rows, preventing independent projections from drifting.
 `MeetingTranscriptNavigationState` resolves generated evidence through source
 IDs and timestamp-only Library/Ask/Spotlight routes through the visible-row
 timeline. It keeps an exact pending seek while waveform/player construction is
-still in flight. Playback synchronization performs a start-time upper-bound
+still in flight. A process-owned citation request remains pending across route
+or view reconstruction until the matching prepared player actually accepts the
+seek; identity-checked acknowledgement cannot clear a newer request. Playback
+synchronization performs a start-time upper-bound
 search plus a maximum-end segment-tree lookup, retaining the released overlap
 and gap behavior without scanning up to 20,000 rows every 200 ms. The extracted
 transcript and chapter sections receive only immutable values and explicit seek

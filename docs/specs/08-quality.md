@@ -2842,12 +2842,15 @@ Control cell.
 `docs/evidence/candidate-automation.json` is the finite executable contract for
 the eight candidate proofs. `scripts/candidate_automation.py` runs every gate
 sequentially on one completely clean full commit and rechecks the source before
-and after each command. It directly owns deterministic reliability, public
-bilingual Apuntador validation, six installed-model Release classes, the
-authoritative performance ledger and its finite PERF-008 confirmation, one
-current-host Release resource receipt, one four-path real-app memory-leak
-receipt, the canonical synthetic three-hour capture, seven upgrade/recovery
-classes, and the complete bilingual real-app XCUITest catalog. It has no arbitrary proof
+and after each command. The latency-sensitive authoritative performance ledger
+and its finite PERF-008 confirmation run first, before XCTest, model execution,
+Apple leak instrumentation, and resource collection can leave compiler,
+symbolication, or model work competing with the measurement. The same runner
+then directly owns deterministic reliability, public bilingual Apuntador
+validation, six installed-model Release classes, one four-path real-app
+memory-leak receipt, one current-host Release resource receipt, the canonical
+synthetic three-hour capture, seven upgrade/recovery classes, and the complete
+bilingual real-app XCUITest catalog. It has no arbitrary proof
 recorder; only the successful in-process sequence writes the schema-1
 `candidate-automation` qualification receipt with mode 0600.
 
@@ -2911,7 +2914,11 @@ the last clean run is atomically copied to the canonical performance directory,
 alongside a validated content-free confirmation receipt. Exit-state mismatch,
 tampering, hard budget failure, instability, unresolved evidence, identity
 drift, or a non-authoritative ledger blocks before qualification. This fixed
-set is not an arbitrary green retry and never changes a baseline.
+set is not an arbitrary green retry and never changes a baseline. Performance-
+first ordering does not weaken that fail-closed authority: external host
+pressure still blocks, but later heavyweight gates cannot manufacture pressure
+inside the candidate runner before the latency sample, and a noisy host fails
+before hours of unrelated qualification work.
 
 The resource receipt must match version/build/full commit,
 Release configuration, and the automatically selected host profile; all nine
@@ -6655,3 +6662,30 @@ cycle exists outside `leaks` detection, a long-duration stress/thermal result,
 cross-hardware provider qualification, physical Sequoia/Tahoe evidence,
 VoiceOver/Voice Control evidence, signed distribution, production CloudKit, or
 field reliability. Those gates remain separate and explicit.
+
+**D452 durable citation delivery.** The recurring command-palette same-route
+failure is classified as a product-state defect rather than a timing flake. The
+answer, exact citation, destination detail, and player could all exist while the
+three-second seek was lost because the process mailbox was consumed before the
+prepared player accepted it. The repaired contract keeps the identity-bearing
+request process-owned until application succeeds, acknowledges only the exact
+UUID, and permits idempotent delivery from request observation, model revision,
+and playback completion. The no-player unit characterization must report that
+the seek was retained; source ratchets reject eager consumption or an unfenced
+acknowledgement. The existing bilingual XCUITest keeps its unchanged ten-second
+predicate wait and exact `0:03` assertion. Passing retries, broader timeouts,
+locale exclusions, and green-by-retry do not qualify this repair.
+
+The final controlled run reused one build and passed the complete 105-case
+catalogue in both locales without retry, timeout, assertion, or budget changes.
+English measured 905.849 summed XCTest seconds (p50 6.789, p95 18.603,
+maximum 39.418); Spanish measured 915.119 seconds (p50 6.854, p95 18.555,
+maximum 39.809). Both schema-3 receipts have zero violations and zero runtime
+adjustments. An earlier 105/105 English functional pass that crossed five
+individual budgets is retained as non-authoritative diagnosis: the same five
+sentinels later ran while the host had a 32.87 load average on 14 cores, an
+active VM/load soak, and a sibling `xcodebuild` beginning mid-run. Once those
+owners released the host, the unchanged five-test scope fell from 116.515
+attributed seconds with two violations to 74.027 seconds with none, before the
+complete bilingual authority passed. No product behavior or threshold was
+changed to manufacture that result.

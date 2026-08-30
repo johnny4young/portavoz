@@ -29,13 +29,14 @@ final class MeetingDetailPlaybackNavigation {
         applyPendingSeek(to: player)
     }
 
+    @discardableResult
     func requestSeek(
         to timestamp: TimeInterval,
         content: MeetingTranscriptContent,
         player: MeetingPlaybackSession?
-    ) {
+    ) -> Bool {
         transcript.requestSeek(to: timestamp, in: content)
-        applyPendingSeek(to: player)
+        return applyPendingSeek(to: player)
     }
 
     func seekAndPlay(
@@ -50,9 +51,11 @@ final class MeetingDetailPlaybackNavigation {
         player.play()
     }
 
-    func applyPendingSeek(to player: MeetingPlaybackSession?) {
-        guard let player, let seconds = transcript.consumePendingSeek() else { return }
+    @discardableResult
+    func applyPendingSeek(to player: MeetingPlaybackSession?) -> Bool {
+        guard let player, let seconds = transcript.consumePendingSeek() else { return false }
         player.seek(to: seconds)
+        return true
     }
 
     func runPerformanceSeekIfRequested(

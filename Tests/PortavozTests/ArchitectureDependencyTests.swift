@@ -10309,6 +10309,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/MeetingDetailFlowHost.swift")
         let playbackNavigation = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailPlaybackNavigation.swift")
+        let scene = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailScene.swift")
         let coordinator = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailCoordinator.swift")
         let identityCoordinator = try Self.contents(
@@ -10352,6 +10354,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(flowHost.contains("NSWorkspace"))
         XCTAssertTrue(playbackNavigation.contains("@Observable"))
         XCTAssertTrue(playbackNavigation.contains("MeetingTranscriptNavigationState"))
+        XCTAssertTrue(view.contains("deliverPendingMeetingSeekIfPossible()"))
+        XCTAssertTrue(view.contains("if didApply"))
+        XCTAssertTrue(view.contains("sceneActions.acknowledgePendingSeek(request.id)"))
+        XCTAssertTrue(scene.contains("services.pendingMeetingSeek?.id == requestID"))
+        XCTAssertFalse(scene.contains("consumePendingSeek:"))
         for source in [flowHost, playbackNavigation] {
             for forbidden in [
                 "AppServices", "MeetingDetailModel", "MeetingStore",

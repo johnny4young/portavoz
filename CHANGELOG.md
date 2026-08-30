@@ -4,6 +4,10 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## August 30, 2026
+
+- **🧭 Citation jumps wait for playback** — Command-palette answers keep their exact meeting moment until the destination player is truly ready.
+
 ## August 29, 2026
 
 - **🔄 Automatic briefs resume after rapid recording changes** — A delayed recording signal can no longer leave private pre-meeting preparation waiting until another calendar change.

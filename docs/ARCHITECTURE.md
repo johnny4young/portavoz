@@ -3873,8 +3873,11 @@ Meeting Detail
 seeks exact transcript evidence only after its audio player is ready; early
 source selections remain queued until waveform preparation completes. Ask and
 command-palette citation seeks are meeting-scoped, identity-bearing navigation
-requests: only the matching detail consumes them, and an already-open detail
-observes a new request without depending on route reconstruction.
+requests. The matching detail keeps the process-owned request authoritative
+until its prepared player applies the exact timestamp, then acknowledges only
+that request identity. An already-open detail observes a new request without
+depending on route reconstruction, while a rebuilt route cannot lose a seek in
+view-local state before playback becomes ready.
 
 The instant Library path is an exact-first hybrid distinct from Ask. Its FTS
 observation always publishes before optional semantic augmentation. It reuses
@@ -4724,11 +4727,14 @@ resource scenarios, four real-app memory-leak scenarios, two UI locales, and
 the performance-ledger partition.
 `scripts/candidate_automation.py` requires a completely clean checkout, fixes
 one full source commit, and rechecks that identity around every sequential
-gate. It directly runs the deterministic release suite, public bilingual
-Apuntador corpus, installed-model classes, authoritative performance ledger
-plus finite confirmation, current-host Release resource baseline, canonical
-synthetic three-hour capture, a content-free real-app leak pass, upgrade/recovery
-classes, and complete bilingual real-app XCUITest.
+gate. It runs the latency-sensitive authoritative performance ledger and its
+finite confirmation first, before XCTest, model execution, Apple leak
+instrumentation, or resource collection can create competing compiler,
+symbolication, or model work. It then directly runs the deterministic release
+suite, public bilingual Apuntador corpus, installed-model classes, a
+content-free real-app leak pass, current-host Release resource baseline,
+canonical synthetic three-hour capture, upgrade/recovery classes, and complete
+bilingual real-app XCUITest.
 Specialized validators then require the deterministic receipt's exact release
 identity, an authoritative performance inventory, three passing resource
 samples for every scenario plus the Ask timing pipeline, zero-drift bounded
@@ -4802,7 +4808,10 @@ their digests and candidate metric IDs are retained. A hard budget,
 unresolved, unstable, authority, exit-state, identity, or digest failure always
 blocks. This is finite confirmation of one candidate observation, not an
 unchanged full-candidate retry or permission to cherry-pick arbitrary green
-runs.
+runs. Running this proof first cannot make a busy host authoritative; it only
+keeps the runner's later XCTest, leak/symbolication, model, and resource work
+from contaminating its own latency sample and fails early when external
+contention is already present.
 
 Twelve scale/semantic/Spotlight metrics must be measured and pass or remain
 diagnostic only where their tracked threshold has no release budget. The other
