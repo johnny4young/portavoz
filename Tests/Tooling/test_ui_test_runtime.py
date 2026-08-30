@@ -11,14 +11,15 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from ui_test_runtime import (  # noqa: E402
+    ActivityBoundary,
     MEASUREMENT_POLICY,
     RuntimeAdjustment,
-    activity_span_seconds,
+    activity_boundary_seconds,
     budget_violations,
     build_receipt,
     cases_requiring_activity_review,
     collect_test_cases,
-    reconcile_post_teardown_noise,
+    reconcile_activity_boundary_noise,
     write_receipt,
 )
 
@@ -73,7 +74,7 @@ class UITestRuntimeTests(unittest.TestCase):
         )
 
         self.assertEqual(receipt["budgetStatus"], "passed")
-        self.assertEqual(receipt["schemaVersion"], 2)
+        self.assertEqual(receipt["schemaVersion"], 3)
         self.assertEqual(receipt["measurementPolicy"], MEASUREMENT_POLICY)
         self.assertEqual(receipt["runtimeAdjustments"], [])
         self.assertEqual(receipt["caseCount"], 2)
@@ -82,32 +83,47 @@ class UITestRuntimeTests(unittest.TestCase):
         self.assertEqual(receipt["p95Seconds"], 8.0)
         self.assertNotIn("name", receipt["tests"][0])
 
-    def test_extracts_one_exact_start_to_teardown_activity_span(self):
+    def test_extracts_one_exact_setup_to_teardown_activity_boundary(self):
         tree = {
             "testRuns": [{
                 "activities": [
                     {"title": "Start Test at 2026-08-29 02:37:48", "startTime": 100.0},
-                    {"title": "Click exact control", "startTime": 105.0},
-                    {"title": "Tear Down", "startTime": 110.338},
+                    {"title": "Set Up", "startTime": 130.015},
+                    {"title": "Click exact control", "startTime": 135.0},
+                    {"title": "Tear Down", "startTime": 140.353},
                 ]
             }]
         }
 
-        self.assertAlmostEqual(activity_span_seconds(tree), 10.338)
+        boundary = activity_boundary_seconds(tree)
 
-    def test_activity_span_rejects_missing_or_ambiguous_boundaries(self):
-        self.assertIsNone(activity_span_seconds({"testRuns": []}))
-        self.assertIsNone(activity_span_seconds({
+        self.assertIsNotNone(boundary)
+        self.assertAlmostEqual(boundary.attributed_duration_seconds, 10.338)
+        self.assertAlmostEqual(boundary.excluded_pre_setup_seconds, 30.015)
+
+    def test_activity_boundary_rejects_missing_or_ambiguous_boundaries(self):
+        self.assertIsNone(activity_boundary_seconds({"testRuns": []}))
+        self.assertIsNone(activity_boundary_seconds({
             "testRuns": [{
                 "activities": [
                     {"title": "Start Test at now", "startTime": 100.0},
-                    {"title": "Start Test at later", "startTime": 101.0},
+                    {"title": "Set Up", "startTime": 101.0},
+                    {"title": "Set Up", "startTime": 101.5},
                     {"title": "Tear Down", "startTime": 102.0},
                 ]
             }]
         }))
+        self.assertIsNone(activity_boundary_seconds({
+            "testRuns": [{
+                "activities": [
+                    {"title": "Start Test at now", "startTime": 100.0},
+                    {"title": "Tear Down", "startTime": 101.0},
+                    {"title": "Set Up", "startTime": 102.0},
+                ]
+            }]
+        }))
 
-    def test_reconciles_only_passing_post_teardown_harness_noise(self):
+    def test_reconciles_only_passing_pre_setup_harness_noise(self):
         cases = collect_test_cases({
             "nodes": [
                 test_node("LibraryUITests/testLibrary()", 40.353),
@@ -115,19 +131,44 @@ class UITestRuntimeTests(unittest.TestCase):
             ]
         })
 
-        adjusted, adjustments = reconcile_post_teardown_noise(
+        adjusted, adjustments = reconcile_activity_boundary_noise(
             cases,
             self.budget,
             selector_count=2,
-            activity_span_loader=lambda identifier: (
-                10.338 if identifier == "LibraryUITests/testLibrary()" else None
+            activity_boundary_loader=lambda identifier: (
+                ActivityBoundary(10.338, 30.013)
+                if identifier == "LibraryUITests/testLibrary()" else None
             ),
         )
 
         self.assertAlmostEqual(adjusted[1].duration_seconds, 10.338)
         self.assertEqual(len(adjustments), 1)
         self.assertEqual(adjustments[0].identifier, "LibraryUITests/testLibrary()")
+        self.assertAlmostEqual(adjustments[0].excluded_pre_setup_seconds, 30.013)
+        self.assertAlmostEqual(adjustments[0].excluded_post_teardown_seconds, 0.002)
         self.assertAlmostEqual(adjustments[0].excluded_harness_seconds, 30.015)
+
+    def test_reconciles_only_passing_post_teardown_harness_noise(self):
+        cases = collect_test_cases({
+            "nodes": [test_node("LibraryUITests/testLibrary()", 40.353)]
+        })
+        budget = json.loads(json.dumps(self.budget))
+        budget["catalog"]["expectedCaseCount"] = 1
+        budget["testBudgetsSeconds"] = {
+            "LibraryUITests/testLibrary()": 20.0,
+        }
+
+        adjusted, adjustments = reconcile_activity_boundary_noise(
+            cases,
+            budget,
+            selector_count=1,
+            activity_boundary_loader=lambda _: ActivityBoundary(10.338, 0.002),
+        )
+
+        self.assertAlmostEqual(adjusted[0].duration_seconds, 10.338)
+        self.assertEqual(len(adjustments), 1)
+        self.assertAlmostEqual(adjustments[0].excluded_pre_setup_seconds, 0.002)
+        self.assertAlmostEqual(adjustments[0].excluded_post_teardown_seconds, 30.013)
 
     def test_legitimate_slow_activity_remains_a_budget_failure(self):
         cases = collect_test_cases({
@@ -139,11 +180,11 @@ class UITestRuntimeTests(unittest.TestCase):
             "LibraryUITests/testLibrary()": 20.0,
         }
 
-        adjusted, adjustments = reconcile_post_teardown_noise(
+        adjusted, adjustments = reconcile_activity_boundary_noise(
             cases,
             budget,
             selector_count=1,
-            activity_span_loader=lambda _: 40.35,
+            activity_boundary_loader=lambda _: ActivityBoundary(40.35, 0.0),
         )
 
         self.assertEqual(adjusted, cases)
@@ -163,11 +204,11 @@ class UITestRuntimeTests(unittest.TestCase):
             "LibraryUITests/testLibrary()": 20.0,
         }
 
-        adjusted, adjustments = reconcile_post_teardown_noise(
+        adjusted, adjustments = reconcile_activity_boundary_noise(
             cases,
             budget,
             selector_count=1,
-            activity_span_loader=lambda _: None,
+            activity_boundary_loader=lambda _: None,
         )
 
         self.assertEqual(adjusted, cases)
@@ -209,6 +250,8 @@ class UITestRuntimeTests(unittest.TestCase):
                 identifier="LibraryUITests/testLibrary()",
                 reported_duration_seconds=40.353,
                 attributed_duration_seconds=10.338,
+                excluded_pre_setup_seconds=30.013,
+                excluded_post_teardown_seconds=0.002,
                 excluded_harness_seconds=30.015,
             )],
         )
@@ -218,8 +261,10 @@ class UITestRuntimeTests(unittest.TestCase):
             "identifier": "LibraryUITests/testLibrary()",
             "reportedDurationSeconds": 40.353,
             "attributedDurationSeconds": 10.338,
+            "excludedPreSetupSeconds": 30.013,
+            "excludedPostTeardownSeconds": 0.002,
             "excludedHarnessSeconds": 30.015,
-            "reason": "post-teardown-unattributed-time",
+            "reason": "outside-test-activity-boundaries",
         }])
 
     def test_budget_fails_slow_missing_and_failed_cases(self):

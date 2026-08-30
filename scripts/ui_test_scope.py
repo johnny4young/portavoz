@@ -434,6 +434,28 @@ SETTINGS_FEATURES = frozenset(feature for feature in ALL_FEATURES if feature.sta
 # expansion is the complete bilingual catalog rather than a small canary set.
 HARNESS_TESTS = ALL_TESTS
 
+# Changes to these shared owners can alter what gets built, selected, measured,
+# or accepted as UI evidence. They therefore require one complete bilingual
+# run even when they do not change product presentation directly.
+FULL_BILINGUAL_HARNESS_FILES = frozenset({
+    ".github/workflows/ui-tests.yml",
+    "Makefile",
+    "project.yml",
+    "scripts/candidate_automation.py",
+    "scripts/check-ui-test-host.py",
+    "scripts/check-url-scheme-handlers.sh",
+    "scripts/run-ui-tests.sh",
+    "scripts/ui_test_ci_gate.py",
+    "scripts/ui_test_execution.py",
+    "scripts/ui_test_runtime.py",
+    "scripts/ui_test_scope.py",
+    "scripts/ui_test_verification_anchor.py",
+    "scripts/ui_test_verified_base.py",
+    "docs/evidence/ui-test-runtime-budget.json",
+    "Sources/portavoz-app/UITestWindowPlacement.swift",
+    "Tests/PortavozUITests/UITestSupport.swift",
+})
+
 RETIRED_DUPLICATE_TESTS = frozenset({
     test_id("InsightsUITests", "testInsightsRendersHeatmap"),
     test_id("InsightsUITests", "testInsightsShowsWhoYouTalkWith"),
@@ -968,13 +990,7 @@ def select_paths(paths: Iterable[str]) -> Selection:
             reasons.append(f"{path}: complete bilingual localization fallback")
             continue
 
-        if path in {
-            "Makefile",
-            "project.yml",
-            "scripts/run-ui-tests.sh",
-            "Sources/portavoz-app/UITestWindowPlacement.swift",
-            "Tests/PortavozUITests/UITestSupport.swift",
-        }:
+        if path in FULL_BILINGUAL_HARNESS_FILES:
             selected.update(HARNESS_TESTS)
             locales.add("es")
             reasons.append(f"{path}: complete bilingual shared-harness fallback")

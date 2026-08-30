@@ -632,6 +632,34 @@ class CandidateAutomationTests(unittest.TestCase):
             ):
                 candidate.validate_ui_receipts(root, self.contract)
 
+    def test_complete_bilingual_ui_validates_split_harness_attribution(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write_ui_receipts(root)
+            english_path = root / "en-runtime.json"
+            english = json.loads(english_path.read_text())
+            identifier = english["tests"][0]["identifier"]
+            english["runtimeAdjustments"] = [{
+                "identifier": identifier,
+                "reportedDurationSeconds": 31.0,
+                "attributedDurationSeconds": 1.0,
+                "excludedPreSetupSeconds": 29.998,
+                "excludedPostTeardownSeconds": 0.002,
+                "excludedHarnessSeconds": 30.0,
+                "reason": "outside-test-activity-boundaries",
+            }]
+            english_path.write_text(json.dumps(english))
+
+            candidate.validate_ui_receipts(root, self.contract)
+
+            english["runtimeAdjustments"][0]["excludedPostTeardownSeconds"] = 1.0
+            english_path.write_text(json.dumps(english))
+            with self.assertRaisesRegex(
+                candidate.CandidateAutomationError,
+                "runtime adjustment values differ",
+            ):
+                candidate.validate_ui_receipts(root, self.contract)
+
     def test_test_summary_rejects_zero_or_missing_discovery(self):
         self.assertEqual(
             candidate.test_summary(
@@ -1249,9 +1277,9 @@ class CandidateAutomationTests(unittest.TestCase):
                 for identifier in identifiers
             ]
             receipt = {
-                "schemaVersion": 2,
+                "schemaVersion": 3,
                 "measurementPolicy": (
-                    "xcresult-duration-with-post-teardown-exclusion-v1"
+                    "xcresult-duration-with-activity-boundary-exclusions-v2"
                 ),
                 "locale": locale,
                 "selectorCount": 0,

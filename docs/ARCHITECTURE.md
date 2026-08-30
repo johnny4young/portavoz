@@ -5005,18 +5005,27 @@ exit status; malformed, non-finite, negative, missing, or unreadable runtime
 input fails closed into a content-free error receipt. Per-journey and full-suite
 budgets are versioned in `docs/evidence/ui-test-runtime-budget.json`.
 
-Runtime receipts use a closed schema-2 attribution policy. XCTest's outer case
+Runtime receipts use a closed schema-3 attribution policy. XCTest's outer case
 duration remains the conservative default. Only a passing case that threatens
 an individual or complete-catalogue aggregate budget is inspected further, and
 only its exact xcresult may provide that evidence. One unambiguous top-level
-`Start Test` to later top-level `Tear Down` span can exclude at least one second
-that XCTest attributed after teardown; the receipt retains the reported,
-attributed, and excluded durations plus the closed reason. Missing or
-ambiguous activities, failed cases, sub-second differences, and activity spans
-that still cross a budget retain the reported duration and fail closed. Hosted
-and candidate classifiers validate the adjustment identity and arithmetic.
-The raw xcresult remains available, and no adjustment changes a functional
-result, selector, assertion, timeout, locale, or retry policy.
+`Start Test`, `Set Up`, and later `Tear Down` sequence can attribute the
+`Set Up`-to-`Tear Down` span when at least one second lies outside that owned
+boundary. The receipt retains the reported and attributed durations, separates
+pre-setup from post-teardown exclusion, records their exact total, and uses one
+closed reason. Missing or ambiguous activities, failed cases, sub-second
+differences, inconsistent arithmetic, and activity spans that still cross a
+budget retain the reported duration and fail closed. Hosted and candidate
+classifiers validate the adjustment identity and arithmetic. The raw xcresult
+remains available, and no adjustment changes a functional result, selector,
+assertion, timeout, locale, budget, or retry policy.
+
+The changed-file classifier treats every shared UI evidence owner as a complete
+bilingual integration change. This includes the workflow, build/runner,
+preflight, selection, execution/runtime classification, verified-base and
+anchor owners, candidate receipt validator, and the versioned runtime budget.
+Those files cannot fall through the general `scripts/`, `.github/`, or `docs/`
+no-UI exclusions.
 
 Hosted functional classification remains fail closed for product assertions,
 executed-but-incomplete selections, missing or malformed evidence, unknown

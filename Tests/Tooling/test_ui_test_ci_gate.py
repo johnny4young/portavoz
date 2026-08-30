@@ -19,11 +19,11 @@ def receipt(locale: str, *, result: str = "Passed", drift: bool = False):
         "caseCount": 1,
         "locale": locale,
         "maximumSeconds": 1.0,
-        "measurementPolicy": "xcresult-duration-with-post-teardown-exclusion-v1",
+        "measurementPolicy": "xcresult-duration-with-activity-boundary-exclusions-v2",
         "p50Seconds": 1.0,
         "p95Seconds": 1.0,
         "runtimeAdjustments": [],
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "selectorCount": 1,
         "testDurationSeconds": 1.0,
         "testWallDurationSeconds": 2.0,
@@ -278,7 +278,7 @@ class UITestCIGateTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("selector counts disagree", result.stderr)
 
-    def test_valid_post_teardown_adjustment_is_visible_and_accepted(self):
+    def test_valid_activity_boundary_adjustment_is_visible_and_accepted(self):
         document = receipt("en")
         document["tests"][0]["durationSeconds"] = 10.338
         document["testDurationSeconds"] = 10.338
@@ -289,8 +289,10 @@ class UITestCIGateTests(unittest.TestCase):
             "identifier": "LibraryUITests/testLibrary()",
             "reportedDurationSeconds": 40.353,
             "attributedDurationSeconds": 10.338,
+            "excludedPreSetupSeconds": 30.013,
+            "excludedPostTeardownSeconds": 0.002,
             "excludedHarnessSeconds": 30.015,
-            "reason": "post-teardown-unattributed-time",
+            "reason": "outside-test-activity-boundaries",
         }]
 
         result = self.run_gate(receipts={"en": document})
@@ -304,8 +306,32 @@ class UITestCIGateTests(unittest.TestCase):
             "identifier": "LibraryUITests/testLibrary()",
             "reportedDurationSeconds": 40.353,
             "attributedDurationSeconds": 10.338,
+            "excludedPreSetupSeconds": 0.5,
+            "excludedPostTeardownSeconds": 0.5,
             "excludedHarnessSeconds": 1.0,
-            "reason": "post-teardown-unattributed-time",
+            "reason": "outside-test-activity-boundaries",
+        }]
+
+        result = self.run_gate(receipts={"en": document})
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("runtime adjustment values differ", result.stderr)
+
+    def test_split_harness_durations_must_sum_to_the_total_exclusion(self):
+        document = receipt("en")
+        document["tests"][0]["durationSeconds"] = 10.338
+        document["testDurationSeconds"] = 10.338
+        document["p50Seconds"] = 10.338
+        document["p95Seconds"] = 10.338
+        document["maximumSeconds"] = 10.338
+        document["runtimeAdjustments"] = [{
+            "identifier": "LibraryUITests/testLibrary()",
+            "reportedDurationSeconds": 40.353,
+            "attributedDurationSeconds": 10.338,
+            "excludedPreSetupSeconds": 29.0,
+            "excludedPostTeardownSeconds": 0.002,
+            "excludedHarnessSeconds": 30.015,
+            "reason": "outside-test-activity-boundaries",
         }]
 
         result = self.run_gate(receipts={"en": document})

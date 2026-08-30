@@ -30,9 +30,9 @@ CONTRACT_SCHEMA_VERSION = 2
 PERF_LEDGER_SCHEMA_VERSION = 1
 PERFORMANCE_CONFIRMATION_SCHEMA_VERSION = 1
 UI_BUDGET_SCHEMA_VERSION = 1
-UI_RECEIPT_SCHEMA_VERSION = 2
-UI_MEASUREMENT_POLICY = "xcresult-duration-with-post-teardown-exclusion-v1"
-UI_POST_TEARDOWN_NOISE_THRESHOLD_SECONDS = 1.0
+UI_RECEIPT_SCHEMA_VERSION = 3
+UI_MEASUREMENT_POLICY = "xcresult-duration-with-activity-boundary-exclusions-v2"
+UI_HARNESS_NOISE_THRESHOLD_SECONDS = 1.0
 EXPECTED_PERFORMANCE_CONFIRMATION_RUNS = 3
 EXPECTED_PERFORMANCE_ARTIFACTS = (
     "ledger.json",
@@ -927,6 +927,8 @@ def validate_ui_receipts(results_root: Path, contract: dict[str, Any]) -> None:
                     "identifier",
                     "reportedDurationSeconds",
                     "attributedDurationSeconds",
+                    "excludedPreSetupSeconds",
+                    "excludedPostTeardownSeconds",
                     "excludedHarnessSeconds",
                     "reason",
                 ),
@@ -937,7 +939,7 @@ def validate_ui_receipts(results_root: Path, contract: dict[str, Any]) -> None:
                 or identifier not in tests_by_identifier
                 or identifier in adjusted_identifiers
                 or tests_by_identifier[identifier]["result"] != "Passed"
-                or adjustment["reason"] != "post-teardown-unattributed-time"
+                or adjustment["reason"] != "outside-test-activity-boundaries"
             ):
                 raise CandidateAutomationError(
                     f"{locale} UI runtime adjustment identity differs"
@@ -950,6 +952,14 @@ def validate_ui_receipts(results_root: Path, contract: dict[str, Any]) -> None:
                 adjustment["attributedDurationSeconds"],
                 f"{locale} UI runtime adjustment attributed duration",
             )
+            excluded_pre_setup = finite_nonnegative(
+                adjustment["excludedPreSetupSeconds"],
+                f"{locale} UI runtime adjustment pre-setup duration",
+            )
+            excluded_post_teardown = finite_nonnegative(
+                adjustment["excludedPostTeardownSeconds"],
+                f"{locale} UI runtime adjustment post-teardown duration",
+            )
             excluded = finite_nonnegative(
                 adjustment["excludedHarnessSeconds"],
                 f"{locale} UI runtime adjustment excluded duration",
@@ -960,8 +970,11 @@ def validate_ui_receipts(results_root: Path, contract: dict[str, Any]) -> None:
             )
             if (
                 attributed > reported
-                or excluded < UI_POST_TEARDOWN_NOISE_THRESHOLD_SECONDS
+                or excluded < UI_HARNESS_NOISE_THRESHOLD_SECONDS
                 or abs((reported - attributed) - excluded) > 0.002
+                or abs(
+                    (excluded_pre_setup + excluded_post_teardown) - excluded
+                ) > 0.003
                 or abs(test_duration - attributed) > 0.002
             ):
                 raise CandidateAutomationError(

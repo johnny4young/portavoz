@@ -6338,19 +6338,21 @@ green. Exact head `19084e4e` then passed hosted CI run `33237174306` and Scoped
 UI run `33237174304` on their first attempts; PR #30 remained open, clean, and
 mergeable with no unresolved review threads.
 
-**Attributed runtime evidence.** Runtime receipt schema 2 prevents a proven
-post-teardown runner stall from masquerading as product work without making a
-slow or failed journey green. The reported XCTest duration remains the default.
+**Attributed runtime evidence.** Runtime receipt schema 3 prevents a proven
+pre-setup or post-teardown runner stall from masquerading as product work
+without making a slow or failed journey green. The reported XCTest duration
+remains the default.
 Only a passing case that crosses an individual ceiling, or participates in a
 complete-catalogue total/p95 overage, is inspected. Its exact activity tree
-must contain one top-level `Start Test` and one later top-level `Tear Down`;
-only a finite span that leaves at least one second after teardown may become
-the budget duration. The receipt retains the test identifier, reported span,
-attributed span, excluded span, and closed reason. Hosted and candidate gates
-reject forged identity, duplicate adjustments, arithmetic drift, non-passing
-owners, unknown reasons, or a shorter exclusion. Missing or ambiguous activity
-evidence keeps the reported duration and fails closed. No retry, timeout,
-budget, assertion, selector, or locale changes.
+must contain one top-level `Start Test`, one `Set Up`, and one later `Tear Down`;
+only the finite `Set Up`-to-`Tear Down` span that leaves at least one second
+outside the test-owned boundary may become the budget duration. The receipt
+retains the test identifier, reported span, attributed span, separate pre-setup
+and post-teardown exclusions, their total, and one closed reason. Hosted and
+candidate gates reject forged identity, duplicate adjustments, arithmetic
+drift, non-passing owners, unknown reasons, or a shorter exclusion. Missing or
+ambiguous activity evidence keeps the reported duration and fails closed. No
+retry, timeout, budget, assertion, selector, or locale changes.
 
 This policy was introduced after the first OBS-0 complete English run passed
 103/103 but reported one 40.353-second Summary-feedback case. Its exact
@@ -6363,6 +6365,30 @@ adjustment, and an unchanged-budget pass. The fresh final run then passed
 103/103 English in 853.399 seconds (p50 6.379, p95 17.811, maximum 36.339) and
 103/103 Spanish in 859.154 seconds (p50 6.554, p95 18.181, maximum 36.890),
 with zero adjustments, zero retries, and every unchanged budget green.
+
+The first exact D445 candidate later passed 105/105 English journeys but
+XCTest inserted 30.026 seconds between `Start Test` and `Set Up` while resolving
+its package graph for the active-recording navigation journey. Product-owned
+activity from `Set Up` through `Tear Down` was 4.807 seconds; the outer case was
+34.835 seconds and crossed its unchanged 20-second budget. Reprocessing that
+retained xcresult through schema 3 records 30.026 seconds before setup, 0.002
+seconds after teardown, and 30.028 seconds total harness exclusion. The
+attributed 105-case receipt is 883.180 summed seconds, p50 6.612, p95 19.377,
+maximum 38.139, and every unchanged budget passes. The original candidate
+remains failed and incomplete; this reclassification is diagnosis, not a retry
+or release qualification.
+
+Runtime, execution, hosted-gate, candidate-gate, selector, workflow, preflight,
+verified-base/anchor, and versioned-budget changes are explicit shared-harness
+owners. The changed-file classifier matches them before its broad tooling and
+documentation exclusions and expands each to the complete bilingual catalogue.
+The fresh D446 qualification reused one 14-second build and passed 105/105
+English journeys in 885.264 summed seconds (916 seconds wall, p50 6.546, p95
+18.358, maximum 37.783) and 105/105 Spanish journeys in 898.382 summed seconds
+(930 seconds wall, p50 6.526, p95 18.743, maximum 38.949). Both schema-3
+receipts were complete, every unchanged budget was green, and neither locale
+needed an activity adjustment, retry, timeout change, budget change, or
+Notification Center override.
 
 **D427 background-owner projection evidence.** The Background Work Center has
 one feature scope with exactly two consolidated real-app journeys rather than

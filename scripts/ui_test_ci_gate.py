@@ -37,14 +37,16 @@ ADJUSTMENT_KEYS = frozenset(
     {
         "attributedDurationSeconds",
         "excludedHarnessSeconds",
+        "excludedPostTeardownSeconds",
+        "excludedPreSetupSeconds",
         "identifier",
         "reason",
         "reportedDurationSeconds",
     }
 )
-RECEIPT_SCHEMA_VERSION = 2
-MEASUREMENT_POLICY = "xcresult-duration-with-post-teardown-exclusion-v1"
-POST_TEARDOWN_NOISE_THRESHOLD_SECONDS = 1.0
+RECEIPT_SCHEMA_VERSION = 3
+MEASUREMENT_POLICY = "xcresult-duration-with-activity-boundary-exclusions-v2"
+HARNESS_NOISE_THRESHOLD_SECONDS = 1.0
 CASE_RUNTIME_DRIFT_PATTERN = re.compile(
     r"^(?P<identifier>[^:]+): "
     r"[0-9]+(?:\.[0-9]+)?s > [0-9]+(?:\.[0-9]+)?s$"
@@ -184,19 +186,25 @@ def load_receipt(path: Path, expected_locale: str) -> dict[str, Any]:
             or identifier not in tests_by_identifier
             or identifier in adjusted_identifiers
             or tests_by_identifier[identifier]["result"] != "Passed"
-            or adjustment["reason"] != "post-teardown-unattributed-time"
+            or adjustment["reason"] != "outside-test-activity-boundaries"
         ):
             raise GateError(f"{expected_locale}: runtime adjustment identity differs")
         reported = adjustment["reportedDurationSeconds"]
         attributed = adjustment["attributedDurationSeconds"]
+        excluded_pre_setup = adjustment["excludedPreSetupSeconds"]
+        excluded_post_teardown = adjustment["excludedPostTeardownSeconds"]
         excluded = adjustment["excludedHarnessSeconds"]
         if (
             not finite_nonnegative(reported)
             or not finite_nonnegative(attributed)
+            or not finite_nonnegative(excluded_pre_setup)
+            or not finite_nonnegative(excluded_post_teardown)
             or not finite_nonnegative(excluded)
             or attributed > reported
-            or excluded < POST_TEARDOWN_NOISE_THRESHOLD_SECONDS
+            or excluded < HARNESS_NOISE_THRESHOLD_SECONDS
             or abs((reported - attributed) - excluded) > 0.002
+            or abs((excluded_pre_setup + excluded_post_teardown) - excluded)
+            > 0.003
             or abs(tests_by_identifier[identifier]["durationSeconds"] - attributed)
             > 0.002
         ):

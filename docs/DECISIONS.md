@@ -17177,3 +17177,43 @@ exact success without signing, notarizing, publishing, or touching either
 installed app. Cryptographic trust still depends on the protected Sparkle
 Keychain key and final real updater/distribution validation; deterministic
 tests do not certify those external boundaries.
+
+## D446 — Attribute UI runtime only inside the test-owned activity boundary (Aug 2026)
+
+**Context:** the first exact D445 candidate passed all 105 English real-app
+journeys, but its hard local runtime gate retained one 34.835-second case
+against an unchanged 20-second ceiling. The exact xcresult shows `Start Test`
+at 1788079623.318, `Set Up` at 1788079653.344, and `Tear Down` at
+1788079658.151. XCTest therefore spent 30.026 seconds resolving its package
+graph before setup while the application journey itself occupied 4.807
+seconds. D428 could prove and exclude a post-teardown stall but still counted
+this symmetric pre-setup harness wait as product work.
+
+**Decision:** runtime receipt schema 3 requires one unambiguous top-level
+`Start Test`, `Set Up`, and later `Tear Down` for any passing over-budget case.
+The only attributable duration is `Set Up` through `Tear Down`. At least one
+second must remain outside that boundary; the receipt records pre-setup and
+post-teardown exclusions separately, their exact total, the reported and
+attributed spans, and the closed `outside-test-activity-boundaries` reason.
+Missing, ambiguous, non-finite, out-of-order, inconsistent, failed, sub-second,
+or still-slow evidence retains XCTest's outer duration and fails closed.
+Hosted and exact-candidate classifiers require the same schema, policy,
+identity, finite values, and arithmetic.
+
+The changed-file selector classifies the workflow, build/runner, preflight,
+scope, execution/runtime classifiers, verified-base and anchor owners,
+candidate receipt validator, and runtime budget as shared UI evidence owners.
+Changing any of them expands to the complete bilingual catalogue before the
+general tooling/documentation exclusions are considered.
+
+**Consequences:** reprocessing the retained result reports 30.026 seconds
+before setup, 0.002 seconds after teardown, 30.028 seconds of total harness
+exclusion, and 4.807 seconds attributable to the active-recording journey. The
+105-case English receipt becomes 883.180 summed seconds, p50 6.612, p95 19.377,
+maximum 38.139, with every unchanged budget green. The original candidate
+remains failed and Spanish remains unexecuted; a new clean committed candidate
+must run both locales from the beginning. No timeout, budget, assertion,
+selector, locale, retry, or functional result changes, and the raw xcresult
+remains the immutable authority. The fresh shared-harness qualification then
+passed 105/105 English and 105/105 Spanish from one build with zero adjustments
+under the unchanged budgets.

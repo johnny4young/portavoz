@@ -781,9 +781,10 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(len(selection.tests), 2, path)
 
     def test_harness_change_expands_to_the_complete_bilingual_catalog(self):
-        selection = select_paths(["Makefile"])
-        self.assertEqual(selection.tests, HARNESS_TESTS)
-        self.assertEqual(selection.locales, ("en", "es"))
+        for path in sorted(ui_scope.FULL_BILINGUAL_HARNESS_FILES):
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, HARNESS_TESTS, path)
+            self.assertEqual(selection.locales, ("en", "es"), path)
 
     def test_app_intents_selects_only_the_bilingual_recording_handoff(self):
         selection = select_paths(

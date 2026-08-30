@@ -15,9 +15,10 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
 
 
-RECEIPT_SCHEMA_VERSION = 2
-MEASUREMENT_POLICY = "xcresult-duration-with-post-teardown-exclusion-v1"
-POST_TEARDOWN_NOISE_THRESHOLD_SECONDS = 1.0
+RECEIPT_SCHEMA_VERSION = 3
+MEASUREMENT_POLICY = "xcresult-duration-with-activity-boundary-exclusions-v2"
+HARNESS_NOISE_THRESHOLD_SECONDS = 1.0
+TIMING_PRECISION_TOLERANCE_SECONDS = 0.002
 
 
 @dataclass(frozen=True)
@@ -33,7 +34,15 @@ class RuntimeAdjustment:
     identifier: str
     reported_duration_seconds: float
     attributed_duration_seconds: float
+    excluded_pre_setup_seconds: float
+    excluded_post_teardown_seconds: float
     excluded_harness_seconds: float
+
+
+@dataclass(frozen=True)
+class ActivityBoundary:
+    attributed_duration_seconds: float
+    excluded_pre_setup_seconds: float
 
 
 def finite_nonnegative(value: Any) -> float | None:
@@ -155,7 +164,7 @@ def cases_requiring_activity_review(
     return tuple(sorted(identifiers))
 
 
-def activity_span_seconds(tree: Any) -> float | None:
+def activity_boundary_seconds(tree: Any) -> ActivityBoundary | None:
     if not isinstance(tree, dict):
         return None
     runs = tree.get("testRuns")
@@ -171,22 +180,38 @@ def activity_span_seconds(tree: Any) -> float | None:
         and isinstance(activity.get("title"), str)
         and activity["title"].startswith("Start Test at ")
     ]
+    setups = [
+        activity.get("startTime")
+        for activity in activities
+        if isinstance(activity, dict)
+        and activity.get("title") == "Set Up"
+    ]
     teardowns = [
         activity.get("startTime")
         for activity in activities
         if isinstance(activity, dict)
         and activity.get("title") == "Tear Down"
     ]
-    if len(starts) != 1 or len(teardowns) != 1:
+    if len(starts) != 1 or len(setups) != 1 or len(teardowns) != 1:
         return None
     start = finite_nonnegative(starts[0])
+    setup = finite_nonnegative(setups[0])
     teardown = finite_nonnegative(teardowns[0])
-    if start is None or teardown is None or teardown <= start:
+    if (
+        start is None
+        or setup is None
+        or teardown is None
+        or setup < start
+        or teardown <= setup
+    ):
         return None
-    return teardown - start
+    return ActivityBoundary(
+        attributed_duration_seconds=teardown - setup,
+        excluded_pre_setup_seconds=setup - start,
+    )
 
 
-def load_activity_span(path: Path, identifier: str) -> float | None:
+def load_activity_boundary(path: Path, identifier: str) -> ActivityBoundary | None:
     try:
         result = subprocess.run(
             [
@@ -204,17 +229,17 @@ def load_activity_span(path: Path, identifier: str) -> float | None:
             capture_output=True,
             text=True,
         )
-        return activity_span_seconds(json.loads(result.stdout))
+        return activity_boundary_seconds(json.loads(result.stdout))
     except (subprocess.CalledProcessError, json.JSONDecodeError, OSError):
         return None
 
 
-def reconcile_post_teardown_noise(
+def reconcile_activity_boundary_noise(
     cases: Sequence[TestCaseRuntime],
     budget: dict[str, Any],
     *,
     selector_count: int,
-    activity_span_loader: Callable[[str], float | None],
+    activity_boundary_loader: Callable[[str], ActivityBoundary | None],
 ) -> tuple[list[TestCaseRuntime], list[RuntimeAdjustment]]:
     review = set(cases_requiring_activity_review(
         cases,
@@ -225,24 +250,43 @@ def reconcile_post_teardown_noise(
     adjustments: list[RuntimeAdjustment] = []
     for case in cases:
         reported = finite_nonnegative(case.duration_seconds)
-        span = (
-            activity_span_loader(case.identifier)
+        boundary = (
+            activity_boundary_loader(case.identifier)
             if case.identifier in review
             else None
         )
-        attributed = finite_nonnegative(span)
+        attributed = finite_nonnegative(
+            boundary.attributed_duration_seconds if boundary is not None else None
+        )
+        excluded_pre_setup = finite_nonnegative(
+            boundary.excluded_pre_setup_seconds if boundary is not None else None
+        )
         excluded = (
             reported - attributed
             if reported is not None and attributed is not None
+            else None
+        )
+        raw_excluded_post_teardown = (
+            excluded - excluded_pre_setup
+            if excluded is not None and excluded_pre_setup is not None
+            else None
+        )
+        excluded_post_teardown = (
+            max(0.0, raw_excluded_post_teardown)
+            if raw_excluded_post_teardown is not None
+            and raw_excluded_post_teardown >= -TIMING_PRECISION_TOLERANCE_SECONDS
             else None
         )
         if (
             case.result == "Passed"
             and reported is not None
             and attributed is not None
+            and excluded_pre_setup is not None
             and attributed <= reported
             and excluded is not None
-            and excluded >= POST_TEARDOWN_NOISE_THRESHOLD_SECONDS
+            and excluded >= HARNESS_NOISE_THRESHOLD_SECONDS
+            and excluded_post_teardown is not None
+            and excluded_post_teardown >= 0
         ):
             adjusted_cases.append(TestCaseRuntime(
                 identifier=case.identifier,
@@ -254,6 +298,8 @@ def reconcile_post_teardown_noise(
                 identifier=case.identifier,
                 reported_duration_seconds=reported,
                 attributed_duration_seconds=attributed,
+                excluded_pre_setup_seconds=excluded_pre_setup,
+                excluded_post_teardown_seconds=excluded_post_teardown,
                 excluded_harness_seconds=excluded,
             ))
         else:
@@ -397,10 +443,16 @@ def build_receipt(
                 "attributedDurationSeconds": round(
                     adjustment.attributed_duration_seconds, 3
                 ),
+                "excludedPreSetupSeconds": round(
+                    adjustment.excluded_pre_setup_seconds, 3
+                ),
+                "excludedPostTeardownSeconds": round(
+                    adjustment.excluded_post_teardown_seconds, 3
+                ),
                 "excludedHarnessSeconds": round(
                     adjustment.excluded_harness_seconds, 3
                 ),
-                "reason": "post-teardown-unattributed-time",
+                "reason": "outside-test-activity-boundaries",
             }
             for adjustment in adjustments
         ],
@@ -539,11 +591,11 @@ def main(argv: Iterable[str] | None = None) -> int:
     cases = collect_test_cases(tree)
     adjustments: list[RuntimeAdjustment] = []
     if arguments.result is not None:
-        cases, adjustments = reconcile_post_teardown_noise(
+        cases, adjustments = reconcile_activity_boundary_noise(
             cases,
             budget,
             selector_count=arguments.selector_count,
-            activity_span_loader=lambda identifier: load_activity_span(
+            activity_boundary_loader=lambda identifier: load_activity_boundary(
                 arguments.result,
                 identifier,
             ),

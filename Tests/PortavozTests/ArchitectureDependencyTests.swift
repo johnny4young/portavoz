@@ -9811,6 +9811,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let swiftLint = try Self.contents(of: "scripts/run-ci-swiftlint.sh")
         let xcodegen = try Self.contents(of: "scripts/install-ci-xcodegen.sh")
         let candidate = try Self.contents(of: "scripts/candidate_automation.py")
+        let scope = try Self.contents(of: "scripts/ui_test_scope.py")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertEqual(
@@ -9883,25 +9884,38 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(ci.contains("Select newest Xcode"))
         XCTAssertTrue(swiftLint.contains("version=\"0.65.0\""))
         XCTAssertTrue(xcodegen.contains("version=\"2.46.0\""))
-        XCTAssertTrue(runtime.contains("RECEIPT_SCHEMA_VERSION = 2"))
+        XCTAssertTrue(runtime.contains("RECEIPT_SCHEMA_VERSION = 3"))
         XCTAssertTrue(runtime.contains(
-            "POST_TEARDOWN_NOISE_THRESHOLD_SECONDS = 1.0"))
+            "HARNESS_NOISE_THRESHOLD_SECONDS = 1.0"))
         XCTAssertTrue(runtime.contains(
             "activity[\"title\"].startswith(\"Start Test at \""))
+        XCTAssertTrue(runtime.contains(
+            "activity.get(\"title\") == \"Set Up\""))
         XCTAssertTrue(runtime.contains(
             "activity.get(\"title\") == \"Tear Down\""))
         XCTAssertTrue(runtime.contains("case.result == \"Passed\""))
         XCTAssertTrue(runtime.contains("attributed <= reported"))
         XCTAssertTrue(runtime.contains(
-            "reason\": \"post-teardown-unattributed-time"))
-        XCTAssertTrue(gate.contains("RECEIPT_SCHEMA_VERSION = 2"))
+            "excludedPreSetupSeconds"))
+        XCTAssertTrue(runtime.contains(
+            "excludedPostTeardownSeconds"))
+        XCTAssertTrue(runtime.contains(
+            "reason\": \"outside-test-activity-boundaries"))
+        XCTAssertTrue(gate.contains("RECEIPT_SCHEMA_VERSION = 3"))
         XCTAssertTrue(gate.contains("runtime adjustment values differ"))
-        XCTAssertTrue(candidate.contains("UI_RECEIPT_SCHEMA_VERSION = 2"))
+        XCTAssertTrue(candidate.contains("UI_RECEIPT_SCHEMA_VERSION = 3"))
         XCTAssertTrue(candidate.contains(
-            "UI_POST_TEARDOWN_NOISE_THRESHOLD_SECONDS = 1.0"))
+            "UI_HARNESS_NOISE_THRESHOLD_SECONDS = 1.0"))
+        XCTAssertTrue(scope.contains("FULL_BILINGUAL_HARNESS_FILES"))
+        XCTAssertTrue(scope.contains("scripts/ui_test_runtime.py"))
+        XCTAssertTrue(scope.contains("scripts/ui_test_ci_gate.py"))
+        XCTAssertTrue(scope.contains("scripts/candidate_automation.py"))
+        XCTAssertTrue(scope.contains(".github/workflows/ui-tests.yml"))
+        XCTAssertTrue(scope.contains("docs/evidence/ui-test-runtime-budget.json"))
         XCTAssertTrue(decisions.contains("## D425"))
         XCTAssertTrue(decisions.contains("## D428"))
         XCTAssertTrue(decisions.contains("## D429"))
+        XCTAssertTrue(decisions.contains("## D446"))
     }
 
     func testXCUITestRuntimeOptimizationRetainsRiskOwnersWithoutDuplicateWork() throws {

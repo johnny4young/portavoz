@@ -414,7 +414,7 @@ class RunUITestsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         runtime = json.loads(self.runtime_receipts["en-runtime.json"])
         execution = json.loads(self.execution_receipts["en-execution.json"])
-        self.assertEqual(runtime["schemaVersion"], 2)
+        self.assertEqual(runtime["schemaVersion"], 3)
         self.assertEqual(execution["classification"], "completed")
         self.assertEqual(execution["selectorCount"], runtime["selectorCount"])
         self.assertEqual(self.execution_logs, ())
