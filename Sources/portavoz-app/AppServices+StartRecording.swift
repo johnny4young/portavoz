@@ -16,7 +16,9 @@ extension AppServices {
         ) {
             runtime = BenchSyntheticStartRecordingRuntime(
                 services: self,
-                audioRoot: Self.audioRoot)
+                audioRoot: Self.audioRoot,
+                durationSeconds: (try? BenchRecordingResourcePolicy.duration(
+                    arguments: ProcessInfo.processInfo.arguments)) ?? 0)
         } else if isRecordingFailureFixture {
             runtime = UITestStartRecordingFailureRuntime()
         } else if isSystemCaptureStallFixture {

@@ -4,7 +4,7 @@
   "maximumTimingP95ToP50Ratio": 1.25,
   "recordingInput": {
     "chunkFrames": 1600,
-    "generation": "public-synthetic-dual-channel-v1",
+    "generation": "public-synthetic-dual-channel-v2",
     "sampleRate": 16000
   },
   "preparations": [

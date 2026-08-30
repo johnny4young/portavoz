@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,909 cases (15 environment-gated) + 105
+Status: the package inventory contains 2,910 cases (15 environment-gated) + 105
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -2879,14 +2879,21 @@ plist key: ad-hoc evidence requires exact `true`, while real-identity evidence
 requires the key to be absent. Decode failures and non-boolean values are not
 treated as absence.
 The recording cells do not request a fresh microphone grant for that ad-hoc
-identity. They require the hidden `public-synthetic-dual-channel-v1` input,
+identity. They require the hidden `public-synthetic-dual-channel-v2` input,
 admitted only with the disposable store and resource-output boundary, and run
 it at real time through the production recording session, writers, live-model
 feeds, Stop, indexing, and batch concurrency. Resource receipt schema 4 records
 the exact 16 kHz/1,600-frame input contract and the completed
 `refine-runtime-preparation-v1` prerequisite. No physical capture source, TCC
 prompt, or user audio participates, so physical capture and permissions remain
-external evidence. Every copied-app invocation also arms a bounded process
+external evidence. Generation v2 derives one exact per-channel frame target
+from the bounded recording duration; after the real-time producer is cancelled,
+Stop emits only a bounded missing tail and then closes the stream. The focused
+unit gate proves early Stop still conserves the complete planned input and that
+invalid frame plans fail without a precondition trap. A mismatched written
+frame map returns no capture, and the collector writes no passing fragment
+unless the product Stop workflow reaches `.done`. Every copied-app
+invocation also arms a bounded process
 watchdog before database composition; expiration emits no passing fragment or
 qualification receipt.
 
@@ -3630,7 +3637,7 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   between collectors. A timeout or partial lifecycle emits no passing sample.
 - `scripts/resource_baseline.py assemble/evaluate`: assembles exact native
   fragments into one schema-4 host receipt whose required recording-input
-  provenance is `public-synthetic-dual-channel-v1` at 16 kHz with 1,600-frame
+  provenance is `public-synthetic-dual-channel-v2` at 16 kHz with 1,600-frame
   chunks and whose required runtime preparation is
   `refine-runtime-preparation-v1`. The assembler requires one regular,
   non-symlinked, current-owner, exact-mode-0600 marker with fixed content,
@@ -6520,3 +6527,31 @@ timing, EventKit/TCC, VoiceOver/Voice Control, signed distribution, production
 CloudKit, provider behavior, or field use. The separately signed Dev app was
 rebuilt, reinstalled, and verified under `app.portavoz.mac.dev`; the notarized
 release app retained its exact modification time.
+
+**D444 exact synthetic Stop input.** The first exact `e0c3c062` candidate is
+retained as failed: all earlier phases passed, but its three Stop samples were
+141.829/148.244/243.818 milliseconds wall and
+224.074/245.517/361.572 milliseconds CPU. The 1.472 CPU p95/p50 ratio plus
+116.055-millisecond absolute spread correctly produced `unstable`, and no
+`qualification.json` was emitted. Review found the v1 fixture fixed its chunk
+shape but did not prove the same frame count crossed every wall-clock Stop
+boundary. The red characterization did not compile because the source had no
+frame-plan admission. Generation v2 now derives the exact frame target from the
+bounded duration, caps the real-time producer, and publishes only a bounded
+missing tail during Stop; malformed plans return nil rather than trapping.
+
+The repaired source case passes in 0.103 seconds, and the complete 29-case
+native resource-probe slice passes in 0.214 seconds. All 30 resource-baseline
+tooling tests and all 61 resource/candidate policy tests pass. Warnings-as-errors,
+strict cache-free SwiftLint with zero violations across 774 files, repository
+hygiene, diff-check, and the complete 2,910-case package suite pass with 15
+explicit asset-gated skips and zero failures in 129.223 seconds. The
+minimum-safe selector owns thirteen Library and Interview recording journeys.
+One 18-second build passed 13/13 English cases in 72.707 summed seconds
+(85 seconds wall, p95 and maximum 13.674) and 13/13 Spanish cases in 70.894
+seconds (82 seconds wall, p95 and maximum 13.397). Both execution receipts are
+complete, every unchanged budget is green, and there was no retry, runtime
+adjustment, or Notification Center override. A new exact committed candidate
+must still execute all eight proofs; these fixtures do not certify physical
+capture, Sequoia/Tahoe hardware, TCC, VoiceOver/Voice Control, signed
+distribution, production CloudKit, provider behavior, or field use.

@@ -10,9 +10,23 @@ import TranscriptionKit
 /// ordinary development recording continue to use real TCC-gated capture.
 enum BenchSyntheticCapturePolicy {
     static let option = "--bench-resource-synthetic-capture"
-    static let generation = "public-synthetic-dual-channel-v1"
+    static let generation = "public-synthetic-dual-channel-v2"
     static let sampleRate = 16_000.0
     static let chunkFrames = 1_600
+
+    static func expectedFrames(durationSeconds: Int) -> Int64? {
+        guard (30...600).contains(durationSeconds) else { return nil }
+        return Int64(durationSeconds) * Int64(sampleRate)
+    }
+
+    static func hasExactFrames(
+        _ frames: [AudioChannel: Int64],
+        expectedFrames: Int64
+    ) -> Bool {
+        frames.count == 2
+            && frames[.microphone] == expectedFrames
+            && frames[.system] == expectedFrames
+    }
 
     static func requested(arguments: [String]) -> Bool {
         appearsOnce(option, in: arguments)
@@ -53,27 +67,41 @@ final class BenchSyntheticStartRecordingRuntime: StartRecordingRuntime {
 
     private weak var services: AppServices?
     private let audioRoot: URL
+    private let expectedFrames: Int64?
     private var prepared: Prepared?
 
-    init(services: AppServices, audioRoot: URL) {
+    init(
+        services: AppServices,
+        audioRoot: URL,
+        durationSeconds: Int
+    ) {
         self.services = services
         self.audioRoot = audioRoot
+        expectedFrames = BenchSyntheticCapturePolicy.expectedFrames(
+            durationSeconds: durationSeconds)
     }
 
     func prepare(
         preferences: StartRecordingPreferencesSnapshot
     ) async throws -> StartRecordingPreparedRuntime {
-        guard let services else {
+        guard let services, let expectedFrames else {
             throw StartRecordingRuntimeError.preparationUnavailable
         }
         let liveSpeech = try services.acquireResidentLiveSpeechRuntime()
         let liveTranscriptionRuntime = liveSpeech.map {
             services.liveTranscriptionRuntime($0)
         }
-        let sources = [
-            BenchSyntheticAudioCaptureSource(channel: .microphone),
-            BenchSyntheticAudioCaptureSource(channel: .system)
-        ]
+        guard
+            let microphone = BenchSyntheticAudioCaptureSource(
+                channel: .microphone,
+                expectedFrames: expectedFrames),
+            let system = BenchSyntheticAudioCaptureSource(
+                channel: .system,
+                expectedFrames: expectedFrames)
+        else {
+            throw StartRecordingRuntimeError.preparationUnavailable
+        }
+        let sources = [microphone, system]
         prepared = Prepared(
             sources: sources,
             liveTranscriptionRuntime: liveTranscriptionRuntime)
@@ -85,7 +113,7 @@ final class BenchSyntheticStartRecordingRuntime: StartRecordingRuntime {
     func startCapture(
         _ request: StartRecordingCaptureRequest
     ) async throws -> any StartRecordingSession {
-        guard let prepared, let services else {
+        guard let prepared, let services, let expectedFrames else {
             throw StartRecordingRuntimeError.preparationUnavailable
         }
         self.prepared = nil
@@ -93,6 +121,7 @@ final class BenchSyntheticStartRecordingRuntime: StartRecordingRuntime {
             outputDirectory: audioRoot.appendingPathComponent(
                 request.audioDirectory),
             sources: prepared.sources,
+            expectedFrames: expectedFrames,
             liveTranscriptionRuntime: prepared.liveTranscriptionRuntime,
             transcriberLoader: { @MainActor [weak services] in
                 guard let services else {
@@ -130,6 +159,7 @@ private actor BenchSyntheticStartRecordingSession: StartRecordingSession {
 
     private let recordingSession: RecordingSession
     private let sources: [BenchSyntheticAudioCaptureSource]
+    private let expectedFrames: Int64
     private let microphone: BenchSyntheticAudioCaptureSource?
     private var initialLiveTranscriptionRuntime: LiveTranscriptionRuntime?
     private let transcriberLoader: TranscriberLoader
@@ -140,12 +170,14 @@ private actor BenchSyntheticStartRecordingSession: StartRecordingSession {
     init(
         outputDirectory: URL,
         sources: [BenchSyntheticAudioCaptureSource],
+        expectedFrames: Int64,
         liveTranscriptionRuntime: LiveTranscriptionRuntime?,
         transcriberLoader: @escaping TranscriberLoader,
         telemetry: ResourceWorkloadTelemetry
     ) {
         recordingSession = RecordingSession(outputDirectory: outputDirectory)
         self.sources = sources
+        self.expectedFrames = expectedFrames
         microphone = sources.first(where: { $0.channel == .microphone })
         initialLiveTranscriptionRuntime = liveTranscriptionRuntime
         self.transcriberLoader = transcriberLoader
@@ -188,9 +220,18 @@ private actor BenchSyntheticStartRecordingSession: StartRecordingSession {
         if let stoppedCapture { return stoppedCapture }
         let summary = await recordingSession.stop()
         let transcriptRequiresRecovery = await finishLiveStreams()
-        let capture = StopRecordingCapture(
-            summary,
-            transcriptRequiresRecovery: transcriptRequiresRecovery)
+        let capture = if BenchSyntheticCapturePolicy.hasExactFrames(
+            summary.framesWritten,
+            expectedFrames: expectedFrames
+        ) {
+            StopRecordingCapture(
+                summary,
+                transcriptRequiresRecovery: transcriptRequiresRecovery)
+        } else {
+            StopRecordingCapture(
+                publishedFiles: [:],
+                transcriptRequiresRecovery: true)
+        }
         stoppedCapture = capture
         return capture
     }
@@ -232,13 +273,19 @@ final class BenchSyntheticAudioCaptureSource: AudioCaptureSource, @unchecked Sen
 
     private let lock = NSLock()
     private let activeSamples: [Float]
+    private let expectedFrames: Int64
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
     private var producer: Task<Void, Never>?
     private var muted = false
-    private var nextFrame = 0
+    private var nextFrame: Int64 = 0
 
-    init(channel: AudioChannel) {
+    init?(channel: AudioChannel, expectedFrames: Int64) {
+        guard expectedFrames > 0,
+              expectedFrames.isMultiple(
+                of: Int64(BenchSyntheticCapturePolicy.chunkFrames))
+        else { return nil }
         self.channel = channel
+        self.expectedFrames = expectedFrames
         let amplitude: Float = channel == .microphone ? 0.03125 : 0.046875
         let phase = channel == .microphone ? 0 : 1
         activeSamples = (0..<BenchSyntheticCapturePolicy.chunkFrames).map { index in
@@ -263,18 +310,38 @@ final class BenchSyntheticAudioCaptureSource: AudioCaptureSource, @unchecked Sen
     }
 
     func stop() async {
-        let stopped = lock.withLock { () -> (
-            Task<Void, Never>?,
-            AsyncThrowingStream<AudioChunk, Error>.Continuation?
-        ) in
-            let result = (producer, continuation)
+        let stopped = lock.withLock { () -> Task<Void, Never>? in
+            let result = producer
             producer = nil
-            continuation = nil
             return result
         }
-        stopped.0?.cancel()
-        stopped.1?.finish()
-        await stopped.0?.value
+        stopped?.cancel()
+        await stopped?.value
+
+        // Stop must always drain the same public input. A wall-clock-only
+        // producer can be pre-empted just before a tick, leaving a different
+        // final Parakeet window in each repeated resource sample. Once the
+        // real-time task has stopped, synchronously publish only the bounded
+        // missing tail before closing the stream. Product capture never uses
+        // this benchmark-only source.
+        while let next = lock.withLock({ nextChunk() }) {
+            switch next.0.yield(next.1) {
+            case .enqueued:
+                break
+            case .dropped, .terminated:
+                break
+            @unknown default:
+                break
+            }
+        }
+        let continuation = lock.withLock { () -> AsyncThrowingStream<
+            AudioChunk, Error
+        >.Continuation? in
+            let value = self.continuation
+            self.continuation = nil
+            return value
+        }
+        continuation?.finish()
     }
 
     func setMuted(_ value: Bool) {
@@ -283,24 +350,7 @@ final class BenchSyntheticAudioCaptureSource: AudioCaptureSource, @unchecked Sen
 
     private func produce() async {
         while !Task.isCancelled {
-            let next = lock.withLock { () -> (
-                AsyncThrowingStream<AudioChunk, Error>.Continuation,
-                AudioChunk
-            )? in
-                guard let continuation else { return nil }
-                let timestamp = Double(nextFrame)
-                    / BenchSyntheticCapturePolicy.sampleRate
-                let samples = muted && channel == .microphone
-                    ? Self.mutedSamples
-                    : activeSamples
-                let sampleCount = samples.count
-                nextFrame += sampleCount
-                return (continuation, AudioChunk(
-                    channel: channel,
-                    samples: samples,
-                    sampleRate: BenchSyntheticCapturePolicy.sampleRate,
-                    timestamp: timestamp))
-            }
+            let next = lock.withLock { nextChunk() }
             guard let next else { return }
             switch next.0.yield(next.1) {
             case .enqueued:
@@ -316,6 +366,24 @@ final class BenchSyntheticAudioCaptureSource: AudioCaptureSource, @unchecked Sen
                 return
             }
         }
+    }
+
+    private func nextChunk() -> (
+        AsyncThrowingStream<AudioChunk, Error>.Continuation,
+        AudioChunk
+    )? {
+        guard let continuation, nextFrame < expectedFrames else { return nil }
+        let timestamp = Double(nextFrame)
+            / BenchSyntheticCapturePolicy.sampleRate
+        let samples = muted && channel == .microphone
+            ? Self.mutedSamples
+            : activeSamples
+        nextFrame += Int64(samples.count)
+        return (continuation, AudioChunk(
+            channel: channel,
+            samples: samples,
+            sampleRate: BenchSyntheticCapturePolicy.sampleRate,
+            timestamp: timestamp))
     }
 }
 

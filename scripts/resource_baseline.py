@@ -420,9 +420,9 @@ def validate_recording_input(raw, path):
         path,
         ("generation", "sampleRate", "chunkFrames"),
     )
-    if value["generation"] != "public-synthetic-dual-channel-v1":
+    if value["generation"] != "public-synthetic-dual-channel-v2":
         raise ResourceBaselineError(
-            f"{path}.generation must be public-synthetic-dual-channel-v1"
+            f"{path}.generation must be public-synthetic-dual-channel-v2"
         )
     if integer(value["sampleRate"], f"{path}.sampleRate", 1) != 16_000:
         raise ResourceBaselineError(f"{path}.sampleRate must be 16000")

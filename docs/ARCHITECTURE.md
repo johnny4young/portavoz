@@ -3375,9 +3375,15 @@ without an app-resident runtime; the preparation removes one-time host/Core ML
 compilation from the repeated-sample stability calculation but does not claim
 first-ever activation latency, disk cost, or UX. The three recording scenarios
 require the exact public
-`public-synthetic-dual-channel-v1` real-time 16 kHz input through the production
+`public-synthetic-dual-channel-v2` real-time 16 kHz input through the production
 recording session, writers, live-model feeds, Stop workflow, and concurrent
-schedulers. The receipt records that generation, sample rate, and chunk size.
+schedulers. Each source owns a duration-derived exact frame plan: it yields at
+real time, then Stop publishes only a bounded missing tail before closing the
+stream. Scheduler pre-emption therefore cannot change how many microphone or
+system frames the repeated Stop samples drain. The benchmark session rejects a
+frame-count mismatch, and the outer collector writes no fragment unless the
+real Stop workflow reaches `.done`. The receipt records that generation,
+sample rate, and chunk size.
 The hidden runtime is admitted only by the conjunction of temporary
 store, recording-resource output, and synthetic-input flags; it never
 constructs physical capture sources, asks TCC, or reads user audio. Physical

@@ -48,7 +48,7 @@ class ResourceBaselineTests(unittest.TestCase):
             self.assertEqual(
                 scorecard["recordingInput"],
                 {
-                    "generation": "public-synthetic-dual-channel-v1",
+                    "generation": "public-synthetic-dual-channel-v2",
                     "sampleRate": 16_000,
                     "chunkFrames": 1_600,
                 },
@@ -697,7 +697,7 @@ class ResourceBaselineTests(unittest.TestCase):
             self.assertEqual(receipt["schemaVersion"], 4)
             self.assertEqual(
                 receipt["recordingInput"]["generation"],
-                "public-synthetic-dual-channel-v1",
+                "public-synthetic-dual-channel-v2",
             )
             self.assertEqual(
                 receipt["askPipeline"]["samples"][0]["run"], 1
@@ -1165,7 +1165,7 @@ class ResourceBaselineTests(unittest.TestCase):
                 "swiftVersion": "6.2",
             },
             "recordingInput": {
-                "generation": "public-synthetic-dual-channel-v1",
+                "generation": "public-synthetic-dual-channel-v2",
                 "sampleRate": 16_000,
                 "chunkFrames": 1_600,
             },

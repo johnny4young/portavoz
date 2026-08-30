@@ -17111,3 +17111,39 @@ arrival. Capture still has priority, no polling or retry timer is added, and
 the standing executor remains single-flight. This local characterization does
 not certify physical Sequoia/Tahoe capture timing, EventKit/TCC, accessibility,
 distribution, CloudKit, or field behavior.
+
+## D444 — Conserve exact synthetic frames across resource Stop samples (Aug 2026)
+
+**Context:** the exact first-attempt `e0c3c062` candidate passed deterministic
+scope, recording stress, scoped bilingual XCUITest, public validation, every
+installed-model class, and every measured performance budget. Its three
+reference-host resource rounds then measured Stop at 141.829, 148.244, and
+243.818 milliseconds wall and 224.074, 245.517, and 361.572 milliseconds CPU.
+The CPU p95/p50 ratio was 1.472 with a 116.055-millisecond absolute spread, so
+schema 4 correctly withheld qualification as unstable. The v1 public source
+fixed sample rate and chunk shape but remained driven only by wall-clock ticks;
+task pre-emption could move a different final chunk count or inference backlog
+across the recording/Stop boundary. An unchanged retry could not prove whether
+that variance belonged to Portavoz or to incomparable input.
+
+**Decision:** `public-synthetic-dual-channel-v2` gives each microphone and
+system source one exact frame target derived from the already bounded recording
+duration. The detached producer remains real-time and stops yielding at that
+target. Product Stop first cancels and awaits the producer, then publishes only
+the bounded missing tail before closing the stream, so the production writer
+and live-model teardown always drain the same planned PCM. Invalid duration or
+non-chunk-aligned frame plans fail through optional admission rather than a
+precondition trap. A written-frame mismatch yields no capture, and the outer
+runner refuses to write any measured fragment unless the real durable Stop
+workflow reaches `.done`. The schema-4 1.25 ratio and inclusive
+100-millisecond absolute stability floor remain unchanged.
+
+**Consequences:** repeated resource Stop evidence becomes comparable by fixing
+the input instead of weakening, retrying, or relabeling the failed candidate.
+The focused source test stops early and still observes the complete exact frame
+plan; a second test rejects malformed plans without terminating the process.
+The failed `e0c3c062` run remains failed and has no qualification receipt. A new
+clean committed candidate must still pass all eight proofs from the beginning.
+This benchmark-only source does not certify physical capture, TCC, routes,
+acoustics, Sequoia/Tahoe hardware, accessibility, distribution, CloudKit,
+provider behavior, or field use.

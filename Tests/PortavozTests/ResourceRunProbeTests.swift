@@ -75,7 +75,10 @@ final class ResourceRunProbeTests: XCTestCase {
     }
 
     func testSyntheticCapturePublishesBoundedContentFreePCMAndStops() async throws {
-        let source = BenchSyntheticAudioCaptureSource(channel: .microphone)
+        let expectedFrames = Int64(BenchSyntheticCapturePolicy.chunkFrames * 3)
+        let source = try XCTUnwrap(BenchSyntheticAudioCaptureSource(
+            channel: .microphone,
+            expectedFrames: expectedFrames))
         let stream = try await source.start()
         var iterator = stream.makeAsyncIterator()
         let first = try await iterator.next()
@@ -94,8 +97,35 @@ final class ResourceRunProbeTests: XCTestCase {
         XCTAssertTrue(second?.samples.allSatisfy { $0 == 0 } == true)
 
         await source.stop()
-        let afterStop = try await iterator.next()
-        XCTAssertNil(afterStop)
+        var observedFrames = Int64(first?.samples.count ?? 0)
+            + Int64(second?.samples.count ?? 0)
+        while let chunk = try await iterator.next() {
+            observedFrames += Int64(chunk.samples.count)
+        }
+        XCTAssertEqual(observedFrames, expectedFrames)
+    }
+
+    func testSyntheticCaptureRejectsAnInvalidFramePlanWithoutCrashing() {
+        XCTAssertEqual(
+            BenchSyntheticCapturePolicy.expectedFrames(durationSeconds: 60),
+            960_000)
+        XCTAssertTrue(BenchSyntheticCapturePolicy.hasExactFrames(
+            [.microphone: 960_000, .system: 960_000],
+            expectedFrames: 960_000))
+        XCTAssertFalse(BenchSyntheticCapturePolicy.hasExactFrames(
+            [.microphone: 960_000, .system: 958_400],
+            expectedFrames: 960_000))
+        XCTAssertNil(BenchSyntheticCapturePolicy.expectedFrames(
+            durationSeconds: 29))
+        XCTAssertNil(BenchSyntheticCapturePolicy.expectedFrames(
+            durationSeconds: 601))
+        XCTAssertNil(BenchSyntheticAudioCaptureSource(
+            channel: .system,
+            expectedFrames: 0))
+        XCTAssertNil(BenchSyntheticAudioCaptureSource(
+            channel: .system,
+            expectedFrames: Int64(
+                BenchSyntheticCapturePolicy.chunkFrames + 1)))
     }
 
     func testResourceProcessWatchdogRequiresOneBoundedIsolatedAdmission() throws {

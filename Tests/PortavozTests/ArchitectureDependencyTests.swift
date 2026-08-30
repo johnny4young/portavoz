@@ -2660,7 +2660,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,909 cases "
+            "package inventory contains 2,910 cases "
                 + "(15 environment-gated) + 105"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -4985,7 +4985,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             contract["recordingInput"] as? [String: Any])
         XCTAssertEqual(
             recordingInput["generation"] as? String,
-            "public-synthetic-dual-channel-v1")
+            "public-synthetic-dual-channel-v2")
         XCTAssertEqual(recordingInput["sampleRate"] as? Int, 16_000)
         XCTAssertEqual(recordingInput["chunkFrames"] as? Int, 1_600)
         let preparations = try XCTUnwrap(
@@ -5026,6 +5026,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Tests.Tooling.test_resource_baseline"))
         XCTAssertTrue(decisions.contains("## D149"))
         XCTAssertTrue(decisions.contains("## D150"))
+        XCTAssertTrue(decisions.contains("## D444"))
 
         let nativeProbe = try Self.contents(
             of: "Sources/portavoz-app/ResourceRunProbe.swift")
@@ -5071,7 +5072,13 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "scripts/run-resource-recording-baseline.sh")
         XCTAssertTrue(nativeProbe.contains("proc_pid_rusage"))
         XCTAssertTrue(syntheticCapture.contains(
-            "public-synthetic-dual-channel-v1"))
+            "public-synthetic-dual-channel-v2"))
+        XCTAssertTrue(syntheticCapture.contains(
+            "expectedFrames: expectedFrames"))
+        XCTAssertTrue(syntheticCapture.contains(
+            "while let next = lock.withLock({ nextChunk() })"))
+        XCTAssertTrue(syntheticCapture.contains(
+            "BenchSyntheticCapturePolicy.hasExactFrames"))
         XCTAssertTrue(syntheticCapture.contains(
             "appearsOnce(\"-use-temp-store\", in: arguments)"))
         XCTAssertFalse(syntheticCapture.contains("MicrophoneSource("))
@@ -5083,6 +5090,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             ".validateResourceRequest(arguments: arguments)"))
         XCTAssertTrue(recordingRunner.contains(
             "BenchRecordingResourcePolicy.duration"))
+        XCTAssertTrue(recordingRunner.contains(
+            "guard case .done = recording.phase else"))
         XCTAssertTrue(recordingRunner.contains(
             "await services.authorizeMicrophoneForRecording()"))
         XCTAssertTrue(resourceWatchdog.contains(

@@ -1362,12 +1362,18 @@ distribution app retain library validation.
 A recording resource process is admitted only by one each of
 `-use-temp-store`, `--bench-record`, `--bench-resource-output`, and
 `--bench-resource-synthetic-capture`. It emits the fixed
-`public-synthetic-dual-channel-v1` signal as 1,600-frame microphone/system
+`public-synthetic-dual-channel-v2` signal as 1,600-frame microphone/system
 chunks at 16 kHz. The signal crosses the production `RecordingSession`, CAF
 writers, live-transcription feeds, Stop workflow, and concurrent indexing or
 batch scheduler while avoiding AVAudioEngine, process taps, TCC, and user
-audio. The schema-4 host receipt records this input identity; physical capture
-remains a separate field gate.
+audio. Its duration-derived frame plan is exact per channel: the detached
+producer stays real-time, and Stop emits only a bounded missing tail after
+cancelling that producer, before it closes the stream. Repeated samples thus
+drain identical PCM even when task scheduling misses the last 100 ms tick. The
+benchmark session converts a frame-count mismatch into a failed capture, and
+the outer runner accepts no sample unless durable Stop reaches `.done`. The
+schema-4 host receipt records this input identity; physical capture remains a
+separate field gate.
 
 Every invocation also carries a 60–7,200-second in-app watchdog armed before
 app composition. The shell requires its value to exceed both the configured

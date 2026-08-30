@@ -215,6 +215,9 @@ enum BenchRecordingResourceRunner {
         ) else {
             throw BenchRecordingResourceRunnerError.stopTimedOut
         }
+        guard case .done = recording.phase else {
+            throw BenchRecordingResourceRunnerError.stopDidNotComplete
+        }
         try baselineProbes?.finishStopAndWrite()
         try concurrentProbe?.finishAfterStopAndWrite()
         try? await Task.sleep(for: .seconds(3))
@@ -349,6 +352,7 @@ enum BenchRecordingResourceRunnerError: Error, Equatable, LocalizedError {
     case invalidDuration
     case microphonePermissionRequired
     case startFailed(String)
+    case stopDidNotComplete
     case stopTimedOut
 
     var errorDescription: String? {
@@ -359,6 +363,8 @@ enum BenchRecordingResourceRunnerError: Error, Equatable, LocalizedError {
             "grant microphone access to Portavoz Resource Bench and rerun"
         case .startFailed(let reason):
             "recording start failed: \(reason)"
+        case .stopDidNotComplete:
+            "recording Stop did not publish a durable completed meeting"
         case .stopTimedOut:
             "recording Stop exceeded 30 seconds"
         }
