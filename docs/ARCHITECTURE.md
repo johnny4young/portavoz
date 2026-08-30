@@ -703,6 +703,12 @@ Concurrent wakes coalesce behind one serialized worker. Recording preempts the
 worker but preserves its confirmed durable owner, and the inactive transition
 resumes it. The supervisor never polls EventKit or SQLite, never asks for
 Calendar permission, and disposable automation never reads the host calendar.
+An unexpected store or event-resolution failure restores the exact full or
+proposal-scoped reconciliation request but does not spin a retry timer. Explicit
+Settings callers receive that failure and retain their last verified snapshot;
+the next real invalidation or explicit request resumes the preserved work. A
+monotonic worker generation prevents a cancelled pre-stop worker from publishing
+state or restarting itself after its owner has stopped.
 
 `StandingSkillAutomationCenterSnapshot` is the separate Settings read boundary:
 it combines verified rule controls with only standing-authority receipts in a
@@ -710,7 +716,9 @@ it combines verified rule controls with only standing-authority receipts in a
 proposal only after explicit review. Create, enable, and delete request full
 reconciliation; retry queues only its selected proposal. Both paths return a
 new durable snapshot through the same serialized supervisor, and no Settings
-path owns an executor. The bilingual section exposes preview, 1...8 daily
+path owns an executor. A reconciliation failure propagates before the read-back,
+so the existing ambiguous-mutation UI offers only a read reload instead of
+claiming that autonomous work ran. The bilingual section exposes preview, 1...8 daily
 ceiling, inherited global pause, rule enablement, inline deletion confirmation,
 history, bounded retry, and a private artifact sheet. Rule deletion preserves
 history. External, destructive, clipboard, file, reminder, email, Gist, and

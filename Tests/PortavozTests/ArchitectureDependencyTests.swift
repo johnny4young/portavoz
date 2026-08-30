@@ -6773,6 +6773,18 @@ final class ArchitectureDependencyTests: XCTestCase {
             XCTAssertTrue(settings.contains(identifier), identifier)
         }
         XCTAssertTrue(decisions.contains("## D437"))
+        XCTAssertTrue(supervisor.contains("func reconcileNow() async throws"))
+        XCTAssertTrue(supervisor.contains("restorePendingWork(for: scope)"))
+        XCTAssertTrue(supervisor.contains(
+            "guard generation == workerGeneration else { return }"))
+        XCTAssertFalse(supervisor.contains("try? await reconcile("))
+        XCTAssertTrue(appServices.contains(
+            "try await standingPreMeetingBriefs.reconcileNow()"))
+        XCTAssertTrue(appServices.contains(
+            "try await standingPreMeetingBriefs.retryNow(proposalID)"))
+        XCTAssertTrue(executionApplication.contains(
+            "try await cancelConfirmedClaim(record.proposalID)"))
+        XCTAssertTrue(decisions.contains("## D439"))
     }
 
     func testCommandLibraryReadsEnterThroughApplicationKitComposition() throws {

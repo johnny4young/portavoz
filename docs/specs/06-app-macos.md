@@ -19,7 +19,9 @@ adds one review-first GitHub issue from an exact pending action item; D333
 derives Skills privacy disclosure from the executable capability contract.
 D435/D436 add the closed standing pre-meeting brief authority and its
 signal-driven crash-safe macOS execution owner. D437 adds its bounded bilingual
-control/history surface and millisecond-canonical relaunch identity.
+control/history surface and millisecond-canonical relaunch identity. D439 makes
+unexpected reconciliation failure observable to explicit controls, preserves
+the exact pending scope for a later real signal, and fences stopped workers.
 D373/D374 compose exact-Skill and rolling update-time activity filters at query
 time while keeping the Settings window bounded and generation-fenced.
 D384 makes full Ask latest-submission-wins, displays bounded cumulative answer
@@ -3358,6 +3360,11 @@ Recording cancels background preparation while preserving its exact confirmed
 owner, and the inactive transition resumes reconciliation. Global pause and an
 empty enabled-rule set cancel any stale boundary wake. Temporary-store launches
 install an empty event source and never read the user's host calendar.
+Unexpected store or event-resolution failure is different from an exact event
+that legitimately moved. The latter retires or skips only that occurrence; the
+former restores the complete or proposal-scoped request, finishes explicit
+waiters with the error, and waits for the next real invalidation instead of
+spinning. A generation fence makes a worker that resumes after `stop()` inert.
 
 ### Standing action control and recovery (D437)
 
@@ -3378,6 +3385,9 @@ supervisor's `reconcileNow`; retry calls its proposal-scoped `retryNow` so the
 selected failed receipt is the only owner resumed and no new calendar work is
 discovered. The view and `AppServices` do not own a second executor. Deleting
 the rule restores the preview but retains immutable history and artifacts.
+Create, enable, delete, and explicit retry propagate an unexpected supervisor
+failure into the existing fail-closed mutation state before read-back; Settings
+retains its last verified snapshot and offers only a read reload.
 
 Temporary-store XCUITest composition uses the production store and supervisor
 with a public/synthetic bilingual brief, an empty host-calendar adapter, a

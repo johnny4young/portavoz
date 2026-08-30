@@ -22,10 +22,11 @@ actor StandingPreMeetingBriefSupervisor {
 
     private var observationTask: Task<Void, Never>?
     private var worker: Task<Void, Never>?
+    private var workerGeneration = 0
     private var wakeTask: Task<Void, Never>?
     private var needsReconciliation = false
     private var explicitRetryProposalIDs = Set<UUID>()
-    private var reconciliationWaiters: [CheckedContinuation<Void, Never>] = []
+    private var reconciliationWaiters: [CheckedContinuation<Void, Error>] = []
 
     init(
         store: MeetingStore,
@@ -69,30 +70,32 @@ actor StandingPreMeetingBriefSupervisor {
     /// Lets an explicit Settings action wait for the same serialized owner
     /// that background signals use. It never starts a second executor, polls,
     /// or bypasses capture priority.
-    func reconcileNow() async {
+    func reconcileNow() async throws {
         kick()
-        await waitForReconciliation()
+        try await waitForReconciliation()
     }
 
     /// Retries only the failed owner selected in Settings. The request joins
     /// the same serialized worker as background reconciliation, but it neither
     /// resumes unrelated owners nor discovers new calendar work.
-    func retryNow(_ proposalID: UUID) async {
+    func retryNow(_ proposalID: UUID) async throws {
         explicitRetryProposalIDs.insert(proposalID)
         startWorkerIfNeeded()
-        await waitForReconciliation()
+        try await waitForReconciliation()
     }
 
-    private func waitForReconciliation() async {
-        await withCheckedContinuation { continuation in
+    private func waitForReconciliation() async throws {
+        try await withCheckedThrowingContinuation { continuation in
             reconciliationWaiters.append(continuation)
         }
     }
 
     private func startWorkerIfNeeded() {
         guard worker == nil else { return }
+        workerGeneration += 1
+        let generation = workerGeneration
         worker = Task { [weak self] in
-            await self?.drain()
+            await self?.drain(generation: generation)
         }
     }
 
@@ -105,27 +108,48 @@ actor StandingPreMeetingBriefSupervisor {
     func stop() {
         observationTask?.cancel()
         observationTask = nil
+        workerGeneration += 1
         worker?.cancel()
         worker = nil
         cancelScheduledWake()
         needsReconciliation = false
         explicitRetryProposalIDs.removeAll(keepingCapacity: true)
-        finishReconciliationWaiters()
+        failReconciliationWaiters(CancellationError())
     }
 
-    private func drain() async {
+    private func drain(generation: Int) async {
+        var reconciliationError: (any Error)?
         while hasPendingWork, !Task.isCancelled {
             guard captureState.current == .inactive else { break }
+            let scope: ReconciliationScope
             if !explicitRetryProposalIDs.isEmpty {
                 let proposalIDs = explicitRetryProposalIDs
                 explicitRetryProposalIDs.removeAll(keepingCapacity: true)
-                try? await reconcile(.retry(proposalIDs))
+                scope = .retry(proposalIDs)
             } else {
                 needsReconciliation = false
-                try? await reconcile(.all)
+                scope = .all
+            }
+            do {
+                try await reconcile(scope)
+            } catch is CancellationError {
+                restorePendingWork(for: scope)
+                if !Task.isCancelled {
+                    reconciliationError = CancellationError()
+                }
+                break
+            } catch {
+                restorePendingWork(for: scope)
+                reconciliationError = error
+                break
             }
         }
+        guard generation == workerGeneration else { return }
         worker = nil
+        if let reconciliationError {
+            failReconciliationWaiters(reconciliationError)
+            return
+        }
         if hasPendingWork, captureState.current == .inactive {
             startWorkerIfNeeded()
             return
@@ -140,7 +164,22 @@ actor StandingPreMeetingBriefSupervisor {
     private func finishReconciliationWaiters() {
         let waiters = reconciliationWaiters
         reconciliationWaiters.removeAll(keepingCapacity: true)
-        for waiter in waiters { waiter.resume() }
+        for waiter in waiters { waiter.resume(returning: ()) }
+    }
+
+    private func failReconciliationWaiters(_ error: any Error) {
+        let waiters = reconciliationWaiters
+        reconciliationWaiters.removeAll(keepingCapacity: true)
+        for waiter in waiters { waiter.resume(throwing: error) }
+    }
+
+    private func restorePendingWork(for scope: ReconciliationScope) {
+        switch scope {
+        case .all:
+            needsReconciliation = true
+        case .retry(let proposalIDs):
+            explicitRetryProposalIDs.formUnion(proposalIDs)
+        }
     }
 
     private func reconcile(_ scope: ReconciliationScope) async throws {
@@ -197,7 +236,7 @@ actor StandingPreMeetingBriefSupervisor {
                     < StandingSkillExecutionPolicy.maximumAutomaticAttempts,
                   activeRules[owner.ruleID] != nil
             else {
-                await cancelConfirmedIfRevoked(owner)
+                try await cancelConfirmedIfRevoked(owner)
                 continue
             }
             guard let event = try await events.upcomingEvent(
@@ -207,10 +246,15 @@ actor StandingPreMeetingBriefSupervisor {
                     eventStartAt: event.startDate),
                   ExecuteStandingPreMeetingBrief.isEligible(event, at: now())
             else {
-                await cancelConfirmedIfRevoked(owner)
+                try await cancelConfirmedIfRevoked(owner)
                 continue
             }
-            _ = try? await executor.resume(owner, event: event)
+            do {
+                _ = try await executor.resume(owner, event: event)
+            } catch let error as StandingPreMeetingBriefError
+                where error == .eventChanged {
+                continue
+            }
         }
     }
 
@@ -259,7 +303,13 @@ actor StandingPreMeetingBriefSupervisor {
                     event,
                     at: now())
                 else { continue }
-                let outcome = try? await executor.execute((rule, event))
+                let outcome: StandingPreMeetingBriefOutcome
+                do {
+                    outcome = try await executor.execute((rule, event))
+                } catch let error as StandingPreMeetingBriefError
+                    where error == .eventChanged {
+                    continue
+                }
                 if outcome == .deferred(.dailyBudgetReached) { return }
             }
         }
@@ -277,9 +327,9 @@ actor StandingPreMeetingBriefSupervisor {
 
     private func cancelConfirmedIfRevoked(
         _ owner: PendingStandingSkillExecution
-    ) async {
+    ) async throws {
         guard owner.record.state == .confirmed else { return }
-        _ = try? await store.cancelSkillExecution(
+        _ = try await store.cancelSkillExecution(
             proposalID: owner.record.proposalID,
             at: now())
     }

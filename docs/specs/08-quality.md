@@ -6388,3 +6388,26 @@ package tests with 15 explicit asset skips, strict lint over 744 files,
 repository hygiene, localization, and Dev installation also pass before D427
 closes. Automation does not certify physical Sequoia/Tahoe, VoiceOver/Voice
 Control, signed distribution, CloudKit, or field behavior.
+
+**D439 standing reconciliation failure ownership.** Candidate review added one
+focused supervisor regression over the production in-memory store and exact
+pending authority. A recoverable-failed brief owner is present, the event source
+fails one exact resolution, and explicit reconciliation must throw rather than
+returning unverifiable success. The same full-scope request remains queued; one
+later real kick resumes the identical proposal and produces the expected
+`confirm:1`, `begin:1`, `fail:1`, `begin:2`, `succeed:2` history. Existing burst,
+explicit-wait, capture-deferral/preemption, relaunch-order, and selected-only
+retry cases remain unchanged. The focused suite passes 8/8 in 0.938 seconds.
+The completed first-party preflight also passed the warnings-as-errors build,
+strict cache-free SwiftLint with zero violations across 774 files, repository
+hygiene, and all 2,905 package tests with 15 explicit asset-gated skips and zero
+failures in 139.120 seconds. The minimum-safe selector correctly expanded to
+the complete catalogue because the candidate range includes shared harness,
+localization, and otherwise unknown production paths. One 22-second build then
+passed 104/104 English journeys in 883.532 summed seconds (p95 18.433) and
+104/104 Spanish journeys in 902.082 seconds (p95 18.955), with zero retries,
+zero harness adjustments, and every hard budget green. The signed Dev app was
+reinstalled and verified without touching the release app. This local evidence
+does not certify physical Sequoia/Tahoe, VoiceOver/Voice Control, signed
+distribution, production CloudKit, provider behavior, or field use. A fresh
+exact-candidate run remains required because the source identity changed.

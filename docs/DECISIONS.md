@@ -16978,3 +16978,36 @@ mobile sync/handoff implementation has deterministic conflict and ownership
 contracts to adopt. This does not create or ship an iOS/iPadOS/watchOS target,
 enable CloudKit on iOS, sync commitments or audio, execute remote work, prove a
 model on an iPhone, or satisfy any physical/release gate.
+
+## D439 — Preserve standing reconciliation when its owner cannot verify work (Aug 2026)
+
+**Context:** review of the exact local 1.0 candidate found that the standing-
+brief supervisor used blanket `try?` at its serialized reconciliation boundary.
+An unexpected rule-store or EventKit-resolution failure therefore cleared the
+current in-memory signal and resumed an explicit Settings waiter as if work had
+been verified. Create, enable, delete, or Retry could then read a healthy control
+snapshot and present success even though the requested autonomous reconciliation
+never ran. A cancelled worker could also resume after `stop()` and mutate its
+replacement's in-memory ownership.
+
+**Decision:** unexpected reconciliation failure restores the exact scope that
+was removed from the queue: either the full invalidation or the selected proposal
+UUID set. Explicit waiters use throwing continuations, and `AppServices`
+propagates the error before its read-back so the existing fail-closed mutation UI
+retains the last verified snapshot and offers only a read reload. Exact event
+movement remains an expected per-occurrence skip after its authority is retired;
+other executor, store, and resolver failures are no longer erased. A monotonic
+generation makes any worker that resumes after `stop()` inert.
+
+The failure path does not add polling, a heartbeat, an automatic retry timer, or
+another executor. It leaves the scope pending but waits for a later EventKit,
+capture, or policy invalidation or explicit request, preventing a tight failure
+loop while preserving the crash-safe durable owner.
+
+**Consequences:** Settings cannot claim that an automatic action mutation was
+fully reconciled when the execution owner could not verify it, and a transient
+failure no longer loses the exact pending work. The regression uses one failed
+durable owner, one injected event-resolution failure, and one later signal to
+prove the same proposal succeeds on attempt two. This does not make host
+EventKit/TCC, physical Sequoia/Tahoe, assistive technology, distribution,
+CloudKit, or field behavior automated evidence.

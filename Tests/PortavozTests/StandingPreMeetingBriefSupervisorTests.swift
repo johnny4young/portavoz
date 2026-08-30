@@ -50,14 +50,14 @@ final class StandingPreMeetingBriefSupervisorTests: XCTestCase {
         let completion = StandingReconciliationCompletion()
 
         let request = Task {
-            await supervisor.reconcileNow()
+            try await supervisor.reconcileNow()
             await completion.markFinished()
         }
         await preparer.waitUntilStarted()
         let finishedBeforeRelease = await completion.isFinished
         XCTAssertFalse(finishedBeforeRelease)
         await preparer.release()
-        await request.value
+        try await request.value
 
         let finishedAfterRelease = await completion.isFinished
         XCTAssertTrue(finishedAfterRelease)
@@ -158,6 +158,35 @@ final class StandingPreMeetingBriefSupervisorTests: XCTestCase {
         await supervisor.stop()
     }
 
+    func testStopMakesCancelledWorkerInertAndPreservesConfirmedOwner() async throws {
+        let store = try MeetingStore.inMemory()
+        _ = try await createRule(in: store)
+        let event = upcomingEvent(id: "stopped-worker", offset: 30 * 60)
+        let source = StandingSupervisorEventSource(events: [event])
+        let preparer = GatedStandingBriefPreparer()
+        let supervisor = makeSupervisor(
+            store: store,
+            preparer: preparer,
+            source: source)
+
+        await supervisor.start()
+        await preparer.waitUntilStarted()
+        let initial = try await store.pendingStandingSkillExecutions()
+        let proposalID = try XCTUnwrap(initial.first?.record.proposalID)
+
+        await supervisor.stop()
+        await preparer.release()
+        try? await Task.sleep(for: .milliseconds(50))
+
+        let callCount = await preparer.callCount
+        let artifact = try await store.standingSkillArtifact(proposalID: proposalID)
+        XCTAssertEqual(callCount, 1)
+        XCTAssertNil(artifact)
+        let preserved = try await store.pendingStandingSkillExecutions()
+        XCTAssertEqual(preserved.first?.record.proposalID, proposalID)
+        XCTAssertEqual(preserved.first?.record.state, .confirmed)
+    }
+
     func testRelaunchResumesFailedOwnerBeforeNewEvent() async throws {
         let store = try MeetingStore.inMemory()
         let rule = try await createRule(in: store)
@@ -219,7 +248,7 @@ final class StandingPreMeetingBriefSupervisorTests: XCTestCase {
             store: store,
             preparer: preparer,
             source: source)
-        await supervisor.retryNow(secondProposalID)
+        try await supervisor.retryNow(secondProposalID)
 
         let retriedEventIDs = await preparer.eventIDs
         XCTAssertEqual(retriedEventIDs, [second.id])
@@ -232,6 +261,48 @@ final class StandingPreMeetingBriefSupervisorTests: XCTestCase {
             proposalID: secondProposalID)
         XCTAssertEqual(
             secondHistory.map { "\($0.kind):\($0.attempt)" },
+            [
+                "confirm:1", "begin:1", "fail:1",
+                "begin:2", "succeed:2",
+            ])
+        await supervisor.stop()
+    }
+
+    func testExplicitReconciliationSurfacesFailureAndPreservesPendingWork() async throws {
+        let store = try MeetingStore.inMemory()
+        let rule = try await createRule(in: store)
+        let event = upcomingEvent(id: "transient-resolution", offset: 30 * 60)
+        let source = StandingSupervisorEventSource(events: [event])
+        let proposalID = UUID()
+        let firstRun = makeExecutor(
+            store: store,
+            preparer: AlwaysFailingStandingBriefPreparer(),
+            source: source,
+            proposalID: proposalID)
+        let firstOutcome = try await firstRun.execute((rule, event))
+        XCTAssertEqual(firstOutcome, .failed(proposalID))
+
+        let preparer = RecordingStandingBriefPreparer()
+        let supervisor = makeSupervisor(
+            store: store,
+            preparer: preparer,
+            source: source)
+        await source.failNextResolution()
+
+        do {
+            try await supervisor.reconcileNow()
+            XCTFail("an explicit reconciliation must not report unverifiable success")
+        } catch StandingSupervisorTestError.failed {
+            // Expected. The same pending owner must remain queued for a later signal.
+        }
+
+        await supervisor.kick()
+        await waitUntil {
+            (try? await store.standingSkillArtifact(proposalID: proposalID)) != nil
+        }
+        let history = try await store.skillExecutionHistory(proposalID: proposalID)
+        XCTAssertEqual(
+            history.map { "\($0.kind):\($0.attempt)" },
             [
                 "confirm:1", "begin:1", "fail:1",
                 "begin:2", "succeed:2",
@@ -319,6 +390,7 @@ final class StandingPreMeetingBriefSupervisorTests: XCTestCase {
 private actor StandingSupervisorEventSource:
     StandingPreMeetingBriefEventSource {
     private var events: [UpcomingEvent]
+    private var resolutionFailureCount = 0
     private let changes: AsyncStream<Void>
     private let continuation: AsyncStream<Void>.Continuation
 
@@ -335,8 +407,16 @@ private actor StandingSupervisorEventSource:
         changes
     }
 
-    func upcomingEvent(matching identifier: String) -> UpcomingEvent? {
-        events.first { $0.id == identifier }
+    func upcomingEvent(matching identifier: String) throws -> UpcomingEvent? {
+        if resolutionFailureCount > 0 {
+            resolutionFailureCount -= 1
+            throw StandingSupervisorTestError.failed
+        }
+        return events.first { $0.id == identifier }
+    }
+
+    func failNextResolution() {
+        resolutionFailureCount += 1
     }
 
     func replaceEvents(_ events: [UpcomingEvent]) {

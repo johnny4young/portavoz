@@ -333,12 +333,12 @@ public struct ExecuteStandingPreMeetingBrief: ApplicationUseCase {
             }
         } catch is CancellationError {
             if cancelsOnCancellation {
-                await cancelConfirmedClaim(record.proposalID)
+                try? await cancelConfirmedClaim(record.proposalID)
             }
             throw CancellationError()
         } catch let error as StandingPreMeetingBriefError
             where error == .eventChanged {
-            await cancelConfirmedClaim(record.proposalID)
+            try await cancelConfirmedClaim(record.proposalID)
             throw error
         } catch {
             let failedAt = now()
@@ -355,10 +355,10 @@ public struct ExecuteStandingPreMeetingBrief: ApplicationUseCase {
         }
     }
 
-    private func cancelConfirmedClaim(_ proposalID: UUID) async {
+    private func cancelConfirmedClaim(_ proposalID: UUID) async throws {
         let store = self.store
         let timestamp = now()
-        _ = try? await Task {
+        _ = try await Task {
             try await store.cancelSkillExecution(
                 proposalID: proposalID,
                 at: timestamp)

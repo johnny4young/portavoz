@@ -30,7 +30,7 @@ extension AppServices {
             CreateStandingSkillRuleRequest(
                 template: .prepareEveryUpcomingBrief,
                 maximumDailyExecutions: maximumDailyExecutions))
-        await standingPreMeetingBriefs.reconcileNow()
+        try await standingPreMeetingBriefs.reconcileNow()
         return try await loadStandingSkillAutomationCenter(
             historyLimit: historyLimit)
     }
@@ -45,7 +45,7 @@ extension AppServices {
         guard outcome == .updated else {
             throw AppStandingSkillControlError.unavailable
         }
-        await standingPreMeetingBriefs.reconcileNow()
+        try await standingPreMeetingBriefs.reconcileNow()
         return try await loadStandingSkillAutomationCenter(
             historyLimit: historyLimit)
     }
@@ -59,7 +59,7 @@ extension AppServices {
         guard outcome == .deleted else {
             throw AppStandingSkillControlError.unavailable
         }
-        await standingPreMeetingBriefs.reconcileNow()
+        try await standingPreMeetingBriefs.reconcileNow()
         return try await loadStandingSkillAutomationCenter(
             historyLimit: historyLimit)
     }
@@ -77,7 +77,7 @@ extension AppServices {
                 && $0.record.attempt
                     < StandingSkillExecutionPolicy.maximumAutomaticAttempts
         }) else { throw AppStandingSkillControlError.unavailable }
-        await standingPreMeetingBriefs.retryNow(proposalID)
+        try await standingPreMeetingBriefs.retryNow(proposalID)
         return try await loadStandingSkillAutomationCenter(
             historyLimit: historyLimit)
     }
