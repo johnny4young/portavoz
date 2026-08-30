@@ -22,6 +22,8 @@ signal-driven crash-safe macOS execution owner. D437 adds its bounded bilingual
 control/history surface and millisecond-canonical relaunch identity. D439 makes
 unexpected reconciliation failure observable to explicit controls, preserves
 the exact pending scope for a later real signal, and fences stopped workers.
+D441 gives each explicit reconciliation caller a cancellation-safe waiter that
+can leave without cancelling or delaying the shared process owner.
 D373/D374 compose exact-Skill and rolling update-time activity filters at query
 time while keeping the Settings window bounded and generation-fenced.
 D384 makes full Ask latest-submission-wins, displays bounded cumulative answer
@@ -3365,6 +3367,10 @@ that legitimately moved. The latter retires or skips only that occurrence; the
 former restores the complete or proposal-scoped request, finishes explicit
 waiters with the error, and waits for the next real invalidation instead of
 spinning. A generation fence makes a worker that resumes after `stop()` inert.
+Every explicit reconciliation or selected-retry caller has a UUID-scoped
+throwing continuation. Caller cancellation removes and resumes only that waiter,
+including the cancellation-before-registration race; the process-owned worker
+continues and can satisfy other callers or settle its durable execution.
 
 ### Standing action control and recovery (D437)
 
@@ -3388,6 +3394,8 @@ the rule restores the preview but retains immutable history and artifacts.
 Create, enable, delete, and explicit retry propagate an unexpected supervisor
 failure into the existing fail-closed mutation state before read-back; Settings
 retains its last verified snapshot and offers only a read reload.
+Cancelling one presentation request releases its waiter promptly without
+cancelling the shared reconciliation or converting another caller's result.
 The presentation boundary checks `Task.isCancelled` rather than treating every
 thrown `CancellationError` as caller cancellation. A cancellation-shaped
 dependency failure therefore shows the mutation error and disables create,

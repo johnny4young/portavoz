@@ -68,6 +68,49 @@ final class StandingPreMeetingBriefSupervisorTests: XCTestCase {
         await supervisor.stop()
     }
 
+    func testCancellingExplicitWaiterDoesNotCancelSharedReconciliation() async throws {
+        let store = try MeetingStore.inMemory()
+        _ = try await createRule(in: store)
+        let event = upcomingEvent(id: "cancelled-waiter", offset: 30 * 60)
+        let source = StandingSupervisorEventSource(events: [event])
+        let preparer = GatedStandingBriefPreparer()
+        let supervisor = makeSupervisor(
+            store: store,
+            preparer: preparer,
+            source: source)
+        let cancelledResult = StandingReconciliationResult()
+
+        let cancelledRequest = Task {
+            do {
+                try await supervisor.reconcileNow()
+                await cancelledResult.set(.succeeded)
+            } catch is CancellationError {
+                await cancelledResult.set(.cancelled)
+            } catch {
+                await cancelledResult.set(.failed)
+            }
+        }
+        await preparer.waitUntilStarted()
+        let sharedRequest = Task { try await supervisor.reconcileNow() }
+
+        cancelledRequest.cancel()
+        await waitUntil(timeout: 0.5) {
+            await cancelledResult.outcome != .pending
+        }
+        let outcome = await cancelledResult.outcome
+        XCTAssertEqual(outcome, .cancelled)
+
+        await preparer.release()
+        try await sharedRequest.value
+        _ = await cancelledRequest.result
+
+        let history = try await store.standingSkillExecutionReceipts(limit: 20)
+        XCTAssertEqual(history.count, 1)
+        XCTAssertEqual(history.first?.record.state, .succeeded)
+        XCTAssertEqual(history.first?.hasArtifact, true)
+        await supervisor.stop()
+    }
+
     func testActiveCaptureDefersUntilExplicitInactiveSignal() async throws {
         let calendar = utcCalendar()
         XCTAssertEqual(
@@ -555,6 +598,21 @@ private actor StandingReconciliationCompletion {
 
     func markFinished() {
         isFinished = true
+    }
+}
+
+private actor StandingReconciliationResult {
+    enum Outcome: Equatable {
+        case pending
+        case succeeded
+        case cancelled
+        case failed
+    }
+
+    private(set) var outcome: Outcome = .pending
+
+    func set(_ outcome: Outcome) {
+        self.outcome = outcome
     }
 }
 

@@ -2660,7 +2660,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,906 cases "
+            "package inventory contains 2,907 cases "
                 + "(15 environment-gated) + 105"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -6798,6 +6798,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(eventSource.contains(
             "-simulate-standing-reconciliation-cancellation-once"))
         XCTAssertTrue(decisions.contains("## D440"))
+        XCTAssertTrue(supervisor.contains("withTaskCancellationHandler"))
+        XCTAssertTrue(supervisor.contains("cancelReconciliationWaiter"))
+        XCTAssertTrue(supervisor.contains(
+            "UUID: ReconciliationContinuation"))
+        XCTAssertTrue(decisions.contains("## D441"))
     }
 
     func testCommandLibraryReadsEnterThroughApplicationKitComposition() throws {

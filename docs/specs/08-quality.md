@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,906 cases (15 environment-gated) + 105
+Status: the package inventory contains 2,907 cases (15 environment-gated) + 105
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -6440,3 +6440,29 @@ every unchanged hard budget green. The signed Dev app was reinstalled and
 verified without touching the release app. These local fixtures do not certify
 physical Sequoia/Tahoe, VoiceOver/Voice Control, signed distribution,
 production CloudKit, provider behavior, or field use.
+
+**D441 cancellation-safe standing waiters.** An adversarial supervisor
+characterization gates the process-owned preparer, joins two explicit
+reconciliation callers, cancels only the first, and requires that caller to
+observe `CancellationError` before the preparer is released. The second caller
+must still receive success and the shared reconciliation must persist exactly
+one successful artifact. Before the fix, the cancelled caller remained pending
+past the 0.5-second bound until test cleanup released the worker; this retained
+red result distinguishes the defect from runner flake. UUID-scoped throwing
+continuations and a cancellation handler now remove and resume only the owning
+waiter without cancelling shared work.
+
+The repaired characterization passes in 0.126 seconds; the complete ten-case
+supervisor slice passes in 1.236 seconds, and its exact architecture ratchet
+passes independently. Warnings-as-errors, strict cache-free SwiftLint with zero
+violations across 774 files, repository hygiene, and the complete 2,907-case
+package suite are green with 15 explicit asset-gated skips and zero failures in
+148.829 seconds. The minimum-safe UI selector owns the two affected automatic-
+brief Settings journeys. One 22-second build passed 2/2 English cases in 24.545
+summed seconds (p95 and maximum 16.192) and 2/2 Spanish cases in 23.208 seconds
+(p95 and maximum 15.789). Both execution receipts are complete, every unchanged
+budget is green, and there was no retry or runtime adjustment. These local
+fixtures do not certify physical Sequoia/Tahoe, VoiceOver/Voice Control, signed
+distribution, production CloudKit, provider behavior, or field use. The signed
+Dev app was rebuilt, reinstalled, and verified under its separate bundle
+identity; the notarized release copy remained untouched.

@@ -13,6 +13,9 @@ protocol StandingPreMeetingBriefEventSource:
 /// serializes relaunch recovery before new events, schedules only the next
 /// lead-window boundary, and never polls the calendar or SQLite.
 actor StandingPreMeetingBriefSupervisor {
+    private typealias ReconciliationContinuation =
+        CheckedContinuation<Void, Error>
+
     private let store: MeetingStore
     private let preparer: any StandingPreMeetingBriefPreparing
     private let events: any StandingPreMeetingBriefEventSource
@@ -26,7 +29,9 @@ actor StandingPreMeetingBriefSupervisor {
     private var wakeTask: Task<Void, Never>?
     private var needsReconciliation = false
     private var explicitRetryProposalIDs = Set<UUID>()
-    private var reconciliationWaiters: [CheckedContinuation<Void, Error>] = []
+    private var reconciliationWaiters: [
+        UUID: ReconciliationContinuation
+    ] = [:]
 
     init(
         store: MeetingStore,
@@ -85,9 +90,25 @@ actor StandingPreMeetingBriefSupervisor {
     }
 
     private func waitForReconciliation() async throws {
-        try await withCheckedThrowingContinuation { continuation in
-            reconciliationWaiters.append(continuation)
+        let waiterID = UUID()
+        try await withTaskCancellationHandler {
+            try Task.checkCancellation()
+            try await withCheckedThrowingContinuation { (continuation: ReconciliationContinuation) in
+                if Task.isCancelled {
+                    continuation.resume(throwing: CancellationError())
+                } else {
+                    reconciliationWaiters[waiterID] = continuation
+                }
+            }
+            try Task.checkCancellation()
+        } onCancel: {
+            Task { await self.cancelReconciliationWaiter(waiterID) }
         }
+    }
+
+    private func cancelReconciliationWaiter(_ waiterID: UUID) {
+        reconciliationWaiters.removeValue(forKey: waiterID)?.resume(
+            throwing: CancellationError())
     }
 
     private func startWorkerIfNeeded() {
@@ -162,13 +183,13 @@ actor StandingPreMeetingBriefSupervisor {
     }
 
     private func finishReconciliationWaiters() {
-        let waiters = reconciliationWaiters
+        let waiters = Array(reconciliationWaiters.values)
         reconciliationWaiters.removeAll(keepingCapacity: true)
         for waiter in waiters { waiter.resume(returning: ()) }
     }
 
     private func failReconciliationWaiters(_ error: any Error) {
-        let waiters = reconciliationWaiters
+        let waiters = Array(reconciliationWaiters.values)
         reconciliationWaiters.removeAll(keepingCapacity: true)
         for waiter in waiters { waiter.resume(throwing: error) }
     }

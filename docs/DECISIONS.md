@@ -17037,3 +17037,31 @@ error type. The UI and application authority now agree that only a verified
 read re-enables mutations. This automated fixture does not certify physical
 macOS behavior, TCC, accessibility technologies, distribution, CloudKit, or
 field evidence.
+
+## D441 — Cancel an explicit standing waiter without cancelling its worker (Aug 2026)
+
+**Context:** the serialized standing supervisor correctly allowed multiple
+Settings requests to join one process-owned reconciliation, but stored their
+throwing continuations in an unscoped array. Cancelling one caller did not wake
+that caller or remove its continuation. It remained retained until unrelated
+calendar preparation completed and could then report late success, even though
+the caller no longer owned presentation. Cancelling the shared worker instead
+would be equally wrong because another Settings request and durable background
+work may still depend on it.
+
+**Decision:** every explicit reconciliation and selected-retry waiter receives
+one random UUID and is stored independently. `withTaskCancellationHandler`
+removes and resumes only that identity with `CancellationError`; cancellation
+is checked before registration, inside the synchronous continuation handoff,
+and after resumption. Reconciliation completion, failure, and `stop()` drain
+only the identities still registered. Caller cancellation never cancels the
+shared worker, drops its pending scope, or changes another waiter's result.
+
+**Consequences:** a dismissed or superseded Settings operation releases its
+continuation promptly while the exact automatic brief may still settle safely
+for the process and any other waiter. The focused regression gates the worker,
+cancels one joined request, observes its cancellation before release, then
+proves a second request receives successful durable artifact settlement. This
+does not claim forceful pre-emption of arbitrary model code or certify physical
+macOS, EventKit/TCC, accessibility technologies, distribution, CloudKit, or
+field behavior.
