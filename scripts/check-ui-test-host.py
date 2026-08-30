@@ -304,16 +304,18 @@ def run_preflight(
     allow_notification_center_alerts: bool = False,
 ) -> int:
     try:
+        first_snapshot = probe.snapshot()
         first = classify(
-            probe.snapshot(),
+            first_snapshot,
             allow_notification_center_alerts=allow_notification_center_alerts,
         )
         if not first.is_empty:
             explain(first, output)
             return 1
         sleeper(SETTLE_SECONDS)
+        second_snapshot = probe.snapshot()
         second = classify(
-            probe.snapshot(),
+            second_snapshot,
             allow_notification_center_alerts=allow_notification_center_alerts,
         )
     except ProbeFailure as error:
@@ -331,11 +333,23 @@ def run_preflight(
         file=output,
     )
     if allow_notification_center_alerts:
-        print(
-            "   Explicit local override ignored only Notification Center alerts; "
-            "all other blockers remained enforced.",
-            file=output,
+        observations = (
+            first_snapshot.notification_center_windows,
+            second_snapshot.notification_center_windows,
         )
+        if any(observations):
+            print(
+                "   Explicit local override accepted only Notification Center "
+                f"alerts (content-free observations: {observations[0]}, "
+                f"{observations[1]}); all other blockers remained enforced.",
+                file=output,
+            )
+        else:
+            print(
+                "   No Notification Center alert was observed; the explicit "
+                "local override relaxed no present blocker.",
+                file=output,
+            )
     return 0
 
 

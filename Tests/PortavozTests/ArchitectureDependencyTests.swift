@@ -11871,6 +11871,10 @@ final class ArchitectureDependencyTests: XCTestCase {
 
         XCTAssertTrue(placement.contains(
             #"arguments.contains("-use-temp-store")"#))
+        XCTAssertTrue(placement.contains(
+            #"PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS"#))
+        XCTAssertTrue(placement.contains(
+            #"window.level = .statusBar"#))
         XCTAssertTrue(placement.contains("NSScreen.screens.first"))
         XCTAssertFalse(placement.contains("NSScreen.main"))
         XCTAssertFalse(placement.contains("window.screen"))
@@ -11883,6 +11887,9 @@ final class ArchitectureDependencyTests: XCTestCase {
             #"general.frame.minX,"#))
         XCTAssertTrue(uiTestSupport.contains(
             #"temporary Settings must stay on AppKit's zero screen"#))
+        XCTAssertTrue(uiTestSupport.contains(
+            #"app.launchEnvironment[notificationCenterAlertOverride] = "true""#))
+        XCTAssertFalse(uiTestSupport.contains("addUIInterruptionMonitor"))
     }
 
     func testProductionSandboxDecisionStaysExplicitAndReproducible() throws {

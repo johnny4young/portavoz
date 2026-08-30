@@ -47,6 +47,9 @@ enum UITestLocale {
     }
 }
 
+private let notificationCenterAlertOverride =
+    "PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS"
+
 enum AutomationEntityUITestRoute: String {
     case meeting
     case person
@@ -212,6 +215,15 @@ extension XCUIApplication {
         // tests may replace it with an explicit scratch copy of real audio.
         app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] =
             NSTemporaryDirectory() + "portavoz-uitest-\(UUID().uuidString)"
+        // The host preflight accepts this exact value only after a local
+        // operator has opted into the category-scoped D432 override. Forward
+        // that decision to the disposable app process so its test windows can
+        // stay above the accepted Notification Center modal without reading,
+        // dismissing, or answering it. CI never sets this value.
+        if ProcessInfo.processInfo.environment[
+            notificationCenterAlertOverride] == "true" {
+            app.launchEnvironment[notificationCenterAlertOverride] = "true"
+        }
         if includeWebFixture,
            let webFixture = ProcessInfo.processInfo.environment[
             "PORTAVOZ_UI_WEB_FIXTURE_PAYLOAD"],

@@ -4192,11 +4192,45 @@ Notification Center alerts plus active Xcode test commands and UI runners by
 default. A local one-run
 `PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS=true` override ignores only
 the content-free Notification Center category when the operator accepts that
-risk; authentication, Secure Input, and active automation still block, and CI
-never enables the override. The preflight cannot identify every generic
+risk. Preflight-only acceptance proved insufficient in the exact 1.0.0
+candidate: the persistent layer-8 modal intercepted real-app events and the
+complete English catalogue retained 11 failures across Radar, Meeting Detail,
+Settings, and Skills despite otherwise valid product state. D453 therefore
+forwards the exact override into disposable `-use-temp-store` launches and
+places only their main and Settings windows at AppKit's standard status-bar
+level. The accepted overlay can no longer occlude hit targets, but no alert is
+read, dismissed, answered, or removed. Authentication, Secure Input, and active
+automation still block, CI never enables the override, and the UI bundle still
+installs no interruption monitor. Its receipt distinguishes an accepted live
+overlay, reported through the two content-free Notification Center counts,
+from a clear-host run where the override relaxed nothing; the latter is not
+live-overlay evidence. The preflight cannot identify every generic
 accessibility client or reserve the host after
 its final sample. Run the UITests without concurrent automation clients and
 classify any later invalidation from the result bundle.
+
+The first bounded D453 characterization reused one build and exercised the
+eight unique journeys implicated by the retained adverse candidate. English
+passed 8/8 in 77.941 summed seconds (p95 17.489) and Spanish passed 8/8 in
+76.611 seconds (p95 17.789), with zero failures, budget violations, or runtime
+adjustments. The content-free post-run probe observed zero Notification Center
+windows, and the then-current preflight did not receipt accepted counts, so
+this is functional/no-regression evidence rather than a claim that the overlay
+was still present. The preflight now records that distinction for every future
+run instead of relying on timing or operator recollection.
+
+The final shared-harness gate then reused one 14-second build and ran the
+complete catalogue sequentially on macOS 26.5.2 (25F84), arm64, without
+retries. English passed 105/105 in 956.282 summed seconds (984 seconds wall,
+p50 7.150, p95 19.584, maximum 39.668); Spanish passed 105/105 in 957.797
+seconds (986 seconds wall, p50 7.100, p95 20.001, maximum 41.101). Both
+schema-3 runtime receipts and schema-1 execution receipts are complete, every
+aggregate and per-journey budget passed, and neither locale needed a runtime
+adjustment. The preflight observed no Notification Center alert, so this closes
+D453's functional shared-harness proof but remains explicitly clear-host—not
+live-overlay—evidence. A naturally occurring future alert can be classified
+independently by the new count-bearing receipt; manufacturing a private system
+prompt is neither required nor appropriate.
 
 **Environment flake — foreground ownership (Aug 2026):** an unrelated app can
 raise a window after Portavoz has activated but before XCUITest synthesizes its

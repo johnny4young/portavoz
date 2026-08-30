@@ -5282,17 +5282,26 @@ visible SecurityAgent or Notification Center alerts and any other process's
 keyboard protection without exposing that process identity. A local operator
 may explicitly set `PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS=true` to
 ignore only Notification Center for one run; SecurityAgent, Secure Input, and
-active automation remain fail-closed, and CI never sets the override. It never reads a
-window title, dismisses a prompt, kills the host-wide test service, or
-terminates another process. The preflight compiles this probe once into a
+active automation remain fail-closed, and CI never sets the override. When
+that exact local decision is present, the XCUITest harness forwards it only to
+the `-use-temp-store` app process. The shared disposable-window boundary keeps
+the main and Settings windows at AppKit's standard `statusBar` level, above the
+accepted Notification Center modal, so it cannot occlude test hit targets. No
+production window is elevated. It never reads a window title, dismisses a
+prompt, kills the host-wide test service, or terminates another process. The
+preflight compiles this probe once into a
 private disposable workspace under a bounded 60-second cold-toolchain budget,
 verifies that the binary exists and is executable, then reuses it for both
 three-second observations instead of compiling the Swift script twice. Build,
 observation, workspace, or malformed-output failure remains fail-closed.
+An accepted run reports both content-free Notification Center window counts.
+When both are zero it instead states that the override relaxed no present
+blocker, so a clear-host run cannot be misrepresented as live-overlay proof.
 The UI-test bundle likewise installs no interruption monitor for external
-system prompts: a privacy or authentication choice that appears after preflight
-remains user-owned and invalidates that host run instead of being answered by
-automation.
+system prompts. The explicit Notification Center level isolation answers no
+control and changes no notification state; every privacy or authentication
+choice remains user-owned and invalidates that host run instead of being
+answered by automation.
 Disposable UI-test windows do not inherit a user's multi-display placement.
 Only with `-use-temp-store`, one shared AppKit boundary places both the primary
 window and the real Settings scene on `NSScreen.screens.first`, AppKit's zero

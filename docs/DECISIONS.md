@@ -17415,3 +17415,43 @@ failure remains pending rather than being falsely acknowledged. Pure tests
 characterize no-player retention, architecture ratchets require acknowledgement-
 after-application and UUID fencing, and the existing bilingual same-route
 XCUITest remains the end-to-end authority.
+
+## D453 — Isolate explicitly accepted Notification Center overlays from disposable XCUITest windows (Aug 2026)
+
+**Context:** D432 let a local operator ignore only Notification Center in the
+read-only preflight without dismissing user-owned state. The exact `90ab4432`
+candidate proved that classification alone was not sufficient. Its complete
+English catalogue ran under one persistent `UserNotificationCenter` window at
+CoreGraphics layer 8. XCTest repeatedly reported that modal as an interrupting
+element; controls behind it stopped being hittable or received no interaction,
+and the retained result ended with 11 failures across four UI owners. The same
+commit had already passed 105/105 English and 105/105 Spanish on a clear host,
+so treating the overlay run as a product regression or retrying it unchanged
+would both be dishonest.
+
+**Decision:** keep the D432 default and exact local switch unchanged. When and
+only when the XCUITest runner receives exact lowercase
+`PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS=true`, forward that value to
+each disposable app launch. The existing `-use-temp-store` window-placement
+boundary raises only the test main window and real Settings window to AppKit's
+standard `NSWindow.Level.statusBar`. That standard level is above the accepted
+modal-panel-level Notification Center overlay while remaining below pop-up-menu
+and screen-saver levels. Production windows never enter the boundary. The
+harness still reads no alert title or content, installs no interruption
+monitor, clicks no alert action, terminates no process, and changes no
+notification or Focus setting. SecurityAgent, Secure Input, competing tests,
+and malformed override values remain fail-closed before launch; CI never sets
+the override. The preflight reports both content-free Notification Center
+counts when the category is actually present, or explicitly reports that the
+override relaxed nothing when both observations are zero.
+
+**Consequences:** an operator-approved persistent Notification Center alert can
+coexist with deterministic local XCUITest without occluding app hit targets or
+mutating host state. This is explicit test-host isolation, not evidence that
+Portavoz handles arbitrary system overlays in production. A non-Notification
+system prompt, a prompt that appears after preflight, Secure Input, another
+automation client, or any functional assertion still invalidates the run. The
+change is shared harness ownership, so it requires exact affected-journey proof
+plus the complete sequential bilingual catalogue before candidate evidence may
+be trusted. A clear-host pass is still useful functional evidence but is never
+labelled as proof against a live overlay.

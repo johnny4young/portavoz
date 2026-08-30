@@ -110,7 +110,8 @@ class UITestHostPreflightTests(unittest.TestCase):
 
         self.assertEqual(result, 0)
         self.assertEqual(probe.calls, 2)
-        self.assertIn("ignored only Notification Center", output.getvalue())
+        self.assertIn("accepted only Notification Center", output.getvalue())
+        self.assertIn("content-free observations: 2, 1", output.getvalue())
 
         blockers = preflight.classify(
             snapshot(
@@ -123,6 +124,24 @@ class UITestHostPreflightTests(unittest.TestCase):
         self.assertFalse(blockers.notification_center)
         self.assertTrue(blockers.security_agent)
         self.assertTrue(blockers.secure_input)
+
+    def test_notification_override_reports_when_no_alert_was_observed(self):
+        output = io.StringIO()
+        probe = FakeProbe(snapshot(), snapshot())
+
+        result = preflight.run_preflight(
+            probe,
+            output=output,
+            sleeper=lambda _: None,
+            allow_notification_center_alerts=True,
+        )
+
+        self.assertEqual(result, 0)
+        self.assertIn(
+            "No Notification Center alert was observed",
+            output.getvalue(),
+        )
+        self.assertNotIn("accepted only", output.getvalue())
 
     def test_notification_override_is_explicit_and_fail_closed(self):
         key = preflight.ALLOW_NOTIFICATION_CENTER_ENV

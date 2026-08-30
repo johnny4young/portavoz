@@ -7,6 +7,9 @@ import AppKit
 /// placement because every entry point is gated by `-use-temp-store`.
 @MainActor
 enum UITestWindowPlacement {
+    private static let notificationCenterAlertOverride =
+        "PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS"
+
     static func positionMainWindow(_ window: NSWindow) {
         guard let visibleFrame = zeroScreenVisibleFrame else { return }
 
@@ -19,6 +22,7 @@ enum UITestWindowPlacement {
             y: visibleFrame.minY,
             width: visibleFrame.width - leftClearance,
             height: visibleFrame.height)
+        applyAcceptedNotificationCenterIsolation(to: window)
         window.setFrame(frame, display: true, animate: false)
     }
 
@@ -31,7 +35,22 @@ enum UITestWindowPlacement {
             x: visibleFrame.midX - frame.width / 2,
             y: visibleFrame.midY - frame.height / 2)
         let constrainedFrame = window.constrainFrameRect(frame, to: screen)
+        applyAcceptedNotificationCenterIsolation(to: window)
         window.setFrame(constrainedFrame, display: true, animate: false)
+    }
+
+    /// A persistent Notification Center alert is a modal-panel-level window.
+    /// The explicit local D432 override accepts only that category, so keep
+    /// disposable test windows at AppKit's standard status-bar level for that
+    /// run. This changes no production window and never reads or mutates the
+    /// alert; it only prevents the accepted overlay from occluding hit targets.
+    private static func applyAcceptedNotificationCenterIsolation(
+        to window: NSWindow
+    ) {
+        guard ProcessInfo.processInfo.environment[
+            notificationCenterAlertOverride] == "true"
+        else { return }
+        window.level = .statusBar
     }
 
     private static var zeroScreenVisibleFrame: NSRect? {
