@@ -781,6 +781,12 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(len(selection.tests), 2, path)
 
     def test_harness_change_expands_to_the_complete_bilingual_catalog(self):
+        self.assertTrue({
+            "docs/evidence/apuntador-leak-baseline.json",
+            "scripts/apuntador_leak_baseline.py",
+            "scripts/candidate_automation.py",
+            "scripts/run-apuntador-leak-baseline.sh",
+        }.issubset(ui_scope.FULL_BILINGUAL_HARNESS_FILES))
         for path in sorted(ui_scope.FULL_BILINGUAL_HARNESS_FILES):
             selection = select_paths([path])
             self.assertEqual(selection.tests, HARNESS_TESTS, path)

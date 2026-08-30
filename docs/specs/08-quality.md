@@ -2845,9 +2845,9 @@ sequentially on one completely clean full commit and rechecks the source before
 and after each command. It directly owns deterministic reliability, public
 bilingual Apuntador validation, six installed-model Release classes, the
 authoritative performance ledger and its finite PERF-008 confirmation, one
-current-host Release resource receipt, the
-canonical synthetic three-hour capture, seven upgrade/recovery classes, and
-the complete bilingual real-app XCUITest catalog. It has no arbitrary proof
+current-host Release resource receipt, one four-path real-app memory-leak
+receipt, the canonical synthetic three-hour capture, seven upgrade/recovery
+classes, and the complete bilingual real-app XCUITest catalog. It has no arbitrary proof
 recorder; only the successful in-process sequence writes the schema-1
 `candidate-automation` qualification receipt with mode 0600.
 
@@ -2901,7 +2901,7 @@ Specialized validation is fail closed. The performance ledger must be
 authoritative, contain its exact 25-metric inventory, measure all twelve
 scale/semantic/Spotlight metrics in `pass` or budgetless `diagnostic` state,
 and retain exactly thirteen declared non-autonomous metrics as
-`not-measured`. Candidate contract schema 2 also pins PERF-008's three-run
+`not-measured`. Candidate contract schema 3 also pins PERF-008's three-run
 authority. One clean first ledger proceeds without repetition. A first
 `regression-candidate` runs exactly two additional sequential non-strict
 ledgers on the identical host and toolchain; every ledger and its SHA-256 is
@@ -6606,3 +6606,33 @@ with 15 explicit environment skips and zero failures. The minimum-safe real-app
 journey passed 1/1 in English in 2.592 seconds and 1/1 in Spanish in 2.363
 seconds from one build, without retry, adjusted budget, or Notification Center
 override. No release, notarization, publication, or installation occurred.
+
+**D447 content-free real-app leak authority.** Candidate contract schema 3 adds
+one current-host memory-leak receipt without inventing a ninth high-level proof.
+The clean-source runner builds one Release application and copies it into a
+mode-0700 scratch root. Only that disposable copy is renamed and ad-hoc signed
+with the existing resource-benchmark library-validation exception; the shipped
+signature and both installed application bundles remain untouched. Apple's
+`leaks --atExit` runs with `--noContent --nostacks` over four public-synthetic
+product paths: a fixed five-iteration released Live Assist workload, a fixed
+five-iteration bundled Sequoia/Tahoe question-classifier workload, one canonical
+deep Ask workload, and one canonical semantic-indexing workload. No network,
+private library, user transcript, or caller-supplied evidence state is admitted.
+
+A tool exit alone is never accepted. Each scenario must exit zero, contain its
+unique product completion marker exactly once, and produce a fresh bounded
+regular evidence artifact accepted by the existing Live Assist or resource
+validator. Fatal task-port, dynamic-library, signal, and process-launch markers
+block even if `leaks` itself returns zero. Any reported leak or leaked byte
+blocks. The owner-only receipt binds the exact release version, build, clean
+commit, host, Xcode build, closed instrumentation policy, canonical scenario
+order, and SHA-256 of every content-free evidence fragment. Missing, symlinked,
+oversized, duplicated, reordered, malformed, fatal, incomplete, leaking, or
+identity-mismatched evidence produces no candidate qualification.
+
+This closes a deterministic current-host leak check for those four paths only.
+It is not an Instruments allocation/lifetime trace, proof that no retained
+cycle exists outside `leaks` detection, a long-duration stress/thermal result,
+an installed Foundation Models or provider result, physical Sequoia/Tahoe
+evidence, VoiceOver/Voice Control evidence, signed distribution, production
+CloudKit, or field reliability. Those gates remain separate and explicit.

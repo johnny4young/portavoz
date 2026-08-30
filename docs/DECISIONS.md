@@ -17217,3 +17217,44 @@ selector, locale, retry, or functional result changes, and the raw xcresult
 remains the immutable authority. The fresh shared-harness qualification then
 passed 105/105 English and 105/105 Spanish from one build with zero adjustments
 under the unchanged budgets.
+
+## D447 — Require real product completion before accepting leak evidence (Aug 2026)
+
+**Context:** D381 left memory leaks and the broader stress/no-crash matrix open.
+The existing resource baseline measures bounded process footprint but cannot
+prove that objects are released. A direct `leaks --atExit` launch of the exact
+Release application also exposed a more dangerous false green: instrumentation
+enabled MallocStackLogging, hardened-runtime library validation rejected the
+separately signed Sparkle framework, the target died before product work, and
+the `leaks` command still exited zero. Tool status alone could therefore claim
+success for an application that never reached the scenario.
+
+**Decision:** candidate automation schema 3 owns one current-host, content-free
+leak receipt over four exact Release-app paths: released Live Assist policy, the
+bundled question classifier used on Sequoia and Tahoe, deep Ask, and semantic
+indexing. One build is copied to a private scratch directory; only that
+disposable copy is ad-hoc signed with the existing benchmark-only
+library-validation exception. Neither installed app nor the shipping signature
+is modified. Apple's at-exit tool runs with memory content and stacks withheld,
+no network, disposable storage, and public synthetic inputs.
+
+Every scenario requires zero tool exit, zero reported leaks and bytes, one
+unique product completion marker, and fresh regular evidence accepted by the
+existing Live Assist or resource validator. Fatal task-port, dynamic-library,
+signal, or early-launch output blocks even when the tool exits zero. The
+owner-only receipt binds exact release/source/host/toolchain identity, canonical
+scenario order, closed policy, and evidence digests. Five iterations apply
+explicitly to each Live Assist workload; Ask and indexing retain their one
+canonical bounded workload rather than hiding different semantics behind one
+global repetition count. Missing, symlinked, oversized, duplicated, reordered,
+malformed, incomplete, leaking, or identity-mismatched evidence blocks the
+candidate.
+
+**Consequences:** a candidate can no longer substitute process-footprint data,
+mocked output, an early dyld death, or the tool's exit code for real leak
+evidence on these four Apuntador paths. The gate remains intentionally narrower
+than a complete allocation/lifetime trace: it does not prove absence of every
+retained cycle, long-duration memory stability, installed Foundation Models or
+provider behavior, physical Sequoia/Tahoe, accessibility technologies, signed
+distribution, production CloudKit, or field reliability. Those gates remain
+explicitly open.

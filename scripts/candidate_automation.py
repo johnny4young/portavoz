@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
+import apuntador_leak_baseline
 import long_capture_evidence
 import release_reliability
 import resource_baseline
@@ -26,7 +27,7 @@ import resource_baseline
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONTRACT = ROOT / "docs" / "evidence" / "candidate-automation.json"
 DEFAULT_OUTPUT_PARENT = ROOT / "dist" / "release-readiness"
-CONTRACT_SCHEMA_VERSION = 2
+CONTRACT_SCHEMA_VERSION = 3
 PERF_LEDGER_SCHEMA_VERSION = 1
 PERFORMANCE_CONFIRMATION_SCHEMA_VERSION = 1
 UI_BUDGET_SCHEMA_VERSION = 1
@@ -70,6 +71,7 @@ EXPECTED_RESOURCE_SCENARIOS = (
     "summary",
 )
 EXPECTED_UI_LOCALES = ("en", "es")
+EXPECTED_LEAK_SCENARIOS = apuntador_leak_baseline.EXPECTED_SCENARIOS
 EXPECTED_CONVERSATION_VOICES = ("Daniel", "Paulina")
 EXPECTED_CONVERSATION_SEQUENCE = ("Daniel", "Paulina", "Daniel", "Paulina")
 EXPECTED_CONVERSATION_SILENCE_MILLISECONDS = 700
@@ -83,6 +85,7 @@ EXPECTED_CONTRACT_PATHS = {
     ),
     "performance": "docs/evidence/perf-thresholds.json",
     "resource": "docs/evidence/resource-baseline-matrix.json",
+    "memoryLeaks": "docs/evidence/apuntador-leak-baseline.json",
     "ui": "docs/evidence/ui-test-runtime-budget.json",
 }
 EXECUTED_PATTERN = re.compile(r"Executed\s+([0-9]+)\s+tests?,")
@@ -235,6 +238,7 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
             "upgradeRecoveryTestClasses",
             "performance",
             "resource",
+            "memoryLeaks",
             "ui",
         ),
     )
@@ -462,6 +466,44 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
             "candidate resource scenarios must cover the resource contract"
         )
 
+    memory_leaks = exact_object(
+        contract["memoryLeaks"],
+        "candidate contract.memoryLeaks",
+        ("contract", "liveAssistIterations", "requiredScenarios"),
+    )
+    leak_contract_path = tracked_path(
+        root,
+        memory_leaks["contract"],
+        "candidate contract.memoryLeaks.contract",
+        EXPECTED_CONTRACT_PATHS["memoryLeaks"],
+    )
+    try:
+        leak_contract = apuntador_leak_baseline.validate_contract(
+            apuntador_leak_baseline.load_json(
+                leak_contract_path, "candidate leak contract"
+            )
+        )
+    except apuntador_leak_baseline.ApuntadorLeakBaselineError as error:
+        raise CandidateAutomationError(str(error)) from error
+    leak_iterations = memory_leaks["liveAssistIterations"]
+    if (
+        isinstance(leak_iterations, bool)
+        or not isinstance(leak_iterations, int)
+        or leak_iterations != leak_contract["liveAssistIterations"]
+    ):
+        raise CandidateAutomationError(
+            "candidate leak iterations must match the tracked contract"
+        )
+    leak_scenarios = string_list(
+        memory_leaks["requiredScenarios"],
+        "candidate contract.memoryLeaks.requiredScenarios",
+    )
+    if (
+        leak_scenarios != EXPECTED_LEAK_SCENARIOS
+        or leak_scenarios != leak_contract["orderedScenarioIDs"]
+    ):
+        raise CandidateAutomationError("candidate leak scenarios drifted")
+
     ui = exact_object(
         contract["ui"],
         "candidate contract.ui",
@@ -504,6 +546,12 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
             "contract": resource_contract,
             "samplesPerScenario": sample_count,
             "requiredScenarios": scenarios,
+        },
+        "memoryLeaks": {
+            "contractPath": leak_contract_path,
+            "contract": leak_contract,
+            "liveAssistIterations": leak_iterations,
+            "requiredScenarios": leak_scenarios,
         },
         "ui": {
             "budgetPath": ui_budget_path,
@@ -771,6 +819,37 @@ def validate_resource_receipt(
     if set(ask_pipeline["runs"]) != set(scenarios["ask"]["runs"]):
         raise CandidateAutomationError(
             "resource Ask pipeline runs do not match the Ask samples"
+        )
+
+
+def validate_memory_leak_receipt(
+    path: Path,
+    contract: dict[str, Any],
+    *,
+    version: str,
+    build: str,
+    commit: str,
+) -> None:
+    policy = contract["memoryLeaks"]
+    try:
+        receipt = apuntador_leak_baseline.validate_receipt(
+            apuntador_leak_baseline.load_json(path, "memory leak receipt"),
+            policy["contract"],
+        )
+    except apuntador_leak_baseline.ApuntadorLeakBaselineError as error:
+        raise CandidateAutomationError(str(error)) from error
+    validate_release_identity(
+        receipt["release"],
+        version=version,
+        build=build,
+        commit=commit,
+        label="memory leak receipt",
+    )
+    if tuple(row["id"] for row in receipt["scenarios"]) != policy[
+        "requiredScenarios"
+    ]:
+        raise CandidateAutomationError(
+            "memory leak receipt scenario inventory does not match"
         )
 
 
@@ -1918,6 +1997,7 @@ def _run_candidate(
     deterministic = output / "deterministic.json"
     performance_root = output / "performance"
     resource_root = output / "resource"
+    memory_leak_root = output / "memory-leaks"
     long_capture = output / "long-capture.json"
     ui_root = output / "ui"
     model_audio = output / "public-model-lane.aiff"
@@ -2000,6 +2080,34 @@ def _run_candidate(
     finally:
         model_audio.unlink(missing_ok=True)
         model_conversation.unlink(missing_ok=True)
+
+    run_command(
+        root,
+        commit,
+        "Content-free real-app Apuntador leak baseline",
+        [
+            "scripts/run-apuntador-leak-baseline.sh",
+            "--version",
+            version,
+            "--build",
+            build,
+            "--live-assist-iterations",
+            str(contract["memoryLeaks"]["liveAssistIterations"]),
+            "--output",
+            str(memory_leak_root),
+        ],
+        environment={
+            "PORTAVOZ_SIGN_IDENTITY": "-",
+            **private_fixture_environment,
+        },
+    )
+    validate_memory_leak_receipt(
+        memory_leak_root / "receipt.json",
+        contract,
+        version=version,
+        build=build,
+        commit=commit,
+    )
 
     run_candidate_performance_gate(
         root,

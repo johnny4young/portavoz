@@ -14,7 +14,8 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
 .PHONY: build test test-ask-quality test-apuntador-validation \
 	test-live-assist-validation live-assist-baseline live-assist-bundled-question \
-	live-assist-foundation-models ask-quality-pair \
+	live-assist-foundation-models test-apuntador-leak-baseline \
+	apuntador-leak-baseline ask-quality-pair \
 	test-meeting-memory-graph-query-receipt meeting-memory-graph-query-receipt \
 	test-retrieval-chunk-evidence retrieval-chunk-evidence \
 	test-commitment-quality commitment-quality-deterministic \
@@ -172,6 +173,27 @@ test-live-assist-validation:
 		--fixture Fixtures/LiveAssistValidation/public-bilingual-v1.json \
 		--budget docs/evidence/live-assist-validation-budget.json
 	$(XCODE) swift test --filter LiveAssistValidationRunnerTests
+
+## Validate the fail-closed parser/receipt and the disposable-app shell policy.
+## The real baseline below still owns task-port evidence; unit tests never
+## pretend that a mocked leak report is product qualification.
+test-apuntador-leak-baseline:
+	python3 -m unittest Tests.Tooling.test_apuntador_leak_baseline
+
+PORTAVOZ_APUNTADOR_LEAK_OUTPUT ?=
+
+## Run four public-synthetic Release-app paths under Apple's leaks-at-exit
+## tool. Memory contents and stacks are withheld, the user's library is never
+## opened, and only a disposable ad-hoc copy receives the benchmark exception.
+apuntador-leak-baseline:
+	@test -n "$(PORTAVOZ_RELEASE_VERSION)" || \
+		(echo "PORTAVOZ_RELEASE_VERSION is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_RELEASE_BUILD)" || \
+		(echo "PORTAVOZ_RELEASE_BUILD is required" >&2; exit 64)
+	scripts/run-apuntador-leak-baseline.sh \
+		--version "$(PORTAVOZ_RELEASE_VERSION)" \
+		--build "$(PORTAVOZ_RELEASE_BUILD)" \
+		$(if $(PORTAVOZ_APUNTADOR_LEAK_OUTPUT),--output "$(PORTAVOZ_APUNTADOR_LEAK_OUTPUT)")
 
 PORTAVOZ_LIVE_ASSIST_ITERATIONS ?= 5
 PORTAVOZ_LIVE_ASSIST_OUTPUT ?=

@@ -11245,7 +11245,7 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testCandidateAutomationOwnsEightSpecializedProofs() throws {
         let contract = try Self.jsonObject(
             at: "docs/evidence/candidate-automation.json")
-        XCTAssertEqual(contract["schemaVersion"] as? Int, 2)
+        XCTAssertEqual(contract["schemaVersion"] as? Int, 3)
         XCTAssertEqual(
             contract["kind"] as? String,
             "candidate-automation-contract")
@@ -11284,6 +11284,20 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertEqual(
             modelFixture["conversationVoices"] as? [String],
             ["Daniel", "Paulina"])
+        let memoryLeaks = try XCTUnwrap(
+            contract["memoryLeaks"] as? [String: Any])
+        XCTAssertEqual(
+            memoryLeaks["contract"] as? String,
+            "docs/evidence/apuntador-leak-baseline.json")
+        XCTAssertEqual(memoryLeaks["liveAssistIterations"] as? Int, 5)
+        XCTAssertEqual(
+            memoryLeaks["requiredScenarios"] as? [String],
+            [
+                "live-assist-released",
+                "live-assist-bundled-question",
+                "ask",
+                "semantic-indexing",
+            ])
 
         let runner = try Self.contents(of: "scripts/candidate_automation.py")
         let makefile = try Self.contents(of: "Makefile")
@@ -11303,10 +11317,12 @@ final class ArchitectureDependencyTests: XCTestCase {
             "accepted_exit_codes=(0, 2)",
             "PORTAVOZ_PERF_STRICT\": \"0",
             "scripts/run-resource-baseline.sh",
+            "scripts/run-apuntador-leak-baseline.sh",
             "scripts/run-long-capture-baseline.sh",
             "make\", \"test-ui-bilingual",
             "validate_performance_ledger",
             "validate_resource_receipt",
+            "validate_memory_leak_receipt",
             "validate_long_capture",
             "validate_ui_receipts",
             "validate_public_model_fixture",
@@ -11331,13 +11347,18 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embeddingTests.contains(
             "embedder.prepare(allowAssetDownload: false)"))
         XCTAssertTrue(makefile.contains("candidate-automation:"))
+        XCTAssertTrue(makefile.contains("test-apuntador-leak-baseline:"))
+        XCTAssertTrue(makefile.contains("apuntador-leak-baseline:"))
         XCTAssertTrue(makefile.contains(
             "release-reliability long-capture-baseline candidate-automation"))
         XCTAssertTrue(hygiene.contains(
             "Tests.Tooling.test_candidate_automation"))
+        XCTAssertTrue(hygiene.contains(
+            "Tests.Tooling.test_apuntador_leak_baseline"))
         XCTAssertTrue(decisions.contains("## D392"))
         XCTAssertTrue(decisions.contains("## D393"))
         XCTAssertTrue(decisions.contains("## D401"))
+        XCTAssertTrue(decisions.contains("## D447"))
     }
 
     func testRealModelGateReservesContextAndNeverEchoesTranscriptContent() throws {

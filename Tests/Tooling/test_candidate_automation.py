@@ -27,7 +27,7 @@ class CandidateAutomationTests(unittest.TestCase):
         self.contract = candidate.load_contract()
 
     def test_tracked_contract_is_exact_and_complete(self):
-        self.assertEqual(self.contract_document["schemaVersion"], 2)
+        self.assertEqual(self.contract_document["schemaVersion"], 3)
         self.assertEqual(
             self.contract["proofs"],
             (
@@ -70,6 +70,17 @@ class CandidateAutomationTests(unittest.TestCase):
             candidate.EXPECTED_RESOURCE_SCENARIOS,
         )
         self.assertEqual(self.contract["resource"]["samplesPerScenario"], 3)
+        self.assertEqual(
+            self.contract["memoryLeaks"]["contractPath"],
+            ROOT / "docs" / "evidence" / "apuntador-leak-baseline.json",
+        )
+        self.assertEqual(
+            self.contract["memoryLeaks"]["liveAssistIterations"], 5
+        )
+        self.assertEqual(
+            self.contract["memoryLeaks"]["requiredScenarios"],
+            candidate.EXPECTED_LEAK_SCENARIOS,
+        )
         measured = set(
             self.contract["performance"]["requiredMeasuredMetricIDs"]
         )
@@ -137,6 +148,14 @@ class CandidateAutomationTests(unittest.TestCase):
             "exactly en and es",
         ):
             candidate.validate_contract(weak_ui)
+
+        weak_leaks = copy.deepcopy(self.contract_document)
+        weak_leaks["memoryLeaks"]["requiredScenarios"].pop()
+        with self.assertRaisesRegex(
+            candidate.CandidateAutomationError,
+            "leak scenarios drifted",
+        ):
+            candidate.validate_contract(weak_leaks)
 
     def test_duplicate_json_keys_fail_closed(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -515,27 +534,6 @@ class CandidateAutomationTests(unittest.TestCase):
                         profile="reference",
                     )
 
-                unstable = copy.deepcopy(validated)
-                unstable["scenarios"]["idle"]["runs"][3]["metrics"][
-                    "wallDurationMilliseconds"
-                ] = 10_000.0
-                with mock.patch.object(
-                    candidate.resource_baseline,
-                    "validate_receipt",
-                    return_value=unstable,
-                ), self.assertRaisesRegex(
-                    candidate.CandidateAutomationError,
-                    "idle has blocking state unstable",
-                ):
-                    candidate.validate_resource_receipt(
-                        receipt,
-                        self.contract,
-                        version=self.version,
-                        build=self.build,
-                        commit=self.commit,
-                        profile="reference",
-                    )
-
                 nondeterministic = copy.deepcopy(validated)
                 nondeterministic["askPipeline"]["runs"][3]["citations"][
                     "digest"
@@ -575,6 +573,70 @@ class CandidateAutomationTests(unittest.TestCase):
                         commit=self.commit,
                         profile="reference",
                     )
+
+                unstable = copy.deepcopy(validated)
+                unstable["scenarios"]["idle"]["runs"][3]["metrics"][
+                    "wallDurationMilliseconds"
+                ] = 10_000.0
+                with mock.patch.object(
+                    candidate.resource_baseline,
+                    "validate_receipt",
+                    return_value=unstable,
+                ), self.assertRaisesRegex(
+                    candidate.CandidateAutomationError,
+                    "idle has blocking state unstable",
+                ):
+                    candidate.validate_resource_receipt(
+                        receipt,
+                        self.contract,
+                        version=self.version,
+                        build=self.build,
+                        commit=self.commit,
+                        profile="reference",
+                    )
+
+    def test_memory_leak_receipt_requires_exact_release_and_zero_leak_scenarios(self):
+        receipt = self.memory_leak_receipt()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "receipt.json"
+            path.write_text(json.dumps(receipt))
+            candidate.validate_memory_leak_receipt(
+                path,
+                self.contract,
+                version=self.version,
+                build=self.build,
+                commit=self.commit,
+            )
+
+            wrong_release = copy.deepcopy(receipt)
+            wrong_release["release"]["commit"] = "b" * 40
+            path.write_text(json.dumps(wrong_release))
+            with self.assertRaisesRegex(
+                candidate.CandidateAutomationError,
+                "release identity does not match",
+            ):
+                candidate.validate_memory_leak_receipt(
+                    path,
+                    self.contract,
+                    version=self.version,
+                    build=self.build,
+                    commit=self.commit,
+                )
+
+            leaking = copy.deepcopy(receipt)
+            leaking["scenarios"][0]["leakCount"] = 1
+            path.write_text(json.dumps(leaking))
+            with self.assertRaisesRegex(
+                candidate.CandidateAutomationError,
+                "leakCount must be 0",
+            ):
+                candidate.validate_memory_leak_receipt(
+                    path,
+                    self.contract,
+                    version=self.version,
+                    build=self.build,
+                    commit=self.commit,
+                )
 
     def test_long_capture_requires_exact_commit_and_canonical_pass(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -947,6 +1009,9 @@ class CandidateAutomationTests(unittest.TestCase):
                 "validate_resource_receipt",
             ) as resource, mock.patch.object(
                 candidate,
+                "validate_memory_leak_receipt",
+            ) as memory_leaks, mock.patch.object(
+                candidate,
                 "validate_long_capture",
             ) as long_capture, mock.patch.object(
                 candidate,
@@ -962,7 +1027,7 @@ class CandidateAutomationTests(unittest.TestCase):
             receipt = json.loads(receipt_path.read_text())
             self.assertEqual(receipt["release"]["commit"], self.commit)
             self.assertEqual(len(receipt["proofs"]), 8)
-            self.assertEqual(commands.call_count, 6)
+            self.assertEqual(commands.call_count, 7)
             conversation.assert_called_once()
             self.assertEqual(swift_classes.call_count, 2)
             self.assertEqual(model_fixture.call_count, 2)
@@ -983,6 +1048,19 @@ class CandidateAutomationTests(unittest.TestCase):
                 resource_call.kwargs["environment"]["PORTAVOZ_SIGN_IDENTITY"],
                 "-",
             )
+            leak_call = command_by_label[
+                "Content-free real-app Apuntador leak baseline"
+            ]
+            self.assertIn(
+                "scripts/run-apuntador-leak-baseline.sh",
+                leak_call.args[3],
+            )
+            self.assertIn("--live-assist-iterations", leak_call.args[3])
+            self.assertNotIn("--iterations", leak_call.args[3])
+            self.assertEqual(
+                leak_call.kwargs["environment"]["PORTAVOZ_SIGN_IDENTITY"],
+                "-",
+            )
             model_environment = swift_classes.call_args_list[0].kwargs[
                 "environment"
             ]
@@ -995,6 +1073,7 @@ class CandidateAutomationTests(unittest.TestCase):
             deterministic.assert_called_once()
             performance.assert_called_once()
             resource.assert_called_once()
+            memory_leaks.assert_called_once()
             long_capture.assert_called_once()
             ui.assert_called_once()
             self.assertEqual(os.stat(receipt_path).st_mode & 0o777, 0o600)
@@ -1216,6 +1295,50 @@ class CandidateAutomationTests(unittest.TestCase):
                 for identifier in candidate.EXPECTED_RESOURCE_SCENARIOS
             },
             "askPipeline": {"state": "pass", "runs": ask_runs},
+        }
+
+    def memory_leak_receipt(self):
+        leak_contract = self.contract["memoryLeaks"]["contract"]
+        return {
+            "schemaVersion": 1,
+            "kind": "apuntador-leak-baseline",
+            "collectedAt": "2026-08-30T18:00:00Z",
+            "release": {
+                "version": self.version,
+                "build": self.build,
+                "commit": self.commit,
+            },
+            "host": {
+                "platform": "macOS",
+                "version": "26.5.2",
+                "build": "25F84",
+                "architecture": "arm64",
+            },
+            "toolchain": {
+                "xcode": "26.6",
+                "build": "17F113",
+                "leaksMode": "at-exit-no-content-no-stacks",
+            },
+            "policies": leak_contract["policies"],
+            "scenarios": [
+                {
+                    "id": identifier,
+                    "state": "pass",
+                    "leakCount": 0,
+                    "leakedBytes": 0,
+                    "evidenceSHA256": {
+                        key: "b" * 64
+                        for key in leak_contract["scenarios"][identifier]["evidence"]
+                    },
+                }
+                for identifier in leak_contract["orderedScenarioIDs"]
+            ],
+            "summary": {
+                "scenarioCount": 4,
+                "passed": 4,
+                "leakCount": 0,
+                "leakedBytes": 0,
+            },
         }
 
     def long_capture_report(self):

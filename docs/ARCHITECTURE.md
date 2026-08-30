@@ -4720,21 +4720,35 @@ assistive release gate remains open.
 Candidate automation has one executable owner rather than a generic receipt
 recorder. `docs/evidence/candidate-automation.json` freezes the eight proof
 order, six installed-model classes, seven upgrade/recovery classes, nine
-resource scenarios, two UI locales, and the performance-ledger partition.
+resource scenarios, four real-app memory-leak scenarios, two UI locales, and
+the performance-ledger partition.
 `scripts/candidate_automation.py` requires a completely clean checkout, fixes
 one full source commit, and rechecks that identity around every sequential
 gate. It directly runs the deterministic release suite, public bilingual
 Apuntador corpus, installed-model classes, authoritative performance ledger
 plus finite confirmation, current-host Release resource baseline, canonical
-synthetic three-hour capture, upgrade/recovery classes, and complete bilingual
-real-app XCUITest.
+synthetic three-hour capture, a content-free real-app leak pass, upgrade/recovery
+classes, and complete bilingual real-app XCUITest.
 Specialized validators then require the deterministic receipt's exact release
 identity, an authoritative performance inventory, three passing resource
 samples for every scenario plus the Ask timing pipeline, zero-drift bounded
-long capture, and the exact current 103-case EN/ES UI catalog with one reused build and
-passing runtime budgets. Only that in-process sequence can write the
+long capture, zero detected leaks or leaked bytes in all four exact Apuntador
+paths, and the exact current EN/ES UI catalog with one reused build and passing
+runtime budgets. Only that in-process sequence can write the
 owner-only `candidate-automation` qualification receipt; there is no CLI for
 caller-supplied proof state.
+
+The leak pass builds one Release app, copies it only into a private scratch
+directory, and re-signs that disposable copy with the existing benchmark-only
+library-validation exception so Apple's at-exit instrumentation can load its
+embedded Sparkle framework. It never mutates either installed application.
+`xcrun leaks` withholds memory content and stacks while executing released Live
+Assist policy, the bundled Sequoia/Tahoe question classifier, deep Ask, and
+semantic indexing over public synthetic/disposable state. A zero tool exit is
+insufficient: every path must publish its fresh product completion artifact,
+the parser rejects fatal launch/tool markers, and the receipt requires zero
+leaks and zero leaked bytes. The runner is current-host evidence, not a claim
+about retained cycles outside the tool's reach or physical platform coverage.
 
 The installed-model lane synthesizes one bounded spoken fixture from tracked
 public English text. Its bilingual conversation is not one `say` process with
@@ -4758,7 +4772,7 @@ identity and bounded process watchdog, so a new TCC prompt or suspended app
 cannot delegate routine candidate QA to the user or wait indefinitely.
 
 The performance proof is deliberately named candidate automation rather than
-universal performance certification. Candidate contract schema 2 pins the
+universal performance certification. Candidate contract schema 3 pins the
 same three-run confirmation count as PERF-008. The runner begins with one
 non-strict authoritative ledger. A clean ledger is canonical immediately; a
 regression candidate opens exactly two more sequential ledgers on the same

@@ -18,6 +18,16 @@
     "ParakeetIntegrationTests",
     "SentenceEmbedderIntegrationTests"
   ],
+  "memoryLeaks": {
+    "contract": "docs/evidence/apuntador-leak-baseline.json",
+    "liveAssistIterations": 5,
+    "requiredScenarios": [
+      "live-assist-released",
+      "live-assist-bundled-question",
+      "ask",
+      "semantic-indexing"
+    ]
+  },
   "performance": {
     "acceptedMeasuredStates": [
       "diagnostic",
@@ -80,7 +90,7 @@
       "summary"
     ]
   },
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "ui": {
     "budget": "docs/evidence/ui-test-runtime-budget.json",
     "locales": [
