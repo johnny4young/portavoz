@@ -40,12 +40,12 @@ final class TopicContinuityTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { db in
-            XCTAssertEqual(StorageSchema.version, 48)
+            XCTAssertEqual(StorageSchema.version, 49)
             XCTAssertEqual(
                 try String.fetchAll(
                     db,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid").last,
-                "v48")
+                "v49")
             XCTAssertEqual(
                 try Set(db.columns(in: "topic").map(\.name)),
                 [

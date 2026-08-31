@@ -698,6 +698,14 @@ Schema v48 canonicalizes the occurrence start to the same millisecond precision
 GRDB persists, atomically rekeys v47 authority and Skill idempotency values, and
 uses that durable temporal identity during resume and final event revalidation.
 
+Schema v49 adds one partial live-segment index over meeting identity and the
+canonical `(startTime, id)` transcript order. Meeting Detail's core observation
+therefore reads a live 5,000-segment transcript in presentation order directly
+from SQLite instead of materializing a temporary ordering B-tree on every
+initial load or transcript refresh. Tombstones remain outside that index and
+the existing total-order, correction-history, revision, and refined-source
+semantics do not change.
+
 The macOS composition owns one signal-driven supervisor. It recovers pending
 owners before new events, treats EventKit notifications only as invalidation,
 and holds at most one future wake for the next two-hour preparation boundary

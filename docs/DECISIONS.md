@@ -17478,3 +17478,36 @@ with a raw dependency traceback or leak scratch paths through that traceback.
 The candidate remains red and no qualification is written. This does not turn
 mocked parser coverage into Apple leak evidence or change the current-host,
 physical-platform, distribution, CloudKit, assistive, or field gates.
+
+## D455 — Index the canonical live transcript order (Aug 2026)
+
+**Context:** the first exact D454-head candidate failed closed in its first
+specialized gate. The diagnostic 2-hour/5,000-segment Detail-core p95 measured
+18.073, 19.932, and 20.749 milliseconds across the fixed three-run PERF-008
+set, versus the tracked 15.481-millisecond baseline. Every hard search,
+semantic, Spotlight, and footprint budget remained green. D454 changed no
+Swift product source, but recent current-product Detail-core observations had
+already clustered near the 15-percent comparison edge after correction-aware
+Meeting Detail expanded the core read. Inspection of the exact storage query
+showed SQLite filtering live segments through the meeting-only index and then
+building a temporary B-tree to establish the required `(startTime, id)` total
+order for all 5,000 rows. An unchanged candidate retry or a wider comparison
+tolerance would hide that deterministic work rather than remove it.
+
+**Decision:** advance the local schema to v49 and add one partial index over
+`segment(meetingID, startTime, id)` where `deletedAt IS NULL`. Keep the existing
+Meeting Detail predicate and total order unchanged; the query planner can now
+read live rows in canonical order directly from the index. A migration test
+pins the exact key and partial predicate, while a query-plan ratchet requires
+the index and rejects a temporary B-tree. The PERF-008 baseline, tolerance,
+fixed confirmation count, authority rules, and hard budgets do not change.
+
+**Consequences:** every initial Meeting Detail core load and transcript-driven
+refresh avoids one full live-transcript ordering sort. Tombstoned rows remain
+outside the added index, while correction history, revision fencing, refined
+source detection, sync/export behavior, and row content remain unchanged. The
+failed `4969b5bf` candidate stays failed and cannot be relabeled by this fix; a
+new clean exact commit must pass the ordinary preflight, tests, mandatory
+bilingual real-app gate, and fresh candidate automation. The index still needs
+physical Sequoia/Tahoe, signed distribution, production CloudKit, assistive,
+and field evidence through their separate owners.

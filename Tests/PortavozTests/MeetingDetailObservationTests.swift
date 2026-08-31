@@ -6,6 +6,53 @@ import XCTest
 @testable import StorageKit
 
 final class MeetingDetailObservationTests: XCTestCase {
+    func testV49IndexesTheCanonicalLiveTranscriptOrder() throws {
+        let database = try DatabaseQueue()
+        let migrator = StorageSchema.migrator()
+        try migrator.migrate(database, upTo: "v48")
+
+        try migrator.migrate(database)
+
+        try database.read { database in
+            XCTAssertEqual(StorageSchema.version, 49)
+            XCTAssertEqual(
+                try String.fetchAll(
+                    database,
+                    sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid"
+                ).last,
+                "v49")
+            let indexSQL = try XCTUnwrap(String.fetchOne(
+                database,
+                sql: """
+                    SELECT sql FROM sqlite_master
+                    WHERE type = 'index' AND name = 'segment_on_live_meeting_order'
+                    """))
+            XCTAssertTrue(
+                indexSQL.contains("ON segment(meetingID, startTime, id)"),
+                indexSQL)
+            XCTAssertTrue(indexSQL.contains("WHERE deletedAt IS NULL"), indexSQL)
+
+            let plan = try Row.fetchAll(
+                database,
+                sql: """
+                    EXPLAIN QUERY PLAN
+                    SELECT * FROM segment
+                    WHERE meetingID = ? AND deletedAt IS NULL
+                    ORDER BY startTime, id
+                    """,
+                arguments: [UUID().uuidString]
+            ).map { $0["detail"] as String }
+            XCTAssertTrue(
+                plan.contains(where: {
+                    $0.contains("USING INDEX segment_on_live_meeting_order")
+                }),
+                "Meeting Detail must use the live-order index: \(plan)")
+            XCTAssertFalse(
+                plan.contains(where: { $0.contains("TEMP B-TREE") }),
+                "Meeting Detail must not sort the complete transcript: \(plan)")
+        }
+    }
+
     func testObservedStreamReleasesGRDBIteratorWithItsConsumer() async throws {
         let store = try MeetingStore.inMemory()
         let cancelled = expectation(description: "GRDB observation cancelled")

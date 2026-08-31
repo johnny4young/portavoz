@@ -4128,6 +4128,34 @@ Toolchain, so this Dev bundle has no MLX metallib. This is Tahoe-family local
 automation, not physical Sequoia, separate Tahoe hardware, VoiceOver, real
 Keychain-loss recovery, or recovery of an actual unreadable biometric store.
 
+### Indexed live-detail ordering (D455)
+
+The exact D454-head candidate retained three stable PERF-008 observations in
+which the diagnostic 2-hour/5,000-segment Detail-core p95 measured 18.073,
+19.932, and 20.749 milliseconds against the tracked 15.481-millisecond
+comparison baseline. Every hard search, semantic, Spotlight, and footprint
+budget remained green, and D454 itself had changed no Swift product source.
+Historical current-product runs already clustered close to the 15-percent
+comparison edge after Meeting Detail adopted correction history.
+
+The storage query still filtered by meeting and tombstone state, then ordered
+all live rows by `(startTime, id)` without a matching composite index. SQLite's
+plan therefore used the meeting-only index plus a temporary ordering B-tree.
+Schema v49 adds a partial `(meetingID, startTime, id)` index for live rows.
+Migration and architecture tests require that the real predicate selects that
+index and emits no temporary sort. PERF-008's baseline, 15-percent tolerance,
+three-run confirmation, hard budgets, and fail-closed candidate outcome remain
+unchanged. The failed D454-head candidate stays failed; only a new exact commit
+may produce fresh qualification evidence.
+
+A post-migration prebuilt diagnostic, run after the host had cooled down,
+measured the two-hour/5,000-segment Detail-core path at 16.708 milliseconds p50
+and 16.864 milliseconds p95, or 8.94 percent above the tracked comparison
+baseline, while every hard metric stayed green. This is development evidence
+that the structural change addresses the observed ordering cost; it is not an
+exact-commit candidate receipt and does not qualify D455 or supersede the
+retained failed candidate.
+
 ## Measured numbers (MacBook Pro M4 Max 36 GB, macOS 26, Jul 2026)
 
 | Metric | Target | Measured |
