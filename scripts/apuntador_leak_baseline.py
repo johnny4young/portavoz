@@ -249,11 +249,16 @@ def load_contract(path: Path | str = DEFAULT_CONTRACT) -> dict[str, Any]:
 
 
 def file_sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(64 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    try:
+        digest = hashlib.sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(64 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+    except OSError as error:
+        raise ApuntadorLeakBaselineError(
+            "leak evidence could not be hashed"
+        ) from error
 
 
 def evidence_arguments(values: Sequence[str]) -> dict[str, Path]:
@@ -279,16 +284,21 @@ def validate_live_assist_evidence(
     expected_iterations: int,
 ) -> int:
     fixture_path = ROOT / "Fixtures" / "LiveAssistValidation" / "public-bilingual-v1.json"
-    fixture_document = live_assist_validation.load_json(
-        fixture_path, "live-assist fixture"
-    )
-    fixture = live_assist_validation.validate_fixture(fixture_document)
-    fixture_checksum = live_assist_validation.file_sha256(fixture_path)
-    observations = live_assist_validation.validate_observations(
-        live_assist_validation.load_json(path, "live-assist observations"),
-        fixture,
-        fixture_checksum,
-    )
+    try:
+        fixture_document = live_assist_validation.load_json(
+            fixture_path, "live-assist fixture"
+        )
+        fixture = live_assist_validation.validate_fixture(fixture_document)
+        fixture_checksum = live_assist_validation.file_sha256(fixture_path)
+        observations = live_assist_validation.validate_observations(
+            live_assist_validation.load_json(path, "live-assist observations"),
+            fixture,
+            fixture_checksum,
+        )
+    except (live_assist_validation.LiveAssistValidationError, OSError) as error:
+        raise ApuntadorLeakBaselineError(
+            "live-assist evidence is invalid"
+        ) from error
     run = observations["run"]
     if (
         run["commit"] != commit

@@ -17455,3 +17455,26 @@ change is shared harness ownership, so it requires exact affected-journey proof
 plus the complete sequential bilingual catalogue before candidate evidence may
 be trusted. A clear-host pass is still useful functional evidence but is never
 labelled as proof against a live overlay.
+
+## D454 — Normalize imported leak-evidence failures at the owner boundary (Aug 2026)
+
+**Context:** independent review of the D447–D453 source found that the leak
+owner translated `resource_baseline` failures into its own closed error but let
+`live_assist_validation` failures and evidence-hash I/O errors escape. A
+malformed or concurrently unavailable content-free artifact still blocked the
+candidate, but did so through an abrupt Python traceback rather than the stable
+owner diagnostic, weakening privacy and making failure classification depend on
+an implementation detail of the imported validator.
+
+**Decision:** catch the imported Live Assist validator's typed error and the
+bounded fixture checksum's I/O error at the adapter boundary, then raise one
+path-free `ApuntadorLeakBaselineError`. Evidence SHA-256 reads likewise convert
+I/O failure into the leak owner's domain error. The CLI retains its existing
+single-line fail-closed exit and publishes no fragment. Exact schema, workload,
+leak, completion-marker, and digest requirements remain unchanged.
+
+**Consequences:** corrupt or disappearing evidence cannot terminate the parser
+with a raw dependency traceback or leak scratch paths through that traceback.
+The candidate remains red and no qualification is written. This does not turn
+mocked parser coverage into Apple leak evidence or change the current-host,
+physical-platform, distribution, CloudKit, assistive, or field gates.

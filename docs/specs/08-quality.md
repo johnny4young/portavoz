@@ -6680,7 +6680,10 @@ pending public-synthetic segments, and requires ten completed maintenance
 spans. Reusing the receipt run identifier as an iteration count or accepting
 post-drain no-op indexing is forbidden. Missing, symlinked, oversized,
 duplicated, reordered, malformed, workload-drifted, fatal, incomplete, leaking,
-or identity-mismatched evidence produces no candidate qualification.
+or identity-mismatched evidence produces no candidate qualification. Imported
+Live Assist validator failures and evidence-hash I/O failures are normalized at
+the leak-owner boundary into one content-free typed failure; they emit neither a
+Python traceback nor a partial fragment.
 
 This closes a deterministic current-host leak check for those four paths,
 high-iteration in-process stability for both Live Assist lanes, and bounded

@@ -4760,6 +4760,10 @@ index-maintenance spans rather than trusting runner arguments. Ask retains one
 strict canonical pipeline trace while every answer must preserve exact fixture
 citations and nonempty output. Indexing prepares fresh disposable file-backed
 stores before measurement so later operations cannot become post-drain no-ops.
+The leak owner translates imported Live Assist validation failures and
+evidence-digest I/O failures into its own content-free domain error; malformed
+or corrupt dependency evidence cannot escape as a raw traceback or publish a
+fragment.
 This strengthens the existing owner without adding a duplicate workflow. The
 runner is current-host high-iteration evidence, not a temporal soak or a claim
 about retained cycles outside the tool's reach or physical platform coverage.

@@ -11377,6 +11377,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             "\"ask\": 10"))
         XCTAssertTrue(leakValidator.contains(
             "live-assist evidence iteration count does not match the contract"))
+        XCTAssertTrue(leakValidator.contains(
+            "live_assist_validation.LiveAssistValidationError, OSError"))
+        XCTAssertTrue(leakValidator.contains(
+            "leak evidence could not be hashed"))
         XCTAssertTrue(makefile.contains(
             "release-reliability long-capture-baseline candidate-automation"))
         XCTAssertTrue(hygiene.contains(
@@ -11390,6 +11394,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D448"))
         XCTAssertTrue(decisions.contains("## D449"))
         XCTAssertTrue(decisions.contains("## D450"))
+        XCTAssertTrue(decisions.contains("## D454"))
     }
 
     func testRealModelGateReservesContextAndNeverEchoesTranscriptContent() throws {

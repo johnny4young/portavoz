@@ -1,4 +1,6 @@
+import contextlib
 import copy
+import io
 import json
 import os
 import stat
@@ -220,6 +222,63 @@ class ApuntadorLeakBaselineTests(unittest.TestCase):
                     "live-assist-released"
                 ],
             )
+
+    def test_live_assist_validator_failure_is_a_closed_domain_error(self):
+        evidence = self.write_json("live-assist-invalid.json", {})
+        with mock.patch.object(
+            leaks.live_assist_validation,
+            "validate_observations",
+            side_effect=leaks.live_assist_validation.LiveAssistValidationError(
+                "malformed imported evidence"
+            ),
+        ), self.assertRaisesRegex(
+            leaks.ApuntadorLeakBaselineError,
+            "live-assist evidence is invalid",
+        ):
+            leaks.validate_live_assist_evidence(
+                evidence,
+                adapter="released-prefilter",
+                commit=COMMIT,
+                build=BUILD,
+                expected_iterations=leaks.EXPECTED_ITERATIONS[
+                    "live-assist-released"
+                ],
+            )
+
+    def test_cli_reports_malformed_live_assist_evidence_without_traceback(self):
+        evidence = self.write_json("malformed-live-assist.json", {})
+        log = self.write_log(
+            "live-assist-validation: observations written\n"
+        )
+        output = self.root / "fragment.json"
+        stderr = io.StringIO()
+
+        with contextlib.redirect_stderr(stderr):
+            result = leaks.main([
+                "observe",
+                "--scenario", "live-assist-released",
+                "--log", str(log),
+                "--evidence", f"observations={evidence}",
+                "--exit-code", "0",
+                "--commit", COMMIT,
+                "--build", BUILD,
+                "--output", str(output),
+            ])
+
+        self.assertEqual(result, 1)
+        self.assertEqual(
+            stderr.getvalue(),
+            "apuntador leak baseline error: live-assist evidence is invalid\n",
+        )
+        self.assertNotIn("Traceback", stderr.getvalue())
+        self.assertFalse(output.exists())
+
+    def test_evidence_digest_failure_is_a_closed_domain_error(self):
+        with self.assertRaisesRegex(
+            leaks.ApuntadorLeakBaselineError,
+            "leak evidence could not be hashed",
+        ):
+            leaks.file_sha256(self.root / "missing-evidence.json")
 
     def test_assemble_and_validate_exact_four_scenario_receipt(self):
         fragments = [self.fragment(identifier) for identifier in leaks.EXPECTED_SCENARIOS]
