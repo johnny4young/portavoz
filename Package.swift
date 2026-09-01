@@ -35,7 +35,7 @@ let package = Package(
         .package(url: "https://github.com/groue/GRDB.swift.git", .upToNextMajor(from: "7.11.1")),
         // Whisper on CoreML (MIT) for the quality re-pass (D7). Pinned
         // exact: the package renamed itself at 1.0 and moves API fast.
-        .package(url: "https://github.com/argmaxinc/WhisperKit.git", exact: "1.0.0"),
+        .package(url: "https://github.com/argmaxinc/WhisperKit.git", exact: "1.1.0"),
         // Auto-updates for the direct-download channel (D10).
         .package(url: "https://github.com/sparkle-project/Sparkle.git", .upToNextMajor(from: "2.9.4")),
         // Embedded local LLM (MLX, MIT) — D25's last mile: summaries on
