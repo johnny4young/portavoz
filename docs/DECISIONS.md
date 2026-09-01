@@ -17547,3 +17547,49 @@ its 25-metric partition, hard budgets, 15/20-percent comparison tolerances, and
 fixed one-or-three-run decision. A ready local host still cannot certify
 physical Sequoia/Tahoe, signed distribution, production CloudKit, assistive
 technology, or field evidence.
+
+## D457 — Keep resource samples inside one declared steady workload (Sep 2026)
+
+**Context:** the exact clean `0caa3123` candidate passed authoritative
+performance on its first and only run, deterministic release scope, 2,912
+package tests, correction composition, recording stress, scoped bilingual UI,
+public fixtures, every installed-model lane, and the real-app Apuntador leak
+owner. Resource collection then completed but candidate admission rejected
+idle, recording, recording-plus-batch, and Stop as unstable. The adverse samples
+were actionable rather than timer noise: idle process CPU rose from about 4.15
+to 5.64 seconds; one recording process rose from about 16.87 to 47.14 seconds;
+its Stop drained for 2.21 seconds instead of about 0.3; and one batch sample
+read 500.88 MiB and executed for 11.42 seconds instead of about 0.5.
+
+Inspection found three benchmark-owned lifecycle leaks. Isolated app startup
+suppressed service-level owners but still mounted `ContentView`, its view tasks,
+product commands, and the menu-bar extra. Synthetic audio emitted a chunk and
+then slept for a relative 100 milliseconds, accumulating every scheduling
+delay into a variable tail that Stop had to publish synchronously. Finally,
+recording-engine construction did not exercise the stateless live manager, and
+batch preparation acquired Parakeet but did not exercise `transcribeFile`, so
+both lazily paged first-use paths depended on incidental host cache residency.
+
+**Decision:** keep the real signed app, ApplicationKit workflows, production
+recording session, schedulers, models, exact frame plan, three samples, and
+schema-4 stability policy unchanged. Isolated benchmark launches now mount only
+inert scene content and suppress product commands and the menu-bar extra. The
+synthetic source paces chunks against absolute `ContinuousClock` deadlines
+derived from one start instant; late scheduling catches up to that plan instead
+of extending every later deadline. After all recording engines load, every
+recording process drains one fixed unmeasured two-second public stream through
+the exact stateless live manager before readiness. Recording-plus-batch also
+executes and validates one unmeasured transcription through the exact runtime
+and scheduler before the probe, then measures the same operation during active
+recording. A preparation failure remains fatal and publishes no sample.
+
+**Consequences:** idle no longer includes view-owned maintenance or rendering;
+recording and Stop retain exact total input without scheduler drift deciding
+which phase drains it; and batch evidence measures steady interference rather
+than accidental model-page residency. This is neither a threshold relaxation
+nor an unchanged candidate retry. The failed `0caa3123` candidate remains
+failed and emitted no qualification receipt; a new exact clean commit must pass
+ordinary preflight, mandatory bilingual XCUITest, and fresh candidate
+automation. The resource matrix still does not certify physical capture,
+Sequoia/Tahoe hardware, signed distribution, production CloudKit, assistive
+technology, or field behavior.

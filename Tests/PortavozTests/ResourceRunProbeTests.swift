@@ -128,6 +128,44 @@ final class ResourceRunProbeTests: XCTestCase {
                 BenchSyntheticCapturePolicy.chunkFrames + 1)))
     }
 
+    func testSyntheticCapturePacingUsesAbsoluteFrameDeadlines() {
+        XCTAssertEqual(
+            BenchSyntheticCapturePolicy.deadlineOffset(afterFrames: 0),
+            .zero)
+        XCTAssertEqual(
+            BenchSyntheticCapturePolicy.deadlineOffset(afterFrames: 1_600),
+            .milliseconds(100))
+        XCTAssertEqual(
+            BenchSyntheticCapturePolicy.deadlineOffset(afterFrames: 960_000),
+            .seconds(60))
+        XCTAssertNil(BenchSyntheticCapturePolicy.deadlineOffset(afterFrames: -1))
+        XCTAssertNil(BenchSyntheticCapturePolicy.deadlineOffset(
+            afterFrames: 9_600_001))
+    }
+
+    func testLiveSpeechWarmupUsesExactPublicBoundedInput() {
+        let chunks = BenchLiveSpeechResourceWarmup.fixtureChunks()
+        XCTAssertEqual(BenchLiveSpeechResourceWarmup.timeoutSeconds, 60)
+        XCTAssertEqual(chunks.count, 20)
+        XCTAssertEqual(
+            chunks.reduce(0) { $0 + $1.samples.count },
+            32_000)
+        XCTAssertTrue(chunks.allSatisfy {
+            $0.channel == .microphone
+                && $0.sampleRate == BenchSyntheticCapturePolicy.sampleRate
+                && $0.samples.contains(where: { $0 != 0 })
+        })
+        XCTAssertEqual(chunks.first?.timestamp, 0)
+        XCTAssertEqual(chunks.last?.timestamp ?? 0, 1.9, accuracy: 0.000_001)
+        XCTAssertEqual(
+            BenchLiveSpeechResourceWarmupError.runtimeUnavailable
+                .errorDescription,
+            "live transcription warmup requires a resident speech runtime")
+        XCTAssertEqual(
+            BenchLiveSpeechResourceWarmupError.timedOut(60).errorDescription,
+            "live transcription warmup exceeded 60 seconds")
+    }
+
     func testResourceProcessWatchdogRequiresOneBoundedIsolatedAdmission() throws {
         XCTAssertNil(try BenchResourceProcessWatchdog.timeoutSeconds(
             arguments: ["Portavoz", "-use-temp-store"]))

@@ -5078,7 +5078,13 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(syntheticCapture.contains(
             "expectedFrames: expectedFrames"))
         XCTAssertTrue(syntheticCapture.contains(
-            "while let next = lock.withLock({ nextChunk() })"))
+            "let emission = lock.withLock"))
+        XCTAssertTrue(syntheticCapture.contains(
+            "startedAt.advanced(by: offset)"))
+        XCTAssertTrue(syntheticCapture.contains(
+            "runtime.engine.transcribe"))
+        XCTAssertFalse(syntheticCapture.contains(
+            "Task.sleep(for: .milliseconds(100))"))
         XCTAssertTrue(syntheticCapture.contains(
             "BenchSyntheticCapturePolicy.hasExactFrames"))
         XCTAssertTrue(syntheticCapture.contains(
@@ -5088,6 +5094,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(syntheticCapture.contains("requestAccess"))
         XCTAssertTrue(recordingRunner.contains(
             "BenchSyntheticCapturePolicy"))
+        XCTAssertTrue(recordingRunner.contains(
+            "BenchLiveSpeechResourceWarmup.run"))
         XCTAssertTrue(recordingRunner.contains(
             ".validateResourceRequest(arguments: arguments)"))
         XCTAssertTrue(recordingRunner.contains(
@@ -5153,6 +5161,23 @@ final class ArchitectureDependencyTests: XCTestCase {
             "workloadClass: .postCapture"))
         XCTAssertTrue(batchBench.contains(
             "BenchResourceTimedOperation.run"))
+        XCTAssertTrue(recordingRunner.contains(
+            "concurrentWorkload.prepareForMeasurement"))
+        XCTAssertTrue(recordingRunner.contains(
+            "let transcription = try await workload.run"))
+        XCTAssertTrue(recordingRunner.contains(
+            "try workload.validate(transcription)"))
+        let liveWarmup = try XCTUnwrap(recordingRunner.range(
+            of: "BenchLiveSpeechResourceWarmup.run"))
+        let batchWarmup = try XCTUnwrap(recordingRunner.range(
+            of: "concurrentWorkload.prepareForMeasurement"))
+        let recordingReadiness = try XCTUnwrap(recordingRunner.range(
+            of: "ResourceProbeHostReadiness.waitUntilNominal()"))
+        XCTAssertLessThan(liveWarmup.lowerBound, batchWarmup.lowerBound)
+        XCTAssertLessThan(batchWarmup.lowerBound, recordingReadiness.lowerBound)
+        XCTAssertLessThan(
+            recordingReadiness.lowerBound,
+            recordingProbeStart.lowerBound)
         XCTAssertTrue(services.contains(
             "usesTemporarySensitiveStore"))
         XCTAssertTrue(services.contains(
@@ -5229,6 +5254,17 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertLessThan(benchmarkExit.lowerBound, normalStartup.lowerBound)
         XCTAssertTrue(app.contains(
             "if !runsIsolatedBenchmark"))
+        let appShell = try Self.contents(
+            of: "Sources/portavoz-app/PortavozApp.swift")
+        XCTAssertTrue(appShell.contains(
+            "if runsIsolatedBenchmark {"))
+        XCTAssertTrue(appShell.contains(
+            "? .constant(false)\n            : $menuBarEnabled"))
+        let isolatedView = try XCTUnwrap(appShell.range(
+            of: "if runsIsolatedBenchmark {"))
+        let productView = try XCTUnwrap(appShell.range(
+            of: "AppLaunchRootView(model: launch)"))
+        XCTAssertLessThan(isolatedView.lowerBound, productView.lowerBound)
         XCTAssertTrue(benchMode.contains(
             "forceVerification: true"))
         XCTAssertTrue(scenarioProbe.contains(

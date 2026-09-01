@@ -36,10 +36,11 @@ struct BenchBatchResourceConfiguration {
 
 /// A fixed public audio fixture run through the exact production batch lane.
 ///
-/// The recording runner prepares the shared Parakeet engine before opening its
-/// metric window. Only the utility-priority file transcription executes while
-/// capture is active, so the sample measures interference rather than model
-/// installation or loading.
+/// The recording runner prepares the shared Parakeet engine and validates one
+/// unmeasured file transcription before opening its metric window. The same
+/// utility-priority operation then executes while capture is active, so the
+/// sample measures steady interference rather than installation, lazy paging,
+/// or first-use setup.
 struct BenchBatchResourceWorkload {
     let configuration: BenchBatchResourceConfiguration
 
@@ -90,14 +91,14 @@ extension BenchMode {
         configuration: BenchBatchResourceConfiguration,
         services: AppServices
     ) async throws -> BenchBatchResourceWorkload {
-        // Resolve and load the same shared engine before the concurrent probe
-        // starts. A missing model fails the run rather than becoming measured
-        // download/setup noise.
+        // Resolve the shared engine while building the concurrent workload.
+        // The runner performs the exact file-transcription warmup only after
+        // all recording engines are loaded, immediately before its readiness
+        // gate and measured window.
         let runtime = try await services.acquireLiveSpeechRuntime(
             workloadClass: .postCapture)
         _ = services.finishLiveSpeechRuntime(runtime)
-        return BenchBatchResourceWorkload(
-            configuration: configuration)
+        return BenchBatchResourceWorkload(configuration: configuration)
     }
 }
 

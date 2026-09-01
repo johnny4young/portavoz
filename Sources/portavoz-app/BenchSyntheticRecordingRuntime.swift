@@ -11,12 +11,13 @@ import TranscriptionKit
 enum BenchSyntheticCapturePolicy {
     static let option = "--bench-resource-synthetic-capture"
     static let generation = "public-synthetic-dual-channel-v2"
-    static let sampleRate = 16_000.0
+    static let sampleRateFramesPerSecond: Int64 = 16_000
+    static let sampleRate = Double(sampleRateFramesPerSecond)
     static let chunkFrames = 1_600
 
     static func expectedFrames(durationSeconds: Int) -> Int64? {
         guard (30...600).contains(durationSeconds) else { return nil }
-        return Int64(durationSeconds) * Int64(sampleRate)
+        return Int64(durationSeconds) * sampleRateFramesPerSecond
     }
 
     static func hasExactFrames(
@@ -26,6 +27,20 @@ enum BenchSyntheticCapturePolicy {
         frames.count == 2
             && frames[.microphone] == expectedFrames
             && frames[.system] == expectedFrames
+    }
+
+    /// Returns the absolute offset at which the next frame should be due.
+    /// Anchoring every chunk to the original start instant avoids accumulating
+    /// scheduler delay across hundreds of relative sleeps.
+    static func deadlineOffset(afterFrames frames: Int64) -> Duration? {
+        guard frames >= 0,
+              frames <= 600 * sampleRateFramesPerSecond
+        else { return nil }
+        let seconds = frames / sampleRateFramesPerSecond
+        let remainder = frames % sampleRateFramesPerSecond
+        let nanoseconds = remainder * 1_000_000_000
+            / sampleRateFramesPerSecond
+        return .seconds(seconds) + .nanoseconds(nanoseconds)
     }
 
     static func requested(arguments: [String]) -> Bool {
@@ -349,10 +364,19 @@ final class BenchSyntheticAudioCaptureSource: AudioCaptureSource, @unchecked Sen
     }
 
     private func produce() async {
+        let clock = ContinuousClock()
+        let startedAt = clock.now
         while !Task.isCancelled {
-            let next = lock.withLock { nextChunk() }
-            guard let next else { return }
-            switch next.0.yield(next.1) {
+            let emission = lock.withLock { () -> (
+                AsyncThrowingStream<AudioChunk, Error>.Continuation,
+                AudioChunk,
+                Int64
+            )? in
+                guard let next = nextChunk() else { return nil }
+                return (next.0, next.1, nextFrame)
+            }
+            guard let emission else { return }
+            switch emission.0.yield(emission.1) {
             case .enqueued:
                 break
             case .dropped, .terminated:
@@ -360,8 +384,14 @@ final class BenchSyntheticAudioCaptureSource: AudioCaptureSource, @unchecked Sen
             @unknown default:
                 return
             }
+            guard emission.2 < expectedFrames,
+                  let offset = BenchSyntheticCapturePolicy.deadlineOffset(
+                    afterFrames: emission.2)
+            else { return }
             do {
-                try await Task.sleep(for: .milliseconds(100))
+                try await clock.sleep(
+                    until: startedAt.advanced(by: offset),
+                    tolerance: .milliseconds(1))
             } catch {
                 return
             }
@@ -400,6 +430,77 @@ enum BenchSyntheticCaptureError: Error, Equatable, LocalizedError {
             "synthetic resource capture requires the complete disposable admission"
         case .syntheticInputRequired:
             "resource recording requires the public synthetic capture input"
+        }
+    }
+}
+
+/// Faults the exact stateless live-manager path before recording counters open.
+/// Model construction alone does not exercise `SlidingWindowAsrManager`, so a
+/// fixed public stream keeps first-use paging out of repeated steady samples.
+enum BenchLiveSpeechResourceWarmup {
+    static let durationSeconds = 2
+    static let timeoutSeconds = 60
+
+    static func fixtureChunks() -> [AudioChunk] {
+        let samples = (0..<BenchSyntheticCapturePolicy.chunkFrames).map { index in
+            index.isMultiple(of: 2) ? Float(0.03125) : Float(-0.03125)
+        }
+        let chunkCount = durationSeconds * Int(
+            BenchSyntheticCapturePolicy.sampleRateFramesPerSecond)
+            / BenchSyntheticCapturePolicy.chunkFrames
+        return (0..<chunkCount).map { index in
+            AudioChunk(
+                channel: .microphone,
+                samples: samples,
+                sampleRate: BenchSyntheticCapturePolicy.sampleRate,
+                timestamp: Double(
+                    index * BenchSyntheticCapturePolicy.chunkFrames)
+                    / BenchSyntheticCapturePolicy.sampleRate)
+        }
+    }
+
+    @MainActor
+    static func run(services: AppServices) async throws {
+        guard let runtime = try services.acquireResidentLiveSpeechRuntime() else {
+            throw BenchLiveSpeechResourceWarmupError.runtimeUnavailable
+        }
+        defer { _ = services.finishLiveSpeechRuntime(runtime) }
+        let chunks = fixtureChunks()
+        let stream = AsyncStream<AudioChunk> { continuation in
+            for chunk in chunks {
+                continuation.yield(chunk)
+            }
+            continuation.finish()
+        }
+        do {
+            let _: Void = try await BenchResourceTimedOperation.run(
+                timeout: .seconds(timeoutSeconds)
+            ) {
+                for try await _ in runtime.engine.transcribe(
+                    stream,
+                    hints: TranscriptionHints(language: "en")) {}
+            }
+        } catch BenchResourceTimedOperationError.operationFailed(let message) {
+            throw BenchLiveSpeechResourceWarmupError.operationFailed(message)
+        } catch BenchResourceTimedOperationError.timedOut {
+            throw BenchLiveSpeechResourceWarmupError.timedOut(timeoutSeconds)
+        }
+    }
+}
+
+enum BenchLiveSpeechResourceWarmupError: Error, Equatable, LocalizedError {
+    case operationFailed(String)
+    case runtimeUnavailable
+    case timedOut(Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .operationFailed(let message):
+            "live transcription warmup failed: \(message)"
+        case .runtimeUnavailable:
+            "live transcription warmup requires a resident speech runtime"
+        case .timedOut(let seconds):
+            "live transcription warmup exceeded \(seconds) seconds"
         }
     }
 }

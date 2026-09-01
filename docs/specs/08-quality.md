@@ -3597,11 +3597,13 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   public synthetic dual-channel input, runs indexing only after Start succeeds,
   and keeps recording active until the operation completes. Its process metrics
   freeze before Stop while already-active live-transcription spans may still
-  publish their terminal outcome. Recording plus batch resolves the shared
-  Parakeet runtime before measurement, starts the fixed public AIFF through the
-  production post-capture batch scheduler only after Start, and requires a
-  nonempty result while capture remains active. It deliberately excludes
-  diarization and summary from that cell. Every bounded Refine, Summary, Ask,
+  publish their terminal outcome. Recording plus batch runs one validated,
+  unmeasured transcription of the fixed public AIFF through the shared
+  Parakeet runtime and production post-capture scheduler before measurement;
+  runtime acquisition alone does not establish residency for the lazily paged
+  file-transcription path. The measured transcription still starts only after
+  Start and requires a nonempty result while capture remains active. It
+  deliberately excludes diarization and summary from that cell. Every bounded Refine, Summary, Ask,
   indexing, and concurrent operation enforces the same configurable hard timeout. The runner
   uses a disposable meeting database and audio root plus process-local secrets
   and a unique temporary participant-identity root. It never reads or writes
@@ -3611,9 +3613,19 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   never targets the notarized installed app. Resource-mode app initialization
   returns before sync, recovery, provider discovery, or dictation registration
   can contaminate a measured operation; the AppKit delegate remains detached
-  from product services. The windowed recording runner requires the exact
+  from product services. Its real LaunchServices process mounts inert scene
+  content, no menu-bar extra, and no product commands, so view-scoped library,
+  reminder, first-run, purge, and rendering work cannot enter idle or recording
+  measurements. The windowed recording runner requires the exact
   deterministic real-time microphone/system fixture before it arms a resource
-  probe. It exercises product recording, live transcription, and Stop without
+  probe. After loading all recording engines, it first drains one fixed
+  unmeasured two-second public stream through the stateless live-transcription
+  manager, then applies the existing readiness gate; runtime construction alone
+  does not fault that first-use path. Each measured 1,600-frame chunk is paced
+  to an absolute `ContinuousClock`
+  deadline derived from the original start instant; delayed scheduling catches
+  up without accumulating one relative sleep per chunk or moving that drift
+  into Stop. It exercises product recording, live transcription, and Stop without
   constructing a physical input graph. Real TCC, device-route churn, and
   48 kHz → 24 kHz hardware transitions remain physical field gates and are not
   certified by this matrix. Native app

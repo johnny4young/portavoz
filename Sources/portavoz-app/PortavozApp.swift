@@ -7,9 +7,12 @@ struct PortavozApp: App {
     @NSApplicationDelegateAdaptor(PortavozAppDelegate.self) private var appDelegate
     @State private var launch: AppLaunchModel
     @AppStorage("menuBarEnabled") private var menuBarEnabled = true
+    private let runsIsolatedBenchmark: Bool
 
     init() {
         let process = ProcessInfo.processInfo
+        runsIsolatedBenchmark = BenchMode.runsIsolatedBenchmark(
+            arguments: process.arguments)
         ProductionSyncProcessWatchdog.runIfRequested(
             arguments: process.arguments)
         BenchResourceProcessWatchdog.runIfRequested(
@@ -44,25 +47,38 @@ struct PortavozApp: App {
             id: "main",
             for: MainWindowIdentity.self
         ) { _ in
-            AppLaunchRootView(model: launch)
-                .portavozLocalized()
-                .frame(minWidth: 900, minHeight: 560)
-                .tint(PVDesign.accent)
+            if runsIsolatedBenchmark {
+                // The benchmark runner is activated from AppLaunchModel.init
+                // and owns the process until it exits. Do not mount product
+                // views: their view-scoped tasks and observation updates would
+                // become uncontracted work inside resource measurements.
+                EmptyView()
+            } else {
+                AppLaunchRootView(model: launch)
+                    .portavozLocalized()
+                    .frame(minWidth: 900, minHeight: 560)
+                    .tint(PVDesign.accent)
+            }
         } defaultValue: {
             .primary
         }
         .commands {
-            CheckForUpdatesCommand()
-            if let services = launch.services {
-                CommandGroup(after: .newItem) {
-                    Button("Ask your week…") {
-                        services.palette.toggle()
+            if !runsIsolatedBenchmark {
+                CheckForUpdatesCommand()
+                if let services = launch.services {
+                    CommandGroup(after: .newItem) {
+                        Button("Ask your week…") {
+                            services.palette.toggle()
+                        }
+                        .keyboardShortcut("k")
                     }
-                    .keyboardShortcut("k")
                 }
             }
         }
-        MenuBarExtra(isInserted: $menuBarEnabled) {
+        MenuBarExtra(isInserted: runsIsolatedBenchmark
+            ? .constant(false)
+            : $menuBarEnabled
+        ) {
             AppLaunchMenuBarContent(model: launch)
                 .portavozLocalized()
                 .tint(PVDesign.accent)
@@ -77,9 +93,13 @@ struct PortavozApp: App {
         }
         .menuBarExtraStyle(.window)
         Settings {
-            AppLaunchSettingsRoot(model: launch)
-                .portavozLocalized()
-                .tint(PVDesign.accent)
+            if runsIsolatedBenchmark {
+                EmptyView()
+            } else {
+                AppLaunchSettingsRoot(model: launch)
+                    .portavozLocalized()
+                    .tint(PVDesign.accent)
+            }
         }
     }
 }

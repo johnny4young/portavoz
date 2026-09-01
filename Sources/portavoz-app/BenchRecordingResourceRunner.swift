@@ -102,7 +102,8 @@ enum BenchRecordingResourceRunner {
             services: services,
             recording: recording,
             baselineProbes: configuration.baselineProbes,
-            concurrentProbe: configuration.concurrentProbe)
+            concurrentProbe: configuration.concurrentProbe,
+            concurrentWorkload: concurrentWorkload)
 
         let concurrentTask = concurrentWorkload.map { workload in
             Task { @MainActor in
@@ -158,7 +159,8 @@ enum BenchRecordingResourceRunner {
         services: AppServices,
         recording: RecordingController,
         baselineProbes: BenchRecordResourceProbes?,
-        concurrentProbe: BenchConcurrentRecordingResourceProbe?
+        concurrentProbe: BenchConcurrentRecordingResourceProbe?,
+        concurrentWorkload: BenchConcurrentRecordingWorkload?
     ) async throws {
         emit(String(
             format: "bench-record: baseline (no models) %.0f MB",
@@ -171,6 +173,15 @@ enum BenchRecordingResourceRunner {
             emit("bench-record: idle resource sample complete")
         }
         try await services.loadEnginesIfNeeded()
+        try await BenchLiveSpeechResourceWarmup.run(services: services)
+        if let concurrentWorkload {
+            guard let concurrentProbe else {
+                throw BenchConcurrentProbeError.incompleteLifecycle
+            }
+            try await concurrentWorkload.prepareForMeasurement(
+                services: services,
+                timeoutSeconds: concurrentProbe.timeoutSeconds)
+        }
         try await ResourceProbeHostReadiness.waitUntilNominal()
         try baselineProbes?.beginRecording()
         try concurrentProbe?.begin()
@@ -324,6 +335,18 @@ enum BenchRecordingResourcePolicy {
 private enum BenchConcurrentRecordingWorkload {
     case batch(BenchBatchResourceWorkload)
     case indexing(BenchIndexingResourceWorkload)
+
+    @MainActor
+    func prepareForMeasurement(
+        services: AppServices,
+        timeoutSeconds: Int
+    ) async throws {
+        guard case .batch(let workload) = self else { return }
+        let transcription = try await workload.run(
+            services: services,
+            timeoutSeconds: timeoutSeconds)
+        try workload.validate(transcription)
+    }
 
     @MainActor
     func run(

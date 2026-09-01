@@ -3382,16 +3382,20 @@ fails closed. Every measured Refine sample still runs in its own app process
 without an app-resident runtime; the preparation removes one-time host/Core ML
 compilation from the repeated-sample stability calculation but does not claim
 first-ever activation latency, disk cost, or UX. The three recording scenarios
-require the exact public
+first fault the stateless live-manager path with one unmeasured, bounded
+two-second public stream after all recording engines load and before the
+readiness gate. They then require the exact public
 `public-synthetic-dual-channel-v2` real-time 16 kHz input through the production
 recording session, writers, live-model feeds, Stop workflow, and concurrent
 schedulers. Each source owns a duration-derived exact frame plan: it yields at
-real time, then Stop publishes only a bounded missing tail before closing the
-stream. Scheduler pre-emption therefore cannot change how many microphone or
-system frames the repeated Stop samples drain. The benchmark session rejects a
-frame-count mismatch, and the outer collector writes no fragment unless the
-real Stop workflow reaches `.done`. The receipt records that generation,
-sample rate, and chunk size.
+absolute `ContinuousClock` deadlines derived from that plan, catches up against
+the original start instant rather than accumulating relative-sleep drift, then
+Stop publishes only a bounded missing tail before closing the stream. Scheduler
+pre-emption therefore cannot change how many microphone or system frames the
+repeated Stop samples drain or move accumulated pacing drift into Stop. The
+benchmark session rejects a frame-count mismatch, and the outer collector
+writes no fragment unless the real Stop workflow reaches `.done`. The receipt
+records that generation, sample rate, and chunk size.
 The hidden runtime is admitted only by the conjunction of temporary
 store, recording-resource output, and synthetic-input flags; it never
 constructs physical capture sources, asks TCC, or reads user audio. Physical
@@ -3404,16 +3408,19 @@ created by the measured work itself. A five-second launch-settling interval
 also precedes the model-free idle gate, and ordinary XCUITest launches keep
 their existing empty temporary model root. Every scenario launches the copied,
 signed application bundle through LaunchServices; no SwiftUI/AppKit benchmark
-executes the inner Mach-O directly. This keeps application resource policy,
-bundle identity, and environment inheritance aligned without turning
-interactive TCC into a candidate prerequisite. An in-app watchdog is armed
-before database/app composition and exits with a distinct status if AppKit,
-model work, or teardown exceeds its bounded owner timeout. The shell requires
-that timeout to exceed both the model-operation bound and the longest
-idle-plus-recording window by 420 seconds; a separate 30-second grace guard then
-terminates only the disposable scratch app and its `open -W` owner if
-LaunchServices itself does not return. Operation-specific model timeouts remain
-tighter.
+executes the inner Mach-O directly. The isolated launch mounts only inert scene
+content and suppresses its menu-bar extra and commands, so `ContentView` tasks,
+first-run presentation, library observation, and recording UI redraws cannot
+become uncontracted process work. This keeps application resource policy,
+bundle identity, and environment inheritance aligned without turning product
+presentation or interactive TCC into a candidate prerequisite. An in-app
+watchdog is armed before database/app composition and exits with a distinct
+status if AppKit, model work, or teardown exceeds its bounded owner timeout.
+The shell requires that timeout to exceed both the model-operation bound and
+the longest idle-plus-recording window by 420 seconds; a separate 30-second
+grace guard then terminates only the disposable scratch app and its `open -W`
+owner if LaunchServices itself does not return. Operation-specific model
+timeouts remain tighter.
 Once a resource benchmark dispatcher is armed, app initialization returns
 before sync, recovery, provider discovery, or dictation registration can start;
 the AppKit delegate remains detached from product services. The benchmark owns
@@ -3534,10 +3541,13 @@ after recording succeeds, and freezes process metrics before Stop. The probe
 remains subscribed until Stop closes spans that were active inside the window,
 so live-transcription finishes are retained without admitting Stop-only work.
 Recording plus batch prepares the same fixed public non-silent audio fixture
-and shared Parakeet runtime before measurement, starts utility-priority file
-transcription through the production batch scheduler only after recording
-succeeds, and keeps capture active until a bounded nonempty result exists.
-It then uses the same freeze-before-Stop and fail-closed publication boundary.
+and executes one validated, unmeasured utility-priority transcription through
+the same shared Parakeet runtime and production batch scheduler before
+measurement. This faults the exact file-transcription path instead of assuming
+runtime acquisition made its lazily paged model state resident. The measured
+operation still starts through that scheduler only after recording succeeds
+and keeps capture active until a bounded nonempty result exists. It then uses
+the same freeze-before-Stop and fail-closed publication boundary.
 The runner never launches or changes `/Applications/Portavoz.app`. All nine
 scenarios now have reproducible collectors, but no host receipt is accepted.
 The pure categorical policy contract exists; measured thresholds and runtime
