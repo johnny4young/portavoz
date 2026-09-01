@@ -2842,11 +2842,16 @@ Control cell.
 `docs/evidence/candidate-automation.json` is the finite executable contract for
 the eight candidate proofs. `scripts/candidate_automation.py` runs every gate
 sequentially on one completely clean full commit and rechecks the source before
-and after each command. The latency-sensitive authoritative performance ledger
-and its finite PERF-008 confirmation run first, before XCTest, model execution,
-Apple leak instrumentation, and resource collection can leave compiler,
-symbolication, or model work competing with the measurement. The same runner
-then directly owns deterministic reliability, public bilingual Apuntador
+and after each command. Candidate schema 5 compiles one exact Release CLI,
+binds every performance harness to its SHA-256, and requires three consecutive
+content-free ready-host samples before each authoritative ledger. The bounded
+predicate observes aggregate CPU capacity, one-minute load per processor,
+compiler/symbolication CPU, AC automatic power, and nominal thermal state; it
+fails before measurement if the host does not settle. The latency-sensitive
+ledger and its finite PERF-008 confirmation still run first, before XCTest,
+model execution, Apple leak instrumentation, and resource collection can leave
+new competing work. The same runner then directly owns deterministic
+reliability, public bilingual Apuntador
 validation, six installed-model Release classes, one four-path real-app
 memory-leak receipt, one current-host Release resource receipt, the canonical
 synthetic three-hour capture, seven upgrade/recovery classes, and the complete
@@ -2904,8 +2909,9 @@ Specialized validation is fail closed. The performance ledger must be
 authoritative, contain its exact 25-metric inventory, measure all twelve
 scale/semantic/Spotlight metrics in `pass` or budgetless `diagnostic` state,
 and retain exactly thirteen declared non-autonomous metrics as
-`not-measured`. Candidate contract schema 4 also pins PERF-008's three-run
-authority. One clean first ledger proceeds without repetition. A first
+`not-measured`. Candidate contract schema 5 also pins the single exact Release
+binary, bounded host-readiness policy, and PERF-008's three-run authority. One
+clean first ledger proceeds without repetition. A first
 `regression-candidate` runs exactly two additional sequential non-strict
 ledgers on the identical host and toolchain; every ledger and its SHA-256 is
 retained. A metric present in all three candidate sets is a confirmed blocker.
@@ -4155,6 +4161,38 @@ baseline, while every hard metric stayed green. This is development evidence
 that the structural change addresses the observed ordering cost; it is not an
 exact-commit candidate receipt and does not qualify D455 or supersede the
 retained failed candidate.
+
+### Prebuilt performance admission (D456)
+
+The standalone scale, semantic, and Spotlight wrappers no longer build their
+own executables immediately before sampling. One shared helper either creates a
+single Release CLI or validates the caller-supplied regular executable, source
+commit, build duration, and SHA-256. Candidate automation always uses the
+latter path after its one exact build and re-hashes the binary after the
+complete performance proof. The semantic identity manifest retains that same
+binary digest and the original build duration. Tooling exercises the shared
+helper against a disposable Git repository and rejects incomplete caller
+identity, SHA or source drift, and symbolic-link substitution.
+
+Before every ledger, `perf_host_readiness.py` waits for the tracked predicate
+rather than a fixed cooldown. It requires three consecutive observations below
+the aggregate CPU/load and compiler/symbolication ceilings while the Mac is on
+AC, automatic power mode, and nominal thermal state. The wait is bounded to 300
+seconds. A timeout writes a content-free blocked receipt and exits before any
+benchmark; there is no automatic candidate retry. Every accepted raw ledger
+and the selected canonical proof retain the numeric readiness receipt, exact
+source commit, and binary SHA-256. PERF-008's metric inventory, thresholds,
+15/20-percent comparison tolerances, and fixed confirmation semantics remain
+unchanged.
+
+The pre-commit integration diagnostic built once in 9,463.734 milliseconds,
+then required 50 observations over 101.667 seconds before the host produced its
+three-sample ready window. The readiness receipt, semantic manifest, and final
+executable all carried the same SHA-256. The complete ledger exited zero with
+2-hour Detail-core p95 at 17.22 milliseconds (+11.2 percent), semantic wall/CPU
+at 83.11/84.47 milliseconds, and Spotlight wall/CPU at 408.09/412.93
+milliseconds; every hard metric passed. Because the source worktree was still
+dirty, this is integration evidence only and not an exact-candidate receipt.
 
 ## Measured numbers (MacBook Pro M4 Max 36 GB, macOS 26, Jul 2026)
 
@@ -6677,8 +6715,9 @@ seconds from one build, without retry, adjusted budget, or Notification Center
 override. No release, notarization, publication, or installation occurred.
 
 **D447/D448/D450 content-free real-app leak and repetition authority.**
-Candidate contract schema 4 adds one current-host memory-leak receipt without
-inventing a ninth high-level proof.
+Candidate contract schema 4 introduced one current-host memory-leak receipt
+without inventing a ninth high-level proof; schema 5 preserves that exact
+owner while strengthening performance admission separately.
 The clean-source runner builds one Release application and copies it into a
 mode-0700 scratch root. Only that disposable copy is renamed and ad-hoc signed
 with the existing resource-benchmark library-validation exception; the shipped

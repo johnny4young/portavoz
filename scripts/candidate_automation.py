@@ -12,6 +12,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import wave
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
@@ -20,6 +21,7 @@ from typing import Any, Iterable, Sequence
 
 import apuntador_leak_baseline
 import long_capture_evidence
+import perf_host_readiness
 import release_reliability
 import resource_baseline
 
@@ -27,15 +29,16 @@ import resource_baseline
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONTRACT = ROOT / "docs" / "evidence" / "candidate-automation.json"
 DEFAULT_OUTPUT_PARENT = ROOT / "dist" / "release-readiness"
-CONTRACT_SCHEMA_VERSION = 4
+CONTRACT_SCHEMA_VERSION = 5
 PERF_LEDGER_SCHEMA_VERSION = 1
-PERFORMANCE_CONFIRMATION_SCHEMA_VERSION = 1
+PERFORMANCE_CONFIRMATION_SCHEMA_VERSION = 2
 UI_BUDGET_SCHEMA_VERSION = 1
 UI_RECEIPT_SCHEMA_VERSION = 3
 UI_MEASUREMENT_POLICY = "xcresult-duration-with-activity-boundary-exclusions-v2"
 UI_HARNESS_NOISE_THRESHOLD_SECONDS = 1.0
 EXPECTED_PERFORMANCE_CONFIRMATION_RUNS = 3
 EXPECTED_PERFORMANCE_ARTIFACTS = (
+    "host-readiness.json",
     "ledger.json",
     "ledger.md",
     "scale.json",
@@ -339,12 +342,54 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
         "candidate contract.performance",
         (
             "thresholdContract",
+            "binaryPolicy",
             "confirmationRuns",
+            "hostReadiness",
             "requiredMeasuredMetricIDs",
             "allowedNotMeasuredMetricIDs",
             "acceptedMeasuredStates",
         ),
     )
+    if performance["binaryPolicy"] != "single-exact-release-build-sha256-v1":
+        raise CandidateAutomationError(
+            "candidate performance binary policy must require one exact Release build"
+        )
+    host_readiness = exact_object(
+        performance["hostReadiness"],
+        "candidate contract.performance.hostReadiness",
+        (
+            "version",
+            "maximumWaitSeconds",
+            "sampleIntervalSeconds",
+            "requiredConsecutiveSamples",
+            "maximumCPUCapacityFraction",
+            "maximumLoadPerProcessor",
+            "maximumInterferenceCPUPercent",
+        ),
+    )
+    if host_readiness["version"] != perf_host_readiness.POLICY_VERSION:
+        raise CandidateAutomationError(
+            "candidate performance host-readiness policy version drifted"
+        )
+    try:
+        readiness_policy = perf_host_readiness.ReadinessPolicy(
+            maximum_wait_seconds=host_readiness["maximumWaitSeconds"],
+            sample_interval_seconds=host_readiness["sampleIntervalSeconds"],
+            required_consecutive_samples=(
+                host_readiness["requiredConsecutiveSamples"]
+            ),
+            maximum_cpu_capacity_fraction=(
+                host_readiness["maximumCPUCapacityFraction"]
+            ),
+            maximum_load_per_processor=(
+                host_readiness["maximumLoadPerProcessor"]
+            ),
+            maximum_interference_cpu_percent=(
+                host_readiness["maximumInterferenceCPUPercent"]
+            ),
+        ).validate()
+    except perf_host_readiness.ReadinessError as error:
+        raise CandidateAutomationError(str(error)) from error
     performance_path = tracked_path(
         root,
         performance["thresholdContract"],
@@ -542,7 +587,9 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
         "upgradeRecoveryClasses": EXPECTED_UPGRADE_RECOVERY_CLASSES,
         "performance": {
             "thresholdContract": performance_path,
+            "binaryPolicy": performance["binaryPolicy"],
             "confirmationRuns": confirmation_runs,
+            "hostReadiness": readiness_policy.document(),
             "requiredMeasuredMetricIDs": required_metrics,
             "allowedNotMeasuredMetricIDs": allowed_unmeasured,
             "acceptedMeasuredStates": accepted_states,
@@ -568,6 +615,22 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
 
 def load_contract(path: Path = DEFAULT_CONTRACT, root: Path = ROOT) -> dict[str, Any]:
     return validate_contract(load_json(path, "candidate contract"), root)
+
+
+def candidate_performance_readiness_policy(
+    contract: dict[str, Any],
+) -> perf_host_readiness.ReadinessPolicy:
+    policy = contract["performance"]["hostReadiness"]
+    return perf_host_readiness.ReadinessPolicy(
+        maximum_wait_seconds=policy["maximumWaitSeconds"],
+        sample_interval_seconds=policy["sampleIntervalSeconds"],
+        required_consecutive_samples=policy["requiredConsecutiveSamples"],
+        maximum_cpu_capacity_fraction=policy["maximumCPUCapacityFraction"],
+        maximum_load_per_processor=policy["maximumLoadPerProcessor"],
+        maximum_interference_cpu_percent=(
+            policy["maximumInterferenceCPUPercent"]
+        ),
+    ).validate()
 
 
 def validate_release_identity(
@@ -1202,10 +1265,15 @@ def run_command(
     return status
 
 
-def sha256_file(path: Path, label: str) -> str:
+def sha256_file(
+    path: Path,
+    label: str,
+    *,
+    maximum_bytes: int = 64 * 1024 * 1024,
+) -> str:
     if path.is_symlink() or not path.is_file():
         raise CandidateAutomationError(f"{label} is missing or not a regular file")
-    if path.stat().st_size > 64 * 1024 * 1024:
+    if path.stat().st_size > maximum_bytes:
         raise CandidateAutomationError(f"{label} exceeds the size limit")
     digest = hashlib.sha256()
     try:
@@ -1215,6 +1283,41 @@ def sha256_file(path: Path, label: str) -> str:
     except OSError as error:
         raise CandidateAutomationError(f"{label} is unreadable") from error
     return digest.hexdigest()
+
+
+def build_candidate_performance_binary(
+    root: Path,
+    expected_commit: str,
+    *,
+    environment: dict[str, str | None],
+) -> dict[str, Any]:
+    binary = root / ".build" / "release" / "portavoz-cli"
+    started = time.monotonic_ns()
+    run_command(
+        root,
+        expected_commit,
+        "Exact performance Release build",
+        ["swift", "build", "-c", "release", "--product", "portavoz-cli"],
+        environment=environment,
+    )
+    finished = time.monotonic_ns()
+    if finished < started or not os.access(binary, os.X_OK):
+        raise CandidateAutomationError(
+            "exact performance Release binary is missing or not executable"
+        )
+    wall_milliseconds = finite_nonnegative(
+        (finished - started) / 1_000_000,
+        "exact performance Release build duration",
+    )
+    return {
+        "path": binary,
+        "sha256": sha256_file(
+            binary,
+            "exact performance Release binary",
+            maximum_bytes=512 * 1024 * 1024,
+        ),
+        "wallMilliseconds": wall_milliseconds,
+    }
 
 
 def exact_sorted_string_array(value: Any, label: str) -> tuple[str, ...]:
@@ -1232,9 +1335,20 @@ def validate_performance_run(
     contract: dict[str, Any],
     *,
     exit_code: int,
+    expected_commit: str,
+    expected_binary_sha256: str,
     expected_host: dict[str, Any] | None = None,
     expected_toolchain: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], tuple[str, ...]]:
+    try:
+        perf_host_readiness.validate_receipt(
+            load_json(path.parent / "host-readiness.json", "performance host readiness"),
+            policy=candidate_performance_readiness_policy(contract),
+            expected_commit=expected_commit,
+            expected_binary_sha256=expected_binary_sha256,
+        )
+    except perf_host_readiness.ReadinessError as error:
+        raise CandidateAutomationError(str(error)) from error
     ledger = validated_performance_ledger(
         path,
         contract,
@@ -1263,6 +1377,9 @@ def performance_confirmation_document(
     required_runs: int,
     outcome: str,
     selected_run: int | None,
+    source_commit: str,
+    binary_sha256: str,
+    build_wall_milliseconds: float,
 ) -> dict[str, Any]:
     candidate_sets = [set(run["candidateMetricIDs"]) for run in runs]
     confirmed = (
@@ -1273,6 +1390,9 @@ def performance_confirmation_document(
     return {
         "schemaVersion": PERFORMANCE_CONFIRMATION_SCHEMA_VERSION,
         "kind": "performance-regression-confirmation",
+        "sourceCommit": source_commit,
+        "binarySHA256": binary_sha256,
+        "buildWallMilliseconds": build_wall_milliseconds,
         "requiredRuns": required_runs,
         "observedRuns": len(runs),
         "outcome": outcome,
@@ -1303,6 +1423,9 @@ def validate_performance_confirmation(
         (
             "schemaVersion",
             "kind",
+            "sourceCommit",
+            "binarySHA256",
+            "buildWallMilliseconds",
             "requiredRuns",
             "observedRuns",
             "outcome",
@@ -1319,6 +1442,24 @@ def validate_performance_confirmation(
     )
     if receipt["kind"] != "performance-regression-confirmation":
         raise CandidateAutomationError("performance confirmation kind is invalid")
+    source_commit = receipt["sourceCommit"]
+    binary_sha256 = receipt["binarySHA256"]
+    if not isinstance(source_commit, str) or re.fullmatch(
+        r"[0-9a-f]{40}", source_commit
+    ) is None:
+        raise CandidateAutomationError(
+            "performance confirmation source commit is invalid"
+        )
+    if not isinstance(binary_sha256, str) or re.fullmatch(
+        r"[0-9a-f]{64}", binary_sha256
+    ) is None:
+        raise CandidateAutomationError(
+            "performance confirmation binary SHA-256 is invalid"
+        )
+    finite_nonnegative(
+        receipt["buildWallMilliseconds"],
+        "performance confirmation buildWallMilliseconds",
+    )
     required_runs = contract["performance"]["confirmationRuns"]
     if (
         isinstance(receipt["requiredRuns"], bool)
@@ -1390,6 +1531,8 @@ def validate_performance_confirmation(
                 ledger_path,
                 contract,
                 exit_code=run["exitCode"],
+                expected_commit=source_commit,
+                expected_binary_sha256=binary_sha256,
                 expected_host=expected_host,
                 expected_toolchain=expected_toolchain,
             )
@@ -1514,8 +1657,22 @@ def run_candidate_performance_gate(
     performance_root: Path,
     contract: dict[str, Any],
     *,
+    binary_path: Path,
+    binary_sha256: str,
+    build_wall_milliseconds: float,
     environment: dict[str, str | None],
 ) -> None:
+    if binary_path != root / ".build" / "release" / "portavoz-cli":
+        raise CandidateAutomationError(
+            "candidate performance binary path is not the exact Release product"
+        )
+    if re.fullmatch(r"[0-9a-f]{64}", binary_sha256) is None:
+        raise CandidateAutomationError("candidate performance binary SHA-256 is invalid")
+    finite_nonnegative(
+        build_wall_milliseconds,
+        "candidate performance Release build duration",
+    )
+    readiness_policy = candidate_performance_readiness_policy(contract)
     required_runs = contract["performance"]["confirmationRuns"]
     runs_root = performance_root.with_name("performance-confirmation")
     if runs_root.exists():
@@ -1543,6 +1700,28 @@ def run_candidate_performance_gate(
             ["scripts/run-perf-ledger.sh", str(run_root)],
             environment={
                 **environment,
+                "PORTAVOZ_PERF_BINARY": str(binary_path),
+                "PORTAVOZ_PERF_BINARY_SHA256": binary_sha256,
+                "PORTAVOZ_PERF_BUILD_WALL_MS": str(build_wall_milliseconds),
+                "PORTAVOZ_PERF_SOURCE_COMMIT": expected_commit,
+                "PORTAVOZ_PERF_HOST_MAXIMUM_WAIT_SECONDS": str(
+                    readiness_policy.maximum_wait_seconds
+                ),
+                "PORTAVOZ_PERF_HOST_SAMPLE_INTERVAL_SECONDS": str(
+                    readiness_policy.sample_interval_seconds
+                ),
+                "PORTAVOZ_PERF_HOST_REQUIRED_CONSECUTIVE_SAMPLES": str(
+                    readiness_policy.required_consecutive_samples
+                ),
+                "PORTAVOZ_PERF_HOST_MAXIMUM_CPU_CAPACITY_FRACTION": str(
+                    readiness_policy.maximum_cpu_capacity_fraction
+                ),
+                "PORTAVOZ_PERF_HOST_MAXIMUM_LOAD_PER_PROCESSOR": str(
+                    readiness_policy.maximum_load_per_processor
+                ),
+                "PORTAVOZ_PERF_HOST_MAXIMUM_INTERFERENCE_CPU_PERCENT": str(
+                    readiness_policy.maximum_interference_cpu_percent
+                ),
                 "PORTAVOZ_PERF_STRICT": "0",
                 "PORTAVOZ_PERF_WAVEFORM_MIC": None,
                 "PORTAVOZ_PERF_WAVEFORM_SYSTEM": None,
@@ -1555,6 +1734,8 @@ def run_candidate_performance_gate(
             ledger_path,
             contract,
             exit_code=exit_code,
+            expected_commit=expected_commit,
+            expected_binary_sha256=binary_sha256,
             expected_host=expected_host,
             expected_toolchain=expected_toolchain,
         )
@@ -1599,6 +1780,9 @@ def run_candidate_performance_gate(
         required_runs=required_runs,
         outcome=outcome,
         selected_run=selected["run"] if selected is not None else None,
+        source_commit=expected_commit,
+        binary_sha256=binary_sha256,
+        build_wall_milliseconds=build_wall_milliseconds,
     )
     confirmation_path = runs_root / "confirmation.json"
     release_reliability.write_json(confirmation_path, confirmation)
@@ -1620,6 +1804,18 @@ def run_candidate_performance_gate(
 
     publish_performance_run(selected["root"], performance_root, confirmation_path)
     validate_performance_ledger(performance_root / "ledger.json", contract)
+    try:
+        perf_host_readiness.validate_receipt(
+            load_json(
+                performance_root / "host-readiness.json",
+                "canonical performance host readiness",
+            ),
+            policy=readiness_policy,
+            expected_commit=expected_commit,
+            expected_binary_sha256=binary_sha256,
+        )
+    except perf_host_readiness.ReadinessError as error:
+        raise CandidateAutomationError(str(error)) from error
     validate_performance_confirmation(
         performance_root / "confirmation.json",
         contract,
@@ -2017,6 +2213,17 @@ def _run_candidate(
         "TEST_RUNNER_PORTAVOZ_TEST_AUDIO_ROOT": None,
     }
 
+    # Build the latency-sensitive CLI exactly once before XCTest, model
+    # execution, Apple's leak instrumentation, or resource collection can
+    # leave unrelated compiler, symbolication, or model work competing with
+    # the fixed PERF-008 observation set. The performance runner then waits on
+    # its bounded host predicate and every harness validates this one SHA-256.
+    performance_build = build_candidate_performance_binary(
+        root,
+        commit,
+        environment=private_fixture_environment,
+    )
+
     # Measure latency-sensitive evidence before XCTest, model execution,
     # Apple's leak instrumentation, or resource collection can leave unrelated
     # compiler, symbolication, or model work competing with the fixed PERF-008
@@ -2028,8 +2235,19 @@ def _run_candidate(
         commit,
         performance_root,
         contract,
+        binary_path=performance_build["path"],
+        binary_sha256=performance_build["sha256"],
+        build_wall_milliseconds=performance_build["wallMilliseconds"],
         environment=private_fixture_environment,
     )
+    if sha256_file(
+        performance_build["path"],
+        "exact performance Release binary after measurement",
+        maximum_bytes=512 * 1024 * 1024,
+    ) != performance_build["sha256"]:
+        raise CandidateAutomationError(
+            "exact performance Release binary changed during measurement"
+        )
 
     run_command(
         root,

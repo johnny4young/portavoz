@@ -10,7 +10,9 @@ PARTS="$(mktemp -d /private/tmp/portavoz-spotlight-scale.XXXXXX)"
 trap 'rm -rf "$PARTS"' EXIT
 
 cd "$ROOT"
-swift build -c release --product portavoz-cli
+# shellcheck source=scripts/perf-binary.sh
+source "$ROOT/scripts/perf-binary.sh"
+portavoz_prepare_perf_binary "$ROOT"
 
 IFS=',' read -r -a checkpoints <<< "$SIZES"
 last_index=$((${#checkpoints[@]} - 1))
@@ -26,7 +28,7 @@ for mode in legacy snapshot; do
         if [[ "$mode" == "snapshot" && "$position" -eq "$last_index" ]]; then
             delivery="$DELIVERY_ITEMS"
         fi
-        "$ROOT/.build/release/portavoz-cli" bench-spotlight \
+        "$PORTAVOZ_PERF_BINARY" bench-spotlight \
             --mode "$mode" \
             --meetings "$size" \
             --runs "$RUNS" \

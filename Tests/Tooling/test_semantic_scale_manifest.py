@@ -1052,18 +1052,20 @@ class SemanticScaleManifestTests(unittest.TestCase):
             self.assertEqual(json.loads(path.read_text(encoding="utf-8")), document)
             self.assertEqual(os.stat(path).st_mode & 0o777, 0o600)
 
-    def test_runner_fences_source_before_build_and_after_collection(self):
+    def test_runner_fences_source_before_prebuilt_measurement_and_after_collection(self):
         source = RUNNER.read_text(encoding="utf-8")
 
-        before_build = source.index('"$MANIFEST_TOOL" source')
-        build = source.index("swift build -c release --product portavoz-cli")
+        before_binary = source.index('"$MANIFEST_TOOL" source')
+        prepare_binary = source.index("portavoz_prepare_perf_binary")
         snapshot = source.index('"$MANIFEST_TOOL" snapshot')
-        measurement = source.index('"$ROOT/.build/release/portavoz-cli" bench-semantic')
+        measurement = source.index('"$PORTAVOZ_PERF_BINARY" bench-semantic')
         assemble = source.index('"$MANIFEST_TOOL" assemble')
-        self.assertLess(before_build, build)
-        self.assertLess(build, snapshot)
+        self.assertLess(before_binary, prepare_binary)
+        self.assertLess(prepare_binary, snapshot)
         self.assertLess(snapshot, measurement)
         self.assertLess(measurement, assemble)
+        self.assertNotIn("swift build -c release --product portavoz-cli", source)
+        self.assertIn('--build-wall-ms "$PORTAVOZ_PERF_BUILD_WALL_MS"', source)
         self.assertIn('--expected-source "$PARTS/source.snapshot"', source)
         self.assertIn('--snapshot "$PARTS/run.snapshot"', source)
         self.assertIn('VARIANTS="${PORTAVOZ_SEMANTIC_SCALE_VARIANTS:-1}"', source)

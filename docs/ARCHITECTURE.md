@@ -4735,11 +4735,16 @@ resource scenarios, four real-app memory-leak scenarios, two UI locales, and
 the performance-ledger partition.
 `scripts/candidate_automation.py` requires a completely clean checkout, fixes
 one full source commit, and rechecks that identity around every sequential
-gate. It runs the latency-sensitive authoritative performance ledger and its
-finite confirmation first, before XCTest, model execution, Apple leak
-instrumentation, or resource collection can create competing compiler,
-symbolication, or model work. It then directly runs the deterministic release
-suite, public bilingual Apuntador corpus, installed-model classes, a
+gate. It builds the exact Release CLI once, binds every scale, semantic, and
+Spotlight harness to that executable's SHA-256, then requires consecutive
+content-free host-readiness observations before each latency-sensitive ledger.
+The predicate is bounded and covers aggregate CPU capacity, one-minute load,
+compiler/symbolication CPU, AC automatic power, and nominal thermal state; a
+timeout blocks before measurement rather than sleeping blindly or retrying.
+The authoritative performance ledger and its finite confirmation still run
+first, before XCTest, model execution, Apple leak instrumentation, or resource
+collection can create competing work. It then directly runs the deterministic
+release suite, public bilingual Apuntador corpus, installed-model classes, a
 content-free real-app leak pass, current-host Release resource baseline,
 canonical synthetic three-hour capture, upgrade/recovery classes, and complete
 bilingual real-app XCUITest.
@@ -4808,22 +4813,24 @@ identity and bounded process watchdog, so a new TCC prompt or suspended app
 cannot delegate routine candidate QA to the user or wait indefinitely.
 
 The performance proof is deliberately named candidate automation rather than
-universal performance certification. Candidate contract schema 4 pins the
-same three-run confirmation count as PERF-008. The runner begins with one
+universal performance certification. Candidate contract schema 5 pins one
+exact prebuilt Release binary, the bounded host-readiness policy, and the same
+three-run confirmation count as PERF-008. The runner begins with one
 non-strict authoritative ledger. A clean ledger is canonical immediately; a
 regression candidate opens exactly two more sequential ledgers on the same
 host and toolchain. The fixed set blocks when one metric is a candidate in all
 three runs, or when different candidate sets leave no completely clean run.
 Otherwise the last clean ledger is atomically published as the canonical
-performance proof while all three raw ledgers and a content-free receipt of
-their digests and candidate metric IDs are retained. A hard budget,
+performance proof while all three raw ledgers, their numeric readiness
+receipts, and a content-free receipt of the binary identity, ledger digests,
+and candidate metric IDs are retained. A hard budget,
 unresolved, unstable, authority, exit-state, identity, or digest failure always
 blocks. This is finite confirmation of one candidate observation, not an
 unchanged full-candidate retry or permission to cherry-pick arbitrary green
-runs. Running this proof first cannot make a busy host authoritative; it only
-keeps the runner's later XCTest, leak/symbolication, model, and resource work
-from contaminating its own latency sample and fails early when external
-contention is already present.
+runs. Building once and observing readiness cannot make a busy host
+authoritative; they prevent the runner's own build from overlapping the sample,
+keep later XCTest, leak/symbolication, model, and resource work out of the
+latency window, and fail early when the host never settles.
 
 Twelve scale/semantic/Spotlight metrics must be measured and pass or remain
 diagnostic only where their tracked threshold has no release budget. The other

@@ -11267,7 +11267,7 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testCandidateAutomationOwnsEightSpecializedProofs() throws {
         let contract = try Self.jsonObject(
             at: "docs/evidence/candidate-automation.json")
-        XCTAssertEqual(contract["schemaVersion"] as? Int, 4)
+        XCTAssertEqual(contract["schemaVersion"] as? Int, 5)
         XCTAssertEqual(
             contract["kind"] as? String,
             "candidate-automation-contract")
@@ -11294,6 +11294,19 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertEqual(unmeasured.count, 13)
         XCTAssertTrue(measured.isDisjoint(with: unmeasured))
         XCTAssertEqual(performance["confirmationRuns"] as? Int, 3)
+        XCTAssertEqual(
+            performance["binaryPolicy"] as? String,
+            "single-exact-release-build-sha256-v1")
+        let hostReadiness = try XCTUnwrap(
+            performance["hostReadiness"] as? [String: Any])
+        XCTAssertEqual(
+            hostReadiness["version"] as? String,
+            "prebuilt-release-host-readiness-v1")
+        XCTAssertEqual(hostReadiness["maximumWaitSeconds"] as? Double, 300)
+        XCTAssertEqual(hostReadiness["requiredConsecutiveSamples"] as? Int, 3)
+        XCTAssertEqual(
+            hostReadiness["maximumInterferenceCPUPercent"] as? Double,
+            2)
         let modelFixture = try XCTUnwrap(
             contract["modelFixture"] as? [String: Any])
         XCTAssertEqual(
@@ -11329,6 +11342,18 @@ final class ArchitectureDependencyTests: XCTestCase {
             ])
 
         let runner = try Self.contents(of: "scripts/candidate_automation.py")
+        let performanceRunner = try Self.contents(
+            of: "scripts/run-perf-ledger.sh")
+        let performanceBinary = try Self.contents(
+            of: "scripts/perf-binary.sh")
+        let performanceReadiness = try Self.contents(
+            of: "scripts/perf_host_readiness.py")
+        let scaleRunner = try Self.contents(
+            of: "scripts/run-scale-baseline.sh")
+        let semanticRunner = try Self.contents(
+            of: "scripts/run-semantic-scale-baseline.sh")
+        let spotlightRunner = try Self.contents(
+            of: "scripts/run-spotlight-scale-baseline.sh")
         let leakRunner = try Self.contents(
             of: "scripts/run-apuntador-leak-baseline.sh")
         let leakValidator = try Self.contents(
@@ -11346,6 +11371,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             "make\", \"test-apuntador-validation",
             "scripts/run-perf-ledger.sh",
             "run_candidate_performance_gate",
+            "build_candidate_performance_binary",
+            "Exact performance Release build",
+            "PORTAVOZ_PERF_BINARY_SHA256",
+            "PORTAVOZ_PERF_HOST_MAXIMUM_INTERFERENCE_CPU_PERCENT",
             "performance-regression-confirmation",
             "accepted_exit_codes=(0, 2)",
             "PORTAVOZ_PERF_STRICT\": \"0",
@@ -11399,6 +11428,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(hygiene.contains(
             "Tests.Tooling.test_candidate_automation"))
         XCTAssertTrue(hygiene.contains(
+            "Tests.Tooling.test_perf_binary"))
+        XCTAssertTrue(hygiene.contains(
+            "Tests.Tooling.test_perf_host_readiness"))
+        XCTAssertTrue(hygiene.contains(
             "Tests.Tooling.test_apuntador_leak_baseline"))
         XCTAssertTrue(decisions.contains("## D392"))
         XCTAssertTrue(decisions.contains("## D393"))
@@ -11408,6 +11441,24 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D449"))
         XCTAssertTrue(decisions.contains("## D450"))
         XCTAssertTrue(decisions.contains("## D454"))
+        XCTAssertTrue(decisions.contains("## D456"))
+        XCTAssertTrue(performanceRunner.contains(
+            "Performance host readiness"))
+        XCTAssertTrue(performanceRunner.contains(
+            "portavoz_prepare_perf_binary"))
+        XCTAssertTrue(performanceRunner.contains(
+            "host-readiness.json"))
+        XCTAssertTrue(performanceBinary.contains(
+            "performance binary changed after the exact Release build"))
+        XCTAssertTrue(performanceReadiness.contains(
+            "required_consecutive_samples"))
+        XCTAssertTrue(performanceReadiness.contains(
+            "build-or-symbolication"))
+        for harness in [scaleRunner, semanticRunner, spotlightRunner] {
+            XCTAssertTrue(harness.contains("PORTAVOZ_PERF_BINARY"))
+            XCTAssertFalse(harness.contains(
+                "swift build -c release --product portavoz-cli"))
+        }
     }
 
     func testRealModelGateReservesContextAndNeverEchoesTranscriptContent() throws {
@@ -12127,6 +12178,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-cli/CLIBenchSpotlight.swift")
         let dispatch = try Self.contents(of: "Sources/portavoz-cli/CLI.swift")
         let package = try Self.contents(of: "Package.swift")
+        let performanceBinary = try Self.contents(of: "scripts/perf-binary.sh")
         let scaleRunner = try Self.contents(of: "scripts/run-scale-baseline.sh")
         let semanticRunner = try Self.contents(
             of: "scripts/run-semantic-scale-baseline.sh")
@@ -12175,7 +12227,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(package.contains(#""StorageKit", "IntegrationsKit", "AudioPlaybackKit""#))
         XCTAssertTrue(cli.contains("withTemporaryDirectory(prefix:"))
         XCTAssertTrue(cli.contains("omittingEmptySubsequences: false"))
-        XCTAssertTrue(scaleRunner.contains("swift build -c release --product portavoz-cli"))
+        XCTAssertTrue(performanceBinary.contains(
+            "swift build -c release --product portavoz-cli"))
+        XCTAssertTrue(scaleRunner.contains("portavoz_prepare_perf_binary"))
+        XCTAssertTrue(scaleRunner.contains(#""$PORTAVOZ_PERF_BINARY" bench-scale"#))
+        XCTAssertFalse(scaleRunner.contains("swift build -c release --product portavoz-cli"))
         XCTAssertTrue(scaleRunner.contains(#""buildConfiguration") != "release""#))
         XCTAssertTrue(semanticCLI.contains("let dimension = await embedder.dimension"))
         XCTAssertTrue(semanticCLI.contains("profile: profile"))
@@ -12189,7 +12245,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(dispatch.contains("[--variants 1]"))
         XCTAssertTrue(semanticCLI.contains("mach_timebase_info(&timebase)"))
         XCTAssertTrue(semanticCLI.contains("usage.ri_phys_footprint"))
-        XCTAssertTrue(semanticRunner.contains("swift build -c release --product portavoz-cli"))
+        XCTAssertTrue(semanticRunner.contains("portavoz_prepare_perf_binary"))
+        XCTAssertTrue(semanticRunner.contains(#""$PORTAVOZ_PERF_BINARY" bench-semantic"#))
+        XCTAssertFalse(semanticRunner.contains(
+            "swift build -c release --product portavoz-cli"))
         XCTAssertTrue(semanticRunner.contains(#"for raw_size in "${checkpoints[@]}""#))
         XCTAssertTrue(semanticRunner.contains(#""$MANIFEST_TOOL" source"#))
         XCTAssertTrue(semanticRunner.contains(#""$MANIFEST_TOOL" snapshot"#))
@@ -12257,7 +12316,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(spotlightCLI.contains(#"case "--delivery-items":"#))
         XCTAssertTrue(spotlightCLI.contains("contentSource: \"synthetic-only\""))
         XCTAssertTrue(spotlightCLI.contains("protectionClass: .complete"))
-        XCTAssertTrue(spotlightRunner.contains("swift build -c release --product portavoz-cli"))
+        XCTAssertTrue(spotlightRunner.contains("portavoz_prepare_perf_binary"))
+        XCTAssertTrue(spotlightRunner.contains(#""$PORTAVOZ_PERF_BINARY" bench-spotlight"#))
+        XCTAssertFalse(spotlightRunner.contains(
+            "swift build -c release --product portavoz-cli"))
         XCTAssertTrue(spotlightRunner.contains("for mode in legacy snapshot"))
         XCTAssertTrue(spotlightRunner.contains("resultFingerprintEquivalent"))
         XCTAssertTrue(fixture.contains(#"arguments.contains("-use-temp-store")"#))

@@ -54,29 +54,20 @@ trap 'rm -rf "$PARTS"' EXIT
 python3 "$MANIFEST_TOOL" source \
     --root "$ROOT" \
     --output "$PARTS/source.snapshot"
-build_start="$(python3 -c 'import time; print(time.monotonic_ns())')"
-swift build -c release --product portavoz-cli
-build_end="$(python3 -c 'import time; print(time.monotonic_ns())')"
-build_wall_ms="$(
-    python3 - "$build_start" "$build_end" <<'PY'
-import sys
-start, end = map(int, sys.argv[1:])
-if end < start:
-    raise SystemExit("error: non-monotonic Release build clock")
-print((end - start) / 1_000_000)
-PY
-)"
+# shellcheck source=scripts/perf-binary.sh
+source "$TOOL_ROOT/scripts/perf-binary.sh"
+portavoz_prepare_perf_binary "$ROOT"
 
 python3 "$MANIFEST_TOOL" snapshot \
     --root "$ROOT" \
-    --binary "$ROOT/.build/release/portavoz-cli" \
-    --build-wall-ms "$build_wall_ms" \
+    --binary "$PORTAVOZ_PERF_BINARY" \
+    --build-wall-ms "$PORTAVOZ_PERF_BUILD_WALL_MS" \
     --expected-source "$PARTS/source.snapshot" \
     --output "$PARTS/run.snapshot"
 
 for raw_size in "${checkpoints[@]}"; do
     size="${raw_size//[[:space:]]/}"
-    "$ROOT/.build/release/portavoz-cli" bench-semantic \
+    "$PORTAVOZ_PERF_BINARY" bench-semantic \
         --segments "$size" \
         --runs "$RUNS" \
         --variants "$VARIANTS" \
@@ -85,7 +76,7 @@ done
 
 python3 "$MANIFEST_TOOL" assemble \
     --root "$ROOT" \
-    --binary "$ROOT/.build/release/portavoz-cli" \
+    --binary "$PORTAVOZ_PERF_BINARY" \
     --snapshot "$PARTS/run.snapshot" \
     --parts "$PARTS" \
     --output "$OUTPUT"

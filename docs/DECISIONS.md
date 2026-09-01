@@ -17511,3 +17511,39 @@ new clean exact commit must pass the ordinary preflight, tests, mandatory
 bilingual real-app gate, and fresh candidate automation. The index still needs
 physical Sequoia/Tahoe, signed distribution, production CloudKit, assistive,
 and field evidence through their separate owners.
+
+## D456 — Prebuild once and observe performance-host readiness (Aug 2026)
+
+**Context:** candidate automation correctly moved PERF-008 ahead of XCTest,
+models, leak instrumentation, and resource collection, but each scale,
+semantic, and Spotlight wrapper still invoked `swift build -c release` itself.
+The first latency sample could therefore overlap compiler or
+`coresymbolicationd` work created by the runner. The failed exact D454-head
+candidate retained a stable Detail comparison regression even though every
+hard budget stayed green; a cooled prebuilt diagnostic after D455 returned the
+same path inside tolerance. A fixed sleep, unchanged retry, or wider tolerance
+would not prove that measured work was isolated.
+
+**Decision:** candidate automation builds `portavoz-cli` in Release exactly
+once and binds every performance harness to that regular executable's SHA-256,
+source commit, and measured build duration. Each authoritative ledger must then
+pass a bounded, content-free host-readiness owner before sampling. The owner
+requires three consecutive observations whose aggregate CPU is at most 25
+percent of logical capacity, one-minute load is at most 0.5 per logical
+processor, compiler/symbolication CPU is at most 2 percent, power is AC in
+automatic mode, and thermal state is nominal. It waits at most 300 seconds,
+retains only numeric observations and closed reason identifiers, and fails
+before benchmarking when the predicate does not settle. Standalone performance
+builds use the same single-binary helper. Every raw and selected ledger retains
+the readiness receipt; confirmation schema 2 binds the exact binary and build.
+
+**Consequences:** the runner no longer creates compiler work between Release
+build identity and its latency samples, and a lingering compiler,
+symbolication, power, thermal, CPU, or load condition is a classified
+infrastructure block rather than a product regression. The readiness owner
+does not terminate other processes, inspect commands or content, sleep for a
+fixed cooldown, retry a full candidate, or weaken any metric. PERF-008 keeps
+its 25-metric partition, hard budgets, 15/20-percent comparison tolerances, and
+fixed one-or-three-run decision. A ready local host still cannot certify
+physical Sequoia/Tahoe, signed distribution, production CloudKit, assistive
+technology, or field evidence.

@@ -30,6 +30,12 @@ WAVEFORM_MIC="${PORTAVOZ_PERF_WAVEFORM_MIC:-}"
 WAVEFORM_SYSTEM="${PORTAVOZ_PERF_WAVEFORM_SYSTEM:-}"
 INCLUDE_DETAIL_UI="${PORTAVOZ_PERF_INCLUDE_DETAIL_UI:-0}"
 STRICT="${PORTAVOZ_PERF_STRICT:-0}"
+HOST_MAXIMUM_WAIT_SECONDS="${PORTAVOZ_PERF_HOST_MAXIMUM_WAIT_SECONDS:-300}"
+HOST_SAMPLE_INTERVAL_SECONDS="${PORTAVOZ_PERF_HOST_SAMPLE_INTERVAL_SECONDS:-2}"
+HOST_REQUIRED_CONSECUTIVE_SAMPLES="${PORTAVOZ_PERF_HOST_REQUIRED_CONSECUTIVE_SAMPLES:-3}"
+HOST_MAXIMUM_CPU_CAPACITY_FRACTION="${PORTAVOZ_PERF_HOST_MAXIMUM_CPU_CAPACITY_FRACTION:-0.25}"
+HOST_MAXIMUM_LOAD_PER_PROCESSOR="${PORTAVOZ_PERF_HOST_MAXIMUM_LOAD_PER_PROCESSOR:-0.5}"
+HOST_MAXIMUM_INTERFERENCE_CPU_PERCENT="${PORTAVOZ_PERF_HOST_MAXIMUM_INTERFERENCE_CPU_PERCENT:-2.0}"
 
 mkdir -p "$OUTPUT_DIR"
 reports=()
@@ -46,6 +52,29 @@ run_stage() {
   fi
 }
 
+# Build once, then make every harness prove it used the same immutable Release
+# executable. Candidate automation supplies a prebuilt exact binary; standalone
+# ledgers build here once and export the same identity to every child harness.
+# shellcheck source=scripts/perf-binary.sh
+source "$ROOT/scripts/perf-binary.sh"
+portavoz_prepare_perf_binary "$ROOT"
+
+# Do not use a fixed cooldown sleep. Observe a bounded content-free predicate
+# until aggregate CPU/load, compiler or symbolication work, power, and thermal
+# state are simultaneously clean for consecutive samples. A timeout fails
+# before any latency measurement and retains the blocked receipt.
+run_stage "Performance host readiness" \
+  python3 scripts/perf_host_readiness.py \
+    --output "$OUTPUT_DIR/host-readiness.json" \
+    --source-commit "$PORTAVOZ_PERF_SOURCE_COMMIT" \
+    --binary-sha256 "$PORTAVOZ_PERF_BINARY_SHA256" \
+    --maximum-wait-seconds "$HOST_MAXIMUM_WAIT_SECONDS" \
+    --sample-interval-seconds "$HOST_SAMPLE_INTERVAL_SECONDS" \
+    --required-consecutive-samples "$HOST_REQUIRED_CONSECUTIVE_SAMPLES" \
+    --maximum-cpu-capacity-fraction "$HOST_MAXIMUM_CPU_CAPACITY_FRACTION" \
+    --maximum-load-per-processor "$HOST_MAXIMUM_LOAD_PER_PROCESSOR" \
+    --maximum-interference-cpu-percent "$HOST_MAXIMUM_INTERFERENCE_CPU_PERCENT"
+
 run_stage "Library and detail scale matrix" \
   scripts/run-scale-baseline.sh "$OUTPUT_DIR/scale.json"
 reports+=(--report "scale=$OUTPUT_DIR/scale.json")
@@ -60,7 +89,7 @@ reports+=(--report "spotlight=$OUTPUT_DIR/spotlight.json")
 
 if [[ -n "$WAVEFORM_MIC" && -n "$WAVEFORM_SYSTEM" ]]; then
   run_stage "Waveform generation over the supplied recording" \
-    swift run -c release portavoz-cli bench-waveform \
+    "$PORTAVOZ_PERF_BINARY" bench-waveform \
     --mic "$WAVEFORM_MIC" --system "$WAVEFORM_SYSTEM" \
     --output "$OUTPUT_DIR/waveform.json"
   reports+=(--report "waveform=$OUTPUT_DIR/waveform.json")
@@ -75,6 +104,10 @@ if [[ "$INCLUDE_DETAIL_UI" == "1" ]]; then
 else
   echo "==> Detail-UI trace skipped (set PORTAVOZ_PERF_INCLUDE_DETAIL_UI=1 after make install)"
 fi
+
+# Re-hash the binary and recheck source HEAD after all child harnesses. This is
+# not a rebuild; with the exported identity, the helper only validates.
+portavoz_prepare_perf_binary "$ROOT"
 
 # Record the toolchain that built these binaries. Without it, a shift in the
 # numbers cannot be told apart from a codegen change, which is exactly the
@@ -113,7 +146,7 @@ if xcode_lines:
 
 if toolchain:
     for report in sorted(directory.glob("*.json")):
-        if report.name == "ledger.json":
+        if report.name in {"ledger.json", "host-readiness.json"}:
             continue
         payload = json.loads(report.read_text())
         # Merge, never replace: the detail-UI harness records its own

@@ -21,13 +21,28 @@ class CandidateAutomationTests(unittest.TestCase):
     version = "1.0.0"
     build = "1000"
     commit = "a" * 40
+    performance_binary_sha256 = "b" * 64
 
     def setUp(self):
         self.contract_document = json.loads(candidate.DEFAULT_CONTRACT.read_text())
         self.contract = candidate.load_contract()
 
+    def performance_gate_kwargs(self):
+        return {
+            "binary_path": ROOT / ".build" / "release" / "portavoz-cli",
+            "binary_sha256": self.performance_binary_sha256,
+            "build_wall_milliseconds": 1_000.0,
+        }
+
+    def performance_build(self):
+        return {
+            "path": ROOT / ".build" / "release" / "portavoz-cli",
+            "sha256": self.performance_binary_sha256,
+            "wallMilliseconds": 1_000.0,
+        }
+
     def test_tracked_contract_is_exact_and_complete(self):
-        self.assertEqual(self.contract_document["schemaVersion"], 4)
+        self.assertEqual(self.contract_document["schemaVersion"], 5)
         self.assertEqual(
             self.contract["proofs"],
             (
@@ -96,6 +111,20 @@ class CandidateAutomationTests(unittest.TestCase):
         })
         self.assertFalse(measured & unmeasured)
         self.assertEqual(self.contract["performance"]["confirmationRuns"], 3)
+        self.assertEqual(
+            self.contract["performance"]["binaryPolicy"],
+            "single-exact-release-build-sha256-v1",
+        )
+        self.assertEqual(
+            self.contract["performance"]["hostReadiness"]["version"],
+            candidate.perf_host_readiness.POLICY_VERSION,
+        )
+        self.assertEqual(
+            self.contract["performance"]["hostReadiness"][
+                "requiredConsecutiveSamples"
+            ],
+            3,
+        )
         self.assertEqual(thresholds["regression"]["confirmationRuns"], 3)
 
     def test_contract_rejects_proof_order_drift_and_extra_content(self):
@@ -132,6 +161,22 @@ class CandidateAutomationTests(unittest.TestCase):
             "three-run PERF-008 contract",
         ):
             candidate.validate_contract(weakened)
+
+        rebuilt = copy.deepcopy(self.contract_document)
+        rebuilt["performance"]["binaryPolicy"] = "build-before-each-harness"
+        with self.assertRaisesRegex(
+            candidate.CandidateAutomationError,
+            "one exact Release build",
+        ):
+            candidate.validate_contract(rebuilt)
+
+        unbounded = copy.deepcopy(self.contract_document)
+        unbounded["performance"]["hostReadiness"]["maximumWaitSeconds"] = 901
+        with self.assertRaisesRegex(
+            candidate.CandidateAutomationError,
+            "maximumWaitSeconds is outside its bounds",
+        ):
+            candidate.validate_contract(unbounded)
 
     def test_contract_rejects_weaker_resource_or_ui_scope(self):
         weak_resource = copy.deepcopy(self.contract_document)
@@ -253,6 +298,7 @@ class CandidateAutomationTests(unittest.TestCase):
                     self.commit,
                     performance,
                     self.contract,
+                    **self.performance_gate_kwargs(),
                     environment={},
                 )
 
@@ -264,11 +310,19 @@ class CandidateAutomationTests(unittest.TestCase):
             self.assertEqual(confirmation["observedRuns"], 1)
             self.assertEqual(confirmation["selectedRun"], 1)
             self.assertTrue((performance / "ledger.json").is_file())
+            self.assertTrue((performance / "host-readiness.json").is_file())
             self.assertFalse(
                 (Path(directory) / "performance-confirmation" / "run-2").exists()
             )
             environment = command.call_args.kwargs["environment"]
             self.assertEqual(environment["PORTAVOZ_PERF_STRICT"], "0")
+            self.assertEqual(
+                environment["PORTAVOZ_PERF_BINARY_SHA256"],
+                self.performance_binary_sha256,
+            )
+            self.assertEqual(
+                environment["PORTAVOZ_PERF_SOURCE_COMMIT"], self.commit
+            )
             self.assertEqual(command.call_args.kwargs["accepted_exit_codes"], (0, 2))
 
     def test_run_command_accepts_declared_exit_and_rechecks_source(self):
@@ -308,6 +362,45 @@ class CandidateAutomationTests(unittest.TestCase):
                 accepted_exit_codes=(False,),
             )
 
+    def test_candidate_builds_one_exact_release_binary_before_measurement(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / ".build" / "release" / "portavoz-cli"
+
+            def build_side_effect(*args, **kwargs):
+                binary.parent.mkdir(parents=True)
+                binary.write_bytes(b"exact release binary")
+                binary.chmod(0o700)
+                return 0
+
+            with mock.patch.object(
+                candidate,
+                "run_command",
+                side_effect=build_side_effect,
+            ) as command, mock.patch.object(
+                candidate.time,
+                "monotonic_ns",
+                side_effect=(1_000_000_000, 2_500_000_000),
+            ):
+                result = candidate.build_candidate_performance_binary(
+                    root,
+                    self.commit,
+                    environment={},
+                )
+
+            command.assert_called_once_with(
+                root,
+                self.commit,
+                "Exact performance Release build",
+                ["swift", "build", "-c", "release", "--product", "portavoz-cli"],
+                environment={},
+            )
+            self.assertEqual(result["path"], binary)
+            self.assertEqual(result["wallMilliseconds"], 1_500.0)
+            self.assertEqual(result["sha256"], candidate.hashlib.sha256(
+                b"exact release binary"
+            ).hexdigest())
+
     def test_candidate_performance_gate_retains_fixed_set_and_selects_last_clean(self):
         metric = self.contract["performance"]["requiredMeasuredMetricIDs"][0]
         with tempfile.TemporaryDirectory() as directory:
@@ -327,6 +420,7 @@ class CandidateAutomationTests(unittest.TestCase):
                     self.commit,
                     performance,
                     self.contract,
+                    **self.performance_gate_kwargs(),
                     environment={},
                 )
 
@@ -373,6 +467,7 @@ class CandidateAutomationTests(unittest.TestCase):
                     self.commit,
                     performance,
                     self.contract,
+                    **self.performance_gate_kwargs(),
                     environment={},
                 )
 
@@ -409,6 +504,7 @@ class CandidateAutomationTests(unittest.TestCase):
                     self.commit,
                     performance,
                     self.contract,
+                    **self.performance_gate_kwargs(),
                     environment={},
                 )
 
@@ -440,6 +536,7 @@ class CandidateAutomationTests(unittest.TestCase):
                     self.commit,
                     Path(directory) / "performance",
                     self.contract,
+                    **self.performance_gate_kwargs(),
                     environment={},
                 )
 
@@ -469,6 +566,7 @@ class CandidateAutomationTests(unittest.TestCase):
                         self.commit,
                         Path(directory) / "performance",
                         self.contract,
+                        **self.performance_gate_kwargs(),
                         environment={},
                     )
 
@@ -491,6 +589,7 @@ class CandidateAutomationTests(unittest.TestCase):
                     self.commit,
                     performance,
                     self.contract,
+                    **self.performance_gate_kwargs(),
                     environment={},
                 )
             runs_root = Path(directory) / "performance-confirmation"
@@ -498,6 +597,38 @@ class CandidateAutomationTests(unittest.TestCase):
             with self.assertRaisesRegex(
                 candidate.CandidateAutomationError,
                 "digest does not match",
+            ):
+                candidate.validate_performance_confirmation(
+                    performance / "confirmation.json",
+                    self.contract,
+                    runs_root=runs_root,
+                )
+
+    def test_performance_confirmation_detects_readiness_identity_tampering(self):
+        with tempfile.TemporaryDirectory() as directory:
+            performance = Path(directory) / "performance"
+            with mock.patch.object(
+                candidate,
+                "run_command",
+                side_effect=self.performance_run_side_effect({1: ()}),
+            ):
+                candidate.run_candidate_performance_gate(
+                    ROOT,
+                    self.commit,
+                    performance,
+                    self.contract,
+                    **self.performance_gate_kwargs(),
+                    environment={},
+                )
+            runs_root = Path(directory) / "performance-confirmation"
+            readiness = runs_root / "run-1" / "host-readiness.json"
+            document = json.loads(readiness.read_text())
+            document["binarySHA256"] = "c" * 64
+            readiness.write_text(json.dumps(document))
+
+            with self.assertRaisesRegex(
+                candidate.CandidateAutomationError,
+                "binary SHA-256 changed",
             ):
                 candidate.validate_performance_confirmation(
                     performance / "confirmation.json",
@@ -1027,6 +1158,14 @@ class CandidateAutomationTests(unittest.TestCase):
                 "validate_deterministic_receipt",
             ) as deterministic, mock.patch.object(
                 candidate,
+                "build_candidate_performance_binary",
+                return_value=self.performance_build(),
+            ), mock.patch.object(
+                candidate,
+                "sha256_file",
+                return_value=self.performance_binary_sha256,
+            ), mock.patch.object(
+                candidate,
                 "run_candidate_performance_gate",
             ) as performance, mock.patch.object(
                 candidate,
@@ -1113,6 +1252,10 @@ class CandidateAutomationTests(unittest.TestCase):
             def performance_side_effect(*_, **__):
                 events.append("performance")
 
+            def performance_build_side_effect(*_, **__):
+                events.append("performance-build")
+                return self.performance_build()
+
             with mock.patch.object(
                 candidate,
                 "exact_checkout",
@@ -1139,6 +1282,14 @@ class CandidateAutomationTests(unittest.TestCase):
                 "validate_deterministic_receipt",
             ), mock.patch.object(
                 candidate,
+                "build_candidate_performance_binary",
+                side_effect=performance_build_side_effect,
+            ), mock.patch.object(
+                candidate,
+                "sha256_file",
+                return_value=self.performance_binary_sha256,
+            ), mock.patch.object(
+                candidate,
                 "run_candidate_performance_gate",
                 side_effect=performance_side_effect,
             ), mock.patch.object(
@@ -1160,7 +1311,7 @@ class CandidateAutomationTests(unittest.TestCase):
                     output_path=output,
                 )
 
-            self.assertEqual(events[0], "performance")
+            self.assertEqual(events[:2], ["performance-build", "performance"])
             self.assertLess(
                 events.index("performance"),
                 events.index("Finite deterministic release scope"),
@@ -1212,6 +1363,14 @@ class CandidateAutomationTests(unittest.TestCase):
             ), mock.patch.object(
                 candidate,
                 "validate_deterministic_receipt",
+            ), mock.patch.object(
+                candidate,
+                "build_candidate_performance_binary",
+                return_value=self.performance_build(),
+            ), mock.patch.object(
+                candidate,
+                "sha256_file",
+                return_value=self.performance_binary_sha256,
             ), mock.patch.object(
                 candidate,
                 "run_candidate_performance_gate",
@@ -1272,6 +1431,36 @@ class CandidateAutomationTests(unittest.TestCase):
         finally:
             os.umask(original)
 
+    def performance_host_readiness_receipt(self):
+        policy = candidate.candidate_performance_readiness_policy(self.contract)
+        samples = [
+            {
+                "sequence": sequence,
+                "offsetSeconds": float((sequence - 1) * 2),
+                "processorCount": 14,
+                "totalCPUPercent": 100.0,
+                "loadAverageOneMinute": 2.0,
+                "interferenceCPUPercent": 0.0,
+                "powerSource": "ac",
+                "powerMode": "automatic",
+                "thermalState": "nominal",
+                "reasons": [],
+            }
+            for sequence in range(1, 4)
+        ]
+        return {
+            "schemaVersion": 1,
+            "kind": "performance-host-readiness",
+            "generatedAt": "2026-08-30T18:00:00Z",
+            "sourceCommit": self.commit,
+            "binarySHA256": self.performance_binary_sha256,
+            "policy": policy.document(),
+            "outcome": "ready",
+            "elapsedSeconds": 4.0,
+            "observedSampleCount": 3,
+            "samples": samples,
+        }
+
     def performance_run_side_effect(
         self,
         candidates_by_run,
@@ -1303,6 +1492,9 @@ class CandidateAutomationTests(unittest.TestCase):
             (run_root / "ledger.md").write_text("# Performance\n")
             for name in ("scale.json", "semantic.json", "spotlight.json"):
                 (run_root / name).write_text("{}\n")
+            (run_root / "host-readiness.json").write_text(json.dumps(
+                self.performance_host_readiness_receipt()
+            ))
             return exit_codes.get(run_number, 2 if candidate_ids else 0)
 
         return side_effect

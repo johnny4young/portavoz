@@ -88,6 +88,8 @@ python3 -m unittest Tests.Tooling.test_collect_field_evidence
 python3 -m unittest Tests.Tooling.test_release_reliability
 python3 -m unittest Tests.Tooling.test_make_release
 python3 -m unittest Tests.Tooling.test_candidate_automation
+python3 -m unittest Tests.Tooling.test_perf_binary
+python3 -m unittest Tests.Tooling.test_perf_host_readiness
 python3 -m unittest Tests.Tooling.test_apuntador_leak_baseline
 python3 -m unittest Tests.Tooling.test_source_integration_qualification
 python3 -m unittest Tests.Tooling.test_verify_cloudkit_capabilities
@@ -112,6 +114,11 @@ bash -n scripts/install-ci-xcodegen.sh
 bash -n scripts/verify-ci-toolchain.sh
 bash -n scripts/check-ios-portability.sh
 bash -n scripts/run-resource-baseline.sh
+bash -n scripts/perf-binary.sh
+bash -n scripts/run-perf-ledger.sh
+bash -n scripts/run-scale-baseline.sh
+bash -n scripts/run-semantic-scale-baseline.sh
+bash -n scripts/run-spotlight-scale-baseline.sh
 bash -n scripts/run-resource-recording-baseline.sh
 bash -n scripts/run-live-assist-validation.sh
 bash -n scripts/run-apuntador-leak-baseline.sh
