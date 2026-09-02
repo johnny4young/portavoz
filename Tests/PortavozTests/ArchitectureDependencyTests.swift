@@ -11343,7 +11343,7 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testCandidateAutomationOwnsEightSpecializedProofs() throws {
         let contract = try Self.jsonObject(
             at: "docs/evidence/candidate-automation.json")
-        XCTAssertEqual(contract["schemaVersion"] as? Int, 7)
+        XCTAssertEqual(contract["schemaVersion"] as? Int, 8)
         XCTAssertEqual(
             contract["kind"] as? String,
             "candidate-automation-contract")
@@ -11377,10 +11377,11 @@ final class ArchitectureDependencyTests: XCTestCase {
             performance["hostReadiness"] as? [String: Any])
         XCTAssertEqual(
             hostReadiness["version"] as? String,
-            "prebuilt-release-host-readiness-v3")
+            "prebuilt-release-host-readiness-v4")
         XCTAssertEqual(hostReadiness["maximumWaitSeconds"] as? Double, 300)
         XCTAssertEqual(hostReadiness["sampleIntervalSeconds"] as? Double, 0.5)
         XCTAssertEqual(hostReadiness["requiredConsecutiveSamples"] as? Int, 10)
+        XCTAssertEqual(hostReadiness["requiresNoPortavozApp"] as? Bool, true)
         XCTAssertEqual(
             hostReadiness["maximumInterferenceCPUPercent"] as? Double,
             2)
@@ -11540,7 +11541,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D456"))
         XCTAssertTrue(decisions.contains("## D460"))
         XCTAssertTrue(decisions.contains("## D462"))
-        XCTAssertTrue(decisions.contains("## D465"))
+        XCTAssertTrue(decisions.contains("## D466"))
         XCTAssertTrue(performanceRunner.contains(
             "run_host_readiness \"Scale\""))
         XCTAssertTrue(performanceRunner.contains(
@@ -11562,15 +11563,19 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(performanceReadiness.contains(
             "build-or-symbolication"))
         XCTAssertTrue(performanceReadiness.contains(
-            "SCHEMA_VERSION = 3"))
+            "SCHEMA_VERSION = 4"))
         XCTAssertTrue(performanceReadiness.contains(
-            "prebuilt-release-host-readiness-v3"))
+            "prebuilt-release-host-readiness-v4"))
         XCTAssertTrue(performanceReadiness.contains(
             "sha256-zero-block-512mib-v1"))
         XCTAssertTrue(performanceReadiness.contains(
             "interferenceContributors"))
         XCTAssertTrue(performanceReadiness.contains(
             "INTERFERENCE_CLASSES"))
+        XCTAssertTrue(performanceReadiness.contains(
+            "activePortavozAppCount"))
+        XCTAssertTrue(performanceReadiness.contains(
+            "portavoz-app-active"))
         for harness in [scaleRunner, semanticRunner, spotlightRunner] {
             XCTAssertTrue(harness.contains("PORTAVOZ_PERF_BINARY"))
             XCTAssertFalse(harness.contains(

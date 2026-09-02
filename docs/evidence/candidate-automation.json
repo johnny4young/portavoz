@@ -46,6 +46,7 @@
       "maximumLoadPerProcessor": 0.5,
       "maximumWaitSeconds": 300.0,
       "requiredConsecutiveSamples": 10,
+      "requiresNoPortavozApp": true,
       "sampleIntervalSeconds": 0.5,
       "throughputCalibration": {
         "bytesPerSample": 536870912,
@@ -55,7 +56,7 @@
         "sampleCount": 5,
         "version": "sha256-zero-block-512mib-v1"
       },
-      "version": "prebuilt-release-host-readiness-v3"
+      "version": "prebuilt-release-host-readiness-v4"
     },
     "allowedNotMeasuredMetricIDs": [
       "capture.drift-30min",
@@ -113,7 +114,7 @@
       "summary"
     ]
   },
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "ui": {
     "budget": "docs/evidence/ui-test-runtime-budget.json",
     "locales": [

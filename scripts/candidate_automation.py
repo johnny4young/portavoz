@@ -29,7 +29,7 @@ import resource_baseline
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONTRACT = ROOT / "docs" / "evidence" / "candidate-automation.json"
 DEFAULT_OUTPUT_PARENT = ROOT / "dist" / "release-readiness"
-CONTRACT_SCHEMA_VERSION = 7
+CONTRACT_SCHEMA_VERSION = 8
 PERF_LEDGER_SCHEMA_VERSION = 1
 PERFORMANCE_CONFIRMATION_SCHEMA_VERSION = 2
 UI_BUDGET_SCHEMA_VERSION = 1
@@ -367,12 +367,17 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
             "maximumCPUCapacityFraction",
             "maximumLoadPerProcessor",
             "maximumInterferenceCPUPercent",
+            "requiresNoPortavozApp",
             "throughputCalibration",
         ),
     )
     if host_readiness["version"] != perf_host_readiness.POLICY_VERSION:
         raise CandidateAutomationError(
             "candidate performance host-readiness policy version drifted"
+        )
+    if host_readiness["requiresNoPortavozApp"] is not True:
+        raise CandidateAutomationError(
+            "candidate performance host-readiness must exclude Portavoz app runtimes"
         )
     calibration = exact_object(
         host_readiness["throughputCalibration"],
@@ -1342,6 +1347,17 @@ def build_candidate_performance_binary(
     *,
     environment: dict[str, str | None],
 ) -> dict[str, Any]:
+    try:
+        active_portavoz_apps = (
+            perf_host_readiness.probe_active_portavoz_app_count()
+        )
+    except perf_host_readiness.ReadinessError as error:
+        raise CandidateAutomationError(str(error)) from error
+    if active_portavoz_apps > 0:
+        raise CandidateAutomationError(
+            "candidate requires every Portavoz app runtime to be closed before "
+            "the exact Release build"
+        )
     binary = root / ".build" / "release" / "portavoz-cli"
     started = time.monotonic_ns()
     run_command(

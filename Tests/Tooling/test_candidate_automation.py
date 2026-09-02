@@ -42,7 +42,7 @@ class CandidateAutomationTests(unittest.TestCase):
         }
 
     def test_tracked_contract_is_exact_and_complete(self):
-        self.assertEqual(self.contract_document["schemaVersion"], 7)
+        self.assertEqual(self.contract_document["schemaVersion"], 8)
         self.assertEqual(
             self.contract["proofs"],
             (
@@ -71,10 +71,11 @@ class CandidateAutomationTests(unittest.TestCase):
         )
         readiness = self.contract_document["performance"]["hostReadiness"]
         self.assertEqual(
-            readiness["version"], "prebuilt-release-host-readiness-v3"
+            readiness["version"], "prebuilt-release-host-readiness-v4"
         )
         self.assertEqual(readiness["sampleIntervalSeconds"], 0.5)
         self.assertEqual(readiness["requiredConsecutiveSamples"], 10)
+        self.assertIs(readiness["requiresNoPortavozApp"], True)
         self.assertEqual(
             readiness["throughputCalibration"],
             {
@@ -230,6 +231,16 @@ class CandidateAutomationTests(unittest.TestCase):
             "dense passive window",
         ):
             candidate.validate_contract(sparse)
+
+        admits_product_runtime = copy.deepcopy(self.contract_document)
+        admits_product_runtime["performance"]["hostReadiness"][
+            "requiresNoPortavozApp"
+        ] = False
+        with self.assertRaisesRegex(
+            candidate.CandidateAutomationError,
+            "exclude Portavoz app runtimes",
+        ):
+            candidate.validate_contract(admits_product_runtime)
 
     def test_contract_rejects_weaker_resource_or_ui_scope(self):
         weak_resource = copy.deepcopy(self.contract_document)
@@ -456,6 +467,10 @@ class CandidateAutomationTests(unittest.TestCase):
                 "run_command",
                 side_effect=build_side_effect,
             ) as command, mock.patch.object(
+                candidate.perf_host_readiness,
+                "probe_active_portavoz_app_count",
+                return_value=0,
+            ) as app_probe, mock.patch.object(
                 candidate.time,
                 "monotonic_ns",
                 side_effect=(1_000_000_000, 2_500_000_000),
@@ -473,11 +488,32 @@ class CandidateAutomationTests(unittest.TestCase):
                 ["swift", "build", "-c", "release", "--product", "portavoz-cli"],
                 environment={},
             )
+            app_probe.assert_called_once_with()
             self.assertEqual(result["path"], binary)
             self.assertEqual(result["wallMilliseconds"], 1_500.0)
             self.assertEqual(result["sha256"], candidate.hashlib.sha256(
                 b"exact release binary"
             ).hexdigest())
+
+    def test_candidate_refuses_an_active_app_before_the_release_build(self):
+        with mock.patch.object(
+            candidate.perf_host_readiness,
+            "probe_active_portavoz_app_count",
+            return_value=1,
+        ), mock.patch.object(
+            candidate,
+            "run_command",
+        ) as command, self.assertRaisesRegex(
+            candidate.CandidateAutomationError,
+            "every Portavoz app runtime to be closed",
+        ):
+            candidate.build_candidate_performance_binary(
+                ROOT,
+                self.commit,
+                environment={},
+            )
+
+        command.assert_not_called()
 
     def test_candidate_performance_gate_retains_fixed_set_and_selects_last_clean(self):
         metric = self.contract["performance"]["requiredMeasuredMetricIDs"][0]
@@ -1222,6 +1258,10 @@ class CandidateAutomationTests(unittest.TestCase):
                 candidate,
                 "run_command",
                 side_effect=candidate.CandidateAutomationError("gate failed"),
+            ), mock.patch.object(
+                candidate.perf_host_readiness,
+                "probe_active_portavoz_app_count",
+                return_value=0,
             ), self.assertRaisesRegex(
                 candidate.CandidateAutomationError,
                 "gate failed",
@@ -1548,6 +1588,7 @@ class CandidateAutomationTests(unittest.TestCase):
                 "loadAverageOneMinute": 2.0,
                 "interferenceCPUPercent": 0.0,
                 "interferenceContributors": [],
+                "activePortavozAppCount": 0,
                 "powerSource": "ac",
                 "powerMode": "automatic",
                 "thermalState": "nominal",

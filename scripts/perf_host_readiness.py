@@ -19,8 +19,8 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
 
 
-SCHEMA_VERSION = 3
-POLICY_VERSION = "prebuilt-release-host-readiness-v3"
+SCHEMA_VERSION = 4
+POLICY_VERSION = "prebuilt-release-host-readiness-v4"
 CALIBRATION_VERSION = "sha256-zero-block-512mib-v1"
 DEFAULT_MAXIMUM_WAIT_SECONDS = 300.0
 DEFAULT_SAMPLE_INTERVAL_SECONDS = 0.5
@@ -63,9 +63,11 @@ INTERFERENCE_CLASS_PREFIXES = (
     ("sourcekit", "source-analysis"),
     ("swift", "swift-compiler"),
 )
+PORTAVOZ_APP_EXECUTABLES = frozenset({"portavoz-app"})
 REASONS = (
     "build-or-symbolication",
     "load-average",
+    "portavoz-app-active",
     "power-mode",
     "power-source",
     "thermal-state",
@@ -185,6 +187,7 @@ class ReadinessPolicy:
             "maximumInterferenceCPUPercent": (
                 self.maximum_interference_cpu_percent
             ),
+            "requiresNoPortavozApp": True,
             "throughputCalibration": {
                 "version": CALIBRATION_VERSION,
                 "sampleCount": self.calibration_sample_count,
@@ -211,6 +214,7 @@ class HostObservation:
     power_source: str
     power_mode: str
     thermal_state: str
+    active_portavoz_app_count: int = 0
     interference_contributors: tuple[tuple[str, float], ...] = ()
 
 
@@ -257,7 +261,12 @@ class SystemProbe:
         return completed.stdout
 
     def sample(self) -> HostObservation:
-        total_cpu, interference_cpu, contributors = parse_process_cpu(self._run(
+        (
+            total_cpu,
+            interference_cpu,
+            contributors,
+            active_portavoz_app_count,
+        ) = parse_process_cpu(self._run(
             ["/bin/ps", "-A", "-o", "pcpu=,comm="],
             "process CPU",
         ))
@@ -285,6 +294,7 @@ class SystemProbe:
             power_source=power_source,
             power_mode=power_mode,
             thermal_state=thermal_state,
+            active_portavoz_app_count=active_portavoz_app_count,
             interference_contributors=contributors,
         )
 
@@ -411,12 +421,51 @@ def interference_class(executable: str) -> str | None:
     return None
 
 
+def is_portavoz_app_executable(executable: str) -> bool:
+    return Path(executable).name.casefold() in PORTAVOZ_APP_EXECUTABLES
+
+
+def parse_active_portavoz_app_count(output: str) -> int:
+    observed = 0
+    active = 0
+    for line in output.splitlines():
+        executable = line.strip()
+        if not executable:
+            continue
+        observed += 1
+        if is_portavoz_app_executable(executable):
+            active += 1
+    if observed == 0:
+        raise ReadinessError("process executable inventory is empty")
+    return active
+
+
+def probe_active_portavoz_app_count(
+    *,
+    command_runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> int:
+    try:
+        completed = command_runner(
+            ["/bin/ps", "-A", "-o", "comm="],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired, UnicodeError) as error:
+        raise ReadinessError("process executable probe unavailable") from error
+    if completed.returncode != 0:
+        raise ReadinessError("process executable probe unavailable")
+    return parse_active_portavoz_app_count(completed.stdout)
+
+
 def parse_process_cpu(
     output: str,
-) -> tuple[float, float, tuple[tuple[str, float], ...]]:
+) -> tuple[float, float, tuple[tuple[str, float], ...], int]:
     total = 0.0
     contributions: dict[str, float] = {}
     observed = 0
+    active_portavoz_app_count = 0
     for line in output.splitlines():
         fields = line.strip().split(maxsplit=1)
         if len(fields) != 2:
@@ -429,6 +478,8 @@ def parse_process_cpu(
             raise ReadinessError("process CPU inventory is invalid")
         observed += 1
         total += cpu
+        if is_portavoz_app_executable(fields[1]):
+            active_portavoz_app_count += 1
         contributor_class = interference_class(fields[1])
         if contributor_class is not None and cpu > 0:
             contributions[contributor_class] = (
@@ -437,7 +488,12 @@ def parse_process_cpu(
     if observed == 0:
         raise ReadinessError("process CPU inventory is empty")
     contributors = tuple(sorted(contributions.items()))
-    return total, sum(cpu for _, cpu in contributors), contributors
+    return (
+        total,
+        sum(cpu for _, cpu in contributors),
+        contributors,
+        active_portavoz_app_count,
+    )
 
 
 def parse_load_average(output: str) -> float:
@@ -520,6 +576,8 @@ def reasons_for(
         > policy.maximum_interference_cpu_percent
     ):
         reasons.append("build-or-symbolication")
+    if observation.active_portavoz_app_count > 0:
+        reasons.append("portavoz-app-active")
     if observation.power_source != "ac":
         reasons.append("power-source")
     if observation.power_mode != "automatic":
@@ -548,6 +606,7 @@ def sample_document(
             {"class": contributor_class, "cpuPercent": round(cpu, 3)}
             for contributor_class, cpu in observation.interference_contributors
         ],
+        "activePortavozAppCount": observation.active_portavoz_app_count,
         "powerSource": observation.power_source,
         "powerMode": observation.power_mode,
         "thermalState": observation.thermal_state,
@@ -818,6 +877,7 @@ def validate_receipt(
                 "loadAverageOneMinute",
                 "interferenceCPUPercent",
                 "interferenceContributors",
+                "activePortavozAppCount",
                 "powerSource",
                 "powerMode",
                 "thermalState",
@@ -906,6 +966,12 @@ def validate_receipt(
             raise ReadinessError(
                 "readiness receipt interference contributions do not sum"
             )
+        active_portavoz_app_count = exact_integer(
+            sample["activePortavozAppCount"],
+            "sample.activePortavozAppCount",
+            minimum=0,
+            maximum=1024,
+        )
         if sample["powerSource"] not in {"ac", "battery"}:
             raise ReadinessError("readiness receipt power source is invalid")
         if sample["powerMode"] not in {
@@ -932,6 +998,7 @@ def validate_receipt(
             power_source=sample["powerSource"],
             power_mode=sample["powerMode"],
             thermal_state=sample["thermalState"],
+            active_portavoz_app_count=active_portavoz_app_count,
             interference_contributors=tuple(contributor_pairs),
         )
         if list(reasons_for(observation, policy)) != reasons:

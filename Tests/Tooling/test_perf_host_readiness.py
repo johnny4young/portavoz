@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from subprocess import CompletedProcess
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -36,6 +37,7 @@ def observation(**overrides):
         "power_source": "ac",
         "power_mode": "automatic",
         "thermal_state": "nominal",
+        "active_portavoz_app_count": 0,
         "interference_contributors": (),
     }
     values.update(overrides)
@@ -284,6 +286,7 @@ class PerformanceHostReadinessTests(unittest.TestCase):
             "total-cpu": observation(total_cpu_percent=351.0),
             "load-average": observation(load_average_one_minute=7.1),
             "build-or-symbolication": observation(interference_cpu_percent=2.1),
+            "portavoz-app-active": observation(active_portavoz_app_count=1),
             "power-source": observation(power_source="battery"),
             "power-mode": observation(power_mode="low-power"),
             "thermal-state": observation(thermal_state="pressured"),
@@ -293,11 +296,15 @@ class PerformanceHostReadinessTests(unittest.TestCase):
                 self.assertIn(reason, readiness.reasons_for(sample, self.policy))
 
     def test_process_parser_is_content_free_and_counts_interference(self):
-        total, interference, contributors = readiness.parse_process_cpu(
-            " 35.0 /Applications/ChatGPT.app/codex\n"
-            " 12.5 /usr/libexec/coresymbolicationd\n"
-            " 50.0 /usr/bin/swift-frontend\n"
-            " 7.0 /usr/bin/xcodebuild\n"
+        total, interference, contributors, active_portavoz_apps = (
+            readiness.parse_process_cpu(
+                " 35.0 /Applications/ChatGPT.app/codex\n"
+                " 12.5 /usr/libexec/coresymbolicationd\n"
+                " 50.0 /usr/bin/swift-frontend\n"
+                " 7.0 /usr/bin/xcodebuild\n"
+                " 0.0 /Applications/Portavoz Dev.app/Contents/MacOS/portavoz-app\n"
+                " 0.0 /tmp/portavoz-app-helper\n"
+            )
         )
         self.assertEqual(total, 104.5)
         self.assertEqual(interference, 69.5)
@@ -305,6 +312,59 @@ class PerformanceHostReadinessTests(unittest.TestCase):
             ("build-driver", 7.0),
             ("swift-compiler", 50.0),
             ("symbolication", 12.5),
+        ))
+        self.assertEqual(active_portavoz_apps, 1)
+
+    def test_active_app_probe_matches_only_the_exact_executable_basename(self):
+        def runner(command, **kwargs):
+            self.assertEqual(command, ["/bin/ps", "-A", "-o", "comm="])
+            self.assertEqual(kwargs["timeout"], 5)
+            return CompletedProcess(
+                command,
+                0,
+                stdout=(
+                    "/Applications/Portavoz.app/Contents/MacOS/portavoz-app\n"
+                    "/tmp/portavoz-app-helper\n"
+                    "/usr/bin/python3\n"
+                ),
+                stderr="",
+            )
+
+        self.assertEqual(
+            readiness.probe_active_portavoz_app_count(command_runner=runner),
+            1,
+        )
+
+    def test_active_app_probe_fails_closed_when_inventory_is_unavailable(self):
+        def runner(command, **kwargs):
+            return CompletedProcess(command, 1, stdout="", stderr="denied")
+
+        with self.assertRaisesRegex(
+            readiness.ReadinessError,
+            "process executable probe unavailable",
+        ):
+            readiness.probe_active_portavoz_app_count(command_runner=runner)
+
+    def test_zero_cpu_portavoz_app_blocks_without_starting_calibration(self):
+        clock = FakeClock()
+        policy = readiness.ReadinessPolicy(maximum_wait_seconds=1.0)
+        receipt = readiness.wait_for_readiness(
+            policy=policy,
+            source_commit=self.commit,
+            binary_sha256=self.binary,
+            sampler=lambda: observation(active_portavoz_app_count=1),
+            calibrator=lambda: self.fail("active app must not calibrate"),
+            clock=clock,
+            sleeper=clock.sleep,
+            generated_at="2026-09-02T20:00:00Z",
+        )
+
+        self.assertEqual(receipt["outcome"], "blocked")
+        self.assertEqual(receipt["calibrationAttemptCount"], 0)
+        self.assertTrue(all(
+            sample["activePortavozAppCount"] == 1
+            and sample["reasons"] == ["portavoz-app-active"]
+            for sample in receipt["samples"]
         ))
 
     def test_host_parsers_accept_current_nominal_macos_shapes(self):
@@ -353,6 +413,12 @@ class PerformanceHostReadinessTests(unittest.TestCase):
         wrong_reasons = copy.deepcopy(receipt)
         wrong_reasons["samples"][0]["reasons"] = ["total-cpu"]
         cases.append((wrong_reasons, "reasons do not match"))
+        unreported_app = copy.deepcopy(receipt)
+        unreported_app["samples"][0]["activePortavozAppCount"] = 1
+        cases.append((unreported_app, "reasons do not match"))
+        invalid_app_count = copy.deepcopy(receipt)
+        invalid_app_count["samples"][0]["activePortavozAppCount"] = True
+        cases.append((invalid_app_count, "must be an integer"))
         unknown_contributor = copy.deepcopy(receipt)
         unknown_contributor["samples"][0]["interferenceContributors"] = [
             {"class": "private-process-name", "cpuPercent": 1.0}

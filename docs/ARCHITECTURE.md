@@ -4755,7 +4755,7 @@ runbook remain part of the authority. Until real cells are collected, the
 assistive release gate remains open.
 
 Candidate automation has one executable owner rather than a generic receipt
-recorder. `docs/evidence/candidate-automation.json` schema 7 freezes the eight
+recorder. `docs/evidence/candidate-automation.json` schema 8 freezes the eight
 proof order, six installed-model classes, seven upgrade/recovery classes, nine
 resource scenarios, four real-app memory-leak scenarios, two UI locales, and
 the performance-ledger partition.
@@ -4765,8 +4765,9 @@ gate. It builds the exact Release CLI once, binds every scale, semantic, and
 Spotlight harness to that executable's SHA-256, then requires fresh content-
 free host-readiness admission before each of those three latency-sensitive
 harnesses. The bounded predicate covers aggregate CPU capacity, one-minute
-load, compiler/symbolication CPU, AC automatic power, and nominal thermal
-state. Ten passive clean observations at 500-millisecond intervals cover a
+load, compiler/symbolication CPU, the absence of any other Portavoz app
+runtime, AC automatic power, and nominal thermal state. Ten passive clean
+observations at 500-millisecond intervals cover a
 4.5-second observed span before it also requires five stable
 source-independent SHA-256 throughput samples over one fixed 512 MiB zero
 stream. Wall or process-CPU p95 above 200 milliseconds, p95/p50 above 1.15, or
@@ -4776,13 +4777,16 @@ deadline and a calibration that finishes after it can only produce a blocked
 receipt; an already-running probe may finish after the deadline only to record
 that failure. This is active reference-host capacity admission, not a product
 benchmark, fixed cooldown, candidate retry, or cross-hardware claim.
-Readiness policy v3 closes the former two-second sampling blind spot without
-widening any admission threshold. Readiness receipt schema 3 keeps the final
+Readiness policy v4 preserves v3's dense sampling and additionally rejects an
+active `portavoz-app` instance regardless of its sampled CPU. Readiness receipt
+schema 4 keeps the final
 bounded observation window, the
 content-free ordered calibration timings and attempt count, and
 attributes compiler/symbolication CPU to a closed six-class vocabulary (build
 driver, Swift compiler, Clang compiler, linker, source analysis, or
-symbolication). It records one numeric aggregate per present class, never an
+symbolication). Each sample also records only the count of active Portavoz app
+runtimes; executable matching happens in memory and no identity is retained.
+It records one numeric aggregate per present interference class, never an
 executable name, path, PID, argument, workspace, or process payload. A blocked
 receipt is therefore actionable without turning host admission into process
 inventory telemetry.
@@ -4866,7 +4870,7 @@ regression candidate opens exactly two more sequential ledgers on the same
 host and toolchain. The fixed set blocks when one metric is a candidate in all
 three runs, or when different candidate sets leave no completely clean run.
 Otherwise the last clean ledger is atomically published as the canonical
-performance proof while all three raw ledgers, their schema-2 content-free
+performance proof while all three raw ledgers, their schema-4 content-free
 readiness receipts, and a content-free receipt of the binary identity, ledger digests,
 and candidate metric IDs are retained. A hard budget,
 unresolved, unstable, authority, exit-state, identity, or digest failure always

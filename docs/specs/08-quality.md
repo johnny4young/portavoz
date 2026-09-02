@@ -4299,6 +4299,33 @@ set are unchanged. This stricter admission fails early while the daemon is
 periodic; it neither stops the daemon nor converts the failed D464 attempt into
 qualification.
 
+### Active Portavoz runtime exclusion (D466)
+
+After the D465 candidate had already terminated, a read-only host check found a
+separately launched Portavoz Dev process using roughly half of one CPU while it
+owned live CoreAudio, sliding-window ASR, Core ML, and diarization work. This did
+not explain or reclassify D465, but it exposed a distinct admission gap: on a
+many-core Mac, a real Portavoz recording can remain below the aggregate CPU and
+load ceilings while still competing for audio, model, accelerator, memory, and
+filesystem resources used by the benchmark.
+
+Readiness policy v4 therefore requires zero other processes whose exact
+executable basename is `portavoz-app` throughout the passive window. Matching
+both Dev and stable bundles by executable basename avoids path or bundle-label
+assumptions. A zero-CPU instance still blocks because an idle sample cannot
+prove that its background supervisors will remain inactive during the next
+benchmark. Receipt schema 4 retains only `activePortavozAppCount` and the closed
+reason `portavoz-app-active`; it never retains the executable path, PID,
+arguments, meeting state, or content. Candidate contract schema 8 pins this
+invariant and rejects a false `requiresNoPortavozApp` declaration.
+
+The owner still waits within the existing 300-second bound so a normally closed
+app can let the window settle. It never terminates the app, changes the dense
+ten-sample cadence, widens an existing threshold, skips active calibration,
+discards an adverse run, or retries a candidate. The rule is host-isolation
+admission only; it is not application-health, physical-hardware, supported-OS,
+distribution, CloudKit, assistive-technology, or field evidence.
+
 ### Hosted bilingual orchestration ceiling (D463)
 
 The exact D461 first-attempt hosted UI run retained one complete 105/105 English

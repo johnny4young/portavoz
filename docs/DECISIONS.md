@@ -17897,3 +17897,38 @@ not make the current host ready, qualify D464, or close physical
 Sequoia/Tahoe, distribution, CloudKit, assistive-technology, or field gates. A
 new clean exact commit still requires ordinary preflight, mandatory bilingual
 real-app XCUITest, and one fresh candidate.
+
+## D466 — Exclude an active Portavoz app from performance admission (Sep 2026)
+
+**Context:** the strict D465 candidate had already terminated before a later
+Portavoz Dev launch. A read-only process snapshot then showed that app using
+about half of one CPU, and a three-second content-free stack sample confirmed
+live CoreAudio IO, sliding-window ASR, Core ML inference, and diarization. This
+does not explain or change the failed D465 evidence. It does reveal a separate
+blind spot: on a many-core Mac, one active Portavoz recording can stay below the
+aggregate CPU/load thresholds and may report zero CPU in an individual sample,
+despite competing for the exact audio, accelerator, model, memory, and
+filesystem resources whose isolation the performance gate claims.
+
+**Decision:** advance performance-host readiness to policy v4, its receipt to
+schema 4, and the candidate contract to schema 8. Every passive observation
+counts processes whose exact executable basename is `portavoz-app`; any positive
+count adds the closed `portavoz-app-active` reason and resets the clean window,
+regardless of sampled CPU. Retain only `activePortavozAppCount` in evidence.
+Never retain bundle path, PID, arguments, meeting state, or content. Pin
+`requiresNoPortavozApp: true` in the candidate contract and reject an attempted
+false value. Keep the existing ten observations at 500-millisecond cadence,
+300-second deadline, aggregate CPU/load predicates, two-percent closed-class
+compiler/symbolication ceiling, power/thermal requirements, active SHA-256
+calibration, product budgets, comparison tolerances, and fixed PERF-008
+confirmation unchanged.
+
+**Consequences:** a candidate can no longer benchmark beside the stable, Dev,
+or another copied Portavoz app merely because one instantaneous CPU value looks
+small. The bounded owner may still settle naturally after the app closes, but
+it does not terminate or inspect the app and cannot convert a blocked host into
+a product regression. D465 remains failed with no qualification receipt. D466
+requires ordinary preflight, deterministic tests, mandatory bilingual real-app
+XCUITest, a clean Conventional Commit, and one fresh exact candidate. It does
+not satisfy physical Sequoia/Tahoe, distribution, CloudKit, assistive-
+technology, independent-review, or field gates.
