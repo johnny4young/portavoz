@@ -45,8 +45,8 @@
       "maximumInterferenceCPUPercent": 2.0,
       "maximumLoadPerProcessor": 0.5,
       "maximumWaitSeconds": 300.0,
-      "requiredConsecutiveSamples": 3,
-      "sampleIntervalSeconds": 2.0,
+      "requiredConsecutiveSamples": 10,
+      "sampleIntervalSeconds": 0.5,
       "throughputCalibration": {
         "bytesPerSample": 536870912,
         "maximumCPUMilliseconds": 200.0,
@@ -55,7 +55,7 @@
         "sampleCount": 5,
         "version": "sha256-zero-block-512mib-v1"
       },
-      "version": "prebuilt-release-host-readiness-v2"
+      "version": "prebuilt-release-host-readiness-v3"
     },
     "allowedNotMeasuredMetricIDs": [
       "capture.drift-30min",
@@ -113,7 +113,7 @@
       "summary"
     ]
   },
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "ui": {
     "budget": "docs/evidence/ui-test-runtime-budget.json",
     "locales": [

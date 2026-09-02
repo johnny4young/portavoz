@@ -42,7 +42,7 @@ class CandidateAutomationTests(unittest.TestCase):
         }
 
     def test_tracked_contract_is_exact_and_complete(self):
-        self.assertEqual(self.contract_document["schemaVersion"], 6)
+        self.assertEqual(self.contract_document["schemaVersion"], 7)
         self.assertEqual(
             self.contract["proofs"],
             (
@@ -71,8 +71,10 @@ class CandidateAutomationTests(unittest.TestCase):
         )
         readiness = self.contract_document["performance"]["hostReadiness"]
         self.assertEqual(
-            readiness["version"], "prebuilt-release-host-readiness-v2"
+            readiness["version"], "prebuilt-release-host-readiness-v3"
         )
+        self.assertEqual(readiness["sampleIntervalSeconds"], 0.5)
+        self.assertEqual(readiness["requiredConsecutiveSamples"], 10)
         self.assertEqual(
             readiness["throughputCalibration"],
             {
@@ -165,7 +167,7 @@ class CandidateAutomationTests(unittest.TestCase):
             self.contract["performance"]["hostReadiness"][
                 "requiredConsecutiveSamples"
             ],
-            3,
+            10,
         )
         self.assertEqual(thresholds["regression"]["confirmationRuns"], 3)
 
@@ -219,6 +221,15 @@ class CandidateAutomationTests(unittest.TestCase):
             "maximumWaitSeconds is outside its bounds",
         ):
             candidate.validate_contract(unbounded)
+
+        sparse = copy.deepcopy(self.contract_document)
+        sparse["performance"]["hostReadiness"]["sampleIntervalSeconds"] = 2.0
+        sparse["performance"]["hostReadiness"]["requiredConsecutiveSamples"] = 3
+        with self.assertRaisesRegex(
+            candidate.CandidateAutomationError,
+            "dense passive window",
+        ):
+            candidate.validate_contract(sparse)
 
     def test_contract_rejects_weaker_resource_or_ui_scope(self):
         weak_resource = copy.deepcopy(self.contract_document)
@@ -381,6 +392,14 @@ class CandidateAutomationTests(unittest.TestCase):
                     "PORTAVOZ_PERF_HOST_MAXIMUM_CALIBRATION_DISPERSION_RATIO"
                 ],
                 "1.15",
+            )
+            self.assertEqual(
+                environment["PORTAVOZ_PERF_HOST_SAMPLE_INTERVAL_SECONDS"],
+                "0.5",
+            )
+            self.assertEqual(
+                environment["PORTAVOZ_PERF_HOST_REQUIRED_CONSECUTIVE_SAMPLES"],
+                "10",
             )
             self.assertEqual(command.call_args.kwargs["accepted_exit_codes"], (0, 2))
 
@@ -1521,7 +1540,9 @@ class CandidateAutomationTests(unittest.TestCase):
         samples = [
             {
                 "sequence": sequence,
-                "offsetSeconds": float((sequence - 1) * 2),
+                "offsetSeconds": float(
+                    (sequence - 1) * policy.sample_interval_seconds
+                ),
                 "processorCount": 14,
                 "totalCPUPercent": 100.0,
                 "loadAverageOneMinute": 2.0,
@@ -1532,7 +1553,9 @@ class CandidateAutomationTests(unittest.TestCase):
                 "thermalState": "nominal",
                 "reasons": [],
             }
-            for sequence in range(1, 4)
+            for sequence in range(
+                1, policy.required_consecutive_samples + 1
+            )
         ]
         return {
             "schemaVersion": candidate.perf_host_readiness.SCHEMA_VERSION,
@@ -1542,8 +1565,11 @@ class CandidateAutomationTests(unittest.TestCase):
             "binarySHA256": self.performance_binary_sha256,
             "policy": policy.document(),
             "outcome": "ready",
-            "elapsedSeconds": 4.0,
-            "observedSampleCount": 3,
+            "elapsedSeconds": (
+                (policy.required_consecutive_samples - 1)
+                * policy.sample_interval_seconds
+            ),
+            "observedSampleCount": policy.required_consecutive_samples,
             "samples": samples,
             "calibrationAttemptCount": 1,
             "throughputCalibration": (

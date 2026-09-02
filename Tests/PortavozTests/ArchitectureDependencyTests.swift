@@ -11343,7 +11343,7 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testCandidateAutomationOwnsEightSpecializedProofs() throws {
         let contract = try Self.jsonObject(
             at: "docs/evidence/candidate-automation.json")
-        XCTAssertEqual(contract["schemaVersion"] as? Int, 6)
+        XCTAssertEqual(contract["schemaVersion"] as? Int, 7)
         XCTAssertEqual(
             contract["kind"] as? String,
             "candidate-automation-contract")
@@ -11377,9 +11377,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             performance["hostReadiness"] as? [String: Any])
         XCTAssertEqual(
             hostReadiness["version"] as? String,
-            "prebuilt-release-host-readiness-v2")
+            "prebuilt-release-host-readiness-v3")
         XCTAssertEqual(hostReadiness["maximumWaitSeconds"] as? Double, 300)
-        XCTAssertEqual(hostReadiness["requiredConsecutiveSamples"] as? Int, 3)
+        XCTAssertEqual(hostReadiness["sampleIntervalSeconds"] as? Double, 0.5)
+        XCTAssertEqual(hostReadiness["requiredConsecutiveSamples"] as? Int, 10)
         XCTAssertEqual(
             hostReadiness["maximumInterferenceCPUPercent"] as? Double,
             2)
@@ -11539,6 +11540,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D456"))
         XCTAssertTrue(decisions.contains("## D460"))
         XCTAssertTrue(decisions.contains("## D462"))
+        XCTAssertTrue(decisions.contains("## D465"))
         XCTAssertTrue(performanceRunner.contains(
             "run_host_readiness \"Scale\""))
         XCTAssertTrue(performanceRunner.contains(
@@ -11549,6 +11551,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             "portavoz_prepare_perf_binary"))
         XCTAssertTrue(performanceRunner.contains(
             "host-readiness.json"))
+        XCTAssertTrue(performanceRunner.contains(
+            "PORTAVOZ_PERF_HOST_SAMPLE_INTERVAL_SECONDS:-0.5"))
+        XCTAssertTrue(performanceRunner.contains(
+            "PORTAVOZ_PERF_HOST_REQUIRED_CONSECUTIVE_SAMPLES:-10"))
         XCTAssertTrue(performanceBinary.contains(
             "performance binary changed after the exact Release build"))
         XCTAssertTrue(performanceReadiness.contains(
@@ -11557,6 +11563,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "build-or-symbolication"))
         XCTAssertTrue(performanceReadiness.contains(
             "SCHEMA_VERSION = 3"))
+        XCTAssertTrue(performanceReadiness.contains(
+            "prebuilt-release-host-readiness-v3"))
         XCTAssertTrue(performanceReadiness.contains(
             "sha256-zero-block-512mib-v1"))
         XCTAssertTrue(performanceReadiness.contains(

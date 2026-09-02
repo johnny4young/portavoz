@@ -17857,3 +17857,43 @@ bilingual real-app XCUITest, a clean Conventional Commit, and one new exact
 candidate. The matrix still cannot certify first-use latency, physical
 Sequoia/Tahoe hardware, TCC and device routes, signed distribution, production
 CloudKit, assistive technology, or field behavior.
+
+## D465 — Densely observe the passive performance window (Sep 2026)
+
+**Context:** the first strict exact D464 candidate (`e6c30928`, version 1.0.0
+build `202609021723`) recorded Detail-core regression candidates at 19.66 and
+18.45 milliseconds in the first two fixed PERF-008 runs. Its third run never
+started measurement because scale host readiness remained blocked for 300.025
+seconds across 146 observations. A separate non-qualifying 60-second readiness
+diagnostic on a newly reserved host also blocked. One-Hz content-free sampling
+then observed `coresymbolicationd` above the unchanged 2-percent ceiling in 31
+of 60 samples, with p95 26.1 percent and no more than two consecutive clean
+samples. The existing three observations at two-second intervals covered only
+0, 2, and 4 seconds, so a periodic daemon could phase-alias that sparse cadence,
+appear absent at all three points, and run during the benchmark that followed.
+No confirmation or `qualification.json` exists, and an unchanged retry would
+not repair that evidence gap.
+
+**Decision:** advance readiness policy to v3 and candidate contract schema to
+7. Require ten consecutive passive observations every 500 milliseconds before
+active calibration. This gives ten rather than three samples at four times the
+temporal frequency over a 4.5-second observed span, slightly longer than the
+former four-second span.
+Candidate contract validation rejects any other cadence or sample count. Keep
+the 300-second deadline, aggregate CPU/load predicates, exact 2-percent closed-
+class compiler/symbolication ceiling, AC automatic power, nominal thermal
+state, five fixed 512 MiB SHA-256 samples, 200-millisecond wall/CPU ceilings,
+1.15 dispersion limit, executable/source identity, product metrics, comparison
+tolerances, and three-run PERF-008 decision unchanged.
+
+**Consequences:** periodic work with the measured duty cycle now blocks before
+a ledger rather than being missed between sparse observations and appearing as
+a product regression. The receipt remains schema 3 because its shape and
+validation are unchanged; its embedded v3 policy and up-to-ten retained
+content-free samples make the denser decision recomputable. The owner still
+does not inspect process identity or payload, terminate a daemon, sleep for a
+fixed cooldown, discard a measured run, or retry a candidate. This change does
+not make the current host ready, qualify D464, or close physical
+Sequoia/Tahoe, distribution, CloudKit, assistive-technology, or field gates. A
+new clean exact commit still requires ordinary preflight, mandatory bilingual
+real-app XCUITest, and one fresh candidate.

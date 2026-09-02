@@ -4755,8 +4755,8 @@ runbook remain part of the authority. Until real cells are collected, the
 assistive release gate remains open.
 
 Candidate automation has one executable owner rather than a generic receipt
-recorder. `docs/evidence/candidate-automation.json` freezes the eight proof
-order, six installed-model classes, seven upgrade/recovery classes, nine
+recorder. `docs/evidence/candidate-automation.json` schema 7 freezes the eight
+proof order, six installed-model classes, seven upgrade/recovery classes, nine
 resource scenarios, four real-app memory-leak scenarios, two UI locales, and
 the performance-ledger partition.
 `scripts/candidate_automation.py` requires a completely clean checkout, fixes
@@ -4766,7 +4766,8 @@ Spotlight harness to that executable's SHA-256, then requires fresh content-
 free host-readiness admission before each of those three latency-sensitive
 harnesses. The bounded predicate covers aggregate CPU capacity, one-minute
 load, compiler/symbolication CPU, AC automatic power, and nominal thermal
-state. After three passive clean observations, it also requires five stable
+state. Ten passive clean observations at 500-millisecond intervals cover a
+4.5-second observed span before it also requires five stable
 source-independent SHA-256 throughput samples over one fixed 512 MiB zero
 stream. Wall or process-CPU p95 above 200 milliseconds, p95/p50 above 1.15, or
 an incorrect fixed digest resets the passive window or fails closed at the
@@ -4775,7 +4776,9 @@ deadline and a calibration that finishes after it can only produce a blocked
 receipt; an already-running probe may finish after the deadline only to record
 that failure. This is active reference-host capacity admission, not a product
 benchmark, fixed cooldown, candidate retry, or cross-hardware claim.
-Readiness receipt schema 3 keeps the final bounded observation window, the
+Readiness policy v3 closes the former two-second sampling blind spot without
+widening any admission threshold. Readiness receipt schema 3 keeps the final
+bounded observation window, the
 content-free ordered calibration timings and attempt count, and
 attributes compiler/symbolication CPU to a closed six-class vocabulary (build
 driver, Swift compiler, Clang compiler, linker, source analysis, or

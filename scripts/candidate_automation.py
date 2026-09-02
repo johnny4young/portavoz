@@ -29,7 +29,7 @@ import resource_baseline
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONTRACT = ROOT / "docs" / "evidence" / "candidate-automation.json"
 DEFAULT_OUTPUT_PARENT = ROOT / "dist" / "release-readiness"
-CONTRACT_SCHEMA_VERSION = 6
+CONTRACT_SCHEMA_VERSION = 7
 PERF_LEDGER_SCHEMA_VERSION = 1
 PERFORMANCE_CONFIRMATION_SCHEMA_VERSION = 2
 UI_BUDGET_SCHEMA_VERSION = 1
@@ -420,6 +420,15 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
         ).validate()
     except perf_host_readiness.ReadinessError as error:
         raise CandidateAutomationError(str(error)) from error
+    if (
+        readiness_policy.sample_interval_seconds
+        != perf_host_readiness.DEFAULT_SAMPLE_INTERVAL_SECONDS
+        or readiness_policy.required_consecutive_samples
+        != perf_host_readiness.DEFAULT_REQUIRED_CONSECUTIVE_SAMPLES
+    ):
+        raise CandidateAutomationError(
+            "candidate performance host-readiness must use the dense passive window"
+        )
     performance_path = tracked_path(
         root,
         performance["thresholdContract"],

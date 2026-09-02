@@ -4259,15 +4259,45 @@ already-running probe may finish after the deadline only to retain a blocked
 receipt, so the recorded wall time can expose an overrun without turning it
 green.
 
-`run-perf-ledger.sh` now obtains an independently validated schema-3 receipt
-immediately before scale, semantic, and Spotlight. Candidate contract schema 6
-requires all three exact-source/binary receipts and publishes them with a
+Under D462, `run-perf-ledger.sh` began obtaining an independently validated
+schema-3 receipt immediately before scale, semantic, and Spotlight. Candidate
+contract schema 6 required all three exact-source/binary receipts and published them with a
 selected authoritative run. Product metric inventory, absolute budgets,
 comparison tolerances, 20 measurement iterations, fixed PERF-008 confirmation
 semantics, and informational-dispersion behavior remain unchanged. The
 sentinel is source-independent host admission for the exact reference machine;
 it is not Sequoia/Tahoe, older-hardware, battery, signed-distribution, or field
 performance certification.
+
+### Dense passive admission (D465)
+
+The first strict exact D464 candidate reached PERF-008 before every other
+candidate gate. Its first two fixed runs reported 2-hour Detail-core p95 at
+19.66 and 18.45 milliseconds, both above the unchanged 15-percent comparison
+tolerance. The third run never measured: scale readiness stayed blocked for
+300.025 seconds across 146 observations because periodic symbolication work
+kept breaking the passive window. No confirmation or candidate receipt was
+written. A separate non-qualifying 60-second observation on an explicitly
+reserved host reproduced the block. One-Hz content-free sampling then measured
+`coresymbolicationd` above the unchanged 2-percent ceiling in 31 of 60 samples,
+with 2.35-percent median, 26.1-percent p95, 46.6-percent maximum, and no more
+than two clean samples in sequence.
+
+The former three observations at two-second intervals covered only the points
+at 0, 2, and 4 seconds. A periodic daemon could therefore run between those
+points, let the sparse predicate pass, and interfere with the following
+benchmark. Readiness policy v3 and candidate contract schema 7 instead require
+ten consecutive observations at 500-millisecond intervals: ten rather than
+three samples at four times the temporal frequency across a slightly longer
+4.5-second observed span. Candidate
+contract validation rejects a sparse cadence even when its version string is
+forged. The 300-second deadline, aggregate CPU/load limits, exact 2-percent
+compiler/symbolication limit, AC/automatic/nominal requirements, five fixed
+512 MiB SHA-256 samples, 200-millisecond ceilings, 1.15 dispersion limit,
+product measurements, comparison tolerances, and fixed PERF-008 confirmation
+set are unchanged. This stricter admission fails early while the daemon is
+periodic; it neither stops the daemon nor converts the failed D464 attempt into
+qualification.
 
 ### Hosted bilingual orchestration ceiling (D463)
 

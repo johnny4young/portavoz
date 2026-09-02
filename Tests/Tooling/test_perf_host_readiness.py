@@ -100,6 +100,40 @@ class PerformanceHostReadinessTests(unittest.TestCase):
         self.assertEqual(receipt["calibrationAttemptCount"], 1)
         self.assertEqual(receipt["throughputCalibration"]["reasons"], [])
 
+    def test_default_dense_window_rejects_periodic_symbolication_bursts(self):
+        policy = readiness.ReadinessPolicy(maximum_wait_seconds=4.5)
+        clock = FakeClock()
+        periodic = iter(
+            [
+                observation(),
+                observation(),
+                observation(
+                    interference_cpu_percent=10.0,
+                    interference_contributors=(("symbolication", 10.0),),
+                ),
+            ]
+            * 3
+            + [observation()]
+        )
+
+        receipt = readiness.wait_for_readiness(
+            policy=policy,
+            source_commit=self.commit,
+            binary_sha256=self.binary,
+            sampler=lambda: next(periodic),
+            calibrator=lambda: self.fail("periodic host must not calibrate"),
+            clock=clock,
+            sleeper=clock.sleep,
+            generated_at="2026-09-02T17:00:00Z",
+        )
+
+        self.assertEqual(readiness.DEFAULT_SAMPLE_INTERVAL_SECONDS, 0.5)
+        self.assertEqual(readiness.DEFAULT_REQUIRED_CONSECUTIVE_SAMPLES, 10)
+        self.assertEqual(receipt["outcome"], "blocked")
+        self.assertEqual(receipt["observedSampleCount"], 10)
+        self.assertEqual(receipt["calibrationAttemptCount"], 0)
+        self.assertTrue(any(item["reasons"] for item in receipt["samples"]))
+
     def test_slow_calibration_resets_passive_window_before_admission(self):
         receipt = self.run_wait(
             [observation() for _ in range(6)],
