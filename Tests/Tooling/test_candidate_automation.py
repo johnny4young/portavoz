@@ -1441,6 +1441,7 @@ class CandidateAutomationTests(unittest.TestCase):
                 "totalCPUPercent": 100.0,
                 "loadAverageOneMinute": 2.0,
                 "interferenceCPUPercent": 0.0,
+                "interferenceContributors": [],
                 "powerSource": "ac",
                 "powerMode": "automatic",
                 "thermalState": "nominal",
@@ -1449,7 +1450,7 @@ class CandidateAutomationTests(unittest.TestCase):
             for sequence in range(1, 4)
         ]
         return {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "kind": "performance-host-readiness",
             "generatedAt": "2026-08-30T18:00:00Z",
             "sourceCommit": self.commit,

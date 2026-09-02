@@ -11511,6 +11511,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D450"))
         XCTAssertTrue(decisions.contains("## D454"))
         XCTAssertTrue(decisions.contains("## D456"))
+        XCTAssertTrue(decisions.contains("## D460"))
         XCTAssertTrue(performanceRunner.contains(
             "Performance host readiness"))
         XCTAssertTrue(performanceRunner.contains(
@@ -11523,6 +11524,12 @@ final class ArchitectureDependencyTests: XCTestCase {
             "required_consecutive_samples"))
         XCTAssertTrue(performanceReadiness.contains(
             "build-or-symbolication"))
+        XCTAssertTrue(performanceReadiness.contains(
+            "SCHEMA_VERSION = 2"))
+        XCTAssertTrue(performanceReadiness.contains(
+            "interferenceContributors"))
+        XCTAssertTrue(performanceReadiness.contains(
+            "INTERFERENCE_CLASSES"))
         for harness in [scaleRunner, semanticRunner, spotlightRunner] {
             XCTAssertTrue(harness.contains("PORTAVOZ_PERF_BINARY"))
             XCTAssertFalse(harness.contains(

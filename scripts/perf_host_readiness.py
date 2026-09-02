@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 POLICY_VERSION = "prebuilt-release-host-readiness-v1"
 DEFAULT_MAXIMUM_WAIT_SECONDS = 300.0
 DEFAULT_SAMPLE_INTERVAL_SECONDS = 2.0
@@ -28,17 +28,28 @@ DEFAULT_MAXIMUM_LOAD_PER_PROCESSOR = 0.50
 DEFAULT_MAXIMUM_INTERFERENCE_CPU_PERCENT = 2.0
 HEX_40 = re.compile(r"[0-9a-f]{40}")
 HEX_64 = re.compile(r"[0-9a-f]{64}")
-INTERFERENCE_EXECUTABLES = (
-    "dsymutil",
-    "ld",
-    "symbolicatecrash",
-    "xcodebuild",
+INTERFERENCE_CLASSES = (
+    "build-driver",
+    "clang-compiler",
+    "linker",
+    "source-analysis",
+    "swift-compiler",
+    "symbolication",
 )
-INTERFERENCE_PREFIXES = (
-    "clang",
-    "coresymbolication",
-    "sourcekit",
-    "swift",
+INTERFERENCE_CLASS_BY_EXECUTABLE = {
+    "dsymutil": "symbolication",
+    "ld": "linker",
+    "swift": "build-driver",
+    "swift-build": "build-driver",
+    "swift-package": "build-driver",
+    "symbolicatecrash": "symbolication",
+    "xcodebuild": "build-driver",
+}
+INTERFERENCE_CLASS_PREFIXES = (
+    ("clang", "clang-compiler"),
+    ("coresymbolication", "symbolication"),
+    ("sourcekit", "source-analysis"),
+    ("swift", "swift-compiler"),
 )
 REASONS = (
     "build-or-symbolication",
@@ -128,6 +139,7 @@ class HostObservation:
     power_source: str
     power_mode: str
     thermal_state: str
+    interference_contributors: tuple[tuple[str, float], ...] = ()
 
 
 class SystemProbe:
@@ -167,7 +179,7 @@ class SystemProbe:
         return completed.stdout
 
     def sample(self) -> HostObservation:
-        total_cpu, interference_cpu = parse_process_cpu(self._run(
+        total_cpu, interference_cpu, contributors = parse_process_cpu(self._run(
             ["/bin/ps", "-A", "-o", "pcpu=,comm="],
             "process CPU",
         ))
@@ -195,6 +207,7 @@ class SystemProbe:
             power_source=power_source,
             power_mode=power_mode,
             thermal_state=thermal_state,
+            interference_contributors=contributors,
         )
 
 
@@ -221,9 +234,21 @@ def finite_between(
     return result
 
 
-def parse_process_cpu(output: str) -> tuple[float, float]:
+def interference_class(executable: str) -> str | None:
+    name = Path(executable).name.casefold()
+    if name in INTERFERENCE_CLASS_BY_EXECUTABLE:
+        return INTERFERENCE_CLASS_BY_EXECUTABLE[name]
+    for prefix, contributor_class in INTERFERENCE_CLASS_PREFIXES:
+        if name.startswith(prefix):
+            return contributor_class
+    return None
+
+
+def parse_process_cpu(
+    output: str,
+) -> tuple[float, float, tuple[tuple[str, float], ...]]:
     total = 0.0
-    interference = 0.0
+    contributions: dict[str, float] = {}
     observed = 0
     for line in output.splitlines():
         fields = line.strip().split(maxsplit=1)
@@ -237,14 +262,15 @@ def parse_process_cpu(output: str) -> tuple[float, float]:
             raise ReadinessError("process CPU inventory is invalid")
         observed += 1
         total += cpu
-        executable = Path(fields[1]).name.casefold()
-        if executable in INTERFERENCE_EXECUTABLES or executable.startswith(
-            INTERFERENCE_PREFIXES
-        ):
-            interference += cpu
+        contributor_class = interference_class(fields[1])
+        if contributor_class is not None and cpu > 0:
+            contributions[contributor_class] = (
+                contributions.get(contributor_class, 0.0) + cpu
+            )
     if observed == 0:
         raise ReadinessError("process CPU inventory is empty")
-    return total, interference
+    contributors = tuple(sorted(contributions.items()))
+    return total, sum(cpu for _, cpu in contributors), contributors
 
 
 def parse_load_average(output: str) -> float:
@@ -351,6 +377,10 @@ def sample_document(
         "interferenceCPUPercent": round(
             observation.interference_cpu_percent, 3
         ),
+        "interferenceContributors": [
+            {"class": contributor_class, "cpuPercent": round(cpu, 3)}
+            for contributor_class, cpu in observation.interference_contributors
+        ],
         "powerSource": observation.power_source,
         "powerMode": observation.power_mode,
         "thermalState": observation.thermal_state,
@@ -508,6 +538,7 @@ def validate_receipt(
                 "totalCPUPercent",
                 "loadAverageOneMinute",
                 "interferenceCPUPercent",
+                "interferenceContributors",
                 "powerSource",
                 "powerMode",
                 "thermalState",
@@ -551,6 +582,51 @@ def validate_receipt(
             minimum=0,
             maximum=processor_count * 100,
         )
+        contributors = sample["interferenceContributors"]
+        if not isinstance(contributors, list) or len(contributors) > len(
+            INTERFERENCE_CLASSES
+        ):
+            raise ReadinessError(
+                "readiness receipt interference contributors are invalid"
+            )
+        contributor_pairs: list[tuple[str, float]] = []
+        for contributor_index, raw_contributor in enumerate(contributors):
+            contributor = exact_object(
+                raw_contributor,
+                (
+                    "readiness receipt interference contributor "
+                    f"{contributor_index}"
+                ),
+                {"class", "cpuPercent"},
+            )
+            contributor_class = contributor["class"]
+            if contributor_class not in INTERFERENCE_CLASSES:
+                raise ReadinessError(
+                    "readiness receipt interference class is invalid"
+                )
+            cpu_percent = finite_between(
+                contributor["cpuPercent"],
+                "interference contributor cpuPercent",
+                minimum=0,
+                maximum=processor_count * 100,
+            )
+            if cpu_percent <= 0:
+                raise ReadinessError(
+                    "readiness receipt interference contribution must be positive"
+                )
+            contributor_pairs.append((contributor_class, cpu_percent))
+        contributor_classes = [item[0] for item in contributor_pairs]
+        if contributor_classes != sorted(set(contributor_classes)):
+            raise ReadinessError(
+                "readiness receipt interference contributors are not canonical"
+            )
+        interference_cpu = float(sample["interferenceCPUPercent"])
+        if round(sum(cpu for _, cpu in contributor_pairs), 3) != round(
+            interference_cpu, 3
+        ):
+            raise ReadinessError(
+                "readiness receipt interference contributions do not sum"
+            )
         if sample["powerSource"] not in {"ac", "battery"}:
             raise ReadinessError("readiness receipt power source is invalid")
         if sample["powerMode"] not in {
@@ -577,6 +653,7 @@ def validate_receipt(
             power_source=sample["powerSource"],
             power_mode=sample["powerMode"],
             thermal_state=sample["thermalState"],
+            interference_contributors=tuple(contributor_pairs),
         )
         if list(reasons_for(observation, policy)) != reasons:
             raise ReadinessError("readiness receipt reasons do not match observations")

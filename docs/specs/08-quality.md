@@ -2847,7 +2847,13 @@ binds every performance harness to its SHA-256, and requires three consecutive
 content-free ready-host samples before each authoritative ledger. The bounded
 predicate observes aggregate CPU capacity, one-minute load per processor,
 compiler/symbolication CPU, AC automatic power, and nominal thermal state; it
-fails before measurement if the host does not settle. The latency-sensitive
+fails before measurement if the host does not settle. Readiness receipt schema
+2 retains only the latest bounded observation window and one numeric CPU
+aggregate for each present member of a closed six-class contributor vocabulary.
+It never stores executable names, paths, PIDs, command arguments, workspaces,
+or payloads. A timeout can therefore distinguish a build driver, Swift or
+Clang compiler, linker, source-analysis service, or symbolicator while staying
+content-free and without terminating the contributor. The latency-sensitive
 ledger and its finite PERF-008 confirmation still run first, before XCTest,
 model execution, Apple leak instrumentation, and resource collection can leave
 new competing work. The same runner then directly owns deterministic
@@ -4199,8 +4205,10 @@ rather than a fixed cooldown. It requires three consecutive observations below
 the aggregate CPU/load and compiler/symbolication ceilings while the Mac is on
 AC, automatic power mode, and nominal thermal state. The wait is bounded to 300
 seconds. A timeout writes a content-free blocked receipt and exits before any
-benchmark; there is no automatic candidate retry. Every accepted raw ledger
-and the selected canonical proof retain the numeric readiness receipt, exact
+benchmark; there is no automatic candidate retry. Receipt schema 2 retains
+numeric CPU contribution by a closed executable class in its final bounded
+sample window, without names, paths, PIDs, arguments, or payloads. Every
+accepted raw ledger and the selected canonical proof retain the readiness receipt, exact
 source commit, and binary SHA-256. PERF-008's metric inventory, thresholds,
 15/20-percent comparison tolerances, and fixed confirmation semantics remain
 unchanged.

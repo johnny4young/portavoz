@@ -36,8 +36,16 @@ def observation(**overrides):
         "power_source": "ac",
         "power_mode": "automatic",
         "thermal_state": "nominal",
+        "interference_contributors": (),
     }
     values.update(overrides)
+    if (
+        "interference_contributors" not in overrides
+        and values["interference_cpu_percent"] > 0
+    ):
+        values["interference_contributors"] = (
+            ("swift-compiler", values["interference_cpu_percent"]),
+        )
     return readiness.HostObservation(**values)
 
 
@@ -105,6 +113,12 @@ class PerformanceHostReadinessTests(unittest.TestCase):
             "build-or-symbolication" in item["reasons"]
             for item in receipt["samples"]
         ))
+        self.assertTrue(all(
+            item["interferenceContributors"] == [
+                {"class": "swift-compiler", "cpuPercent": 5.0}
+            ]
+            for item in receipt["samples"]
+        ))
         with self.assertRaisesRegex(readiness.ReadinessError, "did not become ready"):
             readiness.validate_receipt(
                 receipt,
@@ -127,13 +141,19 @@ class PerformanceHostReadinessTests(unittest.TestCase):
                 self.assertIn(reason, readiness.reasons_for(sample, self.policy))
 
     def test_process_parser_is_content_free_and_counts_interference(self):
-        total, interference = readiness.parse_process_cpu(
+        total, interference, contributors = readiness.parse_process_cpu(
             " 35.0 /Applications/ChatGPT.app/codex\n"
             " 12.5 /usr/libexec/coresymbolicationd\n"
             " 50.0 /usr/bin/swift-frontend\n"
+            " 7.0 /usr/bin/xcodebuild\n"
         )
-        self.assertEqual(total, 97.5)
-        self.assertEqual(interference, 62.5)
+        self.assertEqual(total, 104.5)
+        self.assertEqual(interference, 69.5)
+        self.assertEqual(contributors, (
+            ("build-driver", 7.0),
+            ("swift-compiler", 50.0),
+            ("symbolication", 12.5),
+        ))
 
     def test_host_parsers_accept_current_nominal_macos_shapes(self):
         self.assertEqual(readiness.parse_load_average("{ 3.87 4.48 4.89 }\n"), 3.87)
@@ -181,6 +201,16 @@ class PerformanceHostReadinessTests(unittest.TestCase):
         wrong_reasons = copy.deepcopy(receipt)
         wrong_reasons["samples"][0]["reasons"] = ["total-cpu"]
         cases.append((wrong_reasons, "reasons do not match"))
+        unknown_contributor = copy.deepcopy(receipt)
+        unknown_contributor["samples"][0]["interferenceContributors"] = [
+            {"class": "private-process-name", "cpuPercent": 1.0}
+        ]
+        cases.append((unknown_contributor, "interference class is invalid"))
+        mismatched_contribution = copy.deepcopy(receipt)
+        mismatched_contribution["samples"][0]["interferenceContributors"] = [
+            {"class": "swift-compiler", "cpuPercent": 1.0}
+        ]
+        cases.append((mismatched_contribution, "contributions do not sum"))
         for document, message in cases:
             with self.subTest(message=message), self.assertRaisesRegex(
                 readiness.ReadinessError, message

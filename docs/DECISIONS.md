@@ -17663,3 +17663,39 @@ qualification receipt; D459 requires ordinary preflight, mandatory bilingual
 XCUITest, a new clean commit, and one fresh exact candidate rather than a retry.
 Physical Sequoia/Tahoe, signed distribution, CloudKit, assistive technology,
 and field behavior remain separate evidence gates.
+
+## D460 — Attribute readiness interference without process inventory (Sep 2026)
+
+**Context:** the one exact clean D459 candidate (`66063313`, version 1.0.0
+build `202609012115`) stopped before its third PERF-008 observation and wrote no
+qualification receipt. Run one had two comparison candidates, run two was clean
+after 222.517 seconds of readiness waiting, and run three never measured because
+compiler/symbolication CPU stayed above the unchanged two-percent ceiling for
+the complete 300-second bound. Its final samples retained 4.4, 36.6, and 5.3
+percent plus the closed `build-or-symbolication` reason. Load, aggregate CPU,
+power, and thermal state were acceptable. Receipt schema 1 intentionally
+discarded executable identity, so the retained failure could not distinguish a
+build driver, compiler, linker, source-analysis service, or symbolicator. A
+blind retry would lose the useful failure without proving its cause.
+
+**Decision:** evolve only the content-free readiness receipt to schema 2. Keep
+the final bounded sample window and aggregate interference CPU, and additionally
+group positive interference into exactly six closed classes: build driver,
+Swift compiler, Clang compiler, linker, source analysis, and symbolication.
+Each retained class carries only its summed CPU percentage. Never record an
+executable name, path, PID, command argument, workspace, source token, or
+payload. Validate exact object shape, sorted unique classes, the closed
+vocabulary, positive finite values, and an exact rounded sum back to the
+existing aggregate. Keep the policy version, process matcher, two-percent
+ceiling, three consecutive observations, 300-second bound, PERF-008 fixed run
+set, and fail-closed behavior unchanged.
+
+**Consequences:** the next blocked receipt can identify which safe executable
+class owned the interference without exposing host process inventory or
+granting the runner authority to terminate anything. Ready receipts carry an
+empty contributor list. Existing schema-1 receipts remain historical evidence
+and cannot qualify changed source. D460 itself requires ordinary preflight,
+mandatory minimum-safe bilingual XCUITest, a clean Conventional Commit, and one
+fresh exact candidate; D459's failed candidate remains failed and is not
+retried. Physical Sequoia/Tahoe, signed distribution, production CloudKit,
+assistive technology, and field behavior remain separate evidence gates.
