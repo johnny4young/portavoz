@@ -17593,3 +17593,39 @@ ordinary preflight, mandatory bilingual XCUITest, and fresh candidate
 automation. The resource matrix still does not certify physical capture,
 Sequoia/Tahoe hardware, signed distribution, production CloudKit, assistive
 technology, or field behavior.
+
+## D458 — Warm exact semantic indexing without consuming the measured corpus (Sep 2026)
+
+**Context:** the exact clean `04c395e6` candidate passed deterministic release
+scope, package and Tooling tests, recording stress, scoped bilingual UI, every
+installed-model lane, the Apuntador leak owner, and eight of nine resource
+scenarios. Candidate admission still failed closed because
+recording-plus-indexing process CPU was 56.74, 32.07, and 31.36 seconds. Its
+wall time and exact indexing span stayed stable, and standalone indexing later
+in each run was stable at about 15.3 seconds. The resource runner executes
+recording-plus-indexing before standalone indexing. Preparing the embedding
+runtime loaded its assets but did not exercise the exact `IndexSemanticCorpus`
+batch, storage-publication, and vector-shape path, leaving that first use to one
+measured sample. Reusing the measured store for a warmup would be invalid: it
+would drain the pending corpus and turn the measured operation into a no-op.
+
+**Decision:** before either standalone or recording-plus-indexing opens its
+resource probe, execute and validate one unmeasured `IndexSemanticCorpus.all`
+operation over the same 1,024-segment public English fixture, the same semantic
+runtime, the same content-free telemetry port, the same 256-row batches, and
+the same hard timeout. The warmup owns a separate `MeetingStore.inMemory()` and
+does not prepare or download the runtime again. The real measured workload is
+prepared first in its disposable store and remains completely pending until
+the probe opens. A warmup timeout, incomplete corpus, invalid profile, missing
+assets, or execution failure remains fatal and publishes no resource sample.
+
+**Consequences:** both indexing cells now measure a declared steady exact-use
+path rather than incidental first-process cache residency, while still
+measuring all real embedding, indexing, telemetry, and storage work against an
+untouched corpus. No product workflow, scenario order, sample count, stability
+threshold, timeout, collector, or candidate retry policy changes. The failed
+`04c395e6` candidate remains failed and emitted no qualification receipt; a new
+exact clean commit must pass ordinary preflight, mandatory bilingual XCUITest,
+and fresh candidate automation. First-ever semantic activation latency and
+physical Sequoia/Tahoe, distribution, CloudKit, assistive-technology, and field
+behavior remain separate evidence gates.

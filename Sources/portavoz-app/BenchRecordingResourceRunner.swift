@@ -341,11 +341,18 @@ private enum BenchConcurrentRecordingWorkload {
         services: AppServices,
         timeoutSeconds: Int
     ) async throws {
-        guard case .batch(let workload) = self else { return }
-        let transcription = try await workload.run(
-            services: services,
-            timeoutSeconds: timeoutSeconds)
-        try workload.validate(transcription)
+        switch self {
+        case .batch(let workload):
+            let transcription = try await workload.run(
+                services: services,
+                timeoutSeconds: timeoutSeconds)
+            try workload.validate(transcription)
+        case .indexing:
+            try await BenchMode.prepareIndexingResourceWarmup(
+                runtime: services.semanticEmbeddingRuntime,
+                telemetry: services.workloadTelemetry,
+                timeoutSeconds: timeoutSeconds)
+        }
     }
 
     @MainActor

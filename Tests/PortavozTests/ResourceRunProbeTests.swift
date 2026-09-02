@@ -1,3 +1,4 @@
+import ApplicationKit
 import Foundation
 import PortavozCore
 import XCTest
@@ -474,6 +475,51 @@ final class ResourceRunProbeTests: XCTestCase {
                 $0 as? BenchIndexingResourceError,
                 .invalidIterations)
         }
+    }
+
+    @MainActor
+    func testIndexingResourceWarmupExecutesExactCorpusWithoutPreparingRuntime()
+        async throws
+    {
+        let embedder = IndexingWarmupEmbedder()
+        let runtime = IndexingWarmupRuntime(embedder: embedder)
+
+        try await BenchMode.prepareIndexingResourceWarmup(
+            runtime: runtime,
+            telemetry: .disabled,
+            timeoutSeconds: 30)
+
+        let requests = await runtime.requests()
+        let batchSizes = await embedder.observedBatchSizes()
+        XCTAssertEqual(requests.prepare, [])
+        XCTAssertEqual(requests.borrow, [false])
+        XCTAssertEqual(batchSizes, [256, 256, 256, 256])
+    }
+
+    @MainActor
+    func testIndexingResourceWarmupFailsClosedBeforeBorrowWithoutAssets() async {
+        let embedder = IndexingWarmupEmbedder()
+        let runtime = IndexingWarmupRuntime(
+            assetsAvailable: false,
+            embedder: embedder)
+
+        do {
+            try await BenchMode.prepareIndexingResourceWarmup(
+                runtime: runtime,
+                telemetry: .disabled,
+                timeoutSeconds: 30)
+            XCTFail("Expected missing embedding assets to fail the warmup")
+        } catch {
+            XCTAssertEqual(
+                error as? BenchIndexingResourceError,
+                .assetsNotReady)
+        }
+
+        let requests = await runtime.requests()
+        let batchSizes = await embedder.observedBatchSizes()
+        XCTAssertEqual(requests.prepare, [])
+        XCTAssertEqual(requests.borrow, [])
+        XCTAssertEqual(batchSizes, [])
     }
 
     @MainActor
@@ -1078,5 +1124,63 @@ private final class ResourceProbeEventRecorder: @unchecked Sendable {
         lock.lock()
         storage += 1
         lock.unlock()
+    }
+}
+
+private actor IndexingWarmupRuntime: SemanticEmbeddingRuntimeClient {
+    private let assetsAvailable: Bool
+    private let embedder: IndexingWarmupEmbedder
+    private var prepareRequests: [Bool] = []
+    private var borrowRequests: [Bool] = []
+
+    init(
+        assetsAvailable: Bool = true,
+        embedder: IndexingWarmupEmbedder
+    ) {
+        self.assetsAvailable = assetsAvailable
+        self.embedder = embedder
+    }
+
+    var hasAvailableAssets: Bool {
+        get async { assetsAvailable }
+    }
+
+    func semanticEmbeddingProfile() -> SemanticEmbeddingProfile? {
+        semanticTestProfile()
+    }
+
+    func prepare(allowAssetDownload: Bool) {
+        prepareRequests.append(allowAssetDownload)
+    }
+
+    func withPreparedEmbedding<Result: Sendable>(
+        allowAssetDownload: Bool,
+        operation: @Sendable (
+            _ embedder: any SemanticTextEmbedding
+        ) async throws -> Result
+    ) async throws -> Result {
+        borrowRequests.append(allowAssetDownload)
+        return try await operation(embedder)
+    }
+
+    func requests() -> (prepare: [Bool], borrow: [Bool]) {
+        (prepareRequests, borrowRequests)
+    }
+}
+
+private actor IndexingWarmupEmbedder: SemanticTextEmbedding {
+    private var batchSizes: [Int] = []
+
+    func semanticEmbeddingProfile() -> SemanticEmbeddingProfile {
+        semanticTestProfile()
+    }
+
+    func vectors(for texts: [String]) -> [[Float]] {
+        batchSizes.append(texts.count)
+        return texts.map { _ in [1, 0] }
+    }
+
+    func observedBatchSizes() -> [Int] {
+        batchSizes
     }
 }

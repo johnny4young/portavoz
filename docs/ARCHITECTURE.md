@@ -3333,12 +3333,15 @@ authority for physical footprint, thermal, power, and device interference.
 The native Release collector covers steady idle, active recording, Stop,
 Refine, Summary, Ask, standalone semantic indexing, and both concurrent
 recording scenarios without making Instruments XML part of the evidence
-contract. The indexing cell prepares
-already-installed Apple Latin embedding assets before its measured window,
-then drains 1,024 fixed public English segments in four bounded batches inside
-a disposable database. Completion requires every segment to carry an embedding
-or deliberate micro-segment marker. A benchmark-only observer receives the same
-closed telemetry events while
+contract. The indexing cells prepare already-installed Apple Latin embedding
+assets and then execute and validate the exact semantic-indexing path once
+against an independent in-memory 1,024-segment public corpus before their
+measured windows. The warmup uses the same runtime, content-free telemetry,
+256-row batches, and hard timeout, but never the measured store: that disposable
+store remains pending until the probe opens and then drains its own 1,024 fixed
+public English segments in four bounded batches. Completion requires every
+segment to carry an embedding or deliberate micro-segment marker. A
+benchmark-only observer receives the same closed telemetry events while
 `proc_pid_rusage(RUSAGE_INFO_CURRENT)`, `ProcessInfo`, volume capacity, and
 IOKit power-source APIs sample CPU time, peak physical footprint, energy, disk
 I/O, minimum free disk, thermal state, low-power mode, and invariant power
@@ -3531,15 +3534,18 @@ and produces no comparable evidence. Direct CLI experiments may explicitly opt
 into an OS asset request, but such preparation is not admitted inside a paired
 evidence run.
 
-Indexing prepares
-the already-installed embedding runtime before sampling, drains 1,024 fixed
-public segments through the real ApplicationKit operation, and requires no
-missing rows afterward. Recording plus indexing runs in another real windowed
-recording process. It prepares the same fixture and embedding assets before
-measurement, arms one probe before Start, executes `IndexSemanticCorpus` only
-after recording succeeds, and freezes process metrics before Stop. The probe
-remains subscribed until Stop closes spans that were active inside the window,
-so live-transcription finishes are retained without admitting Stop-only work.
+Indexing prepares the already-installed embedding runtime and then executes one
+validated, unmeasured `IndexSemanticCorpus.all` over an independent in-memory
+copy of the 1,024-segment public fixture. The measured disposable store remains
+pending; only after that exact-use warmup does the probe open and drain it
+through the real ApplicationKit operation, requiring no missing rows afterward.
+Recording plus indexing runs in another real windowed recording process. It
+prepares the measured fixture and embedding assets, executes the same independent
+exact-use warmup, then applies host readiness before measurement. It arms one
+probe before Start, executes `IndexSemanticCorpus` only after recording
+succeeds, and freezes process metrics before Stop. The probe remains subscribed
+until Stop closes spans that were active inside the window, so
+live-transcription finishes are retained without admitting Stop-only work.
 Recording plus batch prepares the same fixed public non-silent audio fixture
 and executes one validated, unmeasured utility-priority transcription through
 the same shared Parakeet runtime and production batch scheduler before

@@ -89,6 +89,10 @@ extension BenchMode {
                     services: services,
                     iterations: configuration.iterations,
                     scratchRoot: probe.outputURL(named: "indexing-stores"))
+                try await prepareIndexingResourceWarmup(
+                    runtime: services.semanticEmbeddingRuntime,
+                    telemetry: services.workloadTelemetry,
+                    timeoutSeconds: configuration.timeoutSeconds)
                 try await probe.measure(scenario: "indexing") {
                     for workload in workloads {
                         try Task.checkCancellation()
@@ -118,6 +122,27 @@ extension BenchMode {
             telemetry: services.workloadTelemetry,
             iteration: 1,
             prepareRuntime: true)
+    }
+
+    /// Faults the exact semantic-indexing use case against an independent
+    /// in-memory corpus before a resource probe opens. The measured store must
+    /// remain pending: warming it would turn the concurrent operation into a
+    /// no-op and produce false steady-state evidence.
+    @MainActor
+    static func prepareIndexingResourceWarmup(
+        runtime: any SemanticEmbeddingRuntimeClient,
+        telemetry: ResourceWorkloadTelemetry,
+        timeoutSeconds: Int
+    ) async throws {
+        let store = try MeetingStore.inMemory()
+        let workload = try await prepareIndexingResourceWorkload(
+            store: store,
+            runtime: runtime,
+            telemetry: telemetry,
+            iteration: 0,
+            prepareRuntime: false)
+        let result = try await workload.run(timeoutSeconds: timeoutSeconds)
+        try await workload.validate(result)
     }
 
     @MainActor
@@ -182,9 +207,14 @@ extension BenchMode {
     ) {
         let segmentCount = 1_024
         let now = Date()
-        let title = iteration == 1
-            ? "Semantic indexing resource benchmark"
-            : "Semantic indexing resource benchmark \(iteration)"
+        let title = switch iteration {
+        case 0:
+            "Semantic indexing resource warmup"
+        case 1:
+            "Semantic indexing resource benchmark"
+        default:
+            "Semantic indexing resource benchmark \(iteration)"
+        }
         let meeting = Meeting(
             title: title,
             startedAt: now.addingTimeInterval(-TimeInterval(segmentCount * 3)),

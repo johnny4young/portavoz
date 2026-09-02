@@ -3590,15 +3590,20 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   pending-at-seed/ready-before/ready-after corpus evidence, and validated
   citation-digest evidence. The native probe refuses malformed
   lifecycle, digest, milestone order, duplicate output, or incomplete success.
-  Standalone indexing prepares already-installed Apple embedding assets and a
-  fixed 1,024-segment corpus before measurement, then drains it through the
-  real ApplicationKit operation. Recording plus indexing prepares that same
-  workload, starts the real product recording lifecycle over the tracked
-  public synthetic dual-channel input, runs indexing only after Start succeeds,
-  and keeps recording active until the operation completes. Its process metrics
-  freeze before Stop while already-active live-transcription spans may still
-  publish their terminal outcome. Recording plus batch runs one validated,
-  unmeasured transcription of the fixed public AIFF through the shared
+  Standalone indexing prepares already-installed Apple embedding assets and its
+  fixed 1,024-segment measured corpus, then executes and validates the exact
+  `IndexSemanticCorpus.all` path once over an independent in-memory copy before
+  opening the probe. The warmup uses the same runtime, content-free telemetry,
+  256-row batches, and hard timeout without downloading assets; the measured
+  store stays pending and is then drained through the real ApplicationKit
+  operation. Recording plus indexing prepares that same measured workload and
+  independent exact-use warmup before host readiness, starts the real product
+  recording lifecycle over the tracked public synthetic dual-channel input,
+  runs indexing only after Start succeeds, and keeps recording active until the
+  operation completes. Warmup failure is fatal and cannot publish a sample.
+  Process metrics freeze before Stop while already-active live-transcription
+  spans may still publish their terminal outcome. Recording plus batch runs one
+  validated, unmeasured transcription of the fixed public AIFF through the shared
   Parakeet runtime and production post-capture scheduler before measurement;
   runtime acquisition alone does not establish residency for the lazily paged
   file-transcription path. The measured transcription still starts only after

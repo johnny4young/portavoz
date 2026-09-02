@@ -5164,6 +5164,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(recordingRunner.contains(
             "concurrentWorkload.prepareForMeasurement"))
         XCTAssertTrue(recordingRunner.contains(
+            "BenchMode.prepareIndexingResourceWarmup"))
+        XCTAssertTrue(recordingRunner.contains(
             "let transcription = try await workload.run"))
         XCTAssertTrue(recordingRunner.contains(
             "try workload.validate(transcription)"))
@@ -5245,6 +5247,33 @@ final class ArchitectureDependencyTests: XCTestCase {
             "IndexSemanticCorpus("))
         XCTAssertTrue(indexingBench.contains(
             "try await workload.run("))
+        XCTAssertTrue(indexingBench.contains(
+            "let store = try MeetingStore.inMemory()"))
+        XCTAssertTrue(indexingBench.contains(
+            "store: services.store"))
+        let standaloneIndexWarmup = try XCTUnwrap(indexingBench.range(
+            of: "try await prepareIndexingResourceWarmup("))
+        let standaloneIndexProbe = try XCTUnwrap(indexingBench.range(
+            of: "try await probe.measure(scenario: \"indexing\")"))
+        XCTAssertLessThan(
+            standaloneIndexWarmup.lowerBound,
+            standaloneIndexProbe.lowerBound)
+        let indexWarmupDeclaration = try XCTUnwrap(indexingBench.range(
+            of: "static func prepareIndexingResourceWarmup("))
+        let indexWorkloadsDeclaration = try XCTUnwrap(indexingBench.range(
+            of: "private static func prepareIndexingResourceWorkloads("))
+        let indexWarmupBody = String(indexingBench[
+            indexWarmupDeclaration.lowerBound..<indexWorkloadsDeclaration.lowerBound
+        ])
+        XCTAssertTrue(indexWarmupBody.contains(
+            "let store = try MeetingStore.inMemory()"))
+        XCTAssertTrue(indexWarmupBody.contains("iteration: 0"))
+        XCTAssertTrue(indexWarmupBody.contains("prepareRuntime: false"))
+        XCTAssertTrue(indexWarmupBody.contains(
+            "let result = try await workload.run("))
+        XCTAssertTrue(indexWarmupBody.contains(
+            "try await workload.validate(result)"))
+        XCTAssertFalse(indexWarmupBody.contains("services.store"))
         XCTAssertTrue(benchMode.contains(
             "runsIsolatedBenchmark"))
         let benchmarkExit = try XCTUnwrap(app.range(
