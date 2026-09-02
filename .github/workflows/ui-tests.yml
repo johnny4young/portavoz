@@ -83,8 +83,9 @@ jobs:
     runs-on: macos-26
     # Localization/shared-harness and manual integration runs legitimately
     # select all 105 tests in both locales. One build feeds independent locale
-    # attempts; both receipts are preserved before the deterministic gate.
-    timeout-minutes: 60
+    # attempts; both receipts are preserved before the deterministic gate. This
+    # 90-minute job-orchestration ceiling is not a per-test/runtime budget.
+    timeout-minutes: 90
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     outputs:

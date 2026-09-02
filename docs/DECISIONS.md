@@ -17784,3 +17784,34 @@ physical Sequoia/Tahoe, battery behavior, signed distribution, CloudKit,
 assistive technology, or field performance. The failed D461 candidate remains
 failed; D462 needs the ordinary preflight, mandatory minimum-safe bilingual
 real-app XCUITest, clean Conventional Commit, and one fresh exact candidate.
+
+## D463 — Budget the complete hosted bilingual job, not individual tests (Sep 2026)
+
+**Context:** D461's exact-head first-attempt hosted UI run built the shared
+products in 9 minutes 26 seconds and completed all 105 English journeys without
+a functional failure. Spanish then ran for about 21 minutes before GitHub
+cancelled the enclosing `scoped-ui-tests` job at its exact 60-minute ceiling.
+The preserved 346 MiB artifact contains the complete English schema-3 runtime
+and execution receipts but no finalized Spanish receipt. The classifier and
+gate correctly failed closed and emitted no verification anchor. Previous
+hosted runs had completed near 53 minutes; current legitimate build and locale
+variance therefore consumed an orchestration ceiling that had become tighter
+than the evidence it was intended to preserve.
+
+**Decision:** raise only the enclosing hosted `scoped-ui-tests` job timeout from
+60 to 90 minutes. Keep one shared build, sequential independent English and
+Spanish attempts, result-bundle preservation before classification, and the
+first-attempt exact-head anchor rule. Keep every selector, assertion, XCTest
+wait, controlled-host per-journey/catalogue/p95 budget, hosted runtime receipt,
+classifier outcome, and no-retry policy unchanged. Ratchet the 90-minute value
+inside the exact job section so unrelated workflow timeouts cannot satisfy the
+contract.
+
+**Consequences:** one legitimate complete bilingual run has roughly 30 percent
+headroom over the observed approximately 69-minute build-plus-two-locale path,
+including upload and classification, without making a slow or incomplete test
+green. A job reaching 90 minutes still cancels and fails closed, cannot publish
+an incremental verification anchor, and must be diagnosed rather than blindly
+rerun. Hosted timing remains heterogeneous functional evidence, not controlled
+performance authority or physical Sequoia/Tahoe, assistive-technology, signed-
+distribution, CloudKit, provider, or field evidence.

@@ -102,6 +102,21 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertNotIn("test-iterations", workflow)
         self.assertIn("cannot manufacture qualifying UI evidence", workflow)
 
+    def test_complete_bilingual_ui_job_has_bounded_orchestration_headroom(self):
+        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
+            encoding="utf-8"
+        )
+        scoped_job = workflow.split("  scoped-ui-tests:\n", 1)[1].split(
+            "\n  ui-test-gate:\n", 1
+        )[0]
+
+        self.assertEqual(scoped_job.count("    timeout-minutes: 90\n"), 1)
+        self.assertNotIn("timeout-minutes: 60", scoped_job)
+        self.assertIn(
+            "90-minute job-orchestration ceiling is not a per-test/runtime budget",
+            scoped_job,
+        )
+
     def test_repository_contracts_have_one_linux_owner_before_macos(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")

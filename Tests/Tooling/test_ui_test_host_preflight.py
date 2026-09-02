@@ -463,7 +463,6 @@ class UITestHostPreflightTests(unittest.TestCase):
         self.assertIn(command, hygiene)
         self.assertNotIn(command, workflow)
         self.assertIn("make test-ui-run", workflow)
-        self.assertIn("timeout-minutes: 60", workflow)
 
 
 if __name__ == "__main__":

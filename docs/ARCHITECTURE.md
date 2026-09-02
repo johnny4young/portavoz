@@ -5699,7 +5699,10 @@ reliability evidence retained from 9 Aug, is:
 - hosted pull-request UI runs compile once, execute every selected locale as an
   independent first attempt, preserve all result bundles, and then apply one
   fail-closed functional/receipt classifier; one locale cannot prevent the next
-  selected locale from producing evidence;
+  selected locale from producing evidence. The enclosing job has a 90-minute
+  orchestration ceiling so the complete 105-case bilingual catalogue can retain
+  both locale receipts under observed hosted variance; this does not alter any
+  per-journey wait, assertion, runtime budget, selector, or retry policy;
 - every UI run emits content-free runtime and execution receipts. Controlled
   local/stable-Mac integration and release runs enforce the unchanged per-journey, exact-
   catalogue, total-duration, and p95 budgets. Heterogeneous GitHub-hosted macOS

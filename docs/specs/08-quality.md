@@ -4263,6 +4263,25 @@ sentinel is source-independent host admission for the exact reference machine;
 it is not Sequoia/Tahoe, older-hardware, battery, signed-distribution, or field
 performance certification.
 
+### Hosted bilingual orchestration ceiling (D463)
+
+The exact D461 first-attempt hosted UI run retained one complete 105/105 English
+functional/runtime receipt after a 9-minute 26-second shared build, then was
+cancelled while Spanish was still running when the enclosing job reached its
+exact 60-minute wall limit. No Spanish receipt was finalized, the classifier
+correctly failed closed, and no verification anchor was published. The
+preserved English receipt and missing Spanish receipt distinguish orchestration
+exhaustion from a product assertion, skip, malformed receipt, or green retry.
+
+The `scoped-ui-tests` job now has a 90-minute global orchestration ceiling. It
+is sized for one build plus both complete sequential locales with bounded
+hosted variance and cleanup/upload/classification headroom. It is not a product
+or per-test runtime budget: selectors, assertions, test waits, the controlled-
+host per-journey/catalogue/p95 budgets, locale order, artifact preservation,
+first-attempt requirement, no-retry rule, and fail-closed classifier remain
+unchanged. A timeout still blocks the UI gate and cannot publish an incremental
+verification anchor.
+
 ## Measured numbers (MacBook Pro M4 Max 36 GB, macOS 26, Jul 2026)
 
 | Metric | Target | Measured |
@@ -5150,9 +5169,11 @@ never reads a window title or bounds, dismisses a prompt, resets LaunchServices,
 or terminates another process. Persistent `testmanagerd`, unit-test processes,
 `build-for-testing`, and idle `xcodebuildmcp` helpers are not evidence of an
 active UI run. Eighteen injectable tooling cases and source-policy ratchets pin
-those classifications. The hosted bilingual job keeps a 60-minute fail-safe
-ceiling; the current 103-case-per-locale controlled evidence needs about 29
-minutes together after one shared build, without parallel locale contention.
+those classifications. D463 gives the hosted bilingual job a 90-minute global
+orchestration ceiling; the current 105-case-per-locale catalogue still runs
+sequentially from one shared build without parallel locale contention. That
+ceiling does not replace or widen any per-test or controlled-host runtime
+budget.
 
 The final gate passed the strict current-SDK build, 2,453 package tests with 14
 explicit skips and zero failures, SwiftLint with zero violations across 675
