@@ -17692,10 +17692,48 @@ set, and fail-closed behavior unchanged.
 
 **Consequences:** the next blocked receipt can identify which safe executable
 class owned the interference without exposing host process inventory or
-granting the runner authority to terminate anything. Ready receipts carry an
-empty contributor list. Existing schema-1 receipts remain historical evidence
-and cannot qualify changed source. D460 itself requires ordinary preflight,
+granting the runner authority to terminate anything. A sample with zero
+observed interference carries an empty contributor list; a ready sample may
+retain positive contributors below the unchanged two-percent ceiling. Existing
+schema-1 receipts remain historical evidence and cannot qualify changed source.
+D460 itself requires ordinary preflight,
 mandatory minimum-safe bilingual XCUITest, a clean Conventional Commit, and one
 fresh exact candidate; D459's failed candidate remains failed and is not
 retried. Physical Sequoia/Tahoe, signed distribution, production CloudKit,
 assistive technology, and field behavior remain separate evidence gates.
+
+## D461 — Converge the dependency baseline before final review (Sep 2026)
+
+**Context:** exact D460 source passed its complete local candidate and its first-
+attempt PR-head hosted gates, but `main` then advanced by one dependency-only
+commit. That commit resolves FluidAudio 0.15.6, pins WhisperKit 1.1.0, and
+resolves Sparkle 2.9.6. Asking for final human review on the older graph would
+either review a stale candidate or defer dependency conflict and qualification
+risk until after approval. The D460 decision text also overclaimed that every
+ready readiness sample had no contributors, while its own qualifying receipt
+truthfully retained 0.7 percent symbolication below the unchanged two-percent
+ceiling. The current package inventory is 2,917 tests rather than the stale
+2,910 documentation ratchet.
+
+**Decision:** merge the exact current `main` dependency commit into the PR
+branch before final review, without changing Portavoz product code or relaxing
+any package, model, performance, resource, leak, or UI gate. Correct the D460
+wording and current quality inventory in the same bounded integration commit.
+Validate public SwiftPM artifacts with SwiftPM's official `--disable-keychain`
+option when the local credential service blocks public artifact resolution;
+this changes only credential lookup, not the package graph, artifact digests,
+or build products. Treat the resulting two-parent commit as new source: run
+warnings-as-errors, all package tests, strict lint, repository hygiene, and the
+minimum safe bilingual real-app XCUITest before publication, then require one
+fresh exact candidate and first-attempt hosted evidence for that exact head.
+
+**Consequences:** the independent reviewer sees the same dependency graph that
+will be proposed for integration, and no D460 receipt is reused for changed
+source. FluidAudio and WhisperKit behavior is re-exercised by the installed-
+asset candidate lanes; Sparkle remains subject to the later signed distribution
+gate. A Keychain-stalled dependency download is retained as an infrastructure
+failure rather than a product failure, and no retry can manufacture qualifying
+evidence after a real test or admission failure. Passing D461 still does not
+provide independent review, integration into `main`, exact-main qualification,
+signed/notarized distribution, production CloudKit, physical Sequoia/Tahoe,
+assistive-technology, or field evidence.

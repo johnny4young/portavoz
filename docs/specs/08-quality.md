@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,910 cases (15 environment-gated) + 105
+Status: the package inventory contains 2,917 cases (15 environment-gated) + 105
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -5636,7 +5636,7 @@ and all other generation errors propagate unchanged.
 The canonical six-class model gate now compiles and runs in Release. Its
 Parakeet case accepts any spoken WAV through segment count, lexical-character
 count, and timestamp bounds only. DEBUG builds skip before opening that
-fixture because FluidAudio 0.15.5 has no public log-level control and mirrors
+fixture because FluidAudio 0.15.6 has no public log-level control and mirrors
 partial transcript diagnostics to stderr. The runner assigns captured logs
 mode 0600, rejects any FluidAudio DEBUG line, withholds raw failure output, and
 removes each log after normal completion or shell interruption. Signal

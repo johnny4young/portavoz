@@ -2660,7 +2660,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,910 cases "
+            "package inventory contains 2,917 cases "
                 + "(15 environment-gated) + 105"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -11585,7 +11585,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(makefile.contains(#"tail -20 "$$log""#))
 
         XCTAssertTrue(architecture.contains("4096-token guided-generation context"))
-        XCTAssertTrue(intelligenceSpec.contains("FluidAudio 0.15.5"))
+        XCTAssertTrue(intelligenceSpec.contains("FluidAudio 0.15.6"))
         XCTAssertTrue(decisions.contains("## D380"))
     }
 

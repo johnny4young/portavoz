@@ -142,7 +142,7 @@ this composer and corrected text remains intentionally unmaterialized.
 | Role | Engine | Status |
 |---|---|---|
 | Live (`liveTranscription`) | Parakeet TDT 0.6B v3 int8 (FluidAudio) | ✅ 0.53 s p95 measured |
-| Quality (`finalTranscription`) | Whisper large-v3-turbo (WhisperKit 1.0.0, exact pin) | ✅ 23–42x measured |
+| Quality (`finalTranscription`) | Whisper large-v3-turbo (WhisperKit 1.1.0, exact pin) | ✅ 23–42x measured |
 | Research-only live challenger | Nemotron 3.5 ASR Latin 1120 ms (FluidAudio) | Adapter complete; Portavoz evidence not accepted |
 | Multiple per role with recommender | — | Planned (D25/M12) |
 
@@ -434,7 +434,7 @@ effort (D65).
 3. **Shared harness**: `LiveTranscriptionBench` (TranscriptionKit) paces the file in real time (1 s chunks) and measures finalization lag. Entry points: `portavoz-cli bench-live --engine parakeet` and, for speech, `Portavoz.app/Contents/MacOS/portavoz-app --bench-live <file> [--seconds] [--language]` (hidden launch argument: runs in-bundle, prints to stdout, exits).
 4. **Accuracy lane (MODEL-001, Jul 2026)**: `TranscriptionAccuracy` (TranscriptionKit, pure, 5 tests) computes WER and CER with rolling-buffer Levenshtein over normalization that keeps Spanish accents — they are phonemic ("papa" vs "papá" is a real error), while case, punctuation, and whitespace are not. The bench result now carries every final row (`Result.hypothesis`), and `bench-live` gains `--reference <txt>` (scores WER/CER against a plain-text transcript) and `--output <json>` (one evidence artifact per run, same convention as the scale benches), so an engine comparison leaves committed numbers instead of prose. The quality spec's rule stands: third-party accuracy tables are citations, never our measurements.
 5. **Nemotron challenger (MODEL-001/D355, Aug 2026)**: FluidAudio
-   0.15.5—the exact resolved dependency—contains
+   0.15.6—the exact resolved dependency—contains
    `StreamingNemotronMultilingualAsrManager` and tagged downloadable Nemotron
    3.5 ASR Streaming Multilingual 0.6B CoreML variants. The Latin-vocabulary
    ship serves English and Spanish, and the upstream benchmark documentation

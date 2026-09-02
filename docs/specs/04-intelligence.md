@@ -128,7 +128,7 @@ Requires macOS 26 + active Apple Intelligence (`unavailabilityReason()` provides
 
 The canonical real-model preflight runs all six gated classes in the SwiftPM
 Release configuration. This is both candidate-representative and a privacy
-boundary: FluidAudio 0.15.5 mirrors DEBUG diagnostics containing partial
+boundary: FluidAudio 0.15.6 mirrors DEBUG diagnostics containing partial
 transcripts to stderr and exposes no public log-level control. The Parakeet
 integration test therefore skips before opening a fixture in a DEBUG build,
 the gate rejects any FluidAudio DEBUG line, and raw failure logs are withheld.
