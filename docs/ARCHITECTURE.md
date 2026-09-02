@@ -3356,7 +3356,14 @@ counter fails the run without producing passing evidence.
 `scripts/run-resource-baseline.sh` requires a clean worktree, builds one exact
 Release version/build/commit, copies it to a uniquely identified scratch app,
 and records at least three runs into owner-only fragments before atomically
-publishing a host receipt. User-supplied output roots are normalized to
+publishing a host receipt. The three launches for one scenario family stay
+adjacent before the collector advances to the next family. The lifecycle-owned
+idle, recording, and Stop windows remain one combined family; the two
+concurrent-recording families and Refine, Summary, Ask, and indexing each keep
+their own contiguous block. Every launch is still a fresh process with its
+exact preparation. This prevents an unrelated model-heavy family from changing
+shared macOS cache or accelerator residency between samples that the stability
+evaluator compares. User-supplied output roots are normalized to
 absolute repository paths before crossing into the GUI benchmark process, so
 relative Make overrides cannot escape to that process's read-only working
 volume. A process-owning launch preflight must first publish one fixed,

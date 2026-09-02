@@ -5222,6 +5222,13 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertLessThan(
             refinePreparation.lowerBound,
             repeatedResourceRuns.lowerBound)
+        XCTAssertEqual(
+            runner.components(
+                separatedBy: "for ((run = 1; run <= RUNS; run++)); do"
+            ).count - 1,
+            7)
+        XCTAssertTrue(runner.contains(
+            "Keep the three samples for each scenario family adjacent"))
         XCTAssertTrue(benchMode.contains(
             "runRefineResourceBenchIfRequested"))
         XCTAssertTrue(benchMode.contains(

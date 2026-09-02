@@ -17815,3 +17815,45 @@ an incremental verification anchor, and must be diagnosed rather than blindly
 rerun. Hosted timing remains heterogeneous functional evidence, not controlled
 performance authority or physical Sequoia/Tahoe, assistive-technology, signed-
 distribution, CloudKit, provider, or field evidence.
+
+## D464 — Keep comparable resource samples adjacent (Sep 2026)
+
+**Context:** the one exact clean `26283c37` candidate passed its first
+authoritative performance ledger, deterministic release scope, 2,917 package
+tests, correction benchmark, strict lint, 25/25 recording stress, selected
+bilingual XCUITest with zero harness adjustments, public fixtures, all six
+installed-model lanes, and the four-path zero-leak Apuntador baseline. Resource
+collection then completed, but candidate admission rejected Stop as unstable:
+wall samples were 140.255, 263.791, and 906.912 milliseconds, while process CPU
+was 232.975, 427.332, and 1,226.974 milliseconds. Both distributions exceeded
+the unchanged 1.25 p95/p50 ratio and 100-millisecond absolute floor.
+
+The collector owned one round-major loop. Every comparable lifecycle sample
+was therefore separated by recording-plus-indexing, recording-plus-batch,
+Refine, Summary, Ask, and standalone indexing processes. Those launches were
+individually isolated and prepared, but they could not reset shared macOS file
+cache, model-page, or accelerator residency. A later Stop observation thus
+inherited a different sequence of model-heavy host state from the observation
+it was compared with, even while power and thermal state remained nominal.
+
+**Decision:** collect each scenario family as one contiguous three-run block
+before advancing to the next family. Idle, recording, and Stop remain together
+because one real recording lifecycle owns those three measurement windows.
+Recording-plus-indexing, recording-plus-batch, Refine, Summary, Ask, and
+standalone indexing each retain their own block and ordering. Keep the same
+fresh copied-app process per sample, disposable stores and audio roots, exact
+fixtures, preparations, process watchdogs, counters, raw receipt shape, sample
+count, 1.25 ratio, 100-millisecond floor, and candidate fail-closed policy.
+Source-level tests require exactly seven grouped loops and bind each emitted
+fragment to the loop that owns its scenario.
+
+**Consequences:** samples interpreted as one distribution are no longer spaced
+across unrelated multi-gigabyte model workloads, while each measured operation
+still pays its real isolated process cost and exact declared preparation. This
+is not a threshold relaxation, evidence discard, scenario retry, or
+qualification of `26283c37`; that candidate remains failed and emitted no
+`qualification.json`. D464 requires ordinary preflight, mandatory minimum-safe
+bilingual real-app XCUITest, a clean Conventional Commit, and one new exact
+candidate. The matrix still cannot certify first-use latency, physical
+Sequoia/Tahoe hardware, TCC and device routes, signed distribution, production
+CloudKit, assistive technology, or field behavior.

@@ -336,17 +336,14 @@ fi
 fragments="$COLLECTION/fragments"
 sample_arguments=()
 ask_pipeline_arguments=()
+
+# Keep the three samples for each scenario family adjacent. Every app launch is
+# still isolated, independently warmed, and measured exactly once; grouping only
+# prevents an unrelated model-heavy family from changing host cache/ANE state
+# between samples that the stability evaluator compares with each other.
 for ((run = 1; run <= RUNS; run++)); do
     audio_root="$RUN_ROOT/audio-$run"
-    recording_indexing_audio_root="$RUN_ROOT/audio-recording-indexing-$run"
-    recording_batch_audio_root="$RUN_ROOT/audio-recording-batch-$run"
     recording_log="$RUN_ROOT/recording-$run.log"
-    recording_indexing_log="$RUN_ROOT/recording-indexing-$run.log"
-    recording_batch_log="$RUN_ROOT/recording-batch-$run.log"
-    refine_log="$RUN_ROOT/refine-$run.log"
-    summary_log="$RUN_ROOT/summary-$run.log"
-    ask_log="$RUN_ROOT/ask-$run.log"
-    indexing_log="$RUN_ROOT/indexing-$run.log"
     mkdir -p "$audio_root"
     export PORTAVOZ_AUDIO_ROOT="$audio_root"
 
@@ -372,7 +369,14 @@ for ((run = 1; run <= RUNS; run++)); do
         [[ -f "$recording_log" ]] && cat "$recording_log" >&2
         fail "run $run did not produce all three exact-shaped samples"
     fi
+    sample_arguments+=(--sample "idle=$idle_sample")
+    sample_arguments+=(--sample "recording=$recording_sample")
+    sample_arguments+=(--sample "stop=$stop_sample")
+done
 
+for ((run = 1; run <= RUNS; run++)); do
+    recording_indexing_audio_root="$RUN_ROOT/audio-recording-indexing-$run"
+    recording_indexing_log="$RUN_ROOT/recording-indexing-$run.log"
     echo "Collecting recording plus indexing resource sample $run of ${RUNS}…"
     mkdir -p "$recording_indexing_audio_root"
     export PORTAVOZ_AUDIO_ROOT="$recording_indexing_audio_root"
@@ -398,7 +402,14 @@ for ((run = 1; run <= RUNS; run++)); do
             cat "$recording_indexing_log" >&2
         fail "run $run did not produce the recording plus indexing sample"
     fi
+    sample_arguments+=(
+        --sample "recording-indexing=$recording_indexing_sample"
+    )
+done
 
+for ((run = 1; run <= RUNS; run++)); do
+    recording_batch_audio_root="$RUN_ROOT/audio-recording-batch-$run"
+    recording_batch_log="$RUN_ROOT/recording-batch-$run.log"
     echo "Collecting recording plus batch resource sample $run of ${RUNS}…"
     mkdir -p "$recording_batch_audio_root"
     export PORTAVOZ_AUDIO_ROOT="$recording_batch_audio_root"
@@ -424,7 +435,14 @@ for ((run = 1; run <= RUNS; run++)); do
             cat "$recording_batch_log" >&2
         fail "run $run did not produce the recording plus batch sample"
     fi
+    sample_arguments+=(
+        --sample "recording-batch=$recording_batch_sample"
+    )
+done
 
+for ((run = 1; run <= RUNS; run++)); do
+    refine_log="$RUN_ROOT/refine-$run.log"
+    export PORTAVOZ_AUDIO_ROOT="$RUN_ROOT/audio-recording-batch-$run"
     echo "Collecting Refine resource sample $run of ${RUNS}…"
     if ! run_benchmark_app \
         -ApplePersistenceIgnoreState YES \
@@ -444,7 +462,12 @@ for ((run = 1; run <= RUNS; run++)); do
         [[ -f "$refine_log" ]] && cat "$refine_log" >&2
         fail "run $run did not produce the exact-shaped Refine sample"
     fi
+    sample_arguments+=(--sample "refine=$refine_sample")
+done
 
+for ((run = 1; run <= RUNS; run++)); do
+    summary_log="$RUN_ROOT/summary-$run.log"
+    export PORTAVOZ_AUDIO_ROOT="$RUN_ROOT/audio-recording-batch-$run"
     echo "Collecting Summary resource sample $run of ${RUNS}…"
     if ! run_benchmark_app \
         -ApplePersistenceIgnoreState YES \
@@ -464,7 +487,12 @@ for ((run = 1; run <= RUNS; run++)); do
         [[ -f "$summary_log" ]] && cat "$summary_log" >&2
         fail "run $run did not produce the exact-shaped Summary sample"
     fi
+    sample_arguments+=(--sample "summary=$summary_sample")
+done
 
+for ((run = 1; run <= RUNS; run++)); do
+    ask_log="$RUN_ROOT/ask-$run.log"
+    export PORTAVOZ_AUDIO_ROOT="$RUN_ROOT/audio-recording-batch-$run"
     echo "Collecting Ask resource sample $run of ${RUNS}…"
     if ! run_benchmark_app \
         -ApplePersistenceIgnoreState YES \
@@ -485,7 +513,15 @@ for ((run = 1; run <= RUNS; run++)); do
         [[ -f "$ask_log" ]] && cat "$ask_log" >&2
         fail "run $run did not produce both exact-shaped Ask samples"
     fi
+    sample_arguments+=(--sample "ask=$ask_sample")
+    ask_pipeline_arguments+=(
+        --ask-pipeline-sample "$ask_pipeline_sample"
+    )
+done
 
+for ((run = 1; run <= RUNS; run++)); do
+    indexing_log="$RUN_ROOT/indexing-$run.log"
+    export PORTAVOZ_AUDIO_ROOT="$RUN_ROOT/audio-recording-batch-$run"
     echo "Collecting semantic indexing resource sample $run of ${RUNS}…"
     if ! run_benchmark_app \
         -ApplePersistenceIgnoreState YES \
@@ -505,22 +541,7 @@ for ((run = 1; run <= RUNS; run++)); do
         [[ -f "$indexing_log" ]] && cat "$indexing_log" >&2
         fail "run $run did not produce the exact-shaped indexing sample"
     fi
-    sample_arguments+=(--sample "ask=$ask_sample")
-    ask_pipeline_arguments+=(
-        --ask-pipeline-sample "$ask_pipeline_sample"
-    )
-    sample_arguments+=(--sample "idle=$idle_sample")
     sample_arguments+=(--sample "indexing=$indexing_sample")
-    sample_arguments+=(--sample "recording=$recording_sample")
-    sample_arguments+=(
-        --sample "recording-indexing=$recording_indexing_sample"
-    )
-    sample_arguments+=(
-        --sample "recording-batch=$recording_batch_sample"
-    )
-    sample_arguments+=(--sample "refine=$refine_sample")
-    sample_arguments+=(--sample "summary=$summary_sample")
-    sample_arguments+=(--sample "stop=$stop_sample")
 done
 
 python3 scripts/resource_baseline.py assemble \

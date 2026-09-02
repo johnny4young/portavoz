@@ -3661,8 +3661,14 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   than becoming false absence. Before the first scenario, a minimal
   process-owning launch probe must create one exact mode-0600 marker with
   exclusive creation and durable write; this catches dyld/LaunchServices
-  failures that `open -W` can otherwise report as success. All seven measured
-  app invocations per round use the copied signed bundle through
+  failures that `open -W` can otherwise report as success. The collector runs
+  all three isolated samples of one scenario family before advancing to the
+  next family, rather than interleaving model-heavy families between comparable
+  observations. Idle, recording, and Stop remain one lifecycle-owned block;
+  recording-plus-indexing, recording-plus-batch, Refine, Summary, Ask, and
+  indexing each have their own contiguous block. Sample count, process
+  isolation, family order, exact preparation, and stability thresholds do not
+  change. Every measured invocation uses the copied signed bundle through
   LaunchServices—never the inner SwiftUI/AppKit
   executable—so each scenario receives the same application resource policy,
   bundle identity, and environment. An in-app watchdog is armed before

@@ -983,6 +983,43 @@ class ResourceBaselineTests(unittest.TestCase):
             runner.index("Preparing Refine runtime before repeated measurement"),
             runner.index("for ((run = 1; run <= RUNS; run++))"),
         )
+        loop_marker = "for ((run = 1; run <= RUNS; run++)); do"
+        scenario_loops = runner.split(loop_marker)[1:]
+        expected_grouped_samples = [
+            (
+                "Collecting idle/recording/Stop resource sample",
+                ("idle=$idle_sample", "recording=$recording_sample", "stop=$stop_sample"),
+            ),
+            (
+                "Collecting recording plus indexing resource sample",
+                ("recording-indexing=$recording_indexing_sample",),
+            ),
+            (
+                "Collecting recording plus batch resource sample",
+                ("recording-batch=$recording_batch_sample",),
+            ),
+            ("Collecting Refine resource sample", ("refine=$refine_sample",)),
+            ("Collecting Summary resource sample", ("summary=$summary_sample",)),
+            (
+                "Collecting Ask resource sample",
+                ("ask=$ask_sample", "--ask-pipeline-sample"),
+            ),
+            (
+                "Collecting semantic indexing resource sample",
+                ("indexing=$indexing_sample",),
+            ),
+        ]
+        self.assertEqual(len(scenario_loops), len(expected_grouped_samples))
+        for loop, (message, samples) in zip(
+            scenario_loops,
+            expected_grouped_samples,
+            strict=True,
+        ):
+            body = loop.split("\ndone", 1)[0]
+            self.assertIn(message, body)
+            self.assertIn('export PORTAVOZ_AUDIO_ROOT=', body)
+            for sample in samples:
+                self.assertIn(sample, body)
         self.assertIn("-use-temp-store", runner)
         self.assertIn("--bench-resource-output", runner)
         self.assertIn("--bench-resource-run", runner)
@@ -1077,8 +1114,8 @@ class ResourceBaselineTests(unittest.TestCase):
         self.assertIn("(( MODEL_TIMEOUT <= 3600 ))", runner)
         self.assertIn('if [[ "$OUTPUT" != /* ]]; then', runner)
         self.assertIn('OUTPUT="$ROOT/$OUTPUT"', runner)
-        # One launch preflight, one Refine-runtime preparation, and seven
-        # measured app invocations per repeated run.
+        # One launch preflight, one Refine-runtime preparation, and one
+        # measured app invocation declaration per grouped scenario family.
         self.assertEqual(runner.count("run_benchmark_app"), 10)
         self.assertNotIn(
             'open -W -n "$APP/Contents/MacOS/portavoz-app"',
