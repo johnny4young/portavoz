@@ -264,7 +264,7 @@ class PerformanceHostReadinessTests(unittest.TestCase):
         self.assertEqual(receipt["outcome"], "blocked")
         self.assertEqual(receipt["observedSampleCount"], 9)
         self.assertTrue(all(
-            "build-or-symbolication" in item["reasons"]
+            "recognized-interference" in item["reasons"]
             for item in receipt["samples"]
         ))
         self.assertTrue(all(
@@ -285,7 +285,7 @@ class PerformanceHostReadinessTests(unittest.TestCase):
         cases = {
             "total-cpu": observation(total_cpu_percent=351.0),
             "load-average": observation(load_average_one_minute=7.1),
-            "build-or-symbolication": observation(interference_cpu_percent=2.1),
+            "recognized-interference": observation(interference_cpu_percent=2.1),
             "portavoz-app-active": observation(active_portavoz_app_count=1),
             "power-source": observation(power_source="battery"),
             "power-mode": observation(power_mode="low-power"),
@@ -302,18 +302,66 @@ class PerformanceHostReadinessTests(unittest.TestCase):
                 " 12.5 /usr/libexec/coresymbolicationd\n"
                 " 50.0 /usr/bin/swift-frontend\n"
                 " 7.0 /usr/bin/xcodebuild\n"
+                " 30.0 /usr/local/bin/node\n"
+                " 20.0 /Applications/Docker.app/Contents/MacOS/com.docker.backend\n"
+                " 10.0 /opt/homebrew/bin/go\n"
+                " 40.0 /tmp/chrome-headless-shell\n"
+                " 10.0 /tmp/ffmpeg-mac\n"
                 " 0.0 /Applications/Portavoz Dev.app/Contents/MacOS/portavoz-app\n"
                 " 0.0 /tmp/portavoz-app-helper\n"
             )
         )
-        self.assertEqual(total, 104.5)
-        self.assertEqual(interference, 69.5)
+        self.assertEqual(total, 214.5)
+        self.assertEqual(interference, 179.5)
         self.assertEqual(contributors, (
+            ("browser-automation", 40.0),
             ("build-driver", 7.0),
+            ("container-virtualization", 20.0),
+            ("external-build-runtime", 10.0),
+            ("javascript-runtime", 30.0),
+            ("media-processing", 10.0),
             ("swift-compiler", 50.0),
             ("symbolication", 12.5),
         ))
         self.assertEqual(active_portavoz_apps, 1)
+
+    def test_parenthesized_runtime_name_is_classified_without_retaining_it(self):
+        total, interference, contributors, active_portavoz_apps = (
+            readiness.parse_process_cpu(" 91.0 (node)\n")
+        )
+
+        self.assertEqual(total, 91.0)
+        self.assertEqual(interference, 91.0)
+        self.assertEqual(contributors, (("javascript-runtime", 91.0),))
+        self.assertEqual(active_portavoz_apps, 0)
+
+    def test_external_runtime_blocks_below_aggregate_cpu_and_load_limits(self):
+        clock = FakeClock()
+        policy = readiness.ReadinessPolicy(maximum_wait_seconds=1.0)
+        receipt = readiness.wait_for_readiness(
+            policy=policy,
+            source_commit=self.commit,
+            binary_sha256=self.binary,
+            sampler=lambda: observation(
+                total_cpu_percent=120.0,
+                load_average_one_minute=2.0,
+                interference_cpu_percent=3.0,
+                interference_contributors=(("javascript-runtime", 3.0),),
+            ),
+            calibrator=lambda: self.fail("external runtime must not calibrate"),
+            clock=clock,
+            sleeper=clock.sleep,
+            generated_at="2026-09-02T23:00:00Z",
+        )
+
+        self.assertEqual(receipt["outcome"], "blocked")
+        self.assertTrue(all(
+            sample["reasons"] == ["recognized-interference"]
+            for sample in receipt["samples"]
+        ))
+        serialized = json.dumps(receipt)
+        self.assertNotIn("node", serialized)
+        self.assertNotIn("/", serialized)
 
     def test_active_app_probe_matches_only_the_exact_executable_basename(self):
         def runner(command, **kwargs):

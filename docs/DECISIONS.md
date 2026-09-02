@@ -17932,3 +17932,44 @@ requires ordinary preflight, deterministic tests, mandatory bilingual real-app
 XCUITest, a clean Conventional Commit, and one fresh exact candidate. It does
 not satisfy physical Sequoia/Tahoe, distribution, CloudKit, assistive-
 technology, independent-review, or field gates.
+
+## D467 — Classify external runtime interference without process inventory (Sep 2026)
+
+**Context:** the one strict exact D466 candidate (`45384b7d`, version 1.0.0
+build `202609021740`) failed closed in its first Scale readiness gate before
+throughput calibration or product measurement. Its schema-4 receipt retained
+515 observations over 300.063 seconds. The final window had zero active
+Portavoz apps and zero compiler/symbolication contribution, but one-minute load
+was 12.08–12.53 on fourteen logical processors and aggregate CPU was
+214.2–533.2 percent. A read-only snapshot immediately after failure found
+multiple high-CPU Node/Vitest workers from an unrelated repository that began
+during the declared exclusive window; its next phase produced many headless
+Chromium and media-encoding workers. No scorecard or qualification exists, and
+that attempt remains failed rather than becoming a retry candidate.
+
+**Decision:** advance performance-host readiness to policy v5 and receipt
+schema 5, and candidate automation to contract schema 9. Keep the same
+two-percent recognized-interference ceiling, but expand its closed ordered
+class vocabulary with JavaScript runtimes, non-Swift build runtimes, browser
+automation, media processing, and container/virtualization processes. Match
+only normalized executable basenames in memory, including macOS parenthesized
+names, then retain only the closed class and summed CPU percentage already used
+by the receipt. Pin the complete class list in the candidate contract. Keep
+aggregate CPU/load, active Portavoz
+exclusion, ten 500-millisecond observations, 300-second deadline, power and
+thermal requirements, active SHA-256 calibration, product budgets, comparison
+tolerances, and fixed PERF-008 confirmation semantics unchanged.
+
+**Consequences:** a competing Node test, non-Swift build, browser-automation or
+media-processing lane, or active container/VM can no longer appear only as
+anonymous aggregate pressure or remain below the aggregate many-core ceiling
+while exceeding the existing class-specific limit. Paths, PIDs, arguments,
+repository names, commands, payloads, and content never enter evidence.
+Unclassified work still fails through aggregate
+CPU/load, so the new policy is strictly stronger and does not manufacture a
+green result. It does not stop another process, enforce cooperation from other
+tools, guarantee that no work starts after admission, qualify D466, or replace
+physical Sequoia/Tahoe, distribution, CloudKit, assistive-technology, or field
+evidence. D467 requires the ordinary preflight, deterministic tests, mandatory
+minimum-safe bilingual XCUITest, a clean Conventional Commit, and one fresh
+exact candidate.

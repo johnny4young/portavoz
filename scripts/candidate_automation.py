@@ -29,7 +29,7 @@ import resource_baseline
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONTRACT = ROOT / "docs" / "evidence" / "candidate-automation.json"
 DEFAULT_OUTPUT_PARENT = ROOT / "dist" / "release-readiness"
-CONTRACT_SCHEMA_VERSION = 8
+CONTRACT_SCHEMA_VERSION = 9
 PERF_LEDGER_SCHEMA_VERSION = 1
 PERFORMANCE_CONFIRMATION_SCHEMA_VERSION = 2
 UI_BUDGET_SCHEMA_VERSION = 1
@@ -367,6 +367,7 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
             "maximumCPUCapacityFraction",
             "maximumLoadPerProcessor",
             "maximumInterferenceCPUPercent",
+            "recognizedInterferenceClasses",
             "requiresNoPortavozApp",
             "throughputCalibration",
         ),
@@ -378,6 +379,17 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
     if host_readiness["requiresNoPortavozApp"] is not True:
         raise CandidateAutomationError(
             "candidate performance host-readiness must exclude Portavoz app runtimes"
+        )
+    if (
+        string_list(
+            host_readiness["recognizedInterferenceClasses"],
+            "candidate contract.performance.hostReadiness."
+            "recognizedInterferenceClasses",
+        )
+        != perf_host_readiness.INTERFERENCE_CLASSES
+    ):
+        raise CandidateAutomationError(
+            "candidate performance host-readiness interference classes drifted"
         )
     calibration = exact_object(
         host_readiness["throughputCalibration"],
@@ -433,6 +445,10 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
     ):
         raise CandidateAutomationError(
             "candidate performance host-readiness must use the dense passive window"
+        )
+    if perf_host_readiness.ReadinessPolicy().document() != host_readiness:
+        raise CandidateAutomationError(
+            "candidate performance host-readiness must match the current policy exactly"
         )
     performance_path = tracked_path(
         root,

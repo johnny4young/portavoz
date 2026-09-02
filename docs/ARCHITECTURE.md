@@ -4755,7 +4755,7 @@ runbook remain part of the authority. Until real cells are collected, the
 assistive release gate remains open.
 
 Candidate automation has one executable owner rather than a generic receipt
-recorder. `docs/evidence/candidate-automation.json` schema 8 freezes the eight
+recorder. `docs/evidence/candidate-automation.json` schema 9 freezes the eight
 proof order, six installed-model classes, seven upgrade/recovery classes, nine
 resource scenarios, four real-app memory-leak scenarios, two UI locales, and
 the performance-ledger partition.
@@ -4765,8 +4765,10 @@ gate. It builds the exact Release CLI once, binds every scale, semantic, and
 Spotlight harness to that executable's SHA-256, then requires fresh content-
 free host-readiness admission before each of those three latency-sensitive
 harnesses. The bounded predicate covers aggregate CPU capacity, one-minute
-load, compiler/symbolication CPU, the absence of any other Portavoz app
-runtime, AC automatic power, and nominal thermal state. Ten passive clean
+load, recognized build, analysis, JavaScript, non-Swift toolchain, browser-
+automation, media-processing, and container/virtualization CPU, the absence of
+any other Portavoz app runtime, AC automatic power, and nominal thermal state.
+Ten passive clean
 observations at 500-millisecond intervals cover a
 4.5-second observed span before it also requires five stable
 source-independent SHA-256 throughput samples over one fixed 512 MiB zero
@@ -4777,15 +4779,19 @@ deadline and a calibration that finishes after it can only produce a blocked
 receipt; an already-running probe may finish after the deadline only to record
 that failure. This is active reference-host capacity admission, not a product
 benchmark, fixed cooldown, candidate retry, or cross-hardware claim.
-Readiness policy v4 preserves v3's dense sampling and additionally rejects an
-active `portavoz-app` instance regardless of its sampled CPU. Readiness receipt
-schema 4 keeps the final
+Readiness policy v5 preserves v4's dense sampling and active `portavoz-app`
+exclusion, then expands the closed interference vocabulary to cover external
+runtime classes that can otherwise consume the shared Mac during a declared
+exclusive reservation. Readiness receipt schema 5 keeps the final
 bounded observation window, the
 content-free ordered calibration timings and attempt count, and
-attributes compiler/symbolication CPU to a closed six-class vocabulary (build
-driver, Swift compiler, Clang compiler, linker, source analysis, or
-symbolication). Each sample also records only the count of active Portavoz app
-runtimes; executable matching happens in memory and no identity is retained.
+attributes interfering CPU to a closed eleven-class vocabulary (build driver,
+Swift compiler, Clang compiler, linker, source analysis, symbolication,
+JavaScript runtime, non-Swift build runtime, browser automation, media
+processing, or container/virtualization).
+Executable matching uses only a normalized basename in memory; parenthesized
+macOS process names are normalized before classification. Each sample also
+records only the count of active Portavoz app runtimes.
 It records one numeric aggregate per present interference class, never an
 executable name, path, PID, argument, workspace, or process payload. A blocked
 receipt is therefore actionable without turning host admission into process

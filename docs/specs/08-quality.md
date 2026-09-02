@@ -4326,6 +4326,40 @@ discards an adverse run, or retries a candidate. The rule is host-isolation
 admission only; it is not application-health, physical-hardware, supported-OS,
 distribution, CloudKit, assistive-technology, or field evidence.
 
+### Closed external-runtime interference (D467)
+
+The single strict D466 candidate failed before any performance measurement.
+Its final readiness window reported no active Portavoz app and no recognized
+compiler/symbolication contribution, but aggregate CPU remained above the
+existing ceiling and one-minute load stayed near twelve on fourteen logical
+processors. A read-only process snapshot immediately afterward found multiple
+high-CPU Node workers from an unrelated Vitest run that had started during the
+declared reservation; its next phase started many headless Chromium and media-
+encoding workers. The retained D466 receipt therefore blocked correctly, but
+its six-class vocabulary could not distinguish that external workload from
+unclassified aggregate pressure.
+
+Readiness policy v5 and receipt schema 5 keep every threshold, cadence,
+deadline, calibration, and final-window bound unchanged. The closed
+interference vocabulary now also recognizes JavaScript runtimes, non-Swift
+build runtimes, browser automation, media processing, and container/
+virtualization processes by normalized executable basename. macOS
+parenthesized process names are normalized before matching.
+Only the class and its summed CPU percentage can enter a receipt; executable
+names, paths, PIDs, arguments, repositories, commands, payloads, and content
+remain absent. Candidate contract schema 9 pins the complete ordered class list
+so deleting the new coverage or substituting an open-ended name cannot retain
+the newer version.
+
+The same two-percent recognized-interference ceiling now resets admission for
+these explicit external runtime classes. Aggregate CPU and load continue to
+block unclassified work, so the extension cannot make an adverse host green.
+It neither enforces a reservation against non-cooperating software nor proves
+that a future process will not start after admission. It makes a retained
+failure attributable and rejects low-aggregate but class-recognized contention
+without collecting process inventory. The failed D466 candidate remains
+failed and is not retried.
+
 ### Hosted bilingual orchestration ceiling (D463)
 
 The exact D461 first-attempt hosted UI run retained one complete 105/105 English

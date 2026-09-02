@@ -42,7 +42,7 @@ class CandidateAutomationTests(unittest.TestCase):
         }
 
     def test_tracked_contract_is_exact_and_complete(self):
-        self.assertEqual(self.contract_document["schemaVersion"], 8)
+        self.assertEqual(self.contract_document["schemaVersion"], 9)
         self.assertEqual(
             self.contract["proofs"],
             (
@@ -71,11 +71,15 @@ class CandidateAutomationTests(unittest.TestCase):
         )
         readiness = self.contract_document["performance"]["hostReadiness"]
         self.assertEqual(
-            readiness["version"], "prebuilt-release-host-readiness-v4"
+            readiness["version"], "prebuilt-release-host-readiness-v5"
         )
         self.assertEqual(readiness["sampleIntervalSeconds"], 0.5)
         self.assertEqual(readiness["requiredConsecutiveSamples"], 10)
         self.assertIs(readiness["requiresNoPortavozApp"], True)
+        self.assertEqual(
+            tuple(readiness["recognizedInterferenceClasses"]),
+            candidate.perf_host_readiness.INTERFERENCE_CLASSES,
+        )
         self.assertEqual(
             readiness["throughputCalibration"],
             {
@@ -241,6 +245,26 @@ class CandidateAutomationTests(unittest.TestCase):
             "exclude Portavoz app runtimes",
         ):
             candidate.validate_contract(admits_product_runtime)
+
+        incomplete_interference_classes = copy.deepcopy(self.contract_document)
+        incomplete_interference_classes["performance"]["hostReadiness"][
+            "recognizedInterferenceClasses"
+        ].remove("javascript-runtime")
+        with self.assertRaisesRegex(
+            candidate.CandidateAutomationError,
+            "interference classes drifted",
+        ):
+            candidate.validate_contract(incomplete_interference_classes)
+
+        weakened_interference_ceiling = copy.deepcopy(self.contract_document)
+        weakened_interference_ceiling["performance"]["hostReadiness"][
+            "maximumInterferenceCPUPercent"
+        ] = 25.0
+        with self.assertRaisesRegex(
+            candidate.CandidateAutomationError,
+            "match the current policy exactly",
+        ):
+            candidate.validate_contract(weakened_interference_ceiling)
 
     def test_contract_rejects_weaker_resource_or_ui_scope(self):
         weak_resource = copy.deepcopy(self.contract_document)

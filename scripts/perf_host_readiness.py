@@ -19,8 +19,8 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
 
 
-SCHEMA_VERSION = 4
-POLICY_VERSION = "prebuilt-release-host-readiness-v4"
+SCHEMA_VERSION = 5
+POLICY_VERSION = "prebuilt-release-host-readiness-v5"
 CALIBRATION_VERSION = "sha256-zero-block-512mib-v1"
 DEFAULT_MAXIMUM_WAIT_SECONDS = 300.0
 DEFAULT_SAMPLE_INTERVAL_SECONDS = 0.5
@@ -41,16 +41,39 @@ CALIBRATION_EXPECTED_SHA256 = (
 HEX_40 = re.compile(r"[0-9a-f]{40}")
 HEX_64 = re.compile(r"[0-9a-f]{64}")
 INTERFERENCE_CLASSES = (
+    "browser-automation",
     "build-driver",
     "clang-compiler",
+    "container-virtualization",
+    "external-build-runtime",
+    "javascript-runtime",
     "linker",
+    "media-processing",
     "source-analysis",
     "swift-compiler",
     "symbolication",
 )
 INTERFERENCE_CLASS_BY_EXECUTABLE = {
+    "bun": "javascript-runtime",
+    "cargo": "external-build-runtime",
+    "com.apple.virtualization.virtualmachine": "container-virtualization",
+    "com.docker.backend": "container-virtualization",
+    "com.docker.build": "container-virtualization",
+    "com.docker.virtualization": "container-virtualization",
+    "deno": "javascript-runtime",
     "dsymutil": "symbolication",
+    "go": "external-build-runtime",
+    "gradle": "external-build-runtime",
+    "java": "external-build-runtime",
+    "javac": "external-build-runtime",
+    "kotlinc": "external-build-runtime",
     "ld": "linker",
+    "node": "javascript-runtime",
+    "node_repl": "javascript-runtime",
+    "nodejs": "javascript-runtime",
+    "npm": "javascript-runtime",
+    "pnpm": "javascript-runtime",
+    "rustc": "external-build-runtime",
     "swift": "build-driver",
     "swift-build": "build-driver",
     "swift-package": "build-driver",
@@ -58,18 +81,26 @@ INTERFERENCE_CLASS_BY_EXECUTABLE = {
     "xcodebuild": "build-driver",
 }
 INTERFERENCE_CLASS_PREFIXES = (
+    ("chrome-headless", "browser-automation"),
+    ("chromedriver", "browser-automation"),
+    ("chromium", "browser-automation"),
     ("clang", "clang-compiler"),
     ("coresymbolication", "symbolication"),
+    ("ffmpeg", "media-processing"),
+    ("ffprobe", "media-processing"),
+    ("geckodriver", "browser-automation"),
+    ("playwright", "browser-automation"),
+    ("qemu", "container-virtualization"),
     ("sourcekit", "source-analysis"),
     ("swift", "swift-compiler"),
 )
 PORTAVOZ_APP_EXECUTABLES = frozenset({"portavoz-app"})
 REASONS = (
-    "build-or-symbolication",
     "load-average",
     "portavoz-app-active",
     "power-mode",
     "power-source",
+    "recognized-interference",
     "thermal-state",
     "total-cpu",
 )
@@ -187,6 +218,7 @@ class ReadinessPolicy:
             "maximumInterferenceCPUPercent": (
                 self.maximum_interference_cpu_percent
             ),
+            "recognizedInterferenceClasses": list(INTERFERENCE_CLASSES),
             "requiresNoPortavozApp": True,
             "throughputCalibration": {
                 "version": CALIBRATION_VERSION,
@@ -411,8 +443,15 @@ def calibration_document(
     }
 
 
-def interference_class(executable: str) -> str | None:
+def normalized_executable_name(executable: str) -> str:
     name = Path(executable).name.casefold()
+    if len(name) > 2 and name.startswith("(") and name.endswith(")"):
+        return name[1:-1]
+    return name
+
+
+def interference_class(executable: str) -> str | None:
+    name = normalized_executable_name(executable)
     if name in INTERFERENCE_CLASS_BY_EXECUTABLE:
         return INTERFERENCE_CLASS_BY_EXECUTABLE[name]
     for prefix, contributor_class in INTERFERENCE_CLASS_PREFIXES:
@@ -422,7 +461,7 @@ def interference_class(executable: str) -> str | None:
 
 
 def is_portavoz_app_executable(executable: str) -> bool:
-    return Path(executable).name.casefold() in PORTAVOZ_APP_EXECUTABLES
+    return normalized_executable_name(executable) in PORTAVOZ_APP_EXECUTABLES
 
 
 def parse_active_portavoz_app_count(output: str) -> int:
@@ -575,7 +614,7 @@ def reasons_for(
         observation.interference_cpu_percent
         > policy.maximum_interference_cpu_percent
     ):
-        reasons.append("build-or-symbolication")
+        reasons.append("recognized-interference")
     if observation.active_portavoz_app_count > 0:
         reasons.append("portavoz-app-active")
     if observation.power_source != "ac":

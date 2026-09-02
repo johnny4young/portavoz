@@ -11343,7 +11343,7 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testCandidateAutomationOwnsEightSpecializedProofs() throws {
         let contract = try Self.jsonObject(
             at: "docs/evidence/candidate-automation.json")
-        XCTAssertEqual(contract["schemaVersion"] as? Int, 8)
+        XCTAssertEqual(contract["schemaVersion"] as? Int, 9)
         XCTAssertEqual(
             contract["kind"] as? String,
             "candidate-automation-contract")
@@ -11377,7 +11377,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             performance["hostReadiness"] as? [String: Any])
         XCTAssertEqual(
             hostReadiness["version"] as? String,
-            "prebuilt-release-host-readiness-v4")
+            "prebuilt-release-host-readiness-v5")
         XCTAssertEqual(hostReadiness["maximumWaitSeconds"] as? Double, 300)
         XCTAssertEqual(hostReadiness["sampleIntervalSeconds"] as? Double, 0.5)
         XCTAssertEqual(hostReadiness["requiredConsecutiveSamples"] as? Int, 10)
@@ -11385,6 +11385,21 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertEqual(
             hostReadiness["maximumInterferenceCPUPercent"] as? Double,
             2)
+        XCTAssertEqual(
+            hostReadiness["recognizedInterferenceClasses"] as? [String],
+            [
+                "browser-automation",
+                "build-driver",
+                "clang-compiler",
+                "container-virtualization",
+                "external-build-runtime",
+                "javascript-runtime",
+                "linker",
+                "media-processing",
+                "source-analysis",
+                "swift-compiler",
+                "symbolication",
+            ])
         let throughputCalibration = try XCTUnwrap(
             hostReadiness["throughputCalibration"] as? [String: Any])
         XCTAssertEqual(
@@ -11542,6 +11557,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D460"))
         XCTAssertTrue(decisions.contains("## D462"))
         XCTAssertTrue(decisions.contains("## D466"))
+        XCTAssertTrue(decisions.contains("## D467"))
         XCTAssertTrue(performanceRunner.contains(
             "run_host_readiness \"Scale\""))
         XCTAssertTrue(performanceRunner.contains(
@@ -11561,11 +11577,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(performanceReadiness.contains(
             "required_consecutive_samples"))
         XCTAssertTrue(performanceReadiness.contains(
-            "build-or-symbolication"))
+            "recognized-interference"))
         XCTAssertTrue(performanceReadiness.contains(
-            "SCHEMA_VERSION = 4"))
+            "SCHEMA_VERSION = 5"))
         XCTAssertTrue(performanceReadiness.contains(
-            "prebuilt-release-host-readiness-v4"))
+            "prebuilt-release-host-readiness-v5"))
         XCTAssertTrue(performanceReadiness.contains(
             "sha256-zero-block-512mib-v1"))
         XCTAssertTrue(performanceReadiness.contains(

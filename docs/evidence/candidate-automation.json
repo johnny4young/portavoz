@@ -45,6 +45,19 @@
       "maximumInterferenceCPUPercent": 2.0,
       "maximumLoadPerProcessor": 0.5,
       "maximumWaitSeconds": 300.0,
+      "recognizedInterferenceClasses": [
+        "browser-automation",
+        "build-driver",
+        "clang-compiler",
+        "container-virtualization",
+        "external-build-runtime",
+        "javascript-runtime",
+        "linker",
+        "media-processing",
+        "source-analysis",
+        "swift-compiler",
+        "symbolication"
+      ],
       "requiredConsecutiveSamples": 10,
       "requiresNoPortavozApp": true,
       "sampleIntervalSeconds": 0.5,
@@ -56,7 +69,7 @@
         "sampleCount": 5,
         "version": "sha256-zero-block-512mib-v1"
       },
-      "version": "prebuilt-release-host-readiness-v4"
+      "version": "prebuilt-release-host-readiness-v5"
     },
     "allowedNotMeasuredMetricIDs": [
       "capture.drift-30min",
@@ -114,7 +127,7 @@
       "summary"
     ]
   },
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "ui": {
     "budget": "docs/evidence/ui-test-runtime-budget.json",
     "locales": [
