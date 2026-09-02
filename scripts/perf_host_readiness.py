@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -18,14 +19,25 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
 
 
-SCHEMA_VERSION = 2
-POLICY_VERSION = "prebuilt-release-host-readiness-v1"
+SCHEMA_VERSION = 3
+POLICY_VERSION = "prebuilt-release-host-readiness-v2"
+CALIBRATION_VERSION = "sha256-zero-block-512mib-v1"
 DEFAULT_MAXIMUM_WAIT_SECONDS = 300.0
 DEFAULT_SAMPLE_INTERVAL_SECONDS = 2.0
 DEFAULT_REQUIRED_CONSECUTIVE_SAMPLES = 3
 DEFAULT_MAXIMUM_CPU_CAPACITY_FRACTION = 0.25
 DEFAULT_MAXIMUM_LOAD_PER_PROCESSOR = 0.50
 DEFAULT_MAXIMUM_INTERFERENCE_CPU_PERCENT = 2.0
+DEFAULT_CALIBRATION_SAMPLE_COUNT = 5
+DEFAULT_CALIBRATION_BYTES_PER_SAMPLE = 512 * 1024 * 1024
+DEFAULT_MAXIMUM_CALIBRATION_WALL_MILLISECONDS = 200.0
+DEFAULT_MAXIMUM_CALIBRATION_CPU_MILLISECONDS = 200.0
+DEFAULT_MAXIMUM_CALIBRATION_DISPERSION_RATIO = 1.15
+CALIBRATION_BLOCK_BYTES = 1024 * 1024
+MAXIMUM_RETAINED_CALIBRATION_SAMPLE_MILLISECONDS = 60_000.0
+CALIBRATION_EXPECTED_SHA256 = (
+    "9acca8e8c22201155389f65abbf6bc9723edc7384ead80503839f49dcc56d767"
+)
 HEX_40 = re.compile(r"[0-9a-f]{40}")
 HEX_64 = re.compile(r"[0-9a-f]{64}")
 INTERFERENCE_CLASSES = (
@@ -59,6 +71,11 @@ REASONS = (
     "thermal-state",
     "total-cpu",
 )
+CALIBRATION_REASONS = (
+    "cpu-ceiling",
+    "dispersion",
+    "wall-ceiling",
+)
 
 
 class ReadinessError(ValueError):
@@ -74,6 +91,17 @@ class ReadinessPolicy:
     maximum_load_per_processor: float = DEFAULT_MAXIMUM_LOAD_PER_PROCESSOR
     maximum_interference_cpu_percent: float = (
         DEFAULT_MAXIMUM_INTERFERENCE_CPU_PERCENT
+    )
+    calibration_sample_count: int = DEFAULT_CALIBRATION_SAMPLE_COUNT
+    calibration_bytes_per_sample: int = DEFAULT_CALIBRATION_BYTES_PER_SAMPLE
+    maximum_calibration_wall_milliseconds: float = (
+        DEFAULT_MAXIMUM_CALIBRATION_WALL_MILLISECONDS
+    )
+    maximum_calibration_cpu_milliseconds: float = (
+        DEFAULT_MAXIMUM_CALIBRATION_CPU_MILLISECONDS
+    )
+    maximum_calibration_dispersion_ratio: float = (
+        DEFAULT_MAXIMUM_CALIBRATION_DISPERSION_RATIO
     )
 
     def validate(self) -> ReadinessPolicy:
@@ -113,6 +141,36 @@ class ReadinessPolicy:
             minimum=0,
             maximum=25,
         )
+        exact_integer(
+            self.calibration_sample_count,
+            "throughputCalibration.sampleCount",
+            minimum=DEFAULT_CALIBRATION_SAMPLE_COUNT,
+            maximum=DEFAULT_CALIBRATION_SAMPLE_COUNT,
+        )
+        exact_integer(
+            self.calibration_bytes_per_sample,
+            "throughputCalibration.bytesPerSample",
+            minimum=DEFAULT_CALIBRATION_BYTES_PER_SAMPLE,
+            maximum=DEFAULT_CALIBRATION_BYTES_PER_SAMPLE,
+        )
+        finite_between(
+            self.maximum_calibration_wall_milliseconds,
+            "throughputCalibration.maximumWallMilliseconds",
+            minimum=100,
+            maximum=1_000,
+        )
+        finite_between(
+            self.maximum_calibration_cpu_milliseconds,
+            "throughputCalibration.maximumCPUMilliseconds",
+            minimum=100,
+            maximum=1_000,
+        )
+        finite_between(
+            self.maximum_calibration_dispersion_ratio,
+            "throughputCalibration.maximumDispersionRatio",
+            minimum=1,
+            maximum=1.5,
+        )
         return self
 
     def document(self) -> dict[str, Any]:
@@ -127,6 +185,20 @@ class ReadinessPolicy:
             "maximumInterferenceCPUPercent": (
                 self.maximum_interference_cpu_percent
             ),
+            "throughputCalibration": {
+                "version": CALIBRATION_VERSION,
+                "sampleCount": self.calibration_sample_count,
+                "bytesPerSample": self.calibration_bytes_per_sample,
+                "maximumWallMilliseconds": (
+                    self.maximum_calibration_wall_milliseconds
+                ),
+                "maximumCPUMilliseconds": (
+                    self.maximum_calibration_cpu_milliseconds
+                ),
+                "maximumDispersionRatio": (
+                    self.maximum_calibration_dispersion_ratio
+                ),
+            },
         }
 
 
@@ -140,6 +212,12 @@ class HostObservation:
     power_mode: str
     thermal_state: str
     interference_contributors: tuple[tuple[str, float], ...] = ()
+
+
+@dataclass(frozen=True)
+class ThroughputCalibration:
+    wall_milliseconds: tuple[float, ...]
+    cpu_milliseconds: tuple[float, ...]
 
 
 class SystemProbe:
@@ -232,6 +310,95 @@ def finite_between(
     if not math.isfinite(result) or not minimum <= result <= maximum:
         raise ReadinessError(f"{label} is outside its bounds")
     return result
+
+
+def nearest_rank(samples: Sequence[float], percentile: float) -> float:
+    if not samples:
+        raise ReadinessError("throughput calibration samples are empty")
+    ordered = sorted(samples)
+    index = min(
+        len(ordered) - 1,
+        max(0, math.ceil(len(ordered) * percentile) - 1),
+    )
+    return ordered[index]
+
+
+def sample_throughput_calibration(
+    policy: ReadinessPolicy,
+) -> ThroughputCalibration:
+    """Measure source-independent CPU throughput without retaining payload."""
+    policy.validate()
+    block = bytes(CALIBRATION_BLOCK_BYTES)
+    iterations = policy.calibration_bytes_per_sample // CALIBRATION_BLOCK_BYTES
+    wall_samples: list[float] = []
+    cpu_samples: list[float] = []
+    for _ in range(policy.calibration_sample_count):
+        wall_started = time.monotonic_ns()
+        cpu_started = time.process_time_ns()
+        digest = hashlib.sha256()
+        for _ in range(iterations):
+            digest.update(block)
+        cpu_elapsed = (time.process_time_ns() - cpu_started) / 1_000_000
+        wall_elapsed = (time.monotonic_ns() - wall_started) / 1_000_000
+        if digest.hexdigest() != CALIBRATION_EXPECTED_SHA256:
+            raise ReadinessError("throughput calibration digest is invalid")
+        wall_samples.append(wall_elapsed)
+        cpu_samples.append(cpu_elapsed)
+    return ThroughputCalibration(
+        wall_milliseconds=tuple(wall_samples),
+        cpu_milliseconds=tuple(cpu_samples),
+    )
+
+
+def calibration_document(
+    observation: ThroughputCalibration,
+    policy: ReadinessPolicy,
+) -> dict[str, Any]:
+    wall = tuple(float(value) for value in observation.wall_milliseconds)
+    cpu = tuple(float(value) for value in observation.cpu_milliseconds)
+    if len(wall) != policy.calibration_sample_count or len(cpu) != len(wall):
+        raise ReadinessError("throughput calibration sample count is invalid")
+    for index, value in enumerate(wall):
+        finite_between(
+            value,
+            f"throughput calibration wall sample {index}",
+            minimum=0.001,
+            maximum=MAXIMUM_RETAINED_CALIBRATION_SAMPLE_MILLISECONDS,
+        )
+    for index, value in enumerate(cpu):
+        finite_between(
+            value,
+            f"throughput calibration CPU sample {index}",
+            minimum=0.001,
+            maximum=MAXIMUM_RETAINED_CALIBRATION_SAMPLE_MILLISECONDS,
+        )
+    wall = tuple(round(value, 6) for value in wall)
+    cpu = tuple(round(value, 6) for value in cpu)
+    wall_p50 = nearest_rank(wall, 0.50)
+    wall_p95 = nearest_rank(wall, 0.95)
+    cpu_p50 = nearest_rank(cpu, 0.50)
+    cpu_p95 = nearest_rank(cpu, 0.95)
+    dispersion = max(wall_p95 / wall_p50, cpu_p95 / cpu_p50)
+    reasons: list[str] = []
+    if wall_p95 > policy.maximum_calibration_wall_milliseconds:
+        reasons.append("wall-ceiling")
+    if cpu_p95 > policy.maximum_calibration_cpu_milliseconds:
+        reasons.append("cpu-ceiling")
+    if dispersion > policy.maximum_calibration_dispersion_ratio:
+        reasons.append("dispersion")
+    return {
+        "version": CALIBRATION_VERSION,
+        "sampleCount": len(wall),
+        "bytesPerSample": policy.calibration_bytes_per_sample,
+        "wallMilliseconds": list(wall),
+        "cpuMilliseconds": list(cpu),
+        "wallP50Milliseconds": round(wall_p50, 6),
+        "wallP95Milliseconds": round(wall_p95, 6),
+        "cpuP50Milliseconds": round(cpu_p50, 6),
+        "cpuP95Milliseconds": round(cpu_p95, 6),
+        "dispersionRatio": round(dispersion, 6),
+        "reasons": sorted(reasons),
+    }
 
 
 def interference_class(executable: str) -> str | None:
@@ -394,6 +561,7 @@ def wait_for_readiness(
     source_commit: str,
     binary_sha256: str,
     sampler: Callable[[], HostObservation],
+    calibrator: Callable[[], ThroughputCalibration],
     clock: Callable[[], float] = time.monotonic,
     sleeper: Callable[[float], None] = time.sleep,
     generated_at: str | None = None,
@@ -407,6 +575,8 @@ def wait_for_readiness(
     consecutive: list[dict[str, Any]] = []
     recent: list[dict[str, Any]] = []
     sequence = 0
+    calibration_attempt_count = 0
+    throughput_calibration: dict[str, Any] | None = None
     while True:
         sequence += 1
         observation = sampler()
@@ -420,15 +590,44 @@ def wait_for_readiness(
             consecutive = []
         else:
             consecutive.append(sample)
-        if len(consecutive) == policy.required_consecutive_samples:
-            outcome = "ready"
-            retained = consecutive
-            break
         if offset >= policy.maximum_wait_seconds:
             outcome = "blocked"
             retained = recent
             break
-        sleeper(policy.sample_interval_seconds)
+        if len(consecutive) == policy.required_consecutive_samples:
+            calibration_attempt_count += 1
+            throughput_calibration = calibration_document(calibrator(), policy)
+            calibration_completed_offset = clock() - started
+            if (
+                not math.isfinite(calibration_completed_offset)
+                or calibration_completed_offset < offset
+            ):
+                raise ReadinessError("readiness clock is non-monotonic")
+            if (
+                not throughput_calibration["reasons"]
+                and calibration_completed_offset <= policy.maximum_wait_seconds
+            ):
+                outcome = "ready"
+                retained = consecutive
+                break
+            consecutive = []
+            if calibration_completed_offset >= policy.maximum_wait_seconds:
+                outcome = "blocked"
+                retained = recent
+                break
+            sleeper(
+                min(
+                    policy.sample_interval_seconds,
+                    policy.maximum_wait_seconds - calibration_completed_offset,
+                )
+            )
+            continue
+        sleeper(
+            min(
+                policy.sample_interval_seconds,
+                policy.maximum_wait_seconds - offset,
+            )
+        )
 
     generated_at = generated_at or datetime.now(timezone.utc).isoformat().replace(
         "+00:00", "Z"
@@ -444,6 +643,8 @@ def wait_for_readiness(
         "elapsedSeconds": round(clock() - started, 6),
         "observedSampleCount": sequence,
         "samples": retained,
+        "calibrationAttemptCount": calibration_attempt_count,
+        "throughputCalibration": throughput_calibration,
     }
     validate_receipt(
         receipt,
@@ -459,6 +660,71 @@ def exact_object(value: Any, label: str, keys: set[str]) -> dict[str, Any]:
     if not isinstance(value, dict) or set(value) != keys:
         raise ReadinessError(f"{label} does not match its schema")
     return value
+
+
+def validate_calibration_document(
+    value: Any,
+    policy: ReadinessPolicy,
+) -> dict[str, Any]:
+    calibration = exact_object(
+        value,
+        "throughput calibration",
+        {
+            "version",
+            "sampleCount",
+            "bytesPerSample",
+            "wallMilliseconds",
+            "cpuMilliseconds",
+            "wallP50Milliseconds",
+            "wallP95Milliseconds",
+            "cpuP50Milliseconds",
+            "cpuP95Milliseconds",
+            "dispersionRatio",
+            "reasons",
+        },
+    )
+    if calibration["version"] != CALIBRATION_VERSION:
+        raise ReadinessError("throughput calibration version drifted")
+    if exact_integer(
+        calibration["sampleCount"],
+        "throughput calibration sampleCount",
+        minimum=policy.calibration_sample_count,
+        maximum=policy.calibration_sample_count,
+    ) != policy.calibration_sample_count:
+        raise ReadinessError("throughput calibration sample count drifted")
+    if exact_integer(
+        calibration["bytesPerSample"],
+        "throughput calibration bytesPerSample",
+        minimum=policy.calibration_bytes_per_sample,
+        maximum=policy.calibration_bytes_per_sample,
+    ) != policy.calibration_bytes_per_sample:
+        raise ReadinessError("throughput calibration byte count drifted")
+    wall = calibration["wallMilliseconds"]
+    cpu = calibration["cpuMilliseconds"]
+    if (
+        not isinstance(wall, list)
+        or not isinstance(cpu, list)
+        or len(wall) != policy.calibration_sample_count
+        or len(cpu) != len(wall)
+    ):
+        raise ReadinessError("throughput calibration samples are invalid")
+    reconstructed = calibration_document(
+        ThroughputCalibration(
+            wall_milliseconds=tuple(wall),
+            cpu_milliseconds=tuple(cpu),
+        ),
+        policy,
+    )
+    if calibration != reconstructed:
+        raise ReadinessError("throughput calibration summary is inconsistent")
+    reasons = calibration["reasons"]
+    if (
+        not isinstance(reasons, list)
+        or reasons != sorted(set(reasons))
+        or not set(reasons) <= set(CALIBRATION_REASONS)
+    ):
+        raise ReadinessError("throughput calibration reasons are invalid")
+    return calibration
 
 
 def validate_receipt(
@@ -483,6 +749,8 @@ def validate_receipt(
             "elapsedSeconds",
             "observedSampleCount",
             "samples",
+            "calibrationAttemptCount",
+            "throughputCalibration",
         },
     )
     exact_integer(
@@ -511,13 +779,24 @@ def validate_receipt(
         receipt["elapsedSeconds"],
         "elapsedSeconds",
         minimum=0,
-        maximum=policy.maximum_wait_seconds + policy.sample_interval_seconds,
+        maximum=(
+            policy.maximum_wait_seconds
+            + policy.calibration_sample_count
+            * MAXIMUM_RETAINED_CALIBRATION_SAMPLE_MILLISECONDS
+            / 1_000
+        ),
     )
     observed = exact_integer(
         receipt["observedSampleCount"],
         "observedSampleCount",
         minimum=1,
         maximum=100_000,
+    )
+    calibration_attempt_count = exact_integer(
+        receipt["calibrationAttemptCount"],
+        "calibrationAttemptCount",
+        minimum=0,
+        maximum=observed,
     )
     samples = receipt["samples"]
     if not isinstance(samples, list) or not 1 <= len(samples) <= (
@@ -662,14 +941,34 @@ def validate_receipt(
         raise ReadinessError("readiness receipt did not retain the latest samples")
     elapsed = float(receipt["elapsedSeconds"])
     last_offset = float(samples[-1]["offsetSeconds"])
-    if not last_offset <= elapsed <= last_offset + policy.sample_interval_seconds:
+    if last_offset > elapsed:
         raise ReadinessError("readiness receipt elapsed time is inconsistent")
+    throughput_calibration = receipt["throughputCalibration"]
+    validated_calibration = None
+    if throughput_calibration is not None:
+        validated_calibration = validate_calibration_document(
+            throughput_calibration,
+            policy,
+        )
+    if (calibration_attempt_count == 0) != (validated_calibration is None):
+        raise ReadinessError("readiness receipt calibration attempts are inconsistent")
     if receipt["outcome"] == "ready":
+        if elapsed > policy.maximum_wait_seconds:
+            raise ReadinessError("ready receipt exceeded the admission deadline")
         if len(samples) != policy.required_consecutive_samples or any(
             sample["reasons"] for sample in samples
         ):
             raise ReadinessError("ready receipt lacks consecutive clean samples")
-    elif not any(sample["reasons"] for sample in samples):
+        if validated_calibration is None or validated_calibration["reasons"]:
+            raise ReadinessError("ready receipt lacks clean throughput calibration")
+    elif (
+        not any(sample["reasons"] for sample in samples)
+        and (
+            validated_calibration is None
+            or not validated_calibration["reasons"]
+        )
+        and elapsed < policy.maximum_wait_seconds
+    ):
         raise ReadinessError("blocked receipt does not retain a blocker")
     return receipt
 
@@ -728,6 +1027,31 @@ def parser() -> argparse.ArgumentParser:
         type=float,
         default=DEFAULT_MAXIMUM_INTERFERENCE_CPU_PERCENT,
     )
+    result.add_argument(
+        "--calibration-sample-count",
+        type=int,
+        default=DEFAULT_CALIBRATION_SAMPLE_COUNT,
+    )
+    result.add_argument(
+        "--calibration-bytes-per-sample",
+        type=int,
+        default=DEFAULT_CALIBRATION_BYTES_PER_SAMPLE,
+    )
+    result.add_argument(
+        "--maximum-calibration-wall-milliseconds",
+        type=float,
+        default=DEFAULT_MAXIMUM_CALIBRATION_WALL_MILLISECONDS,
+    )
+    result.add_argument(
+        "--maximum-calibration-cpu-milliseconds",
+        type=float,
+        default=DEFAULT_MAXIMUM_CALIBRATION_CPU_MILLISECONDS,
+    )
+    result.add_argument(
+        "--maximum-calibration-dispersion-ratio",
+        type=float,
+        default=DEFAULT_MAXIMUM_CALIBRATION_DISPERSION_RATIO,
+    )
     return result
 
 
@@ -742,6 +1066,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         maximum_interference_cpu_percent=(
             arguments.maximum_interference_cpu_percent
         ),
+        calibration_sample_count=arguments.calibration_sample_count,
+        calibration_bytes_per_sample=arguments.calibration_bytes_per_sample,
+        maximum_calibration_wall_milliseconds=(
+            arguments.maximum_calibration_wall_milliseconds
+        ),
+        maximum_calibration_cpu_milliseconds=(
+            arguments.maximum_calibration_cpu_milliseconds
+        ),
+        maximum_calibration_dispersion_ratio=(
+            arguments.maximum_calibration_dispersion_ratio
+        ),
     )
     try:
         receipt = wait_for_readiness(
@@ -749,6 +1084,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             source_commit=arguments.source_commit,
             binary_sha256=arguments.binary_sha256,
             sampler=SystemProbe().sample,
+            calibrator=lambda: sample_throughput_calibration(policy),
         )
         write_private_json(arguments.output, receipt)
     except ReadinessError as error:

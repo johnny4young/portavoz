@@ -17737,3 +17737,50 @@ evidence after a real test or admission failure. Passing D461 still does not
 provide independent review, integration into `main`, exact-main qualification,
 signed/notarized distribution, production CloudKit, physical Sequoia/Tahoe,
 assistive-technology, or field evidence.
+
+## D462 — Admit active reference-host throughput before each performance harness (Sep 2026)
+
+**Context:** the one exact D461 candidate (`63dd9849`, version 1.0.0 build
+`202609020651`) passed the D460 passive readiness predicate after 14.555 seconds
+but then produced a broadly slow, internally dispersed first performance
+ledger. Exact FTS, Detail, semantic store opening, corpus seeding, and semantic
+query CPU were roughly 29–55 percent slower than the immediately preceding
+exact candidate; semantic wall and CPU crossed their hard budgets only in that
+unstable observation. The ledger correctly became informational and no
+qualification receipt was written. Under a later explicitly non-qualifying
+reserved window, the unchanged Release binary returned exact FTS, lexical Ask,
+Detail, and semantic timings to their established ranges. That strongly
+implicates unobserved host capacity, but it does not retroactively qualify
+D461. One-minute load is not a sufficient replacement signal because earlier
+valid candidates passed at comparable load.
+
+**Decision:** evolve readiness to policy v2 and receipt schema 3. After the
+unchanged three-sample passive CPU/load/compiler/power/thermal window, hash one
+fixed one-MiB zero block 512 times in each of five consecutive Python `hashlib`
+samples. Verify the constant digest, retain only ordered wall/process-CPU
+milliseconds and recomputable percentiles, and require wall and CPU p95 at or
+below 200 milliseconds plus p95/p50 at or below 1.15. A failing active window
+resets passive admission inside the same 300-second admission deadline; the
+loop starts no calibration at that deadline and a calibration completing after
+it can only retain a blocked receipt. A probe already in flight may finish only
+to record that overrun; it never retries a ledger or candidate. Obtain a new
+receipt immediately before scale, semantic, and Spotlight, bind all three to
+the exact source and prebuilt binary SHA-256, and require all three in candidate
+contract schema 6. Three independent clean-host calibration rounds measured
+wall maxima 157.190–161.171
+milliseconds and CPU maxima 157.149–161.112, leaving about 24 percent headroom
+to the fixed ceiling. Keep the passive thresholds, product metrics, hard
+budgets, comparison tolerances, iteration counts, and PERF-008 confirmation
+semantics unchanged.
+
+**Consequences:** candidate admission now tests the missing active-throughput
+property without using product code as its host oracle, inventing a cooldown,
+loosening a product budget, or turning a failed run into a green retry. The
+calibration algorithm, byte count, sample count, ceilings, and dispersion bound
+are exact contract data; future Python/crypto/toolchain or reference-hardware
+drift must be reviewed explicitly rather than silently widening the policy.
+The sentinel is a reference-host admission check, not proof for older Macs,
+physical Sequoia/Tahoe, battery behavior, signed distribution, CloudKit,
+assistive technology, or field performance. The failed D461 candidate remains
+failed; D462 needs the ordinary preflight, mandatory minimum-safe bilingual
+real-app XCUITest, clean Conventional Commit, and one fresh exact candidate.

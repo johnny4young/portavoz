@@ -4222,6 +4222,47 @@ at 83.11/84.47 milliseconds, and Spotlight wall/CPU at 408.09/412.93
 milliseconds; every hard metric passed. Because the source worktree was still
 dirty, this is integration evidence only and not an exact-candidate receipt.
 
+### Active throughput and stage admission (D462)
+
+The exact D461 candidate demonstrated a remaining blind spot in that passive
+owner. Its only pre-ledger receipt passed after 14.555 seconds, yet the same
+Release binary then slowed broadly: exact FTS, Detail, semantic store-open,
+semantic seed, and semantic query CPU all moved by roughly 29–55 percent, and
+five timed distributions disagreed with themselves. The ledger correctly
+dropped to informational and no `qualification.json` was written. A later,
+explicitly non-qualifying run of that unchanged binary under a newly reserved
+host returned exact FTS 100k p95 13.754 milliseconds, lexical Ask 28.568,
+Detail core 2h 17.001, and semantic wall/CPU 73.806/74.586. That is strong host-
+state evidence, not a retry or retroactive qualification of D461. Tightening
+one-minute load alone is not supported because earlier valid runs were admitted
+at similar load.
+
+Readiness policy v2 therefore adds a short active capacity sentinel after the
+existing three passive observations. Five consecutive samples each SHA-256 a
+fixed one-MiB zero block 512 times; the implementation verifies the fixed
+digest and retains only wall/CPU milliseconds, derived percentiles, closed
+failure reasons, and an attempt count. On the reference host three independent
+calibration rounds had wall maxima of 157.190–161.171 milliseconds and CPU
+maxima of 157.149–161.112. The tracked 200-millisecond p95 ceilings and 1.15
+p95/p50 ceiling preserve at least about 24 percent measured headroom while
+rejecting the magnitude of unexplained slowdown seen in D461. A failed
+calibration resets the passive window inside the same 300-second admission
+deadline; it does not rerun a ledger or candidate. The loop does not begin a
+calibration at the deadline and never admits one that completes after it. An
+already-running probe may finish after the deadline only to retain a blocked
+receipt, so the recorded wall time can expose an overrun without turning it
+green.
+
+`run-perf-ledger.sh` now obtains an independently validated schema-3 receipt
+immediately before scale, semantic, and Spotlight. Candidate contract schema 6
+requires all three exact-source/binary receipts and publishes them with a
+selected authoritative run. Product metric inventory, absolute budgets,
+comparison tolerances, 20 measurement iterations, fixed PERF-008 confirmation
+semantics, and informational-dispersion behavior remain unchanged. The
+sentinel is source-independent host admission for the exact reference machine;
+it is not Sequoia/Tahoe, older-hardware, battery, signed-distribution, or field
+performance certification.
+
 ## Measured numbers (MacBook Pro M4 Max 36 GB, macOS 26, Jul 2026)
 
 | Metric | Target | Measured |

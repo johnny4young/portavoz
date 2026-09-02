@@ -11336,7 +11336,7 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testCandidateAutomationOwnsEightSpecializedProofs() throws {
         let contract = try Self.jsonObject(
             at: "docs/evidence/candidate-automation.json")
-        XCTAssertEqual(contract["schemaVersion"] as? Int, 5)
+        XCTAssertEqual(contract["schemaVersion"] as? Int, 6)
         XCTAssertEqual(
             contract["kind"] as? String,
             "candidate-automation-contract")
@@ -11370,12 +11370,30 @@ final class ArchitectureDependencyTests: XCTestCase {
             performance["hostReadiness"] as? [String: Any])
         XCTAssertEqual(
             hostReadiness["version"] as? String,
-            "prebuilt-release-host-readiness-v1")
+            "prebuilt-release-host-readiness-v2")
         XCTAssertEqual(hostReadiness["maximumWaitSeconds"] as? Double, 300)
         XCTAssertEqual(hostReadiness["requiredConsecutiveSamples"] as? Int, 3)
         XCTAssertEqual(
             hostReadiness["maximumInterferenceCPUPercent"] as? Double,
             2)
+        let throughputCalibration = try XCTUnwrap(
+            hostReadiness["throughputCalibration"] as? [String: Any])
+        XCTAssertEqual(
+            throughputCalibration["version"] as? String,
+            "sha256-zero-block-512mib-v1")
+        XCTAssertEqual(throughputCalibration["sampleCount"] as? Int, 5)
+        XCTAssertEqual(
+            throughputCalibration["bytesPerSample"] as? Int,
+            536_870_912)
+        XCTAssertEqual(
+            throughputCalibration["maximumWallMilliseconds"] as? Double,
+            200)
+        XCTAssertEqual(
+            throughputCalibration["maximumCPUMilliseconds"] as? Double,
+            200)
+        XCTAssertEqual(
+            throughputCalibration["maximumDispersionRatio"] as? Double,
+            1.15)
         let modelFixture = try XCTUnwrap(
             contract["modelFixture"] as? [String: Any])
         XCTAssertEqual(
@@ -11444,6 +11462,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Exact performance Release build",
             "PORTAVOZ_PERF_BINARY_SHA256",
             "PORTAVOZ_PERF_HOST_MAXIMUM_INTERFERENCE_CPU_PERCENT",
+            "PORTAVOZ_PERF_HOST_MAXIMUM_CALIBRATION_WALL_MILLISECONDS",
             "performance-regression-confirmation",
             "accepted_exit_codes=(0, 2)",
             "PORTAVOZ_PERF_STRICT\": \"0",
@@ -11512,8 +11531,13 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D454"))
         XCTAssertTrue(decisions.contains("## D456"))
         XCTAssertTrue(decisions.contains("## D460"))
+        XCTAssertTrue(decisions.contains("## D462"))
         XCTAssertTrue(performanceRunner.contains(
-            "Performance host readiness"))
+            "run_host_readiness \"Scale\""))
+        XCTAssertTrue(performanceRunner.contains(
+            "host-readiness-semantic.json"))
+        XCTAssertTrue(performanceRunner.contains(
+            "host-readiness-spotlight.json"))
         XCTAssertTrue(performanceRunner.contains(
             "portavoz_prepare_perf_binary"))
         XCTAssertTrue(performanceRunner.contains(
@@ -11525,7 +11549,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(performanceReadiness.contains(
             "build-or-symbolication"))
         XCTAssertTrue(performanceReadiness.contains(
-            "SCHEMA_VERSION = 2"))
+            "SCHEMA_VERSION = 3"))
+        XCTAssertTrue(performanceReadiness.contains(
+            "sha256-zero-block-512mib-v1"))
         XCTAssertTrue(performanceReadiness.contains(
             "interferenceContributors"))
         XCTAssertTrue(performanceReadiness.contains(

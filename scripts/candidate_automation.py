@@ -29,7 +29,7 @@ import resource_baseline
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONTRACT = ROOT / "docs" / "evidence" / "candidate-automation.json"
 DEFAULT_OUTPUT_PARENT = ROOT / "dist" / "release-readiness"
-CONTRACT_SCHEMA_VERSION = 5
+CONTRACT_SCHEMA_VERSION = 6
 PERF_LEDGER_SCHEMA_VERSION = 1
 PERFORMANCE_CONFIRMATION_SCHEMA_VERSION = 2
 UI_BUDGET_SCHEMA_VERSION = 1
@@ -39,6 +39,8 @@ UI_HARNESS_NOISE_THRESHOLD_SECONDS = 1.0
 EXPECTED_PERFORMANCE_CONFIRMATION_RUNS = 3
 EXPECTED_PERFORMANCE_ARTIFACTS = (
     "host-readiness.json",
+    "host-readiness-semantic.json",
+    "host-readiness-spotlight.json",
     "ledger.json",
     "ledger.md",
     "scale.json",
@@ -365,11 +367,28 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
             "maximumCPUCapacityFraction",
             "maximumLoadPerProcessor",
             "maximumInterferenceCPUPercent",
+            "throughputCalibration",
         ),
     )
     if host_readiness["version"] != perf_host_readiness.POLICY_VERSION:
         raise CandidateAutomationError(
             "candidate performance host-readiness policy version drifted"
+        )
+    calibration = exact_object(
+        host_readiness["throughputCalibration"],
+        "candidate contract.performance.hostReadiness.throughputCalibration",
+        (
+            "version",
+            "sampleCount",
+            "bytesPerSample",
+            "maximumWallMilliseconds",
+            "maximumCPUMilliseconds",
+            "maximumDispersionRatio",
+        ),
+    )
+    if calibration["version"] != perf_host_readiness.CALIBRATION_VERSION:
+        raise CandidateAutomationError(
+            "candidate performance throughput-calibration version drifted"
         )
     try:
         readiness_policy = perf_host_readiness.ReadinessPolicy(
@@ -386,6 +405,17 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
             ),
             maximum_interference_cpu_percent=(
                 host_readiness["maximumInterferenceCPUPercent"]
+            ),
+            calibration_sample_count=calibration["sampleCount"],
+            calibration_bytes_per_sample=calibration["bytesPerSample"],
+            maximum_calibration_wall_milliseconds=(
+                calibration["maximumWallMilliseconds"]
+            ),
+            maximum_calibration_cpu_milliseconds=(
+                calibration["maximumCPUMilliseconds"]
+            ),
+            maximum_calibration_dispersion_ratio=(
+                calibration["maximumDispersionRatio"]
             ),
         ).validate()
     except perf_host_readiness.ReadinessError as error:
@@ -621,6 +651,7 @@ def candidate_performance_readiness_policy(
     contract: dict[str, Any],
 ) -> perf_host_readiness.ReadinessPolicy:
     policy = contract["performance"]["hostReadiness"]
+    calibration = policy["throughputCalibration"]
     return perf_host_readiness.ReadinessPolicy(
         maximum_wait_seconds=policy["maximumWaitSeconds"],
         sample_interval_seconds=policy["sampleIntervalSeconds"],
@@ -629,6 +660,17 @@ def candidate_performance_readiness_policy(
         maximum_load_per_processor=policy["maximumLoadPerProcessor"],
         maximum_interference_cpu_percent=(
             policy["maximumInterferenceCPUPercent"]
+        ),
+        calibration_sample_count=calibration["sampleCount"],
+        calibration_bytes_per_sample=calibration["bytesPerSample"],
+        maximum_calibration_wall_milliseconds=(
+            calibration["maximumWallMilliseconds"]
+        ),
+        maximum_calibration_cpu_milliseconds=(
+            calibration["maximumCPUMilliseconds"]
+        ),
+        maximum_calibration_dispersion_ratio=(
+            calibration["maximumDispersionRatio"]
         ),
     ).validate()
 
@@ -1340,15 +1382,20 @@ def validate_performance_run(
     expected_host: dict[str, Any] | None = None,
     expected_toolchain: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], tuple[str, ...]]:
-    try:
-        perf_host_readiness.validate_receipt(
-            load_json(path.parent / "host-readiness.json", "performance host readiness"),
-            policy=candidate_performance_readiness_policy(contract),
-            expected_commit=expected_commit,
-            expected_binary_sha256=expected_binary_sha256,
-        )
-    except perf_host_readiness.ReadinessError as error:
-        raise CandidateAutomationError(str(error)) from error
+    for readiness_name, readiness_label in (
+        ("host-readiness.json", "scale performance host readiness"),
+        ("host-readiness-semantic.json", "semantic performance host readiness"),
+        ("host-readiness-spotlight.json", "Spotlight performance host readiness"),
+    ):
+        try:
+            perf_host_readiness.validate_receipt(
+                load_json(path.parent / readiness_name, readiness_label),
+                policy=candidate_performance_readiness_policy(contract),
+                expected_commit=expected_commit,
+                expected_binary_sha256=expected_binary_sha256,
+            )
+        except perf_host_readiness.ReadinessError as error:
+            raise CandidateAutomationError(str(error)) from error
     ledger = validated_performance_ledger(
         path,
         contract,
@@ -1722,6 +1769,21 @@ def run_candidate_performance_gate(
                 "PORTAVOZ_PERF_HOST_MAXIMUM_INTERFERENCE_CPU_PERCENT": str(
                     readiness_policy.maximum_interference_cpu_percent
                 ),
+                "PORTAVOZ_PERF_HOST_CALIBRATION_SAMPLE_COUNT": str(
+                    readiness_policy.calibration_sample_count
+                ),
+                "PORTAVOZ_PERF_HOST_CALIBRATION_BYTES_PER_SAMPLE": str(
+                    readiness_policy.calibration_bytes_per_sample
+                ),
+                "PORTAVOZ_PERF_HOST_MAXIMUM_CALIBRATION_WALL_MILLISECONDS": str(
+                    readiness_policy.maximum_calibration_wall_milliseconds
+                ),
+                "PORTAVOZ_PERF_HOST_MAXIMUM_CALIBRATION_CPU_MILLISECONDS": str(
+                    readiness_policy.maximum_calibration_cpu_milliseconds
+                ),
+                "PORTAVOZ_PERF_HOST_MAXIMUM_CALIBRATION_DISPERSION_RATIO": str(
+                    readiness_policy.maximum_calibration_dispersion_ratio
+                ),
                 "PORTAVOZ_PERF_STRICT": "0",
                 "PORTAVOZ_PERF_WAVEFORM_MIC": None,
                 "PORTAVOZ_PERF_WAVEFORM_SYSTEM": None,
@@ -1804,18 +1866,23 @@ def run_candidate_performance_gate(
 
     publish_performance_run(selected["root"], performance_root, confirmation_path)
     validate_performance_ledger(performance_root / "ledger.json", contract)
-    try:
-        perf_host_readiness.validate_receipt(
-            load_json(
-                performance_root / "host-readiness.json",
-                "canonical performance host readiness",
-            ),
-            policy=readiness_policy,
-            expected_commit=expected_commit,
-            expected_binary_sha256=binary_sha256,
-        )
-    except perf_host_readiness.ReadinessError as error:
-        raise CandidateAutomationError(str(error)) from error
+    for readiness_name in (
+        "host-readiness.json",
+        "host-readiness-semantic.json",
+        "host-readiness-spotlight.json",
+    ):
+        try:
+            perf_host_readiness.validate_receipt(
+                load_json(
+                    performance_root / readiness_name,
+                    f"canonical performance {readiness_name}",
+                ),
+                policy=readiness_policy,
+                expected_commit=expected_commit,
+                expected_binary_sha256=binary_sha256,
+            )
+        except perf_host_readiness.ReadinessError as error:
+            raise CandidateAutomationError(str(error)) from error
     validate_performance_confirmation(
         performance_root / "confirmation.json",
         contract,

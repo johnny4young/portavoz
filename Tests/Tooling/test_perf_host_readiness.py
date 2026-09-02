@@ -49,6 +49,13 @@ def observation(**overrides):
     return readiness.HostObservation(**values)
 
 
+def calibration(*, wall=160.0, cpu=159.0):
+    return readiness.ThroughputCalibration(
+        wall_milliseconds=(wall,) * 5,
+        cpu_milliseconds=(cpu,) * 5,
+    )
+
+
 class PerformanceHostReadinessTests(unittest.TestCase):
     commit = "a" * 40
     binary = "b" * 64
@@ -63,14 +70,16 @@ class PerformanceHostReadinessTests(unittest.TestCase):
             maximum_interference_cpu_percent=2.0,
         )
 
-    def run_wait(self, samples):
+    def run_wait(self, samples, calibrations=None):
         iterator = iter(samples)
+        calibration_iterator = iter(calibrations or [calibration()])
         clock = FakeClock()
         return readiness.wait_for_readiness(
             policy=self.policy,
             source_commit=self.commit,
             binary_sha256=self.binary,
             sampler=lambda: next(iterator),
+            calibrator=lambda: next(calibration_iterator),
             clock=clock,
             sleeper=clock.sleep,
             generated_at="2026-08-30T20:00:00Z",
@@ -88,6 +97,115 @@ class PerformanceHostReadinessTests(unittest.TestCase):
         self.assertEqual(receipt["observedSampleCount"], 4)
         self.assertEqual([item["sequence"] for item in receipt["samples"]], [2, 3, 4])
         self.assertTrue(all(not item["reasons"] for item in receipt["samples"]))
+        self.assertEqual(receipt["calibrationAttemptCount"], 1)
+        self.assertEqual(receipt["throughputCalibration"]["reasons"], [])
+
+    def test_slow_calibration_resets_passive_window_before_admission(self):
+        receipt = self.run_wait(
+            [observation() for _ in range(6)],
+            calibrations=[calibration(wall=240, cpu=230), calibration()],
+        )
+
+        self.assertEqual(receipt["outcome"], "ready")
+        self.assertEqual(receipt["observedSampleCount"], 6)
+        self.assertEqual(receipt["calibrationAttemptCount"], 2)
+        self.assertEqual(
+            [item["sequence"] for item in receipt["samples"]],
+            [4, 5, 6],
+        )
+        self.assertEqual(receipt["throughputCalibration"]["reasons"], [])
+
+    def test_calibration_dispersion_blocks_at_the_bounded_deadline(self):
+        receipt = self.run_wait(
+            [observation() for _ in range(9)],
+            calibrations=[calibration(wall=240, cpu=230)] * 3,
+        )
+
+        self.assertEqual(receipt["outcome"], "blocked")
+        self.assertEqual(receipt["calibrationAttemptCount"], 2)
+        self.assertEqual(
+            receipt["throughputCalibration"]["reasons"],
+            ["cpu-ceiling", "wall-ceiling"],
+        )
+
+    def test_clean_calibration_finishing_after_deadline_cannot_admit_host(self):
+        clock = FakeClock()
+
+        def calibrator():
+            clock.value += 6.5
+            return calibration()
+
+        receipt = readiness.wait_for_readiness(
+            policy=self.policy,
+            source_commit=self.commit,
+            binary_sha256=self.binary,
+            sampler=observation,
+            calibrator=calibrator,
+            clock=clock,
+            sleeper=clock.sleep,
+            generated_at="2026-08-30T20:00:00Z",
+        )
+
+        self.assertEqual(receipt["outcome"], "blocked")
+        self.assertEqual(receipt["elapsedSeconds"], 8.5)
+        self.assertEqual(receipt["calibrationAttemptCount"], 1)
+        self.assertEqual(receipt["throughputCalibration"]["reasons"], [])
+
+    def test_passive_window_at_deadline_does_not_start_calibration(self):
+        clock = FakeClock()
+        calibration_calls = 0
+        policy = readiness.ReadinessPolicy(
+            maximum_wait_seconds=2.0,
+            sample_interval_seconds=1.0,
+            required_consecutive_samples=3,
+        )
+
+        def calibrator():
+            nonlocal calibration_calls
+            calibration_calls += 1
+            return calibration()
+
+        receipt = readiness.wait_for_readiness(
+            policy=policy,
+            source_commit=self.commit,
+            binary_sha256=self.binary,
+            sampler=observation,
+            calibrator=calibrator,
+            clock=clock,
+            sleeper=clock.sleep,
+            generated_at="2026-08-30T20:00:00Z",
+        )
+
+        self.assertEqual(receipt["outcome"], "blocked")
+        self.assertEqual(receipt["elapsedSeconds"], 2.0)
+        self.assertEqual(calibration_calls, 0)
+        self.assertEqual(receipt["calibrationAttemptCount"], 0)
+        self.assertIsNone(receipt["throughputCalibration"])
+
+    def test_calibration_summary_is_recomputed_and_flags_dispersion(self):
+        document = readiness.calibration_document(
+            readiness.ThroughputCalibration(
+                wall_milliseconds=(150, 150, 151, 152, 180),
+                cpu_milliseconds=(149, 150, 150, 151, 151),
+            ),
+            self.policy,
+        )
+
+        self.assertEqual(document["wallP50Milliseconds"], 151)
+        self.assertEqual(document["wallP95Milliseconds"], 180)
+        self.assertEqual(document["reasons"], ["dispersion"])
+        self.assertEqual(
+            readiness.validate_calibration_document(document, self.policy),
+            document,
+        )
+
+    def test_calibration_work_and_sample_count_cannot_be_weakened(self):
+        for policy in (
+            readiness.ReadinessPolicy(calibration_sample_count=4),
+            readiness.ReadinessPolicy(calibration_bytes_per_sample=1024),
+        ):
+            with self.assertRaises(readiness.ReadinessError):
+                policy.validate()
 
     def test_late_interference_resets_the_consecutive_window(self):
         receipt = self.run_wait([
@@ -211,6 +329,14 @@ class PerformanceHostReadinessTests(unittest.TestCase):
             {"class": "swift-compiler", "cpuPercent": 1.0}
         ]
         cases.append((mismatched_contribution, "contributions do not sum"))
+        inconsistent_calibration = copy.deepcopy(receipt)
+        inconsistent_calibration["throughputCalibration"][
+            "wallP95Milliseconds"
+        ] = 1.0
+        cases.append((inconsistent_calibration, "summary is inconsistent"))
+        deadline_overrun = copy.deepcopy(receipt)
+        deadline_overrun["elapsedSeconds"] = self.policy.maximum_wait_seconds + 0.1
+        cases.append((deadline_overrun, "exceeded the admission deadline"))
         for document, message in cases:
             with self.subTest(message=message), self.assertRaisesRegex(
                 readiness.ReadinessError, message

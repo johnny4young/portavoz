@@ -42,7 +42,7 @@ class CandidateAutomationTests(unittest.TestCase):
         }
 
     def test_tracked_contract_is_exact_and_complete(self):
-        self.assertEqual(self.contract_document["schemaVersion"], 5)
+        self.assertEqual(self.contract_document["schemaVersion"], 6)
         self.assertEqual(
             self.contract["proofs"],
             (
@@ -69,6 +69,48 @@ class CandidateAutomationTests(unittest.TestCase):
             self.contract["modelFixture"]["conversationVoices"],
             candidate.EXPECTED_CONVERSATION_VOICES,
         )
+        readiness = self.contract_document["performance"]["hostReadiness"]
+        self.assertEqual(
+            readiness["version"], "prebuilt-release-host-readiness-v2"
+        )
+        self.assertEqual(
+            readiness["throughputCalibration"],
+            {
+                "bytesPerSample": 536_870_912,
+                "maximumCPUMilliseconds": 200.0,
+                "maximumDispersionRatio": 1.15,
+                "maximumWallMilliseconds": 200.0,
+                "sampleCount": 5,
+                "version": "sha256-zero-block-512mib-v1",
+            },
+        )
+
+        performance_runner = (
+            ROOT / "scripts" / "run-perf-ledger.sh"
+        ).read_text()
+        scale_readiness = performance_runner.index(
+            'run_host_readiness "Scale"'
+        )
+        scale_harness = performance_runner.index(
+            'run_stage "Library and detail scale matrix"'
+        )
+        semantic_readiness = performance_runner.index(
+            '"Semantic" "$OUTPUT_DIR/host-readiness-semantic.json"'
+        )
+        semantic_harness = performance_runner.index(
+            'run_stage "Semantic retrieval matrix"'
+        )
+        spotlight_readiness = performance_runner.index(
+            '"Spotlight" "$OUTPUT_DIR/host-readiness-spotlight.json"'
+        )
+        spotlight_harness = performance_runner.index(
+            'run_stage "Spotlight projection matrix"'
+        )
+        self.assertLess(scale_readiness, scale_harness)
+        self.assertLess(scale_harness, semantic_readiness)
+        self.assertLess(semantic_readiness, semantic_harness)
+        self.assertLess(semantic_harness, spotlight_readiness)
+        self.assertLess(spotlight_readiness, spotlight_harness)
         self.assertEqual(
             tuple(
                 voice
@@ -310,7 +352,12 @@ class CandidateAutomationTests(unittest.TestCase):
             self.assertEqual(confirmation["observedRuns"], 1)
             self.assertEqual(confirmation["selectedRun"], 1)
             self.assertTrue((performance / "ledger.json").is_file())
-            self.assertTrue((performance / "host-readiness.json").is_file())
+            for name in (
+                "host-readiness.json",
+                "host-readiness-semantic.json",
+                "host-readiness-spotlight.json",
+            ):
+                self.assertTrue((performance / name).is_file())
             self.assertFalse(
                 (Path(directory) / "performance-confirmation" / "run-2").exists()
             )
@@ -322,6 +369,18 @@ class CandidateAutomationTests(unittest.TestCase):
             )
             self.assertEqual(
                 environment["PORTAVOZ_PERF_SOURCE_COMMIT"], self.commit
+            )
+            self.assertEqual(
+                environment[
+                    "PORTAVOZ_PERF_HOST_MAXIMUM_CALIBRATION_WALL_MILLISECONDS"
+                ],
+                "200.0",
+            )
+            self.assertEqual(
+                environment[
+                    "PORTAVOZ_PERF_HOST_MAXIMUM_CALIBRATION_DISPERSION_RATIO"
+                ],
+                "1.15",
             )
             self.assertEqual(command.call_args.kwargs["accepted_exit_codes"], (0, 2))
 
@@ -630,6 +689,32 @@ class CandidateAutomationTests(unittest.TestCase):
                 candidate.CandidateAutomationError,
                 "binary SHA-256 changed",
             ):
+                candidate.validate_performance_confirmation(
+                    performance / "confirmation.json",
+                    self.contract,
+                    runs_root=runs_root,
+                )
+
+    def test_performance_confirmation_requires_each_stage_readiness_receipt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            performance = Path(directory) / "performance"
+            with mock.patch.object(
+                candidate,
+                "run_command",
+                side_effect=self.performance_run_side_effect({1: ()}),
+            ):
+                candidate.run_candidate_performance_gate(
+                    ROOT,
+                    self.commit,
+                    performance,
+                    self.contract,
+                    **self.performance_gate_kwargs(),
+                    environment={},
+                )
+            runs_root = Path(directory) / "performance-confirmation"
+            (runs_root / "run-1" / "host-readiness-semantic.json").unlink()
+
+            with self.assertRaises(candidate.CandidateAutomationError):
                 candidate.validate_performance_confirmation(
                     performance / "confirmation.json",
                     self.contract,
@@ -1450,7 +1535,7 @@ class CandidateAutomationTests(unittest.TestCase):
             for sequence in range(1, 4)
         ]
         return {
-            "schemaVersion": 2,
+            "schemaVersion": candidate.perf_host_readiness.SCHEMA_VERSION,
             "kind": "performance-host-readiness",
             "generatedAt": "2026-08-30T18:00:00Z",
             "sourceCommit": self.commit,
@@ -1460,6 +1545,16 @@ class CandidateAutomationTests(unittest.TestCase):
             "elapsedSeconds": 4.0,
             "observedSampleCount": 3,
             "samples": samples,
+            "calibrationAttemptCount": 1,
+            "throughputCalibration": (
+                candidate.perf_host_readiness.calibration_document(
+                    candidate.perf_host_readiness.ThroughputCalibration(
+                        wall_milliseconds=(160.0,) * 5,
+                        cpu_milliseconds=(159.0,) * 5,
+                    ),
+                    policy,
+                )
+            ),
         }
 
     def performance_run_side_effect(
@@ -1493,9 +1588,14 @@ class CandidateAutomationTests(unittest.TestCase):
             (run_root / "ledger.md").write_text("# Performance\n")
             for name in ("scale.json", "semantic.json", "spotlight.json"):
                 (run_root / name).write_text("{}\n")
-            (run_root / "host-readiness.json").write_text(json.dumps(
-                self.performance_host_readiness_receipt()
-            ))
+            for name in (
+                "host-readiness.json",
+                "host-readiness-semantic.json",
+                "host-readiness-spotlight.json",
+            ):
+                (run_root / name).write_text(json.dumps(
+                    self.performance_host_readiness_receipt()
+                ))
             return exit_codes.get(run_number, 2 if candidate_ids else 0)
 
         return side_effect

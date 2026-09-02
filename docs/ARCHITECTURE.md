@@ -4755,12 +4755,21 @@ the performance-ledger partition.
 `scripts/candidate_automation.py` requires a completely clean checkout, fixes
 one full source commit, and rechecks that identity around every sequential
 gate. It builds the exact Release CLI once, binds every scale, semantic, and
-Spotlight harness to that executable's SHA-256, then requires consecutive
-content-free host-readiness observations before each latency-sensitive ledger.
-The predicate is bounded and covers aggregate CPU capacity, one-minute load,
-compiler/symbolication CPU, AC automatic power, and nominal thermal state; a
-timeout blocks before measurement rather than sleeping blindly or retrying.
-Readiness receipt schema 2 keeps only the final bounded observation window and
+Spotlight harness to that executable's SHA-256, then requires fresh content-
+free host-readiness admission before each of those three latency-sensitive
+harnesses. The bounded predicate covers aggregate CPU capacity, one-minute
+load, compiler/symbolication CPU, AC automatic power, and nominal thermal
+state. After three passive clean observations, it also requires five stable
+source-independent SHA-256 throughput samples over one fixed 512 MiB zero
+stream. Wall or process-CPU p95 above 200 milliseconds, p95/p50 above 1.15, or
+an incorrect fixed digest resets the passive window or fails closed at the
+300-second admission deadline. The loop never starts a calibration at the
+deadline and a calibration that finishes after it can only produce a blocked
+receipt; an already-running probe may finish after the deadline only to record
+that failure. This is active reference-host capacity admission, not a product
+benchmark, fixed cooldown, candidate retry, or cross-hardware claim.
+Readiness receipt schema 3 keeps the final bounded observation window, the
+content-free ordered calibration timings and attempt count, and
 attributes compiler/symbolication CPU to a closed six-class vocabulary (build
 driver, Swift compiler, Clang compiler, linker, source analysis, or
 symbolication). It records one numeric aggregate per present class, never an

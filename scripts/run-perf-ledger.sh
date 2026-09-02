@@ -36,6 +36,11 @@ HOST_REQUIRED_CONSECUTIVE_SAMPLES="${PORTAVOZ_PERF_HOST_REQUIRED_CONSECUTIVE_SAM
 HOST_MAXIMUM_CPU_CAPACITY_FRACTION="${PORTAVOZ_PERF_HOST_MAXIMUM_CPU_CAPACITY_FRACTION:-0.25}"
 HOST_MAXIMUM_LOAD_PER_PROCESSOR="${PORTAVOZ_PERF_HOST_MAXIMUM_LOAD_PER_PROCESSOR:-0.5}"
 HOST_MAXIMUM_INTERFERENCE_CPU_PERCENT="${PORTAVOZ_PERF_HOST_MAXIMUM_INTERFERENCE_CPU_PERCENT:-2.0}"
+HOST_CALIBRATION_SAMPLE_COUNT="${PORTAVOZ_PERF_HOST_CALIBRATION_SAMPLE_COUNT:-5}"
+HOST_CALIBRATION_BYTES_PER_SAMPLE="${PORTAVOZ_PERF_HOST_CALIBRATION_BYTES_PER_SAMPLE:-536870912}"
+HOST_MAXIMUM_CALIBRATION_WALL_MILLISECONDS="${PORTAVOZ_PERF_HOST_MAXIMUM_CALIBRATION_WALL_MILLISECONDS:-200}"
+HOST_MAXIMUM_CALIBRATION_CPU_MILLISECONDS="${PORTAVOZ_PERF_HOST_MAXIMUM_CALIBRATION_CPU_MILLISECONDS:-200}"
+HOST_MAXIMUM_CALIBRATION_DISPERSION_RATIO="${PORTAVOZ_PERF_HOST_MAXIMUM_CALIBRATION_DISPERSION_RATIO:-1.15}"
 
 mkdir -p "$OUTPUT_DIR"
 reports=()
@@ -59,13 +64,15 @@ run_stage() {
 source "$ROOT/scripts/perf-binary.sh"
 portavoz_prepare_perf_binary "$ROOT"
 
-# Do not use a fixed cooldown sleep. Observe a bounded content-free predicate
-# until aggregate CPU/load, compiler or symbolication work, power, and thermal
-# state are simultaneously clean for consecutive samples. A timeout fails
-# before any latency measurement and retains the blocked receipt.
-run_stage "Performance host readiness" \
-  python3 scripts/perf_host_readiness.py \
-    --output "$OUTPUT_DIR/host-readiness.json" \
+run_host_readiness() {
+  local label="$1"
+  local output="$2"
+  # Do not use a fixed cooldown sleep. Observe the passive host predicate and
+  # then prove active, source-independent throughput. Re-check before every
+  # long harness so one early sample cannot cover a later host-state change.
+  run_stage "$label performance host readiness" \
+    python3 scripts/perf_host_readiness.py \
+    --output "$output" \
     --source-commit "$PORTAVOZ_PERF_SOURCE_COMMIT" \
     --binary-sha256 "$PORTAVOZ_PERF_BINARY_SHA256" \
     --maximum-wait-seconds "$HOST_MAXIMUM_WAIT_SECONDS" \
@@ -73,16 +80,31 @@ run_stage "Performance host readiness" \
     --required-consecutive-samples "$HOST_REQUIRED_CONSECUTIVE_SAMPLES" \
     --maximum-cpu-capacity-fraction "$HOST_MAXIMUM_CPU_CAPACITY_FRACTION" \
     --maximum-load-per-processor "$HOST_MAXIMUM_LOAD_PER_PROCESSOR" \
-    --maximum-interference-cpu-percent "$HOST_MAXIMUM_INTERFERENCE_CPU_PERCENT"
+    --maximum-interference-cpu-percent "$HOST_MAXIMUM_INTERFERENCE_CPU_PERCENT" \
+    --calibration-sample-count "$HOST_CALIBRATION_SAMPLE_COUNT" \
+    --calibration-bytes-per-sample "$HOST_CALIBRATION_BYTES_PER_SAMPLE" \
+    --maximum-calibration-wall-milliseconds \
+      "$HOST_MAXIMUM_CALIBRATION_WALL_MILLISECONDS" \
+    --maximum-calibration-cpu-milliseconds \
+      "$HOST_MAXIMUM_CALIBRATION_CPU_MILLISECONDS" \
+    --maximum-calibration-dispersion-ratio \
+      "$HOST_MAXIMUM_CALIBRATION_DISPERSION_RATIO"
+}
+
+run_host_readiness "Scale" "$OUTPUT_DIR/host-readiness.json"
 
 run_stage "Library and detail scale matrix" \
   scripts/run-scale-baseline.sh "$OUTPUT_DIR/scale.json"
 reports+=(--report "scale=$OUTPUT_DIR/scale.json")
 
+run_host_readiness \
+  "Semantic" "$OUTPUT_DIR/host-readiness-semantic.json"
 run_stage "Semantic retrieval matrix" \
   scripts/run-semantic-scale-baseline.sh "$OUTPUT_DIR/semantic.json"
 reports+=(--report "semantic=$OUTPUT_DIR/semantic.json")
 
+run_host_readiness \
+  "Spotlight" "$OUTPUT_DIR/host-readiness-spotlight.json"
 run_stage "Spotlight projection matrix" \
   scripts/run-spotlight-scale-baseline.sh "$OUTPUT_DIR/spotlight.json"
 reports+=(--report "spotlight=$OUTPUT_DIR/spotlight.json")
@@ -146,7 +168,7 @@ if xcode_lines:
 
 if toolchain:
     for report in sorted(directory.glob("*.json")):
-        if report.name in {"ledger.json", "host-readiness.json"}:
+        if report.name == "ledger.json" or report.name.startswith("host-readiness"):
             continue
         payload = json.loads(report.read_text())
         # Merge, never replace: the detail-UI harness records its own
