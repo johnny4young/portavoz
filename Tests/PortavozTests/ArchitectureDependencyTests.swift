@@ -5306,6 +5306,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             "probe.writeSample"))
         XCTAssertTrue(services.contains(
             "usesTemporaryMeetingStore && !reusesVerifiedModels"))
+        XCTAssertTrue(services.contains(
+            "AppInitialModelReadinessPolicy.schedulesRefresh("))
+        XCTAssertTrue(services.contains(
+            "!BenchMode.runsIsolatedBenchmark(arguments: arguments)"))
         XCTAssertTrue(runner.contains(
             "app.portavoz.mac.resource-bench"))
         XCTAssertTrue(runner.contains(

@@ -57,6 +57,12 @@ struct AppStorageIsolationPolicy: Equatable {
     }
 }
 
+enum AppInitialModelReadinessPolicy {
+    static func schedulesRefresh(arguments: [String]) -> Bool {
+        !BenchMode.runsIsolatedBenchmark(arguments: arguments)
+    }
+}
+
 /// Deterministic XCUITest-only failure injected after a disposable SQLite
 /// authority has been materialized. Production launches can never select it.
 private struct AppSimulatedDatabaseOpenFailure: Error {}
@@ -384,7 +390,7 @@ final class AppServices {
                     retryAt: retryAt)
             })
         installSelectedAskResolver(on: selectedAskAnswering)
-        scheduleInitialReadinessRefresh()
+        scheduleInitialReadinessRefresh(arguments: arguments)
     }
 
     private static func makeTranscriptionScheduler(
@@ -411,10 +417,10 @@ final class AppServices {
             environment: environment)
     }
 
-    private func scheduleInitialReadinessRefresh() {
-        Task { @MainActor [weak self] in
-            await self?.refreshMLXReadiness()
-        }
+    private func scheduleInitialReadinessRefresh(arguments: [String]) {
+        guard AppInitialModelReadinessPolicy.schedulesRefresh(
+            arguments: arguments) else { return }
+        Task { @MainActor [weak self] in await self?.refreshMLXReadiness() }
     }
 
     private static func makeLocalDataLedgerModel(

@@ -17629,3 +17629,37 @@ exact clean commit must pass ordinary preflight, mandatory bilingual XCUITest,
 and fresh candidate automation. First-ever semantic activation latency and
 physical Sequoia/Tahoe, distribution, CloudKit, assistive-technology, and field
 behavior remain separate evidence gates.
+
+## D459 — Keep opportunistic model discovery outside isolated probes (Sep 2026)
+
+**Context:** the exact clean `389e6040` candidate proved D458's intended
+correction: both semantic-indexing cells passed, including stable exact
+recording-plus-indexing spans. Candidate admission nevertheless failed first on
+idle CPU, while a diagnostic evaluation also marked recording, Stop, Summary,
+and recording-plus-batch unstable. Those scenarios were outside D458's
+indexing-only change. Every fresh `AppServices` composition still scheduled a
+production convenience task that called `refreshMLXReadiness()`. For the shared
+benchmark model store, its first process-local lookup re-hashed every pinned
+Qwen3.5 artifact, including the 2.26 GB model, without joining any scenario
+preparation or resource telemetry. Depending on storage residency, that task
+could overlap idle, engine loading, active recording, Stop, or another model.
+Summary could also race it with its own required forced verification.
+
+**Decision:** preserve opportunistic installed-MLX discovery for ordinary app
+launches, but do not schedule it when `BenchMode.runsIsolatedBenchmark` owns the
+process. Each benchmark remains responsible for its declared assets and exact
+preparation. In particular, Summary still force-verifies the pinned descriptor
+before opening the probe; recording, batch, Ask, indexing, graph, and launch-
+preflight modes do not acquire an unrelated MLX verification task. Keep the
+real signed app, product workflows, scenario order, three samples, timeouts,
+collectors, stability thresholds, and fail-closed candidate policy unchanged.
+
+**Consequences:** process CPU, footprint, and disk reads can no longer include
+an initializer-owned multi-gigabyte hash that was unrelated to the measured
+scenario. Production still refreshes the Settings-facing installed-model state
+at launch, and Summary evidence still proves exact artifact integrity before
+measurement. The failed `389e6040` candidate remains failed and emitted no
+qualification receipt; D459 requires ordinary preflight, mandatory bilingual
+XCUITest, a new clean commit, and one fresh exact candidate rather than a retry.
+Physical Sequoia/Tahoe, signed distribution, CloudKit, assistive technology,
+and field behavior remain separate evidence gates.

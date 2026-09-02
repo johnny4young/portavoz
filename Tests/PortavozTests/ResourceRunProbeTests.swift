@@ -229,6 +229,24 @@ final class ResourceRunProbeTests: XCTestCase {
             arguments: ["Portavoz", "-use-temp-store", "-seed-demo"]))
     }
 
+    func testIsolatedBenchmarksSuppressOpportunisticModelVerification() {
+        for arguments in [
+            ["Portavoz", "--bench-resource-launch-probe", "/tmp/ready"],
+            ["Portavoz", "--bench-record", "30"],
+            ["Portavoz", "--bench-resource-prepare-refine", "/tmp/ready"],
+            ["Portavoz", "--bench-resource-refine", "fixture.aiff"],
+            ["Portavoz", "--bench-resource-summary"],
+            ["Portavoz", "--bench-resource-ask"],
+            ["Portavoz", "--bench-resource-indexing"],
+            ["Portavoz", "--bench-graph-queries"],
+        ] {
+            XCTAssertFalse(AppInitialModelReadinessPolicy.schedulesRefresh(
+                arguments: arguments))
+        }
+        XCTAssertTrue(AppInitialModelReadinessPolicy.schedulesRefresh(
+            arguments: ["Portavoz", "-use-temp-store", "-seed-demo"]))
+    }
+
     func testResourceLaunchProbeRequiresFreshAbsoluteOwnerOnlyOutput() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(
             "BenchResourceLaunchProbe-\(UUID().uuidString)",

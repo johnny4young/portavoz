@@ -3426,9 +3426,12 @@ owner if LaunchServices itself does not return. Operation-specific model
 timeouts remain tighter.
 Once a resource benchmark dispatcher is armed, app initialization returns
 before sync, recovery, provider discovery, or dictation registration can start;
-the AppKit delegate remains detached from product services. The benchmark owns
-the process rather than sharing its measured operation with normal launch
-orchestration.
+the AppKit delegate remains detached from product services. It also suppresses
+the production-only opportunistic MLX readiness refresh, whose complete pinned-
+artifact verification is not an owned resource workload. A Summary benchmark
+still force-verifies that exact descriptor explicitly before its probe opens.
+The benchmark owns the process rather than sharing its measured operation with
+normal launch orchestration.
 Refine, Summary, Ask, and indexing run in separate cold processes behind the
 same bounded first-result timeout. Summary verifies the pinned Qwen3.5 MLX descriptor before
 sampling and executes the real ApplicationKit regeneration workflow over a

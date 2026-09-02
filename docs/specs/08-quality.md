@@ -3618,7 +3618,10 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   never targets the notarized installed app. Resource-mode app initialization
   returns before sync, recovery, provider discovery, or dictation registration
   can contaminate a measured operation; the AppKit delegate remains detached
-  from product services. Its real LaunchServices process mounts inert scene
+  from product services. It also suppresses the production-only opportunistic
+  MLX readiness refresh so its full pinned-artifact hash cannot enter idle or
+  another scenario. Summary retains its explicit forced descriptor verification
+  before measurement. Its real LaunchServices process mounts inert scene
   content, no menu-bar extra, and no product commands, so view-scoped library,
   reminder, first-run, purge, and rendering work cannot enter idle or recording
   measurements. The windowed recording runner requires the exact
