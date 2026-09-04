@@ -74,7 +74,8 @@ class UITestHostPreflightTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(calls, 2)
         self.assertEqual(sleeps, [1.0])
-        self.assertIn("stayed clear for one second", output)
+        self.assertIn("stayed clear of blocking windows and test runners", output)
+        self.assertNotIn("Advisory:", output)
 
     def test_security_agent_window_fails_without_a_second_probe(self):
         result, output, calls, sleeps = self.run_fake(
@@ -123,7 +124,7 @@ class UITestHostPreflightTests(unittest.TestCase):
         )
         self.assertFalse(blockers.notification_center)
         self.assertTrue(blockers.security_agent)
-        self.assertTrue(blockers.secure_input)
+        self.assertFalse(blockers.is_empty)
 
     def test_notification_override_reports_when_no_alert_was_observed(self):
         output = io.StringIO()
@@ -156,16 +157,57 @@ class UITestHostPreflightTests(unittest.TestCase):
                 ):
                     preflight.notification_center_override({key: value})
 
-    def test_secure_input_fails_without_identifying_or_terminating_its_owner(self):
-        result, output, calls, sleeps = self.run_fake(
-            snapshot(secure_input=True)
-        )
+    def test_secure_input_alone_is_advisory_in_either_or_both_samples(self):
+        for first, second in ((True, False), (False, True), (True, True)):
+            with self.subTest(first=first, second=second):
+                result, output, calls, sleeps = self.run_fake(
+                    snapshot(secure_input=first),
+                    snapshot(secure_input=second),
+                )
 
-        self.assertEqual(result, 1)
-        self.assertEqual(calls, 1)
-        self.assertEqual(sleeps, [])
-        self.assertIn("Another app owns Secure Input", output)
-        self.assertIn("no process was terminated", output)
+                self.assertEqual(result, 0)
+                self.assertEqual(calls, 2)
+                self.assertEqual(sleeps, [1.0])
+                self.assertEqual(output.count("Advisory:"), 1)
+                self.assertIn("Keyboard protection is unchanged", output)
+                self.assertIn("real keyboard assertions must still pass", output)
+                self.assertNotIn("owns", output)
+                self.assertNotIn("PID", output)
+
+    def test_secure_input_never_masks_a_real_blocker_in_either_sample(self):
+        blockers = (
+            snapshot(secure_input=True, security_agent=1),
+            snapshot(secure_input=True, notification_center=1),
+            snapshot(
+                process(30, "/usr/bin/xcodebuild test", "xcodebuild"),
+                secure_input=True,
+            ),
+            snapshot(
+                process(31, "/tmp/OtherUITests-Runner"),
+                secure_input=True,
+            ),
+        )
+        for blocker in blockers:
+            for blocker_sample in (1, 2):
+                with self.subTest(blocker=blocker, sample=blocker_sample):
+                    observations = [blocker]
+                    if blocker_sample == 2:
+                        observations.insert(0, snapshot(secure_input=True))
+                    result, output, calls, _ = self.run_fake(*observations)
+                    self.assertEqual(result, 1)
+                    self.assertEqual(calls, blocker_sample)
+                    self.assertNotIn("preflight passed", output)
+
+    def test_secure_input_does_not_hide_failed_second_observation(self):
+        result, output, calls, sleeps = self.run_fake(
+            snapshot(secure_input=True),
+            preflight.ProbeFailure("blocking-window inventory unavailable"),
+        )
+        self.assertEqual(result, 2)
+        self.assertEqual(calls, 2)
+        self.assertEqual(sleeps, [1.0])
+        self.assertIn("No UI test was started", output)
+        self.assertNotIn("preflight passed", output)
 
     def test_xcodebuild_test_actions_are_blockers(self):
         for command in (
@@ -419,6 +461,9 @@ class UITestHostPreflightTests(unittest.TestCase):
         self.assertIn("kCGWindowLayer", source)
         self.assertIn("import Carbon.HIToolbox", source)
         self.assertIn("IsSecureEventInputEnabled()", source)
+        for forbidden in ("DisableSecureEventInput", "EnableSecureEventInput"):
+            self.assertNotIn(forbidden, source)
+            self.assertNotIn(forbidden, checker)
         self.assertNotIn("CGSessionCopyCurrentDictionary", source)
         self.assertNotIn("kCGSSessionSecureInputPID", source)
         self.assertIn("layer >= 0", source)

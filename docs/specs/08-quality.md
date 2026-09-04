@@ -1928,11 +1928,14 @@ Spanish passed in 1,120.285 seconds (1,140 seconds wall, 7.280-second p50,
 inside policy in the complete catalogues at 60.346/14.720 seconds in English and
 59.611/15.497 seconds in Spanish.
 
-The read-only D344 preflight rejects public process-agnostic Secure Input state
-before paying the build, while still reading no prompt, exposing no owner,
-terminating no process, and changing no TCC or test service. It cannot reserve
-the host after its final sample, so any later system authorization change still
-invalidates that run rather than becoming product evidence.
+The original read-only D344 preflight rejected public process-agnostic Secure
+Input state. D468 supersedes that inference with an advisory: real keyboard
+journeys can pass while the bit remains enabled. The current preflight runs
+immediately before UI execution after the shared build, still reading no prompt,
+exposing no owner, terminating no process, and changing no TCC or test service.
+It cannot reserve the host after its final sample; any actual authorization or
+automation interruption must still be classified from the result bundle rather
+than attributed automatically to the product.
 
 The Developer-ID-signed `app.portavoz.mac.dev` bundle was then rebuilt with its
 MLX Metal library, deeply verified, installed, registered, and opened only at
@@ -3248,8 +3251,11 @@ The read-only process inventory rejects an active `xcodebuild test` or
 ordinary build, unit-only `xctest`, idle XcodeBuildMCP server, and the persistent
 `testmanagerd`. A current-toolchain Swift 6 probe uses CoreGraphics/HIToolbox to
 inspect only on-screen, non-desktop window owner/layer metadata and the public
-process-agnostic Secure Input state; visible SecurityAgent or Notification
-Center windows and any other keyboard-protection owner block the run. It never
+process-agnostic Secure Input state. Visible SecurityAgent or Notification
+Center windows block the run. Secure Input in either sample produces one
+content-free advisory, not a rejection: it does not by itself demonstrate an
+input failure. Keyboard protection remains unchanged, and the real-app input
+assertions, failure classification, and timing budgets remain enforced. It never
 reports the owning PID or asks for a window title, bounds, dialog text, control,
 or credential, and negative-layer Notification Center desktop surfaces do not
 count. Both probes have explicit timeouts and exact-shape validation;
@@ -4450,8 +4456,9 @@ Settings, and Skills despite otherwise valid product state. D453 therefore
 forwards the exact override into disposable `-use-temp-store` launches and
 places only their main and Settings windows at AppKit's standard status-bar
 level. The accepted overlay can no longer occlude hit targets, but no alert is
-read, dismissed, answered, or removed. Authentication, Secure Input, and active
-automation still block, CI never enables the override, and the UI bundle still
+read, dismissed, answered, or removed. Authentication windows and active
+automation still block; the isolated Secure Input bit is advisory under D468.
+CI never enables the Notification Center override, and the UI bundle still
 installs no interruption monitor. Its receipt distinguishes an accepted live
 overlay, reported through the two content-free Notification Center counts,
 from a clear-host run where the override relaxed nothing; the latter is not
@@ -6980,3 +6987,44 @@ owners released the host, the unchanged five-test scope fell from 116.515
 attributed seconds with two violations to 74.027 seconds with none, before the
 complete bilingual authority passed. No product behavior or threshold was
 changed to manufacture that result.
+
+
+### Passive Secure Input versus executable keyboard evidence
+
+The host classifier keeps Secure Input in its exact-shaped, content-free system
+snapshot but not in `HostBlockers`. One accepted preflight reports an advisory
+if either observation had the bit enabled; a transient change does not skip the
+second observation or alter the one-second settle. It never infers a live owner
+from the bit, disables protection, or uses private session/PID metadata.
+
+Deterministic policy tests cover the bit in either/both samples, preservation of
+each visible-window and concurrent-test blocker in either sample, unavailable
+second observations, malformed payloads, and the prohibition on enabling or
+disabling system keyboard protection. Existing seeded Library search and command
+palette journeys exercise text entry, Command-K, Return, exact FTS hits, and
+citation navigation. These real assertions remain unchanged. A diagnostic using
+one build passed both journeys in EN (14.983 seconds) and ES (12.918 seconds)
+while the system bit remained enabled after execution and no SecurityAgent or
+Notification Center window was observed. That small diagnostic is not full
+candidate qualification, supported-OS certification, or proof that every
+Secure Input condition permits automation. The complete bilingual gate and all
+exact-source candidate proofs remain required.
+
+The first complete run under this policy passed 105/105 EN, then retained one
+ES person-memory failure. Its app-only AX snapshot showed the exact typed name
+still in the rename sheet and a native name-completion popover overlapping
+Save. The corrected existing journey verifies the typed value, ends editing
+with a normal Tab transition, requires hittable Save, and verifies sheet
+dismissal before checking the person offer. It neither chooses an AutoFill
+suggestion nor changes global preferences, and it does not retry a failed
+click. The corrected focused journey passed both locales; the original full
+run remains failed and is not candidate evidence.
+
+The final complete gate reused the corrected build and passed 105/105 EN in
+914.778 seconds (p95 19.137) plus 105/105 ES in 916.120 seconds (p95 19.005).
+Both runtime budgets passed with zero adjustments; the corrected rename journey
+passed in 7.679/8.011 seconds. The ordinary preflight, with no bypass, emitted
+the Secure Input advisory. Repository hygiene, strict lint, and the unchanged
+Swift package's 2,917 tests (15 explicit asset-gated skips, zero failures) also
+passed. These are local development gates, not a fresh exact-source candidate
+receipt or external release authority.

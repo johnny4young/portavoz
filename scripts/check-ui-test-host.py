@@ -2,8 +2,10 @@
 """Refuse to start macOS XCUITest while the shared host is contaminated.
 
 The check is deliberately read-only. It samples process identity,
-CoreGraphics owner/layer metadata, and a content-free Secure Input bit twice;
-it never reads window titles or dialog content, and never dismisses a prompt or
+CoreGraphics owner/layer metadata, and a content-free Secure Input bit twice.
+Secure Input alone is advisory: it does not establish an input failure in
+XCUITest, whose real keyboard assertions remain authoritative. The check
+never reads window titles or dialog content, and never dismisses a prompt or
 terminates another process.
 """
 
@@ -59,7 +61,6 @@ class HostProbe(Protocol):
 class HostBlockers:
     notification_center: bool
     security_agent: bool
-    secure_input: bool
     xcode_test_process_count: int
     ui_test_runner_count: int
 
@@ -69,7 +70,6 @@ class HostBlockers:
             (
                 self.notification_center,
                 self.security_agent,
-                self.secure_input,
                 self.xcode_test_process_count,
                 self.ui_test_runner_count,
             )
@@ -260,7 +260,6 @@ def classify(
             and not allow_notification_center_alerts
         ),
         security_agent=snapshot.security_agent_windows > 0,
-        secure_input=snapshot.secure_input,
         xcode_test_process_count=kinds.count("xcode-test"),
         ui_test_runner_count=kinds.count("ui-test-runner"),
     )
@@ -271,11 +270,6 @@ def explain(blockers: HostBlockers, output: TextIO) -> None:
     if blockers.security_agent:
         print(
             "   A SecurityAgent authentication window is visible; resolve it manually.",
-            file=output,
-        )
-    if blockers.secure_input:
-        print(
-            "   Another app owns Secure Input; wait until it releases keyboard protection.",
             file=output,
         )
     if blockers.notification_center:
@@ -329,9 +323,17 @@ def run_preflight(
         explain(second, output)
         return 1
     print(
-        "UI-test host preflight passed: the host stayed clear for one second.",
+        "UI-test host preflight passed: the host stayed clear of blocking "
+        "windows and test runners for one second.",
         file=output,
     )
+    if first_snapshot.secure_input or second_snapshot.secure_input:
+        print(
+            "   Advisory: macOS reports Secure Input enabled. This flag alone "
+            "does not establish an XCUITest input failure. Keyboard protection "
+            "is unchanged; real keyboard assertions must still pass.",
+            file=output,
+        )
     if allow_notification_center_alerts:
         observations = (
             first_snapshot.notification_center_windows,

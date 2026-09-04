@@ -17973,3 +17973,43 @@ physical Sequoia/Tahoe, distribution, CloudKit, assistive-technology, or field
 evidence. D467 requires the ordinary preflight, deterministic tests, mandatory
 minimum-safe bilingual XCUITest, a clean Conventional Commit, and one fresh
 exact candidate.
+
+
+## D468 — Distinguish passive Secure Input from an actual automation failure (Sep 2026)
+
+**Context:** the public Secure Input bit remained enabled after the previously
+recorded owner no longer resolved to a live process. A user-authorized diagnostic
+on the unchanged source ran two existing real-app keyboard journeys in each
+locale from one build. All four passed, with no retry or harness adjustment,
+while the system still reported Secure Input enabled afterward. No system
+protection was disabled. The bit alone therefore does not establish an XCUITest
+input failure; requiring logout before any test was overly restrictive.
+
+**Decision:** supersede D344's unconditional Secure Input rejection and the
+corresponding Secure Input clauses in D432/D453. Retain the exact public
+process-agnostic boolean in both bounded read-only observations, but emit one
+advisory when either sample reports it. Remove only that passive bit from the
+blocking classifier. Keep visible SecurityAgent/Notification Center windows,
+competing Xcode test actions/UI runners, unavailable probes, malformed payloads,
+and the existing explicit Notification Center-only exception semantics intact.
+Do not identify an owner, change TCC or keyboard protection, install interruption
+monitors, or add an environment-wide skip switch.
+
+**Consequences:** real keyboard assertions and result-bundle failure
+classification, not this passive bit, decide whether input works. Every UI
+assertion, timeout, runtime budget, locale, candidate proof, and no-retry policy
+remains unchanged. A visible authorization prompt still blocks the run; an
+authorization or automation interruption during testing remains a failed run.
+The four-case diagnostic remains non-qualifying. The changed policy requires
+deterministic regression tests, complete bilingual XCUITest, a clean commit,
+and a fresh exact candidate; it does not satisfy physical Sequoia/Tahoe,
+distribution, CloudKit, assistive-technology, independent-review, or field gates.
+
+**Validation refinement:** the first complete bilingual execution preserved a
+real ES failure: a native name-completion popover overlapped the rename alert's
+Save button although the expected name had been typed. The existing journey
+now verifies its exact field value, uses a normal Tab focus transition to end
+editing, requires hittable Save, and verifies the sheet disappears. No product
+mutation, AutoFill selection, global preference, external prompt handler, or
+retry was added. The original failed full run remains retained; the corrected
+focused EN/ES run does not replace the complete bilingual gate.

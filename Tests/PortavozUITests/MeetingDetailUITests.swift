@@ -1550,7 +1550,16 @@ final class MeetingDetailUITests: PortavozUITestCase {
         field.click()
         field.typeKey("a", modifierFlags: .command)
         field.typeText("Ana")
-        app.control(withIdentifier: "speaker-rename-save").click()
+        XCTAssertTrue(field.waitForValue("Ana", timeout: 5))
+        // Commit text editing before activating Save. macOS can present its
+        // native name-completion popover over the alert's buttons; a normal
+        // Tab focus transition ends editing without choosing a suggestion or
+        // changing the host's AutoFill preferences.
+        field.typeKey(.tab, modifierFlags: [])
+        let save = app.control(withIdentifier: "speaker-rename-save")
+        XCTAssertTrue(save.waitForHittable(timeout: 5))
+        save.click()
+        XCTAssertTrue(field.waitForDisappearance(timeout: 5))
 
         let remember = app.buttons["person-remember-offer"]
         XCTAssertTrue(

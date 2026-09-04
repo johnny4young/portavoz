@@ -5344,19 +5344,22 @@ generation, route-count, origin, and payload-size
 checks fail closed; production composition can never install this transport.
 The runner preserves an explicit `DEVELOPER_DIR`, otherwise follows the active
 `xcode-select` toolchain chosen by CI, and falls back to the conventional local
-Xcode path only when Command Line Tools is active. Before that runner builds,
-the host preflight gives only the stale Portavoz Dev app a three-second bounded
-quit request and requires two clean samples one second apart. A read-only
+Xcode path only when Command Line Tools is active. Immediately before UI
+execution, after the shared build, the host preflight gives only the stale
+Portavoz Dev app a three-second bounded quit request and requires two samples
+free of blocking windows and competing test runners one second apart. A read-only
 process snapshot rejects another `xcodebuild` test action or UI-test runner;
 the persistent `testmanagerd`, an ordinary build, and an idle XcodeBuildMCP
 server are not blockers. A separate
 Swift 6 CoreGraphics/HIToolbox probe reads only on-screen window owner/layer
 metadata and the public process-agnostic Secure Input state. It rejects
-visible SecurityAgent or Notification Center alerts and any other process's
-keyboard protection without exposing that process identity. A local operator
+visible SecurityAgent or Notification Center alerts. Secure Input alone emits
+one advisory when observed in either sample: the system bit does not establish
+an XCUITest input failure, and actual keyboard assertions remain authoritative.
+It neither identifies an owner nor changes keyboard protection. A local operator
 may explicitly set `PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS=true` to
-ignore only Notification Center for one run; SecurityAgent, Secure Input, and
-active automation remain fail-closed, and CI never sets the override. When
+ignore only Notification Center for one run; SecurityAgent and active automation
+remain fail-closed, and CI never sets the override. When
 that exact local decision is present, the XCUITest harness forwards it only to
 the `-use-temp-store` app process. The shared disposable-window boundary keeps
 the main and Settings windows at AppKit's standard `statusBar` level, above the
