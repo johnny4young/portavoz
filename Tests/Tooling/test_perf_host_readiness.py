@@ -1,6 +1,7 @@
 import copy
 import importlib.util
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -428,23 +429,96 @@ class PerformanceHostReadinessTests(unittest.TestCase):
             ),
             "automatic",
         )
-        self.assertEqual(
-            readiness.parse_thermal_state(
-                "Note: No thermal warning level has been recorded\n"
-                "Note: No performance warning level has been recorded\n"
-            ),
-            "nominal",
-        )
-        self.assertEqual(
-            readiness.parse_thermal_state("CPU_Speed_Limit = 80\n"),
-            "pressured",
-        )
-        self.assertEqual(
-            readiness.parse_thermal_state(
-                "CPU_Available_CPUs = 14\nCPU_Speed_Limit = 100\n"
-            ),
-            "nominal",
-        )
+        self.assertEqual(readiness.parse_thermal_state("nominal\n"), "nominal")
+        for state in ("fair", "serious", "critical"):
+            with self.subTest(state=state):
+                self.assertEqual(readiness.parse_thermal_state(state), "pressured")
+
+    def test_thermal_parser_rejects_legacy_and_ambiguous_signals(self):
+        for value in (
+            "Note: No thermal warning level has been recorded\n",
+            "CPU_Speed_Limit = 100\n", "", "unknown", "nominal\nfair",
+            "Nominal", '{"thermalState": "nominal"}',
+        ):
+            with self.subTest(value=value):
+                with self.assertRaises(readiness.ReadinessError):
+                    readiness.parse_thermal_state(value)
+
+    def test_thermal_probe_build_is_bounded_and_executable(self):
+        calls = []
+
+        def compile_probe(command, **options):
+            calls.append((command, options))
+            output = Path(command[-1])
+            output.write_text("fixture")
+            output.chmod(0o700)
+            return CompletedProcess(command, 0, "", "")
+
+        with tempfile.TemporaryDirectory() as directory:
+            binary = readiness.build_thermal_probe(
+                Path(directory), command_runner=compile_probe,
+            )
+            self.assertEqual(binary.parent, Path(directory))
+            self.assertEqual(len(calls), 1)
+            command, options = calls[0]
+            self.assertEqual(command[:5], [
+                "xcrun", "swiftc", "-swift-version", "6", "-warnings-as-errors",
+            ])
+            self.assertIn(str(readiness.THERMAL_PROBE_SOURCE), command)
+            self.assertEqual(options["timeout"], 60.0)
+
+    def test_thermal_probe_build_failure_never_becomes_nominal(self):
+        for mode in ("failed", "missing", "not-executable", "symlink", "timeout"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+                def compile_probe(command, **_):
+                    if mode == "timeout":
+                        raise subprocess.TimeoutExpired(command, 60)
+                    output = Path(command[-1])
+                    if mode == "not-executable":
+                        output.write_text("fixture")
+                        output.chmod(0o600)
+                    if mode == "symlink":
+                        target = output.with_name("target")
+                        target.write_text("fixture")
+                        target.chmod(0o700)
+                        output.symlink_to(target)
+                    return CompletedProcess(command, int(mode == "failed"), "", "")
+
+                with self.assertRaisesRegex(readiness.ReadinessError, "build unavailable"):
+                    readiness.build_thermal_probe(
+                        Path(directory), command_runner=compile_probe,
+                    )
+
+    def test_system_probe_samples_native_thermal_signal_without_recompiling(self):
+        binary = Path("/fixture/thermal-probe")
+        calls = []
+        outputs = {
+            ("/usr/sbin/sysctl", "-n", "hw.logicalcpu"): "14\n",
+            ("/bin/ps", "-A", "-o", "pcpu=,comm="): "0.0 /usr/bin/idle\n",
+            ("/usr/sbin/sysctl", "-n", "vm.loadavg"): "{ 1.0 1.0 1.0 }\n",
+            ("/usr/bin/pmset", "-g", "batt"): "Now drawing from 'AC Power'\n",
+            ("/usr/bin/pmset", "-g", "custom"): "AC Power:\n powermode 0\n",
+            (str(binary),): "fair\n",
+        }
+
+        def run(command, **options):
+            calls.append(tuple(command))
+            self.assertEqual(options["timeout"], 5)
+            return CompletedProcess(command, 0, outputs[tuple(command)], "")
+
+        probe = readiness.SystemProbe(thermal_probe=binary, command_runner=run)
+        for _ in range(3):
+            self.assertEqual(probe.sample().thermal_state, "pressured")
+        self.assertEqual(calls.count((str(binary),)), 3)
+        self.assertNotIn(("/usr/bin/pmset", "-g", "therm"), calls)
+        self.assertFalse(any("swiftc" in command for command in calls))
+
+    def test_native_thermal_source_fails_closed_for_future_states(self):
+        source = readiness.THERMAL_PROBE_SOURCE.read_text()
+        self.assertIn("ProcessInfo.processInfo.thermalState", source)
+        self.assertIn('@unknown default: print("unknown")', source)
+        for state in ("nominal", "fair", "serious", "critical"):
+            self.assertIn(f'case .{state}: print("{state}")', source)
 
     def test_receipt_rejects_tampered_identity_policy_and_reasons(self):
         receipt = self.run_wait([observation(), observation(), observation()])

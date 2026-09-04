@@ -4887,6 +4887,24 @@ authoritative; they prevent the runner's own build from overlapping the sample,
 keep later XCTest, leak/symbolication, model, and resource work out of the
 latency window, and fail early when the host never settles.
 
+Thermal admission uses a small Foundation Swift probe compiled once into an
+owner-only temporary workspace before the observation window. Sampling invokes
+that prepared executable, not a compiler. It reads the same public
+`ProcessInfo.thermalState` signal as the native resource probe: only nominal is
+admissible; fair, serious and critical are pressured, and unknown/malformed or
+unavailable readings fail closed. A lack of `pmset` warnings is not substituted
+for that signal. No readiness timeout, consecutive-sample requirement or
+performance budget changes. Native resource readiness failures retain only
+closed thermal-state counts and the last state in their diagnostic. The resource
+collector retains owner-only incomplete fragments in its unique partial
+collection on failure, separately from disposable raw fixtures/logs, and never
+promotes that collection to the requested successful output or qualification.
+
+Meeting-detail UI text assertions take one fallible element snapshot for label
+and value rather than resolving the same element twice. Snapshots are local to
+the assertion phase; errors propagate to XCTest, and the complete content,
+policy and receipt assertions and runtime budgets remain unchanged.
+
 Twelve scale/semantic/Spotlight metrics must be measured and pass or remain
 diagnostic only where their tracked threshold has no release budget. The other
 thirteen tracked waveform, Instruments, and manual/real-data metrics must

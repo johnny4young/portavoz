@@ -54,6 +54,17 @@ class UITestRuntimeTests(unittest.TestCase):
             },
         }
 
+    def test_meeting_detail_text_reads_share_one_fallible_snapshot(self):
+        source = (ROOT / "Tests/PortavozUITests/MeetingDetailUITests.swift").read_text()
+        helper = source.split("private func accessibleText(", 1)[1].split("\n    }", 1)[0]
+        self.assertIn("throws -> String", helper)
+        self.assertEqual(helper.count("try element.snapshot()"), 1)
+        self.assertIn("[snapshot.label, snapshot.value as? String]", helper)
+        self.assertNotIn("element.label", helper)
+        self.assertNotIn("element.value", helper)
+        self.assertNotIn("try?", helper)
+        self.assertNotIn("catch", helper)
+
     def test_collects_content_free_case_identity_duration_and_result(self):
         cases = collect_test_cases(self.tree)
 

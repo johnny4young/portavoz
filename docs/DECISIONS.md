@@ -18013,3 +18013,50 @@ editing, requires hittable Save, and verifies the sheet disappears. No product
 mutation, AutoFill selection, global preference, external prompt handler, or
 retry was added. The original failed full run remains retained; the corrected
 focused EN/ES run does not replace the complete bilingual gate.
+
+## D469 — Use consistent thermal admission and retain incomplete diagnostics (Sep 2026)
+
+**Context:** an exact candidate stopped before its first recording-plus-batch
+resource measurement because thermal pressure never settled. A subsequent
+same-host observation showed no `pmset` warnings while Foundation reported
+`fair`. This does not establish the state at the earlier performance admission,
+but proves that absence of those warnings cannot stand in for the public signal
+used by the native resource gate. The generic timeout omitted its observation
+history, and collector cleanup deleted previously completed content-free
+fragments, leaving insufficient evidence for diagnosis.
+
+**Decision:** compile one small Foundation Swift probe into a private temporary
+workspace before performance admission and execute only that prepared binary
+inside the sampling loop. Map nominal to admissible and fair/serious/critical
+to pressured; unknown, malformed, missing, non-executable or failed probes fail
+closed. Do not add an override path or fallback to `pmset`. Preserve the existing
+readiness policy, calibration, sample requirements, deadlines and budgets.
+Native resource readiness keeps its two consecutive nominal observations within
+60 observations five seconds apart. Its timeout includes only closed state
+counts and the last state, never process identities, paths or payloads.
+Cancellation is not converted into a thermal failure, and invalid injected
+observation counts are rejected before sampling.
+
+On collection failure, retain the unique owner-only incomplete collection for
+diagnosis while cleaning raw fixture/log/app scratch normally. Preserve the
+original failure/interruption status. Only the existing complete successful
+assembly moves into the requested output; retained fragments cannot substitute
+for the eight-proof candidate owner's qualification receipt.
+
+**Consequences:** this strengthens admission and diagnosis; it does not repair
+or qualify a past failed candidate, guarantee that the host stays quiet after
+admission, establish the cause of heating, or relax a physical condition to
+make tests green. Deterministic native-probe/parser, cancellation, bound and
+cleanup tests plus mandatory minimum-safe bilingual XCUITest precede a clean
+commit. Physical hardware, distribution, production sync, reviewed integration,
+assistive technology and field evidence remain separate authorities.
+
+**UI validation refinement:** the resumed Gist/issue journey passed every
+functional assertion but exceeded its unchanged time budget. Activity evidence
+showed repeated AX resolution for each label/value pair. Its text helper and
+the existing email/compatibility consumers now read both attributes from one
+fallible, element-local snapshot. No cross-interaction cache, empty fallback,
+removed assertion, timeout change or budget adjustment is introduced. All three
+consumers require bilingual execution; adverse pre-change results remain failed.
+This optimizes test observation, not production behavior, and does not claim to
+repair external browser interruptions or automation-authorization failures.

@@ -622,9 +622,93 @@ final class ResourceRunProbeTests: XCTestCase {
                 sleep: { _ in })
             XCTFail("Expected thermal readiness to time out")
         } catch {
+            guard case .thermalPressureDidNotSettle(let observations) =
+                error as? ResourceProbeHostReadinessError
+            else {
+                return XCTFail("Expected a thermal observation summary")
+            }
+            XCTAssertEqual(observations.count, 3)
+            XCTAssertEqual(observations.nominal, 0)
+            XCTAssertEqual(observations.fair, 1)
+            XCTAssertEqual(observations.serious, 1)
+            XCTAssertEqual(observations.critical, 1)
+            XCTAssertEqual(observations.last, .critical)
             XCTAssertEqual(
-                error as? ResourceProbeHostReadinessError,
-                .thermalPressureDidNotSettle)
+                error.localizedDescription,
+                "host thermal pressure did not settle before resource measurement "
+                    + "(observations=3, nominal=0, fair=1, serious=1, critical=1, last=critical)")
+        }
+    }
+
+    func testHostReadinessRetainsDefaultObservationBoundWithoutSleepingOnHost() async {
+        let states = ThermalStateSequence(Array(repeating: .fair, count: 60))
+        do {
+            try await ResourceProbeHostReadiness.waitUntilNominal(
+                thermalState: states.next,
+                sleep: { interval in XCTAssertEqual(interval, .seconds(5)) })
+            XCTFail("Expected the unchanged default observation limit")
+        } catch {
+            guard case .thermalPressureDidNotSettle(let observations) =
+                error as? ResourceProbeHostReadinessError
+            else {
+                return XCTFail("Expected the bounded thermal summary")
+            }
+            XCTAssertEqual(states.observationCount, 60)
+            XCTAssertEqual(observations.count, 60)
+            XCTAssertEqual(observations.fair, 60)
+            XCTAssertEqual(observations.last, .fair)
+        }
+    }
+
+    func testHostReadinessReportsIsolatedNominalSamplesWithoutAcceptingThem() async {
+        let states = ThermalStateSequence([.nominal, .fair, .nominal, .serious])
+        do {
+            try await ResourceProbeHostReadiness.waitUntilNominal(
+                maximumObservations: 4,
+                thermalState: states.next,
+                sleep: { _ in })
+            XCTFail("Isolated nominal observations must not admit measurement")
+        } catch {
+            guard case .thermalPressureDidNotSettle(let observations) =
+                error as? ResourceProbeHostReadinessError
+            else {
+                return XCTFail("Expected the thermal summary")
+            }
+            XCTAssertEqual(observations.nominal, 2)
+            XCTAssertEqual(observations.fair, 1)
+            XCTAssertEqual(observations.serious, 1)
+            XCTAssertEqual(observations.critical, 0)
+            XCTAssertEqual(observations.count, 4)
+        }
+    }
+
+    func testHostReadinessRejectsInvalidObservationLimitsBeforeSampling() async {
+        for limit in [0, -1] {
+            do {
+                try await ResourceProbeHostReadiness.waitUntilNominal(
+                    maximumObservations: limit,
+                    thermalState: {
+                        XCTFail("Invalid limits must not sample the host")
+                        return .nominal
+                    },
+                    sleep: { _ in XCTFail("Invalid limits must not sleep") })
+                XCTFail("Expected invalid observation limit")
+            } catch {
+                XCTAssertEqual(
+                    error as? ResourceProbeHostReadinessError,
+                    .invalidObservationLimit)
+            }
+        }
+    }
+
+    func testHostReadinessPropagatesCancellationInsteadOfThermalFailure() async {
+        do {
+            try await ResourceProbeHostReadiness.waitUntilNominal(
+                thermalState: { .fair },
+                sleep: { _ in throw CancellationError() })
+            XCTFail("Expected cancellation")
+        } catch {
+            XCTAssertTrue(error is CancellationError)
         }
     }
 

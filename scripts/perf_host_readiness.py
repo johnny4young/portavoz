@@ -11,6 +11,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 from dataclasses import dataclass
@@ -35,6 +36,8 @@ DEFAULT_MAXIMUM_CALIBRATION_CPU_MILLISECONDS = 200.0
 DEFAULT_MAXIMUM_CALIBRATION_DISPERSION_RATIO = 1.15
 CALIBRATION_BLOCK_BYTES = 1024 * 1024
 MAXIMUM_RETAINED_CALIBRATION_SAMPLE_MILLISECONDS = 60_000.0
+THERMAL_PROBE_SOURCE = Path(__file__).with_name("perf-thermal-probe.swift")
+THERMAL_PROBE_BUILD_TIMEOUT_SECONDS = 60.0
 CALIBRATION_EXPECTED_SHA256 = (
     "9acca8e8c22201155389f65abbf6bc9723edc7384ead80503839f49dcc56d767"
 )
@@ -256,13 +259,45 @@ class ThroughputCalibration:
     cpu_milliseconds: tuple[float, ...]
 
 
+def build_thermal_probe(
+    workspace: Path,
+    *,
+    command_runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> Path:
+    """Build once before admission; never start a compiler in the sample loop."""
+    binary = workspace / "perf-thermal-probe"
+    try:
+        result = command_runner(
+            [
+                "xcrun", "swiftc", "-swift-version", "6", "-warnings-as-errors",
+                str(THERMAL_PROBE_SOURCE), "-o", str(binary),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=THERMAL_PROBE_BUILD_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired, UnicodeError) as error:
+        raise ReadinessError("thermal probe build unavailable") from error
+    if (
+        result.returncode != 0
+        or binary.is_symlink()
+        or not binary.is_file()
+        or not os.access(binary, os.X_OK)
+    ):
+        raise ReadinessError("thermal probe build unavailable")
+    return binary
+
+
 class SystemProbe:
     def __init__(
         self,
         *,
+        thermal_probe: Path,
         command_runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
     ) -> None:
         self.command_runner = command_runner
+        self.thermal_probe = thermal_probe
         try:
             self.processor_count = int(self._run(
                 ["/usr/sbin/sysctl", "-n", "hw.logicalcpu"],
@@ -315,7 +350,7 @@ class SystemProbe:
             power_source,
         )
         thermal_state = parse_thermal_state(self._run(
-            ["/usr/bin/pmset", "-g", "therm"],
+            [str(self.thermal_probe)],
             "thermal state",
         ))
         return HostObservation(
@@ -580,19 +615,12 @@ def parse_power_mode(output: str, power_source: str) -> str:
 
 
 def parse_thermal_state(output: str) -> str:
-    lines = [line.strip() for line in output.splitlines() if line.strip()]
-    if not lines or any(line.startswith("Error:") for line in lines):
-        raise ReadinessError("thermal state output is unavailable")
-    for line in lines:
-        if "warning level" in line.casefold() and "no " not in line.casefold():
-            return "pressured"
-        if match := re.search(
-            r"(?:CPU_Scheduler_Limit|CPU_Speed_Limit)\s*=\s*([0-9]+)",
-            line,
-        ):
-            if int(match.group(1)) < 100:
-                return "pressured"
-    return "nominal"
+    state = output.strip()
+    if state == "nominal":
+        return "nominal"
+    if state in {"fair", "serious", "critical"}:
+        return "pressured"
+    raise ReadinessError("thermal state output is unavailable or malformed")
 
 
 def reasons_for(
@@ -1185,13 +1213,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         ),
     )
     try:
-        receipt = wait_for_readiness(
-            policy=policy,
-            source_commit=arguments.source_commit,
-            binary_sha256=arguments.binary_sha256,
-            sampler=SystemProbe().sample,
-            calibrator=lambda: sample_throughput_calibration(policy),
-        )
+        try:
+            workspace = tempfile.TemporaryDirectory(prefix="portavoz-perf-thermal-")
+        except OSError as error:
+            raise ReadinessError("thermal probe workspace unavailable") from error
+        with workspace as directory:
+            thermal_probe = build_thermal_probe(Path(directory))
+            receipt = wait_for_readiness(
+                policy=policy,
+                source_commit=arguments.source_commit,
+                binary_sha256=arguments.binary_sha256,
+                sampler=SystemProbe(thermal_probe=thermal_probe).sample,
+                calibrator=lambda: sample_throughput_calibration(policy),
+            )
         write_private_json(arguments.output, receipt)
     except ReadinessError as error:
         print(f"performance host readiness error: {error}", file=sys.stderr)

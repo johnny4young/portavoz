@@ -595,7 +595,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador() {
+    func testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador() throws {
         let app = launchOnSeededMeeting(
             withoutSummary: true,
             simulateSequoiaCapabilities: true,
@@ -650,7 +650,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let expectedDetectionStatus = UITestLocale.environmentLocale == "es"
                 ? "La detección de preguntas del Apuntador está lista en este Mac."
                 : "Apuntador question detection is ready on this Mac."
-        let detectionStatus = accessibleText(of: status)
+        let detectionStatus = try accessibleText(of: status)
         XCTAssertTrue(
             detectionStatus.contains(expectedDetectionStatus),
             "the status must distinguish working detection from optional answer generation; "
@@ -1081,7 +1081,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
     /// Send action in the user's email app. The disposable UI adapter traverses
     /// the production proposal/effect path without launching the host client.
     @MainActor
-    func testEmailRecapSkillPreviewsAndHandsOffWithoutSending() {
+    func testEmailRecapSkillPreviewsAndHandsOffWithoutSending() throws {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString("email-skill-sentinel", forType: .string)
@@ -1122,14 +1122,14 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let expectedRecipientCopy = UITestLocale.environmentLocale == "es"
             ? "Sin destinatarios — los eliges en tu app de correo."
             : "No recipients — you choose them in your email app."
-        let recipientText = accessibleText(of: recipientPolicy)
+        let recipientText = try accessibleText(of: recipientPolicy)
         XCTAssertTrue(
             recipientText.contains(expectedRecipientCopy),
             "expected recipient policy in accessible text, got: \(recipientText)")
         let expectedBoundaryCopy = UITestLocale.environmentLocale == "es"
             ? "Portavoz nunca lo envía."
             : "Portavoz never sends it."
-        let boundaryText = accessibleText(of: boundary)
+        let boundaryText = try accessibleText(of: boundary)
         XCTAssertTrue(
             boundaryText.contains(expectedBoundaryCopy),
             "expected email boundary in accessible text, got: \(boundaryText)")
@@ -1177,7 +1177,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
     /// independent confirmations; disposable gateways write real content-free
     /// egress receipts without touching Keychain or the network.
     @MainActor
-    func testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument() {
+    func testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument() throws {
         let app = launchOnSeededMeeting()
         defer { app.terminate() }
 
@@ -1201,10 +1201,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(destination.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(body.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(boundary.waitForExistenceFast(timeout: 5))
-        let destinationText = accessibleText(of: destination)
+        let destinationText = try accessibleText(of: destination)
         XCTAssertTrue(destinationText.contains("test-meeting.md"))
         XCTAssertTrue(destinationText.contains("api.github.com"))
-        let bodyText = accessibleText(of: body)
+        let bodyText = try accessibleText(of: body)
         XCTAssertTrue(bodyText.contains("# Test meeting"))
         XCTAssertTrue(
             bodyText.contains("El rollout del modelo queda para el viernes."),
@@ -1213,7 +1213,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             ? "Cualquier persona con el enlace puede leerlo."
             : "Anyone with the link can read it."
         XCTAssertTrue(
-            accessibleText(of: boundary).contains(expectedBoundary),
+            try accessibleText(of: boundary).contains(expectedBoundary),
             "the remote audience boundary must be explicit")
 
         let submit = app.buttons["skill-confirm-submit"]
@@ -1228,7 +1228,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             resultURL.waitForExistenceFast(timeout: 10),
             "successful publication must return its transient provider URL")
-        XCTAssertTrue(accessibleText(of: resultURL).contains(
+        XCTAssertTrue(try accessibleText(of: resultURL).contains(
             "https://gist.github.com/portavoz/skill-preview"))
         XCTAssertTrue(app.buttons["gist-result-copy-link"].exists)
         XCTAssertTrue(app.buttons["gist-result-open-link"].exists)
@@ -1251,8 +1251,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             remoteReceipts.element(boundBy: 1).waitForExistenceFast(timeout: 10),
             "the same run must record the content-free GitHub egress attempt")
-        let remoteReceiptTexts = (0..<remoteReceipts.count).map {
-            accessibleText(of: remoteReceipts.element(boundBy: $0))
+        let remoteReceiptTexts = try (0..<remoteReceipts.count).map {
+            try accessibleText(of: remoteReceipts.element(boundBy: $0))
         }
         XCTAssertTrue(
             remoteReceiptTexts.contains { $0.contains("api.github.com") },
@@ -1290,12 +1290,12 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let issueBoundary = app.control(
             withIdentifier: "github-issue-boundary")
         XCTAssertTrue(issueBoundary.waitForExistenceFast(timeout: 5))
-        let issueDestinationText = accessibleText(of: issueDestination)
-        let issueBodyText = accessibleText(of: issueBody)
-        let issueCitationText = accessibleText(of: issueCitation)
+        let issueDestinationText = try accessibleText(of: issueDestination)
+        let issueBodyText = try accessibleText(of: issueBody)
+        let issueCitationText = try accessibleText(of: issueCitation)
         XCTAssertTrue(issueDestinationText.contains("portavoz/demo"))
         XCTAssertTrue(issueDestinationText.contains("api.github.com"))
-        XCTAssertTrue(accessibleText(of: issueTitle).contains("Prepare the rollout"))
+        XCTAssertTrue(try accessibleText(of: issueTitle).contains("Prepare the rollout"))
         XCTAssertTrue(issueBodyText.contains("Test meeting"))
         XCTAssertTrue(issueBodyText.contains("Ana"))
         XCTAssertTrue(issueBodyText.contains(
@@ -1307,7 +1307,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             ? "crea un issue"
             : "creates one issue"
         XCTAssertTrue(
-            accessibleText(of: issueBoundary)
+            try accessibleText(of: issueBoundary)
                 .localizedCaseInsensitiveContains(expectedIssueBoundary))
 
         let createIssue = app.buttons["github-issue-confirm"]
@@ -1320,7 +1320,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
         let issueResultURL = app.control(withIdentifier: "github-issue-result-url")
         XCTAssertTrue(issueResultURL.waitForExistenceFast(timeout: 10))
-        XCTAssertTrue(accessibleText(of: issueResultURL).contains(
+        XCTAssertTrue(try accessibleText(of: issueResultURL).contains(
             "https://github.com/portavoz/demo/issues/42"))
         app.buttons["github-issue-result-dismiss"].click()
 
@@ -1330,7 +1330,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let expectedDetailIssueReceipt = UITestLocale.environmentLocale == "es"
             ? "Issue de GitHub — creado"
             : "GitHub issue — created"
-        XCTAssertTrue(accessibleText(of: issueReceipt)
+        XCTAssertTrue(try accessibleText(of: issueReceipt)
             .localizedCaseInsensitiveContains(expectedDetailIssueReceipt))
         let issueRemoteReceipts = app.staticTexts.matching(NSPredicate(
             format: "identifier BEGINSWITH 'privacy-remote-event-'"))
@@ -1350,20 +1350,23 @@ final class MeetingDetailUITests: PortavozUITestCase {
             ? "Gist secreto publicado"
             : "Secret Gist published"
         XCTAssertTrue(
-            accessibleText(of: settingsReceipt).contains(expectedSettingsStatus))
+            try accessibleText(of: settingsReceipt).contains(expectedSettingsStatus))
         let settingsIssueReceipt = app.control(
             withIdentifier: "settings-skill-receipt-github-issue-create")
         XCTAssertTrue(settingsIssueReceipt.waitForExistenceFast(timeout: 10))
         let expectedSettingsIssueReceipt = UITestLocale.environmentLocale == "es"
             ? "Issue de GitHub creado"
             : "GitHub issue created"
-        XCTAssertTrue(accessibleText(of: settingsIssueReceipt)
+        XCTAssertTrue(try accessibleText(of: settingsIssueReceipt)
             .localizedCaseInsensitiveContains(expectedSettingsIssueReceipt))
     }
 
     @MainActor
-    private func accessibleText(of element: XCUIElement) -> String {
-        [element.label, element.value as? String]
+    private func accessibleText(of element: XCUIElement) throws -> String {
+        // Read both attributes from one observation rather than two AX queries.
+        // Snapshot failures propagate to XCTest; never fall back to stale text.
+        let snapshot = try element.snapshot()
+        return [snapshot.label, snapshot.value as? String]
             .compactMap { $0 }
             .filter { !$0.isEmpty }
             .joined(separator: " ")

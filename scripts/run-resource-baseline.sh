@@ -150,6 +150,7 @@ terminate_benchmark_processes() {
 }
 
 cleanup() {
+    local exit_status=$?
     if [[ -n "$ACTIVE_GUARD_PID" ]]; then
         kill -TERM "$ACTIVE_GUARD_PID" 2>/dev/null || true
     fi
@@ -158,7 +159,13 @@ cleanup() {
         kill -TERM "$ACTIVE_LAUNCH_PID" 2>/dev/null || true
     fi
     if [[ -n "${COLLECTION:-}" && -d "$COLLECTION" ]]; then
-        rm -rf "$COLLECTION"
+        if (( exit_status != 0 )); then
+            # Only content-free fragments/aggregates live here. Raw logs,
+            # audio, model fixtures and the disposable app stay in RUN_ROOT.
+            echo "Incomplete resource evidence retained (not qualification): $COLLECTION" >&2
+        else
+            rm -rf "$COLLECTION"
+        fi
     fi
     if [[ "${PORTAVOZ_KEEP_RESOURCE_BENCH:-0}" != "1" ]]; then
         rm -rf "$RUN_ROOT"
@@ -167,6 +174,9 @@ cleanup() {
     fi
 }
 trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 PORTAVOZ_SIGN_IDENTITY="$SIGN_ID" \
     scripts/make-app.sh --release --version "$VERSION" --build "$BUILD"

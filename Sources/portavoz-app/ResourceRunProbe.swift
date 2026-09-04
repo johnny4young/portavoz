@@ -25,11 +25,44 @@ enum ResourceProbePowerSource: String, Codable, Sendable {
     case unknown
 }
 
+struct ResourceProbeThermalObservations: Equatable, Sendable {
+    private(set) var nominal = 0
+    private(set) var fair = 0
+    private(set) var serious = 0
+    private(set) var critical = 0
+    private(set) var last: ResourceProbeThermalState?
+
+    var count: Int { nominal + fair + serious + critical }
+
+    mutating func record(_ state: ResourceProbeThermalState) {
+        switch state {
+        case .nominal: nominal += 1
+        case .fair: fair += 1
+        case .serious: serious += 1
+        case .critical: critical += 1
+        }
+        last = state
+    }
+
+    var diagnostic: String {
+        "observations=\(count), nominal=\(nominal), fair=\(fair), "
+            + "serious=\(serious), critical=\(critical), "
+            + "last=\(last?.rawValue ?? "unobserved")"
+    }
+}
+
 enum ResourceProbeHostReadinessError: Error, Equatable, LocalizedError {
-    case thermalPressureDidNotSettle
+    case invalidObservationLimit
+    case thermalPressureDidNotSettle(ResourceProbeThermalObservations)
 
     var errorDescription: String? {
-        "host thermal pressure did not settle before resource measurement"
+        switch self {
+        case .invalidObservationLimit:
+            "thermal readiness observation limit must be positive"
+        case .thermalPressureDidNotSettle(let observations):
+            "host thermal pressure did not settle before resource measurement "
+                + "(\(observations.diagnostic))"
+        }
     }
 }
 
@@ -50,9 +83,15 @@ enum ResourceProbeHostReadiness {
             try await Task.sleep(for: $0)
         }
     ) async throws {
+        guard maximumObservations > 0 else {
+            throw ResourceProbeHostReadinessError.invalidObservationLimit
+        }
         var consecutiveNominal = 0
+        var observations = ResourceProbeThermalObservations()
         for observation in 0..<maximumObservations {
-            if thermalState() == .nominal {
+            let state = thermalState()
+            observations.record(state)
+            if state == .nominal {
                 consecutiveNominal += 1
                 if consecutiveNominal == 2 {
                     return
@@ -65,7 +104,7 @@ enum ResourceProbeHostReadiness {
             }
             try await sleep(pollInterval)
         }
-        throw ResourceProbeHostReadinessError.thermalPressureDidNotSettle
+        throw ResourceProbeHostReadinessError.thermalPressureDidNotSettle(observations)
     }
 }
 

@@ -3651,7 +3651,14 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   certified by this matrix. Native app
   probes begin only after two nominal thermal observations five seconds apart;
   inherited pressure fails closed after five minutes, while pressure produced
-  after counters start remains part of the sample. The probes sample process
+  after counters start remains part of the sample. The bounded timeout reports
+  only the count of each closed thermal state and the last observed state;
+  cancellation still propagates, and nonpositive injected observation limits
+  fail before sampling rather than forming an invalid range. The performance
+  admission owner uses the same public Foundation signal through a Swift helper
+  compiled once before its window, never through the absence of `pmset`
+  warnings. Unknown, malformed and unavailable readings block measurement.
+  The probes sample process
   CPU, physical footprint, energy, disk I/O/free capacity,
   thermal, low-power, and invariant power-source state while aggregating the
   closed workload descriptors. Behavioral unit tests inject an immediate
@@ -3685,7 +3692,13 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   grace if LaunchServices itself does not return. The Stop probe atomically
   replays active spans
   before recording metrics freeze, preventing a boundary finish from falling
-  between collectors. A timeout or partial lifecycle emits no passing sample.
+  between collectors. A timeout or partial lifecycle emits no passing sample. On
+  collector failure, any already-written content-free fragments remain owner-only in the
+  unique `.partial` collection for diagnosis. Raw logs, audio and fixture/app
+  scratch still follow ordinary cleanup. The partial collection is not moved
+  to the requested successful output and is not candidate qualification;
+  failure and interruption exit statuses remain unchanged.
+
 - `scripts/resource_baseline.py assemble/evaluate`: assembles exact native
   fragments into one schema-4 host receipt whose required recording-input
   provenance is `public-synthetic-dual-channel-v2` at 16 kHz with 1,600-frame
@@ -7028,3 +7041,15 @@ the Secure Input advisory. Repository hygiene, strict lint, and the unchanged
 Swift package's 2,917 tests (15 explicit asset-gated skips, zero failures) also
 passed. These are local development gates, not a fresh exact-source candidate
 receipt or external release authority.
+
+### Atomic text observations in meeting-detail UI journeys
+
+The Gist/issue, email recap, and compatibility-guidance journeys read each
+text element's label and value from one fallible `XCUIElement.snapshot()`.
+The snapshot is scoped to that element and that assertion phase, never cached
+across interactions. Both attributes remain checked; snapshots that cannot be
+obtained throw into XCTest instead of returning empty/stale fallback text.
+This avoids repeated AX resolution and mismatched observations without removing
+any destination, audience, content, citation, egress, or durable-receipt assertion.
+The runtime policy test guards the single-observation helper. Existing test
+budgets, test counts, waits, and bilingual qualification remain unchanged.

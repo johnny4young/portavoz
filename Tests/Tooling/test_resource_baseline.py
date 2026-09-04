@@ -2,6 +2,7 @@ import importlib.util
 import json
 import os
 import plistlib
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -1127,6 +1128,45 @@ class ResourceBaselineTests(unittest.TestCase):
             runner.index("scripts/make-app.sh --release"),
             runner.index("for ((run = 1; run <= RUNS; run++))"),
         )
+
+    def test_failed_collection_preserves_only_incomplete_content_free_evidence(self):
+        runner = (REPOSITORY / "scripts" / "run-resource-baseline.sh").read_text()
+        cleanup = runner[runner.index("cleanup() {"):runner.index("\ntrap cleanup EXIT")]
+        traps = runner[runner.index("trap cleanup EXIT"):runner.index("\n\nPORTAVOZ_SIGN_IDENTITY")]
+        cases = [(0, ""), (64, ""), (130, ""), (129, "HUP"), (130, "INT"), (143, "TERM")]
+        for exit_status, signal in cases:
+            with self.subTest(exit_status=exit_status, signal=signal), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                collection = root / "evidence.partial.fixture"
+                fragments = collection / "fragments"
+                fragments.mkdir(parents=True, mode=0o700)
+                collection.chmod(0o700)
+                sample = fragments / "idle-1.json"
+                sample.write_text('{"run":1}\n')
+                sample.chmod(0o600)
+                scratch = root / "scratch"
+                scratch.mkdir()
+                (scratch / "raw-fixture.txt").write_text("never retain raw fixtures")
+                process = subprocess.run(
+                    ["bash", "-c", "set -euo pipefail\n" + cleanup
+                     + "\n" + traps
+                     + '\nif [[ -n "$TEST_SIGNAL" ]]; then kill -s "$TEST_SIGNAL" "$$"; exit 77; fi'
+                     + '\nexit "$TEST_EXIT_STATUS"'],
+                    env={**os.environ, "COLLECTION": str(collection),
+                         "RUN_ROOT": str(scratch), "ACTIVE_GUARD_PID": "",
+                         "ACTIVE_LAUNCH_PID": "", "PORTAVOZ_KEEP_RESOURCE_BENCH": "0",
+                         "TEST_EXIT_STATUS": str(exit_status), "TEST_SIGNAL": signal},
+                    capture_output=True, text=True, check=False,
+                )
+                self.assertEqual(process.returncode, exit_status)
+                self.assertFalse(scratch.exists())
+                self.assertEqual(collection.exists(), exit_status != 0)
+                self.assertFalse((root / "evidence").exists())
+                if exit_status:
+                    self.assertIn("not qualification", process.stderr)
+                    self.assertEqual(sample.read_text(), '{"run":1}\n')
+                    self.assertEqual(collection.stat().st_mode & 0o777, 0o700)
+                    self.assertEqual(sample.stat().st_mode & 0o777, 0o600)
 
     def test_recording_runner_delegates_to_canonical_resource_runner(self):
         wrapper = (
