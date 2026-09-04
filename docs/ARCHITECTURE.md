@@ -4902,7 +4902,7 @@ promotes that collection to the requested successful output or qualification.
 
 Meeting-detail UI text assertions take one fallible element snapshot for label
 and value rather than resolving the same element twice. Snapshots are local to
-the assertion phase; errors propagate to XCTest, and the complete content,
+each observation; errors propagate to XCTest, and the complete content,
 policy and receipt assertions and runtime budgets remain unchanged.
 
 Twelve scale/semantic/Spotlight metrics must be measured and pass or remain

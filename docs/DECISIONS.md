@@ -18060,3 +18060,21 @@ removed assertion, timeout change or budget adjustment is introduced. All three
 consumers require bilingual execution; adverse pre-change results remain failed.
 This optimizes test observation, not production behavior, and does not claim to
 repair external browser interruptions or automation-authorization failures.
+
+## D470 — Synchronize cancellation tests with provider entry (Sep 2026)
+
+**Context:** both hosted platform lanes exposed a cancellation test that could
+exhaust one thousand scheduler yields before its vector adapter was called.
+Separately, a late architecture-document edit violated the existing durable
+vocabulary contract after the local Swift suite had already run.
+
+**Decision:** observe explicit adapter entry with a bounded XCTest expectation
+before cancelling. Preserve the cancellable vector delay, require one request
+before and after cancellation, propagate unexpected failures, and cancel the
+owned task on early exit. Correct the documentation rather than weakening its
+vocabulary guard. Run the final complete Swift suite after all code and
+repository-document edits, followed by mandatory bounded bilingual XCUITest.
+
+**Consequences:** test synchronization is independent of a scheduler-iteration
+count. This does not change production retrieval, widen performance budgets,
+turn a failed hosted run green, or certify an unmeasured candidate.

@@ -375,10 +375,12 @@ final class RetrievalSemanticBoundaryChunkingTests: XCTestCase {
     func testCancellationStopsSuspendedVectorWork() async throws {
         let meetingID = meeting(10)
         let source = segment(1, meetingID: meetingID, text: "evidence", start: 0)
+        let vectorStarted = expectation(description: "vector adapter entered")
         let embedding = TestSemanticBoundaryEmbedding(
             proposal: proposal(),
             defaultVectorsByLanguage: ["en": [1, 0], "es": [1, 0, 0]],
-            vectorDelay: .seconds(30))
+            vectorDelay: .seconds(30),
+            onVectorStarted: { vectorStarted.fulfill() })
         let operation = Task {
             try await RetrievalSemanticBoundaryChunker.chunks(
                 meetingID: meetingID,
@@ -388,10 +390,9 @@ final class RetrievalSemanticBoundaryChunkingTests: XCTestCase {
                 speakers: [],
                 embedding: embedding)
         }
-        for _ in 0..<1_000 {
-            if await embedding.requestCount > 0 { break }
-            await Task.yield()
-        }
+        defer { operation.cancel() }
+        // Yielding a fixed number of times does not establish provider entry.
+        await fulfillment(of: [vectorStarted], timeout: 5)
         let requestCount = await embedding.requestCount
         XCTAssertEqual(requestCount, 1)
 
@@ -403,6 +404,8 @@ final class RetrievalSemanticBoundaryChunkingTests: XCTestCase {
         } catch is CancellationError {
             // Expected cooperative cancellation from the vector adapter.
         }
+        let finalRequestCount = await embedding.requestCount
+        XCTAssertEqual(finalRequestCount, 1)
     }
 
     private func chunks(
@@ -566,6 +569,7 @@ private actor TestSemanticBoundaryEmbedding: RetrievalSemanticBoundaryEmbedding 
     private let defaultVectorsByLanguage: [String: [Float]]
     private let recordsRequests: Bool
     private let vectorDelay: Duration?
+    private let onVectorStarted: (@Sendable () -> Void)?
     private(set) var requests: [Request] = []
     private(set) var requestCount = 0
 
@@ -574,13 +578,15 @@ private actor TestSemanticBoundaryEmbedding: RetrievalSemanticBoundaryEmbedding 
         responseByText: [String: RetrievalSemanticBoundaryVector] = [:],
         defaultVectorsByLanguage: [String: [Float]] = [:],
         recordsRequests: Bool = true,
-        vectorDelay: Duration? = nil
+        vectorDelay: Duration? = nil,
+        onVectorStarted: (@Sendable () -> Void)? = nil
     ) {
         self.proposalValue = proposal
         self.responseByText = responseByText
         self.defaultVectorsByLanguage = defaultVectorsByLanguage
         self.recordsRequests = recordsRequests
         self.vectorDelay = vectorDelay
+        self.onVectorStarted = onVectorStarted
     }
 
     init(
@@ -619,6 +625,7 @@ private actor TestSemanticBoundaryEmbedding: RetrievalSemanticBoundaryEmbedding 
         if recordsRequests {
             requests.append(Request(text: text, language: language))
         }
+        onVectorStarted?()
         if let vectorDelay {
             try await Task.sleep(for: vectorDelay)
         }

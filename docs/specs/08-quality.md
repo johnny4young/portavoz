@@ -7053,3 +7053,17 @@ This avoids repeated AX resolution and mismatched observations without removing
 any destination, audience, content, citation, egress, or durable-receipt assertion.
 The runtime policy test guards the single-observation helper. Existing test
 budgets, test counts, waits, and bilingual qualification remain unchanged.
+
+### Scheduler-independent vector cancellation tests
+
+The semantic-boundary cancellation test waits for an explicit vector-adapter
+entry expectation, bounded to five seconds, before requesting cancellation.
+A fixed number of scheduler yields is not a synchronization contract. The
+adapter's cancellable delay remains unchanged; the test requires exactly one
+vector request before and after cancellation and observes `CancellationError`.
+Deferred cancellation protects cleanup if the test exits early. No production
+retrieval behavior or test assertion is relaxed.
+
+The final Swift suite runs after documentation edits as well as code edits:
+architecture vocabulary and other source contracts read repository files at
+runtime, so an earlier Swift pass cannot qualify later documentation changes.
