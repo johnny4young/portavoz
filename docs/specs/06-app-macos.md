@@ -1223,7 +1223,12 @@ scheduling a permanent MainActor poll. The live routing policy examines the
 newest 60 rows and sends at most eight chronological rows per framework call.
 Successful calls drain the next bounded batch immediately, while actual
 preparation and execution errors retain bounded retry backoff. Pair fencing and
-source-revision checks reject obsolete responses. Durable captions, audio,
+source-revision checks reject obsolete responses. Every controller mutation
+also rejects a cancelled caller, including a late framework callback after
+same-pair reselection. Preparation failure revokes consent only from an active
+caller for the current pair; a cancelled task cannot clear a newer approval.
+Provider and response-stream boundaries stop cancelled work without publishing
+an execution failure. Durable captions, audio,
 Stop, and Refine never depend on this optional presentation relay.
 
 ### Recording-scoped Apuntador coordinator (D170)

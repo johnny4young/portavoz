@@ -7084,3 +7084,21 @@ It retains the same disposable fixture, catalog entry, per-test budget, and
 single app launch. The model tests force the adverse interleavings; the UI
 journey verifies the actual control and shared-state wiring without pretending
 to schedule an actor race through clicks.
+
+
+### Live translation cancellation publication
+
+Controller regression tests execute actual cancelled Swift tasks, including the same
+`MainActor.run` hop used by the framework adapter, rather than merely selecting
+a different pair. They cover cancelled lane entry, target reselection back to
+the original pair, unsupported-row publication, consent revocation, unscoped
+state publication, and the positive current-preparation failure path. The
+inherited actor task is cancelled before the parent first suspends; no sleeps,
+scheduler-iteration counts, model assets, or private recordings determine the
+ordering. The first three regression cases fail against the previous source.
+
+Existing mixed-language, exact-source-revision, bounded-routing, consent, wake
+cleanup and live-caption tests remain in force. Selector-derived real-app
+Library/recording/interview journeys cover the actual controls and translated
+language rail. Seed UI evidence does not certify Apple's interactive language
+pack download or claim to schedule an actual framework callback race.

@@ -3263,6 +3263,15 @@ remains visible without automatic work. Preparation failure returns to the
 consent boundary. Execution failures retry after 1, 2, 4, and then at most 8
 seconds; one complete success resets the sequence.
 
+Every live translation mutation checks cancellation in the caller's task as
+well as the current pair. This includes lane entry, rendered results, status,
+unsupported-row bookkeeping, and preparation-consent revocation. A cancelled
+callback cannot regain publication authority when the same languages are
+selected again. Provider entry and streamed-response boundaries also check
+cancellation; cancellation terminates work without replacing the newer state
+with a provider failure. Genuine preparation failures still require fresh
+explicit consent.
+
 Routing still examines at most the newest 60 transcript rows, but each
 framework request now admits at most eight chronological rows. Successful
 requests drain another bounded batch immediately, so backlog cannot inflate one

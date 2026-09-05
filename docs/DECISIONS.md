@@ -18102,3 +18102,26 @@ also verifies pane reentry. Full Swift tests, preflight, and scoped bilingual
 real-app XCUITest remain required before committing, with Dev-only installation
 after UI validation. No host workload is stopped to obtain those gates, and no
 prior candidate receipt qualifies this changed source.
+
+
+## D472 — Reject cancelled live translation publication (Sep 2026)
+
+**Context:** live translation already fenced callbacks to their source/target
+pair and exact caption revision, but the controller did not reject cancelled
+tasks. A callback delivered after same-pair reselection could publish failure
+or unsupported state, and cancelled lane entry or preparation failure could
+clear newer download consent. Three actual cancelled-task regression tests
+reproduced these mutations; pair changes alone had not covered this contract.
+
+**Decision:** use one caller-cancellation and pair-admission predicate at the
+controller's mutation boundary. Route preparation-failure consent revocation
+through it. Reject cancelled lane entry, check cancellation before provider
+work and while consuming responses, and distinguish cancellation from failed
+or partial translation. Preserve exact source-revision admission, genuine
+failure backoff, explicit per-pair downloads, bounded routing, and wake cleanup.
+
+**Consequences:** superseded cancelled work cannot regain mutation authority
+merely because the same pair is selected again. No scheduler, lock, model,
+platform minimum, permission, or test budget is added or changed. Deterministic
+cancelled-task tests and existing real-app recording journeys are complementary;
+neither replaces physical Apple Translation asset/permission evidence.

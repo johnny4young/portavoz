@@ -5,7 +5,7 @@ extension RecordingController {
     /// pair. Moving to another actor language resets download consent so a
     /// new language pack is never fetched because of an earlier pair.
     func beginLiveTranslationPair(_ pair: LiveTranslationPair) {
-        guard translationTarget == pair.target else { return }
+        guard !Task.isCancelled, translationTarget == pair.target else { return }
         guard translationSource != pair.source else { return }
         translationSource = pair.source
         translationDownloadApproved = false
@@ -15,7 +15,7 @@ extension RecordingController {
     /// LiveTranslation can publish only finite user-facing state, never
     /// framework errors or transcript content as diagnostics.
     func updateLiveTranslationState(_ state: LiveTranslationState) {
-        guard translationTarget != nil || state == .off else { return }
+        guard !Task.isCancelled, translationTarget != nil || state == .off else { return }
         translationState = presentedLiveTranslationState(state)
     }
 
@@ -27,9 +27,7 @@ extension RecordingController {
         _ state: LiveTranslationState,
         for pair: LiveTranslationPair
     ) {
-        guard translationTarget == pair.target,
-            translationSource == pair.source
-        else { return }
+        guard isCurrentLiveTranslationTask(for: pair) else { return }
         translationState = presentedLiveTranslationState(state)
     }
 
@@ -40,8 +38,7 @@ extension RecordingController {
         _ ids: Set<UUID>,
         for pair: LiveTranslationPair
     ) {
-        guard translationTarget == pair.target,
-            translationSource == pair.source,
+        guard isCurrentLiveTranslationTask(for: pair),
             !ids.isEmpty
         else { return }
         unsupportedTranslationRowIDs.formUnion(ids)
@@ -58,9 +55,7 @@ extension RecordingController {
         sourceTexts: [UUID: String],
         for pair: LiveTranslationPair
     ) -> Bool {
-        guard translationTarget == pair.target,
-            translationSource == pair.source
-        else { return false }
+        guard isCurrentLiveTranslationTask(for: pair) else { return false }
         let admitted = LiveTranslationResultAdmission.admit(
             values: values,
             sourceTexts: sourceTexts,
@@ -69,6 +64,20 @@ extension RecordingController {
         translations.merge(admitted.values) { _, new in new }
         translatedSourceTexts.merge(admitted.sourceTexts) { _, new in new }
         return !admitted.values.isEmpty
+    }
+
+    /// Pair equality alone cannot reject a cancelled callback after the user
+    /// selects the same languages again. Evaluate this on the caller's task
+    /// at every mutation, including callbacks delivered through MainActor.run.
+    func isCurrentLiveTranslationTask(for pair: LiveTranslationPair) -> Bool {
+        !Task.isCancelled && translationTarget == pair.target
+            && translationSource == pair.source
+    }
+
+    func failLiveTranslationPreparation(for pair: LiveTranslationPair) {
+        guard isCurrentLiveTranslationTask(for: pair) else { return }
+        translationDownloadApproved = false
+        translationState = .needsDownload
     }
 
     private func presentedLiveTranslationState(

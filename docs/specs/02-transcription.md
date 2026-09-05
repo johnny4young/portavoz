@@ -536,6 +536,12 @@ requires the current row UUID, exact requested source text, and source language
 to match. Duplicate current row identities, blank translations, and partial
 batches fail closed and cannot complete the batch; this prevents a late result
 from flashing over a newer form of a still-growing row.
+The final controller boundary also checks the caller's cancellation state,
+not just its pair: choosing the same pair again does not authorize an old
+cancelled callback. Lane selection, unsupported IDs, rendered rows, state, and
+download-consent revocation share this rule. Cancellation before provider work
+or during a streamed batch ends the task without claiming a provider failure;
+ordinary preparation failures continue to require fresh explicit consent.
 Rows that fall outside the live window before translation remain in their
 spoken language. Source captions, final transcript evidence, audio capture,
 and Refine are independent from this optional relay.
