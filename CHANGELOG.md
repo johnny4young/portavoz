@@ -4,6 +4,10 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## September 4, 2026
+
+- **🔎 Search setup keeps its progress** — Returning to Settings no longer lets an older availability check reopen preparation or replace its ready state.
+
 ## August 30, 2026
 
 - **🧭 Citation jumps wait for playback** — Command-palette answers keep their exact meeting moment until the destination player is truly ready.

@@ -987,6 +987,13 @@ competing model. Ordinary asset failure is also retryable, unsupported models
 are terminal for the current host, and cancellation refreshes the read-only
 state rather than inventing success.
 
+Each availability inspection captures a generation before suspension. Only the
+latest non-cancelled inspection may publish, and starting explicit preparation
+invalidates outstanding reads. A late missing-assets result therefore cannot
+replace the preparing or ready state and reopen the download action. Inspection
+requested during preparation remains a no-op; no extra task or polling loop is
+introduced.
+
 Only a successful explicit request kicks `SemanticCorpusIndexingSupervisor`.
 The Settings task does not scan or write the library, and the supervisor stays
 disabled for temporary stores. UI automation substitutes a two-dimensional
@@ -995,7 +1002,7 @@ model only when both `-use-temp-store` and
 state from missing to ready without requesting host assets. Stable identifiers
 cover the prepare button and every status. The bilingual journey asserts the
 real Settings window, explicit click, ready transition, and disappearance of
-the redundant action.
+the redundant action, including after leaving and reentering the pane.
 
 The copy states that macOS manages the assets, that storage can be a few
 hundred MB based on the bounded Tahoe observation, that corpus updates continue

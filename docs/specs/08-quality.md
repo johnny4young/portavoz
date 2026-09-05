@@ -7067,3 +7067,20 @@ retrieval behavior or test assertion is relaxed.
 The final Swift suite runs after documentation edits as well as code edits:
 architecture vocabulary and other source contracts read repository files at
 runtime, so an earlier Swift pass cannot qualify later documentation changes.
+
+### Semantic preparation inspection ownership
+
+Continuation-controlled model tests cover an old availability read completing
+during preparation, the same read completing after readiness, overlapping
+inspections completing in reverse order, and a cancelled inspection returning
+late. The active-preparation case also requires exactly one preparation call
+and no competing inspection. Entry expectations are bounded; test cleanup
+drains suspended fixture continuations. No sleeps, scheduler-yield counts, real
+downloads, or host model assets determine these ordering assertions.
+
+The existing real-app semantic preparation journey also leaves and reenters
+the Intelligence pane, requiring ready status with no redundant prepare action.
+It retains the same disposable fixture, catalog entry, per-test budget, and
+single app launch. The model tests force the adverse interleavings; the UI
+journey verifies the actual control and shared-state wiring without pretending
+to schedule an actor race through clicks.

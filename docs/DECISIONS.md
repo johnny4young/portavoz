@@ -18078,3 +18078,27 @@ repository-document edits, followed by mandatory bounded bilingual XCUITest.
 **Consequences:** test synchronization is independent of a scheduler-iteration
 count. This does not change production retrieval, widen performance budgets,
 turn a failed hosted run green, or certify an unmeasured candidate.
+
+## D471 — Fence semantic preparation readiness inspections (Sep 2026)
+
+**Context:** the process-scoped semantic preparation model checked its running
+state only before awaiting an availability inspection. Settings reentry could
+leave that read in flight while explicit preparation started or completed. An
+older missing-assets result could then replace the running or ready state,
+making the prepare action available again despite the shared-owner contract.
+Main-actor isolation prevents data races, not this stale-result interleaving.
+
+**Decision:** capture one monotonic inspection generation per refresh, reject
+cancelled or superseded results after suspension, and invalidate all outstanding
+inspections when explicit preparation begins. Keep preparation as the sole
+owner of its running and terminal state. Retain the existing capture governor,
+explicit download policy, cancellation recovery, and background-index wake.
+Add no task, lock, polling loop, runtime dependency, or platform requirement.
+
+**Consequences:** old inspections cannot reopen preparation or replace newer
+readiness. Deterministic model tests control the completion order with bounded
+entry expectations and drained continuations; the existing Settings journey
+also verifies pane reentry. Full Swift tests, preflight, and scoped bilingual
+real-app XCUITest remain required before committing, with Dev-only installation
+after UI validation. No host workload is stopped to obtain those gates, and no
+prior candidate receipt qualifies this changed source.

@@ -1262,6 +1262,14 @@ state until evidence exists; it never exposes a partial installation as
 downloaded. Recording remains audio-first and does not await any of these
 checks.
 
+Apple's OS-managed semantic assets have a separate process-scoped Settings
+owner. Its read-only availability inspections are generation-fenced: newer
+inspections and explicit preparation invalidate older suspended reads, and a
+cancelled Settings inspection cannot publish. Preparation retains sole control
+of its running and terminal presentation until it settles. The owner adds no
+polling or additional task and does not change capture admission, asset
+download consent, or background indexing authority.
+
 The model catalog includes one separately pinned research descriptor for the
 Nemotron 3.5 ASR Latin 1120 ms CoreML build. Its lean ten-artifact set contains
 only the encoder, fused decoder/joint, metadata, and tokenizer consumed by

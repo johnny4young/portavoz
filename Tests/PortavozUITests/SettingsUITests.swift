@@ -30,6 +30,17 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertFalse(
             app.buttons["settings-semantic-search-prepare"].exists,
             "ready assets must not keep offering a redundant download action")
+        openCategory(
+            "settings-category-audio",
+            revealing: "settings-mic-device",
+            in: app)
+        openCategory(
+            "settings-category-intelligence",
+            revealing: "settings-semantic-search-status-ready",
+            in: app)
+        XCTAssertFalse(
+            app.buttons["settings-semantic-search-prepare"].exists,
+            "reentering Settings must inspect shared readiness without reopening preparation")
         attachScreenshot(of: app, named: "semantic-search-preparation")
     }
 

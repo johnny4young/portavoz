@@ -28,20 +28,28 @@ final class SemanticSearchPreparationModel {
 
     private(set) var phase: Phase = .checking
     private let client: any SemanticSearchPreparationModelClient
+    @ObservationIgnored private var inspectionGeneration: UInt64 = 0
 
     init(client: any SemanticSearchPreparationModelClient) {
         self.client = client
     }
 
     func refresh() async {
-        guard phase != .preparing else { return }
-        phase = Self.phase(for: await client.current())
+        guard phase != .preparing, !Task.isCancelled else { return }
+        inspectionGeneration &+= 1
+        let generation = inspectionGeneration
+        let readiness = await client.current()
+        guard !Task.isCancelled, generation == inspectionGeneration else { return }
+        phase = Self.phase(for: readiness)
     }
 
     func prepare() async {
         guard phase != .preparing, phase != .ready, phase != .unsupported else {
             return
         }
+        // A Settings inspection already in flight must not reopen the action
+        // or replace its result after this explicit preparation starts.
+        inspectionGeneration &+= 1
         phase = .preparing
         do {
             let readiness = try await client.prepare()
