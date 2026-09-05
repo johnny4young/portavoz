@@ -18248,3 +18248,26 @@ corpus, installed-model evidence, Swift characterization and mandatory real-app
 UI regression checks complement rather than replace resource, answer-quality,
 physical Sequoia/Tahoe and field gates. No model download or remote egress is
 introduced, and no diagnostic artifact grants release approval.
+
+## D478 — Reject invalid PCM geometry and retire failed source owners (Sep 2026)
+
+**Context:** capture callbacks convert clock/rate arithmetic to integer frame
+counts and allocate route-gap PCM. Positive-only rate guards do not reject
+nonfinite ratios or native-capacity overflow. A failed consumer can also leave
+its producer alive until the user eventually stops the healthy peer.
+
+**Decision:** centralize checked geometry in AudioCaptureKit, use failable exact
+integer conversion and reporting-overflow arithmetic, and validate before native
+format/buffer creation or padding publication. Invalid geometry uses the existing
+typed unsupported-format error. Preserve normal resampling, the pinned rate,
+half-second gap threshold, and accepted audio evidence. Give each installed
+source an opaque ownership ticket; failure retires only that owner outside its
+callback, while global Stop claims all remaining teardown before suspension.
+
+**Consequences:** deterministic numeric matrices and real temporary CAF failure
+sequences cover rejection, conservation and single-owner cleanup. No driver
+crash is intentionally induced, and no hardware recovery or resource-variance
+root cause is claimed. Representable long gaps can still consume excessive
+memory: whole-gap arrays and unbounded stream buffering require a separate
+conservation/backpressure design. Do not manufacture green with silent drops,
+invented rate ceilings, changed performance budgets or relaxed UI scope.

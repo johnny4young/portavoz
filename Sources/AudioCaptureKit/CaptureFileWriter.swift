@@ -19,6 +19,9 @@ public final class CaptureFileWriter: @unchecked Sendable {
     public private(set) var framesWritten: AVAudioFramePosition = 0
 
     public init(url: URL, sampleRate: Double) throws {
+        guard CapturePCMGeometry.isUsable(sampleRate: sampleRate) else {
+            throw AudioCaptureError.unsupportedFormat
+        }
         self.url = url
         self.sampleRate = sampleRate
         let settings: [String: Any] = [
@@ -50,7 +53,9 @@ public final class CaptureFileWriter: @unchecked Sendable {
     public func append(_ samples: [Float]) throws {
         guard !samples.isEmpty else { return }
         guard let file else { throw AudioCaptureError.captureWriterClosed }
-        let requiredCapacity = AVAudioFrameCount(samples.count)
+        let requiredCapacity = try CapturePCMGeometry.nativeFrameCount(samples.count)
+        let (nextFrames, overflow) = framesWritten.addingReportingOverflow(AVAudioFramePosition(samples.count))
+        guard !overflow else { throw AudioCaptureError.unsupportedFormat }
         let buffer: AVAudioPCMBuffer
         if let reusableBuffer, reusableBuffer.frameCapacity >= requiredCapacity {
             buffer = reusableBuffer
@@ -70,7 +75,7 @@ public final class CaptureFileWriter: @unchecked Sendable {
             channelData[0].update(from: pointer.baseAddress!, count: samples.count)
         }
         try file.write(from: buffer)
-        framesWritten += AVAudioFramePosition(samples.count)
+        framesWritten = nextFrames
     }
 
     public var secondsWritten: TimeInterval {

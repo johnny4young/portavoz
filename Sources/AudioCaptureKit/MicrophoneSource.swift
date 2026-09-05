@@ -5,7 +5,7 @@ import PortavozCore
 
 enum AudioInputFormatPolicy {
     static func isUsable(sampleRate: Double, channelCount: AVAudioChannelCount) -> Bool {
-        sampleRate.isFinite && sampleRate > 0 && channelCount > 0
+        CapturePCMGeometry.isUsable(sampleRate: sampleRate) && channelCount > 0
     }
 
     static func isUsable(_ format: AVAudioFormat) -> Bool {
@@ -246,21 +246,24 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
             if self.isMuted {
                 samples = [Float](repeating: 0, count: samples.count)
             }
-            if native != target {
-                samples = Resample.linear(samples, from: native, to: target)
-            }
             let elapsed = clock.elapsed(hostTime: when.hostTime)
-            let expected = Int(elapsed * target)
-            let delivered = self.deliveredSnapshot()
-            let gap = expected - delivered
-            if gap > Int(target / 2) {
+            let plan: CapturePCMGeometry.Delivery
+            do {
+                if native != target { samples = try Resample.linear(samples, from: native, to: target) }
+                plan = try CapturePCMGeometry.delivery(
+                    elapsed: elapsed, sampleRate: target,
+                    delivered: self.deliveredSnapshot(), incoming: samples.count)
+            } catch {
+                continuation.finish(throwing: AudioCaptureError.unsupportedFormat)
+                return
+            }
+            if plan.paddingFrameCount > 0 {
                 continuation.yield(AudioChunk(
                     channel: .microphone,
-                    samples: [Float](repeating: 0, count: gap),
+                    samples: [Float](repeating: 0, count: plan.paddingFrameCount),
                     sampleRate: target,
-                    timestamp: Double(delivered) / target
+                    timestamp: plan.paddingTimestamp
                 ))
-                self.addDelivered(gap)
             }
             continuation.yield(AudioChunk(
                 channel: .microphone,
@@ -268,7 +271,7 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
                 sampleRate: target,
                 timestamp: elapsed
             ))
-            self.addDelivered(samples.count)
+            self.setDelivered(plan.deliveredFrameCount)
         }
         tapInstalled = true
     }
@@ -371,9 +374,9 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
         return samplesDelivered
     }
 
-    private func addDelivered(_ count: Int) {
+    private func setDelivered(_ count: Int) {
         deliveredLock.lock()
         defer { deliveredLock.unlock() }
-        samplesDelivered += count
+        samplesDelivered = count
     }
 }

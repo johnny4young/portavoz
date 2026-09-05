@@ -6,6 +6,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 5, 2026
 
+- **🎙️ Safer recording failures** — Invalid audio timing or formats stop only the affected source, preserving accepted audio while the healthy channel continues.
+
 - **🔎 Clearer reference searches** — Questions about one ticket or code keep a matching leading text result from being displaced by weak semantic overlap.
 - **🛑 Automatic briefs respect recording pauses** — Late calendar work can no longer recreate a paused timer or replace the next scheduled preparation.
 - **🌐 Live translation respects language changes** — Cancelled work can no longer replace the current language status or clear a newer download choice.

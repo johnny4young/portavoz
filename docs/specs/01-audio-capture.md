@@ -56,6 +56,31 @@ for both consumers, snapshots the counts, explicitly closes each native writer,
 and only then sends staging URLs to publication. This makes the publication
 boundary independent of when completed Swift task contexts release captures.
 
+### Checked PCM geometry and failed-source ownership (D478)
+
+`CapturePCMGeometry` admits finite positive rates, exact native frame counts,
+finite resampling ratios, and overflow-checked clock-gap/delivered totals before
+numeric conversion or PCM allocation. The microphone and process tap share this
+policy; tap ASBD admission also requires a positive channel count. Invalid
+geometry finishes the affected stream with `unsupportedFormat`, not a numeric
+trap or silent passthrough. Normal interpolation, pinned stream rate, the
+half-second gap threshold, and exact padding timestamps/frame totals remain
+unchanged. The writer rejects an invalid rate before native format creation and
+checks native capacity plus accumulated frame count before each durable append.
+
+A consumer failure reports the existing per-channel health/error evidence, then
+retires only its UUID-owned source outside the realtime callback. Global Stop
+claims all remaining source owners before its first suspension, so a producer
+that fails during teardown is not stopped twice. The healthy peer continues;
+accepted staging audio remains available for the existing Stop/publication path.
+This owner fence does not authorize overlapping application recording lifecycles.
+
+Numeric representability is not a physical-memory budget. Route gaps still
+materialize whole silence arrays, and the source stream remains unbounded. A
+future conservation/backpressure change must bound both allocation and queued
+PCM without silently dropping recorded frames. Hardware route recovery and
+physical Sequoia/Tahoe validation remain separate from arithmetic tests.
+
 ### Persisted level evidence (D168)
 
 After `CaptureFileWriter.append` accepts a chunk, `RecordingSession` performs

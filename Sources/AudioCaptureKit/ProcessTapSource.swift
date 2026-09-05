@@ -113,6 +113,9 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
         tapID = tap
 
         let format = try Self.tapStreamFormat(tapID: tap)
+        guard CapturePCMGeometry.isUsable(sampleRate: format.mSampleRate), format.mChannelsPerFrame > 0 else {
+            throw AudioCaptureError.unsupportedFormat
+        }
         if streamSampleRate == 0 { streamSampleRate = format.mSampleRate }
 
         let aggregateDescription: [String: Any] = [
@@ -145,23 +148,28 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
             guard let self else { return }
             var samples = Downmix.mono(fromBufferList: inputData, format: format)
             guard !samples.isEmpty else { return }
-            if nativeRate != targetRate, nativeRate > 0, targetRate > 0 {
-                samples = Resample.linear(samples, from: nativeRate, to: targetRate)
-            }
             let elapsed = clock.elapsed(hostTime: inputTime.pointee.mHostTime)
             // Pad the output-switch downtime with silence so the system file
             // stays aligned with wall-clock (and the mic channel).
-            let expected = Int(elapsed * targetRate)
-            let delivered = self.deliveredSnapshot()
-            let gap = expected - delivered
-            if gap > Int(targetRate / 2) {
+            let plan: CapturePCMGeometry.Delivery
+            do {
+                if nativeRate != targetRate {
+                    samples = try Resample.linear(samples, from: nativeRate, to: targetRate)
+                }
+                plan = try CapturePCMGeometry.delivery(
+                    elapsed: elapsed, sampleRate: targetRate,
+                    delivered: self.deliveredSnapshot(), incoming: samples.count)
+            } catch {
+                continuation.finish(throwing: AudioCaptureError.unsupportedFormat)
+                return
+            }
+            if plan.paddingFrameCount > 0 {
                 continuation.yield(AudioChunk(
                     channel: .system,
-                    samples: [Float](repeating: 0, count: gap),
+                    samples: [Float](repeating: 0, count: plan.paddingFrameCount),
                     sampleRate: targetRate,
-                    timestamp: Double(delivered) / targetRate
+                    timestamp: plan.paddingTimestamp
                 ))
-                self.addDelivered(gap)
             }
             continuation.yield(AudioChunk(
                 channel: .system,
@@ -169,7 +177,7 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
                 sampleRate: targetRate,
                 timestamp: elapsed
             ))
-            self.addDelivered(samples.count)
+            self.setDelivered(plan.deliveredFrameCount)
         }
         try check(status, "AudioDeviceCreateIOProcIDWithBlock")
         ioProcID = procID
@@ -298,10 +306,10 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
         return samplesDelivered
     }
 
-    private func addDelivered(_ count: Int) {
+    private func setDelivered(_ count: Int) {
         deliveredLock.lock()
         defer { deliveredLock.unlock() }
-        samplesDelivered += count
+        samplesDelivered = count
     }
 
     /// Translates a POSIX PID into the Core Audio process object that taps target.

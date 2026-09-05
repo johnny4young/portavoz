@@ -98,6 +98,18 @@ distribution cell.
   250 ms budget. Evidence:
   docs/evidence/meeting-memory-graph-rebuild-20260807.json.
 
+### Capture memory and physical-route boundary
+
+Checked PCM geometry now rejects nonfinite rates/clocks, unrepresentable native
+frame counts and arithmetic overflow through a typed channel error; failed
+producers retire once without stopping their healthy peer (D478). This closes a
+source-level numeric-trap risk, not a reproduced hardware crash. Normal route-gap
+padding and accepted CAF frames are characterized without weakening conservation.
+Whole-gap silence arrays and unbounded source-stream buffering still need an
+explicit memory/backpressure design; splitting an array alone does not bound the
+queue. Physical route changes, long suspension, slow consumers, Sequoia/Tahoe
+hardware and the existing resource-variance admission remain open evidence gates.
+
 ### Current Ask retrieval attribution boundary
 
 A fresh, clean committed Release pair on September 5, 2026 used the unchanged

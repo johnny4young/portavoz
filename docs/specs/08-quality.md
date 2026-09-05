@@ -7193,3 +7193,22 @@ burst coalescing, caller-only cancellation, bounded recovery, policy, pending
 ownership and relaunch tests remain in force. The real-app automatic-rule
 Settings journeys complement these actor-level races; they do not claim to
 reproduce EventKit/TCC delivery or physical recording transitions.
+
+### Capture numeric admission and failed-producer retirement
+
+`CapturePCMGeometryTests` compares the released algorithm across nine normal
+sample rates (405 frame plans and 81 exact interpolation comparisons), checks
+the half-second clock threshold including backward finite timestamps, and
+conserves exact repeated-gap totals. Nonfinite rates/clocks, ratio underflow or
+overflow, native frame-capacity overflow, and delivered-count overflow reject
+without allocating their boundary sizes or intentionally crashing a process.
+Invalid writer rates must fail before producing any file.
+
+`RecordingSummaryTests` drives real temporary CAF writers with controlled
+sources: a failed channel retires before global Stop, its healthy peer continues,
+previously accepted samples publish with exact read-back counts, and an error
+during global teardown stops the source only once. Invalid writer geometry must
+also retire its producer without creating a malformed artifact. These tests
+complement the mandatory real-app recording failure/liveness/automation UI
+journeys; neither fixture clocks nor temporary sources certify actual CoreAudio
+driver recovery, long-gap memory bounds, physical Sequoia/Tahoe or field behavior.

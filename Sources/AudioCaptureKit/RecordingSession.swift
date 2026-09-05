@@ -56,8 +56,13 @@ public actor RecordingSession {
         }
     }
 
+    private struct OwnedSource: Sendable {
+        let id = UUID()
+        let source: any AudioCaptureSource
+    }
+
     private let outputDirectory: URL
-    private var sources: [AudioChannel: any AudioCaptureSource] = [:]
+    private var sources: [AudioChannel: OwnedSource] = [:]
     private var writers: [AudioChannel: CaptureFileWriter] = [:]
     private var consumers: [AudioChannel: Task<Void, Never>] = [:]
     private var peaks: [AudioChannel: Float] = [:]
@@ -106,11 +111,12 @@ public actor RecordingSession {
                 let stagingURL = outputDirectory.appendingPathComponent(
                     AudioCapturePath.stagingFilename(for: channel))
                 let stream = try await source.start()
-                sources[channel] = source
+                let owned = OwnedSource(source: source)
+                sources[channel] = owned
                 consumers[channel] = makeConsumer(
                     stream: stream,
                     stagingURL: stagingURL,
-                    channel: channel,
+                    source: owned,
                     onChunk: onChunk,
                     onLevel: onLevel,
                     onHealthEvent: onHealthEvent)
@@ -128,12 +134,13 @@ public actor RecordingSession {
     private func makeConsumer(
         stream: AsyncThrowingStream<AudioChunk, Error>,
         stagingURL: URL,
-        channel: AudioChannel,
+        source: OwnedSource,
         onChunk: (@Sendable (AudioChunk) -> Void)?,
         onLevel: (@Sendable (PersistedAudioLevel) -> Void)?,
         onHealthEvent: (@Sendable (RecordingCaptureHealthEvent) -> Void)?
     ) -> Task<Void, Never> {
         let livenessMonitor = systemLiveness
+        let channel = source.source.channel
         return Task { [weak self] in
             var writer: CaptureFileWriter?
             var peak: Float = 0
@@ -181,14 +188,28 @@ public actor RecordingSession {
                     error: String(describing: error),
                     for: channel)
                 onHealthEvent?(.streamFailed(channel: channel))
+                // Retire the failed producer off its realtime callback. A
+                // completed consumer must not leave hardware/queued PCM alive
+                // until the user eventually stops an otherwise healthy peer.
+                await self?.retireFailedSource(channel: channel, ownerID: source.id)
             }
         }
     }
 
+    private func retireFailedSource(channel: AudioChannel, ownerID: UUID) async {
+        guard let owned = sources[channel], owned.id == ownerID else { return }
+        sources.removeValue(forKey: channel)
+        await owned.source.stop()
+    }
+
     /// Stops all sources, drains pending chunks, and reports what was written.
     public func stop() async -> Summary {
-        for source in sources.values {
-            await source.stop()
+        // Claim teardown before suspension. A simultaneous consumer failure
+        // must not stop the same producer again while global Stop owns it.
+        let retiring = sources
+        sources.removeAll()
+        for owned in retiring.values {
+            await owned.source.stop()
         }
         for consumer in consumers.values {
             await consumer.value
@@ -253,7 +274,7 @@ public actor RecordingSession {
                     channel: .system,
                     secondsWithoutFrames: secondsWithoutFrames))
             case .recoveryDue(let attempt, let secondsWithoutFrames):
-                guard let source = sources[.system] as? any RecoverableAudioCaptureSource else {
+                guard let source = sources[.system]?.source as? any RecoverableAudioCaptureSource else {
                     continue
                 }
                 await source.requestRecovery()
