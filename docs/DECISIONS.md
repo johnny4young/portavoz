@@ -18149,3 +18149,26 @@ failure; deterministic tests cover ownership and diagnostic failure boundaries.
 This repairs orchestration lifetime only, not resource variance or product
 performance. Adverse measurements remain adverse, and no old candidate receipt
 qualifies a changed source.
+
+## D474 — Reserve standing observers before asynchronous subscription (Sep 2026)
+
+**Context:** a calendar read could return after capture preemption or Stop and
+recreate a boundary wake, even cancelling a newer worker's wake. Start also
+awaited its subscription before reserving ownership, admitting two observers
+or resurrecting one after Stop. Five gated-dependency tests reproduced these
+lifecycle failures without a real calendar, arbitrary sleeps, or model output.
+
+**Decision:** reserve the process-owned observation task atomically in the
+actor, then subscribe before its initial reconciliation. Reject cancelled
+policy/calendar completions before changing wake state, recheck capture before
+scheduling, and check cancellation inside actor-owned background signal
+admission. Fence a retired worker before restoring pending requests as well as
+before settlement. Keep explicit reconciliation independent from cancellation
+of an individual caller and preserve nonblocking Stop.
+
+**Consequences:** the single worker and next-boundary wake remain the only
+execution owners. No new scheduler, polling, provider, permission, schema,
+automatic action, or platform requirement is introduced. Read-only internal
+task handles support exact lifecycle joins in characterization tests. These
+tests establish owner behavior, not field evidence of an unauthorized effect
+or a solution to the separately observed recording CPU variance.

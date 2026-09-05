@@ -7133,3 +7133,20 @@ PID-parent changes, signal races, invalid bounds, marker permissions and
 non-overwrite, and cleanup even when marker publication fails. Each executable
 test owns and finally reaps its private process group; no shared-host app or
 other project is used as a fixture. These tests are part of repository hygiene.
+
+### Standing supervisor asynchronous ownership
+
+Five deterministic lifecycle regressions use a public-synthetic calendar and
+an in-memory store. The event adapter deliberately withholds a subscription or
+calendar read and ignores cancellation until its exact continuation is
+released. Tests capture read-only actor task handles and join retired work;
+they do not guess completion with sleeps or read the host calendar.
+
+The suite rejects a late wake after Stop or capture preemption, cancellation
+of a newer worker's wake, duplicate subscriptions from concurrent Start, and
+observer resurrection after Stop during subscription. Capture resumption must
+still publish exactly one successful brief for the original event. Existing
+burst coalescing, caller-only cancellation, bounded recovery, policy, pending
+ownership and relaunch tests remain in force. The real-app automatic-rule
+Settings journeys complement these actor-level races; they do not claim to
+reproduce EventKit/TCC delivery or physical recording transitions.

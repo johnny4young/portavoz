@@ -3393,7 +3393,17 @@ Unexpected store or event-resolution failure is different from an exact event
 that legitimately moved. The latter retires or skips only that occurrence; the
 former restores the complete or proposal-scoped request, finishes explicit
 waiters with the error, and waits for the next real invalidation instead of
-spinning. A generation fence makes a worker that resumes after `stop()` inert.
+spinning. A generation fence rejects retired workers before they restore
+pending requests or settle current waiters. Observation ownership is reserved
+before awaiting the calendar subscription; subscription completes before the
+initial reconciliation so intervening calendar signals remain buffered.
+Concurrent starts therefore share one observer, and a subscription returning
+after Stop cannot install a replacement owner. Cancelled policy/calendar reads
+cannot change the boundary wake, including a newer worker's wake; calendar
+completion also rechecks capture admission before scheduling. Observer and
+timer signals check cancellation inside the receiving actor, not merely before
+the actor hop. Stop remains nonblocking when a platform dependency has not yet
+returned; direct explicit reconciliation keeps its separate caller authority.
 Every explicit reconciliation or selected-retry caller has a UUID-scoped
 throwing continuation. Caller cancellation removes and resumes only that waiter,
 including the cancellation-before-registration race; the process-owned worker

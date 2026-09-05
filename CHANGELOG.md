@@ -6,6 +6,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 5, 2026
 
+- **🛑 Automatic briefs respect recording pauses** — Late calendar work can no longer recreate a paused timer or replace the next scheduled preparation.
 - **🌐 Live translation respects language changes** — Cancelled work can no longer replace the current language status or clear a newer download choice.
 
 ## September 4, 2026

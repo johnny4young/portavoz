@@ -23,10 +23,12 @@ actor StandingPreMeetingBriefSupervisor {
     private let calendar: Calendar
     private let now: @Sendable () -> Date
 
-    private var observationTask: Task<Void, Never>?
-    private var worker: Task<Void, Never>?
+    // Read-only handles let lifecycle characterization join retired work;
+    // creating, replacing and clearing owners stays actor-isolated here.
+    private(set) var observationTask: Task<Void, Never>?
+    private(set) var worker: Task<Void, Never>?
     private var workerGeneration = 0
-    private var wakeTask: Task<Void, Never>?
+    private(set) var wakeTask: Task<Void, Never>?
     private var needsReconciliation = false
     private var explicitRetryProposalIDs = Set<UUID>()
     private var reconciliationWaiters: [
@@ -55,15 +57,26 @@ actor StandingPreMeetingBriefSupervisor {
         wakeTask?.cancel()
     }
 
-    func start() async {
+    func start() {
         guard observationTask == nil else { return }
-        let changes = await events.standingBriefEventChanges()
+        let events = events
+        // Reserve the owner before the subscription can suspend. Subscribe
+        // before the initial reconciliation so calendar signals are buffered.
         observationTask = Task { [weak self] in
+            let changes = await events.standingBriefEventChanges()
+            guard !Task.isCancelled else { return }
+            await self?.kickFromBackgroundTask()
             for await _ in changes {
                 guard !Task.isCancelled else { return }
-                await self?.kick()
+                await self?.kickFromBackgroundTask()
             }
         }
+    }
+
+    private func kickFromBackgroundTask() {
+        // Check after the actor hop, not only before it: Stop may retire the
+        // observer or wake while its signal is waiting to enter this actor.
+        guard !Task.isCancelled else { return }
         kick()
     }
 
@@ -162,12 +175,14 @@ actor StandingPreMeetingBriefSupervisor {
             do {
                 try await reconcile(scope)
             } catch is CancellationError {
+                guard generation == workerGeneration else { return }
                 restorePendingWork(for: scope)
                 if !Task.isCancelled {
                     reconciliationError = CancellationError()
                 }
                 break
             } catch {
+                guard generation == workerGeneration else { return }
                 restorePendingWork(for: scope)
                 reconciliationError = error
                 break
@@ -213,6 +228,7 @@ actor StandingPreMeetingBriefSupervisor {
 
     private func reconcile(_ scope: ReconciliationScope) async throws {
         let snapshot = try await LoadStandingSkillRules(store: store).execute(())
+        try Task.checkCancellation()
         guard !snapshot.isPaused else {
             cancelScheduledWake()
             return
@@ -234,6 +250,9 @@ actor StandingPreMeetingBriefSupervisor {
             activeRules: activeRules,
             executor: executor,
             scope: scope)
+        // Empty recovery still crosses the store await above. Retired work
+        // must not restore capture deferral or cancel a newer empty-policy wake.
+        try Task.checkCancellation()
 
         guard scope == .all else { return }
 
@@ -308,8 +327,13 @@ actor StandingPreMeetingBriefSupervisor {
             cancelScheduledWake()
             return
         }
-        let upcoming = await events.upcomingStandingBriefEvents()
-            .filter(\.hasValidIdentity)
+        let resolved = await events.upcomingStandingBriefEvents()
+        try Task.checkCancellation()
+        guard captureState.current == .inactive else {
+            needsReconciliation = true
+            return
+        }
+        let upcoming = resolved.filter(\.hasValidIdentity)
             .sorted {
                 $0.startDate == $1.startDate
                     ? $0.id < $1.id
@@ -385,7 +409,7 @@ actor StandingPreMeetingBriefSupervisor {
         wakeTask = Task { [weak self] in
             do {
                 try await Task.sleep(for: .seconds(delay))
-                await self?.kick()
+                await self?.kickFromBackgroundTask()
             } catch is CancellationError {
                 return
             } catch {

@@ -728,6 +728,16 @@ also owns an independently cancellable waiter identity. Cancelling that caller
 removes and resumes only its continuation; it neither cancels the shared worker
 nor retains the Settings task until unrelated preparation completes.
 
+The observer is reserved before subscription can suspend, but subscribes before
+its initial reconciliation so calendar changes stay buffered. Concurrent Start
+therefore shares one owner, and a late subscription cannot recreate it after
+Stop. Cancellation is rechecked after policy/calendar reads, before any wake
+mutation, and inside actor admission of observer/timer signals. Capture is
+rechecked after calendar resolution, while retired worker generations cannot
+restore pending requests belonging to a newer lifetime. Stop cancels ownership
+without waiting for a non-cooperative platform read. No extra scheduler or
+polling lane is introduced.
+
 `StandingSkillAutomationCenterSnapshot` is the separate Settings read boundary:
 it combines verified rule controls with only standing-authority receipts in a
 20-row window, probes one successor, and expands once to 50. Artifacts load by
