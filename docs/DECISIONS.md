@@ -18125,3 +18125,27 @@ merely because the same pair is selected again. No scheduler, lock, model,
 platform minimum, permission, or test budget is added or changed. Deterministic
 cancelled-task tests and existing real-app recording journeys are complementary;
 neither replaces physical Apple Translation asset/permission evidence.
+
+## D473 — Own benchmark deadline processes through completion (Sep 2026)
+
+**Context:** resource and leak wrappers cancelled their background watchdog
+shell but not its sleeping child. Finished benchmarks could therefore leave
+orphan timers retaining the caller's output pipe until the original deadline.
+Executable Bash tests reproduced the hang in both actual runner functions.
+
+**Decision:** use one directly owned Python deadline process with monotonic
+waiting and no sleeping grandchild. Reap that exact PID at completion and signal
+cleanup. Verify launcher parentage before TERM/KILL; let the shell retain
+responsibility for its disposable app. Record timeout through exclusive
+owner-only evidence before signalling, and reject timeout or unexpected timer
+failure even when the launcher itself exits zero. Preserve existing operation
+deadlines and measurement budgets. Both launchers use the leak watchdog's
+bounded five-second TERM-to-KILL escalation, with parentage checked again.
+
+**Consequences:** completed collection closes its pipeline promptly rather than
+appearing to run for another timer interval. Actual-pipe tests synchronize target
+and timer readiness and cover completion, cancellation, expiration and timer
+failure; deterministic tests cover ownership and diagnostic failure boundaries.
+This repairs orchestration lifetime only, not resource variance or product
+performance. Adverse measurements remain adverse, and no old candidate receipt
+qualifies a changed source.

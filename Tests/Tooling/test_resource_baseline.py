@@ -1046,7 +1046,11 @@ class ResourceBaselineTests(unittest.TestCase):
         self.assertIn('ACTIVE_LAUNCH_PID="$launch_pid"', runner)
         self.assertIn('ACTIVE_GUARD_PID="$guard_pid"', runner)
         self.assertIn("terminate_benchmark_processes", runner)
-        self.assertIn('kill -TERM "$launch_pid"', runner)
+        self.assertIn('"$ROOT/scripts/benchmark_watchdog.py"', runner)
+        self.assertIn('--pid "$launch_pid" --timeout "$guard_timeout"', runner)
+        self.assertIn('if [[ -f "$timed_out_marker" ]]; then', runner)
+        self.assertIn("launch_status=124", runner)
+        self.assertIn("if (( launch_status != 0 )); then", runner)
         self.assertIn(
             'pgrep -f -- "$APP/Contents/MacOS/portavoz-app"',
             runner,

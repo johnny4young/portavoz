@@ -153,6 +153,7 @@ cleanup() {
     local exit_status=$?
     if [[ -n "$ACTIVE_GUARD_PID" ]]; then
         kill -TERM "$ACTIVE_GUARD_PID" 2>/dev/null || true
+        wait "$ACTIVE_GUARD_PID" 2>/dev/null || true
     fi
     if [[ -n "$ACTIVE_LAUNCH_PID" ]]; then
         terminate_benchmark_processes
@@ -245,19 +246,16 @@ run_benchmark_app() {
     local launch_pid
     local launch_status
     local guard_pid
+    local guard_status
     local guard_timeout=$((PROCESS_TIMEOUT + 30))
     open -W -n "$APP" --args "$@" \
         --bench-resource-process-timeout "$PROCESS_TIMEOUT" &
     launch_pid=$!
     ACTIVE_LAUNCH_PID="$launch_pid"
-    (
-        sleep "$guard_timeout"
-        if kill -0 "$launch_pid" 2>/dev/null; then
-            echo "resource baseline error: LaunchServices wait exceeded watchdog grace" >&2
-            terminate_benchmark_processes
-            kill -TERM "$launch_pid" 2>/dev/null || true
-        fi
-    ) &
+    local timed_out_marker="$RUN_ROOT/launcher.timed-out"
+    python3 "$ROOT/scripts/benchmark_watchdog.py" \
+        --pid "$launch_pid" --timeout "$guard_timeout" \
+        --marker "$timed_out_marker" &
     guard_pid=$!
     ACTIVE_GUARD_PID="$guard_pid"
     if wait "$launch_pid"; then
@@ -266,8 +264,23 @@ run_benchmark_app() {
         launch_status=$?
     fi
     kill -TERM "$guard_pid" 2>/dev/null || true
-    wait "$guard_pid" 2>/dev/null || true
+    if wait "$guard_pid" 2>/dev/null; then
+        guard_status=0
+    else
+        guard_status=$?
+    fi
     ACTIVE_GUARD_PID=""
+    if (( guard_status != 0 && guard_status != 143 )); then
+        echo "resource baseline error: deadline owner failed" >&2
+        launch_status=64
+    fi
+    if [[ -f "$timed_out_marker" ]]; then
+        echo "resource baseline error: LaunchServices wait exceeded watchdog grace" >&2
+        launch_status=124
+    fi
+    if (( launch_status != 0 )); then
+        terminate_benchmark_processes
+    fi
     ACTIVE_LAUNCH_PID=""
     return "$launch_status"
 }

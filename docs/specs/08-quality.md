@@ -7102,3 +7102,34 @@ cleanup and live-caption tests remain in force. Selector-derived real-app
 Library/recording/interview journeys cover the actual controls and translated
 language rail. Seed UI evidence does not certify Apple's interactive language
 pack download or claim to schedule an actual framework callback race.
+
+### Owned benchmark deadlines and output-pipe closure
+
+`scripts/benchmark_watchdog.py` is the shared deadline owner for resource and
+at-exit leak collection. Both shells launch it directly and reap its PID on
+normal completion or HUP/INT/TERM cleanup. It does not fork a sleeping timer:
+the previous shell-plus-sleep pattern could leave an orphan holding stdout and
+stderr after the benchmark and its owner had already exited. The waiting timer
+uses a monotonic deadline and notices parent death within one second. Before
+signalling the launcher it verifies the launcher's current parent; disappeared
+or reassigned processes are not targets. Normal host execution must permit the
+read-only process-parent query; process-sandbox failures are not product tests.
+
+The existing resource bound plus thirty-second grace and leak bound plus
+five-second grace remain unchanged. Both launchers now use the former leak
+watchdog's five-second TERM-to-KILL interval with a fresh parentage check. The
+mode-0600, exclusive timeout marker is published before TERM, and marker I/O
+failure still retires the owned launcher. The shell performs disposable-app
+cleanup. A timeout marker or unexpected deadline-owner exit cannot be accepted
+as a successful zero-exit launch. No performance, resource-stability, leak,
+model, fixture, or UI budget changes.
+
+Executable `/bin/bash` tests extract the actual runner functions, explicitly
+synchronize timer/target readiness, and capture output through real pipes.
+They cover normal completion without waiting for the original deadline, parent
+cancellation, a zero-exit launcher after timeout, and deadline-owner failure in
+both collectors. Unit tests characterize monotonic waiting, owner disappearance,
+PID-parent changes, signal races, invalid bounds, marker permissions and
+non-overwrite, and cleanup even when marker publication fails. Each executable
+test owns and finally reaps its private process group; no shared-host app or
+other project is used as a fixture. These tests are part of repository hygiene.

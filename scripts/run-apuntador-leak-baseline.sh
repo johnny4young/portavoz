@@ -103,6 +103,7 @@ terminate_probe_processes() {
 cleanup() {
     if [[ -n "$GUARD_PID" ]]; then
         kill -TERM "$GUARD_PID" 2>/dev/null || true
+        wait "$GUARD_PID" 2>/dev/null || true
     fi
     # Match the private executable path as well as the owned wrapper PID so an
     # interrupted parent cannot leave the disposable app behind.
@@ -120,6 +121,9 @@ cleanup() {
     fi
 }
 trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 PORTAVOZ_SIGN_IDENTITY="-" \
     scripts/make-app.sh --release --version "$VERSION" --build "$BUILD"
@@ -153,22 +157,15 @@ run_under_leaks() {
     local log="$RUN_ROOT/$scenario.leaks.log"
     local guard_timeout=$((TIMEOUT_SECONDS + 5))
     local run_status
+    local guard_status
     TIMED_OUT_MARKER="$RUN_ROOT/$scenario.timed-out"
 
     xcrun leaks -q --noContent --nostacks --atExit -- \
         "$APP_EXECUTABLE" "$@" >"$log" 2>&1 &
     ACTIVE_PID=$!
-    (
-        sleep "$guard_timeout"
-        if kill -0 "$ACTIVE_PID" 2>/dev/null; then
-            printf 'timed-out\n' >"$TIMED_OUT_MARKER"
-            terminate_probe_processes
-            kill -TERM "$ACTIVE_PID" 2>/dev/null || true
-            sleep 5
-            terminate_probe_processes
-            kill -KILL "$ACTIVE_PID" 2>/dev/null || true
-        fi
-    ) &
+    python3 "$ROOT/scripts/benchmark_watchdog.py" \
+        --pid "$ACTIVE_PID" --timeout "$guard_timeout" \
+        --marker "$TIMED_OUT_MARKER" &
     GUARD_PID=$!
     set +e
     wait "$ACTIVE_PID"
@@ -176,8 +173,14 @@ run_under_leaks() {
     set -e
     ACTIVE_PID=""
     kill -TERM "$GUARD_PID" 2>/dev/null || true
-    wait "$GUARD_PID" 2>/dev/null || true
+    if wait "$GUARD_PID" 2>/dev/null; then
+        guard_status=0
+    else
+        guard_status=$?
+    fi
     GUARD_PID=""
+    (( guard_status == 0 || guard_status == 143 )) || \
+        fail "scenario $scenario deadline owner failed"
     [[ ! -f "$TIMED_OUT_MARKER" ]] || fail "scenario $scenario timed out"
     [[ "$run_status" -eq 0 ]] || \
         fail "scenario $scenario reported leaks or a tool/process failure"

@@ -3447,7 +3447,15 @@ The shell requires that timeout to exceed both the model-operation bound and
 the longest idle-plus-recording window by 420 seconds; a separate 30-second
 grace guard then terminates only the disposable scratch app and its `open -W`
 owner if LaunchServices itself does not return. Operation-specific model
-timeouts remain tighter.
+timeouts remain tighter. Resource and leak shells now own one directly launched
+Python deadline process rather than a shell with a sleeping grandchild. Normal
+completion and signal cleanup terminate and reap that exact timer PID, so a
+finished benchmark cannot retain its output pipe until a stale deadline. The
+timer uses monotonic waiting, leaves when its parent disappears, and verifies
+launcher parentage before signalling. Timeout evidence is owner-only and cannot
+be overwritten; a timeout marker or unexpected timer failure rejects even a
+zero-exit launcher. The shell remains responsible for disposable-app cleanup;
+no other application or workload becomes a target.
 Once a resource benchmark dispatcher is armed, app initialization returns
 before sync, recovery, provider discovery, or dictation registration can start;
 the AppKit delegate remains detached from product services. It also suppresses

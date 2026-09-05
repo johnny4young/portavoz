@@ -91,6 +91,7 @@ python3 -m unittest Tests.Tooling.test_candidate_automation
 python3 -m unittest Tests.Tooling.test_perf_binary
 python3 -m unittest Tests.Tooling.test_perf_host_readiness
 python3 -m unittest Tests.Tooling.test_apuntador_leak_baseline
+python3 -m unittest Tests.Tooling.test_benchmark_watchdog
 python3 -m unittest Tests.Tooling.test_source_integration_qualification
 python3 -m unittest Tests.Tooling.test_verify_cloudkit_capabilities
 python3 -m unittest Tests.Tooling.test_production_sync_qualification
