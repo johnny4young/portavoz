@@ -329,7 +329,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let productionAdapter = try Self.contents(
             of: "Sources/portavoz-cli/CLIBenchAskQuality.swift")
         for required in [
-            "LocalAskMeetingRetrieval", "MeetingStore(",
+            "LocalAskMeetingRetrieval", "AskQualityWorkspace.withCorpus(",
             "local-hybrid-preindexed-segment-no-expansion-evidence-v3",
             "local-hybrid-preindexed-speaker-turn-v1-no-expansion-evidence-v1",
             "sourceSegmentIDs", "notEvaluated", "transcriptRevision",
@@ -340,6 +340,12 @@ final class ArchitectureDependencyTests: XCTestCase {
                 "Ask production observation adapter is missing \(required)")
         }
         XCTAssertFalse(productionAdapter.contains("RecordingsLocation.default"))
+        let workspace = try Self.contents(of: "Sources/portavoz-cli/CLIAskQualityWorkspace.swift")
+        for required in ["temporaryDirectory", "MeetingStore(databaseURL:", "0o700", "removeItem(at: root)"] {
+            XCTAssertTrue(workspace.contains(required), "quality corpus must remain private and disposable")
+        }
+        XCTAssertFalse(workspace.contains("RecordingsLocation.default"))
+        XCTAssertFalse(workspace.contains("MeetingStore.default"))
 
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         let quality = try Self.contents(of: "docs/specs/08-quality.md")

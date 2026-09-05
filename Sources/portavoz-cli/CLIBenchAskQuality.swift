@@ -8,10 +8,17 @@ import StorageKit
 /// does not run a generative answer model; answer quality stays explicitly
 /// unevaluated until a separate, versioned judge supplies that evidence.
 enum BenchAskQualityCommand {
-    static func run(_ arguments: [String]) async {
+    static func run(_ arguments: [String], attribution: Bool = false) async {
         do {
             let options = try AskQualityBenchmarkOptions(arguments: arguments)
             let fixture = try AskQualityFixture.load(from: options.fixture)
+            if attribution {
+                let document = try await AskQualityAttributionBenchmark.run(
+                    fixture: fixture, options: options)
+                try CLIPrivateJSONWriter.write(document, to: options.output)
+                print("Ask stage attribution: \(options.output.path)")
+                return
+            }
             let observations = try await AskQualityProductionBenchmark.run(
                 fixture: fixture,
                 build: options.build,
@@ -23,8 +30,13 @@ enum BenchAskQualityCommand {
                 to: options.output)
             print("Ask quality observations: \(options.output.path)")
         } catch {
+            let command = attribution ? "bench-ask-attribution" : "bench-ask-quality"
+            // Attribution never exports arbitrary provider/storage error payloads.
+            let detail = attribution
+                ? (error as? AskQualityAttributionError)?.localizedDescription ?? "diagnostic failed"
+                : error.localizedDescription
             FileHandle.standardError.write(
-                Data("bench-ask-quality error: \(error.localizedDescription)\n".utf8))
+                Data("\(command) error: \(detail)\n".utf8))
             Foundation.exit(64)
         }
     }
@@ -327,7 +339,7 @@ struct AskQualityQueryObservation: Encodable, Sendable {
     let answer: AskQualityAnswerObservation
 }
 
-struct AskQualityHitObservation: Encodable, Sendable {
+struct AskQualityHitObservation: Encodable, Equatable, Sendable {
     let unitID: String
     let sourceSegmentIDs: [String]
     let meetingID: String
@@ -362,37 +374,21 @@ enum AskQualityProductionBenchmark {
         retrievalUnit: AskQualityRetrievalUnit = .segment,
         allowAssetDownload: Bool = false
     ) async throws -> AskQualityObservationDocument {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent(
-                "portavoz-ask-quality-\(UUID().uuidString)",
-                isDirectory: true)
-        try FileManager.default.createDirectory(
-            at: root,
-            withIntermediateDirectories: false,
-            attributes: [.posixPermissions: 0o700])
-        defer { try? FileManager.default.removeItem(at: root) }
-        let store = try MeetingStore(
-            databaseURL: root.appendingPathComponent("quality.sqlite"))
-        let mapping = try await AskQualityCorpusMapping.seed(
+        try await AskQualityWorkspace.withCorpus(
             fixture: fixture,
-            store: store,
-            retrievalUnit: retrievalUnit)
-        let runtime = CLISemanticEmbeddingRuntime()
-        _ = try await prepareCorpus(
-            store: store,
-            runtime: runtime,
-            allowAssetDownload: allowAssetDownload)
-        let retrieval = LocalAskMeetingRetrieval(
-            store: store,
-            queryExpander: AskQualityNoExpansion(),
-            runtime: runtime)
-        return try await observe(
-            fixture: fixture,
-            mapping: mapping,
-            retrieval: retrieval,
-            build: build,
-            commit: commit,
-            retrievalUnit: retrievalUnit)
+            retrievalUnit: retrievalUnit
+        ) { context in
+            _ = try await prepareCorpus(
+                store: context.store, runtime: context.runtime,
+                allowAssetDownload: allowAssetDownload)
+            let retrieval = LocalAskMeetingRetrieval(
+                store: context.store,
+                queryExpander: AskQualityNoExpansion(),
+                runtime: context.runtime)
+            return try await observe(
+                fixture: fixture, mapping: context.mapping, retrieval: retrieval,
+                build: build, commit: commit, retrievalUnit: retrievalUnit)
+        }
     }
 
     static func prepareCorpus(
@@ -445,7 +441,7 @@ enum AskQualityProductionBenchmark {
     }
 }
 
-private struct AskQualityNoExpansion: AskQueryExpanding {
+struct AskQualityNoExpansion: AskQueryExpanding {
     func expand(_ question: String) throws -> [String] { [question] }
 }
 

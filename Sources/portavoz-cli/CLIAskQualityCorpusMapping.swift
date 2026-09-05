@@ -24,6 +24,18 @@ struct AskQualityCorpusMapping: Sendable {
     private let externalMeetingIDByDomainID: [MeetingID: String]
     let adapter: String
 
+    var projectedUnitCount: Int { unitByUUID.count }
+
+    func observation(for hit: SearchHit) throws -> AskQualityHitObservation {
+        try observation(for: AskCitation(
+            segmentID: hit.segmentID,
+            meetingID: hit.meetingID,
+            meetingTitle: hit.meetingTitle,
+            timestamp: hit.startTime,
+            transcriptRevision: hit.transcriptRevision,
+            text: hit.text))
+    }
+
     static func seed(
         fixture: AskQualityFixture,
         store: MeetingStore,

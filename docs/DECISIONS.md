@@ -18194,3 +18194,28 @@ Historical benchmark results remain historical and do not become current
 qualification. Recheck primary sources and exact versions/plans before any
 public comparison; promotion still requires our own judged bilingual quality
 and resource evidence.
+
+## D476 — Attribute Ask retrieval without inventing a serving route (Sep 2026)
+
+**Context:** a repeated public-corpus pair improves overall retrieval while
+adding hard negatives and harming individual relationships. Canonical quality
+observations do not include the actual embedding profile, preparation coverage,
+or enough evidence to separate lexical, semantic, and fusion contributions.
+Published embedding rows can contain all-zero vectors.
+
+**Decision:** add a distinct, installed-assets-only CLI diagnostic around the
+existing production retrieval callbacks and injectable batched semantic index.
+Retain the canonical observation unchanged inside a private diagnostic
+envelope. Record actual profile/fingerprint, conserved preparation counts,
+vector classes, lexical evidence, and exact pre-fusion variant order/limits.
+Validate every candidate and reuse the canonical quality scorer. Report the
+successful original-query semantic cohort explicitly rather than inventing a
+merged semantic ranking or scoring failed/uninvoked scans as successful empty
+results. Cancellation, incomplete preparation and profile drift fail closed.
+
+**Consequences:** no product ranking, provider, chunk, schema, budget, query
+expansion, UI, or remote authority changes. Artifacts contain canonical IDs and
+aggregate counts, not source/query text, vectors, generated answers or arbitrary
+provider errors. A diagnostic is never serving approval. Repeat source-bound
+collection in fresh processes and retain all attempts before interpreting
+quality differences; use the existing comparator for any later promotion.

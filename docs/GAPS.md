@@ -98,6 +98,37 @@ distribution cell.
   250 ms budget. Evidence:
   docs/evidence/meeting-memory-graph-rebuild-20260807.json.
 
+### Current Ask retrieval attribution boundary
+
+A fresh, clean committed Release pair on September 5, 2026 used the unchanged
+240-query public-synthetic-v2 fixture, installed Apple assets only, and three
+byte-identical fresh-process observations per role. Segment retrieval measured
+Hit@1 0.5149, Recall@10 0.8596, MRR 0.6001, nDCG@10 0.6600, and 45 hard-negative
+hits. Speaker-turn retrieval measured 0.7234, 0.9234, 0.8005, 0.8311, and 86
+hard-negative hits respectively. Both had zero invalid/stale citations. The
+comparison remains blocked: aggregate gains accompany 41 additional hard
+negatives and relationship regressions. Generated answers were not evaluated;
+null answer metrics are not measured zero-percent factuality.
+
+The new non-serving stage diagnostic exposes actual provider/profile, prepared
+row/vector coverage, lexical/fused evidence, and raw ordered semantic variants.
+It closes an observability gap, not the quality gap in T27. Do not choose a new
+embedding model or wider chunk from aggregate gains alone. First collect
+source-bound stage evidence, locate cross-language/code-switch/hard-negative
+losses, then validate any bounded ranking or model proposal against the same
+quality and resource gates. Historical pairs without matched profile/coverage
+must not be called current regressions. Physical Sequoia/Tahoe, private-corpus,
+resource stability, correction-cost and field usefulness remain separate gates.
+
+Model screening on the same date is not provider selection. The original
+[Multilingual E5 Small card](https://huggingface.co/intfloat/multilingual-e5-small)
+requires different query/document prefixes even for non-English retrieval.
+Our `SemanticTextEmbedding.vectors(for:)` port does not currently express that
+purpose. A future asymmetric encoder therefore needs an explicit, tested
+encoding-role contract plus pinned tokenizer, pooling, truncation and
+normalization semantics; swapping weights alone is not equivalent retrieval.
+No new model has been downloaded, integrated or qualified by this diagnostic.
+
 ## Positioning gaps (against the competitive map)
 
 - **OSS growth after publication**: distribution is solved; discoverability,

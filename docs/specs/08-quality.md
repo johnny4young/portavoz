@@ -3413,7 +3413,7 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   explanation-supported false suggestions. This is not a retained clean-head
   baseline or accepted quality floor, and no result is served.
 - `make test-ask-quality`: verifies both canonical public-synthetic Ask fixture
-  generations and runs 43 deterministic evaluator/comparator/runner cases without
+  generations and runs deterministic evaluator/comparator/runner/attribution cases without
   loading models or user data. Each fixture has exactly 240 judged queries: 60
   Spanish-to-Spanish, 60
   English-to-English, 40 English-to-Spanish, 40 Spanish-to-English, 20
@@ -3446,6 +3446,30 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   adapters intentionally emit `notEvaluated` answer fields, so retrieval can
   be scored while answer-quality and answer-policy gates remain blocked until
   a separate versioned judge exists.
+- `portavoz-cli bench-ask-attribution` observes the same production retrieval
+  without changing the canonical observation or ranking. Its separate schema-1
+  envelope records lexical evidence, every ordered pre-fusion semantic batch,
+  the original canonical fused result, actual embedding profile/fingerprint,
+  and complete corpus preparation counts. Zero and malformed vectors are
+  distinguished from nonzero finite vectors; published rows are not assumed
+  useful. Installed assets are required and downloads are forbidden. Failure
+  and cancellation never create partial successful documents. Operational scan
+  failure remains distinct from an index boundary that was never invoked.
+  `AskQualityAttributionTests` characterizes canonical-output parity, row/vector
+  conservation, batch order/limit, profile drift, cancellation, fallback,
+  missing/duplicate stage evidence and payload-free encoding.
+  `scripts/ask_quality_attribution.py` validates the complete diagnostic,
+  including all twelve raw candidates per variant, and reuses canonical
+  source/revision validation and quality scoring. Its semantic top-ten stage
+  covers only successful original-query scans; omitted and failed scan counts
+  remain visible. The lexical stage is the public progressive top-ten evidence,
+  not the complete lexical input pool. It never merges semantic variants into
+  a fictitious serving ranking or attributes an uninvoked scan to a known cause.
+  Malformed shape, stale citations, fingerprint drift, impossible counts,
+  duplicate JSON keys, unexpected payload fields and output overwrite fail
+  closed. A valid diagnostic exits zero regardless of poor relevance and is
+  **not** a passing quality gate. Existing comparator and quality floors are
+  unchanged.
 - `make ask-quality-pair`: requires a receipt-safe build identity, explicit
   private output, a registered `speaker-turn|conversation-window` candidate,
   and a clean worktree. It verifies `public-synthetic-v2`,

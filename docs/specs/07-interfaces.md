@@ -145,6 +145,19 @@ interface change with its own consent and compatibility review.
 D387 does not widen CLI or MCP. Direct Web authority is macOS-only and bound to
 its per-request consent surface; terminal callers cannot reuse it implicitly.
 
+`bench-ask-attribution` is deliberately separate from product `ask` and the
+canonical `bench-ask-quality` observation contract. It accepts the same
+fixture/output/build/commit/retrieval-unit identity but rejects asset downloads.
+It indexes only an isolated disposable corpus, observes actual Library
+lexical/fused evidence and batched semantic candidates, and atomically writes
+one owner-only, non-overwriting `ask-quality-attribution` document. The nested
+canonical observation is unchanged; profile/coverage/stage fields belong only
+to this diagnostic envelope. Arbitrary provider/storage errors are not printed.
+`scripts/ask_quality_attribution.py --fixture <json> --observations <json>
+--output <json>` validates and summarizes that envelope into another private
+non-serving artifact. This command does not add models, remote egress, answer
+generation, app controls, or terminal authority over the user's Library.
+
 Keychain credentials are read through `ManageSecrets`. Gist and issue workflows
 first admit the local meeting plus rendered document or pending-item set. Only
 then does the publisher adapter prepare once by resolving the device secret or

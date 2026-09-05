@@ -67,6 +67,8 @@ struct PortavozCLI {
             await BenchCaptureCommand.run(arguments)
         case "bench-ask-quality":
             await BenchAskQualityCommand.run(arguments)
+        case "bench-ask-attribution":
+            await BenchAskQualityCommand.run(arguments, attribution: true)
         case "bench-retrieval-chunks":
             await BenchRetrievalChunkEvidenceCommand.run(arguments)
         case "bench-commitment-link-quality":
@@ -113,6 +115,10 @@ struct PortavozCLI {
                                               [--asset-download never|if-needed]
                 units: segment, speaker-turn, conversation-window,
                        semantic-boundary
+              portavoz-cli bench-ask-attribution --fixture <json> --output <json>
+                                                  --build <id> --commit <sha>
+                                                  [--retrieval-unit <unit>]
+                uses installed assets only; stage evidence, not serving approval
               portavoz-cli bench-retrieval-chunks --fixture <json> --output <json>
                                                   --build <id> --commit <sha>
                                                   --fixture-sha256 <sha256>

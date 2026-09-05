@@ -3909,6 +3909,37 @@ identity, evidence, and display output after generation.
 
 ## Search, playback, and derived indexes
 
+### Non-serving Ask stage attribution
+
+`bench-ask-attribution` is a CLI diagnostic, not another search adapter.
+`AskQualityWorkspace` owns the disposable corpus lifetime shared with the
+canonical quality command. Attribution observes the real
+`LocalAskMeetingRetrieval` lexical/fused callbacks and wraps its existing
+`SemanticIndexSearching` port without changing results or decomposing a
+batched exact scan. Canonical schema-2 observations remain unchanged inside a
+distinct diagnostic envelope. No app composition, database migration,
+provider, query expansion, ranking, or serving policy changes.
+
+The envelope records the actual embedding profile and fingerprint, projected
+and published/excluded row counts, vector-result classifications, and exact
+ordered semantic variants before fusion. Published all-zero vectors remain
+explicitly separate from nonzero finite vectors; neither count proves answer
+quality. Preparation must complete in the same vector space without skipped,
+invalidated, malformed, pending, or policy-paused work. Query cancellation and
+profile drift reject the document. A failed semantic scan preserves the
+product's lexical fallback but remains failed evidence; an uninvoked index
+boundary does not identify the cause of upstream unavailability.
+
+The Python diagnostic validator reuses canonical source/revision and quality
+scoring, validates every raw candidate, and scores lexical and fused stages
+over the full fixture. Lexical evidence is the progressive top-ten callback,
+not the entire pre-fusion lexical candidate pool. Its original-query semantic top-ten metrics include
+only successful scans, with explicit cohort counts; it does not invent a
+merged semantic ranking or compare unequal cohorts as equivalent. The
+diagnostic outcome grants no model, chunk, release, or performance approval.
+Source/query text, vectors, generated answers and arbitrary error payloads
+are absent from the private atomic JSON artifacts.
+
 Local lexical search uses FTS5 and query-specific bounded reads. One
 ApplicationKit Ask workflow serves full Ask, the command palette, CLI, MCP, and
 meeting-brief retrieval. Its local adapter combines bounded per-term lexical

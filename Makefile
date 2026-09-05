@@ -146,6 +146,7 @@ commitment-radar-benchmark:
 test-ask-quality:
 	python3 -m unittest Tests.Tooling.test_ask_quality
 	python3 -m unittest Tests.Tooling.test_ask_quality_pair
+	python3 -m unittest Tests.Tooling.test_ask_quality_attribution
 	python3 -m unittest Tests.Tooling.test_ask_answer_quality
 	python3 scripts/ask_quality.py verify-public \
 		--fixture Fixtures/AskQuality/public-synthetic-v1.json
