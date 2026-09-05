@@ -102,7 +102,9 @@ distribution cell.
 
 - **OSS growth after publication**: distribution is solved; discoverability,
   adoption, and trust in a native Swift + MIT product remain ongoing work.
-- **Watch companion**: Teams "Facilitator" arrives ~Aug-Sep 2026. Being first in local meeting notes matters (M13).
+- **Watch companion**: the deferred experience needs the device, consent,
+  transport, and field gates in [IOS.md](IOS.md). A speculative competitor
+  launch date is not a release gate or proof that Portavoz would be first.
 - **Semantic end-of-turn model tail**: the deterministic D138
   endpointer covers turn ends visible in the transcript (punctuation,
   interrogatives, owner mentions). pipecat smart-turn v3 (8.7 MB int8, BSD-2,
@@ -112,9 +114,15 @@ distribution cell.
   merits. Re-check the pipecat-ai/smart-turn-v3 repo when revisiting.
 - **Public benchmarks**: reproducible latency, drift, DER, summary, refine,
   startup, FTS, semantic, long-audio waveform, large-library Spotlight, and
-  memory numbers are published. The next credibility step is retaining these
-  baselines and adding an ethical quality corpus for evidence-linked claims.
-- **The archive story**: Granola charges for access to your >30-day-old notes. Our inverse pitch — "your history is never held hostage" — is not written in any README yet.
+  memory evidence exists with distinct provenance and admission limits. Keep
+  historical measurements separate from current candidate qualification. The
+  public/synthetic bilingual quality authorities already exist; their judged
+  results, per-language limits, hard negatives, and field transfer still need
+  to support any published relevance or model-superiority claim.
+- **Local ownership evidence**: demonstrate backup, export, restore, and archive
+  access in Portavoz. The dated primary-source comparison in
+  [PRODUCT.md](PRODUCT.md) distinguishes a plan's chat-history window from
+  retention or export; neither establishes universal competitor lock-in.
 
 ## Pending field verification (requires the user, not code debt)
 

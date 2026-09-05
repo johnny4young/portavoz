@@ -18172,3 +18172,25 @@ automatic action, or platform requirement is introduced. Read-only internal
 task handles support exact lifecycle joins in characterization tests. These
 tests establish owner behavior, not field evidence of an unauthorized effect
 or a solution to the separately observed recording CPU variance.
+
+
+## D475 — Ground product comparisons in dated primary evidence (Sep 2026)
+
+**Context:** current positioning mixed product goals with unsupported market
+exclusivity, competitor privacy and archive claims, stale prices/valuations,
+and an unconditional no-download description of OS speech. It also excluded
+all standing rules despite the later bounded local brief rule.
+
+**Decision:** retain the local-first, bilingual, source-backed product direction,
+but separate dated vendor observations from Portavoz design inferences and
+our own executed evidence. A limited market sample never proves universal
+feature absence. Distinguish local custody, sharing, training, retention,
+export, and plan access. Explain missing Apple speech assets explicitly and
+recognize the bounded local rule without admitting general automation.
+
+**Consequences:** this corrects documentation, not pricing, entitlements,
+providers, dependency licenses, serving routes, OS floors, or release gates.
+Historical benchmark results remain historical and do not become current
+qualification. Recheck primary sources and exact versions/plans before any
+public comparison; promotion still requires our own judged bilingual quality
+and resource evidence.

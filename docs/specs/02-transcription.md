@@ -463,7 +463,18 @@ effort (D65).
 | style | clean | verbatim with disfluencies ("uh") |
 | with wrong locale (es_CL over EN) | — | same latency (p50 0.16) but garbage text → detecting language BEFOREHAND matters |
 
-M12 interpretation: both remain below 1 s p95 — SpeechAnalyzer IS viable for the live role (zero download, rich volatile results for captions, custom vocabulary), while Parakeet retains the finalization crown. What remains before swapping them in the app is the coalescer's append-vs-replace decision (Speech volatile results REPLACE the range; the current coalescer assumes deltas).
+Historical M12 interpretation: both engines stayed below 1 s p95 finalization
+lag in this one sample; Parakeet finalized sooner in that measurement. This is
+not a current cross-engine quality ranking or evidence for changing the serving
+engine. SpeechAnalyzer supports volatile results and custom vocabulary, but
+**on-device does not mean no download**: `ensureAssets` resolves a supported
+locale and invokes `AssetInventory.assetInstallationRequest` /
+`downloadAndInstall` when its Apple-hosted model is missing. Availability depends
+on the OS, hardware, locale, and installed assets. Apple's
+[SpeechAnalyzer introduction](https://developer.apple.com/videos/play/wwdc2025/277/)
+describes that asset lifecycle. A future serving change still needs the exact
+bilingual comparison and append-versus-replace integration: Speech volatile
+results replace their range; the current caption coalescer assumes deltas.
 
 ## Caption coalescer — `CaptionCoalescer` (used by the app)
 
