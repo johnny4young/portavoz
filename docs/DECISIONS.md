@@ -18219,3 +18219,32 @@ aggregate counts, not source/query text, vectors, generated answers or arbitrary
 provider errors. A diagnostic is never serving approval. Repeat source-bound
 collection in fresh processes and retain all attempts before interpreting
 quality differences; use the existing comparator for any later promotion.
+
+## D477 — Preserve precise reference leads without replacing semantic retrieval (Sep 2026)
+
+**Context:** complete real-provider stage attribution exposes weak reciprocal-rank
+consensus displacing a relevant lexical lead. The canonical corpus contains a
+literal reference in every question; tuning general weights against it would
+overstate natural-language quality and risk spoken-reference evidence.
+
+**Decision:** preserve only a leading lexical passage that contains the same
+single standalone ASCII hyphen-number reference as the question. Ambiguous,
+nonmatching, oversized and recognized EN/ES exclusion questions retain ordinary
+fusion. Other fused results keep their existing order, including semantic-only
+evidence, within the unchanged limit. Do not change RRF weights, vector profiles,
+providers, chunk selection, query expansion, meeting scopes or citation identity.
+Only promote when the resolved final citation matches the lexical evidence
+snapshot; a newer semantic read must not borrow an older passage's reference.
+Characterize the pure policy and supplement the immutable canonical fixture
+with a separate frozen 24-question natural/spoken/negated/stale-reference corpus.
+Only diagnostic attribution admits its smaller distribution; canonical quality
+evaluation still requires the full distribution and unchanged floors.
+
+**Consequences:** repeated development measurements show bounded reference gains
+without measured per-query regressions, not reliable general bilingual search.
+A literal reference is relevance evidence, not factual or temporal authority;
+source contradictions and current ownership remain quality gaps. The diagnostic
+corpus, installed-model evidence, Swift characterization and mandatory real-app
+UI regression checks complement rather than replace resource, answer-quality,
+physical Sequoia/Tahoe and field gates. No model download or remote egress is
+introduced, and no diagnostic artifact grants release approval.

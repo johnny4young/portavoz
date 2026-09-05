@@ -1,10 +1,12 @@
 import copy
 import json
+import re
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -13,6 +15,56 @@ import ask_quality_attribution as attribution
 
 
 class AskQualityAttributionTests(unittest.TestCase):
+    def test_natural_reference_fixture_rejects_pinned_digest_drift(self):
+        with patch.object(quality, "PUBLIC_NATURAL_CHECKSUM", "0" * 64):
+            with self.assertRaises(quality.AskQualityError):
+                quality.public_fixture(quality.PUBLIC_NATURAL_GENERATION)
+
+    def test_natural_reference_fixture_is_frozen_and_never_a_release_corpus(self):
+        raw = quality.public_fixture(quality.PUBLIC_NATURAL_GENERATION)
+        fixture = quality.validate_fixture(raw, exact_distribution=False)
+        self.assertEqual(len(fixture["queries"]), 24)
+        self.assertEqual(len(fixture["segments"]), 44)
+        self.assertEqual(raw, json.loads((ROOT / "Fixtures/AskQuality/public-natural-reference-v1.json").read_text()))
+        self.assertGreaterEqual(sum(not re.search(r"[A-Za-z]+-\d+", query["text"])
+                                    for query in raw["queries"]), 14)
+        self.assertEqual(set(query["intent"] for query in raw["queries"]), quality.INTENTS)
+        self.assertEqual(sum(query["answerPolicy"] == "abstain" for query in raw["queries"]), 2)
+        self.assertEqual(quality.main_from_args(["verify-public", "--fixture",
+            str(ROOT / "Fixtures/AskQuality/public-natural-reference-v1.json")]), 0)
+        with self.assertRaises(quality.AskQualityError):
+            quality.validate_fixture(raw)
+        raw["queries"][0]["text"] = "A convenient replacement question"
+        with self.assertRaises(quality.AskQualityError):
+            quality.validate_fixture(raw, exact_distribution=False)
+
+    def test_diagnostic_cli_accepts_small_frozen_corpus_without_qualifying_it(self):
+        self.raw_fixture = quality.public_fixture(quality.PUBLIC_NATURAL_GENERATION)
+        self.fixture = quality.validate_fixture(self.raw_fixture, exact_distribution=False)
+        rows = len(self.fixture["segments"])
+        self.document["corpus"].update(projectedUnitCount=rows, embeddedRows=rows,
+                                       embeddingResults=self.counts(rows))
+        self.document["observation"].update(fixtureGeneration=self.fixture["generation"], queries=[])
+        self.document["stages"] = []
+        for query in self.raw_fixture["queries"]:
+            hits = [self.hit(query["relevant"][0]["segmentID"])] if query["relevant"] else []
+            self.document["observation"]["queries"].append(dict(queryID=query["id"], hits=hits,
+                answer=dict(outcome="notEvaluated", factuality=None, citationCoverage=None, unsupportedClaims=0)))
+            self.document["stages"].append(dict(queryID=query["id"], lexical=hits, semanticRequests=[]))
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture, observation, output = [root / name for name in ("fixture.json", "input.json", "output.json")]
+            fixture.write_text(json.dumps(self.raw_fixture))
+            observation.write_text(json.dumps(self.document))
+            result = subprocess.run([sys.executable, str(ROOT / "scripts/ask_quality_attribution.py"),
+                "--fixture", str(fixture), "--observations", str(observation), "--output", str(output)],
+                capture_output=True, text=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            summary = json.loads(output.read_text())
+            self.assertEqual(summary["outcome"], "diagnostic-only")
+            self.assertNotIn("gates", summary)
+            self.assertIsNone(summary["stages"]["fused"]["overall"]["factuality"])
+
     def setUp(self):
         self.raw_fixture = quality.public_fixture()
         self.fixture = quality.validate_fixture(self.raw_fixture)

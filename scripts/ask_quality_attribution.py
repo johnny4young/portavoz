@@ -179,7 +179,11 @@ def main():
     try:
         require(arguments.output.resolve() not in (
             arguments.fixture.resolve(), arguments.observations.resolve()), "output would overwrite input")
-        fixture = quality.validate_fixture(quality.load_json(arguments.fixture, "fixture"))
+        # Diagnostics may use the small, frozen natural-reference corpus. Public
+        # fixture equality, labels and provenance stay strict; this is not the
+        # canonical release scorecard's exact 240-query distribution gate.
+        fixture = quality.validate_fixture(
+            quality.load_json(arguments.fixture, "fixture"), exact_distribution=False)
         document = quality.load_json(arguments.observations, "attribution", maximum_bytes=64 * 1024 * 1024)
         quality.write_owner_only(arguments.output, summarize(fixture, document))
     except (quality.AskQualityError, OSError, TypeError, KeyError, AttributeError):

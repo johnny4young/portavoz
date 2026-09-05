@@ -3951,6 +3951,29 @@ and used only after both deterministic paths return no citation. Ordinary model
 failure preserves exact citations, while caller cancellation propagates.
 Embeddings are device-local derivation and do not mark a meeting for sync.
 
+`AskCandidateFusion` preserves a narrowly supported lexical lead: a question
+with exactly one distinct standalone ASCII hyphen-number reference, no
+recognized English/Spanish exclusion, and a leading lexical passage containing
+only that same reference keeps that passage first. The remaining returned
+results retain ordinary reciprocal-rank order and the original limit, including
+semantic-only or spoken-reference evidence. Natural, ambiguous, negated,
+nonmatching and oversized inputs retain ordinary fusion. This does not resolve
+source contradictions, infer spoken identifiers, or establish factual authority.
+It changes no provider, vector profile, index, scope or citation identity.
+Promotion additionally requires the lexical lead and the actually materialized
+citation to match in identity, meeting, ordered source IDs, revision, timestamp
+and text. A read straddling a correction retains ordinary fusion rather than
+using an old passage to promote a different current snapshot.
+
+The frozen `public-natural-reference-v1` diagnostic supplements, never replaces,
+the canonical 240-query corpus with 24 hand-authored natural/reference questions,
+44 distinct synthetic passages, explicit labels and two abstentions. Public
+canonical equality and source/revision validation remain mandatory. The
+hand-authored bilingual facts stay under `Fixtures/` with a pinned canonical
+digest in the loader rather than duplicated in source code. Only the
+non-serving attribution evaluator admits its smaller distribution; canonical
+quality evaluation still rejects it. No generated-answer quality is inferred.
+
 One ApplicationKit trace spans each Ask search, evidence, or answer operation.
 The closed stage vocabulary covers corpus readiness, query expansion, lexical
 retrieval, query embedding, semantic scan, rank fusion, and citation materialization;

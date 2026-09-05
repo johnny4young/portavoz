@@ -21,7 +21,9 @@ SCORECARD_KIND = "ask-quality-scorecard"
 COMPARISON_KIND = "ask-quality-comparison"
 PUBLIC_GENERATION_V1 = "public-synthetic-v1"
 PUBLIC_GENERATION = "public-synthetic-v2"
-PUBLIC_GENERATIONS = {PUBLIC_GENERATION_V1, PUBLIC_GENERATION}
+PUBLIC_NATURAL_GENERATION = "public-natural-reference-v1"
+PUBLIC_NATURAL_CHECKSUM = "8246517083dffcf5d2be6c9637d01cc1c70151cb9383f91e14df8bfb12acc8e2"
+PUBLIC_GENERATIONS = {PUBLIC_GENERATION_V1, PUBLIC_GENERATION, PUBLIC_NATURAL_GENERATION}
 PUBLIC_SOURCE = "public-synthetic-only"
 SEGMENT_ADAPTER = "local-hybrid-preindexed-segment-no-expansion-evidence-v3"
 SPEAKER_TURN_ADAPTER = (
@@ -1046,6 +1048,14 @@ def metric_deltas(control, candidate):
 def public_fixture(generation=PUBLIC_GENERATION):
     if generation not in PUBLIC_GENERATIONS:
         raise AskQualityError(f"unknown public fixture generation: {generation}")
+    if generation == PUBLIC_NATURAL_GENERATION:
+        # Hand-authored bilingual facts live only under Fixtures, not in source
+        # prose. Pin their canonical digest so loading is not self-validation.
+        path = Path(__file__).resolve().parents[1] / "Fixtures/AskQuality/public-natural-reference-v1.json"
+        fixture = load_json(path, "natural reference fixture")
+        if fixture_checksum(fixture) != PUBLIC_NATURAL_CHECKSUM:
+            raise AskQualityError("natural reference fixture digest mismatch")
+        return fixture
     relationships = public_relationships(generation)
     owners = ["Mara", "Noah", "Sofía", "Eli", "Iris", "Leo"]
     intents = [
@@ -1376,7 +1386,7 @@ def main_from_args(arguments):
         expected = public_fixture(generation)
         if actual != expected:
             raise AskQualityError("public Ask quality fixture is not canonical")
-        validate_fixture(actual)
+        validate_fixture(actual, exact_distribution=generation != PUBLIC_NATURAL_GENERATION)
         return 0
     fixture_document = load_json(args.fixture, "Ask quality fixture")
     fixture = validate_fixture(fixture_document)

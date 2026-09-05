@@ -154,6 +154,7 @@ extension LocalAskMeetingRetrieval {
         let semantic = try await semanticResult
         try Task.checkCancellation()
         var citations = try await fusedCitations(
+            question: question,
             lexical: lexical,
             semanticResult: semantic,
             limit: limit,
@@ -176,6 +177,7 @@ extension LocalAskMeetingRetrieval {
     }
 
     private func fusedCitations(
+        question: String,
         lexical: [SearchHit],
         semanticResult: SemanticCandidates,
         limit: Int,
@@ -190,9 +192,11 @@ extension LocalAskMeetingRetrieval {
         }
         let finalHitsByID = hitsByID
         let fused = await trace.measure(.fusion) {
-            RAGFusion.fuse(
-                lexical: lexical.map(\.segmentID),
+            AskCandidateFusion.fuse(
+                question: question,
+                lexical: lexical,
                 semantic: semantic,
+                resolvedLead: lexical.first.flatMap { finalHitsByID[$0.segmentID] },
                 limit: limit)
         }
         try Task.checkCancellation()
@@ -235,6 +239,7 @@ extension LocalAskMeetingRetrieval {
             try Task.checkCancellation()
         }
         return try await fusedCitations(
+            question: question,
             lexical: lexical,
             semanticResult: try await semanticResult,
             limit: limit,

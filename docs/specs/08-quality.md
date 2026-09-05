@@ -3470,6 +3470,25 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   closed. A valid diagnostic exits zero regardless of poor relevance and is
   **not** a passing quality gate. Existing comparator and quality floors are
   unchanged.
+- `Fixtures/AskQuality/public-natural-reference-v1.json` is a frozen, hand-authored
+  **diagnostic**, not a release fixture: 24 questions, 44 distinct synthetic
+  passages, exact ground truth, natural EN/ES and cross-language questions,
+  code-switching, spoken references, literal prefix collisions, stale ownership,
+  negation, multi-reference comparison, and two abstentions. The fixture loader is
+  `scripts/ask_quality.py`, which verifies the hand-authored file's pinned
+  canonical digest before returning a copy; bilingual facts are not duplicated
+  in source prose. Identical repeated facts share one evidence identity.
+  `verify-public` checks exact canonical equality and labels.
+  Attribution admits the smaller distribution but canonical `evaluate` retains
+  the exact 240-query gate and rejects this corpus. The attribution tooling tests
+  prove frozen-fixture rejection, shape/provenance validation and diagnostic-only
+  CLI output. No field representativeness or generative-answer quality is claimed.
+  `AskCandidateFusionTests` additionally characterizes ordinary RRF preservation,
+  weak-consensus displacement, source identity, token boundaries, EN/ES exclusions,
+  ambiguous references, input bounds and semantic-only evidence retention.
+  A parameterized snapshot-drift test fences promotion across identity, meeting,
+  ordered-source, text, timestamp and revision changes or missing evidence, while
+  presentation-only metadata does not invalidate identical source evidence.
 - `make ask-quality-pair`: requires a receipt-safe build identity, explicit
   private output, a registered `speaker-turn|conversation-window` candidate,
   and a clean worktree. It verifies `public-synthetic-v2`,

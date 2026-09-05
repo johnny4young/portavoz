@@ -1148,7 +1148,7 @@ meeting-content HTTP receipt boundary.
 
 ## Local RAG (D22/D100) — `AskMeetings` + retrieval and answer primitives
 
-- **Embeddings**: `NLContextualEmbedding(script: .latin)` — shared es/en space (genuinely cross-lingual). Mean-pool + L2-normalize. `prepare()` requests assets from the OS.
+- **Embeddings**: `NLContextualEmbedding(script: .latin)` uses one compatible profile for English and Spanish, with mean-pooling and L2 normalization. Shared profile compatibility does not establish useful cross-language ranking; measured attribution, not the script name, is the quality authority. `prepare()` may request OS assets only when the caller explicitly permits it; Ask retrieval and attribution use installed assets without downloading.
 - **Index**: BLOB in the `embedding` column of `segment` + brute-force cosine (sqlite-vec intentionally deferred). `ApplicationKit.IndexSemanticCorpus` owns corpus writes. It validates one returned vector per eligible segment before persistence and writes an empty marker for micro-segments (< 20 chars), which are excluded because they drowned out cross-lingual hits. The signal-driven background owner requests product drains; explicit disposable benchmarks may prepare their isolated stores. Ask and Library perform no backfill and read only already-published vectors. One process-shared coordinator admits only one maintenance flight.
 - **Application boundary (D100/D201/D384–D389)**: `ApplicationKit.AskMeetings` is the only public meeting workflow used by the macOS Ask route, resident command palette, CLI `ask`, local MCP `ask`, and meeting-brief evidence lookup. Instant results and citations are storage-independent values; the optional progressive contract emits lexical and final fused evidence plus bounded cumulative answer snapshots without changing final-result consumers. Every meeting call requires an explicit `library`, exact `meeting(MeetingID)`, or fail-closed `notes`/`web` authority. The macOS manual route injects a late-bound selected-engine answerer, while CLI/MCP retain their explicit Library compositions. Generated text is optional, so unavailable, failed, or timed-out local generation preserves evidence instead of converting retrieval success into failure; cancellation still propagates as cancellation. Raw notes and direct public pages enter separate `AskNotes` and `AskWeb` workflows instead of transcript retrieval, and graph-fact bundles require Library rather than widening a narrower request.
 - **Direct Web evidence (D387)**: PortavozCore owns the storage-independent citation, failure, and retrieval-port values; IntegrationsKit implements that port without depending back on ApplicationKit. One-request authority carries at most three explicit URLs. Retrieval preserves input order while running concurrently, publishes successful citations with typed partial failures, and never receives a meeting identity. The provider-neutral Web prompt contains only the explicit question plus bounded page excerpts, marks every source as untrusted data, and XML-escapes URL/title/text boundaries. Progressive and returned model text must be cumulative, bounded, contain an in-range `[n]` citation, and contain no raw HTTP URL; invalid or late output is discarded while direct links and freshness survive. The same selected Foundation Models/Ollama/MLX answerer is reused without sharing a meeting passage or generation fallback; loopback Ollama metadata uses `public-web-answer-material`, not the meeting classification.
@@ -1158,6 +1158,32 @@ meeting-content HTTP receipt boundary.
 - **Lexical candidates (D81/D386)**: `ApplicationKit.LocalAskMeetingRetrieval` owns the policy. It normalizes and deduplicates content words ≥ 4 characters, retrieves a bounded FTS top-k list per term for normal questions of up to eight unique terms, and fuses those lists with RRF (`k=60`). Multi-term passages climb without scoring one complete OR union. Longer pasted questions retain the released broad-OR fallback, and every selected hit carries complete segment text in addition to its UI snippet. An exact-meeting request passes the meeting identity into every accepted, corrected, and structural FTS read; the Library path remains unchanged.
 - **Hybrid retrieval (D201/D352/D386)**: deterministic English/Spanish variants start bounded lexical and brute-force semantic candidate work concurrently, then fuse with RRF (`k=60`). Each semantic result keeps its best rank across variants; different results at that rank prefer the earliest deterministic variant and then stable UUID order rather than process-randomized dictionary order. Library semantic reads retain the released 12-candidate ceiling. Exact-meeting reads request at most 256 candidates from the current exact index and discard every other meeting before ranking or publication; this is bounded correctness over the existing library-wide vector authority, not a claim of sublinear filtering. Lexical citations may publish before semantic completion; only the final fused set reaches generation. FM expansion is a bounded evidence-empty fallback, never a first-evidence prerequisite, and term deduplication spans all variants.
 - **Answer**: `OnDeviceAskMeetingIntelligence` wraps the IntelligenceKit query-expansion and answer primitives. The on-device FM receives complete selected segments, not bounded highlighted UI snippets, and citations retain segment/meeting identity plus timestamp. On macOS 26 it iterates Foundation Models cumulative `String` snapshots inside the shared interactive scheduler; unavailable Sequoia hosts return no generated text and keep exact evidence. Verified E2E: MCP agent answered "what did we agree about the transcription budget?" with correct sources.
+
+### Literal-reference fusion (D477)
+
+Before materializing final citations, `AskCandidateFusion` keeps the first
+lexical hit ahead of weak cross-channel overlap only for a single matching
+literal reference. The reference grammar is ASCII `[A-Za-z][A-Za-z0-9]{0,31}-[0-9]{1,16}`
+as a complete token; letters, digits, hyphens and underscores stay within tokens
+so prefixes, suffixed identifiers, dates and Unicode lookalikes are not guessed.
+Repeated copies of the same case-insensitive reference are unambiguous, but a
+different reference in the question or leading passage disables protection.
+Recognized English/Spanish exclusion words and English negative contractions
+in the question also retain ordinary RRF. This is a conservative exclusion
+vocabulary, not a general negation classifier. Input inspection is byte-bounded.
+
+Only the leading lexical identity can move. Every remaining fused hit retains
+its relative order; semantic-only evidence is not filtered. The normal result
+limit still applies, including if an absent lexical lead replaces the tail.
+The resolved final hit must match the lexical lead's identity, meeting, ordered
+source identities, revision, timestamp and text. Snapshot drift disables only
+promotion; the adapter keeps its existing semantic-first materialized evidence.
+Presentation-only title/snippet and profile-local similarity do not define
+evidence identity.
+Exact meeting scope, corrected source identities, progressive callbacks and
+cancellation remain owned by the existing retrieval adapter. A literal match
+does not prove current ownership, resolve contradictory notes or establish
+answer truth; these require separate evidence and quality gates.
 
 ### Bounded progressive answer ownership (D384)
 

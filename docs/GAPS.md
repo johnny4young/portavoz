@@ -120,6 +120,26 @@ quality and resource gates. Historical pairs without matched profile/coverage
 must not be called current regressions. Physical Sequoia/Tahoe, private-corpus,
 resource stability, correction-cost and field usefulness remain separate gates.
 
+Stage attribution subsequently measured segment lexical Hit@1 0.8340 versus
+fused 0.5149, despite complete finite/nonzero index coverage and successful
+semantic scans. All 240 canonical questions contain literal hyphen-number
+references, so this corpus alone cannot justify a general ranking claim. The
+original-query semantic cross-language slices had zero recall for this installed
+Latin profile; that is not a measurement of the merged translated variants.
+
+A bounded literal-reference lead experiment improved canonical segment Hit@1
+to 0.7957 and Recall@10 to 0.9021, retaining 45 hard-negative hits: 66 first-rank
+gains, no first-rank losses, and no per-query recall, reciprocal-rank, nDCG or
+hard-negative regressions. Broader speaker turns were unchanged. A separately
+frozen 24-question natural/spoken-reference diagnostic improved one first-ranked
+result per role without measured per-query regressions; segment Hit@1 remained
+only 0.5909, Recall@10 0.8182, with 17 hard-negative hits. Each role/corpus used
+three identical fresh-process diagnostics and installed assets without download.
+These development measurements justify only the narrow reference correction,
+not general bilingual, spoken-reference, current-ownership, or answer quality.
+The small corpus cannot replace the unchanged canonical distribution/floors;
+source contradictions and real-corpus usefulness remain unresolved.
+
 Model screening on the same date is not provider selection. The original
 [Multilingual E5 Small card](https://huggingface.co/intfloat/multilingual-e5-small)
 requires different query/document prefixes even for non-English retrieval.
