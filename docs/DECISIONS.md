@@ -18271,3 +18271,27 @@ root cause is claimed. Representable long gaps can still consume excessive
 memory: whole-gap arrays and unbounded stream buffering require a separate
 conservation/backpressure design. Do not manufacture green with silent drops,
 invented rate ceilings, changed performance budgets or relaxed UI scope.
+
+## D479 — Validate native PCM views before mixing channels (Sep 2026)
+
+**Context:** the AVAudioPCMBuffer path ignored interleaved frame stride, while
+the raw planar path read each later plane using the first plane's byte count
+without verifying equal lengths. Missing channels could also be averaged as
+silence, and float metadata alone did not establish a native Float32 layout.
+
+**Decision:** centralize both views in one checked Float32 downmixer. Validate
+format, stride, complete frame counts, every channel/plane and nonempty pointer
+alignment before sample access. Preserve valid planar/interleaved arithmetic
+and reject inconsistent native metadata through the existing typed channel
+failure. Documented disabled input (null data with retained byte counts) instead
+signals internal unavailability: skip the whole incomplete chunk without
+anchoring the clock, retain the stream and let route/liveness recovery continue.
+File-silence inspection keeps uninspectable audio rather than silently
+excluding it. Borrow platform pointers only within their synchronous lifetime.
+
+**Consequences:** real native-buffer matrices and copied-descriptor rejection
+fixtures characterize the change without inducing an invalid read or hardware
+crash. These checks cannot establish arbitrary pointer allocation validity or
+physical driver recovery. Long-gap arrays and unbounded producer queues remain
+a separate conservation-aware memory design; native-view admission is not a
+substitute for that work or for resource/field qualification.

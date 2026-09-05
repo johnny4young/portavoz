@@ -102,7 +102,10 @@ distribution cell.
 
 Checked PCM geometry now rejects nonfinite rates/clocks, unrepresentable native
 frame counts and arithmetic overflow through a typed channel error; failed
-producers retire once without stopping their healthy peer (D478). This closes a
+producers retire once without stopping their healthy peer (D478). Native PCM
+views now also validate every declared plane and honor interleaved frame stride;
+malformed views reject before sample access, and uninspectable external audio
+is not mislabeled silent (D479). This closes a
 source-level numeric-trap risk, not a reproduced hardware crash. Normal route-gap
 padding and accepted CAF frames are characterized without weakening conservation.
 Whole-gap silence arrays and unbounded source-stream buffering still need an

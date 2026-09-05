@@ -146,19 +146,24 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
             &procID, aggregate, ioQueue
         ) { [weak self] _, inputData, inputTime, _, _ in
             guard let self else { return }
-            var samples = Downmix.mono(fromBufferList: inputData, format: format)
-            guard !samples.isEmpty else { return }
-            let elapsed = clock.elapsed(hostTime: inputTime.pointee.mHostTime)
+            var samples: [Float]
+            let elapsed: TimeInterval
             // Pad the output-switch downtime with silence so the system file
             // stays aligned with wall-clock (and the mic channel).
             let plan: CapturePCMGeometry.Delivery
             do {
+                samples = try Downmix.mono(fromBufferList: inputData, format: format)
+                guard !samples.isEmpty else { return }
+                elapsed = clock.elapsed(hostTime: inputTime.pointee.mHostTime)
                 if nativeRate != targetRate {
                     samples = try Resample.linear(samples, from: nativeRate, to: targetRate)
                 }
                 plan = try CapturePCMGeometry.delivery(
                     elapsed: elapsed, sampleRate: targetRate,
                     delivered: self.deliveredSnapshot(), incoming: samples.count)
+            } catch Downmix.InputError.unavailable {
+                // Disabled native input keeps its stream/route recovery alive.
+                return
             } catch {
                 continuation.finish(throwing: AudioCaptureError.unsupportedFormat)
                 return

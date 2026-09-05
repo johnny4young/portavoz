@@ -7212,3 +7212,21 @@ also retire its producer without creating a malformed artifact. These tests
 complement the mandatory real-app recording failure/liveness/automation UI
 journeys; neither fixture clocks nor temporary sources certify actual CoreAudio
 driver recovery, long-gap memory bounds, physical Sequoia/Tahoe or field behavior.
+
+### Native PCM layout and channel-stride characterization
+
+`DownmixLayoutTests` builds real AVAudioPCMBuffer fixtures across two rates,
+five channel counts, four frame lengths and both interleaving modes. Both public
+buffer shapes must reproduce the same exact frame averages; capacity exceeds
+frame length so unwritten tail frames cannot enter the result. A distinct stereo
+sequence catches the former stride-blind adjacent-channel mix.
+
+Borrowed copies of native buffer descriptors characterize short later planes,
+disabled data, partial frames, mismatched channels/list counts, unsupported bit depth,
+endianness/stride and misaligned data. Every invalid view rejects before sample
+access; tests neither deliberately perform the old overread nor claim a driver
+crash reproduction. The AVAudioPCMBuffer retains all allocations while copied
+list headers are borrowed and freed separately. Coherent empty/nil-data planes
+remain a valid empty result. Disabled data is recoverable unavailability; a
+following complete buffer must retain every original frame. Existing silence-file and recording-error tests
+continue to require channel preservation, not false successful silence.

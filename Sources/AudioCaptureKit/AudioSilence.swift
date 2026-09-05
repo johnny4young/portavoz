@@ -64,7 +64,8 @@ public enum AudioSilence {
                 return false
             }
             guard buffer.frameLength > 0 else { break }
-            if peak(of: Downmix.mono(from: buffer)) >= threshold { return false }
+            guard let samples = try? Downmix.mono(from: buffer) else { return false }
+            if peak(of: samples) >= threshold { return false }
         }
         return true
     }

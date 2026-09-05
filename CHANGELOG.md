@@ -6,6 +6,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 5, 2026
 
+- **🎧 Accurate stereo capture** — Stereo input keeps the right channel balance, while malformed audio buffers fail safely instead of being mixed incorrectly.
+
 - **🎙️ Safer recording failures** — Invalid audio timing or formats stop only the affected source, preserving accepted audio while the healthy channel continues.
 
 - **🔎 Clearer reference searches** — Questions about one ticket or code keep a matching leading text result from being displaced by weak semantic overlap.

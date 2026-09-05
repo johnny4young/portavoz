@@ -751,7 +751,7 @@ final class DownmixTests: XCTestCase {
             channels[1][frame] = 0.0
         }
 
-        let mono = Downmix.mono(from: buffer)
+        let mono = try Downmix.mono(from: buffer)
         XCTAssertEqual(mono.count, 4)
         for value in mono {
             XCTAssertEqual(value, 0.5, accuracy: 0.0001)

@@ -81,6 +81,32 @@ future conservation/backpressure change must bound both allocation and queued
 PCM without silently dropping recorded frames. Hardware route recovery and
 physical Sequoia/Tahoe validation remain separate from arithmetic tests.
 
+### Native PCM views and interleaved channels (D479)
+
+`Downmix` owns one Float32 PCM admission path for both `AVAudioPCMBuffer` and
+raw Core Audio buffer lists. Before borrowing samples, it verifies linear PCM,
+native endianness, 32-bit samples, finite positive rate, exact frame stride,
+channel/buffer layout, whole frames, matching planar byte counts, and alignment
+for available nonempty data. Coherent empty buffers remain empty.
+The platform still owns the native pointers' validity and lifetime; declared
+metadata checks cannot validate an arbitrary forged allocation.
+
+Both views then use the declared interleaving. Planar averages retain the
+released channel-sum/multiply order; interleaved averages advance by the complete
+frame stride rather than confusing adjacent channel values with later frames.
+A short later plane is an unsupported-format error, never a truncated channel.
+Core Audio explicitly allows disabled input to retain nonzero byte counts with
+null data: that state is typed internal unavailability. Capture skips the whole
+incomplete chunk before clock anchoring, retaining stream/liveness/route recovery
+rather than inventing a silent channel or permanently stopping disabled input.
+Other malformed layouts use the existing per-channel failure/owner-retirement
+path. External-file silence inspection
+keeps the channel when downmix admission fails, matching its unreadable-file
+policy rather than declaring uninspected audio silent.
+
+This closes native-view safety and channel-mixing defects, not unbounded capture
+backlog or long-gap allocation. Their separate memory/conservation gate remains.
+
 ### Persisted level evidence (D168)
 
 After `CaptureFileWriter.append` accepts a chunk, `RecordingSession` performs

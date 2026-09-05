@@ -239,20 +239,22 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
             ) else {
                 return
             }
-            var samples = Downmix.mono(from: buffer)
-            guard !samples.isEmpty else { return }
-            // Muted for Portavoz: write silence, so YOUR voice isn't recorded
-            // or transcribed while the file/timeline stays aligned.
-            if self.isMuted {
-                samples = [Float](repeating: 0, count: samples.count)
-            }
-            let elapsed = clock.elapsed(hostTime: when.hostTime)
+            var samples: [Float]
+            let elapsed: TimeInterval
             let plan: CapturePCMGeometry.Delivery
             do {
+                samples = try Downmix.mono(from: buffer)
+                guard !samples.isEmpty else { return }
+                elapsed = clock.elapsed(hostTime: when.hostTime)
+                // Local mute preserves the raw file's timeline, not the call's input.
+                if self.isMuted { samples = [Float](repeating: 0, count: samples.count) }
                 if native != target { samples = try Resample.linear(samples, from: native, to: target) }
                 plan = try CapturePCMGeometry.delivery(
                     elapsed: elapsed, sampleRate: target,
                     delivered: self.deliveredSnapshot(), incoming: samples.count)
+            } catch Downmix.InputError.unavailable {
+                // Disabled native input keeps its stream/route recovery alive.
+                return
             } catch {
                 continuation.finish(throwing: AudioCaptureError.unsupportedFormat)
                 return
