@@ -3,7 +3,7 @@ import Foundation
 import PortavozCore
 
 /// `portavoz-cli export --meeting <uuid> [--format md|pdf|srt|vtt] [--out <path>]
-///                      [--gist [--public]] [--db <path>]`
+///                      [--correction-provenance] [--gist [--public]] [--db <path>]`
 ///
 /// Markdown prints to stdout unless --out is given; every other format
 /// requires --out.
@@ -21,6 +21,7 @@ enum ExportCommand {
         var out: String?
         var gist = false
         var isPublic = false
+        var includeCorrectionProvenance = false
         var dbPath: String?
 
         var index = 0
@@ -39,6 +40,8 @@ enum ExportCommand {
                 gist = true
             case "--public":
                 isPublic = true
+            case "--correction-provenance":
+                includeCorrectionProvenance = true
             case "--db":
                 index += 1
                 if index < arguments.count { dbPath = arguments[index] }
@@ -53,7 +56,7 @@ enum ExportCommand {
             print(
                 "Usage: portavoz-cli export --meeting <uuid> "
                     + "[--format md|pdf|srt|vtt] [--out <path>] "
-                    + "[--gist [--public]]")
+                    + "[--correction-provenance] [--gist [--public]]")
             return
         }
 
@@ -77,7 +80,9 @@ enum ExportCommand {
             let result = try await workflow.execute(.init(
                 meetingID: meetingID,
                 format: documentFormat,
-                outputURL: out.map { URL(fileURLWithPath: $0) }
+                outputURL: out.map { URL(fileURLWithPath: $0) },
+                options: MeetingDocumentOptions(
+                    includeCorrectionProvenance: includeCorrectionProvenance)
             ) { progress in
                 if case .publishing = progress {
                     print(

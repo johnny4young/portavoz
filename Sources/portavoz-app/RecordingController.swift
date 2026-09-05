@@ -1,3 +1,8 @@
+// Recording lifecycle mutations remain private to this type and its same-file
+// extensions. Splitting the remainder solely for a line-count rule would expose
+// capture state across files and weaken those invariants.
+// swiftlint:disable file_length
+
 import ApplicationKit
 import DiarizationKit
 import Foundation
@@ -9,40 +14,43 @@ import StorageKit
 import SwiftUI
 import TranscriptionKit
 
-enum RecordingMeterPublicationPolicy {
-    static let minimumInterval = 0.05
-
-    static func shouldPublish(now: TimeInterval, last: TimeInterval) -> Bool {
-        now - last >= minimumInterval
-    }
-}
-
 /// Drives one recording end to end: capture (mic + system tap) → live
 /// captions → on stop, diarization + attribution + persistence + summary.
 /// The whole meeting pipeline, in the order the Kits were built.
 @MainActor
 @Observable
 final class RecordingController {
-    private(set) var phase: RecordingPhase = .idle
+    private(set) var phase: RecordingPhase = .idle {
+        didSet {
+            services?.recordingPhaseDidChange(phase)
+        }
+    }
     private(set) var failureContext: RecordingFailureContext?
     private(set) var captions: [TranscriptSegment] = []
     private(set) var startedAt = Date()
-    /// Rolling on-device summary, refreshed every ~40 s while recording.
+    /// Rolling on-device summary, refreshed from evidence at a ≥40 s cadence.
     private(set) var liveSummary: String?
     /// On-demand "catch me up" recap of the last few minutes (pull, never
     /// pushed). Distinct from the rolling summary: it answers "what did I
     /// just miss", not "what is this meeting about". Owns its own state.
     let catchUp = RecordingCatchUpModel()
 
-    /// Pre-meeting objectives with live check-off (APUN-003). The checklist
-    /// is plain UI state; only the automatic pass on the rolling tick is
+    /// Pre-meeting objectives with live check-off. The checklist
+    /// is plain UI state; only the automatic pass on the summary cycle is
     /// Apuntador work and respects that opt-in.
     let objectives = RecordingObjectivesModel()
 
-    /// On-demand next-question suggestion (APUN-004): sibling of catch-up,
+    /// On-demand next-question suggestion: sibling of catch-up,
     /// with the still-pending objectives riding along so a suggestion can
     /// steer back to what the meeting set out to do.
     let nextQuestion = RecordingNextQuestionModel()
+
+    /// Explicit interview mode: deterministic current-question detection and
+    /// pull-only answers grounded in exact earlier live-caption evidence.
+    let interviewAssist = RecordingInterviewAssistModel()
+    /// Explicit per-recording proactive help. Its deterministic cards are
+    /// source-closed, inert, throttled, and independently pausable.
+    let proactiveAssist = RecordingProactiveAssistModel()
     /// The user's notes during the meeting (D28): intent for the summary.
     /// The future notes panel calls `addContextNote`; everything downstream
     /// (rolling summary, final summary, persistence) is already wired.
@@ -51,12 +59,17 @@ final class RecordingController {
     private(set) var companionCards: [CompanionCard] = []
     private var companionArtifactsByCardID: [UUID: CompanionGenerationArtifact] = [:]
     private var companionTerminalRuns: [GenerationRun] = []
-    var companionEnabled = UserDefaults.standard.bool(forKey: "companionEnabled") {
+    let liveTranslationWakeHub = LiveTranslationWakeHub()
+    @ObservationIgnored private let defaults: UserDefaults
+    var companionEnabled: Bool {
         didSet {
-            UserDefaults.standard.set(companionEnabled, forKey: "companionEnabled")
+            defaults.set(companionEnabled, forKey: "companionEnabled")
             // The toggle is available during a recording. Enabling it while a
             // remote row is already open must start that row's silence clock;
             // disabling it must cancel any pending speculative detection.
+            if !companionEnabled {
+                cancelCompanionGeneration()
+            }
             armTurnEndpointDeadline()
         }
     }
@@ -79,6 +92,7 @@ final class RecordingController {
             translationDownloadApproved = false
             translationState = translationTarget == nil ? .off
                 : (liveTranscriptState == .available ? .ready : .waitingForTranscript)
+            liveTranslationWakeHub.signal()
         }
     }
     /// The selected translation pair isn't installed yet — set by the live
@@ -99,17 +113,18 @@ final class RecordingController {
     /// The user tapped "Download" on that banner: only then does the loop
     /// call `prepareTranslation()` (the deliberate, expected download sheet)
     /// so the assets are fetched without ever interrupting the meeting on its own.
-    var translationDownloadApproved = false
+    var translationDownloadApproved = false {
+        didSet {
+            guard translationDownloadApproved != oldValue else { return }
+            liveTranslationWakeHub.signal()
+        }
+    }
 
     /// Live mic input level (0…1, smoothed peak) for the on-screen meter, and
     /// a "your voice is coming in low/far" flag — once enough VOICED audio
     /// shows the level is weak (the far-field built-in mic), not just silence.
     /// Field finding jul 2026: the built-in mic captured the user at ≤ -45 dBFS.
     private(set) var micLevel: Float = 0
-    private var smoothedMicLevel: Float = 0
-    private var lastMicLevelPublication = 0.0
-    private var voicedLevel: Float = 0
-    private var voicedChunks = 0
     private(set) var micLevelLow = false
 
     /// Whether YOUR mic is muted FOR PORTAVOZ (not the system input) — the
@@ -119,12 +134,15 @@ final class RecordingController {
     /// RMS of the system (incoming) channel, smoothed. Stays near zero when
     /// the other participants' audio isn't being captured (field bug jul 2026:
     /// AirPods output switch left the system tap silent → only the mic).
-    private var systemRMS: Float = 0
-    private var systemChunks = 0
+    private var hasSystemLevelSamples = false
     /// Sustained near-silence on the system channel — likely a call whose
     /// incoming audio isn't reaching the tap (or an in-person meeting, which
     /// the dismissable banner lets you wave off).
     private(set) var systemAudioMissing = false
+    /// Repeated full-scale incoming chunks indicate a hard-limited signal that
+    /// can lower live-ASR accuracy. This is presentation evidence only: capture
+    /// stays raw and no sample is attenuated or rewritten.
+    private(set) var systemAudioClipping = false
     /// Non-empty when this recording taps meeting apps by process (Bluetooth
     /// output) instead of the global device output — the AirPods-HFP workaround.
     /// Names the apps being captured for the on-screen note.
@@ -148,17 +166,25 @@ final class RecordingController {
     private var liveDiarizerTask: Task<Void, Never>?
     private var liveDiarizerFeed: AsyncStream<AudioChunk>.Continuation?
     private var liveDiarizerStream: AsyncStream<AudioChunk>?
+    private var levelRelay: RecordingLevelRelay?
+    /// One active Apuntador generation plus one latest pending candidate.
+    /// Internal so the detection extension owns submission and cancellation.
+    var companionWorkCoordinator: LiveCompanionWorkCoordinator?
 
     private let coalescer = CaptionCoalescer()
     private var session: (any StartRecordingSession)?
-    private var rollingTask: Task<Void, Never>?
+    /// One signal-driven rolling-summary worker with one pending refresh.
+    private var liveSummaryWorkCoordinator: LiveSummaryWorkCoordinator?
     /// Identity cursor rather than an array offset: live diarization can split
     /// one closed row into several stable rows. An offset can then skip a new
     /// piece or replay unrelated content, while IDs admit exactly unseen rows.
     private var summarizedCaptionIDs: Set<UUID> = []
-    /// Dense notes accumulated window by window; the live summary re-renders
-    /// from these so each tick only pays for the NEW transcript.
-    private var liveNotes: [String] = []
+    /// Always-available extractive authority for the rolling summary. Optional
+    /// local models can refine its Markdown but never own this source cursor.
+    private var liveSummaryCheckpoint: DeterministicLiveSummaryCheckpoint?
+    /// Every content-free invalidation advances this fence. A provider result
+    /// cannot publish after a newer caption, speaker split, or note mutation.
+    private var liveSummarySourceRevision = 0
     private(set) var meetingID = MeetingID()
     // Internal (not private) so the companion-detection extension file
     // can read it; still write-protected by convention.
@@ -181,6 +207,11 @@ final class RecordingController {
     /// finished turn, and the receipt of the last speculative detection.
     var turnEndpointTask: Task<Void, Never>?
     var speculativeTurnMark: SpeculativeTurnMark?
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        companionEnabled = defaults.bool(forKey: "companionEnabled")
+    }
 
     /// User-defined domain terms reused by the optional rolling summary.
     /// StartRecording samples the same setting for transcription hints.
@@ -208,8 +239,11 @@ final class RecordingController {
         companionCards = []
         companionArtifactsByCardID = [:]
         companionTerminalRuns = []
+        proactiveAssist.reset()
         contextItems = []
-        liveNotes = []
+        liveSummaryCheckpoint = nil
+        cancelLiveSummaryWork()
+        cancelCompanionGeneration()
         lastOpenRowID = nil
         turnEndpointTask?.cancel()
         turnEndpointTask = nil
@@ -234,28 +268,20 @@ final class RecordingController {
         let (diarizerStream, diarizerFeed) = AsyncStream.makeStream(
             of: AudioChunk.self,
             bufferingPolicy: .bufferingNewest(128))
+        let levelRelay = RecordingLevelRelay { [weak self] snapshot in
+            self?.applyRecordingLevels(snapshot)
+        }
+        self.levelRelay = levelRelay
         let callbacks = StartRecordingLiveCallbacks(
             caption: { [weak self] segment in
                 await self?.receiveLiveCaption(segment)
             },
-            chunk: { [weak self] chunk in
+            chunk: { chunk in
                 if chunk.channel == .system {
                     diarizerFeed.yield(chunk)
-                    var sumSquares: Float = 0
-                    for sample in chunk.samples { sumSquares += sample * sample }
-                    let rms = chunk.samples.isEmpty
-                        ? 0 : (sumSquares / Float(chunk.samples.count)).squareRoot()
-                    Task { @MainActor in self?.updateSystemLevel(rms) }
-                    return
                 }
-                guard chunk.channel == .microphone else { return }
-                var peak: Float = 0
-                for sample in chunk.samples {
-                    let magnitude = abs(sample)
-                    if magnitude > peak { peak = magnitude }
-                }
-                Task { @MainActor in self?.updateMicLevel(peak) }
             },
+            level: { levelRelay.submit($0) },
             health: { [weak self] event in
                 Task { @MainActor in self?.receiveCaptureHealth(event) }
             },
@@ -273,12 +299,16 @@ final class RecordingController {
     }
 
     private func resetForRecordingStart() {
-        rollingTask?.cancel()
+        cancelLiveSummaryWork()
         catchUp.dismiss()
         nextQuestion.dismiss()
+        interviewAssist.reset()
+        proactiveAssist.reset()
         objectives.reset()
         liveDiarizerFeed?.finish()
         liveDiarizerTask?.cancel()
+        levelRelay?.cancel()
+        levelRelay = nil
         liveDiarizerFeed = nil
         liveDiarizerStream = nil
         liveDiarizerTask = nil
@@ -291,25 +321,23 @@ final class RecordingController {
         unsupportedTranslationRowIDs = []
         hasUnsupportedTranslationRows = false
         liveSummary = nil
-        liveNotes = []
+        liveSummaryCheckpoint = nil
+        liveSummarySourceRevision = 0
         summarizedCaptionIDs = []
         companionCards = []
         companionArtifactsByCardID = [:]
         companionTerminalRuns = []
         contextItems = []
+        cancelCompanionGeneration()
         lastOpenRowID = nil
         turnEndpointTask?.cancel()
         turnEndpointTask = nil
         speculativeTurnMark = nil
         micLevel = 0
-        smoothedMicLevel = 0
-        lastMicLevelPublication = 0
-        voicedLevel = 0
-        voicedChunks = 0
         micLevelLow = false
-        systemRMS = 0
-        systemChunks = 0
+        hasSystemLevelSamples = false
         systemAudioMissing = false
+        systemAudioClipping = false
         systemCaptureHealth = .healthy
         systemRecoveryNoticeTask?.cancel()
         systemRecoveryNoticeTask = nil
@@ -334,9 +362,11 @@ final class RecordingController {
                 text: segment.text,
                 confidence: segment.confidence) { return }
         coalescer.apply(segment, to: &captions)
+        interviewAssist.observe(captions: captions)
         seedLiveTranslationUIIfRequested()
         detectClosedRow()
         armTurnEndpointDeadline()
+        liveTranslationWakeHub.signal()
     }
 
     /// Visual-only XCUITest fixture. Routing and stale-lane semantics stay
@@ -371,7 +401,7 @@ final class RecordingController {
             reservedAssets = reservation.assets
             tappedMeetingApps = commit.tappedMeetingApps
             session = commit.session
-            services.requestSpotlightReindex()
+            services.requestSearchReconciliation()
             liveDiarizerFeed = diarizerFeed
             liveDiarizerStream = diarizerStream
             if liveTranscriptState == .idle {
@@ -388,12 +418,16 @@ final class RecordingController {
             startRollingSummaryIfAvailable()
         case .preparationFailed(let failure):
             diarizerFeed.finish()
+            levelRelay?.cancel()
+            self.levelRelay = nil
             presentStartFailure(failure)
         case .captureFailed(let failure, let reservation, let invalidations):
             diarizerFeed.finish()
+            levelRelay?.cancel()
+            self.levelRelay = nil
             recordingShell = reservation?.meeting
             reservedAssets = reservation?.assets ?? []
-            if invalidations > 0 { services.requestSpotlightReindex() }
+            if invalidations > 0 { services.requestSearchReconciliation() }
             presentStartFailure(failure)
         }
     }
@@ -433,25 +467,22 @@ final class RecordingController {
             recovery: recovery)
     }
 
+    func requestLiveSummaryRefresh() {
+        liveSummarySourceRevision &+= 1
+        // The first recording signal must also create the owner. Optional
+        // chaining here would drop every request until some unrelated path
+        // had already materialized the coordinator.
+        liveSummaryCoordinator().request()
+    }
+
+    func cancelLiveSummaryWork() {
+        liveSummaryWorkCoordinator?.cancel()
+    }
+
     private func startRollingSummaryIfAvailable() {
-        // Rolling summary is optional and never gates capture.
-        if #available(macOS 26.0, *),
-            FoundationModelSummaryProvider.unavailabilityReason() == nil {
-            rollingTask = Task { @MainActor [weak self] in
-                while !Task.isCancelled {
-                    try? await Task.sleep(for: .seconds(40))
-                    guard let self, self.phase == .recording else { return }
-                    await self.refreshLiveSummary()
-                    // Objective check-off shares the tick but stays
-                    // Apuntador-gated — it is a model judgment about the
-                    // conversation, exactly what the opt-in covers.
-                    guard self.phase == .recording, self.companionEnabled else { continue }
-                    await self.objectives.runAutomaticCheck(
-                        captions: self.captions,
-                        elapsed: Date().timeIntervalSince(self.startedAt))
-                }
-            }
-        }
+        // The deterministic checkpoint works on every supported macOS
+        // version. Optional local models refine it but never gate capture.
+        requestLiveSummaryRefresh()
     }
 
     /// Loads a session-dedicated diarizer and consumes system-channel audio in
@@ -467,14 +498,20 @@ final class RecordingController {
             guard let self else { return }
             let voiceprint = await session.voiceprint()
             guard
-                let modelStore = self.services?.modelStore,
-                let diarizer = try? await PyannoteDiarizer.loadRecommended(
-                    store: modelStore,
-                    voiceprint: voiceprint)
+                let services = self.services,
+                let runtime = try? await services.acquireDiarizationRuntime(
+                    workloadClass: .liveInteractive)
             else {
                 self.liveDiarizerFeed?.finish()
                 return
             }
+            defer {
+                _ = services.finishDiarizationRuntime(runtime)
+                services.scheduleRecordingEnginesRelease()
+            }
+            let diarizer = services.makeDiarizer(
+                from: runtime,
+                voiceprint: voiceprint)
             do {
                 for try await turn in diarizer.diarize(stream) {
                     self.liveTurns.append(turn)
@@ -494,28 +531,8 @@ final class RecordingController {
             captions: captions, turns: liveTurns, meetingID: meetingID)
         captions = result.captions
         liveSpeakerLabels = result.labels
-    }
-
-    /// Feeds the on-screen meter from each mic chunk's peak: fast attack, slow
-    /// decay for a VU feel. `voicedLevel` is an EMA over only the VOICED chunks
-    /// (above a low gate) so the "low mic" flag reflects weak SPEECH, not
-    /// silence — the far-field built-in mic sits well below a close mic.
-    private func updateMicLevel(_ peak: Float) {
-        smoothedMicLevel = max(peak, smoothedMicLevel * 0.8)
-        let now = ProcessInfo.processInfo.systemUptime
-        if RecordingMeterPublicationPolicy.shouldPublish(
-            now: now,
-            last: lastMicLevelPublication
-        ) {
-            micLevel = smoothedMicLevel
-            lastMicLevelPublication = now
-        }
-        if peak > 0.004 {
-            voicedLevel = voicedLevel * 0.97 + peak * 0.03
-            voicedChunks += 1
-        }
-        let isLow = voicedChunks > 150 && voicedLevel < 0.03
-        if micLevelLow != isLow { micLevelLow = isLow }
+        requestLiveSummaryRefresh()
+        liveTranslationWakeHub.signal()
     }
 
     // MARK: - Companion (D26)
@@ -529,11 +546,21 @@ final class RecordingController {
         guard phase == .recording, meetingID == sourceMeetingID else { return }
         switch result {
         case .artifact(let artifact):
-            guard !companionCards.contains(where: {
-                $0.question == artifact.card.question
-            }) else { return }
-            companionCards.append(artifact.card)
-            companionArtifactsByCardID[artifact.card.id] = artifact
+            switch CompanionCardAdmission.decision(
+                existing: companionCards,
+                candidate: artifact.card
+            ) {
+            case .append:
+                companionCards.append(artifact.card)
+                companionArtifactsByCardID[artifact.card.id] = artifact
+            case .replace(let index):
+                let replacedID = companionCards[index].id
+                companionCards[index] = artifact.card
+                companionArtifactsByCardID[replacedID] = nil
+                companionArtifactsByCardID[artifact.card.id] = artifact
+            case .reject:
+                break
+            }
         case .terminal(let run):
             companionTerminalRuns.append(run)
         case .noAttempt, .noArtifact, .unavailable:
@@ -555,9 +582,14 @@ extension RecordingController {
     /// boundary. This controller only maps typed results into presentation.
     func stop(services: AppServices) async {
         guard phase == .recording, let session else { return }
+        levelRelay?.cancel()
+        levelRelay = nil
         catchUp.dismiss()
         nextQuestion.dismiss()
-        rollingTask?.cancel()
+        interviewAssist.reset()
+        proactiveAssist.reset()
+        cancelLiveSummaryWork()
+        cancelCompanionGeneration()
         turnEndpointTask?.cancel()
         turnEndpointTask = nil
         phase = .processing(L10n.text("Closing the recording…"))
@@ -624,7 +656,7 @@ extension RecordingController {
         case .noAudioCaptured:
             recordingShell = nil
             reservedAssets = []
-            services.requestSpotlightReindex()
+            services.requestSearchReconciliation()
             presentFailure(
                 L10n.text(
                     "No audio was captured. Check Portavoz microphone and system audio recording permissions."),
@@ -709,7 +741,7 @@ extension RecordingController {
     ) {
         recordingShell = commit.meeting
         reservedAssets = commit.assets
-        services.requestSpotlightReindex()
+        services.requestSearchReconciliation()
     }
 
 }
@@ -717,11 +749,20 @@ extension RecordingController {
 // Callback health is a cohesive presentation concern and stays outside the
 // already-large capture/persistence controller body.
 private extension RecordingController {
-    func updateSystemLevel(_ rms: Float) {
-        systemChunks += 1
-        systemRMS = systemRMS * 0.98 + rms * 0.02
-        let isMissing = systemChunks > 500 && systemRMS < 0.003
-        if systemAudioMissing != isMissing { systemAudioMissing = isMissing }
+    func applyRecordingLevels(_ snapshot: RecordingLevelSnapshot) {
+        if let level = snapshot.microphoneLevel {
+            micLevel = level
+        }
+        if micLevelLow != snapshot.microphoneIsLow {
+            micLevelLow = snapshot.microphoneIsLow
+        }
+        hasSystemLevelSamples = snapshot.hasSystemSamples
+        if systemAudioMissing != snapshot.systemAudioIsMissing {
+            systemAudioMissing = snapshot.systemAudioIsMissing
+        }
+        if systemAudioClipping != snapshot.systemAudioIsClipping {
+            systemAudioClipping = snapshot.systemAudioIsClipping
+        }
         if liveTranscriptState == .available {
             startLiveDiarizationIfReady()
         }
@@ -747,7 +788,7 @@ private extension RecordingController {
 
     func startLiveDiarizationIfReady() {
         guard phase == .recording,
-              systemChunks > 0,
+              hasSystemLevelSamples,
               liveDiarizerTask == nil,
               let stream = liveDiarizerStream,
               let session
@@ -788,65 +829,167 @@ private extension RecordingController {
 // The rolling-summary pipeline is a cohesive concern and lives outside the
 // already-large capture/persistence controller body.
 private extension RecordingController {
-    @available(macOS 26.0, *)
-    func refreshLiveSummary() async {
+    func liveSummaryCoordinator() -> LiveSummaryWorkCoordinator {
+        if let liveSummaryWorkCoordinator {
+            return liveSummaryWorkCoordinator
+        }
+        let interval: Duration = ProcessInfo.processInfo.arguments.contains(
+            "-seed-live-summary-ui") ? .milliseconds(50) : .seconds(40)
+        let coordinator = LiveSummaryWorkCoordinator(
+            interval: interval,
+            operation: { [weak self] in
+                await self?.runLiveSummaryCycle() ?? false
+            })
+        liveSummaryWorkCoordinator = coordinator
+        return coordinator
+    }
+
+    func runLiveSummaryCycle() async -> Bool {
+        let hasBacklog = await refreshLiveSummary()
+        guard !Task.isCancelled, phase == .recording else { return false }
+
+        // Objective check-off shares the bounded cycle but stays
+        // Apuntador-gated — it is a model judgment about the conversation,
+        // exactly what the opt-in covers.
+        if companionEnabled {
+            await objectives.runAutomaticCheck(
+                captions: captions,
+                elapsed: Date().timeIntervalSince(startedAt))
+        }
+        observeProactiveAssist()
+        return !Task.isCancelled && phase == .recording && hasBacklog
+    }
+
+    func refreshLiveSummary() async -> Bool {
         // The newest row is still growing (coalescer); note only CLOSED rows,
-        // and only when there are new ones — silence costs nothing.
+        // and only a bounded oldest-first batch. Remaining IDs stay eligible.
+        guard !Task.isCancelled, phase == .recording else { return false }
+        let sourceMeetingID = meetingID
+        let sourceRevision = liveSummarySourceRevision
         let closedCount = max(captions.count - 1, 0)
         let window = LiveSummaryWindowPolicy.unsummarizedClosedRows(
             captions,
             summarizedIDs: summarizedCaptionIDs)
-        guard closedCount >= 3, !window.isEmpty else { return }
+        guard closedCount >= 3 else { return false }
 
         // Attribution runs at stop; live labels are structural: channel.
-        let me = Speaker(meetingID: meetingID, label: "Me", isMe: true)
-        let them = Speaker(meetingID: meetingID, label: "Them")
-        let labeled = window.map { segment -> TranscriptSegment in
+        let me = Speaker(meetingID: sourceMeetingID, label: "Me", isMe: true)
+        let them = Speaker(meetingID: sourceMeetingID, label: "Them")
+        let labeled = liveSummaryCandidateRows(
+            window: window,
+            microphoneSpeaker: me,
+            systemSpeaker: them)
+        let language = liveSummaryLanguage(for: labeled)
+        guard let checkpoint = DeterministicLiveSummary.advance(
+            checkpoint: liveSummaryCheckpoint,
+            segments: labeled,
+            speakers: [me, them],
+            contextItems: contextItems,
+            targetLanguage: language)
+        else { return false }
+
+        publishLiveSummaryCheckpoint(checkpoint, window: window)
+        do {
+            try await refineLiveSummaryCheckpoint(
+                checkpoint: checkpoint,
+                meetingID: sourceMeetingID,
+                speakers: [me, them],
+                targetLanguage: language,
+                sourceRevision: sourceRevision)
+        } catch {
+            return false
+        }
+        return LiveSummaryWindowPolicy.hasUnsummarizedClosedRows(
+            captions,
+            summarizedIDs: summarizedCaptionIDs)
+    }
+
+    func liveSummaryCandidateRows(
+        window: [TranscriptSegment],
+        microphoneSpeaker: Speaker,
+        systemSpeaker: Speaker
+    ) -> [TranscriptSegment] {
+        let retainedIDs = Set(liveSummaryCheckpoint?.extracts.map(\.id) ?? [])
+        let retainedRows = captions.dropLast().suffix(120).filter {
+            retainedIDs.contains($0.id)
+        }
+        var rowsByID: [UUID: TranscriptSegment] = [:]
+        for row in Array(retainedRows) + window {
+            rowsByID[row.id] = row
+        }
+        return rowsByID.values.sorted { lhs, rhs in
+            if lhs.startTime != rhs.startTime { return lhs.startTime < rhs.startTime }
+            return lhs.id.uuidString < rhs.id.uuidString
+        }.map { segment in
             var copy = segment
-            copy.speakerID = segment.channel == .microphone ? me.id : them.id
+            copy.speakerID = segment.channel == .microphone
+                ? microphoneSpeaker.id
+                : systemSpeaker.id
             return copy
         }
-        let spokenLanguage = SpokenLanguageDetector.homogeneousLanguage(in: labeled)
-        let language = MeetingLanguagePreferences.resolvedSummaryLanguage(
-            spokenLanguage: spokenLanguage).identifier
-        let provider = FoundationModelSummaryProvider()
-        do {
-            // Map: one dense note for the new window; the rest is already noted.
-            let note = try await provider.condenseWindow(
-                segments: labeled, speakers: [me, them], targetLanguage: language,
-                glossary: vocabulary, priority: .background)
-            liveNotes.append(note)
-            summarizedCaptionIDs.formUnion(window.map(\.id))
+    }
 
-            // Keep the pile bounded so long meetings don't slow the ticks.
-            var joined = liveNotes.joined(separator: "\n")
-            if joined.count > LiveSummaryPolicy.notesCollapseThreshold {
-                joined = try await provider.condenseNotes(
-                    joined, targetLanguage: language, glossary: vocabulary,
-                    priority: .background)
-                liveNotes = [joined]
-            }
+    func liveSummaryLanguage(for rows: [TranscriptSegment]) -> String {
+        let spokenLanguage = SpokenLanguageDetector.homogeneousLanguage(in: rows)
+        return spokenLanguage.map {
+            MeetingLanguagePreferences.resolvedSummaryLanguage(
+                spokenLanguage: $0).identifier
+        } ?? liveSummaryCheckpoint?.targetLanguage
+            ?? MeetingLanguagePreferences.resolvedSummaryLanguage(
+                spokenLanguage: nil).identifier
+    }
 
-            // Reduce: re-render the structured summary from all notes.
-            let request = SummaryRequest(
-                meetingID: meetingID,
-                segments: [],
-                speakers: [me, them],
-                recipe: .general,
-                targetLanguage: language,
-                glossary: vocabulary,
-                contextItems: contextItems
-            )
-            let draft = try await provider.summarizeNotes(
-                joined, request: request, priority: .background)
-            if phase == .recording,
-                LiveSummaryPolicy.shouldReplace(current: liveSummary, candidate: draft.markdown) {
-                liveSummary = draft.markdown
-            }
-        } catch {
-            // A failed tick keeps the previous summary; the notes retry with
-            // more material on the next one.
+    func publishLiveSummaryCheckpoint(
+        _ checkpoint: DeterministicLiveSummaryCheckpoint,
+        window: [TranscriptSegment]
+    ) {
+        // Publish the checkpoint and cursor atomically before optional model
+        // suspension. Provider outages retain useful output without replay.
+        liveSummaryCheckpoint = checkpoint
+        summarizedCaptionIDs.formUnion(window.map(\.id))
+        if LiveSummaryPolicy.shouldReplace(
+            current: liveSummary,
+            candidate: checkpoint.markdown
+        ) {
+            liveSummary = checkpoint.markdown
         }
+    }
+
+    func refineLiveSummaryCheckpoint(
+        checkpoint: DeterministicLiveSummaryCheckpoint,
+        meetingID sourceMeetingID: MeetingID,
+        speakers: [Speaker],
+        targetLanguage: String,
+        sourceRevision: Int
+    ) async throws(CancellationError) {
+        do {
+            let refined = try await services?.refineLiveSummary(
+                checkpoint: checkpoint,
+                meetingID: sourceMeetingID,
+                speakers: speakers,
+                targetLanguage: targetLanguage,
+                glossary: vocabulary,
+                contextItems: contextItems)
+            guard isCurrentLiveSummaryCycle(sourceMeetingID),
+                sourceRevision == liveSummarySourceRevision,
+                let refined,
+                LiveSummaryPolicy.shouldReplace(
+                    current: liveSummary,
+                    candidate: refined)
+            else { return }
+            liveSummary = refined
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            // The checkpoint already advanced. A local-provider outage never
+            // recreates a timer or makes live summary unavailable.
+        }
+    }
+
+    func isCurrentLiveSummaryCycle(_ sourceMeetingID: MeetingID) -> Bool {
+        !Task.isCancelled
+            && phase == .recording
+            && meetingID == sourceMeetingID
     }
 }
 
@@ -875,9 +1018,11 @@ extension RecordingController {
                 kind: kind,
                 content: content,
                 timestamp: Date().timeIntervalSince(startedAt)))
+        requestLiveSummaryRefresh()
     }
 
     func removeContextItem(_ id: UUID) {
         contextItems.removeAll { $0.id == id }
+        requestLiveSummaryRefresh()
     }
 }

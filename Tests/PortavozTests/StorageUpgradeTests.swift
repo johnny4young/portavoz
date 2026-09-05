@@ -52,6 +52,178 @@ final class StorageUpgradeTests: XCTestCase {
         try await assertV060Content(fixture, in: reopened)
     }
 
+    func testV16SemanticVectorsReturnToReplayCursorWithoutLosingExactSearch() async throws {
+        let root = try temporaryRoot(named: "v16-semantic-upgrade")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let databaseURL = root.appendingPathComponent("portavoz.sqlite")
+        var legacyDatabase: DatabaseQueue? = try DatabaseQueue(path: databaseURL.path)
+        let meetingID = MeetingID()
+        let segmentID = UUID()
+        let timestamp = Date(timeIntervalSince1970: 1_752_000_000)
+        try StorageSchema.migrator().migrate(
+            try XCTUnwrap(legacyDatabase),
+            upTo: "v16")
+        try await legacyDatabase?.write { database in
+            try database.execute(
+                sql: """
+                    INSERT INTO meeting (
+                        id, title, startedAt, endedAt, language, audioDirectory,
+                        retention, visibility, createdAt, updatedAt, deletedAt
+                    ) VALUES (?, ?, ?, NULL, ?, NULL, ?, ?, ?, ?, NULL)
+                    """,
+                arguments: [
+                    meetingID.rawValue.uuidString,
+                    "Legacy semantic meeting",
+                    timestamp,
+                    "en",
+                    try MeetingRecord.encode(.keep),
+                    "private",
+                    timestamp,
+                    timestamp
+                ])
+            try database.execute(
+                sql: """
+                    INSERT INTO segment (
+                        id, meetingID, speakerID, channel, text, language,
+                        startTime, endTime, confidence, isFinal,
+                        createdAt, updatedAt, deletedAt, embedding
+                    ) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, ?)
+                    """,
+                arguments: [
+                    segmentID.uuidString,
+                    meetingID.rawValue.uuidString,
+                    AudioChannel.system.rawValue,
+                    "Legacy exact search remains available during semantic rebuild.",
+                    "en",
+                    0.0,
+                    4.0,
+                    true,
+                    timestamp,
+                    timestamp,
+                    MeetingStore.blob(from: [1, 0])
+                ])
+        }
+        legacyDatabase = nil
+
+        let upgraded = try MeetingStore(databaseURL: databaseURL)
+
+        try await upgraded.database.read { database in
+            let row = try XCTUnwrap(Row.fetchOne(
+                database,
+                sql: """
+                    SELECT embedding, embeddingFingerprint
+                    FROM segment WHERE id = ?
+                    """,
+                arguments: [segmentID.uuidString]))
+            XCTAssertNil(row["embedding"] as Data?)
+            XCTAssertNil(row["embeddingFingerprint"] as String?)
+        }
+        let pending = try await upgraded.segmentsNeedingEmbeddings()
+        let exactHits = try await upgraded.search("semantic rebuild")
+        XCTAssertEqual(pending.map(\.id), [segmentID])
+        XCTAssertEqual(exactHits.map(\.segmentID), [segmentID])
+    }
+
+    func testV17SemanticProfileMigratesIntoIndependentMaintenanceOwnership() async throws {
+        let root = try temporaryRoot(named: "v17-derived-maintenance-upgrade")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let databaseURL = root.appendingPathComponent("portavoz.sqlite")
+        var legacyDatabase: DatabaseQueue? = try DatabaseQueue(path: databaseURL.path)
+        let timestamp = Date(timeIntervalSince1970: 1_753_000_000)
+        let meeting = Meeting(
+            title: "Profiled semantic migration",
+            startedAt: timestamp)
+        let segment = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "Exact semantic migration evidence remains searchable.",
+            startTime: 0,
+            endTime: 4,
+            isFinal: true)
+        let profile = semanticTestProfile()
+        try StorageSchema.migrator().migrate(
+            try XCTUnwrap(legacyDatabase),
+            upTo: "v17")
+        try await legacyDatabase?.write { database in
+            try MeetingRecord(
+                meeting,
+                createdAt: timestamp,
+                updatedAt: timestamp
+            ).insert(database)
+            var record = SegmentRecord(
+                segment,
+                createdAt: timestamp,
+                updatedAt: timestamp)
+            record.embedding = MeetingStore.blob(from: [1, 0])
+            record.embeddingFingerprint = profile.fingerprint
+            try record.insert(database)
+        }
+        legacyDatabase = nil
+
+        let upgraded = try MeetingStore(databaseURL: databaseURL)
+
+        try await assertHealthyLatestSchema(upgraded)
+        try await upgraded.database.read { database in
+            let row = try XCTUnwrap(Row.fetchOne(
+                database,
+                sql: """
+                    SELECT embedding, embeddingFingerprint
+                    FROM segment WHERE id = ?
+                    """,
+                arguments: [segment.id.uuidString]))
+            XCTAssertNotNil(row["embedding"] as Data?)
+            XCTAssertEqual(row["embeddingFingerprint"] as String?, profile.fingerprint)
+            XCTAssertEqual(
+                try Int.fetchOne(
+                    database,
+                    sql: """
+                        SELECT sourceGeneration
+                        FROM derivedMaintenanceSource
+                        WHERE kind = 'semantic-corpus'
+                        """),
+                1)
+            XCTAssertEqual(
+                try Int.fetchOne(database, sql: "SELECT COUNT(*) FROM derivedMaintenanceJob"),
+                0)
+        }
+        let exactHits = try await upgraded.search("migration evidence")
+        XCTAssertEqual(exactHits.map(\.segmentID), [segment.id])
+    }
+
+    func testEverySupportedSchemaMigratesThroughTypedCorrectionStorage() throws {
+        let migrator = StorageSchema.migrator()
+        for version in 1..<StorageSchema.version {
+            let database = try DatabaseQueue()
+            try migrator.migrate(database, upTo: "v\(version)")
+            try migrator.migrate(database)
+
+            try database.read { db in
+                XCTAssertEqual(
+                    try String.fetchAll(
+                        db,
+                        sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid"),
+                    Self.expectedMigrations,
+                    "failed to restore schema v\(version)")
+                XCTAssertEqual(
+                    try Int.fetchOne(
+                        db,
+                        sql: """
+                            SELECT COUNT(*) FROM sqlite_master
+                            WHERE type = 'table'
+                              AND name IN (
+                                'transcriptCorrection', 'transcriptCorrectionTarget',
+                                'transcriptCorrectionPayload', 'transcriptCorrectionPart'
+                              )
+                            """),
+                    4,
+                    "missing correction tables after schema v\(version)")
+                XCTAssertTrue(
+                    try Row.fetchAll(db, sql: "PRAGMA foreign_key_check").isEmpty,
+                    "foreign-key failure after schema v\(version)")
+            }
+        }
+    }
+
     private func temporaryRoot(named name: String) throws -> URL {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("portavoz-\(name)-\(UUID().uuidString)")
@@ -80,6 +252,66 @@ final class StorageUpgradeTests: XCTestCase {
                 line: line)
             XCTAssertTrue(
                 try Row.fetchAll(database, sql: "PRAGMA foreign_key_check").isEmpty,
+                file: file,
+                line: line)
+            XCTAssertEqual(
+                try Int.fetchOne(
+                    database,
+                    sql: """
+                        SELECT COUNT(*)
+                        FROM sqlite_master
+                        WHERE type = 'index'
+                          AND name = 'meeting_on_live_startedAt_id'
+                        """),
+                1,
+                file: file,
+                line: line)
+            XCTAssertTrue(
+                try Row.fetchAll(database, sql: "PRAGMA table_info(segment)")
+                    .contains { ($0["name"] as String) == "embeddingFingerprint" },
+                file: file,
+                line: line)
+            XCTAssertEqual(
+                try Int.fetchOne(
+                    database,
+                    sql: """
+                        SELECT COUNT(*)
+                        FROM sqlite_master
+                        WHERE type = 'table'
+                          AND name IN ('derivedMaintenanceSource', 'derivedMaintenanceJob')
+                        """),
+                2,
+                file: file,
+                line: line)
+            XCTAssertEqual(
+                try Int.fetchOne(
+                    database,
+                    sql: """
+                        SELECT COUNT(*)
+                        FROM sqlite_master
+                        WHERE type = 'trigger'
+                          AND name LIKE 'semanticCorpusGeneration_%'
+                        """),
+                5,
+                file: file,
+                line: line)
+            XCTAssertEqual(
+                try Int.fetchOne(
+                    database,
+                    sql: """
+                        SELECT COUNT(*) FROM sqlite_master
+                        WHERE type = 'table'
+                          AND name IN (
+                            'transcriptCorrection', 'transcriptCorrectionTarget',
+                            'transcriptCorrectionPayload', 'transcriptCorrectionPart'
+                          )
+                        """),
+                4,
+                file: file,
+                line: line)
+            XCTAssertEqual(
+                try Int.fetchOne(database, sql: "SELECT COUNT(*) FROM transcriptCorrection"),
+                0,
                 file: file,
                 line: line)
         }

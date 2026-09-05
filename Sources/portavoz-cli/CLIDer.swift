@@ -8,8 +8,9 @@ import ModelStoreKit
 /// Diarizes the file and scores it against an RTTM reference — the M3
 /// acceptance metric (DER < 15%) as a number instead of a hope.
 enum DerCommand {
-    // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
-    // swiftlint:disable:next cyclomatic_complexity
+    // The development CLI keeps parsing and execution together for a single
+    // fail-closed command boundary.
+    // swiftlint:disable:next function_body_length
     static func run(_ arguments: [String]) async {
         var file: String?
         var reference: String?
@@ -17,29 +18,41 @@ enum DerCommand {
         var collar = DiarizationEvaluation.standardCollar
         var modelsDir: String?
 
-        var index = 0
-        while index < arguments.count {
-            switch arguments[index] {
-            case "--file":
+        do {
+            var index = 0
+            while index < arguments.count {
+                switch arguments[index] {
+                case "--file":
+                    file = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--file")
+                case "--reference":
+                    reference = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--reference")
+                case "--threshold":
+                    threshold = try CLIOptionValue.finiteFloat(
+                        arguments,
+                        index: &index,
+                        option: "--threshold",
+                        expected: "a finite number greater than 0 and less than 1",
+                        accepting: CLIOptionBounds.acceptsDiarizationThreshold)
+                case "--collar":
+                    collar = try CLIOptionValue.finiteDouble(
+                        arguments,
+                        index: &index,
+                        option: "--collar",
+                        range: CLIOptionBounds.diarizationCollar)
+                case "--models-dir":
+                    modelsDir = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--models-dir")
+                default:
+                    print("Unknown option: \(arguments[index])")
+                    return
+                }
                 index += 1
-                if index < arguments.count { file = arguments[index] }
-            case "--reference":
-                index += 1
-                if index < arguments.count { reference = arguments[index] }
-            case "--threshold":
-                index += 1
-                if index < arguments.count { threshold = Float(arguments[index]) ?? threshold }
-            case "--collar":
-                index += 1
-                if index < arguments.count { collar = Double(arguments[index]) ?? collar }
-            case "--models-dir":
-                index += 1
-                if index < arguments.count { modelsDir = arguments[index] }
-            default:
-                print("Unknown option: \(arguments[index])")
-                return
             }
-            index += 1
+        } catch {
+            print("error: \(error.localizedDescription)")
+            return
         }
 
         guard let file, let reference else {

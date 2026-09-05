@@ -65,6 +65,80 @@ struct LiveTranslationPair: Equatable, Sendable {
     let target: String
 }
 
+enum LiveTranslationWorkPolicy {
+    /// Live translation is intentionally a recent-context aid. If a lane is
+    /// unavailable long enough to fall behind, older rows stay visible in
+    /// their spoken language instead of creating an unbounded catch-up queue.
+    static let recentRowLimit = 60
+
+    /// Small batches publish the first translated row quickly and let a
+    /// source/target change cancel between bounded framework calls.
+    static let maximumBatchSize = 8
+}
+
+enum LiveTranslationAssetReadiness: Equatable, Sendable {
+    case installed
+    case downloadable
+    case unsupported
+}
+
+enum LiveTranslationLaneAction: Equatable, Sendable {
+    case translate
+    case requestDownloadConsent
+    case prepareAssets
+    case passthroughUnsupported
+}
+
+/// Pure pair/asset state machine. Approval is scoped to one lane and never
+/// survives a source or target transition; installed assets need no prompt on
+/// the next recording or after relaunch.
+enum LiveTranslationAssetPolicy {
+    static func action(
+        readiness: LiveTranslationAssetReadiness,
+        downloadApproved: Bool,
+        preparedInThisLane: Bool
+    ) -> LiveTranslationLaneAction {
+        switch readiness {
+        case .installed:
+            .translate
+        case .downloadable where preparedInThisLane:
+            .translate
+        case .downloadable where downloadApproved:
+            .prepareAssets
+        case .downloadable:
+            .requestDownloadConsent
+        case .unsupported:
+            .passthroughUnsupported
+        }
+    }
+}
+
+enum LiveTranslationRetryPolicy {
+    static let maximumDelayMilliseconds = 8_000
+
+    /// Deterministic exponential backoff prevents an offline or failed local
+    /// provider from becoming a tight loop. Cancellation still interrupts the
+    /// sleep immediately when the lane or recording closes.
+    static func delayMilliseconds(afterFailure failureCount: Int) -> Int {
+        let exponent = min(max(failureCount - 1, 0), 3)
+        return min(1_000 << exponent, maximumDelayMilliseconds)
+    }
+}
+
+private enum LiveTranslationBatchOutcome {
+    case cancelled
+    case completed
+    case partial
+    case failed
+}
+
+private enum LiveTranslationReadinessOutcome {
+    case ready(prepared: Bool)
+    case waitForWake
+    case retry
+    case stop
+}
+
 enum LiveTranslationRouting {
     typealias LanguageDetector = (String) -> String?
 
@@ -76,7 +150,8 @@ enum LiveTranslationRouting {
         detector: LanguageDetector = detectedLanguage
     ) -> LiveTranslationPair? {
         guard let normalizedTarget = LanguageCode(target)?.identifier else { return nil }
-        let recent = Array(segments.suffix(60))
+        let recent = Array(segments.suffix(
+            LiveTranslationWorkPolicy.recentRowLimit))
         let openID = recent.last?.id
         for segment in recent {
             guard needsTranslation(
@@ -99,9 +174,10 @@ enum LiveTranslationRouting {
         pair: LiveTranslationPair,
         detector: LanguageDetector = detectedLanguage
     ) -> [(id: UUID, text: String)] {
-        let recent = Array(segments.suffix(60))
+        let recent = Array(segments.suffix(
+            LiveTranslationWorkPolicy.recentRowLimit))
         let openID = recent.last?.id
-        return recent.compactMap { segment in
+        return Array(recent.compactMap { segment in
             guard needsTranslation(
                 segment,
                 openID: openID,
@@ -110,7 +186,7 @@ enum LiveTranslationRouting {
                 sourceLanguage(for: segment, detector: detector) == pair.source
             else { return nil }
             return (segment.id, segment.text)
-        }
+        }.prefix(LiveTranslationWorkPolicy.maximumBatchSize))
     }
 
     static func sourceLanguage(
@@ -170,6 +246,48 @@ enum LiveTranslationRouting {
     }
 }
 
+struct LiveTranslationAdmittedResults: Equatable, Sendable {
+    let values: [UUID: String]
+    let sourceTexts: [UUID: String]
+}
+
+/// Final source-revision ownership for asynchronous Translation responses.
+/// Pair equality alone is insufficient because the newest row can grow under
+/// one stable UUID while an older request is still in flight.
+enum LiveTranslationResultAdmission {
+    static func admit(
+        values: [UUID: String],
+        sourceTexts: [UUID: String],
+        currentSegments: [TranscriptSegment],
+        pair: LiveTranslationPair
+    ) -> LiveTranslationAdmittedResults {
+        var currentByID: [UUID: TranscriptSegment] = [:]
+        var duplicateIDs: Set<UUID> = []
+        for segment in currentSegments {
+            let previous = currentByID.updateValue(segment, forKey: segment.id)
+            if previous != nil {
+                duplicateIDs.insert(segment.id)
+            }
+        }
+        var admittedValues: [UUID: String] = [:]
+        var admittedSources: [UUID: String] = [:]
+        for (id, value) in values {
+            guard let requestedSource = sourceTexts[id],
+                !duplicateIDs.contains(id),
+                let current = currentByID[id],
+                current.text == requestedSource,
+                LiveTranslationRouting.sourceLanguage(for: current) == pair.source,
+                !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            else { continue }
+            admittedValues[id] = value
+            admittedSources[id] = requestedSource
+        }
+        return LiveTranslationAdmittedResults(
+            values: admittedValues,
+            sourceTexts: admittedSources)
+    }
+}
+
 #if canImport(Translation)
 import Translation
 
@@ -212,6 +330,7 @@ struct LiveTranslationModifier: ViewModifier {
     func body(content: Content) -> some View {
         let controller = self.controller
         let pair = self.pair
+        let wakeHub = controller.liveTranslationWakeHub
         return content.translationTask(configuration(for: pair)) { session in
             guard let pair else { return }
             // The framework cancels this task when the configuration
@@ -219,7 +338,8 @@ struct LiveTranslationModifier: ViewModifier {
             await Self.translationLoop(
                 box: SessionBox(session: session),
                 controller: controller,
-                pair: pair)
+                pair: pair,
+                wakeHub: wakeHub)
         }
     }
 
@@ -228,42 +348,43 @@ struct LiveTranslationModifier: ViewModifier {
     nonisolated private static func translationLoop(
         box: SessionBox,
         controller: RecordingController,
-        pair: LiveTranslationPair
+        pair: LiveTranslationPair,
+        wakeHub: LiveTranslationWakeHub
     ) async {
-        guard let status = await Self.openLane(controller: controller, pair: pair)
-        else {
-            await Self.holdUnsupportedLane(controller: controller, pair: pair)
+        let subscription = wakeHub.subscribe()
+        defer { subscription.cancel() }
+        guard let readiness = await Self.openLane(controller: controller, pair: pair) else { return }
+        if readiness == .unsupported {
+            await Self.holdUnsupportedLane(
+                controller: controller,
+                pair: pair,
+                wakes: subscription.stream)
             return
         }
         var didPrepare = false
+        var consecutiveFailures = 0
+        var wakes = subscription.stream.makeAsyncIterator()
 
         while !Task.isCancelled {
-            let snapshot = await MainActor.run {
-                (
-                    controller.translationTarget,
-                    controller.translationSource,
-                    controller.translationDownloadApproved
-                )
-            }
-            guard snapshot.0 == pair.target, snapshot.1 == pair.source else { return }
-            let approved = snapshot.2
-            if status == .supported, !approved {
-                await MainActor.run {
-                    controller.updateLiveTranslationState(.needsDownload, for: pair)
-                }
-                guard await Self.sleep(milliseconds: 300) else { return }
+            let snapshot = await Self.laneSnapshot(controller: controller)
+            guard !Task.isCancelled, snapshot.0 == pair.target, snapshot.1 == pair.source else { return }
+            let readinessOutcome = await Self.advanceLaneReadiness(
+                readiness: readiness,
+                downloadApproved: snapshot.2,
+                preparedInThisLane: didPrepare,
+                box: box,
+                controller: controller,
+                pair: pair)
+            switch readinessOutcome {
+            case .ready(let prepared):
+                didPrepare = prepared
+            case .waitForWake:
+                guard await wakes.next() != nil else { return }
                 continue
-            }
-            if status == .supported, approved, !didPrepare {
-                guard await Self.prepare(
-                    box: box,
-                    controller: controller,
-                    pair: pair
-                ) else {
-                    guard await Self.sleep(milliseconds: 2_000) else { return }
-                    continue
-                }
-                didPrepare = true
+            case .retry:
+                continue
+            case .stop:
+                return
             }
             let pending = await Self.pendingRows(controller: controller, pair: pair)
             if pending.isEmpty {
@@ -275,23 +396,94 @@ struct LiveTranslationModifier: ViewModifier {
                 // top of the loop is what ends a lane the controller has
                 // moved on from.
                 await Self.publishIdleState(controller: controller, pair: pair)
-                guard await Self.sleep(milliseconds: 300) else { return }
+                guard await wakes.next() != nil else { return }
                 continue
             }
             await MainActor.run {
                 controller.updateLiveTranslationState(.translating, for: pair)
             }
-            let translated = await Self.apply(
+            let outcome = await Self.apply(
                 pending,
                 box: box,
                 controller: controller,
                 pair: pair)
+            guard let updatedFailureCount = await Self.handleBatchOutcome(
+                outcome,
+                consecutiveFailures: consecutiveFailures,
+                controller: controller,
+                pair: pair)
+            else { return }
+            consecutiveFailures = updatedFailureCount
+        }
+    }
+
+    nonisolated private static func advanceLaneReadiness(
+        readiness: LiveTranslationAssetReadiness,
+        downloadApproved: Bool,
+        preparedInThisLane: Bool,
+        box: SessionBox,
+        controller: RecordingController,
+        pair: LiveTranslationPair
+    ) async -> LiveTranslationReadinessOutcome {
+        guard !Task.isCancelled else { return .stop }
+        switch LiveTranslationAssetPolicy.action(
+            readiness: readiness,
+            downloadApproved: downloadApproved,
+            preparedInThisLane: preparedInThisLane) {
+        case .translate:
+            return .ready(prepared: preparedInThisLane)
+        case .requestDownloadConsent:
             await MainActor.run {
-                controller.updateLiveTranslationState(
-                    translated ? .active : .failed, for: pair)
+                controller.updateLiveTranslationState(.needsDownload, for: pair)
             }
-            let retryDelay = await Self.translatedRetryDelay(controller: controller)
-            guard await Self.sleep(milliseconds: retryDelay) else { return }
+            return .waitForWake
+        case .prepareAssets:
+            let prepared = await Self.prepare(
+                box: box,
+                controller: controller,
+                pair: pair)
+            return prepared ? .ready(prepared: true) : .retry
+        case .passthroughUnsupported:
+            return .stop
+        }
+    }
+
+    nonisolated private static func handleBatchOutcome(
+        _ outcome: LiveTranslationBatchOutcome,
+        consecutiveFailures: Int,
+        controller: RecordingController,
+        pair: LiveTranslationPair
+    ) async -> Int? {
+        switch outcome {
+        case .cancelled:
+            return nil
+        case .completed:
+            await MainActor.run {
+                controller.updateLiveTranslationState(.active, for: pair)
+            }
+            return 0
+        case .partial, .failed:
+            let updatedFailureCount = consecutiveFailures + 1
+            await MainActor.run {
+                controller.updateLiveTranslationState(.failed, for: pair)
+            }
+            let delay = LiveTranslationRetryPolicy.delayMilliseconds(
+                afterFailure: updatedFailureCount)
+            return await Self.sleep(milliseconds: delay)
+                ? updatedFailureCount
+                : nil
+        }
+    }
+
+    nonisolated private static func laneSnapshot(
+        controller: RecordingController
+    ) async -> (String?, String?, Bool) {
+        await MainActor.run {
+            (
+                controller.translationTarget,
+                controller.translationSource,
+                controller.translationDownloadApproved
+            )
         }
     }
 
@@ -307,13 +499,15 @@ struct LiveTranslationModifier: ViewModifier {
     /// idle loop relies on.
     nonisolated private static func holdUnsupportedLane(
         controller: RecordingController,
-        pair: LiveTranslationPair
+        pair: LiveTranslationPair,
+        wakes: AsyncStream<Void>
     ) async {
+        var wakeIterator = wakes.makeAsyncIterator()
         while !Task.isCancelled {
             let snapshot = await MainActor.run {
                 (controller.translationTarget, controller.translationSource)
             }
-            guard snapshot.0 == pair.target, snapshot.1 == pair.source else { return }
+            guard !Task.isCancelled, snapshot.0 == pair.target, snapshot.1 == pair.source else { return }
             let pending = await Self.pendingRows(controller: controller, pair: pair)
             if !pending.isEmpty {
                 await MainActor.run {
@@ -322,18 +516,21 @@ struct LiveTranslationModifier: ViewModifier {
                         for: pair)
                 }
             }
-            guard await Self.sleep(milliseconds: 300) else { return }
+            guard await wakeIterator.next() != nil else { return }
         }
     }
 
     /// Claims the lane and resolves whether Apple Translation can serve it.
-    /// nil means the pair is unsupported on this Mac and the loop must not
-    /// start — the UI already carries that explanation.
+    /// Cancellation ends the task without inventing unsupported state or
+    /// requesting framework work on behalf of a superseded task.
     nonisolated private static func openLane(
         controller: RecordingController,
         pair: LiveTranslationPair
-    ) async -> LanguageAvailability.Status? {
+    ) async -> LiveTranslationAssetReadiness? {
+        guard !Task.isCancelled else { return nil }
         await MainActor.run { controller.beginLiveTranslationPair(pair) }
+        guard await MainActor.run(body: { controller.isCurrentLiveTranslationTask(for: pair) })
+        else { return nil }
         // Keep the receiver named: ArchitectureDependencyTests pins this call
         // shape so `status` can never regress to `try? await`, which would
         // swallow the unsupported-pair answer instead of surfacing it.
@@ -341,6 +538,7 @@ struct LiveTranslationModifier: ViewModifier {
         let status = await availability.status(
             from: Locale.Language(identifier: pair.source),
             to: Locale.Language(identifier: pair.target))
+        guard !Task.isCancelled else { return nil }
         guard status != .unsupported else {
             let pending = await pendingRows(controller: controller, pair: pair)
             await MainActor.run {
@@ -352,15 +550,9 @@ struct LiveTranslationModifier: ViewModifier {
                         for: pair)
                 }
             }
-            return nil
+            return .unsupported
         }
-        return status
-    }
-
-    nonisolated private static func translatedRetryDelay(
-        controller: RecordingController
-    ) async -> Int {
-        await MainActor.run { controller.translationState == .failed ? 3_000 : 300 }
+        return status == .installed ? .installed : .downloadable
     }
 
     nonisolated private static func sleep(milliseconds: Int) async -> Bool {
@@ -388,26 +580,23 @@ struct LiveTranslationModifier: ViewModifier {
     }
 
     /// Downloads the language assets via Apple's deliberate, expected sheet.
-    /// Returns false (and clears approval) if the user cancels, so the loop
-    /// falls back to the gated banner instead of auto-presenting the sheet.
+    /// Returns false (and clears approval) if preparation fails or the user
+    /// cancels. The loop returns to the deliberate consent banner instead of
+    /// auto-presenting Apple's download sheet during an offline retry.
     nonisolated private static func prepare(
         box: SessionBox,
         controller: RecordingController,
         pair: LiveTranslationPair
     ) async -> Bool {
         do {
+            try Task.checkCancellation()
             try await box.session.prepareTranslation()
             return await MainActor.run {
-                controller.translationTarget == pair.target
-                    && controller.translationSource == pair.source
+                controller.isCurrentLiveTranslationTask(for: pair)
             }
         } catch {
             await MainActor.run {
-                guard controller.translationTarget == pair.target,
-                    controller.translationSource == pair.source
-                else { return }
-                controller.translationDownloadApproved = false
-                controller.updateLiveTranslationState(.failed, for: pair)
+                controller.failLiveTranslationPreparation(for: pair)
             }
             return false
         }
@@ -421,9 +610,7 @@ struct LiveTranslationModifier: ViewModifier {
         pair: LiveTranslationPair
     ) async -> [Ready] {
         await MainActor.run {
-            guard controller.translationTarget == pair.target,
-                controller.translationSource == pair.source
-            else { return [] }
+            guard controller.isCurrentLiveTranslationTask(for: pair) else { return [] }
             return LiveTranslationRouting.pendingRows(
                 segments: controller.captions,
                 translatedSourceTexts: controller.translatedSourceTexts,
@@ -438,14 +625,16 @@ struct LiveTranslationModifier: ViewModifier {
         box: SessionBox,
         controller: RecordingController,
         pair: LiveTranslationPair
-    ) async -> Bool {
-        guard !ready.isEmpty else { return true }
+    ) async -> LiveTranslationBatchOutcome {
+        guard !Task.isCancelled else { return .cancelled }
+        guard !ready.isEmpty else { return .completed }
         let requests = ready.map {
             TranslationSession.Request(sourceText: $0.text, clientIdentifier: $0.id.uuidString)
         }
-        var translatedAny = false
+        var storedIDs: Set<UUID> = []
         do {
             for try await response in box.session.translate(batch: requests) {
+                guard !Task.isCancelled else { return .cancelled }
                 guard
                     let identifier = response.clientIdentifier,
                     let id = UUID(uuidString: identifier),
@@ -457,12 +646,14 @@ struct LiveTranslationModifier: ViewModifier {
                         sourceTexts: [id: sourceText],
                         for: pair)
                 }
-                translatedAny = stored || translatedAny
+                if stored { storedIDs.insert(id) }
             }
         } catch {
-            return translatedAny
+            guard !Task.isCancelled else { return .cancelled }
+            return storedIDs.isEmpty ? .failed : .partial
         }
-        return translatedAny
+        guard !Task.isCancelled else { return .cancelled }
+        return storedIDs.count == ready.count ? .completed : .partial
     }
 }
 #endif

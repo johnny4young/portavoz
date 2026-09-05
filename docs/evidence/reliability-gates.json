@@ -1,0 +1,256 @@
+{
+  "schemaVersion": 2,
+  "proofs": [
+    {
+      "id": "deterministic.repository-hygiene",
+      "class": "deterministic-automated",
+      "source": {
+        "kind": "deterministic-receipt",
+        "proof": "repository-hygiene"
+      }
+    },
+    {
+      "id": "deterministic.swift-gates",
+      "class": "deterministic-automated",
+      "source": {
+        "kind": "deterministic-receipt",
+        "proof": "swift-gates"
+      }
+    },
+    {
+      "id": "deterministic.recording-stress",
+      "class": "deterministic-automated",
+      "source": {
+        "kind": "deterministic-receipt",
+        "proof": "recording-stress"
+      }
+    },
+    {
+      "id": "deterministic.language-corpus",
+      "class": "deterministic-automated",
+      "source": {
+        "kind": "deterministic-receipt",
+        "proof": "language-corpus"
+      }
+    },
+    {
+      "id": "deterministic.reliability-ui",
+      "class": "deterministic-automated",
+      "source": {
+        "kind": "deterministic-receipt",
+        "proof": "reliability-ui"
+      }
+    },
+    {
+      "id": "candidate.finite-scope",
+      "class": "candidate-automated",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "candidate-automation",
+        "proof": "finite-scope"
+      }
+    },
+    {
+      "id": "candidate.autonomous-validation",
+      "class": "candidate-automated",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "candidate-automation",
+        "proof": "autonomous-validation"
+      }
+    },
+    {
+      "id": "candidate.model-gated",
+      "class": "candidate-automated",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "candidate-automation",
+        "proof": "model-gated"
+      }
+    },
+    {
+      "id": "candidate.performance-ledger",
+      "class": "candidate-automated",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "candidate-automation",
+        "proof": "performance-ledger"
+      }
+    },
+    {
+      "id": "candidate.resource-baseline",
+      "class": "candidate-automated",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "candidate-automation",
+        "proof": "resource-baseline"
+      }
+    },
+    {
+      "id": "candidate.long-capture",
+      "class": "candidate-automated",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "candidate-automation",
+        "proof": "long-capture"
+      }
+    },
+    {
+      "id": "candidate.upgrade-recovery",
+      "class": "candidate-automated",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "candidate-automation",
+        "proof": "upgrade-recovery"
+      }
+    },
+    {
+      "id": "candidate.complete-bilingual-ui",
+      "class": "candidate-automated",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "candidate-automation",
+        "proof": "complete-bilingual-ui"
+      }
+    },
+    {
+      "id": "integration.reviewed",
+      "class": "source-integration",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "source-integration",
+        "proof": "reviewed"
+      }
+    },
+    {
+      "id": "integration.hosted-ci",
+      "class": "source-integration",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "source-integration",
+        "proof": "hosted-ci"
+      }
+    },
+    {
+      "id": "signed.distribution",
+      "class": "signed-build",
+      "source": {
+        "kind": "distribution-receipt",
+        "proof": "distribution"
+      }
+    },
+    {
+      "id": "sync.production-admission",
+      "class": "production-sync",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "production-sync",
+        "proof": "admission"
+      }
+    },
+    {
+      "id": "hardware.built-in.sequoia",
+      "class": "real-hardware",
+      "source": {
+        "kind": "field-fixture",
+        "fixture": "built-in-speaker-mic",
+        "macOSMajor": 15
+      }
+    },
+    {
+      "id": "hardware.built-in.tahoe",
+      "class": "real-hardware",
+      "source": {
+        "kind": "field-fixture",
+        "fixture": "built-in-speaker-mic",
+        "macOSMajor": 26
+      }
+    },
+    {
+      "id": "hardware.airpods.sequoia",
+      "class": "real-hardware",
+      "source": {
+        "kind": "field-fixture",
+        "fixture": "airpods",
+        "macOSMajor": 15
+      }
+    },
+    {
+      "id": "hardware.airpods.tahoe",
+      "class": "real-hardware",
+      "source": {
+        "kind": "field-fixture",
+        "fixture": "airpods",
+        "macOSMajor": 26
+      }
+    },
+    {
+      "id": "hardware.callback-recovery",
+      "class": "real-hardware",
+      "source": {
+        "kind": "field-fixture",
+        "fixture": "source-callback-interruption"
+      }
+    },
+    {
+      "id": "hardware.long-call",
+      "class": "real-hardware",
+      "source": {
+        "kind": "field-fixture",
+        "fixture": "long-call"
+      }
+    },
+    {
+      "id": "hardware.model-cold-start",
+      "class": "real-hardware",
+      "source": {
+        "kind": "field-fixture",
+        "fixture": "model-cold-start"
+      }
+    },
+    {
+      "id": "assistive.voiceover.sequoia",
+      "class": "assistive-technology",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "assistive-technology",
+        "proof": "voiceover-sequoia"
+      }
+    },
+    {
+      "id": "assistive.voiceover.tahoe",
+      "class": "assistive-technology",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "assistive-technology",
+        "proof": "voiceover-tahoe"
+      }
+    },
+    {
+      "id": "assistive.voice-control.sequoia",
+      "class": "assistive-technology",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "assistive-technology",
+        "proof": "voice-control-sequoia"
+      }
+    },
+    {
+      "id": "assistive.voice-control.tahoe",
+      "class": "assistive-technology",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "assistive-technology",
+        "proof": "voice-control-tahoe"
+      }
+    },
+    {
+      "id": "field.mixed-language",
+      "class": "user-field",
+      "source": {
+        "kind": "field-fixture",
+        "fixture": "mixed-language"
+      }
+    }
+  ]
+}

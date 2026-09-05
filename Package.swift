@@ -98,6 +98,9 @@ let package = Package(
                 .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
                 .product(name: "MLXHuggingFace", package: "mlx-swift-lm"),
                 .product(name: "Transformers", package: "swift-transformers"),
+            ],
+            resources: [
+                .copy("Resources/PortavozLiveQuestionClassifier.mlmodelc"),
             ]),
         .target(
             name: "StorageKit",
@@ -111,6 +114,24 @@ let package = Package(
         // Self-contained over AVFoundation/Accelerate: it exposes no Core
         // types, so it carries no module dependencies.
         .target(name: "AudioPlaybackKit", dependencies: []),
+
+        // D212 research-only static sqlite-vec probe. It is intentionally not
+        // a product dependency: only PortavozTests compiles this boundary.
+        .target(
+            name: "CSQLiteVecResearch",
+            path: "Sources/CSQLiteVecResearch",
+            publicHeadersPath: "include",
+            linkerSettings: [.linkedLibrary("sqlite3")]
+        ),
+        // D213 disposable exact ranker. A test-owned adapter implements the
+        // ApplicationKit shadow port; this capability remains a lower layer.
+        .target(
+            name: "SQLiteVecResearchKit",
+            dependencies: [
+                "PortavozCore", "StorageKit",
+                "CSQLiteVecResearch",
+            ]
+        ),
 
         // IntegrationsKit is the outbound-adapter layer over stored meetings
         // (export, MCP protocol, providers, private sync transport). Application
@@ -160,6 +181,8 @@ let package = Package(
                 "StorageKit",
                 "AudioPlaybackKit",
                 "IntegrationsKit",
+                "CSQLiteVecResearch",
+                "SQLiteVecResearchKit",
                 .product(name: "GRDB", package: "GRDB.swift"),
             ]
         ),

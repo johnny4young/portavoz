@@ -85,9 +85,18 @@ public struct RecordingsLocation: Sendable {
     /// the copy lands under a hidden temp name and only an atomic rename
     /// publishes it — the source is removed last.
     @discardableResult
+    /// Moves every meeting directory to a new root.
+    ///
+    /// `skipping` names directories that must be left where they are because
+    /// something still holds their files open. The cross-volume branch below
+    /// copies and then deletes the source, so migrating a directory whose
+    /// writers are live unlinks it underneath them and silently truncates the
+    /// recording. Callers pass the live meetings; this is the last line of
+    /// defence behind `ManageRecordingStorage`'s activity gate.
     public func migrateAudio(
         from origin: URL,
         to destination: URL,
+        skipping reservedDirectoryNames: Set<String> = [],
         progress: ((Int, Int) -> Void)? = nil
     ) throws -> Int {
         let canonicalOrigin = origin.standardizedFileURL.resolvingSymlinksInPath()
@@ -105,30 +114,158 @@ public struct RecordingsLocation: Sendable {
             at: sourceAudio, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]
         ).sorted { $0.lastPathComponent < $1.lastPathComponent }
 
-        var moved = 0
+        var movedNames: [String] = []
         for (index, entry) in entries.enumerated() {
             progress?(index + 1, entries.count)
+            guard !reservedDirectoryNames.contains(entry.lastPathComponent) else {
+                continue
+            }
             let target = targetAudio.appendingPathComponent(entry.lastPathComponent)
             if manager.fileExists(atPath: target.path) {
                 // Already migrated on a previous, interrupted run. Meeting
                 // dirs are immutable UUID-named recordings: same name IS the
                 // same content, so finish the move by dropping the source.
                 try? manager.removeItem(at: entry)
-                moved += 1
+                movedNames.append(entry.lastPathComponent)
                 continue
             }
             do {
-                try manager.moveItem(at: entry, to: target)
+                do {
+                    try manager.moveItem(at: entry, to: target)
+                } catch {
+                    let temp = targetAudio.appendingPathComponent(
+                        ".partial-" + entry.lastPathComponent)
+                    try? manager.removeItem(at: temp)
+                    try manager.copyItem(at: entry, to: temp)
+                    try manager.moveItem(at: temp, to: target)
+                    try manager.removeItem(at: entry)
+                }
             } catch {
-                let temp = targetAudio.appendingPathComponent(
-                    ".partial-" + entry.lastPathComponent)
-                try? manager.removeItem(at: temp)
-                try manager.copyItem(at: entry, to: temp)
-                try manager.moveItem(at: temp, to: target)
-                try manager.removeItem(at: entry)
+                // The caller only persists the new root after this returns, so
+                // a throw here would leave the root pointing at `origin` while
+                // some recordings already sit under `destination` — reachable
+                // from neither root, since `resolve` only ever looks at the
+                // current and default roots. Put back what this run moved so a
+                // failure really does mean nothing happened.
+                throw restore(
+                    movedNames,
+                    failing: entry.lastPathComponent,
+                    from: targetAudio,
+                    to: sourceAudio,
+                    after: error,
+                    using: manager)
             }
-            moved += 1
+            movedNames.append(entry.lastPathComponent)
         }
-        return moved
+        return movedNames.count
+    }
+
+    /// Returns the error to throw: the original cause when every directory made
+    /// it back, or a stranding report naming what did not.
+    ///
+    /// `failing` is the entry that threw. Its hidden cross-volume temp may hold
+    /// a complete copy of that meeting's audio, and leaving it behind would
+    /// contradict "nothing happened" — a later resume would find it and could
+    /// not tell it from a finished directory.
+    private func restore(
+        _ names: [String],
+        failing: String?,
+        from targetAudio: URL,
+        to sourceAudio: URL,
+        after cause: Error,
+        using manager: FileManager
+    ) -> Error {
+        if let failing {
+            try? manager.removeItem(at: targetAudio.appendingPathComponent(
+                ".partial-" + failing))
+        }
+        var stranded: [String] = []
+        for name in names {
+            let target = targetAudio.appendingPathComponent(name)
+            let source = sourceAudio.appendingPathComponent(name)
+            guard manager.fileExists(atPath: target.path) else { continue }
+            do {
+                try putBack(
+                    target,
+                    over: source,
+                    named: name,
+                    in: sourceAudio,
+                    using: manager)
+            } catch {
+                stranded.append(name)
+            }
+        }
+        guard stranded.isEmpty else {
+            return RecordingsMigrationError.stranded(
+                count: stranded.count,
+                at: targetAudio,
+                cause: cause)
+        }
+        return cause
+    }
+
+    /// Moves one directory back over whatever is at its origin, and either
+    /// succeeds completely or leaves the origin exactly as it found it.
+    ///
+    /// Deliberately not `replaceItemAt`, which fails this job twice. It cannot
+    /// cross volumes at all (EXDEV) — and crossing volumes is the only reason
+    /// the migration has a copy path — so on an external drive it would strand
+    /// every directory it was supposed to restore. Worse, on one volume it can
+    /// throw *after* it has already swapped: the good copy lands correctly, but
+    /// the old contents are left at the destination's real name and the caller
+    /// is told the entry was stranded. A later resume then finds that name,
+    /// treats it as a finished migration, and drops the restored source —
+    /// destroying the audio.
+    ///
+    /// A rename inside one directory needs no permission to delete children, so
+    /// quarantining the existing origin works even when removing it does not.
+    private func putBack(
+        _ target: URL,
+        over source: URL,
+        named name: String,
+        in sourceAudio: URL,
+        using manager: FileManager
+    ) throws {
+        guard manager.fileExists(atPath: source.path) else {
+            try manager.moveItem(at: target, to: source)
+            return
+        }
+        // Hidden and inside the *source* folder, never at the destination's
+        // real name. `contentsOfDirectory` skips hidden entries, so a leftover
+        // can never be mistaken for a meeting directory by a later migration.
+        let quarantine = sourceAudio.appendingPathComponent(".superseded-" + name)
+        try? manager.removeItem(at: quarantine)
+        try manager.moveItem(at: source, to: quarantine)
+        do {
+            try manager.moveItem(at: target, to: source)
+        } catch {
+            // Put the origin back so a failed restore leaves it no worse.
+            try? manager.moveItem(at: quarantine, to: source)
+            throw error
+        }
+        try? manager.removeItem(at: quarantine)
+    }
+}
+
+/// A migration that could neither finish nor fully undo itself.
+public enum RecordingsMigrationError: LocalizedError {
+    /// Recordings that reached the destination but could not be put back. The
+    /// count and folder are enough for the user to find them; naming the
+    /// meetings would put library content into an error message.
+    case stranded(count: Int, at: URL, cause: Error)
+
+    /// Spelled out here rather than left to the default `Error` description,
+    /// which renders as an opaque "operation couldn't be completed" and would
+    /// drop the only two facts the user needs.
+    public var errorDescription: String? {
+        switch self {
+        case .stranded(let count, let at, let cause):
+            return """
+                \(count) recording(s) were moved to \(at.path) and could not be \
+                put back (\(cause.localizedDescription)). They are safe there; \
+                move them back into the Audio folder of your recordings \
+                location, or point Portavoz at that folder.
+                """
+        }
     }
 }

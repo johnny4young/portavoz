@@ -51,7 +51,7 @@ extension MeetingStore {
             let segments = try SegmentRecord
                 .filter(Column("meetingID") == key)
                 .filter(Column("deletedAt") == nil)
-                .order(Column("startTime"))
+                .order(Column("startTime"), Column("id"))
                 .fetchAll(db)
                 .map { try $0.segment }
             // Released export semantics are strict for the core aggregate but

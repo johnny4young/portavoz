@@ -1,0 +1,36 @@
+{
+  "fixtureChecksum": "287e77db9d9a277c3243c2ce3d7be37f1ada65379e8dae62bb1ed60aba466cb4",
+  "fixtureGeneration": "public-bilingual-v1",
+  "kind": "live-assist-validation-budget",
+  "latency": {
+    "maximumFirstResultMilliseconds": {
+      "interview": 20.0,
+      "questionDetection": 1000.0,
+      "rollingSummary": 20.0,
+      "translation": 20.0
+    },
+    "maximumSteadyStateP95Milliseconds": {
+      "interview": 20.0,
+      "questionDetection": 1000.0,
+      "rollingSummary": 20.0,
+      "translation": 20.0
+    }
+  },
+  "quality": {
+    "maximumFalsePromptsPerHour": 0.5,
+    "maximumLatePublications": 0,
+    "minimumAbstentionAccuracy": 0.8,
+    "minimumFaultOutcomeAccuracy": 1.0,
+    "minimumInterviewExactAccuracy": 1.0,
+    "minimumPrecision": 0.9,
+    "minimumRecall": 0.9,
+    "minimumSummaryPolicyExactAccuracy": 1.0,
+    "minimumTranslationPolicyExactAccuracy": 1.0
+  },
+  "resources": {
+    "energyPolicy": "measure-only",
+    "maximumFootprintGrowthBytes": 67108864,
+    "maximumThermalState": "fair"
+  },
+  "schemaVersion": 1
+}

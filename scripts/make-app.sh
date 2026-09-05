@@ -11,9 +11,23 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+PROFILE_PLIST=""
+cleanup() {
+  if [[ -n "$PROFILE_PLIST" ]]; then
+    rm -f "$PROFILE_PLIST"
+  fi
+}
+trap cleanup EXIT
+
 CONFIG=debug
 VERSION="${PORTAVOZ_VERSION:-0.1.0}"
 BUILD="${PORTAVOZ_BUILD:-1}"
+SOURCE_COMMIT="${PORTAVOZ_RELEASE_COMMIT:-}"
+
+if [[ -n "$SOURCE_COMMIT" && ! "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "PORTAVOZ_RELEASE_COMMIT must be one full lowercase Git SHA." >&2
+  exit 64
+fi
 
 usage() {
   echo "usage: scripts/make-app.sh [--release] [--version <version>] [--build <build>]" >&2
@@ -63,6 +77,7 @@ fi
 APP=dist/Portavoz.app
 rm -rf "$APP"
 rm -f dist/.portavoz-sign-entitlements
+rm -f dist/.portavoz-production.entitlements
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
 
 # CloudKit and APNs are restricted Developer ID capabilities. A public build
@@ -79,7 +94,16 @@ if [[ -n "$PROVISIONING_PROFILE" ]]; then
     exit 66
   fi
   cp "$PROVISIONING_PROFILE" "$APP/Contents/embedded.provisionprofile"
-  SIGN_ENTITLEMENTS=packaging/portavoz.entitlements
+  PROFILE_PLIST="$(mktemp "${TMPDIR:-/tmp}/portavoz-profile.XXXXXX.plist")"
+  security cms -D -i "$PROVISIONING_PROFILE" > "$PROFILE_PLIST"
+  python3 scripts/materialize-cloudkit-entitlements.py \
+    packaging/portavoz.entitlements \
+    "$PROFILE_PLIST" \
+    dist/.portavoz-production.entitlements \
+    app.portavoz.mac
+  rm -f "$PROFILE_PLIST"
+  PROFILE_PLIST=""
+  SIGN_ENTITLEMENTS=dist/.portavoz-production.entitlements
 elif [[ "$REQUIRE_CLOUDKIT_PROFILE" == "1" ]]; then
   echo "A public CloudKit build requires PORTAVOZ_PROVISIONING_PROFILE." >&2
   exit 64
@@ -91,6 +115,16 @@ printf '%s\n' "$SIGN_ENTITLEMENTS" > dist/.portavoz-sign-entitlements
 # Sparkle ships as a dynamic framework; embed it and make sure the
 # binary can find it relative to itself.
 cp -a "$BIN_DIR/Sparkle.framework" "$APP/Contents/Frameworks/"
+
+# LIVE-1 question admission is a tiny SwiftPM resource bundle. It is a
+# mandatory serving asset on both Sequoia and Tahoe: shipping the executable
+# without it would expose a working toggle that can never publish a card.
+QUESTION_BUNDLE="$BIN_DIR/Portavoz_IntelligenceKit.bundle"
+if [[ ! -d "$QUESTION_BUNDLE/PortavozLiveQuestionClassifier.mlmodelc" ]]; then
+  echo "bundled Apuntador question classifier is missing from the SwiftPM build." >&2
+  exit 66
+fi
+cp -R "$QUESTION_BUNDLE" "$APP/Contents/Resources/"
 
 # MLX Metal kernels (D32): SwiftPM cannot compile Metal shaders, so the
 # compiled metallib comes from a cached one-time xcodebuild pass. Without
@@ -172,6 +206,8 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
     <string>Portavoz captures system audio to transcribe other meeting participants. Audio never leaves your Mac.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
     <string>Portavoz reads calendar attendees only to suggest meeting speaker names. Nothing leaves your Mac.</string>
+    <key>NSRemindersFullAccessUsageDescription</key>
+    <string>Portavoz creates a reminder only after you preview and confirm it. Nothing leaves your Mac.</string>
     <key>NSDesktopFolderUsageDescription</key>
     <string>Portavoz stores meeting audio in the folder you choose.</string>
     <key>NSDocumentsFolderUsageDescription</key>
@@ -240,6 +276,10 @@ PLIST
 
 plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
 plutil -replace CFBundleVersion -string "$BUILD" "$APP/Contents/Info.plist"
+if [[ -n "$SOURCE_COMMIT" ]]; then
+  plutil -insert PortavozSourceCommit -string "$SOURCE_COMMIT" \
+    "$APP/Contents/Info.plist"
+fi
 python3 scripts/export-localizations.py "$APP/Contents/Resources"
 
 # Sparkle update feed + signing key. Without assets/sparkle-public-key
@@ -268,7 +308,7 @@ codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.
 codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" \
   --entitlements "$SIGN_ENTITLEMENTS" "$APP"
 
-if [[ "$SIGN_ENTITLEMENTS" == "packaging/portavoz.entitlements" ]]; then
+if [[ "$SIGN_ENTITLEMENTS" == "dist/.portavoz-production.entitlements" ]]; then
   scripts/verify-cloudkit-capabilities.sh "$APP"
 fi
 

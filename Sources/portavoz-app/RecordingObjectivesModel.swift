@@ -3,7 +3,7 @@ import IntelligenceKit
 import Observation
 import PortavozCore
 
-/// Pre-meeting objectives with live check-off (APUN-003, the Otter Live
+/// Pre-meeting objectives with live check-off (the Otter Live
 /// Assist pattern reimplemented local-first). The checklist itself is pure
 /// UI state — adding and manually toggling objectives never needs a model.
 /// The AUTOMATIC check-off rides the rolling tick and is Apuntador work:
@@ -13,6 +13,15 @@ import PortavozCore
 @MainActor
 @Observable
 final class RecordingObjectivesModel {
+    static let maximumObjectives = 8
+    static let maximumObjectiveCharacters = 280
+    static let maximumObjectiveUTF8Bytes = 2_048
+
+    enum AdmissionIssue: Equatable {
+        case tooLong
+        case limitReached
+    }
+
     struct LiveObjective: Identifiable, Equatable {
         let id = UUID()
         var text: String
@@ -24,21 +33,37 @@ final class RecordingObjectivesModel {
     }
 
     private(set) var objectives: [LiveObjective] = []
+    private(set) var admissionIssue: AdmissionIssue?
 
     var pending: [LiveObjective] { objectives.filter { $0.checkedAt == nil } }
 
     func add(_ text: String) {
+        admissionIssue = nil
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        guard trimmed.count <= Self.maximumObjectiveCharacters,
+              trimmed.utf8.count <= Self.maximumObjectiveUTF8Bytes
+        else {
+            admissionIssue = .tooLong
+            return
+        }
         // Re-adding an existing objective is a no-op, not a duplicate row.
         guard !objectives.contains(where: {
             $0.text.compare(trimmed, options: [.caseInsensitive]) == .orderedSame
         }) else { return }
+        guard objectives.count < Self.maximumObjectives else {
+            admissionIssue = .limitReached
+            return
+        }
         objectives.append(LiveObjective(text: trimmed))
+        admissionIssue = nil
     }
 
     func remove(_ id: LiveObjective.ID) {
         objectives.removeAll { $0.id == id }
+        if objectives.count < Self.maximumObjectives {
+            admissionIssue = nil
+        }
     }
 
     func toggle(_ id: LiveObjective.ID, elapsed: TimeInterval) {
@@ -68,7 +93,7 @@ final class RecordingObjectivesModel {
         let addressed = await ObjectiveCheckDetector.addressedIndexes(
             objectives: pendingTexts,
             window: window)
-        guard !addressed.isEmpty else { return }
+        guard !Task.isCancelled, !addressed.isEmpty else { return }
         let addressedTexts = Set(addressed.map { pendingTexts[$0] })
         for index in objectives.indices
         where objectives[index].checkedAt == nil
@@ -95,5 +120,6 @@ final class RecordingObjectivesModel {
 
     func reset() {
         objectives = []
+        admissionIssue = nil
     }
 }

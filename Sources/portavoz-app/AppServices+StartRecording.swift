@@ -11,10 +11,22 @@ extension AppServices {
     /// runtime, filesystem evidence, and the durable MeetingStore adapter.
     var startRecording: StartRecording {
         let runtime: any StartRecordingRuntime
-        if isRecordingFailureFixture {
+        if BenchSyntheticCapturePolicy.requested(
+            arguments: ProcessInfo.processInfo.arguments
+        ) {
+            runtime = BenchSyntheticStartRecordingRuntime(
+                services: self,
+                audioRoot: Self.audioRoot,
+                durationSeconds: (try? BenchRecordingResourcePolicy.duration(
+                    arguments: ProcessInfo.processInfo.arguments)) ?? 0)
+        } else if isRecordingFailureFixture {
             runtime = UITestStartRecordingFailureRuntime()
         } else if isSystemCaptureStallFixture {
             runtime = UITestSystemCaptureStallRuntime()
+        } else if isSystemAudioClippingFixture {
+            runtime = UITestSystemAudioClippingRuntime()
+        } else if isInterviewAssistFixture {
+            runtime = UITestInterviewAssistRuntime()
         } else if isLiveTranscriptBrowsingFixture {
             runtime = UITestLiveTranscriptBrowsingRuntime()
         } else if isLiveTranscriptionAttachFixture {
@@ -28,7 +40,8 @@ extension AppServices {
             preferences: AppStartRecordingPreferences(),
             audioFiles: AppStartRecordingAudioFiles(root: Self.audioRoot),
             store: store,
-            runtime: runtime)
+            runtime: runtime,
+            telemetry: workloadTelemetry)
     }
 
     private var isRecordingFailureFixture: Bool {
@@ -43,6 +56,12 @@ extension AppServices {
             && arguments.contains("-simulate-system-capture-stall")
     }
 
+    private var isSystemAudioClippingFixture: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("-use-temp-store")
+            && arguments.contains("-simulate-system-audio-clipping")
+    }
+
     private var isLiveTranscriptionAttachFixture: Bool {
         let arguments = ProcessInfo.processInfo.arguments
         return arguments.contains("-use-temp-store")
@@ -53,6 +72,12 @@ extension AppServices {
         let arguments = ProcessInfo.processInfo.arguments
         return arguments.contains("-use-temp-store")
             && arguments.contains("-simulate-live-transcript-browsing")
+    }
+
+    private var isInterviewAssistFixture: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("-use-temp-store")
+            && arguments.contains("-simulate-interview-assist")
     }
 }
 
@@ -108,6 +133,36 @@ private actor UITestSystemCaptureStallSession: StartRecordingSession {
     func voiceprint() async -> Voiceprint? { nil }
     func cancelVoiceprintRead() async {}
     nonisolated func setMicrophoneMuted(_ value: Bool) {}
+}
+
+private struct UITestSystemAudioClippingRuntime: StartRecordingRuntime {
+    func prepare(
+        preferences: StartRecordingPreferencesSnapshot
+    ) async throws -> StartRecordingPreparedRuntime {
+        StartRecordingPreparedRuntime(
+            channels: [.microphone, .system],
+            tappedMeetingApps: ["Meet"],
+            liveTranscriptionAvailable: true)
+    }
+
+    func startCapture(
+        _ request: StartRecordingCaptureRequest
+    ) async throws -> any StartRecordingSession {
+        let observationCount = Int(
+            SustainedCeilingDetector.minimumObservedDuration / 0.01)
+        for index in 0..<observationCount {
+            request.callbacks.level(PersistedAudioLevel(
+                channel: .system,
+                peak: 1,
+                rms: 0.4,
+                timestamp: TimeInterval(index) / 100,
+                duration: 0.01))
+        }
+        return UITestSystemCaptureStallSession()
+    }
+
+    func cancelPreparation() async {}
+    func scheduleIdleRelease() async {}
 }
 
 private struct UITestLiveTranscriptionAttachRuntime: StartRecordingRuntime {
@@ -195,10 +250,18 @@ private struct UITestLiveTranscriptBrowsingRuntime: StartRecordingRuntime {
         _ index: Int,
         request: StartRecordingCaptureRequest
     ) async throws {
-        let start = TimeInterval(index * 2)
+        let proactive = ProcessInfo.processInfo.arguments.contains(
+            "-simulate-proactive-assist")
+        let simulateLiveApuntador = ProcessInfo.processInfo.arguments.contains(
+            "-simulate-live-apuntador")
+        let start = TimeInterval(index * (proactive ? 20 : 2))
         let isRemote = index.isMultiple(of: 2)
         let text: String
-        if ProcessInfo.processInfo.arguments.contains("-seed-showcase") {
+        if simulateLiveApuntador, index == 2 {
+            text = Locale.current.language.languageCode?.identifier == "es"
+                ? "¿Puedes explicar por qué el despliegue pasó al viernes?"
+                : "Could you explain why the rollout moved to Friday?"
+        } else if ProcessInfo.processInfo.arguments.contains("-seed-showcase") {
             text = PublicShowcaseFixture.liveTranscriptLines[index - 1]
         } else {
             text = isRemote
@@ -209,18 +272,89 @@ private struct UITestLiveTranscriptBrowsingRuntime: StartRecordingRuntime {
                     format: "My local update %02d stays distinct while I browse earlier captions.",
                     index)
         }
+        let language = if ProcessInfo.processInfo.arguments.contains("-seed-showcase") {
+            "es"
+        } else if simulateLiveApuntador, index == 2 {
+            Locale.current.language.languageCode?.identifier ?? "en"
+        } else {
+            "en"
+        }
         await request.callbacks.caption(TranscriptSegment(
             meetingID: request.meetingID,
             channel: isRemote ? .system : .microphone,
             text: text,
-            language: ProcessInfo.processInfo.arguments.contains("-seed-showcase")
-                ? "es"
-                : "en",
+            language: language,
             startTime: start,
-            endTime: start + 1,
+            endTime: start + (proactive ? 5 : 1),
             isFinal: true))
         try await Task.sleep(for: .milliseconds(90))
     }
+}
+
+private struct UITestInterviewAssistRuntime: StartRecordingRuntime {
+    func prepare(
+        preferences: StartRecordingPreferencesSnapshot
+    ) async throws -> StartRecordingPreparedRuntime {
+        StartRecordingPreparedRuntime(
+            channels: [.microphone, .system],
+            tappedMeetingApps: ["Meet"],
+            liveTranscriptionAvailable: true)
+    }
+
+    func startCapture(
+        _ request: StartRecordingCaptureRequest
+    ) async throws -> any StartRecordingSession {
+        request.callbacks.liveTranscription(.available)
+        Task {
+            do {
+                try await Task.sleep(for: .milliseconds(350))
+                let spanish = Locale.current.language.languageCode?.identifier == "es"
+                let rows: [(AudioChannel, String, TimeInterval)] = spanish
+                    ? [
+                        (.microphone,
+                         "Camila: Avisaría a la responsable de base de datos "
+                            + "en cinco minutos y congelaría escrituras antes "
+                            + "de reconstruir réplicas.",
+                         44),
+                        (.microphone,
+                         "Camila: No desactivaría alertas ni esperaría treinta minutos antes de avisar.",
+                         71),
+                        (.system,
+                         "¿Qué haría Camila primero durante el incidente?",
+                         90)
+                    ]
+                    : [
+                        (.microphone,
+                         "Jordan: I would page the database owner within five "
+                            + "minutes and freeze writes before rebuilding replicas.",
+                         41),
+                        (.microphone,
+                         "Jordan: I would not disable alerts or wait thirty minutes before paging the owner.",
+                         67),
+                        (.system,
+                         "What would Jordan do first during the database incident?",
+                         90)
+                    ]
+                for (channel, text, timestamp) in rows {
+                    await request.callbacks.caption(TranscriptSegment(
+                        meetingID: request.meetingID,
+                        channel: channel,
+                        text: text,
+                        language: spanish ? "es" : "en",
+                        startTime: timestamp,
+                        endTime: timestamp + 2,
+                        isFinal: true))
+                    try await Task.sleep(for: .milliseconds(80))
+                }
+            } catch {
+                return
+            }
+        }
+        return UITestSystemCaptureStallSession()
+    }
+
+    func cancelPreparation() async {}
+    func scheduleIdleRelease() async {}
 }
 
 /// File-backed handshakes keep disposable UI fixtures deterministic even when
@@ -299,7 +433,7 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
         let microphone: MicrophoneSource
         let warmup: Task<Void, Never>
         let sources: [any AudioCaptureSource]
-        let transcriber: ParakeetEngine?
+        let liveTranscriptionRuntime: LiveTranscriptionRuntime?
     }
 
     private weak var services: AppServices?
@@ -315,9 +449,16 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
         preferences: StartRecordingPreferencesSnapshot
     ) async throws -> StartRecordingPreparedRuntime {
         guard let services else { throw StartRecordingRuntimeError.preparationUnavailable }
+        guard await services.authorizeMicrophoneForRecording() else {
+            throw StartRecordingRuntimeError.preparationUnavailable
+        }
         let microphoneID = preferences.preferredInputDeviceID.flatMap { identifier in
             (try? AudioDeviceCatalog.inputDevice(matching: identifier)) != nil
                 ? identifier : nil
+        }
+        let liveSpeech = try services.acquireResidentLiveSpeechRuntime()
+        let liveTranscriptionRuntime = liveSpeech.map {
+            services.liveTranscriptionRuntime($0)
         }
         let microphone = MicrophoneSource(
             deviceIdentifier: microphoneID,
@@ -334,16 +475,15 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
             sources.append(system.source)
             tappedMeetingApps = system.appNames
         }
-        let transcriber = services.transcriber
         prepared = Prepared(
             microphone: microphone,
             warmup: warmup,
             sources: sources,
-            transcriber: transcriber)
+            liveTranscriptionRuntime: liveTranscriptionRuntime)
         return StartRecordingPreparedRuntime(
             channels: sources.map(\.channel),
             tappedMeetingApps: tappedMeetingApps,
-            liveTranscriptionAvailable: transcriber != nil)
+            liveTranscriptionAvailable: liveTranscriptionRuntime != nil)
     }
 
     func startCapture(
@@ -361,13 +501,15 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
             outputDirectory: audioRoot.appendingPathComponent(request.audioDirectory),
             microphone: prepared.microphone,
             sources: prepared.sources,
-            transcriber: prepared.transcriber,
+            liveTranscriptionRuntime: prepared.liveTranscriptionRuntime,
             transcriberLoader: { @MainActor [weak services] in
                 guard let services else {
                     throw StartRecordingRuntimeError.preparationUnavailable
                 }
-                return try await services.loadTranscriberIfNeeded()
+                let runtime = try await services.acquireLiveSpeechRuntime()
+                return services.liveTranscriptionRuntime(runtime)
             },
+            telemetry: services.workloadTelemetry,
             voiceprintTask: Task.detached(priority: .utility) {
                 try? voiceprintStore.load()
             })
@@ -387,6 +529,7 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
     func cancelPreparation() async {
         guard let prepared else { return }
         self.prepared = nil
+        prepared.liveTranscriptionRuntime?.finish()
         prepared.warmup.cancel()
         await prepared.microphone.stop()
     }
@@ -421,13 +564,14 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
 }
 
 private actor AppStartRecordingSession: StartRecordingSession {
-    typealias TranscriberLoader = @MainActor @Sendable () async throws -> any TranscriptionEngine
+    typealias TranscriberLoader = LiveTranscriptionAttacher.Loader
 
     private let recordingSession: RecordingSession
     private let microphone: MicrophoneSource
     private let sources: [any AudioCaptureSource]
-    private let initialTranscriber: (any TranscriptionEngine)?
+    private var initialLiveTranscriptionRuntime: LiveTranscriptionRuntime?
     private let transcriberLoader: TranscriberLoader
+    private let telemetry: ResourceWorkloadTelemetry
     private let voiceprintTask: Task<Voiceprint?, Never>
     private var liveAttacher: LiveTranscriptionAttacher?
     private var stoppedCapture: StopRecordingCapture?
@@ -436,19 +580,23 @@ private actor AppStartRecordingSession: StartRecordingSession {
         outputDirectory: URL,
         microphone: MicrophoneSource,
         sources: [any AudioCaptureSource],
-        transcriber: (any TranscriptionEngine)?,
+        liveTranscriptionRuntime: LiveTranscriptionRuntime?,
         transcriberLoader: @escaping TranscriberLoader,
+        telemetry: ResourceWorkloadTelemetry,
         voiceprintTask: Task<Voiceprint?, Never>
     ) {
         recordingSession = RecordingSession(outputDirectory: outputDirectory)
         self.microphone = microphone
         self.sources = sources
-        initialTranscriber = transcriber
+        initialLiveTranscriptionRuntime = liveTranscriptionRuntime
         self.transcriberLoader = transcriberLoader
+        self.telemetry = telemetry
         self.voiceprintTask = voiceprintTask
     }
 
     func start(_ request: StartRecordingCaptureRequest) async throws {
+        let initialRuntime = initialLiveTranscriptionRuntime
+        initialLiveTranscriptionRuntime = nil
         let attacher = LiveTranscriptionAttacher(
             channels: sources.map(\.channel),
             hints: TranscriptionHints(
@@ -456,20 +604,22 @@ private actor AppStartRecordingSession: StartRecordingSession {
                 vocabulary: request.vocabulary,
                 meetingID: request.meetingID),
             callbacks: request.callbacks,
-            initialTranscriberAvailable: initialTranscriber != nil)
+            initialRuntime: initialRuntime,
+            telemetry: telemetry)
         liveAttacher = attacher
         let liveFeeds = attacher.feeds
         let chunk = request.callbacks.chunk
+        let level = request.callbacks.level
         do {
             try await recordingSession.start(sources: sources) { audio in
                 liveFeeds.yield(audio)
                 chunk(audio)
+            } onLevel: { sample in
+                level(sample)
             } onHealthEvent: { event in
                 request.callbacks.health(event)
             }
-            await attacher.recordingDidStart(
-                initialTranscriber: initialTranscriber,
-                loader: transcriberLoader)
+            await attacher.recordingDidStart(loader: transcriberLoader)
         } catch {
             _ = await finishLiveStreams()
             throw error
@@ -506,7 +656,12 @@ private actor AppStartRecordingSession: StartRecordingSession {
     }
 
     private func finishLiveStreams() async -> Bool {
-        guard let liveAttacher else { return initialTranscriber == nil }
+        guard let liveAttacher else {
+            let runtime = initialLiveTranscriptionRuntime
+            initialLiveTranscriptionRuntime = nil
+            await runtime?.finish()
+            return runtime == nil
+        }
         self.liveAttacher = nil
         return await liveAttacher.finish()
     }

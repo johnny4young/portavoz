@@ -17,14 +17,26 @@ public enum TranscriptFormatter {
 
     /// Character budget per map-phase chunk for the on-device model. Its
     /// context window is 4096 tokens *including* instructions and output;
-    /// 6000 chars overflowed it in practice (meeting text runs ~2.5–3
-    /// chars/token, and notes output shares the window).
-    public static let onDeviceChunkBudget = 4500
+    /// 6,000 and later 4,500 chars overflowed it in practice as OS-owned
+    /// instructions/tokenization evolved; notes output also shares the
+    /// window. Four thousand chars keeps the 250-token result at a bounded
+    /// 4× compression target while reserving model-call headroom.
+    public static let onDeviceChunkBudget = 4000
 
     /// Material cap for the final structured pass, tighter than the map
     /// budget: guided generation adds the response schema to the prompt
     /// and the structured output itself needs headroom.
     public static let onDeviceReduceBudget = 3000
+
+    /// Finite floor for retrying a map chunk after the framework reports a
+    /// context overflow. A failure at this size propagates instead of looping.
+    public static let onDeviceRetryFloor = 500
+
+    public static func nextOnDeviceRetryBudget(for characterCount: Int) -> Int? {
+        guard characterCount > onDeviceRetryFloor else { return nil }
+        let budget = max(onDeviceRetryFloor, characterCount / 2)
+        return budget < characterCount ? budget : nil
+    }
 
     /// `[mm:ss] Label: text` — labels come from the attribution pass;
     /// unattributed segments show the channel instead ("system?").
@@ -87,15 +99,40 @@ public enum TranscriptFormatter {
     }
 
     /// Splits transcript text into chunks of at most `budget` characters,
-    /// cutting only at line boundaries (a segment never straddles chunks).
+    /// keeping line boundaries whenever the utterance itself fits. A single
+    /// oversized utterance is split at Character boundaries instead of being
+    /// allowed to exceed the model window. Nonpositive inputs use a
+    /// one-character preservation floor rather than dropping material.
     public static func chunk(_ transcript: String, budget: Int) -> [String] {
-        guard transcript.count > budget else {
+        let effectiveBudget = max(1, budget)
+        guard transcript.count > effectiveBudget else {
             return transcript.isEmpty ? [] : [transcript]
         }
         var chunks: [String] = []
         var current = ""
         for line in transcript.split(separator: "\n", omittingEmptySubsequences: true) {
-            if !current.isEmpty, current.count + line.count + 1 > budget {
+            if line.count > effectiveBudget {
+                if !current.isEmpty {
+                    chunks.append(current)
+                    current = ""
+                }
+                var start = line.startIndex
+                while start < line.endIndex {
+                    let end = line.index(
+                        start,
+                        offsetBy: effectiveBudget,
+                        limitedBy: line.endIndex) ?? line.endIndex
+                    let slice = String(line[start..<end])
+                    if end == line.endIndex {
+                        current = slice
+                    } else {
+                        chunks.append(slice)
+                    }
+                    start = end
+                }
+                continue
+            }
+            if !current.isEmpty, current.count + line.count + 1 > effectiveBudget {
                 chunks.append(current)
                 current = ""
             }

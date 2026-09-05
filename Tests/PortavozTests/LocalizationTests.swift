@@ -12,6 +12,24 @@ final class LocalizationTests: XCTestCase {
         "Resources/Localization/Portavoz/InfoPlist.xcstrings"
     ]
 
+    func testCatalogKeysAreUniqueOnDisk() throws {
+        for path in Self.catalogPaths {
+            let raw = try String(
+                contentsOf: Self.repoRoot.appendingPathComponent(path),
+                encoding: .utf8)
+            let keyLines = raw.split(separator: "\n").filter {
+                $0.hasPrefix("    \"") && $0.hasSuffix("\": {")
+            }
+            let duplicates = Dictionary(grouping: keyLines, by: String.init)
+                .filter { $0.value.count > 1 }
+                .keys
+                .sorted()
+            XCTAssertTrue(
+                duplicates.isEmpty,
+                "\(path) has duplicate keys: \(duplicates.joined(separator: ", "))")
+        }
+    }
+
     func testEveryCatalogKeyHasSpanishTranslation() throws {
         for catalog in try Self.loadCatalogs() {
             XCTAssertFalse(catalog.strings.isEmpty, "\(catalog.path) must not be empty")
@@ -127,6 +145,12 @@ final class LocalizationTests: XCTestCase {
         XCTAssertEqual(
             spanishInfo["NSMicrophoneUsageDescription"],
             "Portavoz graba tu micrófono para transcribir tus intervenciones en la reunión. El audio nunca sale de tu Mac.")
+        XCTAssertEqual(
+            englishInfo["NSRemindersFullAccessUsageDescription"],
+            "Portavoz creates a reminder only after you preview and confirm it. Nothing leaves your Mac.")
+        XCTAssertEqual(
+            spanishInfo["NSRemindersFullAccessUsageDescription"],
+            "Portavoz crea un recordatorio solo después de que lo revises y confirmes. Nada sale de tu Mac.")
         XCTAssertEqual(spanishInfo["CFBundleDisplayName"], "Portavoz")
         XCTAssertNil(
             spanishInfo["Portavoz records your microphone to transcribe your side of the meeting. Audio never leaves your Mac."],

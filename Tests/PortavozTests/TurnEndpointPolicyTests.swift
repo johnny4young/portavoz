@@ -35,8 +35,8 @@ final class TurnEndpointPolicyTests: XCTestCase {
             ownerName: nil))
     }
 
-    func testPlainStatementsAreNotCandidates() {
-        XCTAssertFalse(TurnEndpointPolicy.isTurnEndCandidate(
+    func testPlainStatementsReachTheCalibratedClassifier() {
+        XCTAssertTrue(TurnEndpointPolicy.isTurnEndCandidate(
             channel: .system,
             text: "El rollout quedó agendado para el viernes.",
             confidence: 0.9,
@@ -51,7 +51,7 @@ final class TurnEndpointPolicyTests: XCTestCase {
             text: "Johnny, cuéntanos del despliegue de la semana pasada.",
             confidence: 0.9,
             ownerName: "Johnny Young"))
-        XCTAssertFalse(TurnEndpointPolicy.isTurnEndCandidate(
+        XCTAssertTrue(TurnEndpointPolicy.isTurnEndCandidate(
             channel: .system,
             text: "Cuéntanos del despliegue de la semana pasada.",
             confidence: 0.9,

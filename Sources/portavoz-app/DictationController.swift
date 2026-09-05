@@ -250,7 +250,11 @@ final class DictationController {
         var localFeed: AsyncStream<AudioChunk>.Continuation?
         var pump: Task<Void, Never>?
         do {
-            let engine = try await services.loadTranscriberIfNeeded()
+            let runtime = try await services.acquireLiveSpeechRuntime()
+            defer {
+                _ = services.finishLiveSpeechRuntime(runtime)
+                services.scheduleRecordingEnginesRelease()
+            }
             try Task.checkCancellation()
             guard activeSessionID == id else { return }
             self.microphone = microphone
@@ -265,25 +269,22 @@ final class DictationController {
             }
             captureStartedAt = Date()
 
-            let (audio, feed) = AsyncStream.makeStream(of: AudioChunk.self)
+            // Bounded like every other live audio handoff (the recording lane
+            // uses the same 128-buffer window). The pump never suspends on the
+            // consumer, so an unbounded stream lets a stalled engine grow the
+            // backlog for as long as dictation runs; dropping the oldest audio
+            // is the same trade live transcription already makes.
+            let (audio, feed) = AsyncStream.makeStream(
+                of: AudioChunk.self,
+                bufferingPolicy: .bufferingNewest(128))
             localFeed = feed
             self.feed = feed
             pump = makeAudioPump(stream: micStream, feed: feed, sessionID: id)
 
-            let vocabulary = VocabularyPrompt.parse(
-                UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
-            // Language stays constrained to the two dictation languages: any
-            // stored value outside {es, en} means auto-detect.
-            let languageSetting = UserDefaults.standard.string(
-                forKey: Self.languageKey)
-            let hints = TranscriptionHints(
-                language: ["es", "en"].contains(languageSetting)
-                    ? languageSetting : nil,
-                vocabulary: vocabulary,
-                meetingID: MeetingID())
+            let hints = transcriptionHints()
             var captions: [TranscriptSegment] = []
             let coalescer = CaptionCoalescer()
-            for try await segment in engine.transcribe(audio, hints: hints) {
+            for try await segment in runtime.engine.transcribe(audio, hints: hints) {
                 try Task.checkCancellation()
                 guard activeSessionID == id else { throw CancellationError() }
                 coalescer.apply(segment, to: &captions)
@@ -310,6 +311,18 @@ final class DictationController {
             failSession(id: id, message: L10n.format(
                 "Dictation failed: %@", error.localizedDescription))
         }
+    }
+
+    private func transcriptionHints() -> TranscriptionHints {
+        let vocabulary = VocabularyPrompt.parse(
+            UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
+        // Language stays constrained to the two dictation languages: any
+        // stored value outside {es, en} means auto-detect.
+        let languageSetting = UserDefaults.standard.string(forKey: Self.languageKey)
+        return TranscriptionHints(
+            language: ["es", "en"].contains(languageSetting) ? languageSetting : nil,
+            vocabulary: vocabulary,
+            meetingID: MeetingID())
     }
 
     private func makeAudioPump(

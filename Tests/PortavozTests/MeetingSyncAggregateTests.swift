@@ -63,7 +63,8 @@ final class MeetingSyncAggregateTests: XCTestCase {
         XCTAssertEqual(MeetingSyncEnvelopeCodec.sha256(encoded).count, 64)
         let json = String(decoding: encoded, as: UTF8.self)
         for forbidden in [
-            "Audio/local-only", "personID", "embedding", "generationRunID",
+            "Audio/local-only", "personID", "embedding",
+            "embeddingFingerprint", "generationRunID",
         ] {
             XCTAssertFalse(json.contains(forbidden), "sync envelope leaked \(forbidden)")
         }
@@ -157,9 +158,163 @@ final class MeetingSyncAggregateTests: XCTestCase {
         XCTAssertEqual(stored.0.audioDirectory, "Audio/on-this-device")
         XCTAssertNotNil(stored.1.personID)
         XCTAssertEqual(stored.2.embedding, Data([1, 2, 3, 4]))
+        XCTAssertEqual(stored.2.embeddingFingerprint, "local-semantic-profile")
         XCTAssertEqual(try stored.0.meeting.title, "Portable — refreshed")
         let pending = try await destination.pendingMeetingSyncChanges()
         XCTAssertTrue(pending.isEmpty)
+    }
+
+    func testCorrectionHistoryRoundTripsAndTombstoneConverges() async throws {
+        let source = try MeetingStore.inMemory()
+        let seed = try await seedMeeting(in: source)
+        let correction = correctionEvent(
+            id: "00000000-0000-4000-9000-000000000101",
+            seed: seed,
+            kind: .replaceText(text: "Hola corregida", language: "es"))
+        _ = try await source.appendTranscriptCorrection(correction)
+        let destination = try MeetingStore.inMemory()
+
+        let firstEnvelope = try await latestEnvelope(in: source)
+        guard case .upsert(let firstAggregate) = firstEnvelope.mutation else {
+            return XCTFail("Expected a live aggregate")
+        }
+        XCTAssertEqual(firstAggregate.formatVersion, 2)
+        XCTAssertEqual(firstAggregate.transcriptCorrections, [correction])
+        let firstResult = try await destination.applyRemoteMeetingSyncEnvelope(
+            firstEnvelope)
+        XCTAssertEqual(firstResult, .applied)
+        var destinationHistory = try await destination.transcriptCorrectionHistory(
+            for: seed.meeting.id)
+        XCTAssertEqual(destinationHistory, [correction])
+        var destinationPending = try await destination.pendingMeetingSyncChanges()
+        XCTAssertTrue(destinationPending.isEmpty)
+
+        let tombstone = try await source.tombstoneTranscriptCorrection(
+            correction.id,
+            meetingID: seed.meeting.id,
+            at: correction.createdAt.addingTimeInterval(100))
+        let tombstoneEnvelope = try await latestEnvelope(in: source)
+        let tombstoneResult = try await destination.applyRemoteMeetingSyncEnvelope(
+            tombstoneEnvelope)
+        XCTAssertEqual(tombstoneResult, .applied)
+        destinationHistory = try await destination.transcriptCorrectionHistory(
+            for: seed.meeting.id)
+        XCTAssertEqual(destinationHistory, [tombstone])
+        destinationPending = try await destination.pendingMeetingSyncChanges()
+        XCTAssertTrue(destinationPending.isEmpty)
+    }
+
+    func testCorrectionHistoryCodecRejectsNoncanonicalOrder() async throws {
+        let source = try MeetingStore.inMemory()
+        let seed = try await seedMeeting(in: source)
+        let first = correctionEvent(
+            id: "00000000-0000-4000-9000-000000000111",
+            seed: seed,
+            kind: .suppress)
+        let second = TranscriptCorrectionEvent(
+            id: UUID(uuidString: "00000000-0000-4000-9000-000000000112")!,
+            meetingID: seed.meeting.id,
+            baseTranscriptRevision: seed.meeting.transcriptRevision,
+            targetSegmentIDs: [seed.segments[1].id],
+            kind: .suppress,
+            sourceDeviceID: deviceID,
+            createdAt: first.createdAt.addingTimeInterval(1))
+        _ = try await source.appendTranscriptCorrection(first)
+        _ = try await source.appendTranscriptCorrection(second)
+        let envelope = try await latestEnvelope(in: source)
+
+        var root = try XCTUnwrap(
+            JSONSerialization.jsonObject(
+                with: MeetingSyncEnvelopeCodec.encode(envelope)) as? [String: Any])
+        var mutation = try XCTUnwrap(root["mutation"] as? [String: Any])
+        var upsert = try XCTUnwrap(mutation["upsert"] as? [String: Any])
+        var aggregate = try XCTUnwrap(upsert["_0"] as? [String: Any])
+        aggregate["transcriptCorrections"] = Array(
+            try XCTUnwrap(
+                aggregate["transcriptCorrections"] as? [[String: Any]])
+                .reversed())
+        upsert["_0"] = aggregate
+        mutation["upsert"] = upsert
+        root["mutation"] = mutation
+
+        XCTAssertThrowsError(try MeetingSyncEnvelopeCodec.decode(
+            JSONSerialization.data(withJSONObject: root, options: [.sortedKeys])))
+    }
+
+    func testLegacyAggregateReplayDoesNotEraseLocalCorrectionHistory() async throws {
+        let source = try MeetingStore.inMemory()
+        let seed = try await seedMeeting(in: source)
+        let correction = correctionEvent(
+            id: "00000000-0000-4000-9000-000000000102",
+            seed: seed,
+            kind: .suppress)
+        _ = try await source.appendTranscriptCorrection(correction)
+        let destination = try MeetingStore.inMemory()
+        let currentEnvelope = try await latestEnvelope(in: source)
+        _ = try await destination.applyRemoteMeetingSyncEnvelope(currentEnvelope)
+
+        let legacyEnvelope = try legacyAggregateEnvelope(from: currentEnvelope)
+        guard case .upsert(let legacyAggregate) = legacyEnvelope.mutation else {
+            return XCTFail("Expected a live aggregate")
+        }
+        XCTAssertEqual(legacyAggregate.formatVersion, 1)
+        XCTAssertTrue(legacyAggregate.transcriptCorrections.isEmpty)
+        let legacyResult = try await destination.applyRemoteMeetingSyncEnvelope(
+            legacyEnvelope)
+        XCTAssertEqual(legacyResult, .applied)
+
+        let history = try await destination.transcriptCorrectionHistory(
+            for: seed.meeting.id)
+        XCTAssertEqual(history, [correction])
+        let destinationPending = try await destination.pendingMeetingSyncChanges()
+        XCTAssertTrue(destinationPending.isEmpty)
+    }
+
+    func testRemoteCorrectionIdentityRewriteRollsBackAggregate() async throws {
+        let source = try MeetingStore.inMemory()
+        let seed = try await seedMeeting(in: source)
+        let correction = correctionEvent(
+            id: "00000000-0000-4000-9000-000000000103",
+            seed: seed,
+            kind: .replaceText(text: "Original", language: "en"))
+        _ = try await source.appendTranscriptCorrection(correction)
+        let destination = try MeetingStore.inMemory()
+        let envelope = try await latestEnvelope(in: source)
+        _ = try await destination.applyRemoteMeetingSyncEnvelope(envelope)
+        guard case .upsert(let aggregate) = envelope.mutation else {
+            return XCTFail("Expected a live aggregate")
+        }
+        let rewritten = TranscriptCorrectionEvent(
+            id: correction.id,
+            meetingID: correction.meetingID,
+            baseTranscriptRevision: correction.baseTranscriptRevision,
+            targetSegmentIDs: correction.targetSegmentIDs,
+            kind: .replaceText(text: "Rewritten", language: "en"),
+            sourceDeviceID: correction.sourceDeviceID,
+            createdAt: correction.createdAt)
+        let rewrittenAggregate = MeetingSyncAggregate(
+            meeting: aggregate.meeting,
+            speakers: aggregate.speakers,
+            segments: aggregate.segments,
+            summaries: aggregate.summaries,
+            contextItems: aggregate.contextItems,
+            companionCards: aggregate.companionCards,
+            transcriptCorrections: [rewritten])
+        let rewrittenEnvelope = MeetingSyncEnvelope(
+            meetingID: envelope.meetingID,
+            sourceDeviceID: envelope.sourceDeviceID,
+            generation: envelope.generation + 1,
+            changedAt: envelope.changedAt.addingTimeInterval(1),
+            mutation: .upsert(rewrittenAggregate))
+
+        await XCTAssertMeetingSyncThrowsAsync {
+            _ = try await destination.applyRemoteMeetingSyncEnvelope(rewrittenEnvelope)
+        }
+        let history = try await destination.transcriptCorrectionHistory(
+            for: seed.meeting.id)
+        XCTAssertEqual(history, [correction])
+        let detail = try await destination.detail(seed.meeting.id)
+        XCTAssertEqual(detail?.meeting.title, seed.meeting.title)
     }
 
     func testLiveRemoteChangeWaitsBehindPendingLocalGeneration() async throws {
@@ -185,6 +340,187 @@ final class MeetingSyncAggregateTests: XCTestCase {
         let remaining = try await destination.pendingMeetingSyncChanges()
         XCTAssertEqual(detail?.meeting.title, "Local edit")
         XCTAssertEqual(remaining.first?.generation, pending.generation)
+    }
+
+    func testPendingLocalMeetingUnionsCompatibleRemoteCorrectionLane() async throws {
+        let source = try MeetingStore.inMemory()
+        let seed = try await seedMeeting(in: source)
+        let destination = try MeetingStore.inMemory()
+        _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
+
+        let localSpeaker = TranscriptCorrectionEvent(
+            id: UUID(uuidString: "00000000-0000-4000-9000-000000000121")!,
+            meetingID: seed.meeting.id,
+            baseTranscriptRevision: seed.meeting.transcriptRevision,
+            targetSegmentIDs: [seed.segments[0].id],
+            kind: .changeSpeaker(seed.speaker.id),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_784_300_210))
+        _ = try await destination.appendTranscriptCorrection(localSpeaker)
+        let pendingBeforeCandidate = try await destination.pendingMeetingSyncChange(
+            for: seed.meeting.id)
+        let pendingBefore = try XCTUnwrap(pendingBeforeCandidate)
+
+        let remoteText = correctionEvent(
+            id: "00000000-0000-4000-9000-000000000122",
+            seed: seed,
+            kind: .replaceText(text: "Hola corregida", language: "es"))
+        _ = try await source.appendTranscriptCorrection(remoteText)
+
+        let result = try await destination.applyRemoteMeetingSyncEnvelope(
+            latestEnvelope(in: source))
+        guard case .localChangePending(let mergedGeneration) = result else {
+            return XCTFail("expected compatible local-wins merge, got \(result)")
+        }
+        XCTAssertGreaterThan(mergedGeneration, pendingBefore.generation)
+        let history = try await destination.transcriptCorrectionHistory(
+            for: seed.meeting.id)
+        XCTAssertEqual(
+            Set(history.map(\.id)),
+            Set([localSpeaker.id, remoteText.id]))
+        let pendingAfter = try await destination.pendingMeetingSyncChange(
+            for: seed.meeting.id)
+        XCTAssertEqual(pendingAfter?.generation, mergedGeneration)
+    }
+
+    func testPendingLocalMeetingBlocksCompetingRemoteCorrectionLane() async throws {
+        let source = try MeetingStore.inMemory()
+        let seed = try await seedMeeting(in: source)
+        let destination = try MeetingStore.inMemory()
+        _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
+
+        let localText = TranscriptCorrectionEvent(
+            id: UUID(uuidString: "00000000-0000-4000-9000-000000000123")!,
+            meetingID: seed.meeting.id,
+            baseTranscriptRevision: seed.meeting.transcriptRevision,
+            targetSegmentIDs: [seed.segments[0].id],
+            kind: .replaceText(text: "Texto local", language: "es"),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_784_300_210))
+        _ = try await destination.appendTranscriptCorrection(localText)
+        let pendingCandidate = try await destination.pendingMeetingSyncChange(
+            for: seed.meeting.id)
+        let pending = try XCTUnwrap(pendingCandidate)
+
+        let remoteText = correctionEvent(
+            id: "00000000-0000-4000-9000-000000000124",
+            seed: seed,
+            kind: .replaceText(text: "Texto remoto", language: "es"))
+        _ = try await source.appendTranscriptCorrection(remoteText)
+
+        let result = try await destination.applyRemoteMeetingSyncEnvelope(
+            latestEnvelope(in: source))
+
+        XCTAssertEqual(
+            result,
+            .correctionConflict(localGeneration: pending.generation))
+        let history = try await destination.transcriptCorrectionHistory(
+            for: seed.meeting.id)
+        XCTAssertEqual(history, [localText])
+        let pendingAfter = try await destination.pendingMeetingSyncChange(
+            for: seed.meeting.id)
+        XCTAssertEqual(pendingAfter, pending)
+    }
+
+    func testPendingRemoteCorrectionStorageFailureIsNotReportedAsUserConflict() async throws {
+        let source = try MeetingStore.inMemory()
+        let seed = try await seedMeeting(in: source)
+        let destination = try MeetingStore.inMemory()
+        _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
+
+        let localSpeaker = TranscriptCorrectionEvent(
+            id: UUID(uuidString: "00000000-0000-4000-9000-000000000127")!,
+            meetingID: seed.meeting.id,
+            baseTranscriptRevision: seed.meeting.transcriptRevision,
+            targetSegmentIDs: [seed.segments[0].id],
+            kind: .changeSpeaker(seed.speaker.id),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_784_300_210))
+        _ = try await destination.appendTranscriptCorrection(localSpeaker)
+        let pendingCandidate = try await destination.pendingMeetingSyncChange(
+            for: seed.meeting.id)
+        let pending = try XCTUnwrap(pendingCandidate)
+
+        let sourceEnvelope = try await latestEnvelope(in: source)
+        guard case .upsert(let aggregate) = sourceEnvelope.mutation else {
+            return XCTFail("Expected a live aggregate")
+        }
+        let invalidRemote = TranscriptCorrectionEvent(
+            id: UUID(uuidString: "00000000-0000-4000-9000-000000000128")!,
+            meetingID: seed.meeting.id,
+            baseTranscriptRevision: seed.meeting.transcriptRevision,
+            targetSegmentIDs: [UUID()],
+            kind: .replaceText(text: "Invalid target", language: "en"),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_784_300_220))
+        let invalidAggregate = MeetingSyncAggregate(
+            meeting: aggregate.meeting,
+            speakers: aggregate.speakers,
+            segments: aggregate.segments,
+            summaries: aggregate.summaries,
+            contextItems: aggregate.contextItems,
+            companionCards: aggregate.companionCards,
+            transcriptCorrections: [invalidRemote])
+        let invalidEnvelope = MeetingSyncEnvelope(
+            meetingID: sourceEnvelope.meetingID,
+            sourceDeviceID: sourceEnvelope.sourceDeviceID,
+            generation: sourceEnvelope.generation + 1,
+            changedAt: sourceEnvelope.changedAt.addingTimeInterval(1),
+            mutation: .upsert(invalidAggregate))
+
+        await XCTAssertMeetingSyncThrowsAsync {
+            _ = try await destination.applyRemoteMeetingSyncEnvelope(invalidEnvelope)
+        }
+        let history = try await destination.transcriptCorrectionHistory(
+            for: seed.meeting.id)
+        XCTAssertEqual(history, [localSpeaker])
+        let pendingAfter = try await destination.pendingMeetingSyncChange(
+            for: seed.meeting.id)
+        XCTAssertEqual(pendingAfter, pending)
+    }
+
+    func testPendingCorrectionRejectsRemoteHistoryFromDifferentAcceptedBase() async throws {
+        let source = try MeetingStore.inMemory()
+        let seed = try await seedMeeting(in: source)
+        let destination = try MeetingStore.inMemory()
+        _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
+
+        let localSpeaker = TranscriptCorrectionEvent(
+            id: UUID(uuidString: "00000000-0000-4000-9000-000000000125")!,
+            meetingID: seed.meeting.id,
+            baseTranscriptRevision: seed.meeting.transcriptRevision,
+            targetSegmentIDs: [seed.segments[0].id],
+            kind: .changeSpeaker(seed.speaker.id),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_784_300_210))
+        _ = try await destination.appendTranscriptCorrection(localSpeaker)
+        let pendingCandidate = try await destination.pendingMeetingSyncChange(
+            for: seed.meeting.id)
+        let pending = try XCTUnwrap(pendingCandidate)
+
+        var divergentBase = seed.segments[0]
+        divergentBase.text = "Different accepted text"
+        try await source.save([divergentBase])
+        let remoteText = correctionEvent(
+            id: "00000000-0000-4000-9000-000000000126",
+            seed: seed,
+            kind: .replaceText(text: "Remote correction", language: "en"))
+        _ = try await source.appendTranscriptCorrection(remoteText)
+
+        let result = try await destination.applyRemoteMeetingSyncEnvelope(
+            latestEnvelope(in: source))
+
+        XCTAssertEqual(
+            result,
+            .correctionConflict(localGeneration: pending.generation))
+        let history = try await destination.transcriptCorrectionHistory(
+            for: seed.meeting.id)
+        XCTAssertEqual(history, [localSpeaker])
+        let detail = try await destination.detail(seed.meeting.id)
+        XCTAssertEqual(detail?.segments[0].text, seed.segments[0].text)
+        let pendingAfter = try await destination.pendingMeetingSyncChange(
+            for: seed.meeting.id)
+        XCTAssertEqual(pendingAfter, pending)
     }
 
     func testRemoteDeletionWinsPendingLocalEditAndLeavesRecoverableTombstone() async throws {
@@ -424,6 +760,39 @@ final class MeetingSyncAggregateTests: XCTestCase {
         return Seed(meeting: meeting, speaker: speaker, segments: segments)
     }
 
+    private func correctionEvent(
+        id: String,
+        seed: Seed,
+        kind: TranscriptCorrectionKind
+    ) -> TranscriptCorrectionEvent {
+        TranscriptCorrectionEvent(
+            id: UUID(uuidString: id)!,
+            meetingID: seed.meeting.id,
+            baseTranscriptRevision: seed.meeting.transcriptRevision,
+            targetSegmentIDs: [seed.segments[0].id],
+            kind: kind,
+            sourceDeviceID: deviceID,
+            createdAt: Date(timeIntervalSince1970: 1_784_300_200))
+    }
+
+    private func legacyAggregateEnvelope(
+        from envelope: MeetingSyncEnvelope
+    ) throws -> MeetingSyncEnvelope {
+        var root = try XCTUnwrap(
+            JSONSerialization.jsonObject(
+                with: MeetingSyncEnvelopeCodec.encode(envelope)) as? [String: Any])
+        var mutation = try XCTUnwrap(root["mutation"] as? [String: Any])
+        var upsert = try XCTUnwrap(mutation["upsert"] as? [String: Any])
+        var aggregate = try XCTUnwrap(upsert["_0"] as? [String: Any])
+        aggregate["formatVersion"] = 1
+        aggregate.removeValue(forKey: "transcriptCorrections")
+        upsert["_0"] = aggregate
+        mutation["upsert"] = upsert
+        root["mutation"] = mutation
+        return try MeetingSyncEnvelopeCodec.decode(
+            JSONSerialization.data(withJSONObject: root, options: [.sortedKeys]))
+    }
+
     private func latestEnvelope(in store: MeetingStore) async throws -> MeetingSyncEnvelope {
         let pending = try await store.pendingMeetingSyncChanges()
         let change = try XCTUnwrap(pending.first)
@@ -451,8 +820,16 @@ final class MeetingSyncAggregateTests: XCTestCase {
                 sql: "UPDATE speaker SET personID = ? WHERE id = ?",
                 arguments: [person.id.rawValue.uuidString, speakerID.rawValue.uuidString])
             try db.execute(
-                sql: "UPDATE segment SET embedding = ? WHERE id = ?",
-                arguments: [Data([1, 2, 3, 4]), segmentID.uuidString])
+                sql: """
+                    UPDATE segment
+                    SET embedding = ?, embeddingFingerprint = ?
+                    WHERE id = ?
+                    """,
+                arguments: [
+                    Data([1, 2, 3, 4]),
+                    "local-semantic-profile",
+                    segmentID.uuidString,
+                ])
         }
     }
 }

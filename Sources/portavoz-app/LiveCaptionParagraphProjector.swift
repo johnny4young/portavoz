@@ -10,6 +10,10 @@ import PortavozCore
 /// SwiftUI diffing. Generic `Them` rows are never grouped because two
 /// back-to-back people may still be waiting for a live diarization label.
 enum LiveCaptionParagraphProjector {
+    /// Presentation stays bounded independently of the authoritative caption
+    /// history retained by RecordingController for Stop and recovery.
+    static let maximumSourceRows = 150
+
     struct Projection {
         let segments: [TranscriptSegment]
         let translations: [UUID: String]
@@ -26,7 +30,7 @@ enum LiveCaptionParagraphProjector {
         var sourceIDsByParagraph: [[UUID]] = []
         var voiceKeys: [String?] = []
 
-        for caption in captions {
+        for caption in captions.suffix(Self.maximumSourceRows) {
             let voiceKey = voiceKey(for: caption, labels: liveSpeakerLabels)
             if let index = projected.indices.last,
                 let voiceKey,

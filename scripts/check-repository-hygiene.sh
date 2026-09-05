@@ -21,15 +21,21 @@ if [[ -n "$tracked_ignored" ]]; then
   failures=1
 fi
 
-# Ticket keys belong in GitHub, not production/test/tooling identifiers or
-# comments. Durable public architecture references such as D116 and Band 6 are
-# intentionally not ticket keys and remain valid project documentation.
+# Ticket keys and local execution-band identifiers belong in private planning,
+# not tracked repository files. Durable public architecture references such as
+# D116 and Band 6 are intentionally not ticket keys and remain valid project
+# documentation.
+private_ref_pattern='(^|[^[:alnum:]_])(ENG|JIRA|TICKET|TASK|STORY|EPIC|SPIKE|PORTAVOZ|PV|APT|APUN)-[0-9]{1,6}([^[:alnum:]_]|$)'
+if ! printf 'APT-%s\nAPUN-%s\n' 7 5 | grep -Eq "$private_ref_pattern"; then
+  echo "Internal-reference pattern does not recognize local execution bands." >&2
+  failures=1
+fi
 ticket_refs="$(
-  git grep -nEI '\b(ENG|JIRA|TICKET|TASK|STORY|EPIC|SPIKE|PORTAVOZ|PV)-[0-9]{1,6}\b' -- \
-    Sources Tests scripts .github Makefile project.yml 2>/dev/null || true
+  git grep -nEI "$private_ref_pattern" -- \
+    . 2>/dev/null || true
 )"
 if [[ -n "$ticket_refs" ]]; then
-  echo "Internal ticket references found in tracked implementation files:" >&2
+  echo "Internal ticket references found in tracked repository files:" >&2
   echo "$ticket_refs" >&2
   failures=1
 fi
@@ -63,6 +69,7 @@ ignore_probes=(
   HANDOFF.md
   reports/local-audit.md
   scratch/notes.md
+  private-evidence/commitment-link/private-pack.json
   artifacts/ui/result.txt
   screenshots/local-smoke.png
   test-results/run.json
@@ -77,8 +84,98 @@ for probe in "${ignore_probes[@]}"; do
 done
 
 python3 scripts/ui_test_scope.py --validate-catalog
+python3 -m unittest Tests.Tooling.test_collect_field_evidence
+python3 -m unittest Tests.Tooling.test_release_reliability
+python3 -m unittest Tests.Tooling.test_make_release
+python3 -m unittest Tests.Tooling.test_candidate_automation
+python3 -m unittest Tests.Tooling.test_perf_binary
+python3 -m unittest Tests.Tooling.test_perf_host_readiness
+python3 -m unittest Tests.Tooling.test_apuntador_leak_baseline
+python3 -m unittest Tests.Tooling.test_benchmark_watchdog
+python3 -m unittest Tests.Tooling.test_source_integration_qualification
+python3 -m unittest Tests.Tooling.test_verify_cloudkit_capabilities
+python3 -m unittest Tests.Tooling.test_production_sync_qualification
+python3 -m unittest Tests.Tooling.test_production_sync_qualification_packaging
+python3 -m unittest Tests.Tooling.test_assistive_technology_qualification
+python3 -m unittest Tests.Tooling.test_swift_test_failure_summary
+python3 -m unittest Tests.Tooling.test_ci_workflow
+python3 -m unittest Tests.Tooling.test_ios_portability
+python3 -m unittest Tests.Tooling.test_ui_test_ci_gate
+python3 -m unittest Tests.Tooling.test_ui_test_execution
+python3 -m unittest Tests.Tooling.test_ui_test_verified_base
+python3 -m unittest Tests.Tooling.test_ui_test_verification_anchor
+bash -n scripts/make-app.sh
+bash -n scripts/make-release.sh
+bash -n scripts/make-production-sync-qualification-app.sh
+bash -n scripts/verify-cloudkit-capabilities.sh
+bash -n scripts/run-release-reliability-gates.sh
+bash -n scripts/run-ui-tests.sh
+bash -n scripts/run-ci-swiftlint.sh
+bash -n scripts/install-ci-xcodegen.sh
+bash -n scripts/verify-ci-toolchain.sh
+bash -n scripts/check-ios-portability.sh
+bash -n scripts/run-resource-baseline.sh
+bash -n scripts/perf-binary.sh
+bash -n scripts/run-perf-ledger.sh
+bash -n scripts/run-scale-baseline.sh
+bash -n scripts/run-semantic-scale-baseline.sh
+bash -n scripts/run-spotlight-scale-baseline.sh
+bash -n scripts/run-resource-recording-baseline.sh
+bash -n scripts/run-live-assist-validation.sh
+bash -n scripts/run-apuntador-leak-baseline.sh
+bash -n scripts/run-exact-path-mutation-benchmark.sh
+bash -n scripts/run-exact-path-mutation-host-matrix.sh
+bash -n scripts/run-correction-composition-benchmark.sh
+bash -n scripts/run-commitment-radar-benchmark.sh
+python3 -m unittest Tests.Tooling.test_commitment_quality
+python3 scripts/commitment_quality.py validate \
+  --fixture Fixtures/CommitmentQuality/public-synthetic-v1.json
+python3 -m unittest Tests.Tooling.test_meeting_memory_graph_quality
+python3 -m unittest Tests.Tooling.test_meeting_memory_graph_query_receipt
+python3 scripts/meeting_memory_graph_quality.py verify-public \
+  --fixture Fixtures/MeetingMemoryGraph/public-synthetic-v1.json
+python3 -m unittest Tests.Tooling.test_commitment_link_quality
+python3 -m unittest Tests.Tooling.test_commitment_link_policy_review
+python3 scripts/commitment_link_quality.py validate \
+  --fixture Fixtures/CommitmentLinkQuality/public-synthetic-v1.json
+python3 -m unittest Tests.Tooling.test_resource_baseline
+python3 -m unittest Tests.Tooling.test_exact_path_matrix
+python3 -m unittest Tests.Tooling.test_exact_path_mutation_matrix
+python3 -m unittest Tests.Tooling.test_exact_path_mutation_cross_host
+python3 -m unittest Tests.Tooling.test_exact_path_mutation_baseline
+python3 -m unittest Tests.Tooling.test_exact_path_cross_host
+python3 -m unittest Tests.Tooling.test_exact_path_baseline
+python3 -m unittest Tests.Tooling.test_ask_quality
+python3 -m unittest Tests.Tooling.test_ask_quality_pair
+python3 -m unittest Tests.Tooling.test_ask_quality_attribution
+python3 -m unittest Tests.Tooling.test_retrieval_chunk_resource_fixture
+python3 -m unittest Tests.Tooling.test_retrieval_chunk_evidence
+python3 -m unittest Tests.Tooling.test_semantic_scale_manifest
+python3 scripts/ask_quality.py verify-public \
+  --fixture Fixtures/AskQuality/public-synthetic-v1.json
+python3 scripts/ask_quality.py verify-public \
+  --fixture Fixtures/AskQuality/public-synthetic-v2.json
+python3 scripts/retrieval_chunk_resource_fixture.py verify-public \
+  --fixture Fixtures/RetrievalChunkResource/public-bilingual-homogeneous-v1.json
+python3 -m unittest Tests.Tooling.test_apuntador_validation
+python3 -m unittest Tests.Tooling.test_apuntador_web_fixture
+python3 -m unittest Tests.Tooling.test_live_assist_validation
+python3 -m unittest Tests.Tooling.test_live_question_training
+python3 -m unittest Tests.Tooling.test_run_swift_tests
+python3 scripts/apuntador_validation.py verify-public \
+  --fixture Fixtures/ApuntadorValidation/public-bilingual-v1.json \
+  --budget docs/evidence/apuntador-validation-budget.json
+python3 scripts/apuntador_web_fixture.py verify-public \
+  --fixture Fixtures/ApuntadorWeb/public-local-v1.json
+python3 scripts/live_assist_validation.py verify-public \
+  --fixture Fixtures/LiveAssistValidation/public-bilingual-v1.json \
+  --budget docs/evidence/live-assist-validation-budget.json
 python3 -m unittest Tests.Tooling.test_ui_test_scope
+python3 -m unittest Tests.Tooling.test_ui_test_runtime
 python3 -m unittest Tests.Tooling.test_run_ui_tests
+python3 -m unittest Tests.Tooling.test_ui_test_host_preflight
+python3 -m unittest Tests.Tooling.test_meeting_detail_contract
+python3 -m unittest Tests.Tooling.test_meeting_detail_performance
 
 if [[ "$failures" -ne 0 ]]; then
   exit 1

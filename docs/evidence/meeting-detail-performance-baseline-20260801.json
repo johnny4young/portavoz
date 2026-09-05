@@ -1,0 +1,150 @@
+{
+  "generatedAt": "2026-08-01T16:26:08.467966Z",
+  "host": {
+    "architecture": "arm64",
+    "operatingSystem": "26.5.2",
+    "operatingSystemBuild": "25F84"
+  },
+  "limitations": [
+    "Xcode emitted no SwiftUI update rows for segment counts 5000, 20000; the baseline records tool unavailability and does not represent body invalidations as zero."
+  ],
+  "profiles": [
+    {
+      "animationHitches": {
+        "count": 0,
+        "maximumMilliseconds": 0,
+        "samplesMilliseconds": []
+      },
+      "bodyInvalidations": {
+        "status": "unavailable-toolchain",
+        "updateRowCount": 0,
+        "xctraceWarningPresent": true
+      },
+      "firstContent": {
+        "maximumMilliseconds": 111.253584,
+        "name": "Meeting Detail First Content",
+        "p50Milliseconds": 111.253584,
+        "p95Milliseconds": 111.253584,
+        "sampleCount": 1,
+        "samplesMilliseconds": [
+          111.253584
+        ]
+      },
+      "fixture": {
+        "audio": "synthetic-six-second-two-channel",
+        "durationMinutes": 120,
+        "segmentCount": 5000,
+        "speakerCount": 4,
+        "storage": "disposable-temp-store",
+        "summaryMutation": {
+          "afterSeconds": 3,
+          "capturedBy": [
+            "SwiftUI",
+            "Animation Hitches"
+          ],
+          "excludedFromInteractionTrace": true
+        }
+      },
+      "interaction": {
+        "maximumMilliseconds": 0.521208,
+        "name": "Meeting Detail Playback Seek",
+        "p50Milliseconds": 0.178041,
+        "p95Milliseconds": 0.521208,
+        "sampleCount": 5,
+        "samplesMilliseconds": [
+          0.0565,
+          0.521208,
+          0.155542,
+          0.178041,
+          0.324167
+        ]
+      },
+      "name": "five-thousand",
+      "responsiveness": {
+        "maximumPotentialHangMilliseconds": 0,
+        "potentialHangCount": 0,
+        "potentialHangThresholdMilliseconds": 250,
+        "potentialHangsMilliseconds": []
+      },
+      "timeProfiler": {
+        "meetingDetailViewSymbolsPresent": true,
+        "transcriptSegmentsViewSymbolsPresent": true
+      }
+    },
+    {
+      "animationHitches": {
+        "count": 0,
+        "maximumMilliseconds": 0,
+        "samplesMilliseconds": []
+      },
+      "bodyInvalidations": {
+        "status": "unavailable-toolchain",
+        "updateRowCount": 0,
+        "xctraceWarningPresent": true
+      },
+      "firstContent": {
+        "maximumMilliseconds": 197.346417,
+        "name": "Meeting Detail First Content",
+        "p50Milliseconds": 197.346417,
+        "p95Milliseconds": 197.346417,
+        "sampleCount": 1,
+        "samplesMilliseconds": [
+          197.346417
+        ]
+      },
+      "fixture": {
+        "audio": "none",
+        "durationMinutes": 120,
+        "segmentCount": 20000,
+        "speakerCount": 4,
+        "storage": "disposable-temp-store",
+        "summaryMutation": {
+          "afterSeconds": 3,
+          "capturedBy": [
+            "SwiftUI",
+            "Animation Hitches"
+          ],
+          "excludedFromInteractionTrace": true
+        }
+      },
+      "interaction": {
+        "maximumMilliseconds": 331.939875,
+        "name": "Meeting Detail Transcript Scroll",
+        "p50Milliseconds": 79.393375,
+        "p95Milliseconds": 331.939875,
+        "sampleCount": 5,
+        "samplesMilliseconds": [
+          331.939875,
+          12.538291,
+          79.393375,
+          10.6495,
+          139.250834
+        ]
+      },
+      "name": "twenty-thousand",
+      "responsiveness": {
+        "maximumPotentialHangMilliseconds": 0,
+        "potentialHangCount": 0,
+        "potentialHangThresholdMilliseconds": 250,
+        "potentialHangsMilliseconds": []
+      },
+      "timeProfiler": {
+        "meetingDetailViewSymbolsPresent": true,
+        "transcriptSegmentsViewSymbolsPresent": true
+      }
+    }
+  ],
+  "reproduction": {
+    "applicationKind": "installed-dev-bundle",
+    "releaseApplicationProtected": true,
+    "script": "scripts/run-detail-ui-baseline.sh",
+    "userLibraryAccess": "none"
+  },
+  "schemaVersion": 2,
+  "toolchain": {
+    "traceDurationSeconds": 10,
+    "xcode": "Xcode 26.6",
+    "xcodeBuild": "17F113",
+    "xctrace": "xctrace version 16.0 (17F113)"
+  }
+}

@@ -17,7 +17,7 @@ import GRDB
 /// sqlite-vec (embeddings for local RAG) intentionally waits for M8 — it
 /// needs a C extension and nothing before RAG reads vectors.
 public enum StorageSchema {
-    public static let version = 15
+    public static let version = 49
 
     // Sequential migration registry (one per schema version);
     // inherently long body that grows with each migration.
@@ -247,8 +247,45 @@ public enum StorageSchema {
             try createEnhancedNoteSyncTriggers(in: db)
         }
 
+        registerLiveMeetingOrderingMigration(in: &migrator)
+        registerSemanticEmbeddingProfileMigration(in: &migrator)
+        registerDerivedMaintenanceMigration(in: &migrator)
+        registerTranscriptCorrectionMigration(in: &migrator)
+        registerCommitmentContinuityMigration(in: &migrator)
+        registerCommitmentReviewMigration(in: &migrator)
+        registerCommitmentAssigneeMigration(in: &migrator)
+        registerCommitmentReminderMigration(in: &migrator)
+        registerCommitmentFieldQualityMigration(in: &migrator)
+        registerTopicContinuityMigration(in: &migrator)
+        registerDecisionContinuityMigration(in: &migrator)
+        registerMeetingMemoryGraphMigration(in: &migrator)
+        registerCommitmentEventEvidenceMigration(in: &migrator)
+        registerMeetingQuestionContinuityMigration(in: &migrator)
+        registerDecisionCommitmentBlockerMigration(in: &migrator)
+        registerSkillExecutionMigration(in: &migrator)
+        registerDecisionTopicAuthorityMigration(in: &migrator)
+        registerSegmentCorrectedTextMigration(in: &migrator)
+        registerSkillOfferDismissalMigration(in: &migrator)
+        registerSkillControlMigration(in: &migrator)
+        registerTranscriptCorrectionSearchMigration(in: &migrator)
+        registerSegmentCorrectedEmbeddingMigration(in: &migrator)
+        registerTranscriptStructuralSearchMigration(in: &migrator)
+        registerSkillExecutionReviewMigration(in: &migrator)
+        registerSkillOfferAuthorityMigration(in: &migrator)
+        registerSkillExecutionSubjectMigration(in: &migrator)
+        registerSkillExecutionReviewFilterMigration(in: &migrator)
+        registerGlobalDataEgressMigration(in: &migrator)
+        registerContextItemSearchMigration(in: &migrator)
+        registerStandingSkillRuleMigration(in: &migrator)
+        registerStandingSkillExecutionMigration(in: &migrator)
+        registerMeetingDetailOrderingMigration(in: &migrator)
+
         return migrator
     }
+
+}
+
+extension StorageSchema {
 
     private static func addMeetingDurabilityColumns(to db: Database) throws {
         try db.alter(table: "meeting") { t in

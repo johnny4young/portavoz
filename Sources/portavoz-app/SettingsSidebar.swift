@@ -26,6 +26,7 @@ struct SettingsSidebar: View {
                 .padding(.horizontal, 10)
                 .padding(.top, 6)
             }
+            .accessibilityIdentifier("settings-category-list")
             Spacer(minLength: 0)
             localSeal
         }

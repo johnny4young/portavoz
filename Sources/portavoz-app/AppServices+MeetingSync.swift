@@ -1,5 +1,6 @@
 import Foundation
 import IntegrationsKit
+import PortavozCore
 import StorageKit
 
 extension AppServices {
@@ -7,15 +8,21 @@ extension AppServices {
 
     static func makeMeetingSyncModel(
         store: MeetingStore,
-        usesTemporaryStore: Bool
+        usesTemporaryStore: Bool,
+        telemetry: ResourceWorkloadTelemetry,
+        captureState: AppResourceCaptureState
     ) -> MeetingSyncModel {
         if usesTemporaryStore {
-            return MeetingSyncModel(client: UITestMeetingSyncClient())
+            return MeetingSyncModel(
+                client: UITestMeetingSyncClient(),
+                telemetry: telemetry)
         }
 
         let transportRoot = supportRoot
             .appendingPathComponent("CloudMeetingSync", isDirectory: true)
         let localDeviceID = persistentMeetingSyncDeviceID()
+        let maintenanceGate = AppResourceGovernorMaintenanceGate.make(
+            captureState: captureState)
         let client = LifecycleMeetingSyncClient(
             transportRoot: transportRoot
         ) {
@@ -25,12 +32,15 @@ extension AppServices {
                 meetingStore: store,
                 transportStore: transportStore,
                 localDeviceID: localDeviceID,
-                platform: CloudKitMeetingSyncPlatform())
+                platform: CloudKitMeetingSyncPlatform(),
+                maintenanceGate: maintenanceGate)
         }
-        return MeetingSyncModel(client: client)
+        return MeetingSyncModel(
+            client: client,
+            telemetry: telemetry)
     }
 
-    private static func persistentMeetingSyncDeviceID() -> UUID {
+    static func persistentMeetingSyncDeviceID() -> UUID {
         if let raw = UserDefaults.standard.string(forKey: meetingSyncDeviceIDKey),
            let existing = UUID(uuidString: raw) {
             return existing

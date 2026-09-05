@@ -1,0 +1,645 @@
+import ApplicationKit
+import Foundation
+import StorageKit
+import XCTest
+@testable import portavoz_cli
+
+final class AskQualityProductionBenchmarkTests: XCTestCase {
+    func testOptionsRequireBoundedBuildAndCommitIdentity() throws {
+        let options = try AskQualityBenchmarkOptions(arguments: [
+            "--fixture", "/tmp/fixture.json",
+            "--output", "/tmp/observations.json",
+            "--build", "0.8.0+42",
+            "--commit", String(repeating: "a", count: 40)
+        ])
+
+        XCTAssertEqual(options.build, "0.8.0+42")
+        XCTAssertEqual(options.commit, String(repeating: "a", count: 40))
+        XCTAssertEqual(options.retrievalUnit, .segment)
+        XCTAssertFalse(options.allowAssetDownload)
+        let downloadOptions = try AskQualityBenchmarkOptions(arguments: [
+            "--fixture", "/tmp/fixture.json",
+            "--output", "/tmp/observations.json",
+            "--build", "0.8.0+42",
+            "--commit", String(repeating: "a", count: 40),
+            "--asset-download", "if-needed"
+        ])
+        XCTAssertTrue(downloadOptions.allowAssetDownload)
+        let conversationOptions = try AskQualityBenchmarkOptions(arguments: [
+            "--fixture", "/tmp/fixture.json",
+            "--output", "/tmp/observations.json",
+            "--build", "test",
+            "--commit", String(repeating: "a", count: 40),
+            "--retrieval-unit", "conversation-window"
+        ])
+        XCTAssertEqual(conversationOptions.retrievalUnit, .conversationWindow)
+        XCTAssertEqual(
+            conversationOptions.retrievalUnit.fixedAdapter,
+            "local-hybrid-preindexed-conversation-window-v1-no-expansion-evidence-v1")
+        let semanticOptions = try AskQualityBenchmarkOptions(arguments: [
+            "--fixture", "/tmp/fixture.json",
+            "--output", "/tmp/observations.json",
+            "--build", "test",
+            "--commit", String(repeating: "a", count: 40),
+            "--retrieval-unit", "semantic-boundary"
+        ])
+        XCTAssertEqual(semanticOptions.retrievalUnit, .semanticBoundary)
+        XCTAssertNil(semanticOptions.retrievalUnit.fixedAdapter)
+        XCTAssertThrowsError(try AskQualityBenchmarkOptions(arguments: [
+            "--fixture", "/tmp/fixture.json",
+            "--output", "/tmp/observations.json",
+            "--build", "test",
+            "--commit", "ABC"
+        ])) { error in
+            XCTAssertEqual(error as? AskQualityBenchmarkError, .invalidCommit)
+        }
+        XCTAssertThrowsError(try AskQualityBenchmarkOptions(arguments: [
+            "--fixture", "/tmp/fixture.json",
+            "--output", "/tmp/observations.json",
+            "--build", "test",
+            "--commit", String(repeating: "a", count: 40),
+            "--asset-download", "always"
+        ])) { error in
+            XCTAssertEqual(
+                error as? AskQualityBenchmarkError,
+                .invalidAssetDownloadPolicy("always"))
+        }
+        XCTAssertThrowsError(try AskQualityBenchmarkOptions(arguments: [
+            "--fixture", "/tmp/fixture.json",
+            "--output", "/tmp/observations.json",
+            "--build", "test",
+            "--commit", String(repeating: "a", count: 40),
+            "--retrieval-unit", "paragraph"
+        ])) { error in
+            XCTAssertEqual(
+                error as? AskQualityBenchmarkError,
+                .invalidRetrievalUnit("paragraph"))
+        }
+        XCTAssertThrowsError(try AskQualityBenchmarkOptions(arguments: [
+            "--fixture", "/tmp/fixture.json",
+            "--output", "/tmp/observations.json",
+            "--build", "test",
+            "--commit", String(repeating: "٠", count: 40)
+        ])) { error in
+            XCTAssertEqual(error as? AskQualityBenchmarkError, .invalidCommit)
+        }
+    }
+
+    func testFixtureRejectsOverlappingRelevantAndHardNegativeEvidence() {
+        let fixture = Self.fixture(hardNegativeSegmentIDs: ["segment-001"])
+
+        XCTAssertThrowsError(try fixture.validate()) { error in
+            XCTAssertEqual(
+                error as? AskQualityBenchmarkError,
+                .invalidFixture("invalid query"))
+        }
+    }
+
+    func testCorpusPreparationDoesNotDownloadAssetsByDefault() async throws {
+        let store = try MeetingStore.inMemory()
+        let runtime = RecordingAssetPolicyRuntime()
+
+        _ = try await AskQualityProductionBenchmark.prepareCorpus(
+            store: store,
+            runtime: runtime)
+
+        let requests = await runtime.requests
+        XCTAssertEqual(requests, [false])
+    }
+
+    func testRealLocalRetrievalEmitsCanonicalRevisionWithoutPretendingToJudgeAnswers() async throws {
+        let fixture = Self.fixture()
+        let store = try MeetingStore.inMemory()
+        let mapping = try await AskQualityCorpusMapping.seed(
+            fixture: fixture,
+            store: store)
+        let runtime = FixedRuntime()
+        let indexing = try await AskQualityProductionBenchmark.prepareCorpus(
+            store: store,
+            runtime: runtime)
+        XCTAssertEqual(indexing.embeddedSegments, 1)
+        let pending = try await store.segmentsNeedingEmbeddings()
+        XCTAssertTrue(pending.isEmpty)
+        let retrieval = LocalAskMeetingRetrieval(
+            store: store,
+            queryExpander: NoExpansion(),
+            runtime: runtime)
+
+        let document = try await AskQualityProductionBenchmark.observe(
+            fixture: fixture,
+            mapping: mapping,
+            retrieval: retrieval,
+            build: "test",
+            commit: String(repeating: "0", count: 40))
+
+        XCTAssertEqual(
+            document.adapter,
+            "local-hybrid-preindexed-segment-no-expansion-evidence-v3")
+        XCTAssertEqual(document.queries.count, 1)
+        let query = try XCTUnwrap(document.queries.first)
+        XCTAssertEqual(query.queryID, "query-001")
+        XCTAssertEqual(query.hits.count, 1)
+        XCTAssertEqual(query.hits[0].unitID, "segment-001")
+        XCTAssertEqual(query.hits[0].sourceSegmentIDs, ["segment-001"])
+        XCTAssertEqual(query.hits[0].meetingID, "meeting-001")
+        XCTAssertEqual(query.hits[0].timestampMilliseconds, 1_000)
+        XCTAssertEqual(query.hits[0].transcriptRevision, 3)
+
+        let encoded = try JSONEncoder().encode(document)
+        let root = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        XCTAssertEqual(root["schemaVersion"] as? Int, 2)
+        let queries = try XCTUnwrap(root["queries"] as? [[String: Any]])
+        let hits = try XCTUnwrap(queries[0]["hits"] as? [[String: Any]])
+        XCTAssertEqual(hits[0]["unitID"] as? String, "segment-001")
+        XCTAssertEqual(
+            hits[0]["sourceSegmentIDs"] as? [String],
+            ["segment-001"])
+        XCTAssertNil(hits[0]["text"])
+        let answer = try XCTUnwrap(queries[0]["answer"] as? [String: Any])
+        XCTAssertEqual(answer["outcome"] as? String, "notEvaluated")
+        XCTAssertTrue(answer["factuality"] is NSNull)
+        XCTAssertTrue(answer["citationCoverage"] is NSNull)
+    }
+
+    func testSpeakerTurnCandidatePreservesOrderedExactSourcesAndSpokenText() async throws {
+        let fixture = Self.speakerTurnFixture()
+        let store = try MeetingStore.inMemory()
+        let mapping = try await AskQualityCorpusMapping.seed(
+            fixture: fixture,
+            store: store,
+            retrievalUnit: .speakerTurn)
+
+        let fridayHits = try await store.search("Friday", limit: 1)
+        let fridayHit = try XCTUnwrap(fridayHits.first)
+        XCTAssertTrue(fridayHit.text.contains("Mara nombró atlas-001"))
+        XCTAssertTrue(fridayHit.text.contains("Mara committed to deliver atlas-002"))
+        let observation = try mapping.observation(for: AskCitation(
+            segmentID: fridayHit.segmentID,
+            meetingID: fridayHit.meetingID,
+            meetingTitle: fridayHit.meetingTitle,
+            timestamp: fridayHit.startTime,
+            transcriptRevision: fridayHit.transcriptRevision,
+            text: fridayHit.text))
+
+        XCTAssertEqual(observation.unitID.count, 64)
+        XCTAssertEqual(
+            observation.sourceSegmentIDs,
+            ["segment-001", "segment-002"])
+        XCTAssertEqual(observation.meetingID, "meeting-001")
+        XCTAssertEqual(observation.timestampMilliseconds, 1_000)
+        XCTAssertEqual(observation.transcriptRevision, 3)
+    }
+
+    func testCanonicalV2FixtureProjectsTwoExactSpeakerTurnsPerMeeting() async throws {
+        let fixtureURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/AskQuality/public-synthetic-v2.json")
+        let fixture = try AskQualityFixture.load(from: fixtureURL)
+        let store = try MeetingStore.inMemory()
+        let mapping = try await AskQualityCorpusMapping.seed(
+            fixture: fixture,
+            store: store,
+            retrievalUnit: .speakerTurn)
+
+        XCTAssertEqual(fixture.generation, "public-synthetic-v2")
+        XCTAssertEqual(fixture.queries.count, 240)
+        let first = try await Self.observation(
+            matching: "atlas-001",
+            store: store,
+            mapping: mapping)
+        let second = try await Self.observation(
+            matching: "atlas-003",
+            store: store,
+            mapping: mapping)
+
+        XCTAssertEqual(first.sourceSegmentIDs, ["segment-001", "segment-002"])
+        XCTAssertEqual(second.sourceSegmentIDs, ["segment-003", "segment-004"])
+        XCTAssertNotEqual(first.unitID, second.unitID)
+    }
+
+    func testCanonicalV2FixtureProjectsOneExactConversationWindowPerMeeting() async throws {
+        let fixtureURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/AskQuality/public-synthetic-v2.json")
+        let fixture = try AskQualityFixture.load(from: fixtureURL)
+        let store = try MeetingStore.inMemory()
+        let mapping = try await AskQualityCorpusMapping.seed(
+            fixture: fixture,
+            store: store,
+            retrievalUnit: .conversationWindow)
+
+        let first = try await Self.observation(
+            matching: "atlas-001",
+            store: store,
+            mapping: mapping)
+        let second = try await Self.observation(
+            matching: "atlas-003",
+            store: store,
+            mapping: mapping)
+
+        XCTAssertEqual(first.sourceSegmentIDs, [
+            "segment-001", "segment-002", "segment-003", "segment-004"
+        ])
+        XCTAssertEqual(second.sourceSegmentIDs, first.sourceSegmentIDs)
+        XCTAssertEqual(first.unitID, second.unitID)
+    }
+
+    func testSemanticBoundaryCandidatePublishesDynamicIdentityAndExactSources() async throws {
+        let fixture = Self.semanticBoundaryFixture()
+        let store = try MeetingStore.inMemory()
+        let embedding = BenchmarkSemanticBoundaryEmbedding()
+        let mapping = try await AskQualityCorpusMapping.seed(
+            fixture: fixture,
+            store: store,
+            retrievalUnit: .semanticBoundary,
+            semanticBoundaryEmbedding: embedding)
+
+        XCTAssertTrue(
+            AskQualityRetrievalUnit.semanticBoundary.matches(
+                adapter: mapping.adapter))
+        XCTAssertTrue(mapping.adapter.hasPrefix("semantic-v1."))
+        let joined = try await Self.observation(
+            matching: "atlas-001",
+            store: store,
+            mapping: mapping)
+        let isolated = try await Self.observation(
+            matching: "zebra-003",
+            store: store,
+            mapping: mapping)
+
+        XCTAssertEqual(
+            joined.sourceSegmentIDs,
+            ["segment-001", "segment-002"])
+        XCTAssertEqual(isolated.sourceSegmentIDs, ["segment-003"])
+        XCTAssertNotEqual(joined.unitID, isolated.unitID)
+    }
+
+    func testObservationRejectsRetrievalUnitAndAdapterMismatch() async throws {
+        let fixture = Self.fixture()
+        let store = try MeetingStore.inMemory()
+        let mapping = try await AskQualityCorpusMapping.seed(
+            fixture: fixture,
+            store: store)
+
+        do {
+            _ = try await AskQualityProductionBenchmark.observe(
+                fixture: fixture,
+                mapping: mapping,
+                retrieval: EmptyAskQualityRetrieval(),
+                build: "test",
+                commit: String(repeating: "0", count: 40),
+                retrievalUnit: .semanticBoundary)
+            XCTFail("expected mismatched adapter identity to fail")
+        } catch {
+            XCTAssertEqual(
+                error as? AskQualityBenchmarkError,
+                .invalidFixture(
+                    "retrieval unit does not match corpus adapter identity"))
+        }
+    }
+
+    func testAppleSentenceBoundaryProposalPinsDistinctLanguageProfiles() throws {
+        let english = CLIAppleSentenceBoundaryEmbedding.profile(
+            language: "en",
+            revision: 7,
+            dimension: 512)
+        let spanish = CLIAppleSentenceBoundaryEmbedding.profile(
+            language: "es",
+            revision: 9,
+            dimension: 640)
+        let proposal = CLIAppleSentenceBoundaryEmbedding.proposal(
+            englishProfile: english,
+            spanishProfile: spanish)
+
+        let admission = try RetrievalSemanticBoundaryPreflight.admit(proposal)
+
+        XCTAssertEqual(admission.scope, .benchmarkOnly)
+        XCTAssertNotEqual(english.fingerprint, spanish.fingerprint)
+        XCTAssertEqual(admission.proposalFingerprint.count, 64)
+        guard case .semanticSimilarity(let space) = proposal.boundarySignal,
+              case .partitionedByLanguage(let profiles) = space
+        else {
+            return XCTFail("expected partitioned semantic language spaces")
+        }
+        XCTAssertEqual(profiles.map(\.language), ["en", "es"])
+        XCTAssertEqual(
+            profiles.map(\.minimumCosineSimilarity),
+            [0.60, 0.75])
+    }
+
+    func testAppleSentenceBoundaryRuntimeProducesExactFiniteProfiles() async throws {
+        let embedding: CLIAppleSentenceBoundaryEmbedding
+        do {
+            embedding = try CLIAppleSentenceBoundaryEmbedding()
+        } catch CLIAppleSentenceBoundaryEmbeddingError.unavailable(let language) {
+            throw XCTSkip(
+                "Apple sentence embedding is unavailable for \(language) on this host")
+        }
+        let proposal = await embedding.boundaryProposal()
+        guard case .semanticSimilarity(let space) = proposal.boundarySignal,
+              case .partitionedByLanguage(let profiles) = space
+        else {
+            return XCTFail("expected partitioned semantic language spaces")
+        }
+        let byLanguage = Dictionary(uniqueKeysWithValues: profiles.map {
+            ($0.language, $0.profile)
+        })
+
+        let english = try await embedding.vector(
+            for: "The local meeting search stays private.",
+            language: "en")
+        let spanish = try await embedding.vector(
+            for: "La busqueda local de reuniones sigue siendo privada.",
+            language: "es")
+
+        XCTAssertEqual(english.language, "en")
+        XCTAssertEqual(spanish.language, "es")
+        XCTAssertEqual(english.profileFingerprint, byLanguage["en"]?.fingerprint)
+        XCTAssertEqual(spanish.profileFingerprint, byLanguage["es"]?.fingerprint)
+        XCTAssertEqual(english.values.count, byLanguage["en"]?.vectorDimension)
+        XCTAssertEqual(spanish.values.count, byLanguage["es"]?.vectorDimension)
+        XCTAssertTrue(english.values.allSatisfy(\.isFinite))
+        XCTAssertTrue(spanish.values.allSatisfy(\.isFinite))
+        XCTAssertNotEqual(english.profileFingerprint, spanish.profileFingerprint)
+    }
+
+    func testPrivateWriterIsOwnerOnlyNonOverwritingAndPreservesParentMode() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "ask-quality-writer-\(UUID().uuidString)",
+            isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: root,
+            withIntermediateDirectories: false,
+            attributes: [.posixPermissions: 0o755])
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: root.path)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let output = root.appendingPathComponent("observations.json")
+        let document = AskQualityObservationDocument(
+            fixtureGeneration: "test-v1",
+            adapter: "local-hybrid-preindexed-segment-no-expansion-evidence-v3",
+            build: "test",
+            commit: String(repeating: "0", count: 40),
+            queries: [])
+
+        try AskQualityPrivateJSONWriter.write(document, to: output)
+
+        let parentMode = try XCTUnwrap(
+            FileManager.default.attributesOfItem(atPath: root.path)[.posixPermissions]
+                as? NSNumber)
+        let outputMode = try XCTUnwrap(
+            FileManager.default.attributesOfItem(atPath: output.path)[.posixPermissions]
+                as? NSNumber)
+        XCTAssertEqual(parentMode.intValue, 0o755)
+        XCTAssertEqual(outputMode.intValue, 0o600)
+        XCTAssertThrowsError(
+            try AskQualityPrivateJSONWriter.write(document, to: output)
+        ) { error in
+            XCTAssertEqual(
+                error as? AskQualityBenchmarkError,
+                .outputAlreadyExists)
+        }
+    }
+
+    private static func fixture(
+        hardNegativeSegmentIDs: [String] = []
+    ) -> AskQualityFixture {
+        AskQualityFixture(
+            schemaVersion: 1,
+            kind: "ask-quality-fixture",
+            generation: "test-v1",
+            contentSource: "public-synthetic-only",
+            segments: [AskQualityFixtureSegment(
+                id: "segment-001",
+                meetingID: "meeting-001",
+                meetingTitle: "Synthetic planning",
+                timestampMilliseconds: 1_000,
+                transcriptRevision: 3,
+                language: "en",
+                owner: "Mara",
+                text: "Mara named atlas-001 as the migration owner for Friday.")],
+            queries: [AskQualityFixtureQuery(
+                id: "query-001",
+                text: "Who owns atlas-001?",
+                relationship: "englishToEnglish",
+                intent: "name",
+                relevant: [AskQualityFixtureRelevant(
+                    segmentID: "segment-001",
+                    grade: 3,
+                    expectedTimestampMilliseconds: 1_000,
+                    expectedOwner: "Mara")],
+                hardNegativeSegmentIDs: hardNegativeSegmentIDs,
+                answerPolicy: "answer")])
+    }
+
+    private static func speakerTurnFixture() -> AskQualityFixture {
+        AskQualityFixture(
+            schemaVersion: 1,
+            kind: "ask-quality-fixture",
+            generation: "test-turn-v1",
+            contentSource: "public-synthetic-only",
+            segments: [
+                AskQualityFixtureSegment(
+                    id: "segment-001",
+                    meetingID: "meeting-001",
+                    meetingTitle: "Synthetic planning",
+                    timestampMilliseconds: 1_000,
+                    transcriptRevision: 3,
+                    language: "es",
+                    owner: "Mara",
+                    text: "Mara nombró atlas-001 como responsable de la migración."),
+                AskQualityFixtureSegment(
+                    id: "segment-002",
+                    meetingID: "meeting-001",
+                    meetingTitle: "Synthetic planning",
+                    timestampMilliseconds: 2_000,
+                    transcriptRevision: 3,
+                    language: "en",
+                    owner: "Mara",
+                    text: "Mara committed to deliver atlas-002 before Friday."),
+                AskQualityFixtureSegment(
+                    id: "segment-003",
+                    meetingID: "meeting-001",
+                    meetingTitle: "Synthetic planning",
+                    timestampMilliseconds: 4_000,
+                    transcriptRevision: 3,
+                    language: "en",
+                    owner: "Noah",
+                    text: "Noah said atlas-003 is unrelated.")
+            ],
+            queries: [AskQualityFixtureQuery(
+                id: "query-001",
+                text: "Who owns atlas-001?",
+                relationship: "englishToSpanish",
+                intent: "name",
+                relevant: [AskQualityFixtureRelevant(
+                    segmentID: "segment-001",
+                    grade: 3,
+                    expectedTimestampMilliseconds: 1_000,
+                    expectedOwner: "Mara")],
+                hardNegativeSegmentIDs: ["segment-003"],
+                answerPolicy: "answer")])
+    }
+
+    private static func semanticBoundaryFixture() -> AskQualityFixture {
+        AskQualityFixture(
+            schemaVersion: 1,
+            kind: "ask-quality-fixture",
+            generation: "test-semantic-boundary-v1",
+            contentSource: "public-synthetic-only",
+            segments: [
+                AskQualityFixtureSegment(
+                    id: "segment-001",
+                    meetingID: "meeting-001",
+                    meetingTitle: "Synthetic planning",
+                    timestampMilliseconds: 1_000,
+                    transcriptRevision: 3,
+                    language: "en",
+                    owner: "Mara",
+                    text: "Mara owns atlas-001 for the private migration."),
+                AskQualityFixtureSegment(
+                    id: "segment-002",
+                    meetingID: "meeting-001",
+                    meetingTitle: "Synthetic planning",
+                    timestampMilliseconds: 2_000,
+                    transcriptRevision: 3,
+                    language: "en",
+                    owner: "Noah",
+                    text: "Noah will review atlas-002 for that migration."),
+                AskQualityFixtureSegment(
+                    id: "segment-003",
+                    meetingID: "meeting-001",
+                    meetingTitle: "Synthetic planning",
+                    timestampMilliseconds: 4_000,
+                    transcriptRevision: 3,
+                    language: "en",
+                    owner: "Mara",
+                    text: "The unrelated zebra-003 budget belongs elsewhere.")
+            ],
+            queries: [AskQualityFixtureQuery(
+                id: "query-001",
+                text: "Who owns atlas-001?",
+                relationship: "englishToEnglish",
+                intent: "name",
+                relevant: [AskQualityFixtureRelevant(
+                    segmentID: "segment-001",
+                    grade: 3,
+                    expectedTimestampMilliseconds: 1_000,
+                    expectedOwner: "Mara")],
+                hardNegativeSegmentIDs: ["segment-003"],
+                answerPolicy: "answer")])
+    }
+
+    private static func observation(
+        matching query: String,
+        store: MeetingStore,
+        mapping: AskQualityCorpusMapping
+    ) async throws -> AskQualityHitObservation {
+        let hits = try await store.search(query, limit: 1)
+        let hit = try XCTUnwrap(hits.first)
+        return try mapping.observation(for: AskCitation(
+            segmentID: hit.segmentID,
+            meetingID: hit.meetingID,
+            meetingTitle: hit.meetingTitle,
+            timestamp: hit.startTime,
+            transcriptRevision: hit.transcriptRevision,
+            text: hit.text))
+    }
+}
+
+private struct NoExpansion: AskQueryExpanding {
+    func expand(_ question: String) throws -> [String] { [question] }
+}
+
+private struct FixedRuntime: SemanticEmbeddingRuntimeClient {
+    var hasAvailableAssets: Bool { get async { true } }
+
+    func prepare(allowAssetDownload _: Bool) async throws {}
+
+    func withPreparedEmbedding<Result: Sendable>(
+        allowAssetDownload _: Bool,
+        operation: @Sendable (
+            _ embedder: any SemanticTextEmbedding
+        ) async throws -> Result
+    ) async throws -> Result {
+        try await operation(FixedEmbedding())
+    }
+}
+
+private actor RecordingAssetPolicyRuntime: SemanticEmbeddingRuntimeClient {
+    private(set) var requests: [Bool] = []
+    var hasAvailableAssets: Bool { get async { true } }
+
+    func prepare(allowAssetDownload: Bool) async throws {
+        requests.append(allowAssetDownload)
+    }
+
+    func withPreparedEmbedding<Result: Sendable>(
+        allowAssetDownload: Bool,
+        operation: @Sendable (
+            _ embedder: any SemanticTextEmbedding
+        ) async throws -> Result
+    ) async throws -> Result {
+        requests.append(allowAssetDownload)
+        return try await operation(FixedEmbedding())
+    }
+}
+
+private struct FixedEmbedding: SemanticTextEmbedding {
+    func vectors(for texts: [String]) -> [[Float]] {
+        texts.map { _ in [1, 0] }
+    }
+}
+
+private struct BenchmarkSemanticBoundaryEmbedding:
+    RetrievalSemanticBoundaryEmbedding {
+    private let english = CLIAppleSentenceBoundaryEmbedding.profile(
+        language: "en",
+        revision: 1,
+        dimension: 2)
+    private let spanish = CLIAppleSentenceBoundaryEmbedding.profile(
+        language: "es",
+        revision: 1,
+        dimension: 3)
+
+    func boundaryProposal() -> RetrievalSemanticBoundaryProposal {
+        CLIAppleSentenceBoundaryEmbedding.proposal(
+            englishProfile: english,
+            spanishProfile: spanish)
+    }
+
+    func vector(
+        for text: String,
+        language: String
+    ) throws -> RetrievalSemanticBoundaryVector {
+        switch language {
+        case "en":
+            let values: [Float] = text.contains("zebra-003")
+                ? [0, 1]
+                : [1, 0]
+            return RetrievalSemanticBoundaryVector(
+                language: language,
+                profileFingerprint: english.fingerprint,
+                values: values)
+        case "es":
+            return RetrievalSemanticBoundaryVector(
+                language: language,
+                profileFingerprint: spanish.fingerprint,
+                values: [1, 0, 0])
+        default:
+            throw AskQualityBenchmarkError.invalidFixture(
+                "unsupported fake semantic language")
+        }
+    }
+}
+
+private struct EmptyAskQualityRetrieval: AskMeetingRetrieving {
+    func search(query _: String, limit _: Int) -> [AskSearchResult] { [] }
+    func retrieve(question _: String, limit _: Int) -> [AskCitation] { [] }
+}

@@ -1,24 +1,48 @@
 import Foundation
 import PortavozCore
 
+struct MeetingDetailPerformanceProfile {
+    let shouldExerciseTranscriptScroll: Bool
+    let shouldExercisePlaybackSeek: Bool
+}
+
 extension AppServices {
-    /// Builds a deterministic 2-hour/5k-segment meeting only in a disposable
+    var meetingDetailPerformanceProfile: MeetingDetailPerformanceProfile {
+        let arguments = ProcessInfo.processInfo.arguments
+        let enabled = arguments.contains("-use-temp-store")
+            && arguments.contains("-seed-scale")
+            && arguments.contains("-detail-performance-profile")
+        return MeetingDetailPerformanceProfile(
+            shouldExerciseTranscriptScroll: enabled
+                && arguments.contains("-scale-profile-scroll"),
+            shouldExercisePlaybackSeek: enabled
+                && arguments.contains("-scale-profile-seek"))
+    }
+
+    /// Builds a deterministic 2-hour scale meeting only in a disposable
     /// store. It drives XCUITest and the SwiftUI Instruments baseline without
     /// reading or writing the user's library, audio, models, or preferences.
     func seedScaleBenchmarkIfRequested() async {
         let arguments = ProcessInfo.processInfo.arguments
         guard arguments.contains("-use-temp-store"),
-              arguments.contains("-seed-scale"),
-              ((try? await store.meetings()) ?? []).isEmpty
+              arguments.contains("-seed-scale")
         else { return }
+        // Publish terminal fixture completion even on a rejected/failed seed so
+        // the UI assertion reports missing content instead of timing out blindly.
+        defer { markUITestSeedReady() }
+        guard ((try? await store.meetings()) ?? []).isEmpty else { return }
 
         let segmentCount = Self.scaleSegmentCount(arguments: arguments)
         let duration: TimeInterval = 2 * 60 * 60
+        let audioDirectory = arguments.contains("-scale-profile-audio")
+            ? Self.prepareSeedAudio()
+            : nil
         let meeting = Meeting(
             title: "Scale baseline · 2 h · \(segmentCount) segments",
             startedAt: Date(timeIntervalSince1970: 1_700_000_000),
             endedAt: Date(timeIntervalSince1970: 1_700_000_000 + duration),
-            language: "es")
+            language: "es",
+            audioDirectory: audioDirectory)
         let speakers = (0..<4).map {
             Speaker(
                 meetingID: meeting.id,
@@ -51,7 +75,9 @@ extension AppServices {
             return
         }
 
-        requestSpotlightReindex()
+        // Detail-scale evidence owns presentation, not search throughput. Running
+        // three disposable reconciliation lanes here only contends with the first
+        // detail snapshot; search has independent scale and product-path gates.
         pendingRoute = .meeting(meeting.id)
         if arguments.contains("-scale-auto-summary-update") {
             scheduleScaleSummaryUpdate(meetingID: meeting.id)
@@ -88,7 +114,17 @@ extension AppServices {
 
     private func scheduleScaleSummaryUpdate(meetingID: MeetingID) {
         Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(3))
+            do {
+                try await UITestFeatureHandshake.pauseIfRequested(
+                    argument: "-scale-auto-summary-handshake",
+                    readyEnvironmentKey:
+                        "PORTAVOZ_UI_TEST_SCALE_SUMMARY_READY_PATH",
+                    continueEnvironmentKey:
+                        "PORTAVOZ_UI_TEST_SCALE_SUMMARY_CONTINUE_PATH")
+            } catch {
+                assertionFailure("Could not synchronize scale summary update: \(error)")
+                return
+            }
             guard let self else { return }
             _ = try? await store.saveSummary(Self.scaleSummary(
                 meetingID: meetingID,

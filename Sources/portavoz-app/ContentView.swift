@@ -4,21 +4,40 @@ import PortavozCore
 import SwiftUI
 
 enum Route: Hashable {
+    case library
     /// nil = blank recording; an event links the recording to the calendar
     /// meeting it came from (real title instead of the timestamp template).
     case recording(UpcomingEvent?)
+    /// Reveals an existing typed recording failure without starting capture.
+    case recordingRecovery
     case meeting(MeetingID)
     case ask
     case insights
+    case commitments(CommitmentRadarRouteFocus?)
+}
+
+extension Route {
+    var isCommitmentRadar: Bool {
+        guard case .commitments = self else { return false }
+        return true
+    }
+}
+
+enum CommitmentRadarRouteFocus: Hashable {
+    case person(PersonID)
+    case commitment(CommitmentID)
 }
 
 struct ContentView: View {
     let services: AppServices
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
     @State private var route: Route?
     @State private var libraryModel: LibraryModel
     @State private var insightsModel: InsightsModel
     @State private var askModel: AskModel
+    @State private var commitmentRadarModel: CommitmentRadarModel
+    @State private var reminderDraftModel: ReminderDraftModel
     @State private var reminder = MeetingReminderController()
     @State private var firstRunHostID = UUID()
 
@@ -27,6 +46,10 @@ struct ContentView: View {
         _libraryModel = State(initialValue: services.makeLibraryModel())
         _insightsModel = State(initialValue: services.makeInsightsModel())
         _askModel = State(initialValue: services.makeAskModel())
+        _commitmentRadarModel = State(
+            initialValue: services.makeCommitmentRadarModel())
+        _reminderDraftModel = State(
+            initialValue: services.makeReminderDraftModel())
     }
 
     var body: some View {
@@ -50,23 +73,52 @@ struct ContentView: View {
             Group {
                 switch route {
                 case .recording(let event):
-                    RecordingView(route: $route, event: event)
+                    RecordingView(
+                        route: $route,
+                        event: event,
+                        startsAutomatically: true)
+                case .recordingRecovery:
+                    RecordingView(
+                        route: $route,
+                        event: nil,
+                        startsAutomatically: false)
                 case .meeting(let id):
-                    MeetingDetailView(
+                    MeetingDetailScene(
                         services: services,
                         meetingID: id,
                         route: $route)
-                        .id(id)  // reload state when switching meetings
+                        .id(id)  // Reset route-owned state when switching meetings.
                 case .ask:
                     AskView(
                         model: askModel,
                         onOpenCitation: { citation in
                             services.requestMeetingSeek(for: citation)
                             route = .meeting(citation.meetingID)
+                        },
+                        onOpenNoteCitation: { citation in
+                            services.requestMeetingSeek(
+                                meetingID: citation.meetingID,
+                                timestamp: citation.timestamp)
+                            route = .meeting(citation.meetingID)
                         })
                 case .insights:
                     InsightsView(model: insightsModel, route: $route)
-                case nil:
+                case .commitments(let focus):
+                    CommitmentRadarView(
+                        model: commitmentRadarModel,
+                        reminders: services.commitmentReminders,
+                        reminderDrafts: reminderDraftModel,
+                        focus: focus,
+                        onClearFocus: { route = .commitments(nil) },
+                        onOpenMeeting: { meetingID, timestamp in
+                            if let timestamp {
+                                services.requestMeetingSeek(
+                                    meetingID: meetingID,
+                                    timestamp: timestamp)
+                            }
+                            route = .meeting(meetingID)
+                        })
+                case .library, nil:
                     ContentUnavailableView(
                         "Portavoz",
                         systemImage: "waveform.badge.mic",
@@ -79,17 +131,21 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background { AuroraDetailBackground() }
         }
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                BackgroundWorkIndicator(
+                    model: services.backgroundWork,
+                    openCenter: {
+                        services.pendingSettingsCategory = .backgroundWork
+                        openSettings()
+                    })
+            }
+        }
         .task {
-            // Palette citations may need to reopen the library window —
-            // but only when none is visible: openWindow ALWAYS creates a
-            // new one, and a citation should reuse the window you have.
+            // The value-scoped main WindowGroup reuses its primary window
+            // instead of creating a duplicate when a citation brings it back.
             services.palette.openMainWindow = {
-                let hasMainWindow = NSApp.windows.contains {
-                    !($0 is NSPanel) && $0.isVisible && $0.canBecomeMain
-                }
-                if !hasMainWindow {
-                    openWindow(id: "main")
-                }
+                openWindow(id: "main", value: MainWindowIdentity.primary)
                 NSApp.activate(ignoringOtherApps: true)
             }
             services.palette.onOpenCitation = { citation in
@@ -97,7 +153,10 @@ struct ContentView: View {
                 services.pendingRoute = .meeting(citation.meetingID)
             }
         }
-        .task { await services.seedDemoIfRequested() }
+        .task {
+            await services.seedDemoIfRequested()
+            await services.routeAutomationEntityIfRequested()
+        }
         .task { await services.seedScaleBenchmarkIfRequested() }
         .task { positionUITestWindowIfNeeded() }
         .task { await services.purgeExpiredTrash() }
@@ -152,28 +211,17 @@ struct ContentView: View {
     }
 
     /// Keep the throwaway XCUITest window clear of persistent desktop
-    /// overlays (for example, an agent progress panel). This is deliberately
-    /// scoped to `-use-temp-store`: production window placement remains owned
-    /// by SwiftUI and the user's saved macOS window state.
+    /// overlays (for example, an agent progress panel) and on AppKit's zero
+    /// screen. This is deliberately scoped to `-use-temp-store`: production
+    /// window placement remains owned by SwiftUI and the user's saved macOS
+    /// window state.
     @MainActor
     private func positionUITestWindowIfNeeded() {
         guard ProcessInfo.processInfo.arguments.contains("-use-temp-store"),
               let window = NSApp.windows.first(where: {
                   !($0 is NSPanel) && $0.canBecomeMain
-              }),
-              let screen = window.screen ?? NSScreen.main
+              })
         else { return }
-
-        let visibleFrame = screen.visibleFrame
-        let minimumWidth: CGFloat = 900
-        let leftClearance = min(
-            400,
-            max(0, visibleFrame.width - minimumWidth))
-        let testFrame = NSRect(
-            x: visibleFrame.minX + leftClearance,
-            y: visibleFrame.minY,
-            width: visibleFrame.width - leftClearance,
-            height: visibleFrame.height)
-        window.setFrame(testFrame, display: true, animate: false)
+        UITestWindowPlacement.positionMainWindow(window)
     }
 }

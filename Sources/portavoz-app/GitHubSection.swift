@@ -1,7 +1,7 @@
 import IntegrationsKit
 import SwiftUI
 
-/// Settings section: the GitHub personal token used to publish gists.
+/// Settings section: the GitHub personal token used for reviewed publishing.
 /// Self-contained (its Keychain state lives here, not in SettingsView);
 /// the secret goes to the Keychain — never the database (D8).
 struct GitHubSection: View {
@@ -12,7 +12,7 @@ struct GitHubSection: View {
 
     var body: some View {
         Section("GitHub") {
-            SecureField("Personal token (scope: gist)", text: $token)
+            SecureField("Personal token", text: $token)
             HStack {
                 Button("Save in Keychain") {
                     let value = token
@@ -38,11 +38,7 @@ struct GitHubSection: View {
                     }
                 }
             }
-            Text(
-                hasStoredToken
-                    ? "A token is stored in this device’s Keychain. It is used only when you publish a gist."
-                    : "Required only to publish gists. It is stored in Keychain — never in the database or cloud."
-            )
+            Text(tokenExplanation)
             .font(.caption)
             .foregroundStyle(.secondary)
             if let tokenMessage {
@@ -59,5 +55,15 @@ struct GitHubSection: View {
                     (try? await services.secrets.contains(.gitHubToken)) ?? false
             }
         }
+    }
+
+    private var tokenExplanation: String {
+        if hasStoredToken {
+            return L10n.text(
+                "A token is stored in this device’s Keychain. It is used only after you confirm a Gist or issue.")
+        }
+        return L10n.text(
+            // swiftlint:disable:next line_length
+            "For Gists, grant gist access. For issues, use a fine-grained token with Issues write access only to the repositories you choose. The token stays in Keychain.")
     }
 }

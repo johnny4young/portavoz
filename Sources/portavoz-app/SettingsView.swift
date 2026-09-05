@@ -9,17 +9,16 @@ import TranscriptionKit
 /// App settings (⌘,): voice enrollment and the GitHub token. Both secrets
 /// live in the Keychain / encrypted files — never in the database.
 ///
-/// The individual `Section`s live in `extension SettingsView` blocks below
-/// (same file, so they keep access to the private `@State`); the struct body
-/// itself is just the stored state and the `Form` that composes them.
+/// The struct body owns shared settings state and composes focused sections;
+/// feature-specific state stays in dedicated views where it has an independent
+/// lifecycle.
 struct SettingsView: View {
-    @Environment(AppServices.self) private var services
+    // Internal so focused SettingsView extension files can use the process
+    // service graph without duplicating environment reads.
+    @Environment(AppServices.self) var services
+    @Environment(\.openWindow) private var openWindow
 
     @AppStorage(AppLanguage.storageKey) private var appLanguageRaw = AppLanguage.system.rawValue
-
-    @State private var voiceEnrollmentDate: Date?
-    @State private var enrolling = false
-    @State private var voiceMessage: String?
 
     @AppStorage("meetingReminderMinutes") private var reminderMinutes = 5
     @AppStorage("customVocabulary") private var customVocabulary = ""
@@ -75,6 +74,11 @@ struct SettingsView: View {
     /// field filters categories by what each pane contains.
     @State private var category: SettingsCategory? = .general
     @State private var settingsQuery = ""
+    @State private var selectedSkillReceipt: SkillControlCenterReceipt?
+    @State private var skillReceiptFocus = SettingsSkillReceiptFocusState()
+    @State private var pendingSkillReceiptDestination: SkillOfferReviewDestination?
+    @State private var skillActivityRevision = 0
+    @State private var settingsWindowReference = SettingsWindowReference()
 
     var body: some View {
         // A fixed two-pane layout, NOT a NavigationSplitView: the settings
@@ -104,22 +108,35 @@ struct SettingsView: View {
                 case .intelligence:
                     transcriptionLanguageSection
                     summaryLanguageSection
+                    semanticSearchSection
                     summaryEngineSection
                     customStructuresSection
                     vocabularySection
                 case .voice:
-                    voiceSection
+                    SettingsVoiceSection()
                     RememberedVoicesSection()
                     companionSection
                 case .agenda:
                     agendaSection
                     AutomationSection()
                     titleSection
+                case .skills:
+                    SkillsSettingsSection(
+                        activityRevision: skillActivityRevision,
+                        receiptFocusRequestID: skillReceiptFocus.requestID,
+                        inspectReceipt: { receipt in
+                            skillReceiptFocus.beginInspection(of: receipt.proposalID)
+                            selectedSkillReceipt = receipt
+                        })
                 case .integrations:
                     byokSection
                     GitHubSection()
                 case .sync:
                     MeetingSyncSettingsSection()
+                case .backgroundWork:
+                    BackgroundWorkCenterSection(
+                        model: services.backgroundWork,
+                        performAction: performBackgroundWorkAction)
                 case .data:
                     LedgerSection(model: services.localDataLedger)
                     SupportDiagnosticsSection()
@@ -132,6 +149,7 @@ struct SettingsView: View {
         }
         .frame(width: 760)
         .frame(minHeight: 620)
+        .background(SettingsWindowCapture(reference: settingsWindowReference))
         .navigationTitle((category ?? .general).title)
         .sheet(isPresented: $showingStructureSheet) {
             CustomStructureSheet(existing: editingStructure) { recipe in
@@ -139,17 +157,28 @@ struct SettingsView: View {
                 customStructures = CustomRecipeStore.custom()
             }
         }
+        .sheet(
+            item: $selectedSkillReceipt,
+            onDismiss: openPendingSkillReceiptDestination
+        ) { receipt in
+            SkillReceiptInspectionSheet(
+                receipt: receipt,
+                receiptDidChange: {
+                    skillActivityRevision += 1
+                },
+                openReceiptDestination: { destination in
+                    pendingSkillReceiptDestination = destination
+                })
+        }
         .onAppear {
             applyPendingCategory()
-            if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
+            let arguments = ProcessInfo.processInfo.arguments
+            if arguments.contains("-use-temp-store") {
                 hasStoredBYOKKey = false
-                voiceEnrollmentDate = nil
             } else {
                 Task {
                     hasStoredBYOKKey =
                         (try? await services.secrets.contains(.byokAPIKey)) ?? false
-                    voiceEnrollmentDate = try? await services
-                        .localVoiceIdentityStatus()?.createdAt
                     // Mined chips arrive async and shift the Form's layout —
                     // skipped under XCUITest so coordinate clicks remain stable.
                     suggestedTerms = await services.mineVocabularySuggestions()
@@ -178,6 +207,46 @@ struct SettingsView: View {
         guard let requested = services.pendingSettingsCategory else { return }
         category = requested
         services.pendingSettingsCategory = nil
+    }
+
+    @MainActor
+    private func performBackgroundWorkAction(_ owner: BackgroundWorkOwner) {
+        if services.backgroundWork.resolveUITestActionIfNeeded(for: owner) {
+            return
+        }
+        switch owner {
+        case .recovery:
+            services.pendingRoute = .library
+            openWindow(id: "main", value: MainWindowIdentity.primary)
+            settingsWindowReference.window?.close()
+        case .processing:
+            services.kickPostCaptureProcessing()
+        case .spotlight:
+            let indexer = services.spotlightIndexer
+            Task { await indexer.requestReindex() }
+        case .semanticIndex:
+            if services.resourceCaptureState.current == .inactive {
+                services.semanticIndexingSupervisor.kick()
+            } else {
+                services.backgroundWork.markWaitingForRecording(.semanticIndex)
+            }
+        case .memoryGraph:
+            services.requestMemoryGraphReconciliation()
+        }
+    }
+
+    @MainActor
+    private func openPendingSkillReceiptDestination() {
+        if let destination = pendingSkillReceiptDestination {
+            pendingSkillReceiptDestination = nil
+            skillReceiptFocus.clear()
+            SettingsSkillReceiptNavigation.open(
+                destination, services: services, settingsWindow: settingsWindowReference.window
+            ) { openWindow(id: "main", value: MainWindowIdentity.primary) }
+            return
+        }
+
+        skillReceiptFocus.restoreAfterDismissal { selectedSkillReceipt == nil && category == .skills }
     }
 }
 
@@ -319,6 +388,16 @@ extension SettingsView {
                         "Done: moved %d recording(s).",
                         update.recordingCount)
                     : L10n.text("Done: folder updated.")
+                migrating = false
+            } catch ManageRecordingStorageError.recordingsStranded(let count, let path) {
+                // "Nothing was lost" is exactly what this case is not, so it
+                // gets its own message: the rollback itself failed and some
+                // recordings really are in the other folder. Rendered through
+                // the catalog here — the error's own description is an
+                // unlocalized fallback for non-app consumers.
+                migrationStatus =
+                    // swiftlint:disable:next line_length
+                    L10n.format("%d recording(s) were moved to %@ and could not be put back. They are safe there: move them into the Audio folder of your recordings location, or point Portavoz at that folder.", count, path)
                 migrating = false
             } catch {
                 migrationStatus =
@@ -539,72 +618,9 @@ extension SettingsView {
     }
 }
 
-// MARK: - My voice & Summary engine
+// MARK: - Summary engine
 
 extension SettingsView {
-    // MARK: - My voice (M6)
-
-    private var voiceSection: some View {
-        Section("My voice") {
-            if let voiceEnrollmentDate {
-                LabeledContent(
-                    "Enrolled voice",
-                    value: voiceEnrollmentDate.formatted(date: .abbreviated, time: .shortened))
-                Button("Delete my voice", role: .destructive) {
-                    Task { await deleteVoice() }
-                }
-                .accessibilityIdentifier("settings-voice-delete")
-            } else if enrolling {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    Text("Recording 12 seconds — speak naturally…")
-                }
-            } else {
-                Button {
-                    Task { await enroll() }
-                } label: {
-                    Label("Enroll my voice (12 s)", systemImage: "person.wave.2")
-                }
-                .accessibilityIdentifier("settings-voice-enroll")
-            }
-            Text(
-                // One-line UI help text.
-                // swiftlint:disable:next line_length
-                "With your voice enrolled, Portavoz also recognizes you when you arrive through system audio (hybrid meetings). Only an encrypted numeric fingerprint is stored on this device — never audio, never cloud data; delete it with one click."
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            if let voiceMessage {
-                Text(voiceMessage).font(.caption).foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private func enroll() async {
-        enrolling = true
-        defer { enrolling = false }
-        do {
-            let voiceprint = try await services.recordAndEnrollLocalVoice(
-                seconds: 12,
-                mode: .echoCancelled)
-            voiceEnrollmentDate = voiceprint.createdAt
-            voiceMessage = L10n.text("Done: your interventions will be tagged as “Me” on any channel.")
-        } catch {
-            voiceMessage = L10n.format("Could not enroll: %@", UseCaseErrorMessages.describe(error))
-        }
-    }
-
-    private func deleteVoice() async {
-        do {
-            try await services.deleteLocalVoiceIdentity()
-            voiceEnrollmentDate = nil
-            voiceMessage = L10n.text("Voiceprint and key deleted.")
-        } catch {
-            voiceMessage = L10n.text(
-                "Could not delete your voice. Nothing was reported as deleted; try again.")
-        }
-    }
-
     // MARK: - Summary engine (D25/M12)
 
     private var summaryEngineSection: some View {
@@ -752,6 +768,7 @@ extension SettingsView {
     private var companionSection: some View {
         CompanionSettingsSection(
             capability: services.foundationModelsCapability,
+            detectorAvailable: services.companionAvailable,
             companionEnabled: companionEnabledBinding,
             companionUserName: $companionUserName,
             mirrorAfterMeeting: $mirrorAfterMeeting)

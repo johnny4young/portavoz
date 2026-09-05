@@ -40,7 +40,7 @@ final class MeetingStoreTests: XCTestCase {
         return (ana, segments)
     }
 
-    // MARK: - Schema v9-v14 evidence, review, and sync journal
+    // MARK: - Schema v9-v29 evidence, review, sync, corrections, and continuity
 
     func testV8MigratesAdditivelyThroughMeetingSyncSchema() throws {
         let database = try DatabaseQueue()
@@ -65,11 +65,25 @@ final class MeetingStoreTests: XCTestCase {
                 createdAt: timestamp,
                 updatedAt: timestamp)
                 .insert(db)
-            try SegmentRecord(
-                legacySegment,
-                createdAt: timestamp,
-                updatedAt: timestamp)
-                .insert(db)
+            try db.execute(
+                sql: """
+                    INSERT INTO segment (
+                        id, meetingID, speakerID, channel, text, language,
+                        startTime, endTime, confidence, isFinal,
+                        generationRunID, createdAt, updatedAt, deletedAt, embedding
+                    ) VALUES (?, ?, NULL, ?, ?, NULL, ?, ?, NULL, ?, NULL, ?, ?, NULL, NULL)
+                    """,
+                arguments: [
+                    legacySegment.id.uuidString,
+                    legacyMeeting.id.rawValue.uuidString,
+                    legacySegment.channel.rawValue,
+                    legacySegment.text,
+                    legacySegment.startTime,
+                    legacySegment.endTime,
+                    legacySegment.isFinal,
+                    timestamp,
+                    timestamp,
+                ])
             try SummaryRecord(
                 id: summaryID,
                 meetingID: legacyMeeting.id.rawValue.uuidString,
@@ -88,7 +102,7 @@ final class MeetingStoreTests: XCTestCase {
 
         let claimID = UUID().uuidString
         try database.write { db in
-            XCTAssertEqual(StorageSchema.version, 15)
+            XCTAssertEqual(StorageSchema.version, 49)
             XCTAssertEqual(
                 try Set(db.columns(in: "summaryClaim").map(\.name)),
                 ["id", "summaryID", "kind", "sourceTranscriptRevision", "createdAt"])
@@ -122,6 +136,75 @@ final class MeetingStoreTests: XCTestCase {
             XCTAssertEqual(
                 try Set(db.columns(in: "companionCardEvidenceSegment").map(\.name)),
                 ["id", "evidenceID", "role", "segmentID", "ordinal", "createdAt"])
+            XCTAssertEqual(
+                try Set(db.columns(in: "commitment").map(\.name)),
+                [
+                    "id", "assigneeKind", "canonicalPersonID", "title", "status", "dueAt",
+                    "createdAt", "updatedAt", "deletedAt",
+                ])
+            XCTAssertEqual(
+                try Set(db.columns(in: "commitmentSource").map(\.name)),
+                [
+                    "id", "commitmentID", "kind", "meetingID", "actionItemID",
+                    "contextItemID", "transcriptRevision", "firstSeenAt",
+                ])
+            XCTAssertEqual(
+                try Set(db.columns(in: "commitmentEvidenceSegment").map(\.name)),
+                ["sourceID", "segmentID", "role", "ordinal"])
+            XCTAssertEqual(
+                try Set(db.columns(in: "commitmentEvent").map(\.name)),
+                [
+                    "id", "commitmentID", "kind", "assigneeKind", "canonicalPersonID",
+                    "dueAt", "sourceMeetingID", "sourceTranscriptRevision", "occurredAt",
+                ])
+            XCTAssertEqual(
+                try Set(db.columns(in: "commitmentEventEvidenceSegment").map(\.name)),
+                ["eventID", "segmentID", "ordinal"])
+            for table in [
+                "commitment", "commitmentSource", "commitmentEvidenceSegment",
+                "commitmentEvent", "commitmentEventEvidenceSegment",
+            ] {
+                XCTAssertEqual(
+                    try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(table)"),
+                    0,
+                    "the additive migration must not infer confirmed user truth")
+            }
+            let continuityIndexes = try Set(String.fetchAll(
+                db,
+                sql: """
+                    SELECT name FROM sqlite_master
+                    WHERE type = 'index' AND name LIKE 'commitment%'
+                    """))
+            XCTAssertTrue(continuityIndexes.isSuperset(of: [
+                "commitment_on_status_dueAt",
+                "commitment_on_person_status",
+                "commitment_on_assignee_status",
+                "commitmentSource_on_commitment",
+                "commitmentSource_on_meeting",
+                "commitmentSource_on_actionItem",
+                "commitmentSource_on_contextItem",
+                "commitmentEvidenceSegment_on_segment",
+                "commitmentEvent_on_history",
+                "commitmentEvent_on_sourceMeeting",
+                "commitmentEventEvidenceSegment_on_segment",
+            ]))
+            XCTAssertEqual(
+                Set(try db.foreignKeys(on: "commitment").map(\.destinationTable)),
+                ["person"])
+            XCTAssertEqual(
+                Set(try db.foreignKeys(on: "commitmentSource").map(\.destinationTable)),
+                ["commitment"])
+            XCTAssertEqual(
+                Set(try db.foreignKeys(on: "commitmentEvidenceSegment")
+                    .map(\.destinationTable)),
+                ["commitmentSource"])
+            XCTAssertEqual(
+                Set(try db.foreignKeys(on: "commitmentEvent").map(\.destinationTable)),
+                ["commitment", "person"])
+            XCTAssertEqual(
+                Set(try db.foreignKeys(on: "commitmentEventEvidenceSegment")
+                    .map(\.destinationTable)),
+                ["commitmentEvent"])
             XCTAssertEqual(
                 try String.fetchOne(
                     db, sql: "SELECT markdown FROM summary WHERE id = ?",
@@ -1349,6 +1432,93 @@ extension MeetingStoreTests {
         XCTAssertTrue(runs.isEmpty)
     }
 
+    func testGeneratedCompanionReplacementRejectsStaleCorrectionRevision() async throws {
+        let (_, segments) = try await seedMeetingWithTranscript()
+        let correction = TranscriptCorrectionEvent(
+            meetingID: meeting.id,
+            baseTranscriptRevision: meeting.transcriptRevision,
+            targetSegmentIDs: [segments[0].id],
+            kind: .replaceText(text: "presupuesto corregido", language: "es"),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_700_003_700))
+        _ = try await store.appendTranscriptCorrection(correction)
+        let revision = try TranscriptCorrectionRevision.current(
+            meetingID: meeting.id,
+            baseTranscriptRevision: meeting.transcriptRevision,
+            history: [correction])
+        let staleCard = CompanionCard(
+            question: "Stale question", answer: "Must not publish",
+            kind: .context, source: "on-device", askedAt: 15)
+
+        do {
+            try await store.replaceCompanionCards(
+                [],
+                generated: [CompanionGenerationArtifact(
+                    card: staleCard,
+                    generationRun: companionRun(card: staleCard, outcome: .succeeded))],
+                for: meeting.id)
+            XCTFail("accepted-only Companion work must not publish after a correction")
+        } catch let error as StorageError {
+            guard case .invalidGenerationRun = error else {
+                return XCTFail("expected invalidGenerationRun, got \(error)")
+            }
+        }
+
+        let currentCardID = UUID()
+        let currentCard = CompanionCard(
+            id: currentCardID,
+            question: "Current question", answer: "Publish this",
+            kind: .context, source: "on-device", askedAt: 16,
+            evidence: CompanionCardEvidence(
+                cardID: currentCardID,
+                sourceTranscriptRevision: meeting.transcriptRevision,
+                questionSegmentIDs: [segments[0].id]))
+        try await store.replaceReviewedCompanionCards(
+            [CompanionGenerationArtifact(
+                card: currentCard,
+                generationRun: companionRun(
+                    card: currentCard,
+                    outcome: .succeeded,
+                    sourceCorrectionRevision: revision,
+                    workflow: "meeting-review"))],
+            for: meeting.id)
+
+        let cards = try await store.companionCards(for: meeting.id)
+        XCTAssertEqual(cards, [currentCard])
+    }
+
+    func testReviewedCompanionReplacementRejectsMissingEvidenceWithoutMutation() async throws {
+        try await store.save(meeting)
+        let previous = CompanionCard(
+            question: "Previous question", answer: "Keep this",
+            kind: .context, source: "on-device", askedAt: 10)
+        try await store.save([previous], for: meeting.id)
+        let unevidenced = CompanionCard(
+            question: "New question", answer: "Must not publish",
+            kind: .context, source: "on-device", askedAt: 15)
+
+        do {
+            try await store.replaceReviewedCompanionCards(
+                [CompanionGenerationArtifact(
+                    card: unevidenced,
+                    generationRun: companionRun(
+                        card: unevidenced,
+                        outcome: .succeeded,
+                        workflow: "meeting-review"))],
+                for: meeting.id)
+            XCTFail("explicit review must not publish a card without immutable evidence")
+        } catch let error as StorageError {
+            guard case .invalidGenerationRun = error else {
+                return XCTFail("expected invalidGenerationRun, got \(error)")
+            }
+        }
+
+        let storedCards = try await store.companionCards(for: meeting.id)
+        let storedRuns = try await store.generationRuns(for: meeting.id)
+        XCTAssertEqual(storedCards, [previous])
+        XCTAssertTrue(storedRuns.isEmpty)
+    }
+
     func testCompanionTerminalRunRejectsStaleTranscriptRevision() async throws {
         try await store.save(meeting)
         let card = CompanionCard(
@@ -1361,9 +1531,8 @@ extension MeetingStoreTests {
             sourceTranscriptRevision: sourceRevision)
 
         do {
-            try await store.saveCompanionGenerationRun(
+            try await store.savePostRefineCompanionGenerationRun(
                 staleRun,
-                workflow: "post-refine",
                 sourceTranscriptRevision: sourceRevision)
             XCTFail("a stale terminal Companion run must not enter current history")
         } catch let error as StorageError {
@@ -1379,9 +1548,14 @@ extension MeetingStoreTests {
     private func companionRun(
         card: CompanionCard,
         outcome: GenerationRunOutcome,
-        sourceTranscriptRevision: Int = 0
+        sourceTranscriptRevision: Int = 0,
+        sourceCorrectionRevision: TranscriptCorrectionRevision? = nil,
+        workflow: String = "post-refine"
     ) -> GenerationRun {
         let timestamp = meeting.startedAt.addingTimeInterval(card.askedAt)
+        let correctionConfiguration = sourceCorrectionRevision.map {
+            #", "sourceCorrectionRevision":"\#($0.rawValue)""#
+        } ?? ""
         return GenerationRun(
             meetingID: meeting.id,
             kind: .companion,
@@ -1391,7 +1565,7 @@ extension MeetingStoreTests {
             configJSON: """
                 {"operation":"classify-and-answer",\
                 "sourceTranscriptRevision":\(sourceTranscriptRevision),\
-                "workflow":"post-refine"}
+                "workflow":"\(workflow)"\(correctionConfiguration)}
                 """,
             outputLanguage: "en",
             startedAt: timestamp,

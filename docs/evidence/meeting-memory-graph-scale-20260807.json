@@ -1,0 +1,152 @@
+{
+  "budget": {
+    "interactiveQueryP95Milliseconds": 250,
+    "note": "the same interactive standard the roadmap sets for semantic augmentation; no absolute graph budget was previously declared"
+  },
+  "capturedAt": "2026-08-07",
+  "harness": "Tests/PortavozTests/MeetingMemoryGraphScaleTests.swift testCanonicalGraphScaleFromEnvironment",
+  "host": {
+    "architecture": "arm64",
+    "note": "development Mac; in-memory store, so query latencies are CPU-bound and exclude disk sync"
+  },
+  "kind": "meeting-memory-graph-scale-evidence",
+  "runs": [
+    {
+      "commitmentCount": 1000,
+      "databaseBytes": 13021184,
+      "decisionCount": 1000,
+      "edgesPerSecond": 414.4135736619574,
+      "fixtureVersion": "synthetic-graph-scale-v1",
+      "meetingCount": 1000,
+      "personCount": 50,
+      "physicalFootprintDeltaBytes": 786432,
+      "projectedEdgeCount": 5150,
+      "projectionSeconds": 12.427199125,
+      "queries": [
+        {
+          "answeredRuns": 30,
+          "job": "decisionHistory",
+          "p50Milliseconds": 9.861583,
+          "p95Milliseconds": 10.5165
+        },
+        {
+          "answeredRuns": 30,
+          "job": "decisionConflicts",
+          "p50Milliseconds": 18.3615,
+          "p95Milliseconds": 18.86325
+        },
+        {
+          "answeredRuns": 30,
+          "job": "changeSince",
+          "p50Milliseconds": 18.469208000000002,
+          "p95Milliseconds": 19.498333
+        },
+        {
+          "answeredRuns": 30,
+          "job": "firstDiscussion",
+          "p50Milliseconds": 8.909459,
+          "p95Milliseconds": 10.755166000000001
+        },
+        {
+          "answeredRuns": 30,
+          "job": "personCommitments",
+          "p50Milliseconds": 15.326709000000001,
+          "p95Milliseconds": 16.344833
+        },
+        {
+          "answeredRuns": 30,
+          "job": "commitmentBlockers",
+          "p50Milliseconds": 2.0322080000000002,
+          "p95Milliseconds": 2.466459
+        }
+      ],
+      "recursiveProbes": [
+        {
+          "name": "topicFamilyRoots",
+          "p95Milliseconds": 0.614125,
+          "rows": 1000
+        },
+        {
+          "name": "supersessionChain",
+          "p95Milliseconds": 0.11124999999999999,
+          "rows": 10
+        }
+      ],
+      "schemaVersion": 1,
+      "segmentCount": 1000,
+      "topicCount": 100
+    },
+    {
+      "commitmentCount": 10000,
+      "databaseBytes": 118788096,
+      "decisionCount": 10000,
+      "edgesPerSecond": 48.87723308101471,
+      "fixtureVersion": "synthetic-graph-scale-v1",
+      "meetingCount": 10000,
+      "personCount": 500,
+      "physicalFootprintDeltaBytes": 5963776,
+      "projectedEdgeCount": 51500,
+      "projectionSeconds": 1053.660298541,
+      "queries": [
+        {
+          "answeredRuns": 30,
+          "job": "decisionHistory",
+          "p50Milliseconds": 45.598417000000005,
+          "p95Milliseconds": 46.215667
+        },
+        {
+          "answeredRuns": 30,
+          "job": "decisionConflicts",
+          "p50Milliseconds": 56.449042,
+          "p95Milliseconds": 57.165542
+        },
+        {
+          "answeredRuns": 30,
+          "job": "changeSince",
+          "p50Milliseconds": 56.737083,
+          "p95Milliseconds": 58.306208999999996
+        },
+        {
+          "answeredRuns": 30,
+          "job": "firstDiscussion",
+          "p50Milliseconds": 73.157584,
+          "p95Milliseconds": 76.104625
+        },
+        {
+          "answeredRuns": 30,
+          "job": "personCommitments",
+          "p50Milliseconds": 16.243791,
+          "p95Milliseconds": 17.312708999999998
+        },
+        {
+          "answeredRuns": 30,
+          "job": "commitmentBlockers",
+          "p50Milliseconds": 2.053292,
+          "p95Milliseconds": 2.252125
+        }
+      ],
+      "recursiveProbes": [
+        {
+          "name": "topicFamilyRoots",
+          "p95Milliseconds": 5.9004579999999995,
+          "rows": 10000
+        },
+        {
+          "name": "supersessionChain",
+          "p95Milliseconds": 0.065667,
+          "rows": 10
+        }
+      ],
+      "schemaVersion": 1,
+      "segmentCount": 10000,
+      "topicCount": 1000
+    }
+  ],
+  "schemaVersion": 1,
+  "verdict": {
+    "decision": "relational-storage-meets-the-product-queries",
+    "detail": "Every longitudinal job answers within 77 ms p95 at 10k meetings against the 250 ms interactive budget (worst lane: firstDiscussion 76.1 ms). Recursive-CTE family and chain traversal stay under 6 ms at 10k topics. The specialized-graph-engine gate stays closed.",
+    "harnessNote": "The first 10k attempt failed with derivedMaintenanceJobLeaseLost: the 600 s harness lease expired mid-rebuild. The harness now takes a 7200 s lease so a lease expiry can never masquerade as a scale result; the production driver heartbeats between batches instead.",
+    "knownCost": "Full rebuild-from-zero projection at 10k measures 1054 s at 48.9 edges/s (414 edges/s at 1k) \u2014 superlinear because per-scope rebuilds load every live topic row to resolve family roots. Incremental invalidations, the normal path, touch few scopes. Recorded in docs/GAPS.md as a throughput optimization opportunity; the job is checkpointed, resumable, and yields to capture by design."
+  }
+}

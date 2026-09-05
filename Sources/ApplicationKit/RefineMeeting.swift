@@ -433,9 +433,8 @@ extension MeetingStore: RefineMeetingStore {
         _ run: GenerationRun,
         sourceTranscriptRevision: Int
     ) async throws {
-        try await saveCompanionGenerationRun(
+        try await savePostRefineCompanionGenerationRun(
             run,
-            workflow: "post-refine",
             sourceTranscriptRevision: sourceTranscriptRevision)
     }
 

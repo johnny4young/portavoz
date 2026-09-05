@@ -62,4 +62,23 @@ final class LiveTalkTimePolicyTests: XCTestCase {
             ]),
             "one open row and nothing closed means no evidence at all")
     }
+
+    func testBalanceBoundsCandidatesIndependentlyOfMeetingLength() {
+        let olderMicrophoneRows = (0..<40).map { _ in
+            row(channel: .microphone, start: 100, end: 101)
+        }
+        let retainedSystemRows = (0..<LiveTalkTimePolicy.maximumCandidateRows).map { _ in
+            row(channel: .system, start: 100, end: 101)
+        }
+        let openRow = row(channel: .microphone, start: 101, end: 102)
+
+        let balance = LiveTalkTimePolicy.balance(
+            olderMicrophoneRows + retainedSystemRows + [openRow])
+
+        XCTAssertEqual(balance?.meFraction ?? 1, 0, accuracy: 0.001)
+        XCTAssertEqual(
+            balance?.speechSeconds ?? 0,
+            TimeInterval(LiveTalkTimePolicy.maximumCandidateRows),
+            accuracy: 0.001)
+    }
 }

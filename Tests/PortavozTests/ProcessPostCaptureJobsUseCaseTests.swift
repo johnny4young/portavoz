@@ -76,6 +76,45 @@ final class ProcessPostCaptureJobsUseCaseTests: XCTestCase {
         ])
     }
 
+    func testDiarizationUsesTheSameVoiceprintAsItsInputFingerprint() async throws {
+        let fixture = Fixture(now: now)
+        let systemAsset = fixture.asset(channel: .system, sha256: "system-sha")
+        let segment = fixture.segment(
+            channel: .system,
+            text: "Conserva la identidad exacta.",
+            language: "es",
+            start: 0)
+        let voiceprint = Voiceprint(
+            embedding: [0.25, 0.5, 0.75],
+            createdAt: now.addingTimeInterval(-300))
+        let fingerprint = try XCTUnwrap(DiarizationOperationFingerprint.compute(
+            meetingID: fixture.meeting.id,
+            transcriptRevision: fixture.meeting.transcriptRevision,
+            segments: [segment],
+            systemAsset: systemAsset,
+            voiceprint: voiceprint))
+        let job = fixture.job(kind: .diarization, fingerprint: fingerprint)
+        let store = WorkflowStoreFake(
+            jobs: [job],
+            details: [fixture.meeting.id: fixture.detail(segments: [segment])],
+            assets: [fixture.meeting.id: [systemAsset]])
+        let capabilities = WorkflowCapabilitiesFake(voiceprint: voiceprint)
+        let workflow = ProcessPostCaptureJobs(
+            store: store,
+            capabilities: capabilities,
+            heartbeatInterval: .seconds(3_600),
+            now: { processPostCaptureNow })
+
+        let result = await workflow.execute(.init(owner: "test-owner"))
+
+        XCTAssertEqual(result.processedJobCount, 1)
+        XCTAssertTrue(result.issues.isEmpty)
+        let receivedVoiceprints = await capabilities.diarizationVoiceprints()
+        let received = try XCTUnwrap(receivedVoiceprints.first ?? nil)
+        XCTAssertEqual(received.embedding, voiceprint.embedding)
+        XCTAssertEqual(received.createdAt, voiceprint.createdAt)
+    }
+
     func testRealStoreDrainsDiarizationThenSummaryWithOneAtomicProvenanceChain() async throws {
         let fixture = Fixture(now: now)
         let store = try MeetingStore.inMemory()
@@ -199,7 +238,7 @@ final class ProcessPostCaptureJobsUseCaseTests: XCTestCase {
         XCTAssertEqual(actions, [fixture.meeting.id])
     }
 
-    func testSupersededSummaryCancelsWithoutCallingProviderAndRunsAction() async throws {
+    func testSupersededSummaryReplacesTheAttemptWithTheDurableFingerprint() async throws {
         let fixture = Fixture(now: now)
         let segment = fixture.segment(
             channel: .system, text: "Current", language: "en", start: 0)
@@ -218,17 +257,34 @@ final class ProcessPostCaptureJobsUseCaseTests: XCTestCase {
             capabilities: capabilities,
             heartbeatInterval: .seconds(3_600),
             now: { processPostCaptureNow })
+        let durableFingerprint = SummaryOperationFingerprint.compute(
+            request: SummaryRequest(
+                meetingID: fixture.meeting.id,
+                segments: [segment],
+                speakers: [],
+                recipe: .general,
+                targetLanguage: "en"),
+            providerID: "durable-test",
+            transcriptRevision: fixture.meeting.transcriptRevision)
 
         _ = await workflow.execute(.init(owner: "test-owner"))
 
         let cancellations = await store.cancellationRecords()
         XCTAssertEqual(cancellations.first?.reason.code, "processing.input.superseded")
+        // The stale attempt is replaced by one bound to what is durably true,
+        // so a drifted prediction costs a retry, not the meeting's summary.
+        XCTAssertEqual(cancellations.first?.replacements.map(\.kind), [.summary])
+        XCTAssertEqual(
+            cancellations.first?.replacements.map(\.inputFingerprint),
+            [durableFingerprint])
         let providerRequests = await provider.requests()
         let runs = await store.generationRuns()
         let actions = await capabilities.actionMeetingIDs()
         XCTAssertTrue(providerRequests.isEmpty)
         XCTAssertTrue(runs.isEmpty)
-        XCTAssertEqual(actions, [fixture.meeting.id])
+        // The replacement still owes this meeting a summary; the completion
+        // action belongs to the attempt that actually settles it.
+        XCTAssertTrue(actions.isEmpty)
     }
 
     func testSummaryPublicationLeaseLossRecordsCancelledAttemptWithoutFalseStateChange() async throws {
@@ -275,6 +331,60 @@ final class ProcessPostCaptureJobsUseCaseTests: XCTestCase {
         XCTAssertTrue(failures.isEmpty)
         XCTAssertTrue(cancellations.isEmpty)
         XCTAssertTrue(actions.isEmpty)
+    }
+
+    func testCancellationSuspendsOwnedJobInsteadOfWaitingForLeaseExpiry() async throws {
+        let fixture = Fixture(now: now)
+        let segment = fixture.segment(
+            channel: .system, text: "Current", language: "en", start: 0)
+        let provider = CancelledSummaryProvider()
+        let summaryRequest = SummaryRequest(
+            meetingID: fixture.meeting.id,
+            segments: [segment],
+            speakers: [],
+            recipe: .general,
+            targetLanguage: "en")
+        let fingerprint = SummaryOperationFingerprint.compute(
+            request: summaryRequest,
+            providerID: CancelledSummaryProvider.providerID,
+            transcriptRevision: fixture.meeting.transcriptRevision)
+        let job = fixture.job(kind: .summary, fingerprint: fingerprint)
+        let untouchedJob = fixture.job(kind: .summary, fingerprint: fingerprint)
+        let store = WorkflowStoreFake(
+            jobs: [job, untouchedJob],
+            details: [fixture.meeting.id: fixture.detail(segments: [segment])])
+        let capabilities = WorkflowCapabilitiesFake(provider: PostCaptureSummaryProviderSelection(
+            provider: provider,
+            providerID: CancelledSummaryProvider.providerID,
+            modelID: "cancel-test",
+            modelRevision: nil))
+        let events = EventRecorder()
+        let workflow = ProcessPostCaptureJobs(
+            store: store,
+            capabilities: capabilities,
+            heartbeatInterval: .seconds(3_600),
+            now: { processPostCaptureNow })
+
+        let result = await workflow.execute(.init(owner: "test-owner") { event in
+            await events.record(event)
+        })
+
+        XCTAssertEqual(result.processedJobCount, 1)
+        XCTAssertTrue(result.durableStateChanged)
+        XCTAssertTrue(result.issues.isEmpty)
+        let suspensions = await store.suspensionRecords()
+        XCTAssertEqual(suspensions, [job.id])
+        let remainingJobs = await store.remainingJobIDs()
+        XCTAssertEqual(remainingJobs, [untouchedJob.id])
+        let recordedEvents = await events.snapshot()
+        XCTAssertEqual(recordedEvents, [
+            .started(kind: .summary, attempt: 1),
+            .finished(
+                kind: .summary,
+                attempt: 1,
+                outcome: .suspended,
+                durableStateChanged: true)
+        ])
     }
 
     func testClaimAndFailurePreservationErrorsRemainTypedDiagnosticIssues() async throws {
@@ -442,6 +552,7 @@ private struct FailureRecord: Sendable {
 
 private struct CancellationRecord: Sendable {
     let reason: ProcessingJobFailure
+    let replacements: [ProcessingJobRequest]
 }
 
 private struct SchedulingRequest: Sendable {
@@ -462,6 +573,7 @@ private actor WorkflowStoreFake: PostCaptureProcessingStore {
     private var runs: [GenerationRun] = []
     private var failures: [FailureRecord] = []
     private var cancellations: [CancellationRecord] = []
+    private var suspensions: [ProcessingJobID] = []
     private var scheduledRequest: SchedulingRequest?
 
     init(
@@ -502,6 +614,14 @@ private actor WorkflowStoreFake: PostCaptureProcessingStore {
         leaseDuration: TimeInterval,
         at timestamp: Date
     ) {}
+
+    func suspendPostCaptureJob(
+        _ id: ProcessingJobID,
+        owner: String,
+        at timestamp: Date
+    ) {
+        suspensions.append(id)
+    }
 
     func postCaptureDetail(_ meetingID: MeetingID) -> MeetingDetail? {
         details[meetingID]
@@ -566,10 +686,22 @@ private actor WorkflowStoreFake: PostCaptureProcessingStore {
         _ jobID: ProcessingJobID,
         owner: String,
         reason: ProcessingJobFailure,
+        enqueue replacements: [ProcessingJobRequest],
         at timestamp: Date
-    ) throws {
+    ) throws -> ProcessingJobCancellation {
         if let failurePreservationError { throw failurePreservationError }
-        cancellations.append(CancellationRecord(reason: reason))
+        cancellations.append(
+            CancellationRecord(reason: reason, replacements: replacements))
+        let cancelled = jobs.first { $0.id == jobID } ?? ProcessingJob(
+            meetingID: MeetingID(), kind: .summary, inputFingerprint: "cancelled")
+        return ProcessingJobCancellation(
+            cancelledJob: cancelled,
+            enqueuedJobs: replacements.map {
+                ProcessingJob(
+                    meetingID: cancelled.meetingID,
+                    kind: $0.kind,
+                    inputFingerprint: $0.inputFingerprint)
+            })
     }
 
     func nextPostCaptureProcessingDate(
@@ -584,6 +716,8 @@ private actor WorkflowStoreFake: PostCaptureProcessingStore {
     func generationRuns() -> [GenerationRun] { runs }
     func failureRecords() -> [FailureRecord] { failures }
     func cancellationRecords() -> [CancellationRecord] { cancellations }
+    func suspensionRecords() -> [ProcessingJobID] { suspensions }
+    func remainingJobIDs() -> [ProcessingJobID] { jobs.map(\.id) }
     func schedulingRequest() -> SchedulingRequest? { scheduledRequest }
 
     private func commit(
@@ -619,19 +753,23 @@ private actor WorkflowCapabilitiesFake:
     private let transcriptions: [AudioChannel: FileTranscription]
     private let provider: PostCaptureSummaryProviderSelection?
     private let preferences: PostCaptureSummaryPreferences
+    private let voiceprint: Voiceprint?
     private var channels: [AudioChannel] = []
+    private var diarizedVoiceprints: [Voiceprint?] = []
     private var actions: [MeetingID] = []
     private var releases = 0
 
     init(
         transcriptions: [AudioChannel: FileTranscription] = [:],
         provider: PostCaptureSummaryProviderSelection? = nil,
+        voiceprint: Voiceprint? = nil,
         preferences: PostCaptureSummaryPreferences = PostCaptureSummaryPreferences(
             outputLanguage: "en",
             vocabulary: [])
     ) {
         self.transcriptions = transcriptions
         self.provider = provider
+        self.voiceprint = voiceprint
         self.preferences = preferences
     }
 
@@ -647,8 +785,14 @@ private actor WorkflowCapabilitiesFake:
         return result
     }
 
-    func currentPostCaptureVoiceprint() -> Voiceprint? { nil }
-    func diarizePostCaptureAudio(_ asset: AudioAsset) -> [SpeakerTurn] { [] }
+    func currentPostCaptureVoiceprint() -> Voiceprint? { voiceprint }
+    func diarizePostCaptureAudio(
+        _ asset: AudioAsset,
+        voiceprint: Voiceprint?
+    ) -> [SpeakerTurn] {
+        diarizedVoiceprints.append(voiceprint)
+        return []
+    }
     func postCaptureSummaryProvider() -> PostCaptureSummaryProviderSelection? { provider }
 
     func postCaptureSummaryPreferences(
@@ -666,6 +810,7 @@ private actor WorkflowCapabilitiesFake:
     }
 
     func transcribedChannels() -> [AudioChannel] { channels }
+    func diarizationVoiceprints() -> [Voiceprint?] { diarizedVoiceprints }
     func actionMeetingIDs() -> [MeetingID] { actions }
     func releaseCount() -> Int { releases }
 }
@@ -692,6 +837,14 @@ private actor RecordingSummaryProvider: SummaryProvider {
     }
 
     func requests() -> [SummaryRequest] { recorded }
+}
+
+private actor CancelledSummaryProvider: SummaryProvider {
+    static let providerID = "cancelled-summary"
+
+    func summarize(_ request: SummaryRequest) throws -> SummaryDraft {
+        throw CancellationError()
+    }
 }
 
 private actor EventRecorder {

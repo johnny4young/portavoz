@@ -1,5 +1,6 @@
 import Foundation
 import ModelStoreKit
+import PortavozCore
 import TranscriptionKit
 
 extension AppServices {
@@ -35,28 +36,84 @@ extension AppServices {
         let task: Task<WhisperEngine.PreparedModel, Error>
     }
 
+    struct WhisperRuntimeLoad {
+        let generation: UUID
+        let descriptorID: String
+        let ticket: ResourceModelLoadTicket
+        let task: Task<WhisperEngine, Error>
+    }
+
+    struct WhisperRuntimeLease {
+        let engine: WhisperEngine
+        let descriptorID: String
+        fileprivate let residency: ResourceModelUseLease
+    }
+
     typealias WhisperPreparationObserver =
         @MainActor @Sendable (_ size: String, _ percent: Int, _ isDownloading: Bool) -> Void
 
     /// The D7 quality re-pass engine. Refine and Import join the same verified
     /// preparation that Settings can start explicitly in the background.
-    func loadWhisperIfNeeded(
+    func acquireWhisperRuntime(
         descriptor requestedDescriptor: ModelDescriptor? = nil,
+        workloadClass: ResourceWorkloadClass = .userInitiated,
         progress: @escaping @MainActor (String) -> Void,
         preparationProgress: WhisperPreparationObserver? = nil
-    ) async throws -> WhisperEngine {
+    ) async throws -> WhisperRuntimeLease {
         let descriptor = requestedDescriptor ?? Self.preferredWhisperDescriptor()
         whisperIdleGeneration += 1
-        if let whisper, whisperVariantID == descriptor.id { return whisper }
+        if let runtime = try residentWhisperRuntime(descriptorID: descriptor.id) {
+            return runtime
+        }
+        try await admitModelRuntimeLoad(.qualitySpeech)
 
         let prepared = try await preparedWhisperModel(
             descriptor,
+            workloadClass: workloadClass,
             observer: preparationProgress)
         progress(L10n.text("Loading Whisper…"))
-        let engine = try await WhisperEngine.loadPrepared(prepared)
-        whisper = engine
-        whisperVariantID = descriptor.id
-        return engine
+
+        if let runtime = try residentWhisperRuntime(descriptorID: descriptor.id) {
+            return runtime
+        }
+        if let active = whisperRuntimeLoad {
+            guard active.descriptorID == descriptor.id else {
+                throw WhisperRuntimeError.variantInUse
+            }
+            return try await finishWhisperRuntimeLoad(active)
+        }
+        if whisper != nil, !releaseWhisper() {
+            throw WhisperRuntimeError.variantInUse
+        }
+
+        guard let ticket = try await beginAdmittedModelRuntimeLoad(
+            .qualitySpeech
+        ) else {
+            throw WhisperRuntimeError.inconsistentResidency
+        }
+        let telemetry = workloadTelemetry
+        let task = Task { @MainActor in
+            try await telemetry.measure(
+                ResourceWorkloadDescriptor(
+                    workloadClass: workloadClass,
+                    kind: .qualityTranscription,
+                    operation: .load)
+            ) {
+                try await WhisperEngine.loadPrepared(prepared)
+            }
+        }
+        let load = WhisperRuntimeLoad(
+            generation: UUID(),
+            descriptorID: descriptor.id,
+            ticket: ticket,
+            task: task)
+        whisperRuntimeLoad = load
+        return try await finishWhisperRuntimeLoad(load)
+    }
+
+    @discardableResult
+    func finishWhisperRuntime(_ runtime: WhisperRuntimeLease) -> Bool {
+        modelResidencyLedger.finishUse(runtime.residency)
     }
 
     /// Starts app-scoped verification and downloads only missing/corrupt
@@ -69,7 +126,10 @@ extension AppServices {
         whisperBackgroundPreparation = Task { @MainActor [weak self] in
             guard let self else { return }
             defer { self.whisperBackgroundPreparation = nil }
-            _ = try? await self.preparedWhisperModel(descriptor, observer: nil)
+            _ = try? await self.preparedWhisperModel(
+                descriptor,
+                workloadClass: .userInitiated,
+                observer: nil)
         }
     }
 
@@ -118,11 +178,9 @@ extension AppServices {
         guard let descriptor = Self.whisperDescriptor(id) else { return }
         if case .preparing(let activeID, _, _, _) = whisperPreparationState,
             activeID == id { return }
+        if whisperRuntimeLoad?.descriptorID == id { return }
+        if whisperVariantID == id, !releaseWhisper() { return }
         try? await modelLifecycle.remove(descriptor)
-        if whisperVariantID == id {
-            whisper = nil
-            whisperVariantID = nil
-        }
         if whisperPreparedModel?.descriptorID == id {
             whisperPreparedModel = nil
         }
@@ -137,9 +195,31 @@ extension AppServices {
     }
 
     /// Drops the loaded runtime but never removes the verified files.
-    func releaseWhisper() {
+    @discardableResult
+    func releaseWhisper() -> Bool {
+        guard whisperRuntimeLoad == nil else { return false }
+        guard whisper != nil else {
+            return modelResidencyLedger.record(for: .qualitySpeech).status == .unloaded
+        }
+        guard let ticket = modelResidencyLedger.beginRelease(.qualitySpeech) else {
+            return false
+        }
+        let retainedRuntime = whisper
+        let retainedVariantID = whisperVariantID
+        let span = workloadTelemetry.begin(ResourceWorkloadDescriptor(
+            workloadClass: .maintenance,
+            kind: .qualityTranscription,
+            operation: .release))
         whisper = nil
         whisperVariantID = nil
+        workloadTelemetry.finish(span, outcome: .completed)
+        guard modelResidencyLedger.finishRelease(ticket) else {
+            whisper = retainedRuntime
+            whisperVariantID = retainedVariantID
+            _ = modelResidencyLedger.cancelRelease(ticket)
+            return false
+        }
+        return true
     }
 
     func scheduleWhisperRelease() {
@@ -151,11 +231,74 @@ extension AppServices {
             self.releaseWhisper()
         }
     }
+
+    private func finishWhisperRuntimeLoad(
+        _ load: WhisperRuntimeLoad
+    ) async throws -> WhisperRuntimeLease {
+        do {
+            let engine = try await load.task.value
+            guard whisperRuntimeLoad?.generation == load.generation else {
+                guard let runtime = try residentWhisperRuntime(
+                    descriptorID: load.descriptorID)
+                else {
+                    throw CancellationError()
+                }
+                return runtime
+            }
+            try await admitModelRuntimeLoad(.qualitySpeech)
+            guard whisperRuntimeLoad?.generation == load.generation else {
+                guard let runtime = try residentWhisperRuntime(
+                    descriptorID: load.descriptorID)
+                else {
+                    throw CancellationError()
+                }
+                return runtime
+            }
+            guard modelResidencyLedger.finishLoad(
+                load.ticket,
+                measuredFootprintBytes: nil)
+            else {
+                whisperRuntimeLoad = nil
+                _ = modelResidencyLedger.failLoad(load.ticket)
+                throw WhisperRuntimeError.inconsistentResidency
+            }
+            whisperRuntimeLoad = nil
+            whisper = engine
+            whisperVariantID = load.descriptorID
+            guard let runtime = try residentWhisperRuntime(
+                descriptorID: load.descriptorID)
+            else {
+                _ = releaseWhisper()
+                throw WhisperRuntimeError.inconsistentResidency
+            }
+            return runtime
+        } catch {
+            if whisperRuntimeLoad?.generation == load.generation {
+                whisperRuntimeLoad = nil
+                _ = modelResidencyLedger.failLoad(load.ticket)
+            }
+            throw error
+        }
+    }
+
+    private func residentWhisperRuntime(
+        descriptorID: String
+    ) throws -> WhisperRuntimeLease? {
+        guard let whisper, whisperVariantID == descriptorID else { return nil }
+        guard let residency = modelResidencyLedger.beginUse(.qualitySpeech) else {
+            throw WhisperRuntimeError.inconsistentResidency
+        }
+        return WhisperRuntimeLease(
+            engine: whisper,
+            descriptorID: descriptorID,
+            residency: residency)
+    }
 }
 
 extension AppServices {
     private func preparedWhisperModel(
         _ descriptor: ModelDescriptor,
+        workloadClass: ResourceWorkloadClass,
         observer: WhisperPreparationObserver?
     ) async throws -> WhisperEngine.PreparedModel {
         if let whisperPreparedModel,
@@ -197,27 +340,46 @@ extension AppServices {
         for observer in whisperProgressObservers.values {
             observer(size, 0, false)
         }
-        let task = Task {
-            try await WhisperEngine.prepare(
-                store: modelStore,
-                descriptor: descriptor
-            ) { update in
-                let percent = min(100, max(0, Int(update.fraction * 100)))
-                Task { @MainActor [weak self] in
-                    self?.reportWhisperProgress(
-                        descriptorID: descriptor.id,
-                        size: size,
-                        percent: percent,
-                        isDownloading: update.isDownloading)
-                }
-            }
-        }
+        let task = makeWhisperPreparationTask(
+            descriptor,
+            workloadClass: workloadClass,
+            size: size)
         let preparation = WhisperPreparation(
             generation: generation,
             descriptorID: descriptor.id,
             task: task)
         whisperPreparation = preparation
         return try await finishWhisperPreparation(preparation)
+    }
+
+    private func makeWhisperPreparationTask(
+        _ descriptor: ModelDescriptor,
+        workloadClass: ResourceWorkloadClass,
+        size: String
+    ) -> Task<WhisperEngine.PreparedModel, Error> {
+        let telemetry = workloadTelemetry
+        let store = modelStore
+        return Task {
+            try await telemetry.measure(ResourceWorkloadDescriptor(
+                workloadClass: workloadClass,
+                kind: .qualityTranscription,
+                operation: .prepare)
+            ) {
+                try await WhisperEngine.prepare(
+                    store: store,
+                    descriptor: descriptor
+                ) { update in
+                    let percent = min(100, max(0, Int(update.fraction * 100)))
+                    Task { @MainActor [weak self] in
+                        self?.reportWhisperProgress(
+                            descriptorID: descriptor.id,
+                            size: size,
+                            percent: percent,
+                            isDownloading: update.isDownloading)
+                    }
+                }
+            }
+        }
     }
 
     private func finishWhisperPreparation(
@@ -287,4 +449,9 @@ extension AppServices {
             downloaded: downloaded,
             bytes: Int64(descriptor.totalSizeBytes))
     }
+}
+
+private enum WhisperRuntimeError: Error {
+    case inconsistentResidency
+    case variantInUse
 }

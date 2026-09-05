@@ -13,6 +13,25 @@ enum AudioInputFormatPolicy {
     }
 }
 
+/// Input taps observe the hardware route instead of attempting to configure it.
+///
+/// A route can change between reading `outputFormat` and installing a tap.
+/// Passing that earlier format back to AVFAudio can therefore raise an
+/// Objective-C format-mismatch exception. A nil requested format leaves the
+/// bus untouched; each delivered buffer is then resampled from its actual rate.
+enum AudioInputTapPolicy {
+    static var requestedFormat: AVAudioFormat? {
+        nil
+    }
+
+    static func sourceSampleRate(for bufferFormat: AVAudioFormat) -> Double? {
+        guard AudioInputFormatPolicy.isUsable(bufferFormat) else {
+            return nil
+        }
+        return bufferFormat.sampleRate
+    }
+}
+
 /// Captures the local microphone through AVAudioEngine at the device's
 /// native format, downmixed to mono. Recording keeps native quality;
 /// resampling for STT is TranscriptionKit's job.
@@ -35,13 +54,15 @@ enum AudioInputFormatPolicy {
 public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
     public let channel: AudioChannel = .microphone
 
-    private let engine = AVAudioEngine()
+    private var engine = AVAudioEngine()
     private let clock = HostClock()
     private let deviceIdentifier: String?
     private let voiceProcessing: Bool
     private let restartQueue = DispatchQueue(label: "app.portavoz.mic-restart")
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
     private var observer: (any NSObjectProtocol)?
+    private var tapInstalled = false
+    private var routeTransitions = AudioRouteTransitionGate()
     /// Rate of the first device; the stream promises this rate for its whole
     /// life, so replacement devices get resampled to it. Written once.
     private var streamSampleRate: Double = 0
@@ -122,15 +143,8 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
             let (stream, continuation) = AsyncThrowingStream<AudioChunk, Error>.makeStream()
             self.continuation = continuation
             streamSampleRate = format.sampleRate
+            routeTransitions.activate()
             installTap()
-
-            observer = NotificationCenter.default.addObserver(
-                forName: .AVAudioEngineConfigurationChange,
-                object: engine,
-                queue: nil
-            ) { [weak self] _ in
-                self?.scheduleRestart()
-            }
 
             if !engine.isRunning {
                 engine.prepare()
@@ -141,6 +155,7 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
                     throw error
                 }
             }
+            installConfigurationObserver()
             return stream
         }
     }
@@ -167,14 +182,35 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
 
     /// Must run on `restartQueue` (or before the stream exists, in `start`).
     private func teardown() {
+        routeTransitions.deactivate()
+        discardCurrentEngine()
+        continuation?.finish()
+        continuation = nil
+    }
+
+    /// Stops and detaches the current graph without ending the capture stream.
+    /// Must run on `restartQueue`.
+    private func discardCurrentEngine() {
         if let observer {
             NotificationCenter.default.removeObserver(observer)
         }
         observer = nil
-        engine.inputNode.removeTap(onBus: 0)
         engine.stop()
-        continuation?.finish()
-        continuation = nil
+        if tapInstalled {
+            engine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
+        }
+    }
+
+    private func installConfigurationObserver() {
+        let observedEngine = engine
+        observer = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: observedEngine,
+            queue: nil
+        ) { [weak self] _ in
+            self?.requestRestart()
+        }
     }
 
     /// Installs the tap at the CURRENT device format, resampling to the
@@ -182,11 +218,8 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
     /// (device switch downtime) with silence to keep the timeline aligned.
     private func installTap() {
         let input = engine.inputNode
-        let format = input.outputFormat(forBus: 0)
-        let native = format.sampleRate
         let target = streamSampleRate
         guard
-            AudioInputFormatPolicy.isUsable(format),
             target.isFinite,
             target > 0,
             let continuation
@@ -195,8 +228,17 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
         }
 
         let clock = clock
-        input.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] buffer, when in
+        input.installTap(
+            onBus: 0,
+            bufferSize: 4096,
+            format: AudioInputTapPolicy.requestedFormat
+        ) { [weak self] buffer, when in
             guard let self else { return }
+            guard let native = AudioInputTapPolicy.sourceSampleRate(
+                for: buffer.format
+            ) else {
+                return
+            }
             var samples = Downmix.mono(from: buffer)
             guard !samples.isEmpty else { return }
             // Muted for Portavoz: write silence, so YOUR voice isn't recorded
@@ -228,28 +270,63 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
             ))
             self.addDelivered(samples.count)
         }
+        tapInstalled = true
     }
 
     /// A configuration change means the engine stopped (device switched or
-    /// disappeared). Reinstall and restart; if no usable input exists yet,
-    /// retry shortly — when one returns, the tap's gap padding covers the
-    /// downtime.
-    private func scheduleRestart(delay: TimeInterval = 0) {
+    /// disappeared). The notification is delivered on AVFAudio's internal
+    /// queue, so only enqueue a generation-fenced handoff here. A fresh engine
+    /// owns exactly one tap and avoids AVFAudio's process-terminating
+    /// "one tap per bus" precondition when route notifications arrive in a
+    /// burst. Gap padding covers the handoff downtime.
+    private func requestRestart() {
+        restartQueue.async { [weak self] in
+            guard let self, let ticket = self.routeTransitions.request() else {
+                return
+            }
+            self.scheduleRestart(
+                ticket: ticket,
+                delay: AudioRouteTransitionTiming.settleDelay
+            )
+        }
+    }
+
+    private func scheduleRestart(
+        ticket: AudioRouteTransitionGate.Ticket,
+        delay: TimeInterval
+    ) {
         restartQueue.asyncAfter(deadline: .now() + delay) { [weak self] in
-            guard let self, self.continuation != nil else { return }
-            let input = self.engine.inputNode
-            input.removeTap(onBus: 0)
+            guard
+                let self,
+                self.continuation != nil,
+                self.routeTransitions.admits(ticket)
+            else {
+                return
+            }
+
+            self.discardCurrentEngine()
+            self.engine = AVAudioEngine()
             try? self.applyPinnedDeviceIfNeeded(required: false)
+            self.applyVoiceProcessingIfEnabled()
+            let input = self.engine.inputNode
             guard AudioInputFormatPolicy.isUsable(input.outputFormat(forBus: 0)) else {
-                self.scheduleRestart(delay: 0.5)
+                self.scheduleRestart(
+                    ticket: ticket,
+                    delay: AudioRouteTransitionTiming.retryDelay
+                )
                 return
             }
             self.installTap()
             self.engine.prepare()
             do {
                 try self.engine.start()
+                self.installConfigurationObserver()
             } catch {
-                self.scheduleRestart(delay: 0.5)
+                self.discardCurrentEngine()
+                self.scheduleRestart(
+                    ticket: ticket,
+                    delay: AudioRouteTransitionTiming.retryDelay
+                )
             }
         }
     }

@@ -26,27 +26,77 @@ public struct MeetingSyncChange: Equatable, Sendable, Identifiable {
     }
 }
 
+/// One committed checkpoint while an existing library is admitted to sync.
+/// The opaque meeting identity is a durable cursor owned by the transport
+/// policy; no meeting content crosses this boundary.
+public struct MeetingInitialSyncSeedBatch: Equatable, Sendable {
+    public let processedCount: Int
+    public let lastMeetingID: MeetingID?
+    public let isComplete: Bool
+
+    public init(
+        processedCount: Int,
+        lastMeetingID: MeetingID?,
+        isComplete: Bool
+    ) {
+        self.processedCount = processedCount
+        self.lastMeetingID = lastMeetingID
+        self.isComplete = isComplete
+    }
+}
+
 extension MeetingStore {
-    /// Seeds every current meeting exactly when sync is enabled. Migration to
-    /// v14 itself queues nothing, so upgrading an offline-only library remains
-    /// a content-free, side-effect-free operation.
+    /// Marks one deterministic batch after explicit existing-library opt-in.
+    /// Replaying a committed batch is idempotent while its rows remain pending,
+    /// which closes the cross-store crash window before the transport cursor
+    /// is published.
     @discardableResult
-    public func markAllMeetingsForInitialSync() async throws -> Int {
-        try await database.write { db in
-            let count = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM meeting") ?? 0
-            try db.execute(sql: """
-                INSERT INTO meetingSyncState (
-                    meetingID, localGeneration, acknowledgedGeneration, changedAt, isDeleted
-                )
-                SELECT id, 1, 0, updatedAt, deletedAt IS NOT NULL
-                  FROM meeting
-                 WHERE 1
-                ON CONFLICT(meetingID) DO UPDATE SET
-                    localGeneration = meetingSyncState.localGeneration + 1,
-                    changedAt = excluded.changedAt,
-                    isDeleted = excluded.isDeleted
-                """)
-            return count
+    public func markMeetingsForInitialSync(
+        after cursor: MeetingID?,
+        limit: Int = 100
+    ) async throws -> MeetingInitialSyncSeedBatch {
+        guard limit > 0 else {
+            throw StorageError.invalidSyncState("initial seed limit must be positive")
+        }
+        return try await database.write { db in
+            let cursorValue = cursor?.rawValue.uuidString
+            let rows = try InitialSyncMeetingRecord.fetchAll(
+                db,
+                sql: """
+                    SELECT id, updatedAt, deletedAt
+                      FROM meeting
+                     WHERE (? IS NULL OR id > ?)
+                     ORDER BY id
+                     LIMIT ?
+                    """,
+                arguments: [cursorValue, cursorValue, limit])
+            for row in rows {
+                try db.execute(
+                    sql: """
+                        INSERT INTO meetingSyncState (
+                            meetingID, localGeneration, acknowledgedGeneration,
+                            changedAt, isDeleted
+                        )
+                        VALUES (?, 1, 0, ?, ?)
+                        ON CONFLICT(meetingID) DO UPDATE SET
+                            localGeneration = CASE
+                                WHEN meetingSyncState.localGeneration
+                                    > meetingSyncState.acknowledgedGeneration
+                                THEN meetingSyncState.localGeneration
+                                ELSE meetingSyncState.localGeneration + 1
+                            END,
+                            changedAt = MAX(
+                                meetingSyncState.changedAt,
+                                excluded.changedAt
+                            ),
+                            isDeleted = excluded.isDeleted
+                        """,
+                    arguments: [row.id, row.updatedAt, row.deletedAt != nil])
+            }
+            return MeetingInitialSyncSeedBatch(
+                processedCount: rows.count,
+                lastMeetingID: try rows.last?.meetingID,
+                isComplete: rows.count < limit)
         }
     }
 
@@ -65,6 +115,19 @@ extension MeetingStore {
                     """,
                 arguments: [limit])
                 .map { try $0.syncChange }
+        }
+    }
+
+    public func pendingMeetingSyncChange(
+        for meetingID: MeetingID
+    ) async throws -> MeetingSyncChange? {
+        try await database.read { database in
+            guard let record = try MeetingSyncStateRecord.fetchOne(
+                database,
+                key: meetingID.rawValue.uuidString),
+                record.localGeneration > record.acknowledgedGeneration
+            else { return nil }
+            return try record.syncChange
         }
     }
 
@@ -87,6 +150,21 @@ extension MeetingStore {
                 record.acknowledgedGeneration,
                 change.generation)
             try record.update(db)
+        }
+    }
+}
+
+private struct InitialSyncMeetingRecord: FetchableRecord, Decodable {
+    let id: String
+    let updatedAt: Date
+    let deletedAt: Date?
+
+    var meetingID: MeetingID {
+        get throws {
+            MeetingID(rawValue: try PersistedIdentity.required(
+                id,
+                table: MeetingRecord.databaseTableName,
+                column: "id"))
         }
     }
 }

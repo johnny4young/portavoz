@@ -37,6 +37,7 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
     private var ioProcID: AudioDeviceIOProcID?
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
     private var outputListener: AudioObjectPropertyListenerBlock?
+    private var routeTransitions = AudioRouteTransitionGate()
     /// Rate of the first graph; the stream promises this rate for its whole
     /// life, so a rebuild on a device with a different rate gets resampled.
     private var streamSampleRate: Double = 0
@@ -52,15 +53,33 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
     }
 
     public func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
+        try await withCheckedThrowingContinuation { completion in
+            rebuildQueue.async { [self] in
+                do {
+                    completion.resume(returning: try startOnRebuildQueue())
+                } catch {
+                    completion.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    /// Owns every mutable Core Audio graph identifier on `rebuildQueue`.
+    private func startOnRebuildQueue() throws -> AsyncThrowingStream<AudioChunk, Error> {
         let (stream, continuation) = AsyncThrowingStream<AudioChunk, Error>.makeStream()
         self.continuation = continuation
+        routeTransitions.activate()
         do {
             try buildGraph()
         } catch {
             // Core Audio setup is multi-step; any throw after creating a tap,
             // aggregate device, or IOProc must release the partial graph
             // before the caller retries.
-            await stop()
+            routeTransitions.deactivate()
+            removeOutputDeviceListener()
+            destroyGraph()
+            continuation.finish()
+            self.continuation = nil
             throw error
         }
         installOutputDeviceListener()
@@ -160,14 +179,39 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
     /// Rebuilds the tap graph on the new default output. Runs serialized so a
     /// burst of change notifications can't race; retries shortly if the new
     /// device isn't ready yet.
-    private func rebuild(delay: TimeInterval = 0) {
+    private func requestRebuild() {
+        rebuildQueue.async { [weak self] in
+            guard let self, let ticket = self.routeTransitions.request() else {
+                return
+            }
+            self.scheduleRebuild(
+                ticket: ticket,
+                delay: AudioRouteTransitionTiming.settleDelay
+            )
+        }
+    }
+
+    private func scheduleRebuild(
+        ticket: AudioRouteTransitionGate.Ticket,
+        delay: TimeInterval
+    ) {
         rebuildQueue.asyncAfter(deadline: .now() + delay) { [weak self] in
-            guard let self, self.continuation != nil else { return }
+            guard
+                let self,
+                self.continuation != nil,
+                self.routeTransitions.admits(ticket)
+            else {
+                return
+            }
             self.destroyGraph()
             do {
                 try self.buildGraph()
             } catch {
-                self.rebuild(delay: 0.5)
+                self.destroyGraph()
+                self.scheduleRebuild(
+                    ticket: ticket,
+                    delay: AudioRouteTransitionTiming.retryDelay
+                )
             }
         }
     }
@@ -176,7 +220,7 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
     /// stopped delivering frames while the microphone remains alive. The
     /// serialized rebuild queue preserves the current stream and its timeline.
     public func requestRecovery() async {
-        rebuild()
+        requestRebuild()
     }
 
     private func installOutputDeviceListener() {
@@ -186,7 +230,7 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
             mElement: kAudioObjectPropertyElementMain
         )
         let listener: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
-            self?.rebuild()
+            self?.requestRebuild()
         }
         let status = AudioObjectAddPropertyListenerBlock(
             AudioObjectID(kAudioObjectSystemObject), &address, rebuildQueue, listener)
@@ -224,6 +268,16 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
     }
 
     public func stop() async {
+        await withCheckedContinuation { completion in
+            rebuildQueue.async { [self] in
+                stopOnRebuildQueue()
+                completion.resume()
+            }
+        }
+    }
+
+    private func stopOnRebuildQueue() {
+        routeTransitions.deactivate()
         removeOutputDeviceListener()
         destroyGraph()
         continuation?.finish()

@@ -1,7 +1,6 @@
 import ApplicationKit
 import Foundation
 import Observation
-import OSLog
 import PortavozCore
 
 /// Per-detail owner of scoped loading, partial failure, and the current
@@ -9,18 +8,7 @@ import PortavozCore
 @MainActor
 @Observable
 final class MeetingDetailModel {
-    private static let performanceSignposter = OSSignposter(
-        subsystem: "app.portavoz.mac",
-        category: "meeting-detail")
-
-    enum LoadPhase: Equatable {
-        case idle
-        case loading
-        case loaded
-        case missing
-        case degraded(failures: Int)
-        case failed
-    }
+    typealias LoadPhase = MeetingDetailLoadPhase
 
     struct State {
         fileprivate(set) var phase: LoadPhase = .idle
@@ -37,200 +25,54 @@ final class MeetingDetailModel {
         fileprivate(set) var audioCompressionMessage: String?
         fileprivate(set) var revision = 0
         fileprivate(set) var lastActionError: String?
-    }
-
-    enum ContentAction {
-        case renameMeeting(Meeting, title: String)
-        case acceptNameSuggestion(Speaker, name: String)
-        case acceptVoiceSuggestion(Speaker, name: String)
-        case renameSpeaker(Speaker, name: String)
-        case findCanonicalPeople(Speaker, source: PersonAliasSource)
-        case linkCanonicalPerson(
-            Speaker,
-            source: PersonAliasSource,
-            selection: CanonicalPersonSelection)
-        case setActionItem(UUID, done: Bool)
-        case setSummaryClaimFeedback(SummaryClaimID, SummaryClaimFeedback?)
-        case removeCompanionCard(UUID)
-    }
-
-    enum ReviewAction {
-        case deleteMeeting
-        case retryProcessing
-        case prepareDocument(MeetingDocumentFormat)
-        case publishGist
-        case loadNameSuggestions
-        case loadVoiceSuggestions
-        case loadMetadataSuggestions
-        case loadPlayback
-        case compressAudio
-        case exportAudioClip(ClosedRange<TimeInterval>, to: URL)
-        case checkVoiceMemoryOffer(name: String)
-        case rememberVoice(SpeakerID)
-    }
-
-    enum Action {
-        case content(ContentAction)
-        case review(ReviewAction)
-        case searchableContentChanged
-
-        static func renameMeeting(_ meeting: Meeting, title: String) -> Self {
-            .content(.renameMeeting(meeting, title: title))
-        }
-
-        static func acceptNameSuggestion(_ speaker: Speaker, name: String) -> Self {
-            .content(.acceptNameSuggestion(speaker, name: name))
-        }
-
-        static func acceptVoiceSuggestion(_ speaker: Speaker, name: String) -> Self {
-            .content(.acceptVoiceSuggestion(speaker, name: name))
-        }
-
-        static func renameSpeaker(_ speaker: Speaker, name: String) -> Self {
-            .content(.renameSpeaker(speaker, name: name))
-        }
-
-        static func findCanonicalPeople(
-            _ speaker: Speaker,
-            source: PersonAliasSource
-        ) -> Self {
-            .content(.findCanonicalPeople(speaker, source: source))
-        }
-
-        static func linkCanonicalPerson(
-            _ speaker: Speaker,
-            source: PersonAliasSource,
-            selection: CanonicalPersonSelection
-        ) -> Self {
-            .content(.linkCanonicalPerson(
-                speaker,
-                source: source,
-                selection: selection))
-        }
-
-        static func setActionItem(_ id: UUID, done: Bool) -> Self {
-            .content(.setActionItem(id, done: done))
-        }
-
-        static func setSummaryClaimFeedback(
-            _ claimID: SummaryClaimID,
-            _ feedback: SummaryClaimFeedback?
-        ) -> Self {
-            .content(.setSummaryClaimFeedback(claimID, feedback))
-        }
-
-        static func removeCompanionCard(_ id: UUID) -> Self {
-            .content(.removeCompanionCard(id))
-        }
-
-        static var deleteMeeting: Self { .review(.deleteMeeting) }
-        static var retryProcessing: Self { .review(.retryProcessing) }
-
-        static func prepareDocument(_ format: MeetingDocumentFormat) -> Self {
-            .review(.prepareDocument(format))
-        }
-
-        static var publishGist: Self { .review(.publishGist) }
-        static var loadNameSuggestions: Self { .review(.loadNameSuggestions) }
-        static var loadVoiceSuggestions: Self { .review(.loadVoiceSuggestions) }
-        static var loadMetadataSuggestions: Self { .review(.loadMetadataSuggestions) }
-        static var loadPlayback: Self { .review(.loadPlayback) }
-        static var compressAudio: Self { .review(.compressAudio) }
-
-        static func exportAudioClip(
-            _ range: ClosedRange<TimeInterval>,
-            to destination: URL
-        ) -> Self {
-            .review(.exportAudioClip(range, to: destination))
-        }
-
-        static func checkVoiceMemoryOffer(name: String) -> Self {
-            .review(.checkVoiceMemoryOffer(name: name))
-        }
-
-        static func rememberVoice(_ speakerID: SpeakerID) -> Self {
-            .review(.rememberVoice(speakerID))
-        }
-    }
-
-    enum Effect {
-        case nameSuggestionAccepted(Speaker)
-        case voiceSuggestionAccepted(Speaker)
-        case speakerRenamed(Speaker)
-        case canonicalPeopleFound(Speaker, PersonAliasSource, [Person])
-        case canonicalPersonLinked(ConfirmedPersonLink)
-        case summaryClaimFeedbackSaved(SummaryClaimID)
-        case meetingDeleted(MeetingID)
-        case documentPrepared(PreparedMeetingDocument)
-        case gistPublished(URL)
-        case nameSuggestionsLoaded
-        case voiceMemoryOfferChecked(Bool)
-        case voiceRemembered
-        case voiceMemoryInsufficientAudio
-        case audioCompressed(Int64)
-        case audioClipExported(URL)
-        case operationFailed(String)
+        fileprivate(set) var decisionConfirmations:
+            [SummaryDecisionID: DecisionObservationConfirmationState] = [:]
+        fileprivate(set) var linkableTopics: [LinkableTopic] = []
+        fileprivate(set) var skillOffers: [MeetingSkillOffer] = []
+        fileprivate(set) var skillReceipts: [MeetingSkillReceipt] = []
     }
 
     private(set) var state = State()
     let meetingID: MeetingID
 
-    private let client: any MeetingDetailModelClient
-    private let firstContentInterval: OSSignpostIntervalState
-    private var didRenderFirstContent = false
-    private var observationID = UUID()
-    private var observedSections: Set<MeetingReviewSection> = []
-    private var failedSections: Set<MeetingReviewSection> = []
-    private var hasCoreSnapshot = false
-    private var core: MeetingReviewCore?
-    private var summary: MeetingReviewSummary?
-    private var companionCards: [CompanionCard] = []
-    private var privacyReceipt: PrivacyReceipt?
-    private var processingJobs: [ProcessingJob] = []
-    private var notes = MeetingReviewNotes()
+    let client: any MeetingDetailModelClient
+    private let firstContentTrace: MeetingDetailFirstContentTrace
+    private var reviewAccumulator = MeetingDetailReviewAccumulator()
+    private var metadataSuggestionState = MeetingDetailMetadataSuggestionState()
     private var didLoadVoiceSuggestions = false
-    private var didCompleteTitleSuggestion = false
-    private var didCompleteRecipeSuggestion = false
-    private var metadataRequestID = UUID()
     private var playbackDirectoryAttempt: String?
 
-    init(meetingID: MeetingID, client: any MeetingDetailModelClient) {
+    init(
+        meetingID: MeetingID,
+        client: any MeetingDetailModelClient,
+        workloadTelemetry: ResourceWorkloadTelemetry = .disabled
+    ) {
         self.meetingID = meetingID
         self.client = client
-        firstContentInterval = Self.performanceSignposter.beginInterval(
-            "Meeting Detail First Content")
+        firstContentTrace = MeetingDetailFirstContentTrace(
+            workloadTelemetry: workloadTelemetry)
     }
 
     /// Ends the content-free navigation interval when SwiftUI mounts the
     /// first real Meeting Detail projection. Repeated appearances are ignored.
     func firstContentDidAppear() {
-        guard !didRenderFirstContent else { return }
-        didRenderFirstContent = true
-        Self.performanceSignposter.endInterval(
-            "Meeting Detail First Content",
-            firstContentInterval)
+        firstContentTrace.finish()
     }
 
     /// Any explicit summary regeneration supersedes the optional recipe chip.
-    func dismissSuggestedRecipe() {
-        state.suggestedRecipe = nil
-    }
+    func dismissSuggestedRecipe() { state.suggestedRecipe = nil }
 
-    func dismissSuggestedTitle() {
-        state.suggestedTitle = nil
-    }
+    func dismissSuggestedTitle() { state.suggestedTitle = nil }
 
-    func dismissNameSuggestion(label: String) {
-        state.nameSuggestions.removeAll { $0.label == label }
-    }
+    func dismissNameSuggestion(label: String) { state.nameSuggestions.removeAll { $0.label == label } }
 
     func dismissVoiceSuggestion(speakerLabel: String) {
         state.voiceSuggestions.removeAll { $0.speakerLabel == speakerLabel }
     }
 
-    func dismissThinSummarySuggestion(version: Int) {
-        state.dismissedThinSummaryVersion = version
-    }
+    func dismissThinSummarySuggestion(version: Int) { state.dismissedThinSummaryVersion = version }
+
+    func recordLastActionError(_ error: String?) { state.lastActionError = error }
 
     /// The route owns the AVFoundation observer lifetime. Leaving the detail
     /// invalidates the application playback facade and allows a clean reload
@@ -242,14 +84,13 @@ final class MeetingDetailModel {
     }
 
     func observe() async {
-        let currentID = UUID()
-        observationID = currentID
+        let currentID = reviewAccumulator.beginObservation()
         state.phase = .loading
-        observedSections = []
-        failedSections = []
 
         for await update in client.observeMeetingReview(meetingID) {
-            guard !Task.isCancelled, observationID == currentID else { return }
+            guard !Task.isCancelled,
+                reviewAccumulator.accepts(observationID: currentID)
+            else { return }
             publish(update)
         }
     }
@@ -269,6 +110,15 @@ final class MeetingDetailModel {
 
     private func sendContentAction(_ action: ContentAction) async -> Effect? {
         switch action {
+        case .editing(let editingAction):
+            return await sendEditingAction(editingAction)
+        case .artifact(let artifactAction):
+            return await sendArtifactAction(artifactAction)
+        }
+    }
+
+    private func sendEditingAction(_ action: EditingAction) async -> Effect? {
+        switch action {
         case .renameMeeting(let meeting, let title):
             await renameMeeting(meeting, title: title)
             return nil
@@ -278,6 +128,10 @@ final class MeetingDetailModel {
             return await acceptVoiceSuggestion(speaker, name: name)
         case .renameSpeaker(let speaker, let name):
             return await renameSpeaker(speaker, name: name)
+        case .correctTranscript(let request):
+            return await correctTranscript(request)
+        case .restructureTranscript(let request):
+            return await restructureTranscript(request)
         case .findCanonicalPeople(let speaker, let source):
             return await findCanonicalPeople(speaker, source: source)
         case .linkCanonicalPerson(let speaker, let source, let selection):
@@ -285,18 +139,57 @@ final class MeetingDetailModel {
                 speaker,
                 source: source,
                 selection: selection)
+        }
+    }
+
+    private func sendArtifactAction(_ action: ArtifactAction) async -> Effect? {
+        switch action {
         case .setActionItem(let id, let done):
             await setActionItem(id, done: done)
             return nil
+        case .commitment(let commitmentAction):
+            return await sendCommitmentAction(commitmentAction)
         case .setSummaryClaimFeedback(let claimID, let feedback):
             return await setSummaryClaimFeedback(feedback, for: claimID)
         case .removeCompanionCard(let id):
             await removeCompanionCard(id)
             return nil
+        case .confirmDecision(let request):
+            return await confirmDecision(request)
+        case .retractDecisionTopic(let retraction):
+            await retractDecisionTopic(retraction)
+            return nil
+        case .performSkill(let offer, let context):
+            return await performSkill(offer, context: context)
+        case .performGitHubIssue(let context):
+            return await performGitHubIssue(context)
+        case .dismissSkillOffer(let offer):
+            await dismissSkillOffer(offer)
+            return nil
+        }
+    }
+
+    private func sendCommitmentAction(_ action: CommitmentAction) async -> Effect? {
+        switch action {
+        case .confirm(let request):
+            return await confirmCommitment(request)
+        case .review(let request):
+            return await reviewCommitment(request)
         }
     }
 
     private func sendReviewAction(_ action: ReviewAction) async -> Effect? {
+        switch action {
+        case .maintenance(let maintenanceAction):
+            return await sendMaintenanceAction(maintenanceAction)
+        case .preparation(let preparationAction):
+            return await sendPreparationAction(preparationAction)
+        case .audio(let audioAction):
+            return await sendAudioAction(audioAction)
+        }
+    }
+
+    private func sendMaintenanceAction(_ action: MaintenanceAction) async -> Effect? {
         switch action {
         case .deleteMeeting:
             await deleteMeeting()
@@ -304,10 +197,15 @@ final class MeetingDetailModel {
         case .retryProcessing:
             await retryProcessing()
             return nil
-        case .prepareDocument(let format):
-            return await prepareDocument(format)
-        case .publishGist:
-            return await publishGist()
+        }
+    }
+
+    private func sendPreparationAction(_ action: PreparationAction) async -> Effect? {
+        switch action {
+        case .prepareDocument(let format, let options):
+            return await prepareDocument(format, options: options)
+        case .publishGist(let options):
+            return await publishGist(options: options)
         case .loadNameSuggestions:
             return await loadNameSuggestions()
         case .loadVoiceSuggestions:
@@ -316,6 +214,19 @@ final class MeetingDetailModel {
         case .loadMetadataSuggestions:
             await loadMetadataSuggestions()
             return nil
+        case .loadDecisionConfirmations:
+            await loadDecisionConfirmations()
+            return nil
+        case .loadSkillOffers:
+            await loadSkillOffers()
+            return nil
+        case .prepareGitHubIssue(let request):
+            return await prepareGitHubIssue(request)
+        }
+    }
+
+    private func sendAudioAction(_ action: AudioAction) async -> Effect? {
+        switch action {
         case .loadPlayback:
             await loadPlayback()
             return nil
@@ -396,6 +307,40 @@ private extension MeetingDetailModel {
         return .speakerRenamed(speaker)
     }
 
+    func correctTranscript(
+        _ request: CorrectMeetingTranscriptRequest
+    ) async -> Effect {
+        do {
+            let result = try await client.correctMeetingDetailTranscript(request)
+            state.lastActionError = nil
+            client.requestMeetingDetailSearchReindex()
+            return .transcriptCorrected(result)
+        } catch {
+            let message = L10n.format(
+                "Could not save this transcript correction: %@",
+                TranscriptCorrectionErrorMessages.describe(error))
+            state.lastActionError = message
+            return .operationFailed(message)
+        }
+    }
+
+    func restructureTranscript(
+        _ request: RestructureMeetingTranscriptRequest
+    ) async -> Effect {
+        do {
+            let result = try await client.restructureMeetingDetailTranscript(request)
+            state.lastActionError = nil
+            client.requestMeetingDetailSearchReindex()
+            return .transcriptRestructured(result)
+        } catch {
+            let message = L10n.format(
+                "Could not save this transcript correction: %@",
+                TranscriptCorrectionErrorMessages.describe(error))
+            state.lastActionError = message
+            return .operationFailed(message)
+        }
+    }
+
     func findCanonicalPeople(
         _ speaker: Speaker,
         source: PersonAliasSource
@@ -438,6 +383,36 @@ private extension MeetingDetailModel {
         client.requestMeetingDetailSearchReindex()
     }
 
+    func confirmCommitment(
+        _ request: ConfirmMeetingCommitmentRequest
+    ) async -> Effect? {
+        do {
+            let commitment = try await client.confirmMeetingDetailCommitment(request)
+            state.lastActionError = nil
+            client.requestMeetingDetailSearchReindex()
+            client.requestMeetingDetailMemoryGraphReindex()
+            return .commitmentConfirmed(commitment)
+        } catch {
+            state.lastActionError = L10n.text(
+                "Could not confirm this commitment. Its source may have changed.")
+            return nil
+        }
+    }
+
+    func reviewCommitment(
+        _ request: ReviewMeetingCommitmentRequest
+    ) async -> Effect? {
+        do {
+            try await client.reviewMeetingDetailCommitment(request)
+            state.lastActionError = nil
+            return .commitmentReviewSaved
+        } catch {
+            state.lastActionError = L10n.text(
+                "Could not update this commitment review. Its source may have changed.")
+            return nil
+        }
+    }
+
     func setSummaryClaimFeedback(
         _ feedback: SummaryClaimFeedback?,
         for claimID: SummaryClaimID
@@ -453,6 +428,113 @@ private extension MeetingDetailModel {
             state.lastActionError = L10n.text(
                 "Could not save this summary feedback. The summary may have changed.")
             return nil
+        }
+    }
+
+    /// Which generated decisions already became durable truth, and the
+    /// topics they are about — what the confirm affordance renders from.
+    func loadDecisionConfirmations() async {
+        guard let observationIDs = state.readModel?.summary?
+            .draft.decisionEvidence.map(\.id),
+            !observationIDs.isEmpty
+        else { return }
+        do {
+            let states = try await client.meetingDetailDecisionConfirmations(
+                for: observationIDs)
+            state.decisionConfirmations = Dictionary(
+                uniqueKeysWithValues: states.map { ($0.observationID, $0) })
+            state.linkableTopics = try await client.meetingDetailLinkableTopics()
+        } catch {
+            // Presentation only; the affordance simply stays in its
+            // unconfirmed reading until a later load succeeds.
+        }
+    }
+
+    func confirmDecision(
+        _ request: ConfirmDecisionAboutTopicRequest
+    ) async -> Effect? {
+        do {
+            let outcome = try await client.confirmMeetingDetailDecision(request)
+            state.lastActionError = nil
+            await loadDecisionConfirmations()
+            return .decisionConfirmed(outcome)
+        } catch is ConfirmDecisionAboutTopicError {
+            state.lastActionError = L10n.text(
+                "That topic name matches more than one topic. Pick one from the list.")
+            return nil
+        } catch {
+            state.lastActionError = L10n.text(
+                "Could not confirm this decision. Its summary may have changed.")
+            return nil
+        }
+    }
+
+    /// Which skills the banner may offer, and the receipts of what already
+    /// ran — both read from durable state, never guessed.
+    func loadSkillOffers() async {
+        do {
+            let hasSummary = state.readModel?.summary != nil
+            state.skillOffers = try await client.meetingDetailSkillOffers(
+                meetingID: meetingID,
+                hasSummary: hasSummary)
+            state.skillReceipts = try await client.meetingDetailSkillReceipts(
+                meetingID: meetingID)
+        } catch {
+            // Presentation only: the banner simply stays empty until a later
+            // load succeeds.
+        }
+    }
+
+    /// Runs one confirmed offer and re-reads offers and receipts so the UI
+    /// reflects the durable outcome. Returns the effect the sheet closes on.
+    func performSkill(_ offer: MeetingSkillOffer, context: SkillExecutionContext) async -> Effect? {
+        do {
+            let result = try await client.performMeetingDetailSkill(
+                offer, proposalID: context.proposalID,
+                proposedAt: context.proposedAt, preview: context.preview,
+                destination: context.destination)
+            switch result {
+            case .succeeded(let outputURL):
+                state.lastActionError = nil
+                await loadSkillOffers()
+                return .skillPerformed(offer, outputURL: outputURL)
+            case .retryableFailure(let message):
+                state.lastActionError = message
+                await loadSkillOffers()
+                return nil
+            case .outcomeUnknown(let message, let outputURL):
+                state.lastActionError = nil
+                await loadSkillOffers()
+                return .skillOutcomeUnknown(offer, message: message, outputURL: outputURL)
+            }
+        } catch {
+            state.lastActionError = offer.kind == .secretGistPublish
+                ? UseCaseErrorMessages.describe(error)
+                : L10n.text("The action could not run. Nothing left Portavoz.")
+            return nil
+        }
+    }
+
+    func dismissSkillOffer(_ offer: MeetingSkillOffer) async {
+        do {
+            try await client.dismissMeetingDetailSkillOffer(offer)
+            await loadSkillOffers()
+        } catch {
+            state.lastActionError = L10n.text(
+                "Could not dismiss this suggestion.")
+        }
+    }
+
+    /// Withdraws one "about" link and re-reads the confirmations so the badge
+    /// reflects durable truth, never an optimistic guess.
+    func retractDecisionTopic(_ retraction: DecisionTopicLinkRetraction) async {
+        do {
+            try await client.retractMeetingDetailDecisionTopic(retraction)
+            state.lastActionError = nil
+            await loadDecisionConfirmations()
+        } catch {
+            state.lastActionError = L10n.text(
+                "Could not remove this topic link. It may already be retracted.")
         }
     }
 
@@ -479,19 +561,25 @@ private extension MeetingDetailModel {
         }
     }
 
-    func prepareDocument(_ format: MeetingDocumentFormat) async -> Effect {
+    func prepareDocument(
+        _ format: MeetingDocumentFormat,
+        options: MeetingDocumentOptions
+    ) async -> Effect {
         do {
             return .documentPrepared(try await client.prepareMeetingDetailDocument(
                 meetingID,
-                format: format))
+                format: format,
+                options: options))
         } catch {
             return .operationFailed(UseCaseErrorMessages.describe(error))
         }
     }
 
-    func publishGist() async -> Effect {
+    func publishGist(options: MeetingDocumentOptions) async -> Effect {
         do {
-            return .gistPublished(try await client.publishMeetingDetailGist(meetingID))
+            return .gistPublished(try await client.publishMeetingDetailGist(
+                meetingID,
+                options: options))
         } catch {
             return .operationFailed(UseCaseErrorMessages.describe(error))
         }
@@ -534,50 +622,35 @@ private extension MeetingDetailModel {
     }
 
     func loadMetadataSuggestions() async {
-        guard let detail = state.readModel else { return }
-        let suggestMeetingTitle = !didCompleteTitleSuggestion
-            && detail.meeting.title.first?.isNumber == true
-            && detail.summary != nil
-        let suggestRecipe = !didCompleteRecipeSuggestion
-            && !detail.segments.isEmpty
-            && detail.summary?.draft.recipeID == Recipe.general.id
-        let chapterStarts = Set(
-            ChapterExtractor.chapters(from: detail.segments).map(\.startTime))
         let titledStarts = Set(state.chapterTitles.keys)
-        guard suggestMeetingTitle
-                || suggestRecipe
-                || !chapterStarts.isSubset(of: titledStarts)
+        guard let detail = state.readModel,
+            let attempt = metadataSuggestionState.begin(
+                review: detail,
+                titledChapterStarts: titledStarts)
         else { return }
 
-        let request = SuggestMeetingReviewMetadataRequest(
-            review: detail,
-            titledChapterStarts: titledStarts,
-            suggestMeetingTitle: suggestMeetingTitle,
-            suggestRecipe: suggestRecipe)
-        let currentID = UUID()
-        metadataRequestID = currentID
-
         do {
-            let suggestions = try await client.meetingDetailMetadataSuggestions(request)
-            guard !Task.isCancelled, metadataRequestID == currentID else { return }
-            if suggestMeetingTitle {
-                didCompleteTitleSuggestion = true
+            let suggestions = try await client.meetingDetailMetadataSuggestions(
+                attempt.request)
+            guard !Task.isCancelled,
+                metadataSuggestionState.accepts(attempt)
+            else { return }
+            metadataSuggestionState.complete(attempt)
+            if attempt.suggestsMeetingTitle {
                 state.suggestedTitle = suggestions.meetingTitle
             }
-            if suggestRecipe {
-                didCompleteRecipeSuggestion = true
+            if attempt.suggestsRecipe {
                 state.suggestedRecipe = suggestions.recipe
             }
             state.chapterTitles.merge(suggestions.chapterTitles) { _, new in new }
         } catch is CancellationError {
             // A newer read revision retries every still-eligible suggestion.
         } catch {
-            guard metadataRequestID == currentID else { return }
+            guard metadataSuggestionState.accepts(attempt) else { return }
             // Optional intelligence degrades silently, as before. Mark only
             // the attempted one-shot suggestions complete to avoid a loop;
             // missing chapter labels may retry after a future read revision.
-            if suggestMeetingTitle { didCompleteTitleSuggestion = true }
-            if suggestRecipe { didCompleteRecipeSuggestion = true }
+            metadataSuggestionState.complete(attempt)
         }
     }
 
@@ -681,88 +754,37 @@ private extension MeetingDetailModel {
     }
 }
 
+extension MeetingDetailModel {
+    /// The exact artifact one offer would produce — read-only, computed for
+    /// the confirmation sheet before anything durable exists.
+    func skillPreview(_ offer: MeetingSkillOffer, destination: String?) async -> MeetingSkillPreview? {
+        do {
+            return try await client.meetingDetailSkillPreview(
+                offer,
+                destination: destination)
+        } catch {
+            state.lastActionError = L10n.text(
+                "Could not build this action's preview.")
+            return nil
+        }
+    }
+}
+
 private extension MeetingDetailModel {
     func publish(_ update: MeetingReviewUpdate) {
         // Reject optional intelligence generated from an older projection.
-        metadataRequestID = UUID()
-        switch update {
-        case .core(let value):
-            core = value
-            hasCoreSnapshot = true
-            markObserved(.core)
-        case .summary(let value):
-            summary = value
-            markObserved(.summary)
-        case .companionCards(let value):
-            companionCards = value
-            markObserved(.companion)
-        case .privacyReceipt(let value):
-            privacyReceipt = value
-            markObserved(.privacy)
-        case .processingJobs(let value):
-            processingJobs = value
-            markObserved(.processing)
-        case .notes(let value):
-            notes = value
-            markObserved(.notes)
-        case .failed(let section):
-            failedSections.insert(section)
-            observedSections.remove(section)
-            if section == .core, !hasCoreSnapshot {
-                hasCoreSnapshot = true
-                core = nil
-            }
+        let transition = reviewAccumulator.apply(update)
+        metadataSuggestionState.invalidate(correctionRevisionChanged: transition.correctionRevisionChanged)
+        if transition.correctionRevisionChanged {
+            state.chapterTitles = [:]
+            state.suggestedTitle = nil
+            state.suggestedRecipe = nil
         }
-        refreshReadModel()
-        refreshPhase()
+        if transition.shouldInvalidatePlayback {
+            invalidatePlayback()
+        }
+        state.readModel = transition.readModel
+        state.phase = transition.phase
         state.revision += 1
-    }
-
-    func markObserved(_ section: MeetingReviewSection) {
-        observedSections.insert(section)
-        failedSections.remove(section)
-    }
-
-    func refreshReadModel() {
-        guard let core else {
-            invalidatePlayback()
-            state.readModel = nil
-            return
-        }
-        let previousAudioDirectory = state.readModel?.meeting.audioDirectory
-        if previousAudioDirectory != core.meeting.audioDirectory,
-            previousAudioDirectory != nil {
-            invalidatePlayback()
-        }
-        state.readModel = MeetingReviewReadModel(
-            core: core,
-            summary: summary,
-            companionCards: companionCards,
-            privacyReceipt: privacyReceipt,
-            processingJobs: processingJobs,
-            notes: notes)
-    }
-
-    func refreshPhase() {
-        let accountedSections = observedSections.union(failedSections)
-        guard accountedSections.count == MeetingReviewSection.allCases.count else {
-            state.phase = .loading
-            return
-        }
-        if core == nil, observedSections.contains(.core) {
-            state.phase = .missing
-            return
-        }
-        guard failedSections.count < MeetingReviewSection.allCases.count,
-            !(failedSections.contains(.core) && core == nil)
-        else {
-            state.phase = .failed
-            return
-        }
-        if !failedSections.isEmpty {
-            state.phase = .degraded(failures: failedSections.count)
-            return
-        }
-        state.phase = .loaded
     }
 }

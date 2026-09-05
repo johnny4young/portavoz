@@ -69,22 +69,22 @@ extension AppServices: LibraryModelClient {
     }
 
     func renameLibraryMeeting(_ meeting: Meeting) async throws {
-        defer { requestSpotlightReindex() }
+        defer { requestSearchReconciliation() }
         try await store.save(meeting)
     }
 
     func setLibraryActionItem(_ id: UUID, done: Bool) async throws {
-        defer { requestSpotlightReindex() }
+        defer { requestSearchReconciliation() }
         try await store.setActionItem(id, done: done)
     }
 
     func deleteLibraryMeeting(_ id: MeetingID) async throws {
-        defer { requestSpotlightReindex() }
+        defer { requestSearchReconciliation() }
         try await meetingLifecycle.delete(id)
     }
 
     func restoreLibraryMeeting(_ id: MeetingID) async throws {
-        defer { requestSpotlightReindex() }
+        defer { requestSearchReconciliation() }
         try await meetingLifecycle.restore(id)
     }
 
@@ -109,6 +109,7 @@ extension AppServices: LibraryModelClient {
             return LibraryModel.Agenda(
                 offerCalendar: false,
                 today: [UpcomingEvent(
+                    id: "ui-test-upcoming-rollout",
                     title: "Presupuesto rollout",
                     startDate: Date().addingTimeInterval(15 * 60),
                     attendees: ["Ana"])],
@@ -223,6 +224,7 @@ private func makeApplicationSearchHit(_ hit: SearchHit) -> LibrarySearchHit {
         meetingID: hit.meetingID,
         meetingTitle: hit.meetingTitle,
         segmentID: hit.segmentID,
+        sourceSegmentIDs: hit.sourceSegmentIDs,
         snippet: hit.snippet,
         startTime: hit.startTime)
 }

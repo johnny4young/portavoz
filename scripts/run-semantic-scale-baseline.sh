@@ -1,67 +1,83 @@
 #!/bin/bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUTPUT="${1:-/private/tmp/portavoz-semantic-scale-baseline.json}"
+TOOL_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SOURCE_ROOT="${PORTAVOZ_SEMANTIC_SOURCE_ROOT:-$TOOL_ROOT}"
+if ! ROOT="$(cd "$SOURCE_ROOT" 2>/dev/null && pwd)"; then
+    echo "error: PORTAVOZ_SEMANTIC_SOURCE_ROOT must be a readable directory" >&2
+    exit 64
+fi
+MANIFEST_TOOL="$TOOL_ROOT/scripts/semantic_scale_manifest.py"
+OUTPUT="${1:-}"
 SIZES="${PORTAVOZ_SEMANTIC_SCALE_SIZES:-1000,10000,50000,100000}"
 RUNS="${PORTAVOZ_SEMANTIC_SCALE_RUNS:-20}"
-PARTS="$(mktemp -d /private/tmp/portavoz-semantic-scale.XXXXXX)"
-trap 'rm -rf "$PARTS"' EXIT
+VARIANTS="${PORTAVOZ_SEMANTIC_SCALE_VARIANTS:-1}"
 
 cd "$ROOT"
-swift build -c release --product portavoz-cli
+if [[ ! "$RUNS" =~ ^[0-9]+$ ]] || ((RUNS < 3 || RUNS > 100)); then
+    echo "error: PORTAVOZ_SEMANTIC_SCALE_RUNS must be between 3 and 100" >&2
+    exit 64
+fi
+if [[ ! "$VARIANTS" =~ ^[0-9]+$ ]] || ((VARIANTS < 1 || VARIANTS > 8)); then
+    echo "error: PORTAVOZ_SEMANTIC_SCALE_VARIANTS must be between 1 and 8" >&2
+    exit 64
+fi
 
-IFS=',' read -r -a checkpoints <<< "$SIZES"
+IFS=',' read -r -a checkpoints <<<"$SIZES"
+seen=","
 for raw_size in "${checkpoints[@]}"; do
     size="${raw_size//[[:space:]]/}"
-    if [[ ! "$size" =~ ^[0-9]+$ ]] || (( size < 1 || size > 1000000 )); then
+    if [[ ! "$size" =~ ^[0-9]+$ ]] || ((size < 1 || size > 1000000)); then
         echo "error: invalid semantic checkpoint size: $raw_size" >&2
         exit 64
     fi
-    "$ROOT/.build/release/portavoz-cli" bench-semantic \
+    if [[ "$seen" == *",$size,"* ]]; then
+        echo "error: duplicate semantic checkpoint size: $size" >&2
+        exit 64
+    fi
+    seen+="$size,"
+done
+
+TEMP_ROOT_CANDIDATE="${TMPDIR:-/tmp}"
+if ! TEMP_ROOT="$(cd "$TEMP_ROOT_CANDIDATE" 2>/dev/null && pwd)" ||
+    [[ ! -w "$TEMP_ROOT" ]]; then
+    echo "error: TMPDIR must be a writable directory" >&2
+    exit 64
+fi
+OUTPUT="${OUTPUT:-$TEMP_ROOT/portavoz-semantic-scale-baseline.json}"
+if ! PARTS="$(mktemp -d "$TEMP_ROOT/portavoz-semantic-scale.XXXXXX")"; then
+    echo "error: unable to allocate semantic scale workspace" >&2
+    exit 73
+fi
+trap 'rm -rf "$PARTS"' EXIT
+
+python3 "$MANIFEST_TOOL" source \
+    --root "$ROOT" \
+    --output "$PARTS/source.snapshot"
+# shellcheck source=scripts/perf-binary.sh
+source "$TOOL_ROOT/scripts/perf-binary.sh"
+portavoz_prepare_perf_binary "$ROOT"
+
+python3 "$MANIFEST_TOOL" snapshot \
+    --root "$ROOT" \
+    --binary "$PORTAVOZ_PERF_BINARY" \
+    --build-wall-ms "$PORTAVOZ_PERF_BUILD_WALL_MS" \
+    --expected-source "$PARTS/source.snapshot" \
+    --output "$PARTS/run.snapshot"
+
+for raw_size in "${checkpoints[@]}"; do
+    size="${raw_size//[[:space:]]/}"
+    "$PORTAVOZ_PERF_BINARY" bench-semantic \
         --segments "$size" \
         --runs "$RUNS" \
+        --variants "$VARIANTS" \
         --output "$PARTS/$size.json"
 done
 
-python3 - "$OUTPUT" "$PARTS" <<'PY'
-import datetime
-import json
-import pathlib
-import sys
-
-output = pathlib.Path(sys.argv[1])
-parts = pathlib.Path(sys.argv[2])
-reports = [json.loads(path.read_text(encoding="utf-8")) for path in parts.glob("*.json")]
-if not reports:
-    raise SystemExit("error: semantic benchmark produced no checkpoints")
-reports.sort(key=lambda report: report["checkpoint"]["totalSegments"])
-first = reports[0]
-for report in reports:
-    if report.get("schemaVersion") != 1:
-        raise SystemExit("error: unexpected semantic checkpoint schema")
-    if report.get("buildConfiguration") != "release":
-        raise SystemExit("error: tracked semantic evidence must come from a release build")
-    if report.get("host") != first.get("host"):
-        raise SystemExit("error: semantic checkpoints came from different hosts")
-    if report.get("configuration") != first.get("configuration"):
-        raise SystemExit("error: semantic checkpoints used different configurations")
-    checkpoint = report["checkpoint"]
-    expected_count = min(checkpoint["totalSegments"], first["configuration"]["resultLimit"])
-    if checkpoint["resultCount"] != expected_count:
-        raise SystemExit("error: semantic search returned an incomplete top-k")
-
-matrix = {
-    "schemaVersion": 1,
-    "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
-    "buildConfiguration": "release",
-    "host": first["host"],
-    "configuration": first["configuration"],
-    "checkpoints": [report["checkpoint"] for report in reports],
-}
-output.parent.mkdir(parents=True, exist_ok=True)
-temporary = output.with_name(output.name + ".tmp")
-temporary.write_text(json.dumps(matrix, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-temporary.replace(output)
-print(f"Semantic scale baseline verified: {output}")
-PY
+python3 "$MANIFEST_TOOL" assemble \
+    --root "$ROOT" \
+    --binary "$PORTAVOZ_PERF_BINARY" \
+    --snapshot "$PARTS/run.snapshot" \
+    --parts "$PARTS" \
+    --output "$OUTPUT"
+echo "Semantic scale manifest verified: $OUTPUT"

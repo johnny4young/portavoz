@@ -42,6 +42,8 @@ public struct DataEgressDestination: Equatable, Sendable {
 
 public enum DataEgressOperation: String, Codable, Sendable {
     case companionKnowledgeAnswer = "companion-knowledge-answer"
+    case askAnswerGeneration = "ask-answer-generation"
+    case webSourceRetrieval = "web-source-retrieval"
     case summaryGeneration = "summary-generation"
     case publishGitHubGist = "publish-github-gist"
     case createGitHubIssue = "create-github-issue"
@@ -51,6 +53,15 @@ public enum DataEgressOperation: String, Codable, Sendable {
 public enum DataEgressClassification: String, Codable, Sendable {
     /// Only the classified participant question, never transcript context.
     case meetingQuestionOnly = "meeting-question-only"
+    /// Bounded retrieved passages plus the explicit question required to
+    /// answer across the user's local meeting library.
+    case meetingAnswerMaterial = "meeting-answer-material"
+    /// Bounded excerpts from user-selected public pages plus the explicit
+    /// question sent only to the selected local answer engine.
+    case publicWebAnswerMaterial = "public-web-answer-material"
+    /// One user-selected public page request. The question and all local
+    /// meeting material stay out of the HTTP request.
+    case publicWebSourceRequest = "public-web-source-request"
     /// Formatted transcript, speaker labels, user notes, glossary, and recipe
     /// instructions required to generate one summary.
     case meetingSummaryMaterial = "meeting-summary-material"
@@ -67,6 +78,8 @@ public enum DataEgressConsentSource: String, Codable, Sendable {
     case explicitCompanionClient = "explicit-companion-client"
     /// The user selected the configured summary engine in app Settings.
     case summaryEngineSettings = "summary-engine-settings"
+    /// A one-request confirmation on the manual Web Ask surface.
+    case explicitWebAsk = "explicit-web-ask"
     /// A caller explicitly constructed an external summary provider.
     case explicitSummaryProvider = "explicit-summary-provider"
     /// The user explicitly confirmed or invoked GitHub Gist publication.
@@ -118,10 +131,16 @@ public struct DataEgressRequest: Equatable, Sendable {
 public struct DataEgressResponse: Sendable {
     public let data: Data
     public let statusCode: Int
+    public let headers: [String: String]
 
-    public init(data: Data, statusCode: Int) {
+    public init(
+        data: Data,
+        statusCode: Int,
+        headers: [String: String] = [:]
+    ) {
         self.data = data
         self.statusCode = statusCode
+        self.headers = headers
     }
 }
 
@@ -295,6 +314,7 @@ public struct PrivacyReceipt: Equatable, Sendable {
 public enum DataEgressGatewayError: Error, Equatable, Sendable {
     case invalidMetadata(String)
     case nonHTTPResponse
+    case responseTooLarge(actualBytes: Int, maximumBytes: Int)
 }
 
 /// The only transport port for meeting-derived data leaving a capability.

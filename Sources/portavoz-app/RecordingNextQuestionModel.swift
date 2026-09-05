@@ -4,7 +4,7 @@ import Observation
 import PortavozCore
 import TranscriptionKit
 
-/// The on-demand "what should I ask next?" concern (APUN-004), the exact
+/// The on-demand "what should I ask next?" concern, the exact
 /// sibling of `RecordingCatchUpModel`: pull-based, bounded to the recent
 /// past, honest about capability, and stale-fenced on every exit path.
 /// Pending objectives ride along so a suggestion can steer the meeting

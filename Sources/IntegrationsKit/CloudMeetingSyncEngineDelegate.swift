@@ -50,7 +50,7 @@ public actor CloudMeetingSyncEngineDelegate: CKSyncEngineDelegate {
     }
 
     @discardableResult
-    public func requestInitialSeed(at date: Date = Date()) async throws -> Int {
+    public func requestInitialSeed(at date: Date = Date()) async throws -> Bool {
         try await coordinator.requestInitialSeed(at: date)
     }
 

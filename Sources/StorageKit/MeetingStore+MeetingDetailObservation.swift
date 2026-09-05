@@ -8,6 +8,20 @@ extension MeetingStore {
         public let meeting: Meeting
         public let speakers: [Speaker]
         public let segments: [TranscriptSegment]
+        public let corrections: [TranscriptCorrectionEvent]
+        public let correctionRevision: TranscriptCorrectionRevision
+        public let isRefinedTranscript: Bool
+    }
+
+    public struct MeetingReviewSummarySnapshot: Sendable {
+        public let draft: SummaryDraft
+        public let version: Int
+        public let correctionSource: TranscriptCorrectionArtifactSource
+    }
+
+    public struct MeetingReviewCompanionSnapshot: Sendable {
+        public let cards: [CompanionCard]
+        public let correctionSources: [UUID: TranscriptCorrectionArtifactSource]
     }
 
     /// Transcript/cast observation for one meeting. Summary and Companion
@@ -16,7 +30,11 @@ extension MeetingStore {
         _ id: MeetingID
     ) -> AsyncThrowingStream<MeetingReviewCore?, Error> {
         let observation = ValueObservation.tracking(
-            regions: [Table("meeting"), Table("speaker"), Table("segment")],
+            regions: [
+                Table("meeting"), Table("speaker"), Table("segment"),
+                Table("transcriptCorrection"), Table("transcriptCorrectionTarget"),
+                Table("transcriptCorrectionPayload"), Table("transcriptCorrectionPart")
+            ],
             fetch: { database -> MeetingReviewCore? in
                 try Self.fetchMeetingReviewCore(id, in: database)
             })
@@ -27,14 +45,14 @@ extension MeetingStore {
     /// state. Transcript and Companion writes cannot invalidate it.
     public func observeMeetingReviewSummary(
         _ id: MeetingID
-    ) -> AsyncThrowingStream<(draft: SummaryDraft, version: Int)?, Error> {
+    ) -> AsyncThrowingStream<MeetingReviewSummarySnapshot?, Error> {
         let observation = ValueObservation.tracking(
             regions: [
                 Table("meeting"), Table("summary"), Table("actionItem"),
                 Table("summaryClaim"), Table("summaryClaimSegment"),
                 Table("summaryClaimFeedback"), Table("summaryDecisionEvidence"),
                 Table("summaryDecisionEvidenceSegment"), Table("summaryActionItemEvidence"),
-                Table("summaryActionItemEvidenceSegment")
+                Table("summaryActionItemEvidenceSegment"), Table("generationRun")
             ],
             fetch: { database in
                 try Self.fetchMeetingReviewSummary(id, in: database)
@@ -62,11 +80,12 @@ extension MeetingStore {
     /// reads, so deleting a card refreshes only the right-rail projection.
     public func observeMeetingReviewCompanionCards(
         _ id: MeetingID
-    ) -> AsyncThrowingStream<[CompanionCard], Error> {
+    ) -> AsyncThrowingStream<MeetingReviewCompanionSnapshot, Error> {
         let observation = ValueObservation.tracking(
             regions: [
                 Table("meeting"), Table("companionCard"),
-                Table("companionCardEvidence"), Table("companionCardEvidenceSegment")
+                Table("companionCardEvidence"), Table("companionCardEvidenceSegment"),
+                Table("generationRun")
             ],
             fetch: { database in
                 try Self.fetchMeetingReviewCompanionCards(id, in: database)
@@ -127,32 +146,81 @@ extension MeetingStore {
             .filter(Column("deletedAt") == nil)
             .fetchAll(database)
             .map { try $0.speaker }
-        let segments = try SegmentRecord
+        // Total order (TranscriptSegmentOrder): summary and Apuntador operation
+        // fingerprints hash this projection, so a start-time-only sort would
+        // let tied rows resolve differently between two reads of unchanged
+        // material and supersede work that was fenced against it.
+        let segmentRecords = try SegmentRecord
             .filter(Column("meetingID") == key)
             .filter(Column("deletedAt") == nil)
-            .order(Column("startTime"))
+            .order(Column("startTime"), Column("id"))
             .fetchAll(database)
-            .map { try $0.segment }
+        let segments = try segmentRecords.map { try $0.segment }
+        let meeting = try meetingRecord.meeting
+        let corrections = try fetchTranscriptCorrectionHistory(
+            meetingID: id,
+            in: database)
         return MeetingReviewCore(
-            meeting: try meetingRecord.meeting,
+            meeting: meeting,
             speakers: speakers,
-            segments: segments)
+            segments: segments,
+            corrections: corrections,
+            correctionRevision: try TranscriptCorrectionRevision.current(
+                meetingID: id,
+                baseTranscriptRevision: meeting.transcriptRevision,
+                history: corrections),
+            isRefinedTranscript: segmentRecords.contains {
+                $0.generationRunID != nil
+            })
     }
 
     static func fetchMeetingReviewSummary(
         _ id: MeetingID,
         in database: Database
-    ) throws -> (draft: SummaryDraft, version: Int)? {
+    ) throws -> MeetingReviewSummarySnapshot? {
         guard try liveMeetingExists(id, in: database) else { return nil }
-        return try mostRecentSummarySnapshot(meetingID: id, in: database)
+        guard let record = try SummaryRecord
+            .filter(Column("meetingID") == id.rawValue.uuidString)
+            .filter(Column("deletedAt") == nil)
+            .order(Column("createdAt").desc, Column("rowid").desc)
+            .fetchOne(database)
+        else { return nil }
+        let snapshot = try summarySnapshot(record, meetingID: id, in: database)
+        let source = try record.generationRunID
+            .flatMap { try GenerationRunRecord.fetchOne(database, key: $0) }
+            .map { try $0.run.transcriptCorrectionSource }
+            ?? .legacyAccepted
+        return MeetingReviewSummarySnapshot(
+            draft: snapshot.draft,
+            version: snapshot.version,
+            correctionSource: source)
     }
 
     static func fetchMeetingReviewCompanionCards(
         _ id: MeetingID,
         in database: Database
-    ) throws -> [CompanionCard] {
-        guard try liveMeetingExists(id, in: database) else { return [] }
-        return try companionCards(meetingID: id, in: database)
+    ) throws -> MeetingReviewCompanionSnapshot {
+        guard try liveMeetingExists(id, in: database) else {
+            return MeetingReviewCompanionSnapshot(cards: [], correctionSources: [:])
+        }
+        let records = try CompanionCardRecord
+            .filter(Column("meetingID") == id.rawValue.uuidString)
+            .filter(Column("deletedAt") == nil)
+            .order(Column("askedAt"), Column("createdAt"))
+            .fetchAll(database)
+        let cards = try records.map { record in
+            let card = try record.card
+            return try card.withEvidence(companionCardEvidence(cardID: card.id, in: database))
+        }
+        var sources: [UUID: TranscriptCorrectionArtifactSource] = [:]
+        for record in records {
+            guard let cardID = UUID(uuidString: record.id),
+                  let runID = record.generationRunID,
+                  let run = try GenerationRunRecord.fetchOne(database, key: runID)
+            else { continue }
+            sources[cardID] = try run.run.transcriptCorrectionSource
+        }
+        return MeetingReviewCompanionSnapshot(cards: cards, correctionSources: sources)
     }
 
     static func fetchMeetingReviewNotes(

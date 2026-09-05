@@ -11,7 +11,8 @@ extension AppServices {
         StopRecording(
             audioFiles: AppStopRecordingAudioFiles(root: Self.audioRoot),
             store: store,
-            lifecycle: AppStopRecordingLifecycle(services: self))
+            lifecycle: AppStopRecordingLifecycle(services: self),
+            telemetry: workloadTelemetry)
     }
 }
 

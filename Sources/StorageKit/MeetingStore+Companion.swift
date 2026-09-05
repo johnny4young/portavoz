@@ -30,22 +30,38 @@ extension MeetingStore {
 
     public func companionCards(for id: MeetingID) async throws -> [CompanionCard] {
         try await database.read { db in
-            try Self.fetchMeetingReviewCompanionCards(id, in: db)
+            try Self.fetchMeetingReviewCompanionCards(id, in: db).cards
         }
     }
 
-    public func saveCompanionGenerationRun(
+    public func savePostRefineCompanionGenerationRun(
+        _ run: GenerationRun,
+        sourceTranscriptRevision: Int
+    ) async throws {
+        try await saveCompanionGenerationRun(
+            run,
+            workflow: "post-refine",
+            sourceTranscriptRevision: sourceTranscriptRevision)
+    }
+
+    public func saveReviewedCompanionGenerationRun(
+        _ run: GenerationRun,
+        sourceTranscriptRevision: Int
+    ) async throws {
+        try await saveCompanionGenerationRun(
+            run,
+            workflow: "meeting-review",
+            sourceTranscriptRevision: sourceTranscriptRevision)
+    }
+
+    private func saveCompanionGenerationRun(
         _ run: GenerationRun,
         workflow: String,
         sourceTranscriptRevision: Int
     ) async throws {
         try Self.validateTerminalGenerationRun(run)
         guard run.kind == .companion,
-              run.outcome != .succeeded,
-              Self.companionConfigurationMatches(
-                run,
-                workflow: workflow,
-                sourceTranscriptRevision: sourceTranscriptRevision)
+              run.outcome != .succeeded
         else {
             throw StorageError.invalidGenerationRun(
                 "standalone Companion provenance must match its operation")
@@ -59,6 +75,19 @@ extension MeetingStore {
             guard try meetingRecord.meeting.transcriptRevision == sourceTranscriptRevision else {
                 throw StorageError.invalidGenerationRun(
                     "standalone Companion provenance is stale")
+            }
+            let correctionRevision = try Self.currentCorrectionRevision(
+                meetingID: run.meetingID,
+                transcriptRevision: sourceTranscriptRevision,
+                in: db)
+            guard Self.companionConfigurationMatches(
+                run,
+                workflow: workflow,
+                sourceTranscriptRevision: sourceTranscriptRevision,
+                sourceCorrectionRevision: correctionRevision)
+            else {
+                throw StorageError.invalidGenerationRun(
+                    "standalone Companion provenance has stale corrections")
             }
             try GenerationRunRecord(run).insert(db)
         }
@@ -84,6 +113,37 @@ extension MeetingStore {
         generated artifacts: [CompanionGenerationArtifact],
         for id: MeetingID
     ) async throws {
+        try await replaceCompanionCards(
+            cards,
+            generated: artifacts,
+            for: id,
+            workflow: "post-refine")
+    }
+
+    /// Replaces one explicitly reviewed meeting's complete Apuntador snapshot.
+    /// Keeping the workflow out of the public input prevents callers from
+    /// inventing provenance namespaces that storage would then have to trust.
+    public func replaceReviewedCompanionCards(
+        _ artifacts: [CompanionGenerationArtifact],
+        for id: MeetingID
+    ) async throws {
+        guard artifacts.allSatisfy({ $0.card.evidence != nil }) else {
+            throw StorageError.invalidGenerationRun(
+                "reviewed Companion cards require immutable question evidence")
+        }
+        try await replaceCompanionCards(
+            [],
+            generated: artifacts,
+            for: id,
+            workflow: "meeting-review")
+    }
+
+    private func replaceCompanionCards(
+        _ cards: [CompanionCard],
+        generated artifacts: [CompanionGenerationArtifact],
+        for id: MeetingID,
+        workflow: String
+    ) async throws {
         let generatedIDs = Set(artifacts.map(\.card.id))
         guard Set(cards.map(\.id)).isDisjoint(with: generatedIDs) else {
             throw StorageError.invalidGenerationRun(
@@ -97,11 +157,16 @@ extension MeetingStore {
                 .fetchOne(db)
             else { throw StorageError.meetingNotFound(id) }
             let meeting = try meetingRecord.meeting
+            let correctionRevision = try Self.currentCorrectionRevision(
+                meetingID: id,
+                transcriptRevision: meeting.transcriptRevision,
+                in: db)
             try Self.validateCompanionArtifacts(
                 artifacts,
                 meetingID: id,
-                workflow: "post-refine",
-                sourceTranscriptRevision: meeting.transcriptRevision)
+                workflow: workflow,
+                sourceTranscriptRevision: meeting.transcriptRevision,
+                sourceCorrectionRevision: correctionRevision)
             let now = Date()
             try Self.replaceCompanionCards(
                 cards,
@@ -120,7 +185,8 @@ extension MeetingStore {
             snapshot.companionArtifacts,
             meetingID: meeting.id,
             workflow: "live-recording",
-            sourceTranscriptRevision: meeting.transcriptRevision)
+            sourceTranscriptRevision: meeting.transcriptRevision,
+            sourceCorrectionRevision: .accepted)
         let generatedCardIDs = Set(snapshot.companionArtifacts.map(\.card.id))
         let allRunIDs = snapshot.companionArtifacts.map(\.generationRun.id)
             + snapshot.companionTerminalRuns.map(\.id)
@@ -144,7 +210,8 @@ extension MeetingStore {
                   companionConfigurationMatches(
                     run,
                     workflow: "live-recording",
-                    sourceTranscriptRevision: meeting.transcriptRevision)
+                    sourceTranscriptRevision: meeting.transcriptRevision,
+                    sourceCorrectionRevision: .accepted)
             else {
                 throw StorageError.invalidGenerationRun(
                     "standalone Companion provenance must be terminal without an artifact")
@@ -156,7 +223,8 @@ extension MeetingStore {
         _ artifacts: [CompanionGenerationArtifact],
         meetingID: MeetingID,
         workflow: String,
-        sourceTranscriptRevision: Int
+        sourceTranscriptRevision: Int,
+        sourceCorrectionRevision: TranscriptCorrectionRevision
     ) throws {
         guard Set(artifacts.map(\.card.id)).count == artifacts.count,
               Set(artifacts.map(\.generationRun.id)).count == artifacts.count
@@ -175,7 +243,8 @@ extension MeetingStore {
                   companionConfigurationMatches(
                     run,
                     workflow: workflow,
-                    sourceTranscriptRevision: sourceTranscriptRevision)
+                    sourceTranscriptRevision: sourceTranscriptRevision,
+                    sourceCorrectionRevision: sourceCorrectionRevision)
             else {
                 throw StorageError.invalidGenerationRun(
                     "a Companion card requires matching succeeded current provenance")
@@ -186,7 +255,8 @@ extension MeetingStore {
     static func companionConfigurationMatches(
         _ run: GenerationRun,
         workflow: String,
-        sourceTranscriptRevision: Int
+        sourceTranscriptRevision: Int,
+        sourceCorrectionRevision: TranscriptCorrectionRevision = .accepted
     ) -> Bool {
         guard let data = run.configJSON.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data),
@@ -195,6 +265,7 @@ extension MeetingStore {
         return config["workflow"] as? String == workflow
             && config["operation"] as? String == "classify-and-answer"
             && config["sourceTranscriptRevision"] as? Int == sourceTranscriptRevision
+            && run.transcriptCorrectionSource.matches(sourceCorrectionRevision)
     }
 
     private static func replaceCompanionCards(

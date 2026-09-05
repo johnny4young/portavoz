@@ -59,6 +59,24 @@ final class MeetingAudioWorkflowTests: XCTestCase {
         playback.session.invalidate()
     }
 
+    func testPreparationPublishesOneBoundedWaveformSnapshot() async throws {
+        let fixture = try MeetingAudioWorkflowFixture()
+        defer { fixture.remove() }
+
+        let prepared = try await PrepareMeetingPlayback(
+            resolver: fixture.resolver).execute(
+                PrepareMeetingPlaybackRequest(
+                    relativeAudioDirectory: "Audio/meeting",
+                    segments: [],
+                    waveformBucketCount: .max))
+
+        let playback = try XCTUnwrap(prepared)
+        XCTAssertEqual(
+            playback.waveform.count,
+            MeetingWaveformDeliveryPolicy.maximumBucketCount)
+        playback.session.invalidate()
+    }
+
     func testCompressionReportsSavingsAndPublishesBothCurrentChannels() async throws {
         // A one-second PCM fixture can be smaller than its AAC container on
         // some macOS encoders. Use enough material to assert real savings.
@@ -66,9 +84,11 @@ final class MeetingAudioWorkflowTests: XCTestCase {
         defer { fixture.remove() }
         let before = fixture.resolver.channels.files
 
+        let recorder = ResourceWorkloadEventRecorder()
         let result = try await CompressMeetingAudio(
             resolver: fixture.resolver,
-            compressor: MeetingAudioCompressorFake()
+            compressor: MeetingAudioCompressorFake(),
+            telemetry: ResourceWorkloadTelemetry(receiver: recorder.receive)
         ).execute(CompressMeetingAudioRequest(relativeAudioDirectory: "Audio/meeting"))
 
         XCTAssertGreaterThan(result.bytesFreed, 0)
@@ -77,6 +97,12 @@ final class MeetingAudioWorkflowTests: XCTestCase {
             XCTAssertTrue(FileManager.default.fileExists(
                 atPath: fixture.directory.appendingPathComponent(name).path))
         }
+        assertMatchedWorkload(
+            recorder.events,
+            descriptor: ResourceWorkloadDescriptor(
+                workloadClass: .userInitiated,
+                kind: .mediaExport,
+                operation: .execute))
     }
 
     func testMissingAudioDegradesToTextOnlyWithoutBuildingAPlayer() async throws {
@@ -90,6 +116,21 @@ final class MeetingAudioWorkflowTests: XCTestCase {
                 segments: []))
 
         XCTAssertNil(prepared)
+    }
+
+    private func assertMatchedWorkload(
+        _ events: [ResourceWorkloadEvent],
+        descriptor: ResourceWorkloadDescriptor
+    ) {
+        guard case .started(let started) = events.first,
+              case .finished(let finished, let outcome) = events.last
+        else {
+            return XCTFail("Expected one matched resource workload")
+        }
+        XCTAssertEqual(events.count, 2)
+        XCTAssertEqual(started, finished)
+        XCTAssertEqual(started.descriptor, descriptor)
+        XCTAssertEqual(outcome, .completed)
     }
 }
 

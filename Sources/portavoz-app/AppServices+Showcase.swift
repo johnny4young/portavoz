@@ -112,7 +112,7 @@ extension AppServices {
             providerID: "localhost",
             modelID: "showcase-local-summary",
             attemptedAt: base.addingTimeInterval(7 * 60)))
-        requestSpotlightReindex()
+        requestSearchReconciliation()
     }
     // swiftlint:enable function_body_length
 }

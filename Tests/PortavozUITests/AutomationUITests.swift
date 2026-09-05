@@ -3,7 +3,79 @@ import XCTest
 
 final class AutomationUITests: PortavozUITestCase {
     @MainActor
-    func testRecordURLRoutesIntoAVisibleRecording() async throws {
+    func testAppEntitiesOpenExactVisibleDestinations() {
+        let meetingApp = launchEntityRoute(.meeting)
+        assertMeetingEntityRoute(in: meetingApp)
+        meetingApp.terminate()
+        XCTAssertTrue(meetingApp.wait(for: .notRunning, timeout: 10))
+
+        let personApp = launchEntityRoute(.person)
+        assertPersonEntityRoute(in: personApp)
+        personApp.terminate()
+        XCTAssertTrue(personApp.wait(for: .notRunning, timeout: 10))
+
+        let commitmentApp = launchEntityRoute(.commitment)
+        defer { commitmentApp.terminate() }
+        assertCommitmentEntityRoute(in: commitmentApp)
+        attachScreenshot(of: commitmentApp, named: "app-entity-commitment-route")
+    }
+
+    @MainActor
+    private func assertMeetingEntityRoute(in app: XCUIApplication) {
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-header-section")
+                .waitForExistenceFast(timeout: 10),
+            "the Meeting entity must open its exact visible detail")
+        XCTAssertTrue(app.staticTexts["Test meeting"].exists)
+    }
+
+    @MainActor
+    private func assertPersonEntityRoute(in app: XCUIApplication) {
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-radar-app-entity-focus")
+                .waitForExistenceFast(timeout: 10),
+            "the Person entity must expose a visible, clearable focus")
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-radar-item-\(personCommitmentID)")
+                .waitForExistenceFast(timeout: 10))
+        XCTAssertFalse(
+            app.control(withIdentifier: "commitment-radar-item-\(otherCommitmentID)")
+                .exists,
+            "the Person entity must not mix another owner's work")
+    }
+
+    @MainActor
+    private func assertCommitmentEntityRoute(in app: XCUIApplication) {
+        XCTAssertTrue(
+            app.control(
+                withIdentifier: "commitment-radar-item-\(personCommitmentID)")
+                .waitForExistenceFast(timeout: 10),
+            "the Commitment entity must open its exact Radar item")
+        XCTAssertFalse(
+            app.control(
+                withIdentifier: "commitment-radar-item-\(otherCommitmentID)").exists,
+            "an exact Commitment route must not hydrate unrelated items")
+        let showAll = app.control(
+            withIdentifier: "commitment-radar-clear-app-entity-focus")
+        XCTAssertTrue(showAll.waitForExistenceFast(timeout: 5) && showAll.isHittable)
+        showAll.click()
+        XCTAssertTrue(
+            app.control(
+                withIdentifier: "commitment-radar-item-\(otherCommitmentID)")
+                .waitForExistenceFast(timeout: 10),
+            "Show all must clear the system focus without losing Radar state")
+    }
+
+    private var personCommitmentID: String {
+        "B5D10000-0000-4000-8000-000000000001"
+    }
+
+    private var otherCommitmentID: String {
+        "B5D10000-0000-4000-8000-000000000002"
+    }
+
+    @MainActor
+    func testRecordingAutomationRoutesStartAndStopThroughVisibleApp() async throws {
         let app = XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
         app.launchPortavoz()
         defer {
@@ -12,9 +84,7 @@ final class AutomationUITests: PortavozUITestCase {
             }
         }
 
-        let process = try XCTUnwrap(
-            NSWorkspace.shared.frontmostApplication,
-            "the launched disposable app must be the frontmost application")
+        let process = try activeDisposablePortavozProcess(in: app)
         XCTAssertEqual(
             process.bundleIdentifier,
             "app.portavoz.mac.uitest-host",
@@ -46,10 +116,51 @@ final class AutomationUITests: PortavozUITestCase {
             simulateLiveTranscriptionAttach: true,
             simulateAppIntent: true)
         intentApp.launchPortavoz()
-        defer { intentApp.terminate() }
 
         assertVisibleRecording(in: intentApp, route: "native intent")
         attachScreenshot(of: intentApp, named: "native-intent-visible-recording")
+        intentApp.terminate()
+        XCTAssertTrue(
+            intentApp.wait(for: .notRunning, timeout: 10),
+            "the native Start process must terminate before the Stop proof")
+
+        let stopIntentApp = XCUIApplication.portavoz(
+            simulateLiveTranscriptionAttach: true,
+            simulateAppIntent: true,
+            simulateStopAppIntent: true)
+        stopIntentApp.launchPortavoz()
+        defer { stopIntentApp.terminate() }
+
+        XCTAssertTrue(
+            stopIntentApp.control(withIdentifier: "recording-failure")
+                .waitForExistenceFast(timeout: 15),
+            "the native Stop handoff must leave active capture and surface the deterministic no-audio recovery")
+        XCTAssertFalse(
+            stopIntentApp.control(withIdentifier: "recording-stop").exists,
+            "Stop must not remain actionable after the intent closes capture")
+        let expectedReference = UITestLocale.environmentLocale == "es"
+            ? "Referencia del error: recording.stop.no-audio"
+            : "Error reference: recording.stop.no-audio"
+        XCTAssertTrue(
+            stopIntentApp.staticTexts[expectedReference].waitForExistenceFast(timeout: 5),
+            "the Stop action must preserve the recording controller's typed recovery")
+        attachScreenshot(of: stopIntentApp, named: "native-intent-stop-recovery")
+    }
+
+    @MainActor
+    private func activeDisposablePortavozProcess(
+        in app: XCUIApplication
+    ) throws -> NSRunningApplication {
+        app.activate()
+        XCTAssertEqual(
+            app.state,
+            .runningForeground,
+            "the disposable Portavoz app must be foreground before URL delivery")
+        return try XCTUnwrap(
+            NSRunningApplication.runningApplications(
+                withBundleIdentifier: "app.portavoz.mac.uitest-host"
+            ).first(where: \.isActive),
+            "the exact disposable Portavoz process must be active")
     }
 
     @MainActor
@@ -61,7 +172,7 @@ final class AutomationUITests: PortavozUITestCase {
     ) {
         XCTAssertTrue(
             app.control(withIdentifier: "recording-catch-up")
-                .waitForExistence(timeout: 10),
+                .waitForExistenceFast(timeout: 10),
             "the \(route) route must enter a visible, active recording",
             file: file,
             line: line)
@@ -72,7 +183,7 @@ final class AutomationUITests: PortavozUITestCase {
             line: line)
         let elapsedTime = app.control(withIdentifier: "recording-elapsed-time")
         XCTAssertTrue(
-            elapsedTime.waitForExistence(timeout: 5),
+            elapsedTime.waitForExistenceFast(timeout: 5),
             "the \(route)-started recording must expose its elapsed time",
             file: file,
             line: line)
@@ -84,7 +195,7 @@ final class AutomationUITests: PortavozUITestCase {
             line: line)
         let stop = app.control(withIdentifier: "recording-stop")
         XCTAssertTrue(
-            stop.waitForExistence(timeout: 5) && stop.isHittable,
+            stop.waitForExistenceFast(timeout: 5) && stop.isHittable,
             "Stop must remain visible and interactive in the minimum-width recording layout",
             file: file,
             line: line)
@@ -95,5 +206,20 @@ final class AutomationUITests: PortavozUITestCase {
             "the responsive recording controls must keep Stop inside the window",
             file: file,
             line: line)
+    }
+
+    @MainActor
+    private func launchEntityRoute(
+        _ route: AutomationEntityUITestRoute
+    ) -> XCUIApplication {
+        let app = XCUIApplication.portavoz(
+            seedDemo: true,
+            seedCommitmentRadar: true,
+            simulateAppEntityRoute: route)
+        app.launchPortavoz()
+        XCTAssertTrue(
+            app.waitForSeedFixtureReady(),
+            "the disposable entity catalog must exist before route assertions")
+        return app
     }
 }

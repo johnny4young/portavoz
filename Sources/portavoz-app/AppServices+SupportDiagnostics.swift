@@ -4,7 +4,9 @@ import ModelStoreKit
 
 extension AppServices {
     func exportSupportDiagnostics() async throws -> Data {
-        try await ExportSupportDiagnostics(store: store).execute(
+        try await ExportSupportDiagnostics(
+            store: store,
+            telemetry: workloadTelemetry).execute(
             ExportSupportDiagnosticsRequest(
                 environment: SupportDiagnosticsEnvironment(
                     appVersion: Bundle.main.object(
@@ -26,10 +28,14 @@ extension AppServices {
         return [
             SupportModelReadiness(
                 capability: "live-transcription-runtime",
-                state: runtimeState(loaded: transcriber != nil, preparing: transcriberLoadTask != nil)),
+                state: runtimeState(
+                    loaded: transcriber != nil,
+                    preparing: liveSpeechRuntimeLoad != nil)),
             SupportModelReadiness(
                 capability: "speaker-diarization-runtime",
-                state: runtimeState(loaded: diarizer != nil, preparing: diarizerLoadTask != nil)),
+                state: runtimeState(
+                    loaded: diarizationRuntime != nil,
+                    preparing: diarizationRuntimeLoad != nil)),
             SupportModelReadiness(
                 capability: "speech-runtime-preparation",
                 state: speechPreparationState),

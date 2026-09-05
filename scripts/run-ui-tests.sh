@@ -3,11 +3,22 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+umask 077
 
 locales="${UI_TEST_LOCALES:-default}"
 tests="${UI_TESTS:-}"
 results_root="${UI_TEST_RESULTS_DIR:-$ROOT/dist/ui-test-results}"
+runtime_budget="${UI_TEST_RUNTIME_BUDGET:-$ROOT/docs/evidence/ui-test-runtime-budget.json}"
+require_runtime_receipt="${UI_TEST_REQUIRE_RUNTIME_RECEIPT:-true}"
+enforce_runtime_budget="${UI_TEST_ENFORCE_RUNTIME_BUDGET:-true}"
+phase="${UI_TEST_PHASE:-build-and-test}"
+build_duration_receipt="$results_root/build-duration-seconds.txt"
 arch="$(uname -m)"
+
+case "$phase" in
+  build-and-test|build-only|test-only) ;;
+  *) echo "Unsupported UI-test phase: $phase" >&2; exit 2 ;;
+esac
 
 common=(
   -project Portavoz.xcodeproj
@@ -32,6 +43,24 @@ done
 
 mkdir -p "$results_root"
 
+keyboard_ui_mode_should_restore=false
+keyboard_ui_mode_was_set=false
+keyboard_ui_mode=""
+
+restore_keyboard_ui_mode() {
+  [[ "$keyboard_ui_mode_should_restore" == true ]] || return 0
+  if [[ "$keyboard_ui_mode_was_set" == true ]]; then
+    defaults write -g AppleKeyboardUIMode -int "$keyboard_ui_mode" >/dev/null
+  else
+    defaults delete -g AppleKeyboardUIMode >/dev/null 2>&1 || true
+  fi
+}
+
+cleanup_ui_test_runner() {
+  restore_keyboard_ui_mode
+}
+trap cleanup_ui_test_runner EXIT HUP INT TERM
+
 # An explicit DEVELOPER_DIR wins. Otherwise xcodebuild follows the active
 # xcode-select toolchain (CI selects its newest Xcode before invoking us).
 # Only a Command Line Tools selection needs the conventional local fallback.
@@ -42,21 +71,113 @@ if [[ -z "${DEVELOPER_DIR:-}" ]]; then
   fi
 fi
 
-# Compile the app and UI bundle once. English and Spanish then reuse the same
-# products through test-without-building instead of paying the build cost twice.
-xcodebuild build-for-testing "${common[@]}"
+# Real-recording lane (T30/D316 era): tests read PORTAVOZ_TEST_AUDIO_ROOT from
+# the RUNNER process, and xcodebuild only forwards TEST_RUNNER_-prefixed
+# variables there — export both spellings so the override reaches the tests
+# regardless of how the runner is spawned.
+if [[ -n "${PORTAVOZ_TEST_AUDIO_ROOT:-}" ]]; then
+  export TEST_RUNNER_PORTAVOZ_TEST_AUDIO_ROOT="$PORTAVOZ_TEST_AUDIO_ROOT"
+fi
+
+build_duration=""
+if [[ "$phase" != test-only ]]; then
+  # Compile the app and UI bundle once. English and Spanish then reuse the same
+  # products through test-without-building instead of paying the build cost twice.
+  rm -f "$build_duration_receipt"
+  build_started=$SECONDS
+  xcodebuild build-for-testing "${common[@]}"
+  build_duration=$((SECONDS - build_started))
+  temporary_receipt="$build_duration_receipt.tmp.$$"
+  printf '%s\n' "$build_duration" > "$temporary_receipt"
+  mv "$temporary_receipt" "$build_duration_receipt"
+fi
+
+if [[ "$phase" == build-only ]]; then
+  echo "UI test products built once in ${build_duration}s."
+  exit 0
+fi
+
+if [[ "$phase" == test-only ]]; then
+  if [[ ! -f "$build_duration_receipt" ]]; then
+    echo "Missing UI-test build receipt: $build_duration_receipt" >&2
+    exit 2
+  fi
+  build_duration="$(<"$build_duration_receipt")"
+  if [[ ! "$build_duration" =~ ^[0-9]+$ ]]; then
+    echo "Invalid UI-test build receipt: $build_duration_receipt" >&2
+    exit 2
+  fi
+fi
+
+keyboard_navigation_selector="PortavozUITests/SkillsSettingsUITests/testSkillReceiptRestoresKeyboardFocusAndPassesAccessibilityAudit"
+if [[ -z "$tests" || " $tests " == *" $keyboard_navigation_selector "* ]]; then
+  # Keyboard Navigation is a system preference, not an app launch argument.
+  # Snapshot it immediately before UI execution and restore it even when
+  # xcodebuild is interrupted. Build-only phases never mutate it.
+  keyboard_ui_mode_should_restore=true
+  if keyboard_ui_mode="$(defaults read -g AppleKeyboardUIMode 2>/dev/null)"; then
+    keyboard_ui_mode_was_set=true
+  fi
+  defaults write -g AppleKeyboardUIMode -int 3 >/dev/null
+fi
+
+# macOS 15 local-network privacy can present a user-owned permission sheet when
+# a launch-agent-owned Python process opens even a loopback listener. Package
+# integration retains the real server. XCUITest forwards the exact canonical
+# public payload to a temp-store-only URLProtocol, preserving URLSession and the
+# real receipt/parser/UI path without a socket or an automated privacy choice.
+web_fixture_selector="PortavozUITests/LibraryUITests/testAskConversationAnswersAndSeeksToExactCitation"
+needs_web_fixture=false
+if [[ -z "$tests" ]]; then
+  needs_web_fixture=true
+else
+  for test in $tests; do
+    if [[ "$web_fixture_selector" == "$test"* ]]; then
+      needs_web_fixture=true
+      break
+    fi
+  done
+fi
+
+if [[ "$needs_web_fixture" == true ]]; then
+  web_fixture_path="Fixtures/ApuntadorWeb/public-local-v1.json"
+  python3 scripts/apuntador_web_fixture.py verify-public \
+    --fixture "$web_fixture_path" >/dev/null
+  web_fixture_payload="$(base64 < "$web_fixture_path" | tr -d '\n')"
+  if [[ -z "$web_fixture_payload" \
+      || ${#web_fixture_payload} -gt 12000 ]]; then
+    echo "Deterministic Apuntador Web fixture payload is invalid." >&2
+    exit 2
+  fi
+  export PORTAVOZ_UI_WEB_FIXTURE_PAYLOAD="$web_fixture_payload"
+  export TEST_RUNNER_PORTAVOZ_UI_WEB_FIXTURE_PAYLOAD="$web_fixture_payload"
+fi
 
 for locale in $locales; do
   test_args=("${common[@]}")
   case "$locale" in
-    default) ;;
-    en) test_args+=(-testLanguage en -testRegion US) ;;
-    es) test_args+=(-testLanguage es -testRegion ES) ;;
+    default)
+      unset PORTAVOZ_UI_TEST_LOCALE TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE
+      ;;
+    en)
+      export PORTAVOZ_UI_TEST_LOCALE=en
+      export TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE=en
+      test_args+=(-testLanguage en -testRegion US)
+      ;;
+    es)
+      export PORTAVOZ_UI_TEST_LOCALE=es
+      export TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE=es
+      test_args+=(-testLanguage es -testRegion ES)
+      ;;
     *) echo "Unsupported UI-test locale: $locale" >&2; exit 2 ;;
   esac
 
   result_bundle="$results_root/$locale.xcresult"
+  runtime_receipt="$results_root/$locale-runtime.json"
+  execution_receipt="$results_root/$locale-execution.json"
+  execution_log="$results_root/$locale-execution.log"
   rm -rf "$result_bundle"
+  rm -f "$runtime_receipt" "$execution_receipt" "$execution_log"
   selector_label="$selector_count scoped selectors"
   if [[ -z "$tests" ]]; then
     selector_label="all tests"
@@ -64,7 +185,65 @@ for locale in $locales; do
     test_args+=("${only_testing[@]}")
   fi
   echo "Running $selector_label in locale: $locale"
+  test_started=$SECONDS
+  set +e
   xcodebuild test-without-building \
     "${test_args[@]}" \
-    -resultBundlePath "$result_bundle"
+    -resultBundlePath "$result_bundle" 2>&1 | tee "$execution_log"
+  test_status=${PIPESTATUS[0]}
+  set -e
+  test_wall_duration=$((SECONDS - test_started))
+
+  receipt_status=0
+  if [[ "$require_runtime_receipt" == true ]]; then
+    if [[ ! -d "$result_bundle" ]]; then
+      echo "Missing XCUITest result bundle for runtime receipt: $result_bundle" >&2
+      receipt_status=2
+    else
+      runtime_args=(
+        --result "$result_bundle"
+        --budget "$runtime_budget"
+        --output "$runtime_receipt"
+        --locale "$locale"
+        --selector-count "$selector_count"
+        --build-duration "$build_duration"
+        --wall-duration "$test_wall_duration"
+      )
+      if [[ "$enforce_runtime_budget" == true ]]; then
+        runtime_args+=(--enforce)
+      fi
+      set +e
+      scripts/ui_test_runtime.py "${runtime_args[@]}"
+      receipt_status=$?
+      set -e
+    fi
+  fi
+
+  execution_status=0
+  set +e
+  python3 scripts/ui_test_execution.py \
+    --locale "$locale" \
+    --selector-count "$selector_count" \
+    --exit-status "$test_status" \
+    --log "$execution_log" \
+    --result "$result_bundle" \
+    --runtime-receipt "$runtime_receipt" \
+    --output "$execution_receipt"
+  execution_status=$?
+  set -e
+  if (( execution_status == 0 )); then
+    rm -f "$execution_log"
+  fi
+
+  # Preserve the real XCTest failure as the primary signal while still
+  # attempting a content-free receipt for diagnosis and trend evidence.
+  if (( test_status != 0 )); then
+    exit "$test_status"
+  fi
+  if (( execution_status != 0 )); then
+    exit "$execution_status"
+  fi
+  if (( receipt_status != 0 )); then
+    exit "$receipt_status"
+  fi
 done

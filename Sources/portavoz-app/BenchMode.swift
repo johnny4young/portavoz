@@ -1,3 +1,6 @@
+import ApplicationKit
+import AudioCaptureKit
+import CryptoKit
 import Foundation
 import IntelligenceKit
 import ModelStoreKit
@@ -15,8 +18,38 @@ import TranscriptionKit
 /// The process exits when the bench finishes — it never touches the UI,
 /// the library or the database.
 enum BenchMode {
+    /// Hidden app-bundle modes that own the process before AppServices exists.
+    /// They must never open the user's library or start ordinary background
+    /// owners beside the measurement they are collecting.
+    static func runsBeforeAppServices(
+        arguments: [String] = ProcessInfo.processInfo.arguments
+    ) -> Bool {
+        arguments.contains("--bench-live")
+            || arguments.contains("--mlx-smoke")
+            || arguments.contains("--bench-live-assist")
+    }
+
+    static func runsIsolatedBenchmark(
+        arguments: [String] = ProcessInfo.processInfo.arguments
+    ) -> Bool {
+        arguments.contains("--bench-resource-launch-probe")
+            || ProductionSyncQualificationConfiguration.isRequested(
+                arguments: arguments)
+            || arguments.contains("--bench-record")
+            || arguments.contains("--bench-resource-prepare-refine")
+            || arguments.contains("--bench-resource-refine")
+            || arguments.contains("--bench-resource-summary")
+            || arguments.contains("--bench-resource-ask")
+            || arguments.contains("--bench-resource-indexing")
+            || arguments.contains("--bench-graph-queries")
+    }
+
+    @MainActor
     static func runIfRequested() {
         let arguments = ProcessInfo.processInfo.arguments
+        if LiveAssistValidationRunner.runIfRequested(arguments: arguments) {
+            return
+        }
         guard let flag = arguments.firstIndex(of: "--bench-live"),
             arguments.indices.contains(flag + 1)
         else { return }
@@ -65,7 +98,7 @@ enum BenchMode {
 }
 
 extension BenchMode {
-    /// `portavoz-app --mlx-smoke [real]` — loads the (already downloaded)
+    /// `portavoz-app --mlx-smoke [real] [model]` — loads a verified model
     /// embedded model and summarizes either a tiny synthetic Spanish meeting
     /// (default) or, with `real`, the most recent library meeting that has a
     /// transcript (read-only: nothing is saved back). Prints timing and the
@@ -75,10 +108,18 @@ extension BenchMode {
     static func runMLXSmokeIfRequested() {
         let arguments = ProcessInfo.processInfo.arguments
         guard let flag = arguments.firstIndex(of: "--mlx-smoke") else { return }
-        let useRealMeeting = arguments.indices.contains(flag + 1) && arguments[flag + 1] == "real"
-        // Optional extra word picks the model — the A/B switch. Qwen3.5 is
-        // the shipping default; "qwen3" reruns the previous generation.
-        let descriptor = arguments.contains("qwen3") ? ModelCatalog.mlxQwen3 : ModelCatalog.mlxQwen35
+        let trailingArguments = arguments.suffix(from: flag + 1)
+        let useRealMeeting = trailingArguments.contains("real")
+        // Optional exact token picks an evaluation-only model. Ambiguity
+        // fails before any model download; the serving default remains 4B.
+        let descriptor: ModelDescriptor
+        do {
+            descriptor = try mlxSmokeDescriptor(
+                arguments: Array(trailingArguments))
+        } catch {
+            print("MLX smoke FAILED: choose exactly one model")
+            exit(2)
+        }
         // Unbuffered stdout: when piped to a file, progress lines must land
         // as they happen — a killed run would otherwise lose everything.
         setbuf(stdout, nil)
@@ -90,7 +131,10 @@ extension BenchMode {
                 let request =
                     useRealMeeting ? try await realMeetingRequest() : syntheticRequest()
                 let start = Date()
-                let draft = try await MLXSummaryProvider(modelDirectory: directory)
+                let runtime = MLXSummaryRuntime()
+                let draft = try await MLXSummaryProvider(
+                    modelDirectory: directory,
+                    runtime: runtime)
                     .summarize(request)
                 let elapsed = Date().timeIntervalSince(start)
                 print("MLX smoke OK in \(String(format: "%.1f", elapsed)) s")
@@ -164,60 +208,305 @@ extension BenchMode {
         exit(0)
     }
 
-    /// `portavoz-app --bench-record <seconds>` — starts a REAL recording
-    /// session (mic + system tap + live transcription) headlessly, samples
-    /// this process's physical footprint every 2 s, and prints a phase
-    /// breakdown (baseline → engines loaded → recording peak → after stop →
-    /// after releasing the engines) so RAM work targets the right component.
-    /// Combine with -use-temp-store so the bench meeting never lands in the
-    /// real library.
+    /// Runs the real recording resource harness from the app composition root.
+    /// Its lifecycle lives in a focused outer-layer runner so normal benchmark
+    /// dispatch stays readable as concurrent scenarios are added.
     @MainActor
     static func runRecordBenchIfRequested(services: AppServices, recording: RecordingController) {
+        BenchRecordingResourceRunner.runIfRequested(
+            services: services,
+            recording: recording)
+    }
+
+    /// `portavoz-app --bench-resource-refine <audio>` executes the real
+    /// app-composed Refine draft against a public synthetic fixture. It uses a
+    /// disposable meeting store, requires already-verified local models, and
+    /// writes only the exact content-free resource sample.
+    @MainActor
+    static func runRefineResourceBenchIfRequested(services: AppServices) {
         let arguments = ProcessInfo.processInfo.arguments
-        guard let flag = arguments.firstIndex(of: "--bench-record") else { return }
-        let seconds = arguments.indices.contains(flag + 1) ? Int(arguments[flag + 1]) ?? 60 : 60
+        let configuration: BenchRefineResourceConfiguration?
+        do {
+            configuration = try BenchRefineResourceConfiguration.requested(
+                arguments: arguments)
+        } catch {
+            emit("bench-refine: setup FAILED: \(error.localizedDescription)")
+            exit(1)
+        }
+        guard let configuration else { return }
+        guard arguments.contains("-use-temp-store") else {
+            emit("bench-refine: -use-temp-store is required")
+            exit(1)
+        }
+        let probe: BenchResourceScenarioProbe
+        do {
+            probe = try BenchResourceScenarioProbe(arguments: arguments)
+        } catch {
+            emit("bench-refine: probe setup FAILED: \(error.localizedDescription)")
+            exit(1)
+        }
+
         setbuf(stdout, nil)
         Task { @MainActor in
-            emit(String(format: "bench-record: baseline (no models) %.0f MB", physicalFootprintMB()))
             do {
-                try await services.loadEnginesIfNeeded()
+                try await verifyRefineBenchmarkModels(services: services)
+                let request = try makeRefineBenchmarkRequest(
+                    fixtureURL: configuration.fixtureURL)
+                let draft = try await probe.measure(scenario: "refine") {
+                    try await runRefineBenchmark(
+                        services: services,
+                        request: request,
+                        timeoutSeconds: configuration.timeoutSeconds)
+                }
+                emit(
+                    "bench-refine: resource sample complete "
+                        + "(\(draft.segments.count) segments)")
+                exit(0)
             } catch {
-                emit("bench-record: engine load FAILED: \(error.localizedDescription)")
+                probe.cancel()
+                emit("bench-refine: FAILED: \(error.localizedDescription)")
                 exit(1)
             }
-            emit(String(
-                format: "bench-record: engines loaded (Parakeet + pyannote) %.0f MB",
-                physicalFootprintMB()))
-            await recording.start(services: services)
-            if case .failed(let reason) = recording.phase {
-                emit("bench-record: start FAILED: \(reason)")
+        }
+    }
+
+    @MainActor
+    static func verifyRefineBenchmarkModels(
+        services: AppServices
+    ) async throws {
+        for descriptor in [
+            AppServices.preferredWhisperDescriptor(),
+            ModelCatalog.whisperTokenizer,
+            ModelCatalog.speakerDiarization
+        ] {
+            guard await services.modelLifecycle.installation(
+                for: descriptor,
+                forceVerification: true) != nil
+            else {
+                throw BenchRefineResourceError.modelsNotReady
+            }
+        }
+    }
+
+    private static func makeRefineBenchmarkRequest(
+        fixtureURL: URL
+    ) throws -> RefineMeetingRequest {
+        guard fixtureURL.isFileURL,
+              FileManager.default.fileExists(atPath: fixtureURL.path)
+        else {
+            throw BenchRefineResourceError.missingFixture
+        }
+        guard !AudioSilence.fileIsSilent(at: fixtureURL) else {
+            throw BenchRefineResourceError.fixtureIsSilent
+        }
+        let fingerprint = try SHA256.hash(
+            data: Data(contentsOf: fixtureURL, options: .mappedIfSafe))
+            .map { String(format: "%02x", $0) }
+            .joined()
+        let now = Date()
+        let meeting = Meeting(
+            title: "Resource benchmark",
+            startedAt: now.addingTimeInterval(-60),
+            endedAt: now)
+        return RefineMeetingRequest(
+            detail: MeetingDetail(
+                meeting: meeting,
+                speakers: [],
+                segments: [],
+                summaries: []),
+            languagePolicy: .fixed(.english),
+            audioOverride: RefineMeetingAudio(
+                system: RefineMeetingAudioChannel(
+                    fileURL: fixtureURL,
+                    isSilent: false,
+                    contentFingerprint: fingerprint),
+                microphone: nil))
+    }
+
+    /// The first result wins without awaiting a cancelled model task. A model
+    /// that ignores cooperative cancellation cannot turn the documented hard
+    /// timeout into an unbounded benchmark.
+    @MainActor
+    private static func runRefineBenchmark(
+        services: AppServices,
+        request: RefineMeetingRequest,
+        timeoutSeconds: Int
+    ) async throws -> RefineDraft {
+        do {
+            return try await BenchResourceTimedOperation.run(
+                timeout: .seconds(timeoutSeconds)
+            ) {
+                try await services.refineMeeting.draft.execute(request)
+            }
+        } catch BenchResourceTimedOperationError.operationFailed(let message) {
+            throw BenchRefineResourceError.operationFailed(message)
+        } catch BenchResourceTimedOperationError.timedOut {
+            throw BenchRefineResourceError.timedOut(timeoutSeconds)
+        }
+    }
+
+    /// `portavoz-app --bench-resource-summary` executes manual Summary through
+    /// the real ApplicationKit workflow, the pinned embedded MLX provider, and
+    /// a disposable fixed transcript. The summary is persisted only to the
+    /// temporary benchmark database.
+    @MainActor
+    static func runSummaryResourceBenchIfRequested(services: AppServices) {
+        let arguments = ProcessInfo.processInfo.arguments
+        let configuration: BenchSummaryResourceConfiguration?
+        do {
+            configuration = try BenchSummaryResourceConfiguration.requested(
+                arguments: arguments)
+        } catch {
+            emit("bench-summary: setup FAILED: \(error.localizedDescription)")
+            exit(1)
+        }
+        guard let configuration else { return }
+        guard arguments.contains("-use-temp-store") else {
+            emit("bench-summary: -use-temp-store is required")
+            exit(1)
+        }
+        let probe: BenchResourceScenarioProbe
+        do {
+            probe = try BenchResourceScenarioProbe(arguments: arguments)
+        } catch {
+            emit("bench-summary: probe setup FAILED: \(error.localizedDescription)")
+            exit(1)
+        }
+
+        setbuf(stdout, nil)
+        Task { @MainActor in
+            do {
+                let request = try await makeSummaryBenchmarkRequest(
+                    services: services)
+                let result = try await probe.measure(scenario: "summary") {
+                    try await runSummaryBenchmark(
+                        services: services,
+                        request: request,
+                        timeoutSeconds: configuration.timeoutSeconds)
+                }
+                guard case .completed(persisted: true) = result else {
+                    throw BenchSummaryResourceError.unexpectedResult(
+                        summaryBenchmarkResultName(result))
+                }
+                emit("bench-summary: resource sample complete")
+                exit(0)
+            } catch {
+                probe.cancel()
+                emit("bench-summary: FAILED: \(error.localizedDescription)")
                 exit(1)
             }
-            emit("bench-record: recording started, sampling footprint for \(seconds) s")
-            var peak: Double = 0
-            for _ in 0..<(seconds / 2) {
-                try? await Task.sleep(for: .seconds(2))
-                peak = max(peak, physicalFootprintMB())
+        }
+    }
+
+    @MainActor
+    private static func makeSummaryBenchmarkRequest(
+        services: AppServices
+    ) async throws -> RegenerateSummaryRequest {
+        guard await services.modelLifecycle.installation(
+            for: ModelCatalog.mlxQwen35,
+            forceVerification: true) != nil
+        else {
+            throw BenchSummaryResourceError.modelsNotReady
+        }
+        let fixture = makeIntelligenceBenchmarkFixture()
+        try await services.store.saveImportedMeeting(
+            fixture.meeting,
+            speakers: fixture.speakers,
+            segments: fixture.segments)
+        return RegenerateSummaryRequest(
+            meetingID: fixture.meeting.id,
+            segments: fixture.segments,
+            speakers: fixture.speakers,
+            recipe: .general,
+            targetLanguage: "en",
+            sourceTranscriptRevision: fixture.meeting.transcriptRevision,
+            sourceCorrectionRevision: .accepted,
+            providerOverride: .mlx)
+    }
+
+    static func makeIntelligenceBenchmarkFixture() -> (
+        meeting: Meeting,
+        speakers: [Speaker],
+        segments: [TranscriptSegment]
+    ) {
+        let now = Date()
+        let meeting = Meeting(
+            title: "Resource benchmark",
+            startedAt: now.addingTimeInterval(-96),
+            endedAt: now,
+            language: "en")
+        let me = Speaker(
+            meetingID: meeting.id,
+            label: "Me",
+            displayName: "Jordan",
+            isMe: true)
+        let teammate = Speaker(
+            meetingID: meeting.id,
+            label: "S1",
+            displayName: "Casey")
+        let reviewer = Speaker(
+            meetingID: meeting.id,
+            label: "S2",
+            displayName: "Morgan")
+        let turns: [(Speaker, String)] = [
+            (me, "We are reviewing a small local-first product release."),
+            (teammate, "The installer checks passed on the sixteen gigabyte Mac."),
+            (reviewer, "The eight gigabyte Mac still needs three stable resource runs."),
+            (me, "Recording responsiveness remains the release-blocking priority."),
+            (teammate, "I will measure startup time and memory before Friday."),
+            (reviewer, "I will verify that every evidence file contains no meeting content."),
+            (me, "We decided to defer background indexing while a call is active."),
+            (teammate, "The summary must preserve decisions and explicit owners."),
+            (reviewer, "Failed or incomplete measurements will remain visibly blocked."),
+            (me, "We will publish only after the matrix is complete and reviewed.")
+        ]
+        let segments = turns.enumerated().map { index, turn in
+            TranscriptSegment(
+                meetingID: meeting.id,
+                speakerID: turn.0.id,
+                channel: turn.0.isMe ? .microphone : .system,
+                text: turn.1,
+                language: "en",
+                startTime: TimeInterval(index * 9),
+                endTime: TimeInterval(index * 9 + 7),
+                isFinal: true)
+        }
+        return (meeting, [me, teammate, reviewer], segments)
+    }
+
+    @MainActor
+    private static func runSummaryBenchmark(
+        services: AppServices,
+        request: RegenerateSummaryRequest,
+        timeoutSeconds: Int
+    ) async throws -> SummaryRegenerationResult {
+        do {
+            return try await BenchResourceTimedOperation.run(
+                timeout: .seconds(timeoutSeconds)
+            ) {
+                await services.regenerateSummary.execute(request)
             }
-            emit(String(format: "bench-record: peak footprint %.0f MB over %d s", peak, seconds))
-            // The post-meeting pipeline can take paths that never return in
-            // a headless bench — cap the stop so the breakdown still prints.
-            await withTaskGroup(of: Void.self) { group in
-                group.addTask { await recording.stop(services: services) }
-                group.addTask { try? await Task.sleep(for: .seconds(30)) }
-                await group.next()
-                group.cancelAll()
-            }
-            try? await Task.sleep(for: .seconds(3))
-            emit(String(format: "bench-record: after stop %.0f MB", physicalFootprintMB()))
-            services.releaseRecordingEngines()
-            // CoreML gives pages back lazily — sample twice so a slow
-            // reclaim isn't mistaken for a leak.
-            try? await Task.sleep(for: .seconds(3))
-            emit(String(format: "bench-record: after engine release (3 s) %.0f MB", physicalFootprintMB()))
-            try? await Task.sleep(for: .seconds(12))
-            emit(String(format: "bench-record: after engine release (15 s) %.0f MB", physicalFootprintMB()))
-            exit(0)
+        } catch BenchResourceTimedOperationError.operationFailed(let message) {
+            throw BenchSummaryResourceError.operationFailed(message)
+        } catch BenchResourceTimedOperationError.timedOut {
+            throw BenchSummaryResourceError.timedOut(timeoutSeconds)
+        }
+    }
+
+    private static func summaryBenchmarkResultName(
+        _ result: SummaryRegenerationResult
+    ) -> String {
+        switch result {
+        case .completed(persisted: false):
+            "completed without persistence"
+        case .completed(persisted: true):
+            "completed"
+        case .unchanged:
+            "unchanged"
+        case .unavailable:
+            "unavailable"
+        case .generationFailed:
+            "generation failed"
         }
     }
 
@@ -225,7 +514,7 @@ extension BenchMode {
     /// a GUI instance launched via `open -n` has no usable stdout, and the
     /// record bench must run as a real windowed app (its driver is a view
     /// `.task`, and TCC-covered capture needs the bundle).
-    private static func emit(_ line: String) {
+    static func emit(_ line: String) {
         print(line)
         let arguments = ProcessInfo.processInfo.arguments
         guard let flag = arguments.firstIndex(of: "--bench-log"),
@@ -240,18 +529,6 @@ extension BenchMode {
         } else {
             try? data.write(to: url)
         }
-    }
-
-    /// What Activity Monitor's "Memory" column shows for this process.
-    private static func physicalFootprintMB() -> Double {
-        var usage = rusage_info_current()
-        let result = withUnsafeMutablePointer(to: &usage) { pointer in
-            pointer.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { reboundPointer in
-                proc_pid_rusage(getpid(), RUSAGE_INFO_CURRENT, reboundPointer)
-            }
-        }
-        guard result == 0 else { return 0 }
-        return Double(usage.ri_phys_footprint) / 1_048_576
     }
 
     private static func processStartTime() -> Date {

@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 1,
+  "kind": "commitment-link-quality-corpus",
+  "vocabularies": {
+    "en": [
+      {
+        "topic": "rollout checklist",
+        "actionText": "Follow up on the rollout checklist",
+        "historyText": "I will send the rollout checklist by Friday."
+      },
+      {
+        "topic": "security review",
+        "actionText": "Complete the security review",
+        "historyText": "I committed to complete the security review."
+      },
+      {
+        "topic": "vendor contract",
+        "actionText": "Review the vendor contract",
+        "historyText": "I will review the vendor contract on Monday."
+      },
+      {
+        "topic": "migration notes",
+        "actionText": "Publish the migration notes",
+        "historyText": "I will publish the migration notes tomorrow."
+      },
+      {
+        "topic": "release notes",
+        "actionText": "Finish the release notes",
+        "historyText": "I will finish the release notes before launch."
+      },
+      {
+        "topic": "customer follow-up",
+        "actionText": "Send the customer follow-up",
+        "historyText": "I will send the customer follow-up this week."
+      },
+      {
+        "topic": "audit report",
+        "actionText": "Update the audit report",
+        "historyText": "I will update the audit report."
+      },
+      {
+        "topic": "device inventory",
+        "actionText": "Prepare the device inventory",
+        "historyText": "I will prepare the device inventory."
+      },
+      {
+        "topic": "incident timeline",
+        "actionText": "Share the incident timeline",
+        "historyText": "I will share the incident timeline."
+      },
+      {
+        "topic": "deployment plan",
+        "actionText": "Revise the deployment plan",
+        "historyText": "I will revise the deployment plan."
+      },
+      {
+        "topic": "access review",
+        "actionText": "Complete the access review",
+        "historyText": "I will complete the access review."
+      },
+      {
+        "topic": "test matrix",
+        "actionText": "Publish the test matrix",
+        "historyText": "I will publish the test matrix."
+      }
+    ],
+    "es": [
+      {
+        "topic": "lista de lanzamiento",
+        "actionText": "Dar seguimiento a la lista de lanzamiento",
+        "historyText": "Enviaré la lista de lanzamiento el viernes."
+      },
+      {
+        "topic": "revisión de seguridad",
+        "actionText": "Completar la revisión de seguridad",
+        "historyText": "Me comprometo a completar la revisión de seguridad."
+      },
+      {
+        "topic": "contrato del proveedor",
+        "actionText": "Revisar el contrato del proveedor",
+        "historyText": "Revisaré el contrato del proveedor el lunes."
+      },
+      {
+        "topic": "notas de migración",
+        "actionText": "Publicar las notas de migración",
+        "historyText": "Publicaré las notas de migración mañana."
+      },
+      {
+        "topic": "notas de la versión",
+        "actionText": "Terminar las notas de la versión",
+        "historyText": "Terminaré las notas de la versión antes del lanzamiento."
+      },
+      {
+        "topic": "seguimiento al cliente",
+        "actionText": "Enviar el seguimiento al cliente",
+        "historyText": "Enviaré el seguimiento al cliente esta semana."
+      },
+      {
+        "topic": "informe de auditoría",
+        "actionText": "Actualizar el informe de auditoría",
+        "historyText": "Actualizaré el informe de auditoría."
+      },
+      {
+        "topic": "inventario de dispositivos",
+        "actionText": "Preparar el inventario de dispositivos",
+        "historyText": "Prepararé el inventario de dispositivos."
+      },
+      {
+        "topic": "línea de tiempo del incidente",
+        "actionText": "Compartir la línea de tiempo del incidente",
+        "historyText": "Compartiré la línea de tiempo del incidente."
+      },
+      {
+        "topic": "plan de despliegue",
+        "actionText": "Revisar el plan de despliegue",
+        "historyText": "Revisaré el plan de despliegue."
+      },
+      {
+        "topic": "revisión de acceso",
+        "actionText": "Completar la revisión de acceso",
+        "historyText": "Completaré la revisión de acceso."
+      },
+      {
+        "topic": "matriz de pruebas",
+        "actionText": "Publicar la matriz de pruebas",
+        "historyText": "Publicaré la matriz de pruebas."
+      }
+    ],
+    "mixed": [
+      {
+        "topic": "rollout checklist",
+        "actionText": "Dar follow-up al rollout checklist",
+        "historyText": "Voy a send the rollout checklist by Friday."
+      },
+      {
+        "topic": "security review",
+        "actionText": "Completar el security review",
+        "historyText": "Me comprometo to complete the security review."
+      },
+      {
+        "topic": "vendor contract",
+        "actionText": "Review el vendor contract",
+        "historyText": "Voy a review el vendor contract on Monday."
+      },
+      {
+        "topic": "migration notes",
+        "actionText": "Publicar las migration notes",
+        "historyText": "I will publicar las migration notes mañana."
+      },
+      {
+        "topic": "release notes",
+        "actionText": "Terminar las release notes",
+        "historyText": "Voy a finish the release notes before launch."
+      },
+      {
+        "topic": "customer follow-up",
+        "actionText": "Enviar el customer follow-up",
+        "historyText": "I will enviar el customer follow-up esta semana."
+      },
+      {
+        "topic": "audit report",
+        "actionText": "Actualizar el audit report",
+        "historyText": "Voy a update the audit report."
+      },
+      {
+        "topic": "device inventory",
+        "actionText": "Preparar el device inventory",
+        "historyText": "I will preparar el device inventory."
+      },
+      {
+        "topic": "incident timeline",
+        "actionText": "Compartir el incident timeline",
+        "historyText": "Voy a share the incident timeline."
+      },
+      {
+        "topic": "deployment plan",
+        "actionText": "Revisar el deployment plan",
+        "historyText": "I will revisar el deployment plan."
+      },
+      {
+        "topic": "access review",
+        "actionText": "Completar el access review",
+        "historyText": "Voy a complete the access review."
+      },
+      {
+        "topic": "test matrix",
+        "actionText": "Publicar el test matrix",
+        "historyText": "I will publicar el test matrix."
+      }
+    ]
+  },
+  "templates": {
+    "noOverlapEvidence": {
+      "en": "The facilities team completed an unrelated office inventory.",
+      "es": "El equipo de instalaciones completó un inventario de oficina sin relación.",
+      "mixed": "Facilities completó un unrelated office inventory."
+    },
+    "repeatedCommitmentEvidence": {
+      "en": "The owner repeated the {topic} commitment in the follow-up.",
+      "es": "La persona repitió el compromiso sobre {topic} en el seguimiento.",
+      "mixed": "The owner repitió el commitment sobre {topic} en el follow-up."
+    },
+    "ambiguousTitle": {
+      "en": "{actionText} (follow-up)",
+      "es": "{actionText} (seguimiento)",
+      "mixed": "{actionText} (follow-up)"
+    },
+    "ambiguousHistoryReplacement": {
+      "en": "during the follow-up.",
+      "es": "durante el seguimiento.",
+      "mixed": "during el follow-up."
+    },
+    "distractorTitle": {
+      "en": "Prepare an unrelated office inventory",
+      "es": "Preparar un inventario de oficina sin relación",
+      "mixed": "Preparar un unrelated office inventory"
+    },
+    "distractorEvidence": {
+      "en": "The facilities team will prepare an unrelated office inventory.",
+      "es": "El equipo de instalaciones preparará un inventario de oficina sin relación.",
+      "mixed": "Facilities va a prepare un unrelated office inventory."
+    }
+  }
+}

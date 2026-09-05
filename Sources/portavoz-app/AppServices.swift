@@ -19,6 +19,54 @@ struct MeetingSeekRequest: Equatable {
     let timestamp: TimeInterval
 }
 
+/// Storage isolation is selected once at process composition. UI automation
+/// gets an empty model root as well as a disposable meeting database. The
+/// hidden benchmarks that need Portavoz-managed models keep only the database
+/// disposable and reuse the normal verified model cache so repeated Release
+/// samples do not include a fresh model installation. OS-model-only Ask and
+/// standalone indexing keep both Portavoz stores disposable.
+struct AppStorageIsolationPolicy: Equatable {
+    let usesTemporaryMeetingStore: Bool
+    let usesTemporaryModelStore: Bool
+    let usesTemporarySensitiveStore: Bool
+    let meetingStoreURL: URL
+    let simulatesDatabaseOpenFailure: Bool
+
+    init(
+        arguments: [String],
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) {
+        usesTemporaryMeetingStore = arguments.contains("-use-temp-store")
+        usesTemporarySensitiveStore = usesTemporaryMeetingStore
+        let reusesVerifiedModels = arguments.contains("--bench-record")
+            || arguments.contains("--bench-resource-prepare-refine")
+            || arguments.contains("--bench-resource-refine")
+            || arguments.contains("--bench-resource-summary")
+        usesTemporaryModelStore =
+            usesTemporaryMeetingStore && !reusesVerifiedModels
+        if usesTemporaryMeetingStore {
+            meetingStoreURL = environment["PORTAVOZ_UI_TEST_DATABASE_PATH"]
+                .flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
+                ?? FileManager.default.temporaryDirectory.appendingPathComponent(
+                    "portavoz-uitest-\(UUID().uuidString).sqlite")
+        } else {
+            meetingStoreURL = MeetingStore.defaultDatabaseURL
+        }
+        simulatesDatabaseOpenFailure = usesTemporaryMeetingStore
+            && arguments.contains("-simulate-database-open-failure")
+    }
+}
+
+enum AppInitialModelReadinessPolicy {
+    static func schedulesRefresh(arguments: [String]) -> Bool {
+        !BenchMode.runsIsolatedBenchmark(arguments: arguments)
+    }
+}
+
+/// Deterministic XCUITest-only failure injected after a disposable SQLite
+/// authority has been materialized. Production launches can never select it.
+private struct AppSimulatedDatabaseOpenFailure: Error {}
+
 /// Composition root: the database, the ML engines (loaded once, shared by
 /// every recording), and cross-view invalidation. Lives on the main actor;
 /// the engines themselves do their work off it.
@@ -48,13 +96,26 @@ final class AppServices {
     static var audioRoot: URL { RecordingsLocation.shared.currentRoot() }
 
     let store: MeetingStore
+    /// One process-owned permission/reconciliation model schedules only
+    /// confirmed due commitments and coalesces mutation bursts without a
+    /// polling timer.
+    let commitmentReminders: CommitmentReminderModel
     /// One process-wide verified model store and lifecycle. Disposable
     /// automation receives its own empty root and never inspects host models.
     @ObservationIgnored let modelStore: ModelStore
     @ObservationIgnored let modelLifecycle: VerifiedModelLifecycle
-    /// The only concrete Security adapter in the app process. Capability Kits
-    /// receive the Core port rather than importing or constructing Keychain.
-    @ObservationIgnored let secretStorage: KeychainSecretStore
+    /// One process-owned, content-free view of heavyweight runtime lifecycle.
+    /// Capability owners submit complete family transitions one adapter at a
+    /// time; all five heavyweight families now use this exact owner.
+    @ObservationIgnored let modelResidencyLedger =
+        AppModelResidencyLedger()
+    /// Content-free workload spans are installed once at the composition root.
+    @ObservationIgnored let workloadTelemetry: ResourceWorkloadTelemetry
+    /// The narrow platform bridge for pressure-driven idle model release.
+    @ObservationIgnored var resourcePressureMonitor: AppResourcePressureMonitor?
+    /// Content-free recording phase readable from non-MainActor residency
+    /// callbacks without reaching into the observable controller.
+    @ObservationIgnored let resourceCaptureState: AppResourceCaptureState
     @ObservationIgnored let microphonePermissions: MicrophonePermissionClient
     /// Shared async credential workflow for Settings and publishing surfaces.
     @ObservationIgnored let secrets: ManageSecrets
@@ -66,14 +127,64 @@ final class AppServices {
     let firstRun: FirstRunModel
     /// One process-wide truthful receipt is shared by every Settings window.
     let localDataLedger: LocalDataLedgerModel
+    /// One content-free projection receives typed events from the five
+    /// existing background owners. It never polls or schedules work itself.
+    let backgroundWork: BackgroundWorkCenterModel
     /// One Ask application workflow feeds every macOS Ask presentation model.
     @ObservationIgnored let askClient: AppAskModelClient
-    /// One shared local embedding lane augments Library FTS without loading a
-    /// model per keystroke or downloading assets from the search field.
+    /// Pull-based live interview answers reuse the exact selected Ask engine
+    /// but keep their bounded recording evidence outside library retrieval.
+    @ObservationIgnored let assistInterviewQuestion: AssistInterviewQuestion
+    /// Ask and Library share one governed Apple contextual-embedding runtime.
+    @ObservationIgnored let semanticEmbeddingRuntime:
+        AppSemanticEmbeddingRuntime
+    /// One process-scoped Settings owner for the only product action allowed
+    /// to request Apple's OS-managed semantic assets.
+    @ObservationIgnored lazy var semanticSearchPreparation =
+        SemanticSearchPreparationModel(
+            client: AppSemanticSearchPreparationClient(services: self))
+    /// Background maintenance owns product corpus writes and coalesces them
+    /// through one semantic-index flight.
+    @ObservationIgnored let semanticIndexingCoordinator:
+        SemanticCorpusIndexingCoordinator
+    /// Signal-driven process owner resumes durable semantic backfill without
+    /// polling SQLite or making a SwiftUI view responsible for maintenance.
+    @ObservationIgnored let semanticIndexingSupervisor:
+        SemanticCorpusIndexingSupervisor
+    /// Signal-driven owner for the disposable typed meeting-memory graph.
+    /// It shares durable maintenance semantics but never borrows a model.
+    @ObservationIgnored let memoryGraphProjectionSupervisor:
+        MeetingMemoryGraphProjectionSupervisor
+    /// One process-shared Library lane augments exact search without
+    /// downloading assets as a side effect of typing.
     @ObservationIgnored let librarySemanticSearch: LocalLibrarySemanticSearch
     /// Upcoming-meeting preparation shares Ask retrieval and returns only
     /// storage-independent ApplicationKit values.
     @ObservationIgnored let meetingBriefUseCase: PrepareMeetingBrief
+    /// One no-prompt calendar boundary supplies opaque event references to
+    /// Library, reminders, and the resident brief proposal.
+    @ObservationIgnored let upcomingEventSource: AppUpcomingEventSource
+    /// Signal-driven, capture-deferred owner for the one bounded standing
+    /// local-draft action. It never requests calendar permission or polls.
+    @ObservationIgnored let standingPreMeetingBriefs:
+        StandingPreMeetingBriefSupervisor
+    /// One process-owned Reminders boundary. Disposable automation always
+    /// receives an in-memory fake and can never reach host TCC or EventKit.
+    @ObservationIgnored let reminderDraftPlatform:
+        any AppReminderDraftPlatform
+    /// Process-owned local-draft handoff for the menu-bar brief Skill.
+    @ObservationIgnored let meetingBriefSkillDelivery:
+        AppMeetingBriefSkillDelivery
+    /// One process-owned recap delivery boundary keeps a failed skill attempt
+    /// retryable under the same adapter and durable proposal claim.
+    @ObservationIgnored let recapSkillDelivery: any RecapDraftDelivering
+    /// The only email effect is a review-first system-composer handoff. UI
+    /// automation receives an inert recorder and cannot open the host client.
+    @ObservationIgnored let emailRecapDraftDelivery:
+        any EmailRecapDraftDelivering
+    /// Retained only as a composition decision. Disposable automation must
+    /// never resolve a real GitHub credential or transport.
+    @ObservationIgnored let usesTemporaryMeetingStore: Bool
     /// Whole-library export state outlives Settings windows so closing a pane
     /// cannot cancel publication or start a competing backup.
     let libraryMarkdownBackup: LibraryMarkdownBackupModel
@@ -85,13 +196,14 @@ final class AppServices {
         URLSessionDataEgressGateway(receiptRecorder: store)
     }
     var modelsState: ModelsState = .unknown
-    private(set) var transcriber: ParakeetEngine?
-    private(set) var diarizer: PyannoteDiarizer?
-    @ObservationIgnored var transcriberLoadTask: Task<ParakeetEngine, Error>?
-    @ObservationIgnored var diarizerLoadTask: Task<PyannoteDiarizer, Error>?
+    var transcriber: ParakeetEngine?
+    @ObservationIgnored var liveSpeechRuntimeLoad: LiveSpeechRuntimeLoad?
+    var diarizationRuntime: PyannoteDiarizationRuntime?
+    @ObservationIgnored var diarizationRuntimeLoad: DiarizationRuntimeLoad?
     var enginesIdleGeneration = 0
     var whisper: WhisperEngine?
     var whisperVariantID: String?
+    @ObservationIgnored var whisperRuntimeLoad: WhisperRuntimeLoad?
     var whisperPreparationState: WhisperPreparationState = .idle
     @ObservationIgnored var whisperPreparedModel: WhisperEngine.PreparedModel?
     @ObservationIgnored var whisperPreparation: WhisperPreparation?
@@ -99,6 +211,12 @@ final class AppServices {
     @ObservationIgnored var whisperProgressObservers: [UUID: WhisperPreparationObserver] = [:]
     var whisperIdleGeneration = 0
     private(set) var mlxDownloaded = false
+    /// IntelligenceKit owns container mechanics; composition owns the one
+    /// process runtime and every residency transition around it.
+    @ObservationIgnored let mlxSummaryRuntime = MLXSummaryRuntime()
+    @ObservationIgnored var mlxRuntimeLoad: MLXRuntimeLoad?
+    var mlxRuntimeDirectoryKey: String?
+    var mlxIdleGeneration = 0
 
     /// Process-scoped, coalescing reconciliation for the protected local
     /// Spotlight index. It is deliberately not owned by a SwiftUI window.
@@ -116,22 +234,23 @@ final class AppServices {
     let refines = RefineService()
     /// One serial utility lane for file transcription. Live streams bypass it
     /// by design, so a new recording always wins ANE scheduling (D7).
-    let transcriptionScheduler = TranscriptionScheduler()
+    let transcriptionScheduler: TranscriptionScheduler
     /// Process-scoped ownership of the durable post-capture worker and its
     /// single scheduled retry wake. The supervisor deduplicates launch and
     /// producer kicks without polling SQLite.
-    let postCaptureProcessing = PostCaptureProcessingSupervisor()
+    let postCaptureProcessing: PostCaptureProcessingSupervisor
     /// System-wide dictation (⌥⌘D): lives here so the hotkey and its
     /// session survive any window coming and going.
     let dictation = DictationController()
     /// THE recording session (one at a time by design): shared so the
     /// recording view, the HUD and the menu bar all observe the same one,
     /// and navigating away can never orphan a live session.
-    let recording = RecordingController()
+    let recording: RecordingController
     /// ⌘K palette (design system 6a-1): floats over any view; state and owned
     /// tasks live here so it works safely with the library window closed.
     let palette: CommandPaletteController
-    /// One-shot, meeting-scoped seek consumed only by its destination detail.
+    /// One-shot, meeting-scoped seek acknowledged only after its destination
+    /// player applies it.
     /// Existing details observe it too, so navigating to the already-open
     /// meeting cannot strand the request waiting for a route reconstruction.
     var pendingMeetingSeek: MeetingSeekRequest?
@@ -169,36 +288,148 @@ final class AppServices {
         return shares.reduce(0, +) / Double(shares.count)
     }
 
-    init() {
-        // The UI-test host has its own bundle identity, but volatile
-        // per-launch preferences still need to land before any service reads
-        // defaults so every case is independent from an earlier test launch.
-        UITestDefaults.installIfNeeded()
-        let usesTemporaryStore = ProcessInfo.processInfo.arguments.contains("-use-temp-store")
-        let modelStore = Self.makeModelStore(usesTemporaryStore: usesTemporaryStore)
-        self.modelStore = modelStore
-        modelLifecycle = VerifiedModelLifecycle(store: modelStore)
-        let secretStorage = KeychainSecretStore()
-        self.secretStorage = secretStorage
+    init( // swiftlint:disable:this function_body_length
+        arguments: [String] = ProcessInfo.processInfo.arguments,
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        storagePolicy: AppStorageIsolationPolicy? = nil,
+        defaults: UserDefaults = .standard
+    ) throws {
+        let storagePolicy = Self.prepareStoragePolicy(
+            arguments: arguments,
+            environment: environment,
+            override: storagePolicy,
+            defaults: defaults)
+        recording = RecordingController(defaults: defaults)
+        let usesTemporaryStore = storagePolicy.usesTemporaryMeetingStore
+        usesTemporaryMeetingStore = usesTemporaryStore
+        let resourceCaptureState = AppResourceCaptureState()
+        self.resourceCaptureState = resourceCaptureState
+        // Open the authority before constructing process runtimes or installing
+        // global telemetry. A failed retry therefore leaves no half-composed
+        // service graph, model task, sensitive store, or background owner.
+        store = try Self.makeMeetingStore(storagePolicy: storagePolicy)
+        let backgroundWork = BackgroundWorkCenterModel()
+        self.backgroundWork = backgroundWork
+        postCaptureProcessing = PostCaptureProcessingSupervisor(
+            backgroundWork: backgroundWork)
+        let workloadTelemetry = AppResourceWorkloadTelemetry.shared.telemetry
+        self.workloadTelemetry = workloadTelemetry
+        transcriptionScheduler = Self.makeTranscriptionScheduler(telemetry: workloadTelemetry)
+        (modelStore, modelLifecycle) = Self.makeModelServices(
+            usesTemporaryStore: storagePolicy.usesTemporaryModelStore)
+        semanticEmbeddingRuntime = Self.makeSemanticEmbeddingRuntime(
+            arguments: arguments, usesTemporaryStore: usesTemporaryStore,
+            residency: modelResidencyLedger, telemetry: workloadTelemetry)
+        let sensitiveStorage = Self.makeSensitiveStorage(usesTemporaryStore: storagePolicy.usesTemporarySensitiveStore)
         microphonePermissions = MicrophonePermissionClient()
-        secrets = ManageSecrets(storage: secretStorage)
-        voiceprintStore = VoiceprintStore(secrets: secretStorage)
-        voiceGallery = VoiceGallery(secrets: secretStorage)
-        do {
-            store = try Self.makeMeetingStore(usesTemporaryStore: usesTemporaryStore)
-        } catch {
-            // No database, no app — surfacing a broken half-UI would be
-            // worse than failing loudly at launch.
-            fatalError("cannot open the Portavoz database: \(error)")
-        }
-        let askUseCase = Self.makeAskUseCase(
-            store: store,
+        secrets = ManageSecrets(storage: sensitiveStorage.secrets)
+        voiceprintStore = sensitiveStorage.voiceprintStore
+        voiceGallery = sensitiveStorage.voiceGallery
+        commitmentReminders = Self.makeCommitmentReminderModel(
+            store: store, usesTemporaryStore: usesTemporaryMeetingStore)
+        let selectedAskAnswering = AppSelectedAskMeetingAnswering()
+        assistInterviewQuestion = Self.makeInterviewAssist(
+            arguments: arguments, selectedAnswering: selectedAskAnswering)
+        let semanticSearch = Self.makeSemanticSearchComposition(
+            store: store, usesTemporaryStore: usesTemporaryMeetingStore, semanticRuntime: semanticEmbeddingRuntime,
+            selectedAnswering: selectedAskAnswering, telemetry: workloadTelemetry,
+            backgroundWork: AppBackgroundWorkComposition(
+                model: backgroundWork,
+                captureState: resourceCaptureState,
+                enablesFixture: arguments.contains("-enable-background-work-fixture")))
+        semanticIndexingCoordinator = semanticSearch.coordinator
+        semanticIndexingSupervisor = semanticSearch.background
+        memoryGraphProjectionSupervisor = semanticSearch.memoryGraphBackground
+        librarySemanticSearch = semanticSearch.library
+        let askUseCase = semanticSearch.ask
+        firstRun = Self.makeFirstRunModel(store: store)
+        localDataLedger = Self.makeLocalDataLedgerModel(
+            store: store, usesTemporaryStore: usesTemporaryStore,
+            voiceGallery: voiceGallery, voiceprintStore: voiceprintStore)
+        askClient = Self.makeAskModelClient(composition: semanticSearch, store: store)
+        recapSkillDelivery = Self.makeRecapSkillDelivery(arguments: arguments, usesTemporaryStore: usesTemporaryStore)
+        emailRecapDraftDelivery = Self.makeEmailRecapDraftDelivery(usesTemporaryStore: usesTemporaryStore)
+        let upcomingEventSource = AppUpcomingEventSource(
+            arguments: arguments,
             usesTemporaryStore: usesTemporaryStore)
-        librarySemanticSearch = LocalLibrarySemanticSearch(store: store)
-        firstRun = FirstRunModel(client: AppFirstRunModelClient(
-            useCase: ResolveFirstRunExperience(
-                library: AppFirstRunLibraryReader(store: store))))
-        localDataLedger = LocalDataLedgerModel(
+        self.upcomingEventSource = upcomingEventSource
+        reminderDraftPlatform = Self.makeReminderDraftPlatform(usesTemporaryStore: usesTemporaryStore)
+        meetingBriefSkillDelivery = AppMeetingBriefSkillDelivery()
+        let meetingBriefSynthesizer: any MeetingBriefSynthesizing =
+            usesTemporaryStore
+                ? UITestMeetingBriefSynthesizer()
+                : AppOnDeviceMeetingBriefSynthesizer()
+        let meetingBriefUseCase = PrepareMeetingBrief(
+            ask: askUseCase,
+            library: AppMeetingBriefLibraryReader(store: store),
+            synthesizer: meetingBriefSynthesizer)
+        self.meetingBriefUseCase = meetingBriefUseCase
+        let standingBriefPreparer: any StandingPreMeetingBriefPreparing =
+            usesTemporaryStore
+                && arguments.contains("-simulate-standing-brief-failure-once")
+                ? UITestFailOnceStandingBriefPreparer(base: meetingBriefUseCase)
+                : meetingBriefUseCase
+        standingPreMeetingBriefs = StandingPreMeetingBriefSupervisor(
+            store: store,
+            preparer: standingBriefPreparer,
+            events: upcomingEventSource,
+            captureState: resourceCaptureState)
+        palette = CommandPaletteController(model: CommandPaletteModel(client: askClient))
+        meetingSync = Self.makeMeetingSyncModel(
+            store: store, usesTemporaryStore: usesTemporaryStore,
+            telemetry: workloadTelemetry, captureState: resourceCaptureState)
+        libraryMarkdownBackup = Self.makeLibraryMarkdownBackupModel(
+            store: store, captureState: resourceCaptureState, usesTemporaryStore: usesTemporaryStore)
+        spotlightIndexer = SpotlightIndexer(
+            store: store,
+            enabled: !usesTemporaryStore && SpotlightIndexer.indexingAvailable,
+            telemetry: workloadTelemetry,
+            statusChanged: { [weak backgroundWork] status, retryAt in
+                await backgroundWork?.receiveSpotlight(
+                    status,
+                    retryAt: retryAt)
+            })
+        installSelectedAskResolver(on: selectedAskAnswering)
+        scheduleInitialReadinessRefresh(arguments: arguments)
+    }
+
+    private static func makeTranscriptionScheduler(
+        telemetry: ResourceWorkloadTelemetry
+    ) -> TranscriptionScheduler {
+        IntelligenceScheduler.installSharedTelemetry(telemetry)
+        return TranscriptionScheduler(telemetry: telemetry)
+    }
+
+    private static func prepareStoragePolicy(
+        arguments: [String],
+        environment: [String: String],
+        override: AppStorageIsolationPolicy?,
+        defaults: UserDefaults
+    ) -> AppStorageIsolationPolicy {
+        // The UI-test host has its own bundle identity, but volatile
+        // per-launch preferences must land before any service reads defaults.
+        UITestDefaults.installIfNeeded(
+            arguments: arguments,
+            environment: environment,
+            defaults: defaults)
+        return override ?? AppStorageIsolationPolicy(
+            arguments: arguments,
+            environment: environment)
+    }
+
+    private func scheduleInitialReadinessRefresh(arguments: [String]) {
+        guard AppInitialModelReadinessPolicy.schedulesRefresh(
+            arguments: arguments) else { return }
+        Task { @MainActor [weak self] in await self?.refreshMLXReadiness() }
+    }
+
+    private static func makeLocalDataLedgerModel(
+        store: MeetingStore,
+        usesTemporaryStore: Bool,
+        voiceGallery: VoiceGallery,
+        voiceprintStore: VoiceprintStore
+    ) -> LocalDataLedgerModel {
+        LocalDataLedgerModel(
             client: AppLocalDataLedgerModelClient(useCase: LoadLocalDataLedger(
                 meetings: AppLocalMeetingCounter(store: store),
                 audio: AppLocalAudioUsageMeter(),
@@ -206,25 +437,6 @@ final class AppServices {
                     usesTemporaryStore: usesTemporaryStore,
                     voiceGallery: voiceGallery,
                     voiceprintStore: voiceprintStore))))
-        askClient = AppAskModelClient(useCase: askUseCase)
-        meetingBriefUseCase = PrepareMeetingBrief(
-            ask: askUseCase,
-            library: AppMeetingBriefLibraryReader(store: store),
-            synthesizer: AppOnDeviceMeetingBriefSynthesizer())
-        palette = CommandPaletteController(
-            model: CommandPaletteModel(client: askClient))
-        meetingSync = Self.makeMeetingSyncModel(
-            store: store,
-            usesTemporaryStore: usesTemporaryStore)
-        libraryMarkdownBackup = LibraryMarkdownBackupModel(
-            client: AppLibraryMarkdownBackupClient(store: store))
-        spotlightIndexer = SpotlightIndexer(
-            store: store,
-            enabled: !usesTemporaryStore && SpotlightIndexer.indexingAvailable)
-        requestSpotlightReindex()
-        Task { @MainActor [weak self] in
-            await self?.refreshMLXReadiness()
-        }
     }
 
     private static func makeModelStore(usesTemporaryStore: Bool) -> ModelStore {
@@ -235,115 +447,89 @@ final class AppServices {
         return ModelStore(rootDirectory: rootDirectory)
     }
 
-    private static func makeMeetingStore(usesTemporaryStore: Bool) throws -> MeetingStore {
-        guard usesTemporaryStore else {
-            return try MeetingStore(databaseURL: MeetingStore.defaultDatabaseURL)
-        }
-        // UI testing (`make test-ui`): a throwaway DB so a test run never
-        // touches the real library.
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("portavoz-uitest-\(UUID().uuidString).sqlite")
-        return try MeetingStore(databaseURL: url)
+    private static func makeModelServices(
+        usesTemporaryStore: Bool
+    ) -> (ModelStore, VerifiedModelLifecycle) {
+        let store = makeModelStore(usesTemporaryStore: usesTemporaryStore)
+        return (store, VerifiedModelLifecycle(store: store))
     }
 
-    /// Searchable mutations request eventual reconciliation. The actor owns
-    /// burst coalescing, retries, and crash-resumable client state.
-    func requestSpotlightReindex() {
+    private static func makeSensitiveStorage(
+        usesTemporaryStore: Bool
+    ) -> (
+        secrets: any SecretStoring,
+        voiceprintStore: VoiceprintStore,
+        voiceGallery: VoiceGallery
+    ) {
+        let secrets: any SecretStoring
+        let directory: URL
+        if usesTemporaryStore {
+            secrets = VolatileSecretStore()
+            directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+                "portavoz-automation-sensitive-\(UUID().uuidString)",
+                isDirectory: true)
+        } else {
+            secrets = KeychainSecretStore()
+            directory = VoiceprintStore.defaultDirectory
+        }
+        return (
+            secrets,
+            VoiceprintStore(secrets: secrets, directory: directory),
+            VoiceGallery(secrets: secrets, directory: directory))
+    }
+
+    private static func makeMeetingStore(
+        storagePolicy: AppStorageIsolationPolicy
+    ) throws -> MeetingStore {
+        if storagePolicy.simulatesDatabaseOpenFailure {
+            // XCUITest-only: materialize a valid disposable source so the
+            // recovery-copy journey exercises SQLite read-only backup, then
+            // fail before any production service is composed.
+            _ = try MeetingStore(databaseURL: storagePolicy.meetingStoreURL)
+            throw AppSimulatedDatabaseOpenFailure()
+        }
+        return try MeetingStore(databaseURL: storagePolicy.meetingStoreURL)
+    }
+
+    /// Searchable mutations wake both local search projections. Each process
+    /// owner coalesces bursts; semantic maintenance remains storage-resumable
+    /// and does not poll while no signal is pending.
+    func requestSearchReconciliation() {
         let indexer = spotlightIndexer
         Task { await indexer.requestReindex() }
+        guard resourceCaptureState.current == .inactive else {
+            backgroundWork.markWaitingForRecording(.semanticIndex)
+            backgroundWork.markWaitingForRecording(.memoryGraph)
+            return
+        }
+        semanticIndexingSupervisor.kick()
+        requestMemoryGraphReconciliation()
     }
 
-    /// Loads only the live/batch first-pass transcriber. Offline quality
-    /// passes must not acquire this capability as a side effect.
-    func loadTranscriberIfNeeded() async throws -> ParakeetEngine {
-        enginesIdleGeneration += 1
-        if let transcriber { return transcriber }
-        if let transcriberLoadTask {
-            let engine = try await transcriberLoadTask.value
-            transcriber = engine
-            return engine
+    /// Topology-only mutations wake no text index. Durable graph triggers keep
+    /// the cursor safe during capture; capture-stop reconciliation runs it.
+    func requestMemoryGraphReconciliation() {
+        guard resourceCaptureState.current == .inactive else {
+            backgroundWork.markWaitingForRecording(.memoryGraph)
+            return
         }
-
-        modelsState = .downloading(L10n.text("Preparing models…"))
-        let task = Task { @MainActor in
-            try await ParakeetEngine.loadRecommended(store: modelStore) { progress in
-                let percent = Int(progress.fraction * 100)
-                Task { @MainActor [weak self] in
-                    self?.modelsState = .downloading(
-                        L10n.format("Downloading transcription model… %d%%", percent))
-                }
-            }
-        }
-        transcriberLoadTask = task
-        do {
-            let engine = try await task.value
-            transcriber = engine
-            transcriberLoadTask = nil
-            settleModelsState()
-            return engine
-        } catch {
-            transcriberLoadTask = nil
-            modelsState = .failed(error.localizedDescription)
-            throw error
-        }
-    }
-
-    /// Loads only speaker diarization. Refine/Import and durable diarization
-    /// share this task without requiring or duplicating Parakeet.
-    func loadDiarizerIfNeeded() async throws -> PyannoteDiarizer {
-        enginesIdleGeneration += 1
-        if let diarizer { return diarizer }
-        if let diarizerLoadTask {
-            let engine = try await diarizerLoadTask.value
-            diarizer = engine
-            return engine
-        }
-
-        modelsState = .downloading(L10n.text("Preparing models…"))
-        let voiceprint = try? voiceprintStore.load()
-        let task = Task { @MainActor in
-            try await PyannoteDiarizer.loadRecommended(
-                store: modelStore, voiceprint: voiceprint
-            ) { progress in
-                let percent = Int(progress.fraction * 100)
-                Task { @MainActor [weak self] in
-                    self?.modelsState = .downloading(
-                        L10n.format("Downloading diarization model… %d%%", percent))
-                }
-            }
-        }
-        diarizerLoadTask = task
-        do {
-            let engine = try await task.value
-            diarizer = engine
-            diarizerLoadTask = nil
-            settleModelsState()
-            return engine
-        } catch {
-            diarizerLoadTask = nil
-            modelsState = .failed(error.localizedDescription)
-            throw error
-        }
+        memoryGraphProjectionSupervisor.kick()
     }
 
     /// Explicit readiness for workflows that truly need both models.
     func loadEnginesIfNeeded() async throws {
-        _ = try await loadTranscriberIfNeeded()
-        _ = try await loadDiarizerIfNeeded()
+        let liveSpeech = try await acquireLiveSpeechRuntime()
+        defer { _ = finishLiveSpeechRuntime(liveSpeech) }
+        let diarization = try await acquireDiarizationRuntime()
+        defer { _ = finishDiarizationRuntime(diarization) }
         modelsState = .ready
-    }
-
-    /// Rebuilds diarization with the new identity state on its next use.
-    func invalidateDiarizer() {
-        diarizer = nil
     }
 
     /// Drops idle speech-model weights. In-flight preparation owns its result
     /// until the workflow schedules a later release.
     func releaseRecordingEngines() {
-        guard transcriberLoadTask == nil, diarizerLoadTask == nil else { return }
-        transcriber = nil
-        diarizer = nil
+        _ = releaseLiveSpeechRuntime()
+        _ = releaseDiarizationRuntime()
         modelsState = .unknown
     }
 
@@ -359,10 +545,10 @@ final class AppServices {
         }
     }
 
-    private func settleModelsState() {
-        if transcriber != nil, diarizer != nil {
+    func settleModelsState() {
+        if transcriber != nil, diarizationRuntime != nil {
             modelsState = .ready
-        } else if transcriberLoadTask == nil, diarizerLoadTask == nil {
+        } else if liveSpeechRuntimeLoad == nil, diarizationRuntimeLoad == nil {
             modelsState = .unknown
         }
     }
@@ -394,10 +580,10 @@ final class AppServices {
         foundationModelsCapability.isAvailable
     }
 
-    /// Live Companion currently requires the same Apple classifier. BYOK can
-    /// answer a classified knowledge question but cannot replace that gate.
+    /// Live Apuntador admission is bundled and runs from Sequoia onward.
+    /// Foundation Models is an optional Tahoe refinement/answer lane.
     var companionAvailable: Bool {
-        foundationModelsCapability.isAvailable
+        BundledLiveQuestionDetector.resourceIsLoadable
     }
 
     // MARK: - Embedded MLX model (D25 last mile)
@@ -425,6 +611,13 @@ final class AppServices {
     }
 
     func deleteMLXModel() async throws {
+        guard mlxRuntimeLoad == nil else {
+            throw MLXRuntimeError.modelInUse
+        }
+        if mlxRuntimeDirectoryKey != nil,
+           !(await releaseMLXRuntime()) {
+            throw MLXRuntimeError.modelInUse
+        }
         try await modelLifecycle.remove(ModelCatalog.mlxQwen35)
         mlxDownloaded = false
     }

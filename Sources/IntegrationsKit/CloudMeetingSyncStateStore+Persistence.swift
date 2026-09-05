@@ -50,7 +50,10 @@ extension CloudMeetingSyncStateStore {
         payloadDirectory: URL
     ) throws {
         try validateSnapshotShape(snapshot)
-        try validateAttempts(snapshot.attempts, payloadDirectory: payloadDirectory)
+        try validateAttempts(
+            snapshot.attempts,
+            deferredReplays: snapshot.deferredReplays,
+            payloadDirectory: payloadDirectory)
         try validateDeferredReplays(
             snapshot.deferredReplays,
             payloadDirectory: payloadDirectory)
@@ -120,7 +123,9 @@ extension CloudMeetingSyncStateStore {
         let seedHasAccount = snapshot.initialSeedAccountFingerprint != nil
         let seedHasRequest = snapshot.initialSeedRequestedAt != nil
         guard seedHasAccount == seedHasRequest,
-              snapshot.initialSeedCompletedAt == nil || seedHasRequest
+              snapshot.initialSeedPreparedAt == nil || seedHasRequest,
+              snapshot.initialSeedCompletedAt == nil || seedHasRequest,
+              snapshot.initialSeedCursorMeetingID == nil || seedHasRequest
         else {
             throw CloudMeetingTransportError.invalidState("incomplete initial seed state")
         }
@@ -141,6 +146,7 @@ extension CloudMeetingSyncStateStore {
 
     static func validateAttempts(
         _ attempts: [CloudSyncAttempt],
+        deferredReplays: [CloudSyncDeferredReplay],
         payloadDirectory: URL
     ) throws {
         for attempt in attempts {
@@ -173,7 +179,12 @@ extension CloudMeetingSyncStateStore {
                 }
             case .blocked:
                 guard attempt.attemptCount > 0,
-                      attempt.lastFailure == .terminal,
+                      attempt.lastFailure == .terminal
+                        || (attempt.lastFailure == .serverConflict
+                            && deferredReplays.contains {
+                                $0.meetingID == attempt.meetingID
+                                    && $0.blocksOutgoing
+                            }),
                       attempt.nextRetryAt == nil
                 else {
                     throw CloudMeetingTransportError.invalidState("invalid blocked attempt")

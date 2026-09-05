@@ -52,7 +52,8 @@ final class ProcessingJobPersistenceTests: XCTestCase {
         meetingID: MeetingID,
         inputFingerprint: String,
         language: String = "es",
-        id: GenerationRunID = GenerationRunID()
+        id: GenerationRunID = GenerationRunID(),
+        sourceTranscriptRevision: Int = 0
     ) -> GenerationRun {
         GenerationRun(
             id: id,
@@ -62,7 +63,9 @@ final class ProcessingJobPersistenceTests: XCTestCase {
             modelID: "test-model",
             modelRevision: "test-revision",
             inputFingerprint: inputFingerprint,
-            configJSON: "{}",
+            configJSON: """
+                {"sourceCorrectionRevision":"accepted","sourceTranscriptRevision":\(sourceTranscriptRevision)}
+                """,
             outputLanguage: language,
             startedAt: now,
             finishedAt: now.addingTimeInterval(0.5),
@@ -493,6 +496,73 @@ final class ProcessingJobPersistenceTests: XCTestCase {
         XCTAssertEqual(jobs.first?.state, .running)
     }
 
+    func testCorrectionCancelsAcceptedOnlyJobsAndFencesOwnedSummaryPublication() async throws {
+        let store = try MeetingStore.inMemory()
+        let captured = meeting()
+        try await store.save(captured)
+        let cast = try await seedCast(for: captured.id, in: store)
+        let fingerprint = "summary:accepted-before-correction"
+        let enqueued = try await store.enqueueProcessingJobs(
+            for: captured.id,
+            requests: [
+                ProcessingJobRequest(kind: .summary, inputFingerprint: fingerprint),
+                ProcessingJobRequest(kind: .index, inputFingerprint: "index:accepted"),
+            ],
+            at: now)
+        let claimedValue = try await store.claimNextProcessingJob(
+            kinds: [.summary],
+            owner: "worker-a",
+            leaseDuration: 30,
+            at: now)
+        let claimed = try XCTUnwrap(claimedValue)
+        let correction = TranscriptCorrectionEvent(
+            meetingID: captured.id,
+            baseTranscriptRevision: captured.transcriptRevision,
+            targetSegmentIDs: [cast.segment.id],
+            kind: .replaceText(text: "corrected transcript", language: "en"),
+            sourceDeviceID: UUID(),
+            createdAt: now.addingTimeInterval(1))
+
+        _ = try await store.appendTranscriptCorrection(correction)
+
+        let jobs = try await store.processingJobs(for: captured.id)
+        XCTAssertEqual(Set(jobs.map(\.id)), Set(enqueued.map(\.id)))
+        XCTAssertTrue(jobs.allSatisfy { job in
+            job.state == .cancelled
+                && job.errorCode == "processing.input.superseded"
+                && job.leaseOwner == nil
+        })
+        let correctedDetail = try await detail(captured.id, in: store)
+        XCTAssertEqual(correctedDetail.meeting.lifecycleState, .ready)
+
+        do {
+            _ = try await store.completeSummaryJob(
+                claimed.id,
+                owner: "worker-a",
+                artifact: SummaryArtifact(
+                    inputFingerprint: fingerprint,
+                    sourceTranscriptRevision: 0,
+                    draft: SummaryDraft(
+                        meetingID: captured.id,
+                        recipeID: Recipe.general.id,
+                        language: "en",
+                        markdown: "# stale",
+                        actionItems: [],
+                        fingerprint: fingerprint),
+                    generationRun: summaryRun(
+                        meetingID: captured.id,
+                        inputFingerprint: fingerprint)),
+                at: now.addingTimeInterval(2))
+            XCTFail("a cancelled accepted-only lease must not publish")
+        } catch StorageError.processingJobLeaseLost(let id) {
+            XCTAssertEqual(id, claimed.id)
+        }
+        let storedSummary = try await store.summary(captured.id)
+        let storedRuns = try await store.generationRuns(for: captured.id)
+        XCTAssertNil(storedSummary)
+        XCTAssertTrue(storedRuns.isEmpty)
+    }
+
     func testSummaryCompletionWritesOneImmutableVersionWithJob() async throws {
         let store = try MeetingStore.inMemory()
         var captured = meeting()
@@ -524,7 +594,8 @@ final class ProcessingJobPersistenceTests: XCTestCase {
                     draft: draft,
                     generationRun: summaryRun(
                         meetingID: captured.id,
-                        inputFingerprint: "another-operation")),
+                        inputFingerprint: "another-operation",
+                        sourceTranscriptRevision: 2)),
                 at: now.addingTimeInterval(0.75))
             XCTFail("the run must carry the exact job operation fingerprint")
         } catch StorageError.invalidProcessingJob(let reason) {
@@ -538,7 +609,8 @@ final class ProcessingJobPersistenceTests: XCTestCase {
             generationRun: summaryRun(
                 meetingID: captured.id,
                 inputFingerprint: fingerprint,
-                id: runID))
+                id: runID,
+                sourceTranscriptRevision: 2))
 
         let commit = try await store.completeSummaryJob(
             claim.id,
@@ -737,7 +809,8 @@ final class ProcessingJobPersistenceTests: XCTestCase {
             owner: "worker-a",
             reason: ProcessingJobFailure(
                 code: "summary.unavailable", message: "No configured provider."),
-            at: now.addingTimeInterval(2))
+            at: now.addingTimeInterval(2)
+        ).cancelledJob
         XCTAssertEqual(cancelled.state, .cancelled)
         XCTAssertEqual(cancelled.errorCode, "summary.unavailable")
         XCTAssertEqual(cancelled.errorMessage, "No configured provider.")
@@ -751,6 +824,62 @@ final class ProcessingJobPersistenceTests: XCTestCase {
             for: captured.id, requests: [request], at: now.addingTimeInterval(3))
         XCTAssertEqual(repeated.map(\.id), [jobID])
         XCTAssertEqual(repeated.first?.state, .cancelled)
+    }
+
+    func testSupersededCancellationAdmitsOneReplacementAndThenStops() async throws {
+        let store = try MeetingStore.inMemory()
+        let captured = meeting()
+        try await store.save(captured)
+        _ = try await seedCast(for: captured.id, in: store)
+        func claim(_ fingerprint: String, at timestamp: Date) async throws -> ProcessingJobID {
+            _ = try await store.enqueueProcessingJobs(
+                for: captured.id,
+                requests: [ProcessingJobRequest(
+                    kind: .summary, inputFingerprint: fingerprint)],
+                at: timestamp)
+            let claimed = try await store.claimNextProcessingJob(
+                kinds: [.summary], owner: "worker-a", leaseDuration: 30, at: timestamp)
+            return try XCTUnwrap(claimed).id
+        }
+        let superseded = ProcessingJobFailure(
+            code: "processing.input.superseded",
+            message: "The processing input changed before execution.")
+
+        let stale = try await claim("summary:predicted", at: now)
+        let first = try await store.cancelProcessingJob(
+            stale,
+            owner: "worker-a",
+            reason: superseded,
+            enqueue: [ProcessingJobRequest(
+                kind: .summary, inputFingerprint: "summary:durable")],
+            at: now.addingTimeInterval(1))
+
+        XCTAssertEqual(first.cancelledJob.state, .cancelled)
+        XCTAssertEqual(first.enqueuedJobs.map(\.inputFingerprint), ["summary:durable"])
+        XCTAssertEqual(first.enqueuedJobs.first?.state, .pending)
+        // The replacement is durable work, so the meeting is processing again
+        // rather than silently reporting a summary it will never receive.
+        let replacingDetail = try await detail(captured.id, in: store)
+        XCTAssertEqual(replacingDetail.meeting.lifecycleState, .processing)
+
+        // A second drift means the input keeps moving: stop, do not chase.
+        let replacement = try await store.claimNextProcessingJob(
+            kinds: [.summary],
+            owner: "worker-a",
+            leaseDuration: 30,
+            at: now.addingTimeInterval(2))
+        let second = try await store.cancelProcessingJob(
+            try XCTUnwrap(replacement).id,
+            owner: "worker-a",
+            reason: superseded,
+            enqueue: [ProcessingJobRequest(
+                kind: .summary, inputFingerprint: "summary:drifted-again")],
+            at: now.addingTimeInterval(3))
+
+        XCTAssertTrue(second.enqueuedJobs.isEmpty)
+        let jobs = try await store.processingJobs(for: captured.id)
+        XCTAssertEqual(jobs.count, 2)
+        XCTAssertTrue(jobs.allSatisfy { $0.state == .cancelled })
     }
 
     func testNextScheduledDateFiltersByCapabilityAndLiveMeeting() async throws {
@@ -838,6 +967,56 @@ final class ProcessingJobPersistenceTests: XCTestCase {
             "processing.lease.exhausted")
     }
 
+    func testIntentionalSuspensionReleasesLeaseWithoutConsumingAttempt() async throws {
+        let store = try MeetingStore.inMemory()
+        let captured = meeting()
+        try await store.save(captured)
+        _ = try await store.enqueueProcessingJobs(
+            for: captured.id,
+            requests: [
+                ProcessingJobRequest(
+                    kind: .summary,
+                    inputFingerprint: "summary-suspended",
+                    maxAttempts: 1),
+            ],
+            at: now)
+        let claimValue = try await store.claimNextProcessingJob(
+            kinds: [.summary], owner: "worker-a", leaseDuration: 10, at: now)
+        let claim = try XCTUnwrap(claimValue)
+        _ = try await store.heartbeatProcessingJob(
+            claim.id,
+            owner: "worker-a",
+            progress: 0.5,
+            leaseDuration: 10,
+            at: now.addingTimeInterval(1))
+
+        let suspended = try await store.suspendProcessingJob(
+            claim.id,
+            owner: "worker-a",
+            at: now.addingTimeInterval(2))
+
+        XCTAssertEqual(suspended.state, .pending)
+        XCTAssertEqual(suspended.attempt, 0)
+        XCTAssertEqual(suspended.progress, 0)
+        XCTAssertNil(suspended.leaseOwner)
+        XCTAssertNil(suspended.leaseExpiresAt)
+        XCTAssertNil(suspended.errorCode)
+        XCTAssertNil(suspended.notBefore)
+        let falseDeaths = try await store.recoverExpiredProcessingJobs(
+            at: now.addingTimeInterval(30))
+        XCTAssertTrue(falseDeaths.isEmpty)
+
+        let resumedValue = try await store.claimNextProcessingJob(
+            kinds: [.summary],
+            owner: "worker-b",
+            leaseDuration: 10,
+            at: now.addingTimeInterval(31))
+        let resumed = try XCTUnwrap(resumedValue)
+        XCTAssertEqual(resumed.id, claim.id)
+        XCTAssertEqual(resumed.attempt, 1)
+        XCTAssertEqual(resumed.leaseOwner, "worker-b")
+    }
+
     func testProcessingJobRecordRejectsCorruptIdentityStateAndLeaseContract() throws {
         let captured = meeting()
         let job = ProcessingJob(
@@ -868,5 +1047,136 @@ final class ProcessingJobPersistenceTests: XCTestCase {
                 table: "processingJob", column: "stateContract", value: _) = error
             else { return XCTFail("wrong error: \(error)") }
         }
+    }
+
+    // MARK: - Lease recovery without a relaunch
+
+    /// A worker that dies mid-job leaves most of its lease behind. Launch
+    /// recovery runs immediately on relaunch, so it sees an unexpired lease and
+    /// recovers nothing; without inline recovery the meeting stays in
+    /// `processing` for the whole session.
+    func testClaimRecoversAnExpiredLeaseWithoutWaitingForRelaunch() async throws {
+        let store = try MeetingStore.inMemory()
+        let subject = meeting()
+        try await store.save(subject)
+        _ = try await store.enqueueProcessingJobs(
+            for: subject.id,
+            requests: [ProcessingJobRequest(kind: .diarization, inputFingerprint: "fp-1")],
+            at: now)
+        let claimed = try await store.claimNextProcessingJob(
+            kinds: [.diarization],
+            owner: "worker-that-dies",
+            leaseDuration: 120,
+            at: now)
+        XCTAssertNotNil(claimed)
+
+        // The original owner never released the lease; a later claim by anyone
+        // must reclaim it rather than see an empty queue.
+        let afterExpiry = now.addingTimeInterval(121)
+        let reclaimed = try await store.claimNextProcessingJob(
+            kinds: [.diarization],
+            owner: "worker-after-restart",
+            leaseDuration: 120,
+            at: afterExpiry)
+
+        XCTAssertEqual(reclaimed?.id, claimed?.id)
+        XCTAssertEqual(reclaimed?.attempt, 2, "reclaiming is a new attempt")
+
+        // An unexpired lease is still owned and must not be stolen.
+        let stolen = try await store.claimNextProcessingJob(
+            kinds: [.diarization],
+            owner: "impatient-worker",
+            leaseDuration: 120,
+            at: afterExpiry.addingTimeInterval(1))
+        XCTAssertNil(stolen, "a live lease belongs to its owner")
+    }
+
+    /// The supervisor arms exactly one wake from this date. If a running job's
+    /// lease expiry is not a candidate, nothing ever reclaims it.
+    func testNextScheduledDateIncludesARunningLeaseExpiry() async throws {
+        let store = try MeetingStore.inMemory()
+        let subject = meeting()
+        try await store.save(subject)
+        _ = try await store.enqueueProcessingJobs(
+            for: subject.id,
+            requests: [ProcessingJobRequest(kind: .diarization, inputFingerprint: "fp-2")],
+            at: now)
+        _ = try await store.claimNextProcessingJob(
+            kinds: [.diarization],
+            owner: "worker",
+            leaseDuration: 120,
+            at: now)
+
+        let wake = try await store.nextScheduledProcessingDate(
+            kinds: [.diarization],
+            after: now)
+
+        XCTAssertEqual(
+            wake,
+            now.addingTimeInterval(120),
+            "the lease expiry is the durable wake-up")
+    }
+
+    func testNextScheduledDateChoosesTheEarliestPendingOrLeaseWake() async throws {
+        let store = try MeetingStore.inMemory()
+        let subject = meeting()
+        let summaryWake = now.addingTimeInterval(90)
+        try await store.save(subject)
+        _ = try await store.enqueueProcessingJobs(
+            for: subject.id,
+            requests: [
+                ProcessingJobRequest(
+                    kind: .summary,
+                    inputFingerprint: "summary:scheduled-arbitration",
+                    notBefore: summaryWake),
+                ProcessingJobRequest(
+                    kind: .diarization,
+                    inputFingerprint: "diarization:lease-arbitration"),
+            ],
+            at: now)
+        let claimedValue = try await store.claimNextProcessingJob(
+            kinds: [.diarization],
+            owner: "worker",
+            leaseDuration: 30,
+            at: now)
+        let claimed = try XCTUnwrap(claimedValue)
+
+        let leaseFirst = try await store.nextScheduledProcessingDate(
+            kinds: [.summary, .diarization],
+            after: now)
+        _ = try await store.heartbeatProcessingJob(
+            claimed.id,
+            owner: "worker",
+            progress: 0.5,
+            leaseDuration: 120,
+            at: now.addingTimeInterval(1))
+        let pendingFirst = try await store.nextScheduledProcessingDate(
+            kinds: [.summary, .diarization],
+            after: now.addingTimeInterval(1))
+
+        XCTAssertEqual(leaseFirst, now.addingTimeInterval(30))
+        XCTAssertEqual(pendingFirst, summaryWake)
+    }
+
+    func testNextScheduledDateIgnoresADeletedMeetingsLease() async throws {
+        let store = try MeetingStore.inMemory()
+        let subject = meeting()
+        try await store.save(subject)
+        _ = try await store.enqueueProcessingJobs(
+            for: subject.id,
+            requests: [ProcessingJobRequest(kind: .diarization, inputFingerprint: "fp-3")],
+            at: now)
+        _ = try await store.claimNextProcessingJob(
+            kinds: [.diarization],
+            owner: "worker",
+            leaseDuration: 120,
+            at: now)
+        try await store.delete(subject.id)
+
+        let wake = try await store.nextScheduledProcessingDate(
+            kinds: [.diarization],
+            after: now)
+
+        XCTAssertNil(wake, "a tombstoned meeting must not wake the worker")
     }
 }

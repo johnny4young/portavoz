@@ -11,41 +11,55 @@ makes tracked exceptions visible instead of weakening the promise silently.
 
 ## Positioning
 
-No one in the market combines these 6 attributes; each competitor has ~2:
+Portavoz prioritizes these six attributes for bilingual Apple-platform users;
+this is a product direction, not an exhaustive market comparison or proof of
+exclusivity. Implemented capabilities and remaining limits are owned by
+[ARCHITECTURE.md](ARCHITECTURE.md), [GAPS.md](GAPS.md), and the as-built specs.
 
-1. **True local-first** (on-device transcription + diarization + summarization)
-2. **Speaker identity** (who said what + which contributions belong to the user + explicitly confirmed people remembered across meetings)
-3. **Features for developers** (issues, ADRs, MCP, Shortcuts)
-4. **Deep ES/EN bilingual support** (cross-language summaries, technical glossary, translated captions)
-5. **One-time payment** (vs market-wide subscriptions of $8–19/user/month)
-6. **Open source** (MIT)
+1. **Local custody by default** — on-device capture and processing, with explicit
+   opt-in boundaries for remote providers and publishing.
+2. **Verifiable speaker identity** — structural microphone attribution, reviewed
+   speaker labels, and explicitly confirmed people remembered across meetings.
+3. **Developer workflows** — source-backed artifacts and reviewed integrations;
+   a planned integration must not be advertised as an available control.
+4. **ES/EN usability** — bilingual summaries, technical vocabulary, and translated
+   captions, with visible model, language, and macOS availability limits.
+5. **A planned one-time purchase** — the intended entitlement model below, not
+   an assertion about every competitor's billing or a live checkout offer.
+6. **Open source** — MIT project code, with separate dependency and model terms.
 
 Founding user and archetype: a Spanish-speaking developer with meetings in English.
 
-## Competitive map (Jul 2026) and what was incorporated from each one
+## Competitive evidence and design lessons
 
-| Competitor | Model | What we stole from it |
+Primary-source snapshot checked September 5, 2026. Vendor documentation describes
+its own product; it is not our hands-on qualification. This deliberately bounded
+sample does not establish that a feature has no competitor. Recheck exact plan,
+platform, version, and source before publishing a comparison. Old valuations,
+price ranges, performance slogans, and unverified feature-absence claims are not
+current product evidence.
+
+| Source | What the source supports | Portavoz design inference, not a superiority claim |
 |---|---|---|
-| Granola ($1.5B valuation, Series C $125M Mar-2026; free = unlimited notes but ~30-day history — **monetizes the ARCHIVE**) | Cloud, bot-free, Mac+iOS+Android | The co-authoring loop (D28): raw notes → AI weaves them with the transcript, **your lines in black / AI additions in gray with a link to the segment**; Templates (~29) ≠ Recipes (post-hoc saved prompts with `/`); pre-meeting Briefs from the calendar; public share links without login, with transcript search; iOS records from the Lock Screen. **Its #1 criticisms = our plan**: no speaker ID, no audio playback, consent — D21+D27+D8. And its monetization lever (holding the archive hostage) is impossible for us = selling point |
-| Fathom (free: UNLIMITED capture but AI capped at 5 calls/month since 2026; $16–25 annual plan) | Cloud, bot | Give capture away and charge for INTELLIGENCE (the inverse of Granola's pattern); summary target < 30 s post-call |
-| Fireflies ($10–19) | Cloud, bot | RAG chat over history ("Global Brain") — our version: 100% local |
-| tl;dv (unlimited free; $18+) | Cloud, bot | Shareable clips/moments with an instant link |
-| Otter ($100M ARR; VERIFIED free: 300 min/month, 30 min/conversation cap, 3 lifetime imports) | Cloud, bot→bot-free agent | **Launched an MCP server for ChatGPT/Claude** — validates our M8 moat. Its free tier remains the stingiest in the category (corrected in round 2: the "unlimited" on its home page applies only to the Business plan) |
-| Anarlog (ex-Hyprnote/Char; free local + $8/month) | **Local OSS (Tauri)** | Data ownership: each meeting is a user-owned .md file; BYOK. Lesson: it pivoted away from pure OSS → the "local open source" throne is vacant |
-| MacWhisper (€59 one-time) / superwhisper ($249 lifetime) | Native Mac | The entire business model (D9/D10) |
-| Krisp | Bot-free audio | **Live Interpreter** → our on-device translated ES↔EN captions (Translation framework) |
-| Jamie (€0–39/month; German, EU hosting) | Native bot-free, **cloud** (its "privacy" = EU sovereignty, NOT local) | **System-wide ⌘J sidebar** ("meeting Spotlight": searches the entire history from any app — idea for our global ⌘K); model selection per task (validation of D25); it is manual pull — no question detection |
-| Cluely ($20–75/month) + interview companions + **Teams "Facilitator" (~Aug-Sep 2026)** | Live-response overlays | The D26 Apuntador pattern has NO owner in meeting notes: Cluely promises 300 ms and delivers an actual 5–10 s + "cheating" stigma; Microsoft validates proactive question detection and sets a competitive deadline; interview companions (~$9/month) prove demand. Our angle: local (real latency), transparent, and `contexto` answers from YOUR history |
-| Circleback | Action items | Distribution of action items to the right person; post-meeting automations → App Intents |
-| MeetGeek | Templates/agents | Automatic meeting-type detection → automatic Recipe; auto-recording rules with guardrails |
-| Read.ai | Coaching | Local "meeting health": talk-time, interruptions, question ratio (PRO) |
-| Gemini in Meet | Platform | Summary attached to the calendar event (EventKit) + recap email draft |
-| MacParakeet (GPL, Swift; **now 100% free, no paid tier**) | OSS dictation+meetings | Slot scheduler, retention, Homebrew+Sparkle, public benchmarks ("155x realtime") in README; system-wide dictation validated a surface Portavoz now ships with hotkey/mouse triggers plus deterministic ES/EN delivery rules; live "Ask" about the meeting; 98 languages with dual-engine Parakeet+WhisperKit (25+73). **Patterns only, never code (GPL)** |
-| Meetily v0.4 (MIT, Rust+Tauri; PRO cloud forthcoming) | Local cross-platform OSS | 7 LLM providers incl. **its own llama.cpp sidecar** (qwen3.5 2b/4b GGUF); recommender: RAM ≥14 GB → 4b, otherwise 2b; Whisper catalog **with q5 variants (turbo 547 MB)** + Parakeet ONNX; **cached EN summary → re-translation without re-generation** (directly relevant to our ES/EN core); summary cache keyed by fingerprint (transcript+prompt+template+model); validatable JSON templates with action items citing segment+timestamp; normalization to −23 LUFS + RNNoise; external audio import as a meeting. **Confirmed gap: zero chat/Q&A/RAG** — our M8+Apuntador has no OSS rival |
-| Humla (MIT, Tauri+Swift sidecars; optional cloud **$7/month/workspace**) | OSS meetings | Dual-stream capture, pyannote community-1 + Sortformer, engine routing **by language**, per-note override, "notes=intent + transcript=facts", **playback with word-by-word highlighting** (→ D27), free self-hosted PocketBase vs paid cloud — the sync monetization model that D12-L2 can copy |
-| Riffado (AGPL) | Plaud companion | AES-256-GCM at rest, signed webhooks, unified backup/restore |
+| [Granola Chat](https://docs.granola.ai/help-center/getting-more-from-your-notes/chatting-with-your-meetings) | Chat can use one meeting, selected meetings, folders, or the library. Basic chat uses the last 30 days; paid plans expose full note history. | Source scope should be visible and controllable. Compare local retrieval quality and citation navigation, not the mere presence of chat. |
+| [Granola privacy and data FAQ](https://docs.granola.ai/help-center/consent-security-privacy/security-privacy-data-faqs) | The FAQ describes server storage, sharing and training controls, retention policies, and export of notes, summaries, and transcripts. | Distinguish custody, sharing, training, retention, and export. Cloud processing does not mean an absence of privacy controls; a plan's history-access limit is not proof of deletion or inability to export. |
+| [Meetily upstream](https://github.com/Zackriya-Solutions/meetily) | The repository identifies MIT licensing and local Community transcription and summaries. Its PRO list marks meeting chat as forthcoming at this snapshot. | Local open-source competition exists. A README roadmap is not proof about all releases, forks, or the wider market. Evaluate an exact released build before a feature-by-feature comparison. |
+| [Apple SpeechAnalyzer introduction](https://developer.apple.com/videos/play/wwdc2025/277/) | Apple describes on-device transcription, language/device availability, and downloading missing model assets through AssetInventory. | Treat OS speech as a capability-gated provider. On-device does not mean that assets are already installed, and a vendor description does not prove superiority to Parakeet or Whisper on our corpus. |
 
-**Structural threats and defense:** (1) platform AI (Zoom AI Apuntador, Teams Apuntador, Gemini) — locked into a platform and subscription, no cross-platform library, zero privacy → our single local library is the answer. (2) Apple Sherlocking — Notes already records/transcribes/summarizes on-device and **macOS 26 released `SpeechAnalyzer`/`SpeechTranscriber`, faster than Whisper in public benchmarks**; the OS floor rises every year. Rule: no core feature can be something Apple will obviously make "basic" in 1–2 years. We live above the floor: speaker identity, developer workflow, deep bilingual support, RAG. And we turn the floor into a provider: SpeechAnalyzer is another quality engine in D25 (free, no download).
+The useful design lessons remain: combine authored notes with source-backed AI
+additions, make playback and citations easy to inspect, preserve exportability,
+offer task-appropriate templates, and require review before external effects.
+These are product hypotheses to validate in complete journeys, not a feature
+checklist copied from a competitor. Ideas from incompatible-license projects
+may inform independent design; their code is not an eligible dependency.
+
+**Competitive risks:** platform-integrated assistants can reduce setup friction,
+cloud tools can offer collaboration, and local open-source tools can offer data
+custody. Portavoz should earn its place through reliable capture, source-backed
+identity and answers, bilingual usability, and explicit control over data and
+actions. None of those differentiators is automatically exclusive. Compare
+end-to-end quality, latency, memory, and recovery under the same declared
+conditions; do not infer a measured advantage from local execution alone.
 
 ## Target FREE vs PRO policy (one-time payment ~$69, launch $49)
 
@@ -69,7 +83,7 @@ license gate is implemented today. Current implementation status lives in
 | GitHub/Linear/Jira export, ADRs | — | ✅ |
 | Local MCP server | — | ✅ |
 | Clips (mark / export) | mark | export |
-| Post-meeting automations + native Start Recording App Intent | — | ✅ |
+| Post-meeting automations + native Start/Stop Recording App Intents | — | ✅ |
 | Meeting health (talk-time, interruptions) | — | ✅ |
 | Watch "you were mentioned" + iPad PiP captions | — | ✅ |
 
@@ -107,9 +121,47 @@ capabilities; current and deferred status is authoritative in
   distinct vertical use case.
 - **Synthesized voice**: Apple's Personal Voice (iOS 17+) to speak for the user; requires a virtual audio driver (virtual microphone) on macOS + mandatory disclosure to participants. Phase 4+.
 
+### 1.0.0 candidate boundary
+
+The D379 six-action/six-graph freeze remains Portavoz's safety baseline, not
+the final release target. Portavoz presents its six fixed, review-first
+post-meeting workflows as
+**Suggested actions** / **Acciones sugeridas**. They prepare a recap, text-only
+package, local reminder, pre-meeting brief, email draft, or explicitly approved
+secret Gist; they are not user-authored plugins or autonomous agents, and none
+runs before exact review and confirmation.
+
+The Meeting Memory Graph is an internal disposable relational projection, not a
+visual graph. Its baseline product value is six source-backed Ask jobs: current
+commitments for one person, active blockers for one commitment, and current
+decisions, first confirmed discussion, decision changes, or changes since one
+meeting for one topic.
+
+The finite 1.0.0 expansion strengthens Apuntador through reliable streaming and
+cancellation, explicit manual Ask, a visible meeting/library/notes/web source policy,
+consented cited web research, interview assistance, typed user-authored notes,
+and bounded opt-in proactive help. Every answer or suggestion must preserve
+exact source provenance, honest unavailable/insufficient states, supported-
+macOS degradation, and review-first external effects. A visual graph, implicit
+identity guessing, user-authored actions, general-purpose standing automation,
+broader graph sync/export/CLI/MCP, alternate search/ASR authority, and autonomous
+external mutation remain outside this finite candidate. Current implemented
+truth and exit evidence remain authoritative in `GAPS.md` and the as-built
+specs. Progressive reliability, selected-engine manual Ask, explicit fail-
+closed source policy, consented cited direct-Web pages, pull-based interview
+assistance, typed raw-note Ask, and bounded source-closed proactive help are
+implemented. The later bounded extension adds a seventh review-first action
+for one evidenced GitHub issue and one explicitly created recurring rule for
+local pre-meeting briefs, with pause, receipts, recovery, and capture priority.
+That rule does not authorize recurring external effects or arbitrary actions.
+Portavoz does not provide broad Web search discovery or autonomous
+external action; exact 1.0 admission remains open.
+
 ## Standout UX (signature moments)
 
-The moments that make people say "no one else does this" — each maps to a milestone:
+Signature experience targets, not exclusivity claims or a list of completed
+features. Each maps to a milestone; current implementation and deferred platform
+work remain explicit in the specs and [IOS.md](IOS.md).
 
 1. **The waveform that knows who is speaking** (M9): timeline colored by speaker; drag it and the transcript follows; click a sentence and the audio jumps there with live highlighting.
 2. **The Apuntador card** (M11): someone asks a technical question and the answer is already in your panel before you finish processing the question.
@@ -137,12 +189,19 @@ The moments that make people say "no one else does this" — each maps to a mile
 | Battery (iPhone, live STT) | < 10%/hour (ANE) | phase 3 |
 | Search through 100k segments | exact p95 < 50 ms; lexical Ask p95 < 100 ms | ✅ exact p95 **30.99 ms**; lexical Ask p95 **66.89 ms**, down from 111.19 ms through bounded per-term candidates and reciprocal-rank fusion (`portavoz-cli bench-scale`, D81) |
 | Private Spotlight projection through 100k meetings | wall/CPU p95 < 500 ms | ✅ wall/CPU p95 **425.64/423.58 ms**, down from 22,085.35/22,720.40 ms through one exact snapshot; protected named-index delivery is launch-reconciled and retryable without an outbox (D85) |
-| Semantic retrieval through 100k embedded segments | p95 < 100 ms | ✅ wall/CPU p95 **90.22/91.26 ms**, down from 325.41/328.43 ms through streamed zero-copy Accelerate scoring and bounded exact top-k; **8.42 MiB incremental p95** (D83) |
+| Semantic retrieval through 100k embedded segments | p95 < 100 ms | ✅ D346 clean repeated schema-2 current control on the reference Mac: wall/CPU p95 maxima **73.92/74.50 ms** across three stable canonical observations. The separate three-query-variant diagnostic identity measured **80.37/81.63 ms** but has no budget authority and is not merged with the canonical receipt. Historical D83 remains 90.22/91.26 ms; D345 proves it is not directly comparable because schema 1 lacked complete identity |
 | Waveform generation, 56-minute dual-channel recording | first wall < 150 ms; repeat wall/CPU p95 < 100 ms | ✅ first wall/CPU **109.25/94.81 ms**; repeat p95 **70.11/71.33 ms**, down from 747.53/754.79 ms through stateless Accelerate spans; **0.33 MiB incremental p95**, exact result preserved, no cache lifecycle (D84) |
 | Meeting Detail first content, 2 h / 5k segments | < 300 ms | ✅ **91.87 ms**, down from 522.30 ms, with zero measured hangs; `MeetingHealth` p95 is 9.94 ms, down from 347.58 ms (D79/D80) |
 | Mic/system drift | < 50 ms in 30 min | ✅ 4 ms over an actual 22 min |
 | Diarization DER (4 speakers) | < 15%; user contributions 100% | ✅ AMI 7.6%; real meeting pending corrected RTTM |
 | Refine (Whisper batch) | > 15x real time | ✅ 23–42x |
+
+The older July measurements remain provenance, while D346 is the newer clean
+current-control result on the Tahoe reference host. D347 does not promote
+that one host into a market-wide claim: its fail-closed cross-host matrix is
+currently **1/3 required memory profiles**, with no Sequoia receipt and no
+cross-host authority. `docs/GAPS.md` T5 owns the remaining field evidence and
+the separate algorithmic exact-scan limitation.
 
 ## Security (commitments)
 
@@ -165,3 +224,147 @@ Portavoz cannot inspect that setting and therefore promises encryption, not
 unconditional end-to-end encryption. Until then, Developer ID, Hardened
 Runtime, notarization, narrow TCC entitlements, and enforceable egress policy
 are the shipping boundary — never a sandbox marketing claim.
+
+---
+
+# Go-to-market
+
+> Consolidated from the former local `STRATEGY-20260716.md` (deleted 2026-08-06).
+> This section is **intent and policy**, not implemented status. Engineering
+> sequencing lives in the local `docs/ROADMAP.md`; implemented truth lives in
+> [ARCHITECTURE.md](ARCHITECTURE.md), [specs/](specs/README.md), and
+> [GAPS.md](GAPS.md).
+
+## Defensible positioning sentence
+
+> Portavoz is the Apple-native meeting memory for people who cannot send every
+> conversation to a cloud bot. It records locally, knows who said what,
+> preserves English and Spanish as spoken, and lets every decision point back
+> to evidence.
+
+## What must exist before a serious paid launch
+
+| Capability | Why it sells | Status |
+|---|---|---|
+| Reliable recording and crash recovery | The category has zero tolerance for lost meetings | Strength; field proof continues |
+| Accurate mixed mic/system audio | Bot-free capture is the differentiator | Exists; device/AEC field matrix open |
+| Useful transcript + speaker identity | Core outcome | Exists; real multilingual/speaker benchmarks pending |
+| Evidence-linked outcomes | Trust against hallucination | Foundation exists; make proof the default interaction |
+| Local intelligence fallback | Value without Apple Intelligence or cloud | Ollama/MLX paths exist; setup should simplify |
+| FREE usable forever | Removes adoption friction | Policy in place |
+| **Purchase / activate / restore** | Converts value into revenue | **Missing — the one true commercial blocker** |
+| Signed updates and release trust | Buyers expect continuity | Release foundation exists |
+| Privacy/egress receipt | Makes the promise verifiable | Implemented; productize and expose |
+| Export/ownership | Avoids lock-in fear | Exists; improve discoverability |
+| Clear compatibility | Prevents refunds and support load | Add matrix and pre-purchase check |
+
+## Pricing policy
+
+The FREE + one-time-PRO model is sound and matches the economics — the customer
+supplies the Mac, storage, and local compute. The risk was never the price
+concept; it is the missing checkout and license lifecycle.
+
+**FREE — $0.** Unlimited local recording history and minutes; local
+transcription, speaker separation/identity, playback, search; basic summaries
+with a supported local/BYOK setup; import/export and ownership; no artificial
+data lock; community support.
+
+**PRO Personal — $69 one-time** (launch $49 for a clearly bounded window).
+Sells: cross-device private text sync; advanced evidence/RAG/Ask and continuity;
+Companion and advanced intelligence workflows where supported; recipes,
+developer integrations, MCP, GitHub, Shortcuts/App Intents; advanced exports and
+automation; priority support; all updates within the purchased major version.
+**Never sell "AI minutes" for local processing.**
+
+**PRO Family — validate before publishing.** Candidate $99 one-time for up to
+five Macs in one household. Test demand first.
+
+**Business pilot — not self-serve.** High-touch only, after inbound demand:
+invoicing/PO support, documented deployment and update controls, a
+security/data-flow package, priority onboarding, optional annual maintenance.
+Do not promise admin, SSO, retention policy, BAA, legal hold, or audit exports
+until implemented and reviewed.
+
+### What "one-time" honestly means
+
+- perpetual use of the purchased major version;
+- bug and security fixes for the supported lifecycle;
+- optional paid major upgrades, targeted every 18–24 months and only when
+  meaningful, with an upgrade discount for existing customers;
+- no loss of local data or FREE access if a customer declines an upgrade;
+- no retroactive removal of purchased capabilities.
+
+A separate voluntary supporter tier can fund open-source work without changing
+the product contract.
+
+### Commerce provider
+
+Keep the provider replaceable — **the application must never depend on provider
+SDK types.** Candidates: Lemon Squeezy (license keys with activation limits,
+fast to launch), Stripe Managed Payments (merchant-of-record for tax, fraud,
+disputes, localized checkout), Polar (open-source friendly). Score them:
+
+| Criterion | Weight |
+|---|---:|
+| Seller-country eligibility and payout | 20% |
+| Merchant-of-record tax/compliance | 20% |
+| License API and webhooks | 15% |
+| Checkout conversion / local payment methods | 15% |
+| Refund/dispute/support workflow | 10% |
+| Fees at $49/$69 | 10% |
+| Data export/migration | 10% |
+
+### Pricing experiments — sequential, never simultaneous
+
+1. $49 launch vs $69 standard messaging;
+2. "Pay once" vs "No subscription" headline;
+3. product-led FREE → PRO upgrade moment after proven value;
+4. family-pack interest;
+5. professional discount for students, journalists, nonprofits, and open-source
+   maintainers;
+6. refund rate and support cost, not conversion alone.
+
+Primary metrics: visitor→download, download→first recording, activated
+user→PRO intent, checkout completion, refund rate, 30-day active use, and
+support minutes per sale.
+
+## Website and marketing principles
+
+- Lead with the promise and the proof, not the feature list. Published
+  reproducible benchmarks are the credibility asset — keep them current.
+- Every claim on the site must map to evidence in the repo. No sandbox claim,
+  no unconditional end-to-end-encryption claim, no "field-proven sync" claim
+  until the corresponding evidence gates in [GAPS.md](GAPS.md) and
+  [RELEASING.md](RELEASING.md) close.
+- **Demonstrate local ownership:** show users how to find, back up, export, and
+  restore their library. Describe Portavoz's own archive-access policy rather
+  than attributing motives or universal restrictions to competitors.
+- Start with narrow ideal customers (bilingual developers and consultants with
+  English meetings) rather than "everyone who meets".
+
+## What Portavoz must not become
+
+1. **Not a generic AI wrapper.** The moat is capture, evidence, identity,
+   continuity, and local policy — not a chat box over a transcript.
+2. **Not a cloud service by default.** Cloud features stay explicit, minimal,
+   reversible.
+3. **Not a surveillance dashboard.** Never score employees, infer emotion, or
+   enable hidden recording.
+4. **Not feature soup.** New features must strengthen Capture, Understand, or
+   Act.
+5. **Not an enterprise roadmap before product-market fit.**
+6. **Not a meeting bot.** Joining calls as a participant destroys the
+   differentiation.
+7. **Not "AI said so."** Generated decisions without evidence are suggestions.
+8. **Not a false compliance product.** Local processing reduces exposure; it
+   does not make a customer compliant with recording, professional, privacy,
+   employment, or health law.
+9. **Not cross-platform at the expense of Apple quality.**
+10. **Not an Electron rewrite.**
+11. **Not a lifetime-support trap.** One-time purchase still defines version,
+    support, and paid-upgrade boundaries.
+12. **Not an opaque privacy slogan.** Optional egress is disclosed exactly.
+13. **Not autonomous without review.** External messages, tasks, tickets, and
+    exports require confirmation.
+14. **Not a replacement for human consent.** Help users record consent and
+    understand local rules; never promise universal legality.

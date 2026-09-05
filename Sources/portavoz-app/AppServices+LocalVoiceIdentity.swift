@@ -36,26 +36,28 @@ extension AppServices {
     }
 
     private var localVoiceIdentity: ManageLocalVoiceIdentity {
-        ManageLocalVoiceIdentity(
+        let arguments = ProcessInfo.processInfo.arguments
+        let usesTemporaryStore = arguments.contains("-use-temp-store")
+        return ManageLocalVoiceIdentity(
             sampleCapture: AppLocalVoiceSampleCapture(),
             identities: AppLocalVoiceIdentityStore(
                 storage: voiceprintStore,
-                disabled: ProcessInfo.processInfo.arguments.contains("-use-temp-store"),
-                invalidate: { @MainActor [weak self] in self?.invalidateDiarizer() }),
-            sampleExtractor: AppLocalVoiceSampleExtractor(
-                loadDiarizer: { @MainActor [weak self] in
-                    guard let self else { throw CancellationError() }
-                    return try await self.loadDiarizerIfNeeded()
-                }))
+                disabled: usesTemporaryStore,
+                simulateUnavailable: usesTemporaryStore
+                    && arguments.contains("-simulate-voice-storage-unavailable")),
+            sampleExtractor: AppLocalVoiceSampleExtractor(services: self))
     }
 }
 
 private struct AppLocalVoiceIdentityStore: LocalVoiceIdentityStoring {
     let storage: VoiceprintStore
     let disabled: Bool
-    let invalidate: @MainActor @Sendable () -> Void
+    let simulateUnavailable: Bool
 
     func loadVoiceIdentity() async throws -> Voiceprint? {
+        if simulateUnavailable {
+            throw VoiceprintStore.VoiceprintError.missingKey
+        }
         guard !disabled else { return nil }
         let storage = storage
         return try await Task.detached(priority: .utility) {
@@ -69,7 +71,6 @@ private struct AppLocalVoiceIdentityStore: LocalVoiceIdentityStoring {
         try await Task.detached(priority: .utility) {
             try storage.save(voiceprint)
         }.value
-        await invalidate()
     }
 
     func deleteVoiceIdentity() async throws {
@@ -78,15 +79,25 @@ private struct AppLocalVoiceIdentityStore: LocalVoiceIdentityStoring {
         try await Task.detached(priority: .utility) {
             try storage.delete()
         }.value
-        await invalidate()
     }
 }
 
-private struct AppLocalVoiceSampleExtractor: LocalVoiceSampleIdentityExtracting {
-    let loadDiarizer: @MainActor @Sendable () async throws -> PyannoteDiarizer
+@MainActor
+private final class AppLocalVoiceSampleExtractor: LocalVoiceSampleIdentityExtracting {
+    private weak var services: AppServices?
+
+    init(services: AppServices) {
+        self.services = services
+    }
 
     func extractVoiceIdentity(from sample: LocalVoiceSample) async throws -> Voiceprint {
-        let diarizer = try await loadDiarizer()
+        guard let services else { throw CancellationError() }
+        let runtime = try await services.acquireDiarizationRuntime()
+        defer {
+            _ = services.finishDiarizationRuntime(runtime)
+            services.scheduleRecordingEnginesRelease()
+        }
+        let diarizer = services.makeDiarizer(from: runtime)
         return try await diarizer.extractVoiceprint(
             fromSamples: sample.samples,
             sampleRate: sample.sampleRate)

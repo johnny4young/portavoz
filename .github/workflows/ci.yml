@@ -13,73 +13,73 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    runs-on: macos-latest
-    timeout-minutes: 30
+  repository-hygiene:
+    # Own every deterministic repository/tooling contract exactly once and
+    # fail before allocating either macOS runner.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # macos-latest images carry several Xcodes and the default rotates
-      # per runner — mlx-swift needs Swift tools 6.3+, so pin to the
-      # newest Xcode on the image instead of playing image lottery.
-      - name: Select newest Xcode
-        run: |
-          NEWEST="$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' -print | sort -V | tail -1)"
-          echo "Selecting $NEWEST"
-          sudo xcode-select -s "$NEWEST"
-      - name: Swift version
-        run: swift --version
-      - name: Build with current-SDK diagnostics as errors
-        run: swift build -Xswiftc -warnings-as-errors
-      - name: Test
-        run: swift test
+      - name: Repository, evidence, and CI policy contracts
+        run: scripts/check-repository-hygiene.sh
+      # The performance gate decides whether a release ships, so its rules run
+      # on every PR. Measurements remain on the stable-Mac authority.
+      - name: Release performance ledger rules
+        run: python3 -m unittest Tests.Tooling.test_perf_ledger
+
+  build-and-test:
+    needs: repository-hygiene
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Verify fixed Tahoe toolchain
+        run: scripts/verify-ci-toolchain.sh 26 26.6
+      # One invocation owns compilation and tests with identical flags. The
+      # former build-then-test pair changed compiler arguments and could pay a
+      # second package build while producing two different diagnostic modes.
+      - name: Current-SDK build and complete test suite
+        run: scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors
 
   sequoia-compatibility:
+    needs: repository-hygiene
     # The product floor is Sonoma 14.4, but Sequoia is the oldest supported
     # release lane. Run the complete package suite on that OS instead of only
     # compiling against an old deployment target from the latest runner.
     runs-on: macos-15
     timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Select newest Xcode available on Sequoia
-        run: |
-          NEWEST="$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' -print | sort -V | tail -1)"
-          echo "Selecting $NEWEST"
-          sudo xcode-select -s "$NEWEST"
-      - name: Runtime and SDK evidence
-        run: |
-          sw_vers
-          swift --version
-          xcrun --show-sdk-version
-      - name: Build on Sequoia
-        run: swift build
-      - name: Test on Sequoia
-        run: swift test
+      - name: Verify fixed Sequoia toolchain
+        run: scripts/verify-ci-toolchain.sh 15 26.3
+      - name: Build and test on Sequoia
+        run: scripts/run-swift-tests.sh
+
+  ios-portability:
+    needs: repository-hygiene
+    # Compile the exact future shared surface in its own current-SDK lane. A
+    # failure means an iOS deployment/API break, not a duplicate macOS test or
+    # an unavailable signed-container/device assertion.
+    runs-on: macos-26
+    timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Verify fixed Tahoe toolchain
+        run: scripts/verify-ci-toolchain.sh 26 26.6
+      - name: Compile transport-neutral iOS 17 surface
+        run: scripts/check-ios-portability.sh
 
   lint:
-    runs-on: macos-latest
+    needs: repository-hygiene
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Install SwiftLint
-        env:
-          HOMEBREW_NO_AUTO_UPDATE: "1"
-          HOMEBREW_NO_INSTALL_CLEANUP: "1"
-        run: brew install swiftlint
-      # Strict (`strict: true` in .swiftlint.yml): ANY violation breaks
-      # the build. Source code currently passes with zero violations.
-      - name: SwiftLint
-        run: swiftlint lint --strict --no-cache --reporter github-actions-logging
-
-  repository-hygiene:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Reject local planning state, generated files, and ticket-key leakage
-        run: scripts/check-repository-hygiene.sh
-      # The performance gate decides whether a release ships, so its rules run
-      # on every PR. The benchmarks themselves stay off hosted CI: PERF-001
-      # makes a stable Mac the only measurement authority.
-      - name: Release performance ledger rules
-        run: python3 -m unittest Tests.Tooling.test_perf_ledger
+      - name: Strict SwiftLint 0.65.0 from checksum-pinned official archive
+        run: scripts/run-ci-swiftlint.sh

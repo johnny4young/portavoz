@@ -4,7 +4,10 @@ Portavoz **as-built** documentation: it describes what the code does TODAY, veri
 
 ## Conventions (unambiguous)
 
-- Everything described in the regular sections **is implemented and tested** (`swift test`, 1,193 XCTest cases, 13 gated by `PORTAVOZ_MODEL_TESTS=1` or other integration variables).
+- Everything described in the regular sections **is implemented and tested**
+  (`swift test`; the current exact count is maintained in
+  [08-quality.md](08-quality.md), with model and platform integration cases
+  gated by explicit environment variables).
 - Anything NOT implemented appears only in subsections titled **"Planned (not implemented)"**, with a reference to the decision (Dxx) or milestone (Mxx) that defines it.
 - Every performance figure cited was **measured** on the reference machine (MacBook Pro M4 Max, 36 GB, macOS 26) — the date and conditions accompany the figure.
 - "Known limitations" are actual observed failures or risks, not hypotheses.
@@ -24,12 +27,12 @@ Portavoz **as-built** documentation: it describes what the code does TODAY, veri
 
 ## Related documents (outside specs/)
 
-- [../DECISIONS.md](../DECISIONS.md) — binding decisions D1–D145 and their rationale. The specs cite them by number.
+- [../DECISIONS.md](../DECISIONS.md) — binding decisions and their rationale. The specs cite them by number.
 - [../ARCHITECTURE.md](../ARCHITECTURE.md) — high-level engineering and design rules.
 - [../PRODUCT.md](../PRODUCT.md) — vision, competitive map, FREE/PRO.
 - [../IOS.md](../IOS.md) — technical breakdown of the iOS phase.
 - [../GAPS.md](../GAPS.md) — gap analysis + pending field verification.
-- [../FIELD-VALIDATION.md](../FIELD-VALIDATION.md) — privacy-safe real-call evidence protocol and scenario matrix.
+- [../FIELD-VALIDATION.md](../FIELD-VALIDATION.md) — privacy-safe real-call evidence protocol and fixture matrix.
 
 The repository roadmap and completed migration execution ledger are local
 maintainer state. Current public truth is reconstructed from the architecture,

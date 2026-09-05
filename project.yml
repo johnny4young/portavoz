@@ -71,6 +71,7 @@ targets:
         LSApplicationCategoryType: public.app-category.productivity
         NSMicrophoneUsageDescription: "Portavoz records your microphone to transcribe your side of the meeting. Audio never leaves your Mac."
         NSAudioCaptureUsageDescription: "Portavoz captures system audio to transcribe other meeting participants. Audio never leaves your Mac."
+        NSRemindersFullAccessUsageDescription: "Portavoz creates a reminder only after you preview and confirm it. Nothing leaves your Mac."
     dependencies:
       - package: Portavoz
         products:

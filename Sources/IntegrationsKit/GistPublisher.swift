@@ -25,11 +25,14 @@ public struct GistPublisher: Sendable {
         let request = try Self.request(
             markdown: markdown, filename: filename, description: description,
             isPublic: isPublic, token: token)
+        guard let destination = request.url else {
+            throw PublishError.invalidEndpoint
+        }
         let response = try await gateway.perform(
             request,
             metadata: DataEgressRequest(
                 operation: .publishGitHubGist,
-                destination: DataEgressDestination(url: request.url!),
+                destination: DataEgressDestination(url: destination),
                 dataClassification: .meetingExportDocument,
                 meetingID: meetingID,
                 consentSource: .explicitGistPublish,
@@ -43,11 +46,14 @@ public struct GistPublisher: Sendable {
     }
 
     public enum PublishError: Error, LocalizedError {
+        case invalidEndpoint
         case requestFailed(status: Int, body: String)
         case malformedResponse
 
         public var errorDescription: String? {
             switch self {
+            case .invalidEndpoint:
+                return "The GitHub Gist endpoint is invalid."
             case .requestFailed(let status, let body):
                 return "GitHub responded \(status): \(body)"
             case .malformedResponse:
@@ -62,7 +68,10 @@ public struct GistPublisher: Sendable {
         markdown: String, filename: String, description: String,
         isPublic: Bool, token: String
     ) throws -> URLRequest {
-        var request = URLRequest(url: URL(string: "https://api.github.com/gists")!)
+        guard let endpoint = URL(string: "https://api.github.com/gists") else {
+            throw PublishError.invalidEndpoint
+        }
+        var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")

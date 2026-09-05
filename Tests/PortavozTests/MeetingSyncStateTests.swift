@@ -21,7 +21,7 @@ final class MeetingSyncStateTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.write { db in
-            XCTAssertEqual(StorageSchema.version, 15)
+            XCTAssertEqual(StorageSchema.version, 49)
             XCTAssertEqual(
                 try Set(db.columns(in: "meetingSyncState").map(\.name)),
                 [
@@ -42,10 +42,13 @@ final class MeetingSyncStateTests: XCTestCase {
                      WHERE type = 'trigger' AND name LIKE '%_sync_%'
                      ORDER BY name
                     """)
-            XCTAssertEqual(triggers.count, 51)
+            XCTAssertEqual(triggers.count, 54)
             XCTAssertTrue(triggers.contains("meeting_sync_au"))
             XCTAssertTrue(triggers.contains("companionCardEvidenceSegment_sync_au"))
             XCTAssertTrue(triggers.contains("summaryClaimFeedback_sync_au"))
+            XCTAssertTrue(triggers.contains("transcriptCorrection_sync_ai"))
+            XCTAssertTrue(triggers.contains("transcriptCorrection_sync_au"))
+            XCTAssertTrue(triggers.contains("transcriptCorrection_sync_ad"))
 
             try db.execute(
                 sql: "UPDATE meeting SET title = ?, updatedAt = ? WHERE id = ?",
@@ -127,8 +130,16 @@ final class MeetingSyncStateTests: XCTestCase {
 
         try await store.database.write { db in
             try db.execute(
-                sql: "UPDATE segment SET embedding = ? WHERE id = ?",
-                arguments: [Data([0, 0, 0, 0]), segment.id.uuidString])
+                sql: """
+                    UPDATE segment
+                    SET embedding = ?, embeddingFingerprint = ?
+                    WHERE id = ?
+                    """,
+                arguments: [
+                    Data([0, 0, 0, 0]),
+                    "local-semantic-profile",
+                    segment.id.uuidString,
+                ])
         }
         pending = try await store.pendingMeetingSyncChanges()
         XCTAssertTrue(
@@ -250,12 +261,34 @@ final class MeetingSyncStateTests: XCTestCase {
         try await store.delete(deleted.id)
         try await acknowledgeAll(in: store)
 
-        let seeded = try await store.markAllMeetingsForInitialSync()
-        XCTAssertEqual(seeded, 2)
+        let first = try await store.markMeetingsForInitialSync(
+            after: nil,
+            limit: 1)
+        let second = try await store.markMeetingsForInitialSync(
+            after: try XCTUnwrap(first.lastMeetingID),
+            limit: 1)
+        let completed = try await store.markMeetingsForInitialSync(
+            after: try XCTUnwrap(second.lastMeetingID),
+            limit: 1)
+        XCTAssertEqual(first.processedCount, 1)
+        XCTAssertFalse(first.isComplete)
+        XCTAssertEqual(second.processedCount, 1)
+        XCTAssertFalse(second.isComplete)
+        XCTAssertEqual(completed.processedCount, 0)
+        XCTAssertTrue(completed.isComplete)
         let pending = try await store.pendingMeetingSyncChanges()
         XCTAssertEqual(Set(pending.map(\.meetingID)), [live.id, deleted.id])
         XCTAssertFalse(try XCTUnwrap(pending.first(where: { $0.meetingID == live.id })).isDeleted)
         XCTAssertTrue(try XCTUnwrap(pending.first(where: { $0.meetingID == deleted.id })).isDeleted)
+
+        let generations = Dictionary(
+            uniqueKeysWithValues: pending.map { ($0.meetingID, $0.generation) })
+        _ = try await store.markMeetingsForInitialSync(after: nil, limit: 1)
+        let replayed = try await store.pendingMeetingSyncChanges()
+        XCTAssertEqual(
+            Dictionary(uniqueKeysWithValues: replayed.map { ($0.meetingID, $0.generation) }),
+            generations,
+            "replaying a committed batch before cursor publication must be idempotent")
     }
 
     func testInvalidLimitsAndAcknowledgementsFailClosed() async throws {
@@ -267,6 +300,9 @@ final class MeetingSyncStateTests: XCTestCase {
 
         await XCTAssertThrowsErrorAsync {
             _ = try await store.pendingMeetingSyncChanges(limit: 0)
+        }
+        await XCTAssertThrowsErrorAsync {
+            _ = try await store.markMeetingsForInitialSync(after: nil, limit: 0)
         }
         await XCTAssertThrowsErrorAsync {
             try await store.acknowledgeMeetingSync(MeetingSyncChange(

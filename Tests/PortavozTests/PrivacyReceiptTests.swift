@@ -51,13 +51,16 @@ final class PrivacyReceiptTests: XCTestCase {
         XCTAssertEqual(receipt.status, .noRemoteTransferRecorded)
 
         try await store.database.read { db in
-            XCTAssertEqual(StorageSchema.version, 15)
+            XCTAssertEqual(StorageSchema.version, 49)
             XCTAssertEqual(
                 try String.fetchAll(
                     db, sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid"),
                 [
                     "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8",
-                    "v9", "v10", "v11", "v12", "v13", "v14", "v15",
+                    "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17", "v18",
+                    "v19", "v20", "v21", "v22", "v23", "v24", "v25", "v26", "v27", "v28",
+                    "v29", "v30", "v31", "v32", "v33", "v34", "v35", "v36", "v37", "v38", "v39", "v40",
+                    "v41", "v42", "v43", "v44", "v45", "v46", "v47", "v48", "v49",
                 ])
             XCTAssertEqual(
                 try Set(db.columns(in: "dataEgressEvent").map(\.name)),
@@ -128,6 +131,198 @@ final class PrivacyReceiptTests: XCTestCase {
             "summary", "notes", "actionItem", "content",
         ] {
             XCTAssertFalse(persistedColumns.contains(forbidden), forbidden)
+        }
+    }
+
+    func testGlobalAskReceiptRoundTripsWithoutFalseMeetingAttribution() async throws {
+        let store = try MeetingStore.inMemory()
+        let attemptedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let event = DataEgressEvent(
+            meetingID: nil,
+            operation: .askAnswerGeneration,
+            destinationScope: .localDevice,
+            destinationHost: "localhost",
+            dataClassification: .meetingAnswerMaterial,
+            consentSource: .summaryEngineSettings,
+            providerID: "localhost",
+            modelID: "qwen-local",
+            attemptedAt: attemptedAt)
+
+        try await store.recordDataEgressEvent(event)
+
+        let events = try await store.globalDataEgressEvents()
+        XCTAssertEqual(events, [event])
+        let columns = try await store.database.read { database in
+            try Set(database.columns(in: "globalDataEgressEvent").map(\.name))
+        }
+        XCTAssertFalse(columns.contains("meetingID"))
+        for forbidden in [
+            "payload", "body", "url", "path", "transcript", "prompt",
+            "summary", "notes", "content",
+        ] {
+            XCTAssertFalse(columns.contains(forbidden), forbidden)
+        }
+    }
+
+    func testGlobalWebReceiptRoundTripsWithoutURLOrMeetingContent() async throws {
+        let store = try MeetingStore.inMemory()
+        let attemptedAt = Date(timeIntervalSince1970: 1_787_529_600)
+        let event = globalWebEvent(
+            scope: .remote,
+            host: "www.example.com",
+            attemptedAt: attemptedAt)
+
+        try await store.recordDataEgressEvent(event)
+
+        let events = try await store.globalDataEgressEvents()
+        XCTAssertEqual(events, [event])
+        let record = try await store.database.read { database in
+            try XCTUnwrap(GlobalDataEgressEventRecord.fetchOne(database))
+        }
+        XCTAssertEqual(record.destinationHost, "www.example.com")
+        XCTAssertNil(record.modelID)
+        XCTAssertEqual(record.attemptedAt, attemptedAt)
+        let encoded = String(data: try JSONEncoder().encode(event), encoding: .utf8)!
+        for forbidden in [
+            "https://", "/source", "?query", "question", "transcript",
+        ] {
+            XCTAssertFalse(encoded.contains(forbidden), forbidden)
+        }
+    }
+
+    func testGlobalWebAnswerReceiptUsesPublicMaterialClassification() async throws {
+        let store = try MeetingStore.inMemory()
+        let event = globalAskEvent(
+            classification: .publicWebAnswerMaterial,
+            attemptedAt: Date(timeIntervalSince1970: 1_787_529_600))
+
+        try await store.recordDataEgressEvent(event)
+
+        let persisted = try await store.globalDataEgressEvents()
+        XCTAssertEqual(persisted, [event])
+        XCTAssertEqual(
+            persisted.first?.dataClassification,
+            .publicWebAnswerMaterial)
+    }
+
+    func testV43GlobalAskReceiptSurvivesV44WebSchemaMigration() async throws {
+        let database = try DatabaseQueue()
+        let migrator = StorageSchema.migrator()
+        try migrator.migrate(database, upTo: "v43")
+        let id = DataEgressEventID().rawValue.uuidString
+        let attemptedAt = Date(timeIntervalSince1970: 1_787_529_600)
+        try await database.write { db in
+            try db.execute(
+                sql: """
+                    INSERT INTO globalDataEgressEvent (
+                        id, operation, destinationScope, destinationHost,
+                        dataClassification, consentSource, providerID,
+                        modelID, attemptedAt
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                arguments: [
+                    id, "ask-answer-generation", "local-device", "localhost",
+                    "meeting-answer-material", "summary-engine-settings",
+                    "localhost", "qwen-local", attemptedAt,
+                ])
+        }
+
+        try migrator.migrate(database)
+
+        try await database.read { db in
+            let row = try XCTUnwrap(
+                GlobalDataEgressEventRecord.fetchOne(db, key: id))
+            XCTAssertEqual(row.operation, "ask-answer-generation")
+            XCTAssertEqual(row.modelID, "qwen-local")
+            XCTAssertEqual(row.attemptedAt, attemptedAt)
+            XCTAssertEqual(
+                Array(try String.fetchAll(
+                    db,
+                    sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid"
+                ).suffix(6)),
+                ["v44", "v45", "v46", "v47", "v48", "v49"])
+        }
+    }
+
+    func testGlobalReceiptRejectsMetadataOutsideLocalAskContract() async throws {
+        let store = try MeetingStore.inMemory()
+        let invalid: [DataEgressEvent] = [
+            globalAskEvent(operation: .summaryGeneration),
+            globalAskEvent(classification: .meetingSummaryMaterial),
+            globalAskEvent(consent: .explicitSummaryProvider),
+            globalAskEvent(modelID: " "),
+        ]
+
+        for event in invalid {
+            do {
+                try await store.recordDataEgressEvent(event)
+                XCTFail("out-of-contract global receipt must fail: \(event)")
+            } catch {
+                guard case StorageError.invalidDataEgressEvent = error else {
+                    return XCTFail("unexpected error: \(error)")
+                }
+            }
+        }
+        let persisted = try await store.globalDataEgressEvents()
+        XCTAssertTrue(persisted.isEmpty)
+    }
+
+    func testGlobalReceiptRejectsForgedWebMetadata() async throws {
+        let store = try MeetingStore.inMemory()
+        let invalid = [
+            globalWebEvent(classification: .meetingAnswerMaterial),
+            globalWebEvent(consent: .summaryEngineSettings),
+            globalWebEvent(modelID: "model-must-be-nil"),
+            globalWebEvent(operation: .summaryGeneration),
+        ]
+
+        for event in invalid {
+            do {
+                try await store.recordDataEgressEvent(event)
+                XCTFail("forged Web receipt must fail: \(event)")
+            } catch {
+                guard case StorageError.invalidDataEgressEvent = error else {
+                    return XCTFail("unexpected error: \(error)")
+                }
+            }
+        }
+        let persisted = try await store.globalDataEgressEvents()
+        XCTAssertTrue(persisted.isEmpty)
+    }
+
+    func testGlobalReceiptReadFailsClosedOnCorruptIdentity() async throws {
+        let store = try MeetingStore.inMemory()
+        try await store.recordDataEgressEvent(globalWebEvent(
+            scope: .remote,
+            host: "www.example.com"))
+        try await store.database.write { database in
+            try database.execute(
+                sql: "UPDATE globalDataEgressEvent SET providerID = ?",
+                arguments: ["forged.example.net"])
+        }
+
+        do {
+            _ = try await store.globalDataEgressEvents()
+            XCTFail("corrupt receipt identity must fail closed")
+        } catch {
+            guard case StorageError.invalidDataEgressEvent = error else {
+                return XCTFail("unexpected error: \(error)")
+            }
+        }
+    }
+
+    func testReceiptWriterRejectsNonFiniteAttemptTime() async throws {
+        let store = try MeetingStore.inMemory()
+        let invalid = globalWebEvent(
+            attemptedAt: Date(timeIntervalSinceReferenceDate: .nan))
+
+        do {
+            try await store.recordDataEgressEvent(invalid)
+            XCTFail("non-finite receipt time must fail")
+        } catch {
+            guard case StorageError.invalidDataEgressEvent = error else {
+                return XCTFail("unexpected error: \(error)")
+            }
         }
     }
 
@@ -228,6 +423,46 @@ final class PrivacyReceiptTests: XCTestCase {
     ) -> DataEgressEvent {
         DataEgressEvent(
             meetingID: meetingID,
+            operation: operation,
+            destinationScope: scope,
+            destinationHost: host,
+            dataClassification: classification,
+            consentSource: consent,
+            providerID: host,
+            modelID: modelID,
+            attemptedAt: attemptedAt)
+    }
+
+    private func globalAskEvent(
+        operation: DataEgressOperation = .askAnswerGeneration,
+        classification: DataEgressClassification = .meetingAnswerMaterial,
+        consent: DataEgressConsentSource = .summaryEngineSettings,
+        modelID: String = "qwen-local",
+        attemptedAt: Date = Date()
+    ) -> DataEgressEvent {
+        DataEgressEvent(
+            meetingID: nil,
+            operation: operation,
+            destinationScope: .localDevice,
+            destinationHost: "localhost",
+            dataClassification: classification,
+            consentSource: consent,
+            providerID: "localhost",
+            modelID: modelID,
+            attemptedAt: attemptedAt)
+    }
+
+    private func globalWebEvent(
+        operation: DataEgressOperation = .webSourceRetrieval,
+        scope: DataEgressDestinationScope = .localDevice,
+        host: String = "127.0.0.1",
+        classification: DataEgressClassification = .publicWebSourceRequest,
+        consent: DataEgressConsentSource = .explicitWebAsk,
+        modelID: String? = nil,
+        attemptedAt: Date = Date()
+    ) -> DataEgressEvent {
+        DataEgressEvent(
+            meetingID: nil,
             operation: operation,
             destinationScope: scope,
             destinationHost: host,

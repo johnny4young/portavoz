@@ -65,13 +65,10 @@ public actor ModelStore {
     private let rootDirectory: URL
     private let session: URLSession
 
-    /// `~/Library/Application Support/Portavoz/Models`
+    /// The platform Application Support container under `Portavoz/Models`.
     public static var defaultRootDirectory: URL {
-        let base =
-            FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
-                "Library/Application Support")
-        return base.appendingPathComponent("Portavoz/Models", isDirectory: true)
+        URL.applicationSupportDirectory
+            .appendingPathComponent("Portavoz/Models", isDirectory: true)
     }
 
     public init(rootDirectory: URL = ModelStore.defaultRootDirectory, session: URLSession = .shared) {

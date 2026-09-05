@@ -40,12 +40,22 @@ enum BenchSemanticCommand {
 private struct SemanticBenchmarkOptions {
     var segments = 100_000
     var runs = 20
+    /// Bilingual expansion asks several variants of one question. The default
+    /// stays 1 so the committed baseline remains comparable; a higher value
+    /// measures whether they still cost one corpus traversal.
+    var variants = 1
     var output: String?
 
     init(arguments: [String]) throws {
         var index = 0
         while index < arguments.count {
             switch arguments[index] {
+            case "--variants":
+                index += 1
+                guard arguments.indices.contains(index),
+                    let value = Int(arguments[index]), (1...8).contains(value)
+                else { throw SemanticBenchmarkError.invalidVariants }
+                variants = value
             case "--segments":
                 index += 1
                 guard arguments.indices.contains(index),
@@ -74,6 +84,7 @@ private struct SemanticBenchmarkOptions {
 private enum SemanticBenchmarkError: Error, CustomStringConvertible {
     case invalidRuns
     case invalidSegments
+    case invalidVariants
     case missingOptionValue(String)
     case processUsageUnavailable
     case unexpectedTopResult
@@ -85,6 +96,8 @@ private enum SemanticBenchmarkError: Error, CustomStringConvertible {
             "--runs must be between 3 and 100"
         case .invalidSegments:
             "--segments must be between 1 and 1000000"
+        case .invalidVariants:
+            "--variants must be between 1 and 8"
         case .missingOptionValue(let option):
             "missing value after \(option)"
         case .processUsageUnavailable:
@@ -103,6 +116,10 @@ private struct SemanticBenchmarkReport: Codable {
     let buildConfiguration: String
     let host: Host
     let configuration: Configuration
+    let semanticProfile: SemanticProfile
+    let semanticAssets: SemanticAssets
+    let fixture: Fixture
+    let queryPack: QueryPack
     let checkpoint: Checkpoint
 
     struct Host: Codable, Equatable {
@@ -118,6 +135,52 @@ private struct SemanticBenchmarkReport: Codable {
         let embeddingDimension: Int
         let resultLimit: Int
         let segmentsPerMeeting: Int
+        /// How many variants of one question each measured request carried.
+        /// Evidence at different variant counts is not interchangeable.
+        let queryVariants: Int
+    }
+
+    struct SemanticProfile: Codable {
+        let modelIdentifier: String
+        let modelRevision: Int
+        let vectorDimension: Int
+        let pipelineIdentifier: String
+        let pipelineRevision: Int
+        let vectorSchemaVersion: Int
+        let fingerprint: String
+
+        init(_ profile: SemanticEmbeddingProfile) {
+            modelIdentifier = profile.modelIdentifier
+            modelRevision = profile.modelRevision
+            vectorDimension = profile.vectorDimension
+            pipelineIdentifier = profile.pipelineIdentifier
+            pipelineRevision = profile.pipelineRevision
+            vectorSchemaVersion = profile.vectorSchemaVersion
+            fingerprint = profile.fingerprint
+        }
+    }
+
+    struct SemanticAssets: Codable {
+        let provider: String
+        let script: String
+        let availability: String
+        let downloadPolicy: String
+        let usedByMeasuredVectors: Bool
+    }
+
+    struct Fixture: Codable {
+        let version: String
+        let contentSource: String
+        let userLibraryAccess: String
+        let vectorGenerator: String
+        let transcriptGenerator: String
+        let ephemeralIdentityPolicy: String
+    }
+
+    struct QueryPack: Codable {
+        let version: String
+        let selectionPolicy: String
+        let firstQueryIndex: Int
     }
 
     struct Checkpoint: Codable {
@@ -127,12 +190,30 @@ private struct SemanticBenchmarkReport: Codable {
         let databaseBytes: Int64
         let rawEmbeddingBytes: Int64
         let resultCount: Int
+        let stageTimings: StageTimings
         let wallTime: MillisecondDistribution
         let processCPUTime: MillisecondDistribution
         let baselinePhysicalFootprint: ByteDistribution
         let peakPhysicalFootprint: ByteDistribution
         let incrementalPeakPhysicalFootprint: ByteDistribution
         let endingPhysicalFootprint: ByteDistribution
+    }
+
+    struct StageTimings: Codable {
+        let storeOpen: StageTiming
+        let corpusSeed: StageTiming
+        let warmupQueries: StageTiming
+        let measuredQueries: StageTiming
+    }
+}
+
+private struct StageTiming: Codable {
+    let wallTime: MillisecondDistribution
+    let processCPUTime: MillisecondDistribution
+
+    init(wallMilliseconds: [Double], cpuMilliseconds: [Double]) {
+        wallTime = MillisecondDistribution(wallMilliseconds)
+        processCPUTime = MillisecondDistribution(cpuMilliseconds)
     }
 }
 
@@ -187,70 +268,153 @@ private enum SemanticBenchmark {
         #endif
         let embedder = try SentenceEmbedder()
         let dimension = await embedder.dimension
+        let profile = await embedder.semanticEmbeddingProfile()
+        let assetAvailability = await embedder.hasAvailableAssets
+            ? "installed"
+            : "missing"
 
         return try await withSemanticTemporaryDirectory { directory in
             let databaseURL = directory.appendingPathComponent("semantic.sqlite")
-            let store = try MeetingStore(databaseURL: databaseURL)
-            let seedStart = ContinuousClock.now
-            try await seed(
-                store: store,
-                totalSegments: options.segments,
-                dimension: dimension)
-            let seedMilliseconds = semanticMilliseconds(since: seedStart)
+            let (store, storeOpen) = try await sampleStage {
+                try MeetingStore(databaseURL: databaseURL)
+            }
+            let (_, corpusSeed) = try await sampleStage {
+                try await seed(
+                    store: store,
+                    totalSegments: options.segments,
+                    dimension: dimension,
+                    profile: profile)
+            }
 
             // Query a vector that is present in the corpus. This keeps result
             // validation meaningful while every persisted vector still varies.
             let queryIndex = options.segments / 2
-            let query = vector(index: queryIndex, dimension: dimension)
-            let expectedText = "Semantic benchmark transcript segment \(queryIndex)"
-            for _ in 0..<warmupRuns {
-                let hits = try await store.searchSemantic(query, limit: resultLimit)
-                guard hits.first?.text == expectedText else {
-                    throw SemanticBenchmarkError.unexpectedTopResult
-                }
+            // Distinct present vectors, so every variant scores real work and
+            // the first one still pins the expected top result.
+            let queries = (0..<options.variants).map { offset in
+                vector(
+                    index: (queryIndex + offset) % options.segments,
+                    dimension: dimension)
             }
+            let expectedText = "Semantic benchmark transcript segment \(queryIndex)"
+            let warmupSamples = try await warmUp(
+                store: store,
+                queries: queries,
+                profile: profile,
+                expectedText: expectedText)
             malloc_zone_pressure_relief(nil, 0)
             let measurement = try await measure(
                 runs: options.runs,
                 store: store,
-                query: query,
+                queries: queries,
+                profile: profile,
                 expectedText: expectedText)
 
-            return SemanticBenchmarkReport(
-                schemaVersion: 1,
-                generatedAt: Date(),
+            return try report(.init(
+                options: options,
                 buildConfiguration: buildConfiguration,
-                host: .init(
-                    operatingSystem: ProcessInfo.processInfo.operatingSystemVersionString,
-                    architecture: ProcessInfo.processInfo.semanticMachineArchitecture,
-                    processorCount: ProcessInfo.processInfo.processorCount,
-                    physicalMemoryBytes: ProcessInfo.processInfo.physicalMemory),
-                configuration: .init(
-                    measurementRuns: options.runs,
-                    warmupRuns: warmupRuns,
-                    embeddingDimension: dimension,
-                    resultLimit: resultLimit,
-                    segmentsPerMeeting: segmentsPerMeeting),
-                checkpoint: .init(
-                    totalSegments: options.segments,
-                    meetingCount: Int(ceil(Double(options.segments) / Double(segmentsPerMeeting))),
-                    seedMilliseconds: seedMilliseconds,
-                    databaseBytes: try FileManager.default.allocatedSizeOfDirectory(at: directory),
-                    rawEmbeddingBytes: Int64(options.segments * dimension * MemoryLayout<Float>.size),
-                    resultCount: measurement.resultCount,
-                    wallTime: .init(measurement.wallMilliseconds),
-                    processCPUTime: .init(measurement.cpuMilliseconds),
-                    baselinePhysicalFootprint: .init(measurement.baselineBytes),
-                    peakPhysicalFootprint: .init(measurement.peakBytes),
-                    incrementalPeakPhysicalFootprint: .init(measurement.incrementalPeakBytes),
-                    endingPhysicalFootprint: .init(measurement.endingBytes)))
+                dimension: dimension,
+                profile: profile,
+                assetAvailability: assetAvailability,
+                directory: directory,
+                queryIndex: queryIndex,
+                storeOpen: storeOpen,
+                corpusSeed: corpusSeed,
+                warmupSamples: warmupSamples,
+                measurement: measurement))
         }
+    }
+
+    private struct ReportInput {
+        let options: SemanticBenchmarkOptions
+        let buildConfiguration: String
+        let dimension: Int
+        let profile: SemanticEmbeddingProfile
+        let assetAvailability: String
+        let directory: URL
+        let queryIndex: Int
+        let storeOpen: StageSample
+        let corpusSeed: StageSample
+        let warmupSamples: [StageSample]
+        let measurement: Measurement
+    }
+
+    private static func report(_ input: ReportInput) throws -> SemanticBenchmarkReport {
+        SemanticBenchmarkReport(
+            schemaVersion: 2,
+            generatedAt: Date(),
+            buildConfiguration: input.buildConfiguration,
+            host: .init(
+                operatingSystem: ProcessInfo.processInfo.operatingSystemVersionString,
+                architecture: ProcessInfo.processInfo.semanticMachineArchitecture,
+                processorCount: ProcessInfo.processInfo.processorCount,
+                physicalMemoryBytes: ProcessInfo.processInfo.physicalMemory),
+            configuration: .init(
+                measurementRuns: input.options.runs,
+                warmupRuns: warmupRuns,
+                embeddingDimension: input.dimension,
+                resultLimit: resultLimit,
+                segmentsPerMeeting: segmentsPerMeeting,
+                queryVariants: input.options.variants),
+            semanticProfile: .init(input.profile),
+            semanticAssets: .init(
+                provider: "apple-natural-language",
+                script: "latin",
+                availability: input.assetAvailability,
+                downloadPolicy: "never",
+                usedByMeasuredVectors: false),
+            fixture: .init(
+                version: "semantic-scale-synthetic-v1",
+                contentSource: "synthetic-only",
+                userLibraryAccess: "none",
+                vectorGenerator: "lcg-normalized-float32-v1",
+                transcriptGenerator: "ordinal-placeholder-v1",
+                ephemeralIdentityPolicy: "excluded-from-comparison-v1"),
+            queryPack: .init(
+                version: "semantic-present-vector-queries-v1",
+                selectionPolicy: "midpoint-consecutive-wrap-v1",
+                firstQueryIndex: input.queryIndex),
+            checkpoint: try checkpoint(input))
+    }
+
+    private static func checkpoint(
+        _ input: ReportInput
+    ) throws -> SemanticBenchmarkReport.Checkpoint {
+        .init(
+            totalSegments: input.options.segments,
+            meetingCount: Int(ceil(Double(input.options.segments) / Double(segmentsPerMeeting))),
+            seedMilliseconds: input.corpusSeed.wallMilliseconds,
+            databaseBytes: try FileManager.default.allocatedSizeOfDirectory(at: input.directory),
+            rawEmbeddingBytes: Int64(
+                input.options.segments * input.dimension * MemoryLayout<Float>.size),
+            resultCount: input.measurement.resultCount,
+            stageTimings: .init(
+                storeOpen: .init(
+                    wallMilliseconds: [input.storeOpen.wallMilliseconds],
+                    cpuMilliseconds: [input.storeOpen.cpuMilliseconds]),
+                corpusSeed: .init(
+                    wallMilliseconds: [input.corpusSeed.wallMilliseconds],
+                    cpuMilliseconds: [input.corpusSeed.cpuMilliseconds]),
+                warmupQueries: .init(
+                    wallMilliseconds: input.warmupSamples.map(\.wallMilliseconds),
+                    cpuMilliseconds: input.warmupSamples.map(\.cpuMilliseconds)),
+                measuredQueries: .init(
+                    wallMilliseconds: input.measurement.wallMilliseconds,
+                    cpuMilliseconds: input.measurement.cpuMilliseconds)),
+            wallTime: .init(input.measurement.wallMilliseconds),
+            processCPUTime: .init(input.measurement.cpuMilliseconds),
+            baselinePhysicalFootprint: .init(input.measurement.baselineBytes),
+            peakPhysicalFootprint: .init(input.measurement.peakBytes),
+            incrementalPeakPhysicalFootprint: .init(
+                input.measurement.incrementalPeakBytes),
+            endingPhysicalFootprint: .init(input.measurement.endingBytes))
     }
 
     private static func seed(
         store: MeetingStore,
         totalSegments: Int,
-        dimension: Int
+        dimension: Int,
+        profile: SemanticEmbeddingProfile
     ) async throws {
         var seeded = 0
         var meetingIndex = 0
@@ -278,7 +442,11 @@ private enum SemanticBenchmark {
                 segments.enumerated().map { localIndex, segment in
                     (segment.id, vector(index: seeded + localIndex, dimension: dimension))
                 })
-            try await store.storeEmbeddings(embeddings)
+            let candidates = try await store.segmentsNeedingEmbeddings(limit: count)
+            _ = try await store.storeEmbeddings(
+                embeddings,
+                for: candidates,
+                profile: profile)
             seeded += count
             meetingIndex += 1
         }
@@ -311,45 +479,125 @@ private enum SemanticBenchmark {
         var resultCount = 0
     }
 
+    private struct StageSample {
+        let wallMilliseconds: Double
+        let cpuMilliseconds: Double
+    }
+
+    private struct PeakStageSample {
+        let timing: StageSample
+        let baselineBytes: UInt64
+        let peakBytes: UInt64
+        let endingBytes: UInt64
+    }
+
+    private static func warmUp(
+        store: MeetingStore,
+        queries: [[Float]],
+        profile: SemanticEmbeddingProfile,
+        expectedText: String
+    ) async throws -> [StageSample] {
+        var samples: [StageSample] = []
+        for _ in 0..<warmupRuns {
+            let (hits, sample) = try await sampleStage {
+                try await store.searchSemantic(
+                    queries,
+                    profile: profile,
+                    limit: resultLimit)
+            }
+            guard hits.first?.first?.text == expectedText else {
+                throw SemanticBenchmarkError.unexpectedTopResult
+            }
+            samples.append(sample)
+        }
+        return samples
+    }
+
+    private static func sampleStage<Value>(
+        _ operation: () async throws -> Value
+    ) async throws -> (Value, StageSample) {
+        let before = try ProcessUsage.current()
+        let start = ContinuousClock.now
+        let value = try await operation()
+        let wallMilliseconds = semanticMilliseconds(since: start)
+        let after = try ProcessUsage.current()
+        return (
+            value,
+            StageSample(
+                wallMilliseconds: wallMilliseconds,
+                cpuMilliseconds: semanticCPUMilliseconds(
+                    ticks: after.cpuAbsoluteTime
+                        - min(after.cpuAbsoluteTime, before.cpuAbsoluteTime))))
+    }
+
+    private static func samplePeakStage<Value>(
+        _ operation: () async throws -> Value
+    ) async throws -> (Value, PeakStageSample) {
+        let before = try ProcessUsage.current()
+        let sampler = Task.detached(priority: .high) { () -> UInt64 in
+            var peak = before.physicalFootprintBytes
+            while !Task.isCancelled {
+                if let usage = try? ProcessUsage.current() {
+                    peak = max(peak, usage.physicalFootprintBytes)
+                }
+                try? await Task.sleep(for: .milliseconds(1))
+            }
+            return peak
+        }
+        do {
+            let start = ContinuousClock.now
+            let value = try await operation()
+            let wallMilliseconds = semanticMilliseconds(since: start)
+            let after = try ProcessUsage.current()
+            sampler.cancel()
+            let peak = max(after.physicalFootprintBytes, await sampler.value)
+            let cpuTicks = after.cpuAbsoluteTime
+                - min(after.cpuAbsoluteTime, before.cpuAbsoluteTime)
+            return (
+                value,
+                PeakStageSample(
+                    timing: .init(
+                        wallMilliseconds: wallMilliseconds,
+                        cpuMilliseconds: semanticCPUMilliseconds(ticks: cpuTicks)),
+                    baselineBytes: before.physicalFootprintBytes,
+                    peakBytes: peak,
+                    endingBytes: after.physicalFootprintBytes))
+        } catch {
+            sampler.cancel()
+            _ = await sampler.value
+            throw error
+        }
+    }
+
     private static func measure(
         runs: Int,
         store: MeetingStore,
-        query: [Float],
+        queries: [[Float]],
+        profile: SemanticEmbeddingProfile,
         expectedText: String
     ) async throws -> Measurement {
         var measurement = Measurement()
         for _ in 0..<runs {
-            let before = try ProcessUsage.current()
-            let sampler = Task.detached(priority: .high) { () -> UInt64 in
-                var peak = before.physicalFootprintBytes
-                while !Task.isCancelled {
-                    if let usage = try? ProcessUsage.current() {
-                        peak = max(peak, usage.physicalFootprintBytes)
-                    }
-                    try? await Task.sleep(for: .milliseconds(1))
-                }
-                return peak
+            let (hits, sample) = try await samplePeakStage {
+                try await store.searchSemantic(
+                    queries,
+                    profile: profile,
+                    limit: resultLimit)
             }
-            let start = ContinuousClock.now
-            let hits = try await store.searchSemantic(query, limit: resultLimit)
-            let wall = semanticMilliseconds(since: start)
-            let after = try ProcessUsage.current()
-            sampler.cancel()
-            let peak = max(after.physicalFootprintBytes, await sampler.value)
-            guard hits.first?.text == expectedText else {
+            guard hits.count == queries.count,
+                  hits.first?.first?.text == expectedText
+            else {
                 throw SemanticBenchmarkError.unexpectedTopResult
             }
 
-            measurement.wallMilliseconds.append(wall)
-            let cpuTicks = after.cpuAbsoluteTime
-                - min(after.cpuAbsoluteTime, before.cpuAbsoluteTime)
-            measurement.cpuMilliseconds.append(semanticCPUMilliseconds(ticks: cpuTicks))
-            measurement.baselineBytes.append(before.physicalFootprintBytes)
-            measurement.peakBytes.append(peak)
+            measurement.wallMilliseconds.append(sample.timing.wallMilliseconds)
+            measurement.cpuMilliseconds.append(sample.timing.cpuMilliseconds)
+            measurement.baselineBytes.append(sample.baselineBytes)
+            measurement.peakBytes.append(sample.peakBytes)
             measurement.incrementalPeakBytes.append(
-                peak - min(peak, before.physicalFootprintBytes))
-            measurement.endingBytes.append(after.physicalFootprintBytes)
-            measurement.resultCount = hits.count
+                sample.peakBytes - min(sample.peakBytes, sample.baselineBytes))
+            measurement.endingBytes.append(sample.endingBytes)
+            measurement.resultCount = hits.first?.count ?? 0
         }
         return measurement
     }

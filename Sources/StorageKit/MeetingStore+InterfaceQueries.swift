@@ -7,7 +7,14 @@ extension MeetingStore {
     /// its latest General summary together.
     public struct MeetingLibrarySnapshot: Sendable {
         public let detail: MeetingDetail
-        public let summary: (draft: SummaryDraft, version: Int)?
+        public let corrections: [TranscriptCorrectionEvent]
+        public let correctionRevision: TranscriptCorrectionRevision
+        public let isRefinedTranscript: Bool
+        public let summary: (
+            draft: SummaryDraft,
+            version: Int,
+            correctionSource: TranscriptCorrectionArtifactSource
+        )?
     }
 
     public func meetingLibrarySnapshot(
@@ -42,14 +49,23 @@ extension MeetingStore {
             let summary = try Self.generalSummarySnapshot(
                 meetingID: id,
                 in: db)
-            return MeetingLibrarySnapshot(detail: detail, summary: summary)
+            return MeetingLibrarySnapshot(
+                detail: detail,
+                corrections: core.corrections,
+                correctionRevision: core.correctionRevision,
+                isRefinedTranscript: core.isRefinedTranscript,
+                summary: summary)
         }
     }
 
     private static func generalSummarySnapshot(
         meetingID: MeetingID,
         in database: Database
-    ) throws -> (draft: SummaryDraft, version: Int)? {
+    ) throws -> (
+        draft: SummaryDraft,
+        version: Int,
+        correctionSource: TranscriptCorrectionArtifactSource
+    )? {
         guard let record = try SummaryRecord
             .filter(Column("meetingID") == meetingID.rawValue.uuidString)
             .filter(Column("recipeID") == Recipe.general.id)
@@ -57,6 +73,11 @@ extension MeetingStore {
             .order(Column("version").desc)
             .fetchOne(database)
         else { return nil }
-        return try summarySnapshot(record, meetingID: meetingID, in: database)
+        let snapshot = try summarySnapshot(record, meetingID: meetingID, in: database)
+        let source = try record.generationRunID
+            .flatMap { try GenerationRunRecord.fetchOne(database, key: $0) }
+            .map { try $0.run.transcriptCorrectionSource }
+            ?? .legacyAccepted
+        return (snapshot.draft, snapshot.version, source)
     }
 }

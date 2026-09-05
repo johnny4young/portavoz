@@ -21,7 +21,7 @@ extension AppServices {
             await progress(message)
         }
         let meetingID = try await importMeetingUseCase(request)
-        requestSpotlightReindex()
+        requestSearchReconciliation()
         return meetingID
     }
 
@@ -39,6 +39,14 @@ extension AppServices {
             ollamaModel: ollamaModel,
             mlxModelDirectory: { [modelLifecycle] in
                 await modelLifecycle.installation(for: ModelCatalog.mlxQwen35)?.directory
+            },
+            mlxProvider: { [weak self] directory, priority in
+                guard let self else {
+                    return AppUnavailableSummaryProvider()
+                }
+                return self.makeMLXSummaryProvider(
+                    modelDirectory: directory,
+                    priority: priority)
             },
             foundationModelsCapability: foundationModelsCapability,
             gateway: dataEgressGateway)
@@ -125,6 +133,9 @@ private struct AppImportMeetingAudioFiles: ImportMeetingAudioFiles {
 @MainActor
 private final class AppImportMeetingProcessor: ImportMeetingProcessor {
     private weak var services: AppServices?
+    private var whisperRuntime: AppServices.WhisperRuntimeLease?
+    private var diarizationRuntime: AppServices.DiarizationRuntimeLease?
+    private var diarizer: PyannoteDiarizer?
 
     init(services: AppServices) {
         self.services = services
@@ -134,7 +145,8 @@ private final class AppImportMeetingProcessor: ImportMeetingProcessor {
         progress: @escaping ImportMeetingProgressHandler
     ) async throws {
         guard let services else { throw AppImportMeetingError.servicesUnavailable }
-        _ = try await services.loadWhisperIfNeeded(
+        if whisperRuntime != nil { return }
+        whisperRuntime = try await services.acquireWhisperRuntime(
             progress: { _ in },
             preparationProgress: { size, percent, isDownloading in
                 Task {
@@ -148,7 +160,13 @@ private final class AppImportMeetingProcessor: ImportMeetingProcessor {
 
     func prepareDiarizer() async throws {
         guard let services else { throw AppImportMeetingError.servicesUnavailable }
-        _ = try await services.loadDiarizerIfNeeded()
+        if diarizationRuntime != nil { return }
+        let runtime = try await services.acquireDiarizationRuntime()
+        let voiceprint = await services.currentDiarizationVoiceprint()
+        diarizer = services.makeDiarizer(
+            from: runtime,
+            voiceprint: voiceprint)
+        diarizationRuntime = runtime
     }
 
     func transcribe(
@@ -157,27 +175,50 @@ private final class AppImportMeetingProcessor: ImportMeetingProcessor {
         languageHint: String?,
         vocabulary: [String]
     ) async throws -> FileTranscription {
-        guard let whisper = services?.whisper else {
+        guard let services, let whisper = whisperRuntime?.engine else {
             throw AppImportMeetingError.transcriberUnavailable
         }
         let hints = TranscriptionHints(
             language: languageHint,
             vocabulary: vocabulary,
             meetingID: meetingID)
-        return try await whisper.transcribeFile(
-            at: audio.fileURL,
-            hints: hints,
-            channel: .system)
+        return try await services.workloadTelemetry.measure(
+            ResourceWorkloadDescriptor(
+                workloadClass: .userInitiated,
+                kind: .qualityTranscription,
+                operation: .execute)
+        ) {
+            try await whisper.transcribeFile(
+                at: audio.fileURL,
+                hints: hints,
+                channel: .system)
+        }
     }
 
     func diarize(audio: ImportedMeetingAudio) async throws -> [SpeakerTurn] {
-        guard let diarizer = services?.diarizer else {
+        guard let services, let diarizer else {
             throw AppImportMeetingError.diarizerUnavailable
         }
-        return try await diarizer.diarizeFile(at: audio.fileURL)
+        return try await services.workloadTelemetry.measure(
+            ResourceWorkloadDescriptor(
+                workloadClass: .userInitiated,
+                kind: .speakerDiarization,
+                operation: .execute)
+        ) {
+            try await diarizer.diarizeFile(at: audio.fileURL)
+        }
     }
 
     func scheduleIdleRelease() {
+        if let whisperRuntime {
+            _ = services?.finishWhisperRuntime(whisperRuntime)
+            self.whisperRuntime = nil
+        }
+        if let diarizationRuntime {
+            _ = services?.finishDiarizationRuntime(diarizationRuntime)
+            self.diarizationRuntime = nil
+            diarizer = nil
+        }
         services?.scheduleWhisperRelease()
         services?.scheduleRecordingEnginesRelease()
     }

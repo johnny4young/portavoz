@@ -107,6 +107,11 @@ extension MeetingStore {
         try Self.validateWorker(owner, leaseDuration: leaseDuration)
         try Self.validateKinds(kinds)
         return try await database.write { db in
+            // A worker that died mid-job leaves 90–120 s of lease behind, and
+            // launch recovery runs immediately on relaunch — too early to see
+            // it. Recovering here is what lets the next claim pick that work
+            // up, matching `claimDerivedMaintenance`.
+            try Self.recoverExpiredProcessingJobs(at: timestamp, in: db)
             guard var record = try Self.dueProcessingJob(
                 kinds: kinds.map(\.rawValue), at: timestamp, in: db)
             else { return nil }
@@ -149,6 +154,39 @@ extension MeetingStore {
             record.updatedAt = timestamp
             try record.update(db)
             return try record.job
+        }
+    }
+
+    /// Returns an intentionally suspended owned attempt to pending work.
+    /// Suspension is not worker failure: it clears the lease and refunds the
+    /// claim so repeated policy pauses cannot consume the bounded retry budget.
+    public func suspendProcessingJob(
+        _ id: ProcessingJobID,
+        owner: String,
+        at timestamp: Date = Date()
+    ) async throws -> ProcessingJob {
+        try Self.validateOwner(owner)
+        return try await database.write { db in
+            var record = try Self.ownedJob(id, owner: owner, at: timestamp, in: db)
+            guard record.attempt > 0 else {
+                throw StorageError.invalidProcessingJob(
+                    "a running job must have a claim attempt to suspend")
+            }
+            record.state = ProcessingJobState.pending.rawValue
+            record.progress = 0
+            record.attempt -= 1
+            record.notBefore = nil
+            record.leaseOwner = nil
+            record.leaseExpiresAt = nil
+            record.errorCode = nil
+            record.errorMessage = nil
+            record.finishedAt = nil
+            record.updatedAt = timestamp
+            try record.update(db)
+            let job = try record.job
+            try Self.reconcileProcessingLifecycle(
+                for: job.meetingID, at: timestamp, in: db)
+            return job
         }
     }
 
@@ -330,16 +368,30 @@ extension MeetingStore {
     /// cancellation is terminal but is not an aggregate failure: once no
     /// other work or capture publication remains unresolved, the meeting can
     /// become ready without pretending that an artifact was generated.
+    /// Cancels an owned attempt and, in the same transaction, admits any
+    /// replacement work the worker still wants. A replacement must carry a
+    /// different fingerprint than the cancelled job — `enqueueFollowUps`
+    /// rejects self-enqueue — and the `(meeting, kind, fingerprint)`
+    /// idempotency key makes a repeated replacement a no-op, so a drifting
+    /// input converges instead of looping.
+    @discardableResult
     public func cancelProcessingJob(
         _ id: ProcessingJobID,
         owner: String,
         reason: ProcessingJobFailure,
+        enqueue replacementRequests: [ProcessingJobRequest] = [],
         at timestamp: Date = Date()
-    ) async throws -> ProcessingJob {
+    ) async throws -> ProcessingJobCancellation {
         try Self.validateOwner(owner)
         try Self.validateFailure(reason)
+        try Self.validateFollowUps(replacementRequests)
         return try await database.write { db in
             var record = try Self.ownedJob(id, owner: owner, at: timestamp, in: db)
+            let enqueued = try Self.enqueueFollowUps(
+                Self.admissibleReplacements(replacementRequests, after: record, in: db),
+                after: record,
+                at: timestamp,
+                in: db)
             record.state = ProcessingJobState.cancelled.rawValue
             record.notBefore = nil
             record.leaseOwner = nil
@@ -352,77 +404,10 @@ extension MeetingStore {
             let job = try record.job
             try Self.reconcileProcessingLifecycle(
                 for: job.meetingID, at: timestamp, in: db)
-            return job
+            return ProcessingJobCancellation(cancelledJob: job, enqueuedJobs: enqueued)
         }
     }
 
-    /// Earliest durable wake-up for the worker's supported kinds. Immediately
-    /// due jobs are claimed before this query; only future `notBefore` values
-    /// are returned, so an idle process does not need to poll SQLite.
-    public func nextScheduledProcessingDate(
-        kinds: Set<ProcessingJobKind>,
-        after timestamp: Date = Date()
-    ) async throws -> Date? {
-        try Self.validateKinds(kinds)
-        return try await database.read { db in
-            let record = try ProcessingJobRecord
-                .filter(Column("state") == ProcessingJobState.pending.rawValue)
-                .filter(kinds.map(\.rawValue).contains(Column("kind")))
-                .filter(Column("notBefore") != nil)
-                .filter(Column("notBefore") > timestamp)
-                .filter(sql: "attempt < maxAttempts")
-                .filter(sql: """
-                    EXISTS (
-                        SELECT 1 FROM meeting
-                        WHERE meeting.id = processingJob.meetingID
-                          AND meeting.deletedAt IS NULL
-                    )
-                    """)
-                .order(Column("notBefore"), Column("createdAt"), Column("id"))
-                .fetchOne(db)
-            return record?.notBefore
-        }
-    }
-
-    /// Repeat-safe lease recovery primitive for the launch reconciler. An
-    /// interrupted attempt becomes due again, or terminal after exhaustion.
-    @discardableResult
-    public func recoverExpiredProcessingJobs(
-        at timestamp: Date = Date()
-    ) async throws -> [ProcessingJob] {
-        try await database.write { db in
-            let expired = try ProcessingJobRecord
-                .filter(Column("state") == ProcessingJobState.running.rawValue)
-                .filter(sql: "leaseExpiresAt <= ?", arguments: [timestamp])
-                .fetchAll(db)
-            var recovered: [ProcessingJob] = []
-            var meetingIDs: Set<MeetingID> = []
-            for var record in expired {
-                let canRetry = record.attempt < record.maxAttempts
-                record.state = canRetry
-                    ? ProcessingJobState.pending.rawValue
-                    : ProcessingJobState.failed.rawValue
-                record.progress = canRetry ? 0 : record.progress
-                record.notBefore = canRetry ? timestamp : nil
-                record.leaseOwner = nil
-                record.leaseExpiresAt = nil
-                record.errorCode = canRetry
-                    ? "processing.lease.expired" : "processing.lease.exhausted"
-                record.errorMessage = "The previous worker stopped before releasing its lease."
-                record.finishedAt = canRetry ? nil : timestamp
-                record.updatedAt = timestamp
-                try record.update(db)
-                let job = try record.job
-                recovered.append(job)
-                meetingIDs.insert(job.meetingID)
-            }
-            for meetingID in meetingIDs {
-                try Self.reconcileProcessingLifecycle(
-                    for: meetingID, at: timestamp, in: db)
-            }
-            return recovered
-        }
-    }
 }
 
 extension MeetingStore {
@@ -574,7 +559,7 @@ extension MeetingStore {
         }
     }
 
-    private static func validateKinds(_ kinds: Set<ProcessingJobKind>) throws {
+    static func validateKinds(_ kinds: Set<ProcessingJobKind>) throws {
         guard !kinds.isEmpty, kinds.allSatisfy({ isCanonical($0.rawValue) }) else {
             throw StorageError.invalidProcessingJob(
                 "worker kinds must be canonical and non-empty")
@@ -670,6 +655,25 @@ extension MeetingStore {
         guard owners.isSubset(of: Set(liveSpeakerIDs)) else {
             throw StorageError.invalidProcessingJob(
                 "summary action owners must belong to the current live cast")
+        }
+    }
+
+    /// One replacement per kind, per meeting. The attempt being cancelled is
+    /// still `running` here, so an earlier cancelled sibling means this drift
+    /// already had its repair — a second one would mean the input keeps moving,
+    /// which the worker must surface instead of chasing.
+    private static func admissibleReplacements(
+        _ requests: [ProcessingJobRequest],
+        after current: ProcessingJobRecord,
+        in db: Database
+    ) throws -> [ProcessingJobRequest] {
+        guard !requests.isEmpty else { return [] }
+        return try requests.filter { request in
+            try ProcessingJobRecord
+                .filter(Column("meetingID") == current.meetingID)
+                .filter(Column("kind") == request.kind.rawValue)
+                .filter(Column("state") == ProcessingJobState.cancelled.rawValue)
+                .fetchCount(db) == 0
         }
     }
 

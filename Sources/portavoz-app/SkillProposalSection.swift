@@ -1,0 +1,377 @@
+import ApplicationKit
+import Foundation
+import PortavozCore
+import SwiftUI
+
+enum SkillProposalPresentationState: Equatable {
+    case loading
+    case unavailable
+    case empty
+    case offers
+
+    init(
+        hasVerifiedSnapshot: Bool,
+        hasOffers: Bool,
+        loadFailed: Bool
+    ) {
+        if loadFailed {
+            self = .unavailable
+        } else if !hasVerifiedSnapshot {
+            self = .loading
+        } else {
+            self = hasOffers ? .offers : .empty
+        }
+    }
+
+    var allowsExplicitRefresh: Bool {
+        self == .empty || self == .offers
+    }
+}
+
+struct SkillProposalAccessibilityPosition: Equatable, Sendable {
+    let ordinal: Int
+    let total: Int
+
+    init?(offset: Int, total: Int) {
+        guard total > 0, offset >= 0, offset < total else { return nil }
+        ordinal = offset + 1
+        self.total = total
+    }
+}
+
+/// D337/D338/D340 — content-free review, opaque dismissal, and inert return to
+/// the original subject surface. Confirmation remains on that subject.
+struct SkillProposalSection: View {
+    let snapshot: SkillOfferReviewSnapshot?
+    let isLoading: Bool
+    let isMutating: Bool
+    let loadFailed: Bool
+    let reviewingOfferID: UUID?
+    let reviewFailedOfferID: UUID?
+    let dismissingOfferID: UUID?
+    let dismissalFailedOfferID: UUID?
+    let review: (SkillOfferReviewItem) -> Void
+    let dismiss: (SkillOfferReviewItem) -> Void
+    let retry: () -> Void
+    let refresh: () -> Void
+
+    var body: some View {
+        if presentationState.allowsExplicitRefresh {
+            proposalRefreshControl
+        }
+
+        if snapshot == nil, !loadFailed {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Loading suggested actions…")
+            }
+            .accessibilityIdentifier("settings-skills-proposals-loading")
+        } else if loadFailed {
+            VStack(alignment: .leading, spacing: 8) {
+                Label(
+                    "Suggested actions are unavailable",
+                    systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier(
+                        "settings-skills-proposals-error")
+                Text("No suggestion is shown until Portavoz verifies its saved explanation.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button("Try again", action: retry)
+                    .accessibilityIdentifier(
+                        "settings-skills-proposals-retry")
+                    .disabled(isLoading || isMutating)
+            }
+        } else if let offers = snapshot?.offers, offers.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                Label("No suggested actions", systemImage: "sparkles")
+                Text(
+                    // Keep this as one literal so localization validation sees it.
+                    // swiftlint:disable:next line_length
+                    "Suggestions appear when a meeting, commitment, or calendar event provides enough evidence for an action."
+                )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("settings-skills-proposals-empty")
+        } else if let offers = snapshot?.offers {
+            ForEach(Array(offers.enumerated()), id: \.element.id) { offset, offer in
+                if let position = SkillProposalAccessibilityPosition(
+                    offset: offset,
+                    total: offers.count
+                ) {
+                    offerRow(offer, position: position)
+                }
+            }
+            Text("This review stores no title, transcript, preview, destination, or recipient.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("settings-skills-proposals-privacy")
+            Text(
+                // One-line UI copy.
+                // swiftlint:disable:next line_length
+                "Review meeting and commitment offers in their original context. Calendar briefs stay in the Portavoz menu bar. Nothing runs here."
+            )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var proposalRefreshControl: some View {
+        if isLoading {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Refreshing suggested actions…")
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier(
+                "settings-skills-proposals-refreshing")
+        } else {
+            Button(action: refresh) {
+                Label("Refresh suggested actions", systemImage: "arrow.clockwise")
+            }
+            .accessibilityIdentifier("settings-skills-proposals-refresh")
+            .disabled(isMutating)
+        }
+    }
+
+    private var presentationState: SkillProposalPresentationState {
+        SkillProposalPresentationState(
+            hasVerifiedSnapshot: snapshot != nil,
+            hasOffers: snapshot?.offers.isEmpty == false,
+            loadFailed: loadFailed)
+    }
+
+    private func offerRow(
+        _ offer: SkillOfferReviewItem,
+        position: SkillProposalAccessibilityPosition
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "sparkles.rectangle.stack.fill")
+                    .foregroundStyle(PVDesign.accent)
+                    .frame(width: 18)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(SkillReceiptPresentation.skillTitle(offer.skillID))
+                        .font(.callout.weight(.medium))
+                    Text(reasonText(offer.reason))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier(
+                            "settings-skill-proposal-why-\(offer.skillID)-\(offer.id.uuidString)")
+                    Text(L10n.format(
+                        "Uses: %@",
+                        inputDataText(offer.inputDataClasses)))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier(
+                            "settings-skill-proposal-data-\(offer.skillID)-\(offer.id.uuidString)")
+                }
+                Spacer(minLength: 8)
+                offerControls(offer, position: position)
+            }
+            if reviewFailedOfferID == offer.id {
+                offerReviewFailure(offer, position: position)
+            }
+            if dismissalFailedOfferID == offer.id {
+                offerDismissalFailure(offer, position: position)
+            }
+        }
+        .padding(.vertical, 3)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(positionedAccessibilityLabel(
+            SkillReceiptPresentation.skillTitle(offer.skillID),
+            position: position))
+        .accessibilityIdentifier(
+            "settings-skill-proposal-\(offer.skillID)-\(offer.id.uuidString)")
+    }
+
+    private func offerControls(
+        _ offer: SkillOfferReviewItem,
+        position: SkillProposalAccessibilityPosition
+    ) -> some View {
+        VStack(alignment: .trailing, spacing: 5) {
+            Text(
+                offer.lastObservedAt,
+                format: .dateTime.month(.abbreviated).day().hour().minute())
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                offerReviewControl(offer, position: position)
+                offerDismissalControl(offer, position: position)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func offerReviewControl(
+        _ offer: SkillOfferReviewItem,
+        position: SkillProposalAccessibilityPosition
+    ) -> some View {
+        if offer.reason == .upcomingCalendarEvent {
+            Label("Review in menu bar", systemImage: "menubar.rectangle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(positionedAccessibilityLabel(
+                    L10n.text("Review in menu bar"),
+                    position: position))
+                .accessibilityIdentifier(
+                    reviewIdentifier("resident", offer: offer))
+        } else if reviewingOfferID == offer.id {
+            HStack(spacing: 5) {
+                ProgressView().controlSize(.small)
+                Text("Opening…")
+            }
+            .font(.caption)
+            .accessibilityIdentifier(
+                reviewIdentifier("progress", offer: offer))
+        } else if reviewFailedOfferID != offer.id {
+            Button("Review in context") { review(offer) }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(positionedAccessibilityLabel(
+                    L10n.format(
+                        "Review %@ in context",
+                        SkillReceiptPresentation.skillTitle(offer.skillID)),
+                    position: position))
+                .accessibilityIdentifier(
+                    reviewIdentifier("action", offer: offer))
+                .disabled(isLoading || isMutating)
+        }
+    }
+
+    @ViewBuilder
+    private func offerDismissalControl(
+        _ offer: SkillOfferReviewItem,
+        position: SkillProposalAccessibilityPosition
+    ) -> some View {
+        if dismissingOfferID == offer.id {
+            HStack(spacing: 5) {
+                ProgressView().controlSize(.small)
+                Text("Dismissing…")
+            }
+            .font(.caption)
+            .accessibilityIdentifier(
+                dismissalIdentifier("progress", offer: offer))
+        } else if dismissalFailedOfferID != offer.id {
+            Button("Dismiss") { dismiss(offer) }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(positionedAccessibilityLabel(
+                    L10n.format(
+                        "Dismiss %@",
+                        SkillReceiptPresentation.skillTitle(offer.skillID)),
+                    position: position))
+                .accessibilityIdentifier(
+                    dismissalIdentifier("action", offer: offer))
+                .disabled(isLoading || isMutating)
+        }
+    }
+
+    private func offerReviewFailure(
+        _ offer: SkillOfferReviewItem,
+        position: SkillProposalAccessibilityPosition
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Label(
+                "This proposal could not be opened. It remains available.",
+                systemImage: "exclamationmark.triangle")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .accessibilityIdentifier(
+                    reviewIdentifier("error", offer: offer))
+            Button("Try again") { review(offer) }
+                .font(.caption)
+                .accessibilityLabel(positionedAccessibilityLabel(
+                    L10n.text("Try again"),
+                    position: position))
+                .accessibilityIdentifier(
+                    reviewIdentifier("retry", offer: offer))
+                .disabled(isLoading || isMutating)
+        }
+    }
+
+    private func reviewIdentifier(
+        _ component: String,
+        offer: SkillOfferReviewItem
+    ) -> String {
+        "settings-skill-proposal-review-\(component)-\(offer.skillID)-\(offer.id.uuidString)"
+    }
+
+    private func offerDismissalFailure(
+        _ offer: SkillOfferReviewItem,
+        position: SkillProposalAccessibilityPosition
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Label(
+                "This proposal could not be dismissed. It remains available.",
+                systemImage: "exclamationmark.triangle")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .accessibilityIdentifier(
+                    dismissalIdentifier("error", offer: offer))
+            Button("Try again") { dismiss(offer) }
+                .font(.caption)
+                .accessibilityLabel(positionedAccessibilityLabel(
+                    L10n.text("Try again"),
+                    position: position))
+                .accessibilityIdentifier(
+                    dismissalIdentifier("retry", offer: offer))
+                .disabled(isLoading || isMutating)
+        }
+    }
+
+    private func dismissalIdentifier(
+        _ component: String,
+        offer: SkillOfferReviewItem
+    ) -> String {
+        "settings-skill-proposal-dismiss-\(component)-\(offer.skillID)-\(offer.id.uuidString)"
+    }
+
+    private func positionedAccessibilityLabel(
+        _ label: String,
+        position: SkillProposalAccessibilityPosition
+    ) -> String {
+        [
+            label,
+            L10n.format(
+                "Proposal %d of %d",
+                position.ordinal,
+                position.total)
+        ].joined(separator: ". ")
+    }
+
+    private func reasonText(_ reason: SkillOfferReason) -> String {
+        switch reason {
+        case .meetingSummaryReady:
+            L10n.text("A meeting summary is ready to use.")
+        case .upcomingCalendarEvent:
+            L10n.text("An upcoming calendar event can be prepared.")
+        case .confirmedCommitment:
+            L10n.text("A confirmed commitment can become a reminder.")
+        }
+    }
+
+    private func inputDataText(
+        _ dataClasses: Set<SkillInputDataClass>
+    ) -> String {
+        SkillInputDataClass.allCases
+            .filter(dataClasses.contains)
+            .map(inputDataName)
+            .formatted(.list(type: .and))
+    }
+
+    private func inputDataName(_ dataClass: SkillInputDataClass) -> String {
+        switch dataClass {
+        case .meetingDetails: L10n.text("meeting details")
+        case .meetingSummary: L10n.text("meeting summary")
+        case .transcript: L10n.text("transcript")
+        case .notes: L10n.text("notes")
+        case .companionHistory: L10n.text("Companion history")
+        case .commitment: L10n.text("confirmed commitment")
+        case .calendarEvent: L10n.text("calendar event")
+        case .selectedDestination: L10n.text("destination you select")
+        }
+    }
+}

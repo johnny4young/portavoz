@@ -146,7 +146,8 @@ private func sameMeetingSyncInstant(_ left: Date, _ right: Date) -> Bool {
 /// every live portable artifact, but never audio, local paths, embeddings,
 /// canonical people, model runs, jobs, receipts, secrets, or voiceprints.
 public struct MeetingSyncAggregate: Codable, Sendable {
-    public static let currentFormatVersion = 1
+    public static let currentFormatVersion = 2
+    public static let supportedFormatVersions = 1...currentFormatVersion
 
     public let formatVersion: Int
     public let meeting: MeetingSyncTimed<Meeting>
@@ -155,6 +156,7 @@ public struct MeetingSyncAggregate: Codable, Sendable {
     public let summaries: [MeetingSyncSummary]
     public let contextItems: [MeetingSyncTimed<ContextItem>]
     public let companionCards: [MeetingSyncTimed<CompanionCard>]
+    public let transcriptCorrections: [TranscriptCorrectionEvent]
 
     public init(
         meeting: MeetingSyncTimed<Meeting>,
@@ -162,7 +164,8 @@ public struct MeetingSyncAggregate: Codable, Sendable {
         segments: [MeetingSyncTimed<TranscriptSegment>],
         summaries: [MeetingSyncSummary],
         contextItems: [MeetingSyncTimed<ContextItem>],
-        companionCards: [MeetingSyncTimed<CompanionCard>]
+        companionCards: [MeetingSyncTimed<CompanionCard>],
+        transcriptCorrections: [TranscriptCorrectionEvent] = []
     ) {
         formatVersion = Self.currentFormatVersion
         self.meeting = meeting
@@ -171,6 +174,72 @@ public struct MeetingSyncAggregate: Codable, Sendable {
         self.summaries = summaries
         self.contextItems = contextItems
         self.companionCards = companionCards
+        self.transcriptCorrections = transcriptCorrections.sorted(
+            by: TranscriptCorrectionPolicy.precedes)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case formatVersion
+        case meeting
+        case speakers
+        case segments
+        case summaries
+        case contextItems
+        case companionCards
+        case transcriptCorrections
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        formatVersion = try container.decode(Int.self, forKey: .formatVersion)
+        guard Self.supportedFormatVersions.contains(formatVersion) else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .formatVersion,
+                in: container,
+                debugDescription: "Unsupported meeting aggregate format version.")
+        }
+        meeting = try container.decode(
+            MeetingSyncTimed<Meeting>.self,
+            forKey: .meeting)
+        speakers = try container.decode(
+            [MeetingSyncTimed<Speaker>].self,
+            forKey: .speakers)
+        segments = try container.decode(
+            [MeetingSyncTimed<TranscriptSegment>].self,
+            forKey: .segments)
+        summaries = try container.decode(
+            [MeetingSyncSummary].self,
+            forKey: .summaries)
+        contextItems = try container.decode(
+            [MeetingSyncTimed<ContextItem>].self,
+            forKey: .contextItems)
+        companionCards = try container.decode(
+            [MeetingSyncTimed<CompanionCard>].self,
+            forKey: .companionCards)
+        if formatVersion == 1 {
+            let legacyCorrections = try container.decodeIfPresent(
+                [TranscriptCorrectionEvent].self,
+                forKey: .transcriptCorrections) ?? []
+            guard legacyCorrections.isEmpty else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .transcriptCorrections,
+                    in: container,
+                    debugDescription: "Legacy meeting aggregates cannot contain corrections.")
+            }
+            transcriptCorrections = []
+        } else {
+            transcriptCorrections = try container.decode(
+                [TranscriptCorrectionEvent].self,
+                forKey: .transcriptCorrections)
+            guard transcriptCorrections == transcriptCorrections.sorted(
+                by: TranscriptCorrectionPolicy.precedes)
+            else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .transcriptCorrections,
+                    in: container,
+                    debugDescription: "Transcript corrections are not canonically ordered.")
+            }
+        }
     }
 }
 
@@ -211,7 +280,12 @@ public struct MeetingSyncEnvelope: Codable, Sendable {
 public enum MeetingSyncRemoteApplyResult: Equatable, Sendable {
     case applied
     case localChangePending(generation: Int)
+    case correctionConflict(localGeneration: Int)
     case deletionWon(discardedLocalGeneration: Int?)
+}
+
+private struct PendingTranscriptCorrectionConflict: Error {
+    let localGeneration: Int
 }
 
 extension MeetingStore {
@@ -265,44 +339,143 @@ extension MeetingStore {
         else {
             throw StorageError.invalidSyncState("unsupported remote sync envelope")
         }
-        return try await database.write { db in
-            let key = envelope.meetingID.rawValue.uuidString
-            let state = try MeetingSyncStateRecord.fetchOne(db, key: key)
-            let pendingGeneration = state.flatMap {
-                $0.localGeneration > $0.acknowledgedGeneration ? $0.localGeneration : nil
+        do {
+            return try await database.write { db in
+                try Self.applyRemoteMeetingSyncEnvelope(envelope, in: db)
             }
-
-            switch envelope.mutation {
-            case .delete:
-                try Self.applyRemoteMeetingDeletion(
-                    meetingID: envelope.meetingID,
-                    changedAt: envelope.changedAt,
-                    in: db)
-                try Self.settleRemoteMeetingMutation(
-                    meetingID: envelope.meetingID,
-                    changedAt: envelope.changedAt,
-                    isDeleted: true,
-                    in: db)
-                return pendingGeneration.map {
-                    .deletionWon(discardedLocalGeneration: $0)
-                } ?? .applied
-
-            case .upsert(let aggregate):
-                try Self.validateRemoteMeetingSyncAggregate(
-                    aggregate,
-                    meetingID: envelope.meetingID)
-                if let pendingGeneration {
-                    return .localChangePending(generation: pendingGeneration)
-                }
-                try Self.replaceWithRemoteMeetingSyncAggregate(aggregate, in: db)
-                try Self.settleRemoteMeetingMutation(
-                    meetingID: envelope.meetingID,
-                    changedAt: envelope.changedAt,
-                    isDeleted: false,
-                    in: db)
-                return .applied
-            }
+        } catch let conflict as PendingTranscriptCorrectionConflict {
+            return .correctionConflict(
+                localGeneration: conflict.localGeneration)
         }
+    }
+
+    private static func applyRemoteMeetingSyncEnvelope(
+        _ envelope: MeetingSyncEnvelope,
+        in db: Database
+    ) throws -> MeetingSyncRemoteApplyResult {
+        let key = envelope.meetingID.rawValue.uuidString
+        let state = try MeetingSyncStateRecord.fetchOne(db, key: key)
+        let pendingGeneration = state.flatMap {
+            $0.localGeneration > $0.acknowledgedGeneration
+                ? $0.localGeneration
+                : nil
+        }
+        switch envelope.mutation {
+        case .delete:
+            try applyRemoteMeetingDeletion(
+                meetingID: envelope.meetingID,
+                changedAt: envelope.changedAt,
+                in: db)
+            try settleRemoteMeetingMutation(
+                meetingID: envelope.meetingID,
+                changedAt: envelope.changedAt,
+                isDeleted: true,
+                in: db)
+            return pendingGeneration.map {
+                .deletionWon(discardedLocalGeneration: $0)
+            } ?? .applied
+        case .upsert(let aggregate):
+            return try applyRemoteMeetingSyncUpsert(
+                aggregate,
+                envelope: envelope,
+                state: state,
+                pendingGeneration: pendingGeneration,
+                in: db)
+        }
+    }
+
+    private static func applyRemoteMeetingSyncUpsert(
+        _ aggregate: MeetingSyncAggregate,
+        envelope: MeetingSyncEnvelope,
+        state: MeetingSyncStateRecord?,
+        pendingGeneration: Int?,
+        in db: Database
+    ) throws -> MeetingSyncRemoteApplyResult {
+        try validateRemoteMeetingSyncAggregate(
+            aggregate,
+            meetingID: envelope.meetingID)
+        guard let pendingGeneration else {
+            try replaceWithRemoteMeetingSyncAggregate(aggregate, in: db)
+            try settleRemoteMeetingMutation(
+                meetingID: envelope.meetingID,
+                changedAt: envelope.changedAt,
+                isDeleted: false,
+                in: db)
+            return .applied
+        }
+        guard state?.isDeleted != true, aggregate.formatVersion >= 2 else {
+            return .localChangePending(generation: pendingGeneration)
+        }
+        try mergePendingRemoteCorrections(
+            aggregate,
+            meetingID: envelope.meetingID,
+            localGeneration: pendingGeneration,
+            in: db)
+        let mergedGeneration = try MeetingSyncStateRecord.fetchOne(
+            db,
+            key: envelope.meetingID.rawValue.uuidString)?
+            .localGeneration ?? pendingGeneration
+        return .localChangePending(generation: mergedGeneration)
+    }
+
+    private static func mergePendingRemoteCorrections(
+        _ aggregate: MeetingSyncAggregate,
+        meetingID: MeetingID,
+        localGeneration: Int,
+        in db: Database
+    ) throws {
+        let localCorrections = try fetchTranscriptCorrectionHistory(
+            meetingID: meetingID,
+            in: db)
+        guard !localCorrections.isEmpty || !aggregate.transcriptCorrections.isEmpty else {
+            return
+        }
+        guard try hasCompatibleCorrectionBase(aggregate, meetingID: meetingID, in: db) else {
+            throw PendingTranscriptCorrectionConflict(localGeneration: localGeneration)
+        }
+        do {
+            _ = try mergeRemoteTranscriptCorrectionHistory(
+                aggregate.transcriptCorrections,
+                meetingID: meetingID,
+                in: db)
+        } catch is TranscriptCorrectionReplicaMergeError {
+            throw PendingTranscriptCorrectionConflict(localGeneration: localGeneration)
+        } catch is TranscriptCorrectionValidationError {
+            throw PendingTranscriptCorrectionConflict(localGeneration: localGeneration)
+        }
+    }
+
+    private static func hasCompatibleCorrectionBase(
+        _ remote: MeetingSyncAggregate,
+        meetingID: MeetingID,
+        in db: Database
+    ) throws -> Bool {
+        let key = meetingID.rawValue.uuidString
+        guard let localMeeting = try MeetingRecord.fetchOne(db, key: key),
+              localMeeting.deletedAt == nil,
+              remote.meeting.value.transcriptRevision == localMeeting.transcriptRevision
+        else { return false }
+        let localSegments = try meetingSyncSegments(meetingKey: key, in: db)
+        guard localSegments.count == remote.segments.count else { return false }
+        return zip(localSegments, remote.segments).allSatisfy { local, remote in
+            sameCorrectionBaseSegment(local.value, remote.value)
+        }
+    }
+
+    private static func sameCorrectionBaseSegment(
+        _ lhs: TranscriptSegment,
+        _ rhs: TranscriptSegment
+    ) -> Bool {
+        lhs.id == rhs.id
+            && lhs.meetingID == rhs.meetingID
+            && lhs.speakerID == rhs.speakerID
+            && lhs.channel == rhs.channel
+            && lhs.text == rhs.text
+            && lhs.language == rhs.language
+            && lhs.startTime == rhs.startTime
+            && lhs.endTime == rhs.endTime
+            && lhs.confidence == rhs.confidence
+            && lhs.isFinal == rhs.isFinal
     }
 
     private static func meetingSyncAggregate(
@@ -330,7 +503,10 @@ extension MeetingStore {
                 meetingKey: key,
                 in: db),
             contextItems: try meetingSyncContextItems(meetingKey: key, in: db),
-            companionCards: try meetingSyncCompanionCards(meetingKey: key, in: db))
+            companionCards: try meetingSyncCompanionCards(meetingKey: key, in: db),
+            transcriptCorrections: try fetchTranscriptCorrectionHistory(
+                meetingID: meetingID,
+                in: db))
     }
 
     private static func meetingSyncSpeakers(

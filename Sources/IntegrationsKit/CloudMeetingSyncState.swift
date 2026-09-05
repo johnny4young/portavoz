@@ -94,6 +94,55 @@ public struct CloudSyncDeferredReplay: Codable, Equatable, Sendable {
     public let payloadFileName: String
     public let payloadSHA256: String
     public let payloadByteCount: Int
+    /// A correction conflict cannot safely publish either replica. Keeping
+    /// this bit beside the protected remote payload makes the send fence
+    /// survive relaunch without teaching the transport about correction data.
+    public let blocksOutgoing: Bool
+
+    public init(
+        meetingID: MeetingID,
+        sourceDeviceID: UUID,
+        generation: Int,
+        changedAt: Date,
+        payloadFileName: String,
+        payloadSHA256: String,
+        payloadByteCount: Int,
+        blocksOutgoing: Bool = false
+    ) {
+        self.meetingID = meetingID
+        self.sourceDeviceID = sourceDeviceID
+        self.generation = generation
+        self.changedAt = changedAt
+        self.payloadFileName = payloadFileName
+        self.payloadSHA256 = payloadSHA256
+        self.payloadByteCount = payloadByteCount
+        self.blocksOutgoing = blocksOutgoing
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case meetingID
+        case sourceDeviceID
+        case generation
+        case changedAt
+        case payloadFileName
+        case payloadSHA256
+        case payloadByteCount
+        case blocksOutgoing
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        meetingID = try container.decode(MeetingID.self, forKey: .meetingID)
+        sourceDeviceID = try container.decode(UUID.self, forKey: .sourceDeviceID)
+        generation = try container.decode(Int.self, forKey: .generation)
+        changedAt = try container.decode(Date.self, forKey: .changedAt)
+        payloadFileName = try container.decode(String.self, forKey: .payloadFileName)
+        payloadSHA256 = try container.decode(String.self, forKey: .payloadSHA256)
+        payloadByteCount = try container.decode(Int.self, forKey: .payloadByteCount)
+        blocksOutgoing = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .blocksOutgoing) ?? false
+    }
 }
 
 public struct CloudMeetingSyncSnapshot: Codable, Equatable, Sendable {
@@ -106,8 +155,10 @@ public struct CloudMeetingSyncSnapshot: Codable, Equatable, Sendable {
     public var consentedAccountFingerprint: String?
     public var consentGrantedAt: Date?
     public var initialSeedRequestedAt: Date?
+    public var initialSeedPreparedAt: Date?
     public var initialSeedCompletedAt: Date?
     public var initialSeedAccountFingerprint: String?
+    public var initialSeedCursorMeetingID: MeetingID?
     public var engineStateData: Data?
     public var attempts: [CloudSyncAttempt] = []
     public var deferredReplays: [CloudSyncDeferredReplay] = []

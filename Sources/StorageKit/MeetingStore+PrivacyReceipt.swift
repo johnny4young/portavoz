@@ -7,15 +7,32 @@ extension MeetingStore: DataEgressEventRecorder {
     /// material to URLSession. Missing or unknown meetings fail closed.
     public func recordDataEgressEvent(_ event: DataEgressEvent) async throws {
         try await database.write { db in
+            try Self.validateDataEgressEvent(event)
             guard let meetingID = event.meetingID else {
-                throw StorageError.invalidDataEgressEvent(
-                    "a durable receipt requires a meeting identity")
+                try Self.insertGlobalDataEgressEvent(event, in: db)
+                return
             }
             guard try MeetingRecord.exists(
                 db, key: meetingID.rawValue.uuidString)
             else { throw StorageError.meetingNotFound(meetingID) }
-            try Self.validateDataEgressEvent(event)
             try DataEgressEventRecord(event, meetingID: meetingID).insert(db)
+        }
+    }
+
+    /// Cross-library receipts are intentionally separate from per-meeting
+    /// receipts: one multi-meeting Ask must not make the first citation look
+    /// like the sole material sent to the selected local engine.
+    public func globalDataEgressEvents() async throws -> [DataEgressEvent] {
+        try await database.read { database in
+            let events = try GlobalDataEgressEventRecord
+                .order(Column("attemptedAt"), Column("rowid"))
+                .fetchAll(database)
+                .map { try $0.event }
+            for event in events {
+                try Self.validateDataEgressEvent(event)
+                _ = try Self.globalModelID(for: event)
+            }
+            return events
         }
     }
 
@@ -103,9 +120,9 @@ extension MeetingStore: DataEgressEventRecorder {
         let required = [event.destinationHost, event.providerID]
         guard required.allSatisfy({
             !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }) else {
+        }), event.attemptedAt.timeIntervalSinceReferenceDate.isFinite else {
             throw StorageError.invalidDataEgressEvent(
-                "destination or provider identity is blank")
+                "destination, provider, or attempt time is invalid")
         }
         guard event.destinationHost.caseInsensitiveCompare(event.providerID) == .orderedSame else {
             throw StorageError.invalidDataEgressEvent(
@@ -117,5 +134,53 @@ extension MeetingStore: DataEgressEventRecorder {
             throw StorageError.invalidDataEgressEvent(
                 "destination scope does not match the destination host")
         }
+    }
+
+    private static func insertGlobalDataEgressEvent(
+        _ event: DataEgressEvent,
+        in database: Database
+    ) throws {
+        try GlobalDataEgressEventRecord(
+            event,
+            modelID: globalModelID(for: event)
+        ).insert(database)
+    }
+
+    private static func globalModelID(
+        for event: DataEgressEvent
+    ) throws -> String? {
+        let modelID: String?
+        switch event.operation {
+        case .askAnswerGeneration:
+            guard event.destinationScope == .localDevice,
+                  event.dataClassification == .meetingAnswerMaterial
+                    || event.dataClassification == .publicWebAnswerMaterial,
+                  event.consentSource == .summaryEngineSettings,
+                  let value = event.modelID?.trimmingCharacters(
+                      in: .whitespacesAndNewlines),
+                  !value.isEmpty
+            else {
+                throw StorageError.invalidDataEgressEvent(
+                    "global receipts require bounded local Ask metadata")
+            }
+            modelID = value
+        case .webSourceRetrieval:
+            guard event.dataClassification == .publicWebSourceRequest,
+                  event.consentSource == .explicitWebAsk,
+                  event.modelID == nil
+            else {
+                throw StorageError.invalidDataEgressEvent(
+                    "web receipts require explicit content-free metadata")
+            }
+            modelID = nil
+        case .companionKnowledgeAnswer,
+             .summaryGeneration,
+             .publishGitHubGist,
+             .createGitHubIssue,
+             .createLinearIssue:
+            throw StorageError.invalidDataEgressEvent(
+                "global receipts reject meeting-owned operations")
+        }
+        return modelID
     }
 }

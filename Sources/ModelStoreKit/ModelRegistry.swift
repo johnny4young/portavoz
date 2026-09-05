@@ -218,6 +218,71 @@ public enum ModelCatalog {
         license: "CC-BY-4.0"
     )
 
+    /// Research-only challenger for bilingual live transcription (D355).
+    /// The Latin 1120 ms tier is deliberately absent from `recommended`:
+    /// Parakeet remains the serving default until owner-reviewed EN/ES field
+    /// evidence and an OpenMDW-1.1 distribution review both pass.
+    ///
+    /// This is FluidAudio's lean B1 layout: native Swift computes the mel
+    /// spectrogram and the fused decoder+joint replaces the two bare bundles.
+    /// Loading any other upstream files would add download/memory cost without
+    /// participating in this decode path.
+    public static let nemotronLatin1120 = ModelDescriptor(
+        id: "nemotron-3.5-asr-streaming-multilingual-0.6b-latin-1120ms",
+        tasks: [.liveTranscription],
+        displayName: "Nemotron 3.5 ASR Latin 1120 ms (CoreML)",
+        folderName: "nemotron-3.5-asr-latin-1120ms",
+        resolveBase: URL(
+            string:
+                "https://huggingface.co/FluidInference/Nemotron-3.5-ASR-Streaming-Multilingual-0.6b-CoreML/resolve/1a41b75758b0337ff67db7d5408280aaaf23074e/latin/1120ms"
+        )!,
+        revision: "1a41b75758b0337ff67db7d5408280aaaf23074e",
+        artifacts: [
+            ModelArtifact(
+                path: "encoder.mlmodelc/analytics/coremldata.bin",
+                sha256: "5488ed81fa1e370dd5411218d9b0e0562d01ca33c45b9ea1935bab6c8e8dc943",
+                sizeBytes: 243),
+            ModelArtifact(
+                path: "encoder.mlmodelc/coremldata.bin",
+                sha256: "619b2ef038eb3004e08be78bf068a54a8b9e1943928810b2ea48adaf211e6c35",
+                sizeBytes: 572),
+            ModelArtifact(
+                path: "encoder.mlmodelc/model.mil",
+                sha256: "a6341253a353e57d546060d5a2add769229be06781200216be866d6cdecb382a",
+                sizeBytes: 998_158),
+            ModelArtifact(
+                path: "encoder.mlmodelc/weights/weight.bin",
+                sha256: "e3dbd37659c7ef51d2dc691afac42fbdd1f04998fa62816ff0f2eebec5cc3d01",
+                sizeBytes: 564_646_848),
+            ModelArtifact(
+                path: "decoder_joint.mlmodelc/analytics/coremldata.bin",
+                sha256: "0908aa04510db0fde1188519ae0a067789a7826613e8f96c47832ded7d0de131",
+                sizeBytes: 243),
+            ModelArtifact(
+                path: "decoder_joint.mlmodelc/coremldata.bin",
+                sha256: "468b807cf84fff48e2647a842a52b98e78048d1c10847d4cfb4e87e32cd733f7",
+                sizeBytes: 454),
+            ModelArtifact(
+                path: "decoder_joint.mlmodelc/model.mil",
+                sha256: "f77316ac52546c2cdd96aa56d53c51723ea09e4bc366467451bd62c78e7e48d5",
+                sizeBytes: 15_791),
+            ModelArtifact(
+                path: "decoder_joint.mlmodelc/weights/weight.bin",
+                sha256: "5792bda2b88daae2ccb66689069da286e801f7bd168a95aa430590efa93e8e04",
+                sizeBytes: 22_498_714),
+            ModelArtifact(
+                path: "metadata.json",
+                sha256: "bac793dab7167a8d5a6ea2d8a2bfe81066d6ae4759bd429128723926b7b21b24",
+                sizeBytes: 3_063),
+            ModelArtifact(
+                path: "tokenizer.json",
+                sha256: "6ab62f1a8c2352b0a8359e2f749eff49ea108e02fddb2606fc673678e6ffde06",
+                sizeBytes: 47_848)
+        ],
+        minimumRAMGB: 8,
+        license: "OpenMDW-1.1"
+    )
+
     /// pyannote community-1 segmentation + WeSpeaker v2 embeddings compiled
     /// for CoreML by FluidInference — the M3 diarization pair (~14 MB).
     /// Loaded via `DiarizerModels.load(localSegmentationModel:local…)`, which

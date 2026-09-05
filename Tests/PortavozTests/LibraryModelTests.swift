@@ -206,10 +206,12 @@ private struct LibraryModelFixture {
         actionItem = ActionItem(text: "Enviar presupuesto")
         importedID = MeetingID()
         eventToday = UpcomingEvent(
+            id: "event-today",
             title: "Planning",
             startDate: Date(timeIntervalSince1970: 1_789_010_000),
             attendees: ["Ana"])
         eventTomorrow = UpcomingEvent(
+            id: "event-tomorrow",
             title: "Review",
             startDate: Date(timeIntervalSince1970: 1_789_100_000),
             attendees: ["Luis"])

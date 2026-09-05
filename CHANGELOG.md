@@ -4,6 +4,41 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## September 5, 2026
+
+- **🛑 Automatic briefs respect recording pauses** — Late calendar work can no longer recreate a paused timer or replace the next scheduled preparation.
+- **🌐 Live translation respects language changes** — Cancelled work can no longer replace the current language status or clear a newer download choice.
+
+## September 4, 2026
+
+- **🔎 Search setup keeps its progress** — Returning to Settings no longer lets an older availability check reopen preparation or replace its ready state.
+
+## August 30, 2026
+
+- **🧭 Citation jumps wait for playback** — Command-palette answers keep their exact meeting moment until the destination player is truly ready.
+
+## August 29, 2026
+
+- **🔄 Automatic briefs resume after rapid recording changes** — A delayed recording signal can no longer leave private pre-meeting preparation waiting until another calendar change.
+- **🧱 Corrupt issue evidence fails safely** — An impossible meeting timestamp can no longer close Portavoz while you prepare a reviewed GitHub issue.
+- **⚡ Cancelled automatic-action waits release immediately** — Leaving a request no longer keeps its Settings waiter alive, while the shared private brief can still finish safely in the background.
+- **🛑 Automatic-action errors lock stale controls** — Even cancellation-shaped local failures now require one verified reload before another automatic-rule change can run.
+- **🧭 Automatic actions never fake success** — A failed local reconciliation now stays queued and Settings asks you to reload instead of pretending the automatic brief was verified.
+- **🤖 Automatic briefs stay under your control** — Create, pause, inspect, retry, and delete one private local pre-meeting rule, with every prepared brief and run status visible in Suggested actions.
+- **🐙 Review-first GitHub issues** — Turn one cited pending action item into an exact issue only after reviewing its repository, title, body, and evidence.
+- **✨ Live help survives missing models** — Keep useful rolling highlights on Sequoia or Tahoe while local AI refines them only when ready and live translation recovers without stale captions.
+- **💬 Apuntador reaches every supported Mac** — Detect English and Spanish questions privately on Sequoia or Tahoe, with honest question-only cards whenever no answer engine is available.
+- **⚙️ Background work stays visible** — Follow recovery, meeting processing, Spotlight, semantic search, and memory-graph activity from one private status center, with recording always taking priority.
+
+## August 28, 2026
+
+- **🎯 New objectives stay in view** — Add a live meeting or interview objective and Portavoz brings the accepted row into view automatically, even in a compact recording window.
+
+## August 27, 2026
+
+- **🛠️ Transcript fixes stay reachable** — Open text, speaker, split, merge, and hide corrections reliably even in a compact meeting window, without losing the immutable original evidence.
+- **🎯 Interview objectives stay identifiable** — Newly added objectives remain readable and reachable by assistive technologies throughout the live interview flow.
+
 ## 0.7.0 — July 28, 2026
 
 **Live help, safer recordings.**
@@ -15,6 +50,180 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **A clearer review loop** — reversible clear playback, dismissible suggestions, enhanced notes, recaps, subtitles, chapters, privacy receipts, and actionable processing recovery make finished meetings easier to trust and use.
 - **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
 - **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
+
+## August 24, 2026
+
+- **✨ Proactive help, never autopilot** — Opt in per recording for source-disclosed nudges about open objectives or measured talk balance, pause anytime, and know no model, Web request, or action runs behind the card.
+- **📝 Ask remembers what you wrote** — Search only your explicit raw notes, get a locally generated answer with exact author, meeting, and time sources, and keep AI-enhanced notes out of the evidence.
+- **🎙️ Interview answers stay grounded** — See the current question, set bounded objectives, and request a private answer backed by exact earlier captions—or get an honest abstention.
+- **🌐 Ask reads the public page you choose** — Approve one direct web request, get a locally generated answer with clickable citations and freshness, and keep your question and meetings away from the page.
+- **🔎 Ask searches exactly where you choose** — Keep a question inside your Library or one selected meeting, while Web stays visibly unavailable instead of silently searching somewhere else.
+
+## August 23, 2026
+
+- **💬 Ask uses the local engine you chose** — Get grounded manual answers from Apple Intelligence, Ollama, or the built-in MLX model, including on Sequoia, while exact passages remain available when generation cannot finish.
+- **⚡ Ask answers arrive while they are written** — Replace a pending question immediately, read bounded local answer progress, and keep exact evidence when generation times out or is unavailable.
+- **🧠 Built-in summaries keep room to finish** — Long meetings now reserve guided-generation headroom instead of failing at Apple Intelligence's context limit.
+- **✨ Suggested actions explain themselves** — Settings now names suggested actions plainly in English and Spanish and makes clear that nothing runs before you review and confirm it.
+- **♿ Proposed Skills stay distinguishable** — Repeated offers for the same Skill now have unique English and Spanish assistive-control names without revealing their meeting.
+- **🔄 Proposed Skills stay current** — Refresh verified offers without reopening Settings or adding background polling.
+- **🧹 Empty Skill history recovers in one click** — Clear Skill and time filters from a no-match activity view without losing its lifecycle scope.
+- **📜 Skill history only promises what exists** — “Show more” now appears only when another matching run is really available, avoiding a pointless reload at exactly 20 results.
+- **🕒 Skill history stays time-focused** — Limit activity to the past day, week, or month without loading unrelated runs.
+- **🔎 One Skill, exact history** — Filter activity by an available Skill without losing lifecycle scope, bounded expansion, or truthful empty results.
+- **🔄 Skill activity refreshes without losing your place** — Re-read the selected activity view on demand while keeping its current 20- or 50-run window.
+
+## August 22, 2026
+
+- **📜 Older Skill runs stay within reach** — Expand any activity view from the newest 20 receipts to a safe 50-run window only when you ask.
+- **🔄 Skill controls recover in place** — If a control change cannot be verified, reload durable policy without closing Settings or repeating a change that may already have committed.
+- **🧭 Skill receipt evidence survives unrelated policy trouble** — Historical source review and outside-outcome guidance stay available when execution policy cannot be read, while local recovery still waits for verified current controls.
+- **📅 Changes since a meeting stay exact** — Choose one confirmed topic and one exact meeting in Ask to see every later confirmed decision replacement, with both sides and their original proof.
+- **🛑 Active blockers reveal their proof** — Open one exact current commitment in Ask, see every confirmed decision blocking it, and jump to the evidence that established the blocker.
+- **🔁 Decision changes keep both sides of the story** — Choose one exact confirmed topic in Ask, see which confirmed decision replaced which, and open the current evidence without losing the earlier source.
+
+## August 21, 2026
+
+- **🕰️ First topic memory opens its proof** — Choose one exact confirmed topic in Ask, see the first discussion you explicitly confirmed for it, and jump straight to the meeting moment that established it.
+- **🧭 Confirmed decisions stay filed by topic** — Choose one exact confirmed topic in Ask and review its current source-backed decisions without identity guessing or Apple Intelligence, with every result linked to the meeting moment that proves it.
+- **🧠 Confirmed commitments answer without guessing** — Choose one exact confirmed person in Ask and review their current source-backed commitments, even without Apple Intelligence, with every result linked to the meeting moment that proves it.
+- **🧭 Skill receipts reopen their source** — Review a verified non-failed run in its exact meeting or commitment without running it again, even while Skills are paused; calendar receipts stay honestly in the menu bar.
+- **🛡️ Unreadable voice data stays protected** — Portavoz no longer replaces encrypted voice identities when their key or file cannot be opened, and Settings keeps an explicit retry or reset available without claiming anything changed.
+
+## August 20, 2026
+
+- **🔎 Ask keeps tied evidence in a stable order** — Repeating the same local question now returns equally ranked meeting evidence in the same order, keeping citations predictable.
+
+## August 13, 2026
+
+- **🧭 Skill activity stays truthful while it refreshes** — Changing views or revoking approval hides old rows immediately, keeps independently verified controls available, and names empty results clearly.
+
+## August 12, 2026
+
+- **⌨️ Skill receipts return you to the exact row** — Close receipt details with Escape and continue from the same run with keyboard or assistive focus instead of losing your place.
+- **♻️ Failed local Skills return to safe review** — Open a recoverable failed receipt back in its exact meeting or commitment without rerunning it; calendar recoveries stay in the menu bar, and uncertain external outcomes remain verification-only.
+- **🧭 Review a proposed Skill where its proof lives** — Jump from Settings back to the exact meeting or commitment context without running anything, while calendar briefs stay honestly in the menu bar and a failed jump keeps the proposal available.
+- **🛑 Revoke a waiting Skill before it starts** — Cancel one confirmed run from its receipt before handoff; Portavoz records the cancellation, while an unverified change keeps the waiting run visible for retry.
+- **🧹 Dismiss a proposed Skill once** — Decline an inert proposal from Settings without exposing its meeting or calendar identity; it stays gone when the original surface refreshes, while an unverified change keeps the row available.
+- **✨ Proposed Skills explain themselves before you act** — Settings now shows why a real meeting, commitment, or calendar surface proposed each Skill and the exact data categories it may use, without storing the title, transcript, preview, destination, or recipient.
+- **🗂️ Skill activity finds the runs that need you** — Switch between recent, waiting, attention, and completed Skill runs without stale rows or scanning the full execution history.
+- **🧾 Skill receipts explain what happened** — Open any recent Skill run to see its content-free confirmation, attempts, failures, retries, and completion timeline without exposing meeting material or running anything again.
+- **🧩 Split and merged transcript fixes stay searchable** — Search, Ask, and Spotlight now follow the rows you actually see, while every result keeps its exact accepted source evidence and undo restores the original matches.
+
+## August 11, 2026
+
+- **🛡️ Skill switches no longer look like sharing consent** — Settings now distinguishes actions with no direct network handoff from Skills that may share outside Portavoz, while reminding you that every run still requires approval.
+- **✨ Semantic search prepares when you choose** — Intelligence Settings now shows whether Apple's private bilingual search assets are ready and lets you prepare them explicitly, while exact search keeps working before, during, or after a failed attempt.
+- **🎭 Apuntador rechecks your transcript fixes** — When an answer becomes stale, refresh the complete set on demand from the corrected transcript; Portavoz keeps the previous cards if the model or final save cannot finish safely.
+- **🧠 Semantic search learns your transcript fixes** — Corrected wording becomes privately searchable after ordinary background indexing, while undo instantly restores the accepted result.
+- **🔎 Spotlight respects your transcript fixes** — Corrected wording replaces the stale text in private system search, outdated summaries stop matching, and undo restores the accepted material.
+
+## August 10, 2026
+
+- **🔗 Secret Gists publish only what you approve** — Review the exact Markdown and audience warning, publish one unlisted GitHub Gist, and keep an honest local receipt even when the remote outcome cannot be proved.
+- **🕒 Skill approvals now really expire** — Leaving a preview open no longer renews its 15-minute confirmation window each time you retry; review a fresh proposal before anything can run.
+- **✉️ Email recaps stop at your Send button** — Review the exact subject and body, choose recipients in your email app, and keep Portavoz from sending on its own.
+- **🔎 Your private work is native in Spotlight** — Find meetings, canonical people, and confirmed commitments through one protected local index on Sequoia and Tahoe, without duplicate meeting results or exposing extra evidence fields.
+
+## August 9, 2026
+
+- **🧭 Open exact work from Shortcuts** — Choose a meeting, person, or confirmed commitment and Portavoz opens its exact private destination with clear recovery if it changed.
+- **⏹️ Stop a recording from Siri or Shortcuts** — Portavoz now exposes a native Stop action beside Start, brings the live session forward, prevents competing stops, and tells you exactly what to do when capture is not ready or needs recovery.
+- **⏰ Commitments can become reminders** — Preview one exact confirmed commitment, grant Reminders access only when you choose, verify the destination list, and keep a durable local receipt after creation.
+- **🗓️ Your next meeting comes with a brief** — The menu bar now proposes one exact cited preparation for the next calendar event; review it before anything runs, dismiss it for that event, or confirm it locally and keep a durable receipt in Skills Settings.
+- **🔁 A failed Skill can really try again** — If a local draft handoff fails, its reason stays beside the confirmation and retry keeps the original durable attempt instead of getting blocked as a duplicate.
+- **🎙️ First Listen stops when you move on** — Continuing or skipping setup now closes its microphone and Tahoe caption work when you leave the step; cold Apple speech preparation also finishes before the mic opens, so it cannot build an unseen audio backlog.
+- **🛟 A broken library no longer closes Portavoz** — If the database cannot open, Portavoz now stays in a focused recovery screen where you can retry, save a verified copy, or export private launch diagnostics while the original library remains untouched.
+- **⚡ Large libraries answer semantic searches faster** — Ask and Library now reuse macOS's file-backed database pages on internal storage, cutting the measured 100,000-vector p95 from 126–129 ms to 63–67 ms without loading the corpus into app memory.
+- **🎛️ One place to control every Skill** — Settings now shows what Portavoz can run today, what is still planned, a global pause, individual switches, and recent receipts. Pause never forgets your choices, and a disabled Skill is checked again before anything runs.
+- **⌨️ Global dictation handles unusual keyboard sources safely** — A missing, wrong-typed, or truncated third-party keyboard-layout property now falls back to the standard paste shortcut instead of risking an abrupt exit.
+- **🧾 Skill previews now mean exactly what they show** — If a meeting changes while a skill confirmation is open, Portavoz asks you to review the fresh result instead of copying different text; a rejected clipboard write is reported as a failure, and a run cannot be dismissed while it is already executing.
+
+## August 8, 2026
+
+- **✳️ Portavoz now proposes, you confirm** — A processed meeting sprouts a sparkles menu with its first skills: draft the recap onto your clipboard or export a text-only package, each behind a preview of the exact result, an explicit confirmation, and a durable receipt in the meeting's trust rail. Decline once and it never asks again; nothing ever leaves your Mac.
+
+## August 7, 2026
+
+- **↩️ Un-file a decision from a topic** — The confirmed badge on a decision now opens a menu where you can take back a topic link you no longer stand behind; the decision stays confirmed, and the history keeps the retraction.
+- **🔔 Reminders heal themselves after you flip notifications** — If you deny notifications and later allow Portavoz in System Settings, coming back to the app is enough: reminders notice and start scheduling, with a direct button to the right Settings pane when they are off.
+- **🧠 The meeting memory graph rebuilds in seconds, not minutes** — A full rebuild of the longitudinal memory graph on a 10,000-meeting library dropped from about 18 minutes to under half a minute, so answers come back sooner after an update resets it.
+- **🔎 Corrected lines stay findable** — Fix a word in a transcript and search now finds the line by its corrected text instead of losing it, the stale wording stops matching, and changing only who said a line no longer hides it from search.
+- **✅ Decisions you can confirm and file by topic** — Turn a generated decision into confirmed meeting truth with one click, optionally naming the topic it is about, and ask later what was decided about that topic knowing only confirmed decisions answer.
+
+## August 6, 2026
+
+- **⌨️ ⌘K always answers** — Pressing Enter in the command palette now always produces an answer or an honest failure, instead of occasionally leaving the results on screen with nothing happening.
+- **🗣️ Live speaker names stay on the right line** — Who-said-what during the meeting is now placed by the recording's own clock, so labels no longer drift earlier as the meeting goes on.
+- **📁 A folder move that fails leaves your library exactly as it was** — If moving your recordings folder cannot finish, Portavoz puts everything back where it was instead of leaving recordings in a place it can no longer find — and if it genuinely cannot undo the move, it tells you how many recordings are in which folder instead of claiming nothing was lost.
+- **🔇 A damaged audio file keeps every channel** — When an imported or compressed file is missing part of its audio, Portavoz now still transcribes the part it could not fully inspect instead of treating it as silence.
+- **⚡ Heavily corrected meetings open fast again** — Meetings with hundreds of edits no longer slow down every time you open them.
+- **🎙️ A transcription hiccup at Stop no longer costs you the ending** — If live transcription fails while the recording is being finalized, Portavoz now re-transcribes from the saved audio instead of keeping only the part it managed to hear.
+- **🛡️ Moving your recordings folder waits for the meeting** — Changing the recordings location while you are still recording is now refused with a clear message instead of moving the file the recording is being written into.
+- **⏳ Processing no longer gets stuck after a crash** — If Portavoz is quit or crashes while a meeting is still being processed, the work now resumes on its own instead of leaving the meeting spinning until you relaunch twice.
+- **▶️ Opening a meeting no longer quits Portavoz** — Recordings with rapid back-and-forth turns now open and play normally instead of closing the app when clear playback ducked between turns too quickly to be possible.
+- **✨ Your automatic summary stops going missing** — When the automatic pass loses track of a transcript it just finished, Portavoz retries it against the saved meeting instead of quietly giving up, and says so beside Generate summary whenever a summary really is not coming.
+
+## August 3, 2026
+
+- **📊 Private quality learns from your reviews** — See a local 90-day advisory scorecard for kept suggestions, owner accuracy, evidence coverage, and time to confirm without exposing meeting text or automating your decisions.
+
+## August 2, 2026
+
+- **🧭 Suggestions stay suggestions** — Triage evidence-backed generated work across meetings, dismiss or defer it, and reopen the exact source before confirming anything.
+- **🧹 Clearing a reminder now sticks** — Dismiss a private commitment alert from Notification Center and Portavoz remembers that choice instead of silently scheduling it again.
+- **⏰ Snooze without moving the deadline** — A private commitment alert can remind you again in 15 minutes while its confirmed due date and local history remain intact.
+- **📝 Meeting review stays clickable** — Long summaries, notes, and commitment reviews now scroll above the transcript, while transcript corrections and the playback dock keep separate, reliable pointer targets.
+- **🔔 Reminder alerts return to Radar** — Tap a generic local due-date alert to open the private Commitment Radar; exact delivery is recorded once without exposing commitment text or reviving stale work.
+- **🔔 Private reminders wait for your permission** — Enable generic local alerts only for confirmed due commitments from Radar; normal launch never asks or polls in the background.
+- **✅ Radar actions keep history** — Complete, restore, or change a confirmed commitment's due date directly from Commitment Radar while Portavoz keeps every change local and traceable.
+- **🎯 Commitment Radar keeps promises in view** — Filter confirmed work by owner, due date, or activity, inspect its source and history, and reopen the exact source meeting without mixing in unconfirmed AI suggestions.
+- **🙋 Commitments know when they are yours** — The confirmation editor now distinguishes “Me” from an exact participant and from no owner, so personal work stays explicit across review and future follow-up.
+- **✅ Commitments wait for your confirmation** — Review the exact transcript evidence, edit ownership or deadlines, and confirm, defer, or dismiss a proposed commitment without turning an AI suggestion into user truth.
+- **📤 Corrected words travel safely** — Markdown, PDF, SRT, WebVTT, terminal, and Gist exports now use the corrected reading, can disclose correction provenance on request, and keep every playback time tied to the original recording.
+
+## August 1, 2026
+
+- **🔄 Transcript fixes keep AI honest** — Editing a transcript now marks older summaries and Apuntador answers as outdated, regenerates summaries from the corrected words on request, and keeps stale corrected lines out of search instead of presenting them as current.
+- **✂️ Shape the transcript, keep the source** — Split a line, explicitly merge adjacent speech, or hide noise while Portavoz preserves the accepted recording and keeps every hidden line ready to restore.
+- **✏️ Fix the transcript without losing the recording** — Correct a line or its speaker from Meeting Detail, inspect the immutable original and correction history, and undo later without rewriting evidence; every edit keeps a durable lineage for downstream features.
+- **⚡ Long transcripts stay on the right line** — Playback, chapter jumps, and citations now use one indexed transcript snapshot, so large meetings stay synchronized and external search results reveal the matching row even while audio is still loading.
+- **✅ One trustworthy task list** — A generated `Action Items` or `Pendientes` appendix no longer appears beside the same typed To-dos; older summaries without typed tasks still keep every original line.
+
+## July 31, 2026
+
+- **⚡ Ask shows evidence before the answer** — Exact bilingual citations appear immediately while local semantic matching and answer generation continue, with clear progress and cancellation.
+- **🪶 Long recordings finish without a memory surge** — Capture now reuses bounded audio buffers and streams final checksums in short-lived blocks, so multi-hour Stop preserves every frame without retaining a recording-sized heap.
+- **🛟 Library backups survive a restart** — If Portavoz closes during a whole-library Markdown backup, the next launch now validates the exact saved work and resumes without overwriting or republishing completed files; ambiguous or conflicting evidence stays untouched instead of being guessed safe.
+
+## July 30, 2026
+
+- **🧹 Crashed backups clean up privately** — Portavoz now removes abandoned current-format backup stages after a terminated export while leaving another running app instance untouched.
+- **⏸️ Backups step aside mid-export** — Starting a recording now pauses a whole-library Markdown backup at a clean checkpoint and resumes from the same library snapshot without exporting completed meetings twice.
+- **📚 Backups wait for the meeting** — A whole-library Markdown backup requested during recording now stays pending before reading your library and resumes automatically after Stop without asking for the folder again.
+- **☁️ iCloud catch-up protects live calls** — Including an existing library now yields to active recording and resumes from a durable checkpoint instead of competing with capture.
+- **🔄 Semantic recall resumes by itself** — Portavoz now continues pending local semantic indexing after launch, meeting changes, and recording completion, using only Apple language assets already installed on the Mac and never a background polling timer.
+- **⏸️ Semantic backfill yields to recording** — Starting, active, and finishing capture now stop new local indexing batches; an admitted batch commits before pausing, and its remaining rows resume later without losing exact search evidence.
+- **🧭 Semantic search shares the work** — Library and Ask now use one local indexing lane, avoiding duplicate background AI work while exact search stays instant.
+- **〰️ Waveforms stop when you leave** — Closing a long meeting now cancels obsolete full-audio waveform work, so repeated review navigation stays responsive without changing the recording.
+- **🪶 Long meetings keep their footing** — Live paragraphs and talk balance now do fixed recent-window work while Portavoz still keeps the complete transcript for Stop, recovery, and Refine.
+- **🎚️ Hear distortion before it harms the transcript** — Portavoz now warns when the other participants' incoming audio stays at the digital ceiling, so you can fix the call source before live captions lose more accuracy.
+- **🧭 One question, one Apuntador card** — A growing live question now updates its existing answer instead of leaving near-duplicate or contradictory cards, and generated questions use normal sentence case instead of headline-style capitalization.
+- **✅ Decisions are not tasks** — Speaker-prefixed decision restatements no longer reappear as action items; only concrete future commitments survive as work to do.
+- **📝 Live summaries do less and stay coherent** — Captions and notes now wake one bounded summary cycle instead of a permanent timer; long-call backlog is processed in small batches, and a failed or cancelled pass cannot leave half-applied summary state.
+- **🧭 Apuntador keeps long calls light** — Live question help now runs one answer at a time and retains only the newest waiting question; turning it off, stopping, or starting another recording cancels obsolete work before it can appear.
+- **⚡ Live translation wakes only when needed** — New captions, language changes, and download approval now wake translation immediately; small batches surface the first translated lines sooner without a permanent background poll.
+
+## July 29, 2026
+
+- **⚡ Recording meters stay light** — Portavoz now measures each saved audio chunk once and keeps only the newest visual level update, so long calls stay responsive without dropping audio or weakening microphone and system-audio warnings.
+- **🎙️ Large AI tasks yield to live recording** — While a recording is protected, Portavoz avoids keeping Whisper and the built-in MLX summary model loaded together on unclassified or constrained Macs: an idle model yields immediately, while a busy one gives you clear guidance to finish the recording first.
+- **🧹 Idle AI yields under pressure** — When macOS reports memory or serious thermal pressure, Portavoz immediately unloads only idle on-device model runtimes; active recordings, Refine, Ask, and summaries keep their exact leases until they finish.
+- **🧠 Ask stays warm between questions** — Library semantic search and Ask now share one on-device language model per Portavoz process, avoiding repeated setup while exact per-operation leases prevent release during indexing or retrieval.
+- **👥 Speaker memory stays meeting-scoped** — Live captions, Refine, imports, and voice suggestions now reuse verified Core ML weights without reusing a meeting's speaker database, preventing one conversation's clusters or enrolled identity snapshot from leaking into another.
+- **🧠 Stable Whisper handoffs** — Refine and Import now keep the exact selected quality model until their work finishes, so another operation or Settings change cannot swap the engine midway through a transcript.
+- **🎧 Audio-device switches stay crash-free** — Moving between Mac speakers, the built-in mic, AirPods, and other routes now retires the old audio graphs before fresh ones take over; burst notifications cannot reinstall the same mic tap or race Stop, and Portavoz keeps the original meeting timeline.
+- **🎙️ Start asks before touching the mic** — A fresh install now resolves the one-time macOS microphone permission before Portavoz prepares the audio device, avoiding a recording screen that can remain stuck while Core Audio waits.
 
 ## July 27, 2026
 

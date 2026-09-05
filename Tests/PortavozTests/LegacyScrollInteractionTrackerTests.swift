@@ -5,7 +5,7 @@ import XCTest
 
 @MainActor
 final class LegacyScrollInteractionTrackerTests: XCTestCase {
-    func testCoordinatorObservesOnlyItsScrollViewUntilDisconnected() {
+    func testCoordinatorObservesOnlyItsScrollViewUntilDisconnected() async {
         let ownedScrollView = NSScrollView()
         let unrelatedScrollView = NSScrollView()
         var interactions = 0
@@ -31,7 +31,7 @@ final class LegacyScrollInteractionTrackerTests: XCTestCase {
         XCTAssertEqual(interactions, 1)
     }
 
-    func testReconnectStopsObservingThePreviousScrollView() {
+    func testReconnectStopsObservingThePreviousScrollView() async {
         let previousScrollView = NSScrollView()
         let currentScrollView = NSScrollView()
         var interactions = 0

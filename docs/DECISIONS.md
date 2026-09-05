@@ -101,7 +101,7 @@ Lightweight ADR format: each entry is a decision made, its context, and its rati
 ## D18 — M4 summaries: on-device Foundation Models with convergent map-reduce; explicit OpenAI-compatible BYOK
 
 **Context:** M4 requires structured summaries in < 30 s, bilingual ES/EN with the glossary intact. Apple's on-device model (Foundation Models, macOS 26+) has a window of **4096 tokens including instructions, guided-generation schema, and output**.
-**Decision:** (1) Absolute default: on-device `FoundationModelSummaryProvider` with guided generation (`@Generable`) into a neutral `StructuredSummary` shared by all providers (markdown + action-item owners are derived from it). (2) Long transcripts go through **recursive map-reduce**: 4500-character chunks → notes with a hard cap of 250 tokens (compression ≥4x per level — the cap is what guarantees convergence; without it the notes do not shrink and recursion does not terminate); the final structured pass requires material ≤ 3000 characters because its window also loads the schema and output. (3) **Greedy** decoding in every pass: with sampling, the 3B model invented action items. (4) The language directive uses a human-readable name ("Spanish (español)", not "es") and is REPEATED at the end of the user prompt — the model ignored it when it appeared only in instructions. Headings are translated; the glossary remains verbatim. (5) Action items exist only in the dedicated field (never as a section), and the guidance requires explicit commitments, with an empty array if there were none. (6) BYOK: `OpenAICompatibleSummaryProvider` (`/chat/completions`, JSON into `StructuredSummary`), always visibly opted in and labeled (D8); in the CLI, the key arrives through `PORTAVOZ_BYOK_API_KEY` (Keychain storage arrives with the app).
+**Decision:** (1) Absolute default: on-device `FoundationModelSummaryProvider` with guided generation (`@Generable`) into a neutral `StructuredSummary` shared by all providers (markdown + action-item owners are derived from it). (2) Long transcripts go through **recursive map-reduce**: 4,000-character chunks (D380 reduced the original 4,500 boundary) → notes with a hard cap of 250 tokens (compression ≥4x per level — the cap is what guarantees convergence; without it the notes do not shrink and recursion does not terminate); the final structured pass requires material ≤ 3000 characters because its window also loads the schema and output. (3) **Greedy** decoding in every pass: with sampling, the 3B model invented action items. (4) The language directive uses a human-readable name ("Spanish (español)", not "es") and is REPEATED at the end of the user prompt — the model ignored it when it appeared only in instructions. Headings are translated; the glossary remains verbatim. (5) Action items exist only in the dedicated field (never as a section), and the guidance requires explicit commitments, with an empty array if there were none. (6) BYOK: `OpenAICompatibleSummaryProvider` (`/chat/completions`, JSON into `StructuredSummary`), always visibly opted in and labeled (D8); in the CLI, the key arrives through `PORTAVOZ_BYOK_API_KEY` (Keychain storage arrives with the app).
 **Measured (M4 Max, 2026-07-07):** ES summary of an EN meeting with glossary intact in 3.8 s; 3-window transcript through the incremental path in ~11 s. < 30 s criterion with margin.
 **Rationale:** genuine privacy by default (nothing leaves the device), and the four prompting/budget lessons are locked in by tests (unit + gated integration).
 
@@ -239,7 +239,7 @@ confirms every suggestion.
 
 **Context:** D25 called for a 100% local summary engine for Macs with neither Apple Intelligence NOR Ollama. The embedded provider needs the prompt/parsing stack (`PromptFactory`, `StructuredSummary`, `SummaryFingerprint`) that lives in IntelligenceKit; a separate Kit would have forced all of that into Core.
 
-**Decision:** `mlx-swift-lm` (MIT, pinned exactly to 3.31.4 — official successor to `mlx-swift-examples`, which was frozen in Oct 2025; the migration was made in Jul 2026 to support `qwen3_5`) is a direct IntelligenceKit dependency, together with `swift-transformers` (the new package decoupled the tokenizer: the app provides it through the `MLXHuggingFace` macros), and `MLXSummaryProvider` lives there, reusing the OpenAI-compatible provider's prompt/JSON contract (changing engines never changes the summary's shape). The shipped default is **Qwen3.5-4B MLX 4-bit** (Apache-2.0, ungated, ~3 GB), sha256-pinned as `ModelCatalog.mlxQwen35`; Qwen3-4B-Instruct-2507 remains in the catalog as the explicit A/B alternative. Generation runs on GPU through `ModelContainer.perform` (serialized, one summary at a time) and does NOT pass through `IntelligenceScheduler` (that lane exists because of ANE contention). Accepted cost: mlx compiles C++/Metal on the first build (~10 min) and increases the binary size; the model downloads only if the user selects the "Built-in (MLX)" engine.
+**Decision:** `mlx-swift-lm` (MIT, pinned exactly to 3.31.4 — official successor to `mlx-swift-examples`, which was frozen in Oct 2025; the migration was made in Jul 2026 to support `qwen3_5`) is a direct IntelligenceKit dependency, together with `swift-transformers` (the new package decoupled the tokenizer: the app provides it through the `MLXHuggingFace` macros), and `MLXSummaryProvider` lives there, reusing the OpenAI-compatible provider's prompt/JSON contract (changing engines never changes the summary's shape). The shipped default is **Qwen3.5-4B MLX 4-bit** (Apache-2.0, ungated, ~3 GB), sha256-pinned as `ModelCatalog.mlxQwen35`; Qwen3-4B-Instruct-2507 remains in the catalog as the explicit A/B alternative. Generation runs on GPU through `ModelContainer.perform`; D151 later makes its single-flight policy explicit through an independent MLX scheduler lane rather than treating the async cache actor as that policy. Accepted cost: mlx compiles C++/Metal on the first build (~10 min) and increases the binary size; the model downloads only if the user selects the "Built-in (MLX)" engine.
 
 **Shipping and verification:** the SwiftPM CLI cannot compile Metal shaders (limitation documented in the mlx-swift README): `swift build` never produces `default.metallib`, so no test under `swift test` can exercise generation. The metallib comes from a one-time xcodebuild pass that `scripts/build-mlx-metallib.sh` caches in `.build/mlx/` (cache keyed by the resolved mlx-swift version; requires the Xcode 26 Metal Toolchain: `xcodebuild -downloadComponent MetalToolchain`); `make-app.sh` copies `mlx-swift_Cmlx.bundle` to `Contents/Resources`, where the mlx loader resolves it through NSBundle. E2E verification is in-app — `Portavoz.app/Contents/MacOS/portavoz-app --mlx-smoke` (same pattern as `--bench-live`): synthetic ES meeting → structured summary with correct decision and action item in ~5 s (M-series, model already downloaded).
 
@@ -2580,7 +2580,8 @@ embeddings, generation-run links, canonical-person links, jobs, model
 configuration/provenance, receipts, audio, secrets, and voiceprints never
 participate. Evidence relations are included because their content may change
 without changing the owning generated text. Migration itself backfills
-nothing; enabling sync must explicitly call `markAllMeetingsForInitialSync()`.
+nothing; including an existing library must explicitly enter the bounded
+`markMeetingsForInitialSync(after:limit:)` boundary.
 
 This slice deliberately adds no CloudKit import, CKSyncEngine state, network
 request, account UI, iOS target, conflict resolver, or audio transfer. A later
@@ -2720,9 +2721,9 @@ device-owned outgoing attempts. A real account switch clears old account-scoped
 engine state, system fields, replay cursors, deferred payloads, and seed state,
 then requires consent for the new account. Initial seeding is requested and
 completed explicitly; this adapter never opts an upgraded library in by itself.
-The coordinator's explicit request invokes StorageKit's
-`markAllMeetingsForInitialSync()` and marks the seed complete only after both
-the journal and protected attempts drain.
+The coordinator's explicit request invokes StorageKit's bounded
+`markMeetingsForInitialSync(after:limit:)` boundary and marks the seed complete
+only after preparation, the journal, and protected attempts drain.
 
 Each outgoing attempt is exact-generation and idempotent. A late success may
 update system fields but can remove only its matching attempt; it cannot erase a
@@ -4059,7 +4060,7 @@ therefore keep live intelligence independent from presentation-array shape.
 
 ## D134 — Live assist stays measured, conservative, and schema-free (Jul 2026)
 
-**Context:** APUN-003/004 add pre-meeting objectives with live check-off, an
+**Context:** the live-assist expansion adds pre-meeting objectives with live check-off, an
 on-demand next-question suggestion, and a rolling talk-time cue. Each could
 have justified new tables, new toggles, or an eager model loop; the live
 surface's rules (D26 opt-in, D29 priorities, measured-not-judged mirror
@@ -4204,7 +4205,7 @@ row, and an Apuntador candidate only existed once a row closed. The
 consequence went beyond latency: when a remote participant asked a question
 and the room went quiet waiting for the user's answer, no card could be
 produced during the meeting at all. The one moment the prompter is most
-needed was the one moment it structurally could not act. (APUN-005's research
+needed was the one moment it structurally could not act. (the later endpointer research
 framing — "remove the 300–800 ms silence-endpointing tax" — understated the
 problem: there was no endpointing to tax.)
 
@@ -4246,7 +4247,7 @@ provenance. Neither is worth it while the deterministic stage covers the
 transcribable cases; GAPS records the trigger (an official CoreML artifact,
 or an onnxruntime decision made for its own sake).
 
-**Rationale:** the honest reading of APUN-005 was that the product gap was
+**Rationale:** the honest reading of the endpointer research was that the product gap was
 structural, not statistical. A two-line policy and one timer close the
 "question, then silence" hole entirely and cut several seconds in the common
 case; a 360 MB (v2) or new-runtime (v3) dependency would have improved
@@ -4442,3 +4443,13779 @@ search. No sqlite-vec or other vector dependency is added.
 and failure semantics deterministic on every supported Mac. Reusing the
 existing device-local representation adds paraphrase and cross-language recall
 with no new privacy boundary, dependency, or required setup.
+
+## D146 — Field evidence has stable subsystem IDs outside support JSON (Jul 2026)
+
+**Context:** the redacted format-2 support report already described durable
+meeting, channel, transcript-shape, job, generation, and privacy state without
+content. The first field collector, however, grouped checks around evolving
+feature scenarios. A failed call could therefore require conversational context
+to decide whether recording start, the capture route, callback recovery, Stop,
+post-capture admission, translation, or Refine owned the failure. Refine
+validation also had no first-class way to bind before/after reports to one
+meeting while proving a new revision was accepted.
+
+**Decision:** support JSON remains format 2. A separate protocol-2 field
+manifest selects one of six canonical hardware/conversation fixtures and uses
+seven stable evidence IDs, each with one fixed subsystem owner. The collector
+requires one pseudonymous meeting reference, validates the application version
+against the inspected Dev bundle, and rejects report-derived contradictions.
+When Refine is evaluated, it packages independently validated before/after
+reports, requires the same meeting reference, monotonic export time, and a
+strictly newer transcript revision. Human-observed route, language, and UI
+behavior are represented only as pass/fail/not-observed; no supporting words or
+free-form notes enter the artifact.
+
+Protocol-1 `--scenario` invocations retain their original manifest shape and
+filename for one release. The tooling suite runs under the repository-hygiene
+gate, and StorageKit proves that format-2 export remains decodable before and
+after an accepted refined cast.
+
+**Rationale:** stable subsystem IDs make one failed field run actionable without
+opening meeting content. Keeping the fixture protocol outside support JSON
+avoids coupling operator observations to the application storage contract.
+Paired structural evidence proves that the same meeting changed without
+pretending aggregate counts can judge linguistic quality, while one-release
+compatibility preserves already collected evidence and automation.
+
+## D147 — Release reliability is a fail-closed evidence ledger (Jul 2026)
+
+**Context:** deterministic tests, signed-distribution verification, and
+privacy-safe field packages existed as separate commands and documents. A
+release decision still depended on a maintainer remembering which proofs had
+run, whether they described the same version/build/commit, and which claims
+required real hardware rather than a fixture. A green test suite could
+therefore be mistaken for Sequoia, AirPods, durable-file, or real-conversation
+proof that it cannot provide.
+
+**Decision:** one tracked machine-readable contract declares every
+release-blocking reliability proof and classifies it as deterministic
+automation, signed-build verification, real-hardware validation, or user-field
+validation. The deterministic runner writes a receipt only after its complete
+gate set passes and binds that receipt to version, build, and Git commit. The
+distribution verifier writes a receipt only after the DMG and an independently
+extracted app pass signing, notarization, stapling, Gatekeeper, and production
+CloudKit checks; its receipt binds the version/build and DMG SHA-256. Real
+device and conversation claims enter only through canonical protocol-2 field
+manifests.
+
+The evaluator accepts only exact-shaped receipts and manifests for the
+requested release. It writes an owner-only JSON/Markdown scorecard containing
+proof identity and aggregate evidence metadata, never meeting references,
+support reports, paths, audio, transcript, or generated content. A release
+passes only when every contracted proof is `pass`. Missing, failed,
+`incomplete`, and `not-observed` evidence block; prose, memory, prior-version
+results, and a green adjacent proof never fill a missing cell.
+
+**Rationale:** release confidence must be reproducible from durable evidence,
+not operator memory. Separating proof classes prevents automation from
+overclaiming hardware behavior, while exact artifact identity prevents stale
+evidence from blessing a different build. A content-free projection preserves
+Portavoz's local-first privacy boundary and still leaves every blocked gate
+actionable.
+
+## D148 — Measure resource workloads before governing them (Jul 2026)
+
+**Context:** Portavoz already has independent live-transcription, batch-
+transcription, intelligence, indexing, sync, durable-processing, and model-
+lifecycle owners. Field reports of sluggish recording UI and competing local
+model work cannot safely be addressed by adding one global queue: doing so
+would collapse the intentional live/batch separation, and collecting meeting,
+file, model, or error identities would create a new privacy surface. A resource
+governor also cannot choose defensible memory or concurrency policy before the
+current workload boundaries are observable.
+
+**Decision:** `PortavozCore` owns one closed workload vocabulary: scheduling
+class, resource kind, operation, and terminal outcome. It exposes synchronous,
+Sendable, matched-span telemetry with no payload-bearing fields. Application
+workflows and capability schedulers classify recording Start/Stop, live and
+quality transcription, diarization, intelligence, model prepare/load/release,
+indexing, sync, waveform generation, Meeting Detail first projection, media
+export, and support export at their existing task or operation boundaries.
+`portavoz-app` is the only production recorder and maps those enums to a generic
+Points of Interest interval. It records no meeting, transcript, path, model,
+span, or error identity.
+
+The process-wide intelligence scheduler receives telemetry through a narrow
+relay because providers are created ad hoc; other owners receive it through
+normal composition. The existing exact `Meeting Detail First Content` interval
+remains available for its established benchmark. No resource instrumentation
+enters `AudioCaptureKit` callbacks. This slice observes current behavior only:
+it does not add admission, deferral, priority, eviction, residency, or
+concurrency policy, and it does not replace any existing scheduler.
+
+**Rationale:** an allowlisted measurement contract makes before/after resource
+evidence reproducible while preserving local-first privacy and scheduler
+ownership. Measuring application transactions rather than realtime callbacks
+keeps capture passive. Separating observation from policy allows later
+governor decisions to be justified by field data instead of intuition and
+prevents the measurement slice itself from changing product behavior.
+
+## D149 — Resource baselines require a complete multi-host evidence matrix (Jul 2026)
+
+**Context:** matched resource signposts make expensive work observable, but a
+single developer-machine trace cannot justify policy for constrained Macs.
+Ad-hoc Instruments exports also cannot prove that every scenario was measured
+against one release build, that runs were repeated, or that a convenient green
+scenario was not substituted for a missing recording-interference case.
+Persisting raw intervals, process arguments, paths, or operator notes would
+create a new content and identity surface.
+
+**Decision:** one tracked schema declares three hardware profiles—8 GB, 16 GB,
+and the reference-memory Mac—and nine required scenarios: idle, recording,
+Stop, Refine, summary, Ask, indexing, recording plus indexing, and recording
+plus batch work. Every profile receipt is exact-shaped, identifies one Release
+version/build/commit, validates installed physical memory against its declared
+tier, and contains only OS/hardware/toolchain identity, aggregate process
+metrics, and bounded summaries of D148 workload enums. It contains no meeting,
+transcript, file, model, span, process-argument, source-path, error, or
+free-form operator field.
+
+Each passing cell requires at least three stable runs and every required
+workload descriptor. Stability reuses the existing measurement rule: wall or
+CPU p95/p50 above 1.25 blocks the cell as unstable. The deterministic evaluator
+uses nearest-rank p50/p95, retains peak footprint, minimum free disk, worst
+thermal state, power source, and low-power observations, and writes owner-only
+JSON and Markdown. Missing, failed, not-observed, under-sampled, and unstable
+evidence produces a complete blocking matrix. Malformed existing receipts,
+duplicate profiles/runs or JSON keys, build or memory-tier mismatches,
+non-finite metrics, unknown enums, and extra fields fail closed. Matrix
+completion is measurement evidence, not a resource budget: admission,
+deferral, concurrency, eviction, and model-residency decisions remain absent
+until the baseline is reviewed.
+
+**Rationale:** policy for call-safe recording must be derived from comparable
+evidence across the machines that users actually run. A bounded aggregate
+contract keeps long-call artifacts small and private, while a complete blocked
+scorecard makes missing hardware work visible without pretending it is a
+parser failure. Keeping observation, baseline acceptance, and policy as three
+separate steps prevents tooling from silently inventing product limits.
+
+## D150 — Native resource receipts are collected by an isolated Release app (Jul 2026)
+
+**Context:** Points of Interest preserve a useful Instruments view, but
+toolchain-specific trace schemas are not a stable receipt format. The existing
+recording benchmark also paired `-use-temp-store` with a fresh model directory,
+so every repetition could perform model setup instead of measuring comparable
+runtime work. Finally, its structured Stop race did not enforce the documented
+timeout because task-group scope waits for cancelled children.
+
+**Decision:** the macOS outer layer owns one benchmark-only
+`ResourceRunProbe`. It observes the same closed D148 event stream and samples
+only aggregate native process/resource state: `proc_pid_rusage` CPU,
+physical-footprint, energy, and disk counters; current volume capacity;
+`ProcessInfo` thermal and low-power state; and IOKit power source. The Stop
+probe is armed first and atomically replays workload spans already active at
+the phase boundary; the active-recording metric window then freezes before the
+product Stop begins. Boundary spans may drain into the bounded recording
+summary while Stop measures them independently. New spans enter only the Stop
+probe. A changed power source, unavailable counter,
+incomplete lifecycle, output collision, or Stop timeout fails without a
+passing sample. Instruments remains optional corroboration, not receipt input.
+
+The canonical resource baseline runner requires a clean worktree, builds one
+exact Release version/build/commit, copies and re-signs it under the dedicated
+`app.portavoz.mac.resource-bench` identity, and performs at least three runs.
+Every run requires a disposable meeting database, scratch audio, process-local
+secret storage, and a unique temporary participant-identity root. The
+automation composition cannot inspect or mutate the host Keychain, voiceprint,
+or participant-voice gallery; production still uses `KeychainSecretStore` and
+its durable identity directory. Launch-only work settles for five seconds
+before the collector captures a model-free idle window and loads recording
+engines. It then measures recording and Stop through the real windowed path and
+executes cold-runtime Refine, Summary, Ask, and standalone semantic-indexing
+operations in separate processes. Refine uses a fixed English AIFF generated
+from public synthetic text, requires the selected Whisper model, tokenizer, and
+diarization model to pass full installed-artifact verification before sampling,
+and never downloads a model inside the measured window. Summary verifies the
+pinned Qwen3.5 MLX descriptor, stores a fixed public English
+meeting/cast/transcript only in the disposable database, and measures the real
+ApplicationKit regeneration workflow through successful transactional
+persistence. Ask requires already-installed Apple Latin embedding assets and
+available Foundation Models, then measures the real `AskMeetings.local`
+workflow over the same fixed corpus. Its window intentionally includes current
+synchronous corpus backfill, bilingual query expansion, hybrid retrieval, and
+answer generation; a sample requires citations and nonempty generated text.
+Standalone indexing prepares the already-installed embedding assets before
+sampling, drains 1,024 fixed public English segments through
+`IndexSemanticCorpus`, and requires every row to be embedded or deliberately
+excluded before publication. Every bounded Refine, Summary, Ask, and indexing
+operation uses the same unstructured first-result race, which enforces a
+60–3,600 second timeout even if model work ignores cooperative cancellation.
+Refine never applies its draft or persists user-visible content.
+
+Recording plus indexing runs in its own real windowed recording process. It
+prepares the same embedding runtime and fixed corpus before measurement, arms a
+dedicated probe before product Start, and starts `IndexSemanticCorpus` only
+after recording succeeds. Process counters freeze before Stop; the observer
+remains installed until Stop closes live-transcription spans that were already
+active, admitting their terminal outcomes while rejecting Stop-only work. The
+recording stays active until indexing completes or its hard timeout wins, and
+the sample is published only after the corpus validation and Stop both succeed.
+
+Recording plus batch runs in another real windowed recording process against
+the fixed public non-silent AIFF already used by Refine. It resolves the shared
+Parakeet runtime before measurement, starts file transcription through the
+production `TranscriptionScheduler.batch` post-capture lane only after Start
+succeeds, and keeps recording active until the bounded job returns nonempty
+speech or fails. It uses the same freeze-before-Stop boundary and publishes only
+after both batch validation and Stop succeed. It deliberately excludes
+diarization and summary so the contracted quality-transcription interference
+cell remains independently attributable.
+
+Only the hidden recording, recording-plus-indexing, recording-plus-batch,
+Refine, and Summary resource benchmarks reuse the normal verified Portavoz
+model cache; Ask and indexing rely on OS-managed assets and keep the disposable
+model root. Ordinary XCUITest launches retain an empty temporary model root.
+Partial fragments and the synthetic fixture stay private and are removed on
+failure. Temporary identity state contains no durable secret and remains under
+the system temporary root; a validated owner-only host receipt is published
+atomically. The original
+`resource-recording-baseline` command remains a compatibility alias for the
+canonical `resource-baseline` runner. Once any resource benchmark dispatcher
+is armed, app initialization returns before normal sync, recovery, provider
+discovery, and dictation registration start. The AppKit delegate is not wired
+to product services, preventing lifecycle callbacks from starting product work
+beside the measured operation. The runner never launches or modifies the
+notarized installed app.
+
+**Rationale:** native counters make receipts deterministic and testable without
+binding policy evidence to an Instruments export schema. Separating the
+database, model, secret, and voice-identity isolation concerns protects user
+meetings and enrolled identities while removing model-install noise.
+Independent idle, recording, Stop, Refine, Summary, Ask, indexing,
+recording-plus-indexing, and recording-plus-batch windows make residency and
+interference attribution explicit. One reusable single-scenario probe avoids a
+new collector lifecycle for every batch workflow, while the concurrent probe
+makes its recording boundary explicit instead of merging Stop cost into the
+sample.
+Synthetic input keeps model-heavy evidence repeatable and private. Fail-closed
+publication prevents a timeout, missing model or OS asset, silent fixture,
+failed summary transaction, missing Ask evidence, incomplete index, or partial
+run from looking like accepted hardware evidence.
+
+## D151 — MLX inference has an independent explicit scheduler lane (Jul 2026)
+
+**Context:** `MLXModelCache` is an actor, but its generation path awaits model
+loading and `ModelContainer.perform`. Actor reentrancy across those awaits does
+not establish a single-flight queue, priority policy, or measurable queue
+boundary. Routing MLX through the existing Foundation Models scheduler would
+solve that ambiguity by coupling unrelated GPU and ANE work, contradicting the
+capability-owned scheduler architecture and potentially delaying an
+interactive Apple request behind a long MLX summary.
+
+**Decision:** `IntelligenceScheduler` owns two process-wide instances that
+share only the content-free D148 telemetry relay. The existing lane serializes
+Apple Foundation Models/ANE calls; a second lane serializes embedded MLX/GPU
+calls. Each independently applies `interactive > live > background`, FIFO,
+latest-wins, and caller-cancellation rules. `MLXSummaryProvider` defaults to
+interactive priority for user-driven regeneration and Import. The durable
+post-capture provider resolver constructs it with background priority. The MLX
+cache remains the verified model/container and idle-release owner; it is not
+treated as the queue. Apple and MLX inference never wait on each other's lane.
+
+**Rationale:** explicit, independently observable queues preserve user-facing
+priority without inventing cross-capability contention. Keeping the scheduler
+policy reusable and the cache focused on model lifetime makes both boundaries
+testable under strict concurrency. Shared payload-free telemetry gives the
+resource baseline comparable queue and execution evidence without exposing
+prompts, model identity, or scheduler keys.
+
+## D152 — Semantic corpus indexing is one ApplicationKit maintenance operation (Jul 2026)
+
+**Context:** Ask and instant Library search both embedded missing transcript
+segments, excluded micro-segments, and persisted vectors, but implemented those
+rules separately. Ask drained the complete missing corpus before retrieval,
+while Library advanced at most 512 rows per query. D149 also requires a
+standalone indexing resource cell before any background-indexing or governor
+policy can be justified. Measuring a synthetic loop would not characterize the
+released persistence and embedding path.
+
+**Decision:** `ApplicationKit.IndexSemanticCorpus` owns semantic backfill with
+two explicit entry points: one bounded batch and one complete drain. It accepts
+a Sendable embedding capability, validates that every eligible segment receives
+exactly one vector before persistence, writes an empty marker for rows shorter
+than 20 characters, checks cancellation between fetch, embedding, and storage,
+and emits one content-free `maintenance/searchIndex/execute` interval. Ask
+retains its complete synchronous drain and Library retains its bounded batch,
+so extraction changes no released retrieval behavior. Library continues to own
+its process-shared `SentenceEmbedder`; sharing the operation does not imply a
+shared model runtime.
+
+The Release indexing benchmark prepares already-installed Apple Latin
+embedding assets before measurement, inserts 1,024 fixed public English
+segments into a disposable database, runs the complete operation in batches of
+256, and publishes no sample unless every row is embedded or deliberately
+excluded. The recording-plus-indexing benchmark prepares that same workload
+before measurement and then executes it concurrently with the real recording
+lifecycle. It neither downloads assets inside the measured window nor reads a
+Portavoz model cache for indexing; the recording side reuses only the normal
+verified recording models.
+
+**Rationale:** one application-owned operation prevents Ask and Library from
+drifting while creating a deterministic, independently measurable seam for
+future background scheduling. Preserving caller-specific drain behavior keeps
+the slice a Strangler extraction rather than an unmeasured product-policy
+change. Embedding residency, background admission, recording interference, and
+sqlite-vec remain separate decisions. Recording interference now has a
+reproducible collector, but it still requires accepted host baselines before
+governor policy can be derived.
+
+## D153 — Microphone authorization precedes every meeting input graph (Jul 2026)
+
+**Context:** the isolated Release resource app reached recording preparation
+with a fresh TCC identity and then remained inside
+`AVAudioEngine.inputNode`/Core Audio device binding for minutes. The app
+previously relied on onboarding to request microphone access, but onboarding
+is optional lifecycle state and disposable benchmark launches intentionally
+skip it. Task cancellation cannot interrupt a synchronous Core Audio device
+bind, and measuring a one-time permission prompt would also contaminate the
+recording baseline.
+
+**Decision:** `PlatformKit.MicrophonePermissionClient` owns one deterministic
+authorization operation. Existing authorization passes without prompting,
+an undetermined grant is requested only from the explicit user-initiated
+recording action, and denied or restricted access fails closed. The macOS
+recording runtime invokes this operation before constructing
+`MicrophoneSource`, enumerating its selected engine route, or starting warm-up.
+The isolated windowed resource runner invokes the same operation before any
+resource probe is armed, so TCC interaction is preparation rather than measured
+work. Onboarding retains its explicit permission control but is no longer a
+hidden precondition for recording.
+
+**Rationale:** permission is a platform precondition, not an audio-device
+side effect. Resolving it before AVAudioEngine keeps the application boundary
+typed, prevents a fresh installation or benchmark identity from entering an
+ambiguous hardware path, and makes baseline windows comparable. This decision
+does not claim that cooperative cancellation can interrupt a genuinely stalled
+authorized Core Audio bind; if that separate field shape reproduces, it
+requires its own bounded outer policy rather than a misleading structured-task
+timeout.
+
+## D154 — Microphone taps observe route format; they never coerce it (Jul 2026)
+
+**Context:** the repeated 36 GB reference baseline changed the live microphone
+route from a 48 kHz format to a 24 kHz AirPods format. The configuration-change
+handler read the old output format, then passed it back to
+`installTap(onBus:bufferSize:format:block:)` after the hardware had changed.
+AVFAudio treats a non-nil tap format as a request to apply that format to the
+bus and raised an uncaught Objective-C format-mismatch exception, aborting the
+recording process.
+
+**Decision:** the microphone input tap passes `nil` as its requested format,
+leaving AVFAudio's current hardware bus unchanged. The callback derives its
+native sample rate from each delivered `AVAudioPCMBuffer.format`, validates it,
+and resamples to the immutable stream rate before timeline-gap accounting.
+Warm-up and restart still reject unusable routes before preparation, serialize
+graph mutation, retry absent routes, and preserve one stream and continuation.
+
+**Rationale:** format inspection and route mutation cannot be made atomic across
+Core Audio. Avoiding bus coercion removes that time-of-check/time-of-use crash
+while retaining native capture, device-switch resampling, and dual-channel
+alignment. A pure policy test locks both the nil requested format and dynamic
+48 kHz/24 kHz source-rate observation; repeated Release collection remains the
+real hardware regression gate.
+
+## D155 — Resource probes require nominal inherited pressure (Jul 2026)
+
+**Context:** two complete 36 GB reference collections executed every contracted
+workload, but fixed-order rounds let a previous heavy scenario leave the host
+in a fair thermal state when the next probe began. Idle CPU and Ask wall time
+then crossed the 1.25 p95/p50 stability limit even though their nominal samples
+agreed. Repeating the collection cannot turn a contaminated host into accepted
+evidence.
+
+**Decision:** benchmark-only probes wait after scenario preparation and before
+opening their metric window until two consecutive thermal observations are
+nominal, five seconds apart. The same gate runs after recording engines and
+concurrent assets are prepared but before Start. It fails closed after five
+minutes. Stop remains immediate because delaying it would change the product
+lifecycle being measured.
+
+**Rationale:** inherited host pressure is not attributable to the next
+scenario, while thermal pressure created after counters start is part of that
+scenario and remains recorded. Centralizing the gate avoids scenario-specific
+sleep folklore, preserves cold-process and real-model behavior, and gives 8 GB,
+16 GB, and reference receipts one reproducible precondition without weakening
+the scorecard's stability threshold.
+
+## D156 — Resource evidence launches the signed app bundle (Jul 2026)
+
+**Context:** recording resource scenarios launched the copied signed `.app`
+through LaunchServices, while Refine, Summary, Ask, and indexing executed the
+SwiftUI/AppKit Mach-O directly. The exact `666d21d` collection then showed a
+correlated third-round slowdown across those independent short processes even
+though thermal state remained nominal, AC power was invariant, and Low Power
+Mode was off. A raw GUI executable does not reproduce the normal application
+launch or resource-management boundary.
+
+**Decision:** every resource scenario launches the same copied, signed,
+benchmark-identified application bundle with `open -W -n ... --args`. The
+runner retains its disposable storage, content-free evidence, and exact commit
+binding. It does not use `taskpolicy`, invent process priorities, or add a
+benchmark-only `NSProcessInfo` activity.
+
+**Rationale:** LaunchServices preserves the benchmark environment while
+applying the platform's application semantics, bundle identity, and TCC
+boundary consistently. This removes a harness asymmetry without changing the
+product workload or hiding contention. Product ownership of explicit
+user-initiated, background, and latency-critical activities belongs to GOV-1
+policy rather than to measurement scaffolding.
+
+## D157 — Resource admission is pure before it is enforced (Jul 2026)
+
+**Context:** Portavoz has a closed content-free workload taxonomy and complete
+collectors for nine resource scenarios, but accepted evidence does not yet
+exist across the required 8 GB, 16 GB, and reference hosts. Runtime schedulers,
+model caches, storage checks, and capture state also expose different platform
+types. Encoding policy directly in those owners would duplicate business
+rules, make the capture invariant difficult to test, and tempt arbitrary
+memory or disk thresholds.
+
+**Decision:** `PortavozCore` owns one synchronous, deterministic, Sendable
+`ResourceGovernorPolicy`. It evaluates the existing workload descriptor and an
+admission-versus-checkpoint phase against an immutable, content-free snapshot:
+capture state/source health, categorical memory tier and disk state, memory and
+thermal pressure, resident model families with optional measured footprints,
+foreground-action presence, durable backlog, power source, and Low Power Mode.
+Its result separates an admission disposition from a stable set of unrelated
+idle model families to evict. Deferral conditions distinguish capture,
+host-pressure, storage, external-power, and Low-Power-Mode waits; foreground
+rejection carries an exact recovery action.
+
+Recording-critical work is admitted after Start enters a protected lifecycle.
+Before that boundary only failed input or critical storage rejects capture
+preflight. Optional durable work defers or pauses during capture, live work
+continues with reduced concurrency under pressure, and heavyweight user model
+work waits on a constrained or pressured capture host. Model release remains
+admitted under pressure. The policy performs no I/O, process inspection, task
+scheduling, model operation, or audio callback work. No application workflow
+calls it in this slice, and no numeric memory/disk threshold is encoded.
+
+**Rationale:** a pure decision table makes call-safety and recovery behavior
+exhaustively testable without loading a model or probing hardware. Separating
+admission from eviction represents the real case where work can proceed only
+after unrelated idle models leave memory. A general host/storage/power
+deferral is necessary in addition to “until capture stops”; otherwise a
+background job facing critical pressure while no recording exists would have
+no truthful result. Runtime adapters, model residency, concurrency enforcement,
+and measured numeric budgets remain later GOV slices and cannot be inferred
+from incomplete GOV-0 evidence.
+
+## D158 — Model residency has a pure lifecycle before runtime ownership (Jul 2026)
+
+**Context:** heavyweight runtime ownership is currently fragmented by
+capability. AppServices retains Parakeet, pyannote, and Whisper with independent
+load tasks and release generations; IntelligenceKit owns the MLX container and
+its timer; Library retains one Apple contextual embedder while Ask creates one
+for each retrieval. `VerifiedModelLifecycle` coordinates installation evidence,
+not loaded instances. Connecting the resource governor directly to those
+implementations would make stale async completions, active-use release, and
+resident-model projection depend on five unrelated conventions.
+
+**Decision:** `PortavozCore` owns a synchronous, deterministic, Sendable
+`ResourceModelResidencyLedger`. It models the closed heavyweight families as
+unloaded, loading, resident, or releasing; tracks active use leases; carries
+optional measured footprints; and emits the existing governor resident-model
+projection in stable family order. Opaque monotonic tickets fence every load,
+use, and release completion. Only an idle resident family may begin release,
+and it remains projected as resident until the concrete owner confirms that the
+runtime has been dropped. A failed current load returns only that family to
+unloaded, while stale or duplicate completions are inert.
+
+The ledger owns no runtime instance, task, timer, provider, model path,
+download, checksum, pressure probe, scheduler, or audio callback behavior. It
+does not interpret measured bytes or select an idle delay. Application
+composition does not yet feed concrete transitions into it, so this decision
+changes no product behavior or current cache lifetime.
+
+**Rationale:** the state machine makes coalesced ownership and safe release
+characterizable before capability-specific adapters are changed. It gives the
+resource governor a truthful, content-free residency projection without moving
+model implementations into Core or claiming that verified files equal resident
+weights. Separating lifecycle correctness from runtime integration also keeps
+arbitrary TTL and memory thresholds out of the code until the physical
+resource matrix supplies evidence.
+
+## D159 — Composition owns residency before adapters report it (Jul 2026)
+
+**Context:** D158 defines lifecycle correctness, but constructing ledgers inside
+each capability would reproduce the fragmented ownership that GOV-2 is intended
+to remove. Immediately wiring the ledger is also unsafe: the shared speech
+engines have multiple borrowers, two app workflows bypass the shared pyannote
+owner, MLX owns a separate actor cache, and Library/Ask use incompatible
+embedding lifetimes. Replacing the existing generation fences before those
+paths are locked would make a release race look like a refactor regression.
+
+**Decision:** the macOS `AppServices` composition root owns exactly one
+`ResourceModelResidencyLedger` for the process. A source-level characterization
+test locks every production app loader, the two direct pyannote paths, the MLX
+singleton, both embedding lifetimes, and the existing 600/120/120-second release
+fences. It also requires zero ledger transition submissions in this slice.
+Concrete runtimes remain in their capability owners; the ledger is not exposed
+as user diagnostics while it still reports only its initial state.
+
+**Rationale:** this establishes ownership without publishing false residency or
+changing runtime lifetime. The next adapter slice must update the
+characterization as it routes one complete family through the ledger, including
+load completion, active-use leases, cancellation/failure, and confirmed release.
+The test deliberately makes unreviewed new bypasses fail rather than silently
+escaping governor ownership.
+
+## D160 — Quality speech pins runtime residency to each operation (Jul 2026)
+
+**Context:** Refine and Import froze or sampled a Whisper descriptor during
+preparation, but later transcribed by reading the mutable
+`AppServices.whisper` cache. A concurrent operation or Settings variant change
+could therefore replace the engine behind an in-flight processor even though
+its provider fingerprint still named the original model. D158's ledger could
+not become truthful if borrowers and release remained outside the same
+lifecycle.
+
+**Decision:** quality speech is the first fully integrated residency family.
+`AppServices` coalesces same-descriptor runtime acquisition behind one load
+task and submits its exact load success or failure to the process-owned ledger.
+Each successful acquisition returns a `WhisperRuntimeLease` containing both
+the concrete engine and one active-use token. Load publication and its first
+use claim occur in one synchronous MainActor step; a different descriptor is
+rejected while that load is active, while same-descriptor joiners each claim
+their own token. Refine and Import retain the lease through every transcription
+call and end it only at their existing application-owned idle-release hook.
+They never re-read the shared mutable runtime after preparation.
+
+An actively leased runtime cannot be released, deleted, or replaced by another
+variant. Runtime release is two-phase: the ledger admits only an idle resident
+family, AppServices detaches the concrete reference, and the exact release
+ticket confirms unloaded state. Rejected confirmation restores the retained
+engine and cancels the release transition. Verified model preparation remains
+a separate asset lifecycle; the current two-minute idle generation fence is
+unchanged, and no download, verification, or release wait enters an audio
+callback.
+
+**Rationale:** binding the engine and use token makes provider identity,
+execution, and lifetime one invariant instead of three conventions. Migrating
+one complete family keeps the Strangler slice reviewable and lets the source
+ratchet reject partial or bypassed integration while live speech, diarization,
+MLX, and embeddings remain explicitly characterized for later adapters.
+
+## D161 — MLX container mechanics are injected into composition residency (Jul 2026)
+
+**Context:** each `MLXSummaryProvider` reached
+`IntelligenceKit.MLXModelCache.shared` directly. The actor serialized access to
+its fields, and D151 serialized GPU inference through a separate scheduler,
+but neither mechanism reported load/use/release to the process residency
+ledger. The static cache also let a future provider bypass application
+ownership, and Settings could remove verified assets while a generation still
+held their loaded container.
+
+**Decision:** IntelligenceKit replaces the singleton with an injectable
+`MLXSummaryRuntimeClient` and concrete `MLXSummaryRuntime` actor. The actor
+continues to own `ModelContainer` loading, strict-concurrency `perform`
+access, the supported 20 MB MLX buffer-cache limit, and a standalone
+two-minute idle policy for the terminating smoke runner. It does not own
+application residency truth.
+
+AppServices constructs exactly one production runtime. Its MLX adapter
+coalesces an exact standardized verified-directory load behind one
+`.languageIntelligence` ticket, publishes the successful runtime and claims
+the first use in the same synchronous MainActor continuation, and gives every
+manual, Import, and durable post-capture provider a narrow client over that
+runtime. The client holds one active-use token through `respondPrepared` and
+ends it on every terminal outcome before arming the existing 120-second idle
+fence. A competing directory, release, or verified-file deletion is rejected
+while load or use is active. Release drops the concrete container and then
+confirms the exact ledger ticket.
+
+The independent MLX scheduler remains the only GPU queue and retains
+interactive/background priority plus content-free telemetry. Model download
+and verification remain in `VerifiedModelLifecycle`; no asset operation,
+container wait, or release enters an audio callback. The adapter records no
+measured footprint and changes no TTL because those values still require
+accepted per-family evidence.
+
+**Rationale:** injected runtime access makes every production provider cross
+one reviewable ownership boundary while preserving IntelligenceKit's
+capability implementation and D151 scheduling. Publishing load and first use
+atomically prevents idle release or Settings deletion from observing an
+unleased resident container. Migrating MLX as the second complete family keeps
+live speech, diarization, and embeddings explicitly pending instead of
+claiming partial governor coverage.
+
+## D162 — Live speech uses pinned runtime leases without gating capture (Jul 2026)
+
+**Context:** AppServices coalesced and cached Parakeet, but recording,
+Dictation, durable first-pass recovery, onboarding, and resource benchmarks
+borrowed the raw engine without reporting active use. The 600-second release
+fence therefore could not distinguish an idle runtime from one executing a
+live stream or file transcription. Recording also has a stronger invariant
+than the other model families: audio must become durable before a cold model
+load can affect startup, and Stop must not wait for a process-owned download or
+Core ML compilation.
+
+**Decision:** live speech is the third fully integrated residency family.
+`AppServices+LiveSpeechModels` coalesces one verified Parakeet load behind a
+`.liveSpeech` load ticket and returns `LiveSpeechRuntimeLease`, binding the
+concrete engine to one active-use token. Publication and first-use acquisition
+occur in one synchronous MainActor continuation; each joiner receives a
+distinct token. Dictation, durable post-capture transcription, onboarding, and
+the recording resource benchmark retain and finish leases around their exact
+operations.
+
+Recording preparation may acquire only an already-resident lease. The private
+runtime starts durable audio first and asks the recording-scoped
+`LiveTranscriptionAttacher` to join a cold process load afterward. The attacher
+owns an opaque runtime handle until every live channel drains. Stop cancels its
+waiter but never awaits the shared load. If that load completes after the
+recording is inactive, the attacher ends the returned lease without attaching
+captions. Failed source start and cancelled preparation also end any hot lease.
+
+Runtime release is two-phase and accepted only when active use is zero:
+AppServices detaches the concrete engine and then confirms the exact ledger
+ticket, restoring it if confirmation fails. Verified files remain independent,
+the existing 600-second generation fence is unchanged, and no load, release,
+verification, or ledger mutation enters an audio callback.
+
+**Rationale:** one pinned engine/use pair makes process residency truthful
+without moving FluidAudio types into Core or weakening audio-first startup.
+Owning late-load cleanup at the recording attachment boundary preserves fast
+Stop while preventing a completed process load from leaking a use token or
+publishing into a closed session. Keeping the measured TTL unchanged separates
+lifecycle correctness from future resource-policy tuning.
+
+## D163 — Audio-route changes hand off fresh, generation-fenced graphs (Jul 2026)
+
+**Context:** the first route-change repair stopped passing a cached input
+format to AVFAudio, but real Tahoe crash reports still showed repeated
+`SIGABRT` failures in `AVAudioEngineImpl::InstallTapOnNode` from
+`MicrophoneSource.scheduleRestart`. AVFAudio permits only one tap per bus and
+raises an Objective-C exception, not a Swift error, when that invariant is
+violated. Input/output changes can issue a burst of asynchronous notifications,
+and the system process-tap source separately allowed Stop to destroy mutable
+Core Audio identifiers while an already queued rebuild was using them.
+
+**Decision:** both capture sources use the same pure
+`AudioRouteTransitionGate`. An active capture generation issues monotonically
+newer route tickets; delayed work runs only for the newest ticket, and Stop
+invalidates all outstanding work before touching a graph.
+
+The microphone configuration callback performs no graph mutation and returns
+from AVFAudio's internal queue. After a short settlement delay, the admitted
+handoff stops and detaches the old graph, creates a fresh `AVAudioEngine`, and
+installs exactly one `format: nil` tap. Unavailable hardware and Swift start
+errors retry under the same ticket; a newer route event supersedes that retry.
+The stream continuation, original sample rate, elapsed clock, and silence-gap
+accounting survive the engine replacement.
+
+`ProcessTapSource` moves initial construction and final teardown onto the same
+serial queue that already owns route rebuilding. Output notifications and
+liveness recovery request generation-fenced replacement on that queue; a
+failed partial graph is destroyed before retry. Stop waits behind any current
+mutation, invalidates delayed work, removes the listener, destroys the graph,
+and ends the stream exactly once.
+
+**Rationale:** a process-terminating framework precondition must be prevented,
+not caught. Fresh microphone graph ownership makes one tap per bus structural,
+while one queue plus generation admission makes input/output bursts and Stop
+ordering deterministic. The change preserves raw call-safe capture, the
+dual-channel timeline, and the audio-first durability boundary; real AirPods
+continuity remains an explicit field validation rather than an inferred claim.
+
+## D164 — Diarization reuses model weights, never speaker-session state (Jul 2026)
+
+**Context:** AppServices cached one stateful `PyannoteDiarizer`, while live
+recording and participant voice-memory extraction loaded additional one-shot
+instances directly. The shared instance retained FluidAudio's mutable speaker
+database across operations, so a later meeting could inherit clustering or an
+enrolled-identity snapshot from an earlier one. The direct loaders also bypassed
+the resource-residency ledger. The verified segmentation and embedding Core ML
+models are process-reusable, but the manager that assigns speaker labels is
+session state.
+
+**Decision:** speaker diarization is the fourth fully integrated residency
+family. `DiarizationKit.PyannoteDiarizationRuntime` retains only the verified
+Core ML model pair. AppServices coalesces one process load behind a
+`.speakerDiarization` ticket and returns a lease that binds those exact weights
+to one active-use token. Publication and first use are one synchronous
+MainActor transition; concurrent joiners receive separate tokens and cancelled
+joiners return theirs.
+
+Every live meeting, durable post-capture pass, Refine, Import, local-voice
+enrollment, and participant-memory extraction constructs a fresh
+`PyannoteDiarizer` from the leased weights and destroys that session after the
+operation. Identity is sampled into the new session instead of the resident
+weights. Durable post-capture additionally carries the exact voiceprint used by
+its operation fingerprint into execution, so a concurrent enrollment change
+cannot alter already-admitted work. Failed optional preparation or inference
+continues to produce honest unattributed speech rather than invented speakers.
+
+Release is two-phase and begins only when active use reaches zero. AppServices
+detaches the model pair, confirms the exact release generation, and restores
+the retained runtime if confirmation fails. Verified assets remain independent,
+the standalone CLI remains short-lived composition, and the existing
+600-second release fence is unchanged pending accepted resource evidence.
+
+**Rationale:** separating immutable model residency from mutable meeting state
+makes reuse safe and observable without reloading hundreds of megabytes for
+each operation. Exact leases prevent release during inference, while fresh
+speaker managers prevent cross-meeting contamination and let identity changes
+take effect without dropping reusable weights.
+
+## D165 — Library and Ask share one leased semantic embedding runtime (Jul 2026)
+
+**Context:** Library retained one process-long `SentenceEmbedder`, while every
+Ask retrieval created and prepared another instance. Both paths already shared
+`IndexSemanticCorpus`, but their model lifetime was invisible to the process
+residency ledger. Repeated Ask setup wasted loaded state, and neither a future
+governor nor resource evidence could distinguish an idle embedding model from
+one still indexing or querying.
+
+**Decision:** semantic embedding is the fifth fully integrated residency
+family. ApplicationKit defines a narrow `SemanticEmbeddingRuntimeClient` whose
+operation closure receives an already-prepared embedding capability.
+AppServices owns one `AppSemanticEmbeddingRuntime` actor and injects it into
+Library, Ask, and the app resource benchmarks. The actor coalesces construction
+and preparation of Apple's Latin contextual model, atomically publishes a
+successful cold load and claims its first use, and holds one exact
+`.semanticEmbedding` lease across the complete corpus-indexing, query-vector,
+and retrieval operation. Load failure returns the exact generation to
+unloaded, so a later request can retry.
+
+The pure Core ledger remains platform-free. A lock-protected
+`AppModelResidencyLedger` at composition is the sole process owner and lets
+main-actor model adapters and the independent semantic actor submit atomic
+transitions safely. Library still refuses to request assets while the user is
+typing; Ask retains its explicit OS-asset preparation behavior. The CLI owns a
+separate process runtime, and standalone scale constructors remain isolated
+evidence harnesses rather than application borrowers.
+
+Release is explicit and two-phase: it begins only when active use is zero,
+drops loaded model state, and confirms the matching generation without
+removing macOS-managed assets. This slice introduces no idle timer. Immediate
+governor-requested release is the next policy adapter, and any TTL must come
+from accepted per-family evidence rather than a new constant.
+
+**Rationale:** a closure-shaped runtime contract makes preparation, execution,
+and lifetime one invariant without exposing a mutable global model. Sharing
+one process runtime removes repeated Ask setup, exact leases prevent release
+during indexing or retrieval, and the composition-only lock preserves Core's
+deterministic architecture while allowing actors with different executors to
+report to one source of residency truth.
+
+## D166 — Host pressure releases only idle leased model families (Jul 2026)
+
+**Context:** the pure governor already returned a deterministic idle-family
+eviction list and all five heavyweight model families had exact process
+residency leases, but the app did not connect macOS pressure to those owners.
+Existing delayed release fences could leave hundreds of megabytes resident
+after the host reported memory or serious thermal pressure. A one-shot
+pressure event could also arrive while a model was active and be lost by the
+time its final borrower finished.
+
+**Decision:** application composition installs one content-free
+`AppResourcePressureMonitor` over macOS memory-pressure events and ProcessInfo
+thermal notifications. It maps only categorical state into
+`ResourceGovernorPolicy`, together with the real recording phase and residency
+projection. The adapter executes only the policy's stable
+`evictIdleModels` output. Admission, deferral, checkpoint, scheduler, and
+concurrency decisions remain inactive until accepted multi-host evidence
+defines them.
+
+Every requested family releases through its existing concrete capability
+owner and generation-fenced two-step transition. Active leases remain an
+absolute rejection. `AppModelResidencyLedger` therefore invokes one
+composition observer only when a valid final use makes a family idle, and only
+after unlocking; AppServices re-evaluates the monitor's current state instead
+of retaining a stale release request. Disposable UI-test stores and isolated
+resource benchmarks install no platform monitor.
+
+This adapter never enters AudioCaptureKit, waits for recording, deletes model
+assets, changes the existing 120/600-second fences, invents a memory threshold,
+or records meeting/model/path/error content.
+
+**Rationale:** immediate release responds to actual host pressure without
+turning the pure policy into a platform service or moving ownership out of
+capability modules. Re-evaluating after the last exact lease closes the
+busy-at-notification race, while narrow eviction-only adoption preserves live
+and batch scheduler semantics until resource evidence supports broader policy.
+
+## D167 — Protected capture blocks a second Whisper/MLX load on unknown hosts (Jul 2026)
+
+**Context:** Portavoz had exact residency leases and pressure-driven release,
+but a Refine/Import Whisper load and a built-in MLX summary load could still
+overlap while recording. Production intentionally had no numeric memory-tier
+classifier because the 8 GB, 16 GB, and reference-host evidence matrix was not
+yet accepted. Checking only before an asynchronous load was insufficient:
+capture or the peer model could start while verification or preparation was
+suspended. The roadmap also required proof that model download, verification,
+and release waits never entered a live audio callback.
+
+**Decision:** application composition mirrors recording phase as one
+lock-protected, content-free `ResourceCaptureState`. During starting, active,
+or stopping capture, the pure governor treats `.unknown` like a conservative
+tier only for the quality-speech/language-intelligence pair. Loading a second
+member requests concrete-owner release of an idle peer; a loading peer or a
+peer with an active lease defers the load until capture stops. Loading ledger
+records count as non-idle governor occupancy but remain non-releasable. Tasks
+already active before Start are not interrupted and become releasable only
+after their final exact lease closes. The existing constrained-tier policy
+remains stricter, and standard/large tiers are unchanged.
+
+Whisper checks this gate before verified preparation, atomically rechecks and
+reserves its loading generation immediately before engine loading, and checks
+again before residency publication. MLX uses the same atomic
+admission-and-reservation step after any prior-runtime release and immediately
+before loading, then checks at the publication boundary. The adapter
+re-evaluates after executing requested releases, fails if the peer remains,
+and rolls back the exact loading generation on rejection. Recording phase
+transitions and final-use notifications also reconcile an already-resident
+idle pair. The adapter activates no other admission, scheduler, checkpoint,
+disk, power, or concurrency decision and defines no RAM or TTL threshold.
+
+Architecture ratchets prohibit verified model lifecycle, model stores,
+Whisper, MLX, and their release owners in `AudioCaptureKit`. Verified assets
+remain independent from loaded weights and are never deleted by capture
+admission.
+
+**Rationale:** a categorical pairwise gate protects audio-first recording now
+without claiming unsupported hardware precision. Counting in-flight loads and
+atomically joining load admission with its ledger reservation closes concurrent
+acquisition races; the preparation and publication checks close suspension
+races. Exact-owner release preserves residency invariants, and callback
+ratchets keep model I/O entirely outside the real-time capture path.
+
+## D168 — Derive live levels once and publish only the newest snapshot (Jul 2026)
+
+**Context:** `RecordingSession` already scanned every accepted PCM chunk to
+produce final peak/RMS media evidence. The app callback scanned the same arrays
+again for microphone and system meters, then created one MainActor task per
+chunk. Long dual-channel calls could therefore accumulate optional
+presentation work even though the durable writer had already completed the
+only required operation. A simple display throttle was insufficient because
+the low-microphone and missing-system-audio diagnostics must still observe
+every chunk.
+
+**Decision:** after durable append, `RecordingSession` derives one compact
+`PersistedAudioLevel` in its existing PCM scan and emits it through the
+StartRecording callback boundary. The app submits each value synchronously to
+one recording-scoped, lock-protected state machine. Every submission updates
+the complete diagnostic state in O(1), while one latest-value slot retains the
+newest snapshot and schedules at most one MainActor delivery per 50 ms. Stop,
+failed Start, and reset cancel the relay; cancellation advances its generation
+and rejects all scheduled or late callbacks from that session.
+
+The meter may discard only obsolete presentation snapshots. Durable audio,
+capture-health events, bounded live-transcription feeds, and final transcript
+evidence retain their existing independent contracts. The app no longer scans
+audio arrays or schedules one actor task per chunk, and no optional consumer
+can backpressure the writer.
+
+**Rationale:** one persisted-evidence pass removes redundant O(samples) work
+from the presentation layer, while a generation-fenced latest-value relay
+bounds actor pressure regardless of call duration. Separating complete
+diagnostic ingestion from coalesced rendering preserves field warnings without
+pretending every intermediate meter frame has product value.
+
+## D169 — Wake live translation from state changes and bound every batch (Jul 2026)
+
+**Context:** the active Apple Translation lane woke the MainActor every 300 ms
+even when no caption, consent, or language state had changed. When work did
+exist, one framework request could include every eligible row in the 60-row
+live lookback. That permanent poll spent optional work throughout a recording,
+while a large catch-up request delayed its earliest visible result and reduced
+the number of cancellation boundaries available to a source/target change.
+Returning from an idle lane was not safe because SwiftUI does not restart a
+`translationTask` when a new caption produces the same source/target
+configuration.
+
+**Decision:** application composition owns one recording-scoped
+`LiveTranslationWakeHub`. It broadcasts caption, live-speaker, target, source,
+pair-consent, and unsupported-passthrough changes to current lane subscribers.
+Each `AsyncStream` subscriber uses `bufferingNewest(1)`: signals carry no
+content and mean only "recompute from current controller state." Idle,
+download-gated, and unsupported lanes suspend on that stream. Preparation and
+translation failures retain their two- and three-second retry backoffs,
+respectively; successful or idle work has no timer.
+
+`LiveTranslationRouting` retains its explicit recent-context policy of 60 rows
+and admits at most eight chronological rows to one framework batch. A
+successful response loop immediately requests the next bounded batch.
+Source/target equality remains checked before every request and publication,
+and task cancellation still fences an obsolete lane. Older untranslated rows
+that age out of the live window remain in their spoken language instead of
+forming an unbounded catch-up queue. The wake hub never carries transcript
+text, owns durable evidence, delays capture, or changes Refine.
+
+The recording stress and deterministic language gates include the wake relay,
+consent integration, bounded routing, pair fencing, unsupported progression,
+and mixed-language state tests. Architecture coverage rejects restoring the
+300 ms idle poll, removing the one-wake buffer or bounded batch, and dropping
+the relay from those release gates.
+
+**Rationale:** a latest-state signal is the correct abstraction because every
+wake invalidates the same derived routing snapshot; preserving a signal per
+caption would add queue pressure without preserving additional truth. Small
+batches improve first-result latency and cancellation responsiveness while the
+existing source revision map provides exact idempotency. Keeping the spoken
+transcript and durable audio outside this optional lane preserves Portavoz's
+audio-first and multilingual-source contracts.
+
+## D170 — Bound complete live Apuntador generation per recording (Jul 2026)
+
+**Context:** each accepted live question created an unowned MainActor wrapper
+task around the complete Apuntador operation. The `IntelligenceScheduler`
+latest-wins key bounded only the classifier call inside that operation; BYOK
+resolution, answer generation, and result delivery remained outside one
+recording-scoped owner. A long call could therefore retain multiple obsolete
+wrappers, and opt-out, reset, or Stop prevented stale publication without
+stopping the model work that occupied shared inference capacity.
+
+**Decision:** application composition owns one
+`LiveCompanionWorkCoordinator` per `RecordingController`. It admits one active
+complete `ProvenanceCompanion.generate` request and retains one newest pending
+candidate. Submitting another candidate replaces only the not-yet-started
+request; an active answer may finish without being preempted by ordinary turn
+traffic. The existing Intelligence scheduler continues to own classifier and
+answer priority, while the coordinator owns recording lifecycle and overflow.
+
+Opt-out, reset, next-session, and Stop clear the pending slot and cancel the
+worker. The worker checks cancellation after generation and before result
+delivery, so a provider that ignores cancellation cannot publish obsolete
+content. A request submitted for a fresh lifecycle while the cancelled
+generator unwinds remains in the one pending slot and starts only after the
+old worker exits. This preserves the one-active invariant instead of hiding
+overlap behind cancellation. Accepted visible cards remain unlimited user
+history; only ephemeral in-flight work is bounded.
+
+The recording stress and deterministic release gates include the pure
+turn-endpoint policy plus coordinator overflow, cancellation, and opt-out
+integration tests. Architecture coverage rejects reintroducing a request
+array, per-turn wrapper task, lifecycle cancellation gap, or release gate that
+omits these tests.
+
+**Rationale:** one active answer plus the newest waiting question preserves
+useful conversational continuity while bounding memory, tasks, and model
+pressure independently of meeting duration. Separating deterministic endpoint
+admission, ephemeral lifecycle coordination, and scheduler execution keeps
+each policy testable and prevents optional intelligence from delaying capture
+or Stop.
+
+## D171 — Wake live summary from evidence and bound each complete cycle (Jul 2026)
+
+**Context:** the optional Foundation Models live summary ran a permanent
+40-second MainActor loop for the whole recording. A successful tick selected
+every unseen closed row, so a long outage could turn the next request into an
+unbounded map step. The operation also appended its condensed note and advanced
+the processed-row cursor before note collapse and final summary reduction had
+succeeded. Cancellation or a later provider failure could therefore retain
+partial internal state even when no coherent summary was published.
+
+**Decision:** application composition owns one
+`LiveSummaryWorkCoordinator` per `RecordingController`. Closed caption rows,
+late live-speaker splits, and context-note changes set one pending invalidation
+bit. The coordinator permits one active complete cycle, collapses any burst
+into one later cycle, and enforces the established 40-second minimum cadence
+without an idle poll.
+
+`LiveSummaryWindowPolicy` admits the oldest unseen closed rows up to 32 rows
+and 6,000 characters per cycle. The oldest row is admitted alone when it
+exceeds the character budget, guaranteeing forward progress. A successful
+cycle reports retained backlog so another bounded pass is scheduled. A failed
+provider call leaves the cursor unchanged and waits for the next evidence
+signal rather than retrying forever during an outage.
+
+Condensed notes, processed row identities, and the visible summary are built as
+candidate state. They publish atomically only after map, optional note
+collapse, and reduce all succeed and the task still belongs to the same active
+recording. Cancellation is checked after every model suspension. Reset,
+next-session, and Stop clear pending work and cancel the worker. Automatic
+objective checks share the bounded cycle, remain Apuntador-gated, and reject
+late cancelled detector results before mutating presentation state.
+
+The recording stress and deterministic release gates include coordinator
+burst, overflow, backlog, cancellation, and window-policy tests. Architecture
+coverage rejects restoring the timer loop, removing row/character budgets,
+advancing candidate state before complete success, omitting lifecycle
+cancellation, or dropping these suites from the reliability gates.
+
+**Rationale:** summary invalidations describe newest observable state, not
+independent work that must queue. One pending bit and bounded oldest-first
+batches cap tasks and model input independently of meeting duration, while
+atomic publication prevents partial progress from stranding evidence. Keeping
+durable captions and final post-capture processing outside this optional path
+preserves the audio-first contract.
+
+## D172 — Admit generated intelligence after execution, not by string shape (Jul 2026)
+
+**Context:** bounded schedulers and recording-scoped coordinators cap work, but
+they do not make model output semantically idempotent. In a July 30 field call,
+the open form and later close of one growing question produced multiple
+successful Apuntador generations and near-duplicate, sometimes contradictory
+cards. The same meeting showed decisions repeated as action items because one
+rendering carried a speaker prefix while the other carried that identity in
+the typed owner field. Foundation Models also transformed one spoken question
+into every-word title case.
+
+**Decision:** generated intelligence crosses a deterministic last-mile
+admission boundary. `PortavozCore.CompanionCardAdmission` treats overlapping
+question-segment identities as one source-turn lineage. When evidence
+identities differ because adjacent live captions split, a 12-second lexical
+fallback may establish equivalence only with enough distinctive tokens, very
+high containment, and matching negation polarity. The more complete card
+replaces the weaker card and its card-keyed artifact; a weaker candidate is
+discarded. Exact wording outside the live window remains a later independent
+question.
+
+IntelligenceKit instructs question cleanup to use normal sentence case and
+repairs only long outputs that overwhelmingly capitalize every word,
+preserving the configured owner's name and common technical acronyms. It never
+rewrites source transcript text. Summary action admission compares
+attribution-independent statement bodies, so `S2: "Use X"` and `"Use X" — S2`
+cannot become both a decision and a task. Provider instructions independently
+require concrete future commitments or assigned next steps and permit an empty
+task set.
+
+**Rationale:** execution bounds protect performance while semantic admission
+protects what users see and persist. Source lineage is stronger than generated
+wording, lexical fallback must be narrow enough not to collapse repeated later
+questions, and deterministic task semantics remain testable across every local
+or BYOK provider. Presentation repair belongs after generation, never in the
+spoken record.
+
+## D173 — Treat live clipping as evidence, not gain control (Jul 2026)
+
+**Context:** a July 30 field recording completed successfully but its system
+channel reached 0 dBFS and the live transcript was visibly inaccurate. Final
+per-file peak evidence can diagnose the meeting only after Stop. Detecting this
+condition from callback counts would also be route-dependent because Core Audio
+buffer sizes can change across built-in devices and AirPods.
+
+**Decision:** the compact `PersistedAudioLevel` emitted by the durable writer
+pass includes the accepted chunk duration. One recording-scoped,
+constant-space detector accumulates sustained system-channel ceiling exposure
+with hysteresis and measures policy thresholds in captured seconds rather than
+callback count. The latest-value relay publishes the resulting transition with
+the existing 20 Hz presentation snapshot. A dismissible warning explains the
+live-transcript quality risk.
+
+The detector does not rescan PCM, delay durable append, apply gain, alter the
+call graph, rewrite audio, or suppress transcript rows. Invalid or zero
+durations do not advance the policy, and each observation is bounded before it
+changes exposure. Unit coverage proves that an isolated ceiling peak is
+ignored, sustained exposure enters the warning, clean audio exits it, and
+cancellation still fences delivery. Scoped bilingual XCUITest uses only the
+compact level seam and proves visible copy plus dismissal.
+
+**Rationale:** Portavoz can honestly surface damaged input without becoming an
+unverified live audio processor. Captured time keeps the result stable across
+route-specific buffer sizes, while same-pass compact evidence preserves the
+audio-first boundary and makes future thresholds deterministic and testable.
+
+## D174 — Bound live caption derivations, not transcript evidence (Jul 2026)
+
+**Context:** `RecordingController` must retain the complete admitted caption
+history until Stop because durable snapshot persistence, explicit recovery,
+Refine, translation cursors, and generated-evidence provenance depend on it.
+The live carousel was already limited to 150 source rows, but only at one
+SwiftUI call site. The five-minute talk-balance cue still scanned every closed
+row in the meeting on each presentation update.
+
+**Decision:** the pure `LiveCaptionParagraphProjector` owns a 150-source-row
+tail before it groups visible paragraphs and translations. Callers pass the
+authoritative caption array without reimplementing that limit.
+`LiveTalkTimePolicy` independently owns a maximum of 1,024 closed candidate
+rows before applying its existing five-minute time filter. The newest growing
+row remains excluded. These limits affect only ephemeral presentation
+derivations; they do not truncate, reorder, or rewrite controller captions,
+final audio, Stop payloads, translation state, summary cursors, or Refine
+inputs.
+
+**Rationale:** presentation work now remains constant with meeting duration
+without weakening the audio-first durability contract. At the current
+approximately one-final-row-per-second cadence on each of two channels, 1,024
+closed candidates leave substantial headroom above the roughly 600 rows
+expected in five minutes. Owning both bounds inside pure tested policies
+prevents a future caller from accidentally restoring a whole-meeting scan.
+
+## D175 — Cancel obsolete waveform derivation by route (Jul 2026)
+
+**Context:** D84 made waveform generation stateless and fast, and Meeting
+Detail already requested 600 buckets with an inline 2,000-bucket clamp.
+However, preparation launched the complete file scan in an unstructured
+detached task. Cancelling the SwiftUI route rejected its result only after that
+task had finished. Leaving and quickly reopening a long meeting could therefore
+run overlapping obsolete reads over the same finalized channels even though
+neither result was durable evidence.
+
+**Decision:** `MeetingWaveformDeliveryPolicy` owns the presentation contract:
+600 buckets by default and at most 2,000 in one immutable published snapshot.
+`AudioPlaybackKit.Waveform.generateCancellable` checks the caller before
+starting, propagates later route cancellation into its off-main worker with a
+task cancellation handler, and checks again before and after every fixed-size
+read of at most 65,536 frames. Cancellation throws and publishes no partial
+waveform. ApplicationKit retains the existing content-free workload interval
+and installs the player, silence ranges, and waveform only after the complete
+derivation survives the route fence.
+
+The generator still reads the complete finalized system and microphone
+timelines. It does not cache, rewrite, attenuate, truncate, or delete either
+file, and it does not enter capture callbacks. D84's exact range-aligned
+Accelerate envelope and replacement-sensitive benchmark remain unchanged.
+
+**Rationale:** task lifetime was the remaining unbounded resource, not array
+size or audio fidelity. A route-scoped cancellation boundary prevents obsolete
+whole-file IO from accumulating during review navigation while preserving the
+stateless design and the finalized recording as the authoritative evidence.
+
+## D176 — Share one bounded semantic-indexing flight (Jul 2026)
+
+**Context:** D152 extracted one semantic-corpus indexing operation and D165
+gave Library and Ask one process-owned embedding runtime. The two surfaces
+still constructed separate `IndexSemanticCorpus` values. Since actors are
+reentrant, overlapping Library typing and Ask retrieval could read the same
+durable missing rows, embed them twice, and contend to persist equivalent
+vectors. A general request queue would merely move that duplication into an
+unbounded maintenance backlog.
+
+**Decision:** app composition owns one
+`SemanticCorpusIndexingCoordinator` actor and injects it into Library and Ask.
+The coordinator admits one active backfill task. Library requests at most one
+bounded batch and coalesces when any flight or complete demand exists. Ask
+joins an active bounded flight, then drains all still-missing rows before its
+released hybrid retrieval; concurrent complete callers join the same drain.
+A scalar complete-demand count prevents new bounded work from cutting between
+those stages. The coordinator retains only the active task and waiter
+identities, never a pending-request array.
+
+Cancelling one waiter preserves work still borrowed elsewhere. Cancelling the
+last waiter cancels the worker, and `IndexSemanticCorpus` checks cancellation
+after embedding and before persistence. Coalesced Library requests lose no
+evidence because missing embeddings remain durable `NULL` rows and are
+rediscovered by a later pass. Exact FTS publishes independently and neither
+schema-v7 Float32 BLOB storage nor exact-cosine ranking changes.
+
+**Rationale:** one flight bounds duplicate CPU, memory, database, and model
+work without turning search into a lossy queue. Durable missing-row state is
+the retry ledger, so coalescing an opportunistic signal is safe while Ask's
+complete contract remains intact. Background indexing and resource-governor
+checkpoint admission remain separate slices rather than hidden policy inside
+the coordinator.
+
+## D177 — Pause semantic maintenance at durable capture checkpoints (Jul 2026)
+
+**Context:** D157 already states that optional maintenance defers while capture
+is protected and pauses only after a durable checkpoint. D176 bounded semantic
+backfill to one process flight, but `IndexSemanticCorpus` still started and
+drained batches without consuming that policy. Cancelling the flight on Start
+would conflate expected suspension with failure and could discard expensive
+vectors before their safe persistence boundary. Adding a retry queue or timer
+would duplicate ownership already represented by the database.
+
+**Decision:** ApplicationKit owns a reusable `DurableMaintenanceGate` that
+accepts the existing content-free workload descriptor and an
+admission/checkpoint phase. `IndexSemanticCorpus` evaluates admission before
+its first storage read. A complete drain evaluates a checkpoint after every
+persisted bounded batch and before fetching another. Policy suspension is a
+successful, explicit `pausedByPolicy` result rather than cancellation or
+failure.
+
+D179 later promotes this capability-neutral value to PortavozCore so
+IntegrationsKit can consume the same contract without a reverse dependency.
+
+The macOS composition root builds the gate from
+`AppResourceCaptureState` and the pure `ResourceGovernorPolicy`. Starting,
+active, and stopping capture pause semantic maintenance; inactive capture
+admits it. This first adapter supplies neutral or unknown host dimensions and
+therefore activates no unmeasured RAM, disk, thermal, battery, concurrency, or
+scheduler threshold. CLI, isolated benchmarks, and direct use-case composition
+retain an explicit unrestricted default.
+
+An already-admitted batch completes and persists its vectors or empty
+micro-segment markers atomically before yielding. Remaining `NULL` embedding
+rows are the durable job cursor across later requests and process relaunch.
+Library exact FTS remains independent. Ask continues with lexical and
+already-indexed semantic evidence when backfill pauses instead of surfacing an
+expected resource decision as an error. No polling loop, pending request array,
+new schema, vector rollback, or audio-callback work is introduced.
+
+**Rationale:** capture receives immediate priority at the next proven durable
+boundary while semantic work retains exact ownership and resumability. The
+narrow gate makes the policy executable without coupling ApplicationKit to app
+state and is reusable for later sync, graph, and export checkpoints. Moving the
+complete drain off Ask, wake-on-capture-stop scheduling, durable leases and
+heartbeats, and non-capture host adapters remain separate GOV-4 slices.
+
+## D178 — Resume semantic maintenance from process signals (Jul 2026)
+
+**Context:** D177 made semantic backfill yield safely during protected capture,
+but remaining `NULL` rows resumed only when a later Library search or Ask
+request happened to request indexing. That left corpus maintenance coupled to
+foreground user latency. A periodic worker would waste wakeups, duplicate the
+database's durable state, and risk rebuilding model pressure during a call.
+
+**Decision:** the macOS composition root owns one
+`SemanticCorpusIndexingSupervisor`. App launch, searchable mutations, and the
+capture mirror returning inactive call its idempotent wake method. One drain may
+run at a time. Any number of signals received while it runs collapse into one
+subsequent drain, represented by a scalar bit rather than a request queue. The
+supervisor has no timer, sleep, polling loop, or retry schedule.
+
+D200 later adds one cancellable future wake derived from persisted retry or
+lease-expiry evidence; it does not add polling or weaken this signal contract.
+
+The production background adapter first checks cancellation and protected
+capture, then queries at most one missing embedding row. It borrows the shared
+semantic runtime only when work exists and Apple's Latin contextual embedding
+assets are already installed. Background work always passes
+`allowAssetDownload: false`. Temporary stores and isolated benchmark
+composition disable the owner. The existing D177 gate remains authoritative
+inside each indexed batch and can pause a drain that was admitted before
+capture changed.
+
+Ordinary failure is logged without meeting content and leaves missing rows
+untouched. The next explicit signal or process launch retries from those
+durable rows; no volatile retry ledger is needed. Ask keeps its released
+synchronous complete-drain behavior for compatibility so a request sees the same
+semantic completeness as before. Moving that drain entirely behind the
+background owner requires separate measured parity evidence.
+
+**Rationale:** explicit lifecycle and mutation signals make semantic recall
+self-maintaining without permanent process activity. One process owner, one
+shared coordinator, and one SQLite cursor keep concurrency and recovery
+bounded while capture remains the highest-priority workload and background
+maintenance cannot surprise the user with an asset download.
+
+## D179 — Checkpoint existing-library sync around protected capture (Jul 2026)
+
+**Context:** the explicit “include existing library” action persisted its
+request and then marked every meeting in one StorageKit transaction before
+starting a manually driven CloudKit cycle. Large libraries could therefore
+compete with protected capture, and the operation had no durable intermediate
+boundary. A single transaction also hid a two-store recovery problem:
+meeting-journal admission lives in SQLite while account-scoped transport
+progress lives in a separately protected IntegrationsKit snapshot. A crash
+between those stores must never skip a meeting or create an extra generation
+each time the same batch is retried.
+
+**Decision:** PortavozCore owns the capability-neutral
+`DurableMaintenanceGate`; D177's ApplicationKit operation and the
+IntegrationsKit seed coordinator both consume it. The macOS composition root
+continues to build the gate from `AppResourceCaptureState` and the pure
+`ResourceGovernorPolicy`. The sync descriptor is maintenance/library-sync
+execution. Starting, active, and stopping capture return `pause`; inactive
+capture returns `proceed`.
+
+The explicit action first persists account-scoped seed intent and does no
+library work inside that state mutation. StorageKit then marks meetings through
+`markMeetingsForInitialSync(after:limit:)`, ordered by opaque UUID identity.
+Each bounded batch is one transaction and returns its final identity plus
+completion state. A row whose generation is already pending remains at that
+generation; a fully acknowledged row receives a new generation. Deletion state
+and the newest change time remain current. Invalid limits fail closed.
+
+IntegrationsKit persists the SQLite batch first and only then advances its
+protected cursor. A crash in that window replays the same batch idempotently
+instead of skipping it. A separate prepared marker proves that the complete
+library has entered the journal before seed completion may consider the journal
+and protected attempts drained. Duplicate requests for the same account do not
+reset cursor, prepared state, or completion. The optional cursor and prepared
+fields preserve format-v1 decoding; an older requested snapshot safely
+re-admits pending rows before continuing.
+
+The coordinator evaluates admission before the first storage read and a
+checkpoint after every committed batch, including the final batch before any
+transport driver is constructed. Work already inside a transaction commits;
+the next batch pauses. AppServices emits one content-free wake when capture
+returns inactive, and `MeetingSyncModel` requests a cycle only when sync is
+enabled and a seed remains explicitly requested. Relaunch and ordinary manual
+sync also resume from the protected cursor. There is no timer, sleep, polling
+loop, volatile retry queue, lease, heartbeat, new SQLite schema, or audio
+callback work.
+
+This gate applies only to explicit existing-library admission. Ordinary
+future-change delivery keeps its released behavior; the decision does not claim
+that all CloudKit transport pauses during recording.
+
+**Rationale:** bounded, idempotent checkpoints give capture immediate priority
+at a proven commit boundary while preserving the user's opt-in across crashes,
+relaunches, and account-scoped transport recovery. Promoting the generic gate
+to Core avoids an IntegrationsKit-to-ApplicationKit dependency, and using the
+two existing durable stores is simpler than introducing a third job ledger.
+
+## D180 — Defer whole-library backup before its coherent snapshot (Jul 2026)
+
+**Context:** D99 intentionally reads meeting identities and every strict
+meeting aggregate inside one `DatabaseQueue.read`, then renders and publishes
+the complete Markdown backup. Starting that work during protected capture can
+compete for SQLite, memory, CPU, and filesystem bandwidth. Pausing after the
+read is not a safe incremental fix: it would retain a content-heavy copy of the
+whole library during the call, while discarding it and rereading per meeting
+would combine different database moments. Child-row mutations also do not
+provide one aggregate-wide revision fence that could prove a split read is
+equivalent to D99.
+
+**Decision:** `ExportLibraryMarkdownBackup` is a maintenance/media-export
+workload and consumes the shared `DurableMaintenanceGate`. It checks admission
+before the source snapshot and returns a typed `suspended` execution outcome
+without reading storage, inspecting the destination, rendering Markdown, or
+publishing files. Successful work continues to use the unchanged D99 one-read
+snapshot and atomic filesystem adapter.
+
+`LibraryMarkdownBackupModel` owns one process-scoped pending destination. A
+suspended request remains in the preparing state, and AppServices notifies the
+model when capture returns inactive so it retries without reopening the folder
+picker. The actor serializes execution, and a scalar resume bit remembers a
+capture-stop signal that arrives while admission is still resolving. Completion
+or failure clears pending ownership.
+
+This decision does not checkpoint an export after admission and does not make
+backup execution relaunch-durable. If capture starts after the coherent source
+snapshot begins, that export finishes. Intra-export pause requires a separate
+bounded durable-staging design with destination recovery, collision
+reservation, cleanup, privacy, and restart semantics.
+
+**Rationale:** an admission checkpoint removes avoidable backup interference
+from calls without weakening D99 consistency, holding a complete library while
+waiting, or introducing a polling task and volatile retry queue. Retaining the
+chosen destination gives the user automatic recovery after Stop while keeping
+the limitation explicit for the next GOV-4 slice.
+
+## D181 — Checkpoint whole-library backup through one immutable SQLite stage (Jul 2026)
+
+**Context:** D180 defers backup before the coherent D99 source read, but an
+admitted export still loads the complete library into Swift memory and finishes
+even when protected capture starts. Reading each meeting independently from the
+live database would reduce memory but combine different database moments,
+weakening backup consistency.
+
+**Decision:** StorageKit copies the live database into one private transient
+SQLite workspace with GRDB's bounded backup API. Copy progress is checked after
+each 256-page group. If capture closes the maintenance gate, the partial stage
+is removed and preparation returns a typed suspension. The stage root and
+workspace are owner-only, the staged database is `0600`, and the root is
+excluded from backup. Schema v16 adds a partial
+`meeting(startedAt DESC, id ASC)` index for live roots; because the index is
+part of the coherent copy, staged iteration can use a stable keyset cursor
+without repeated offset scans.
+
+After a complete copy, a stage session reads one live meeting aggregate at a
+time in `startedAt DESC, id ASC` order. Later live-database mutations cannot
+change the export. Corrupt required aggregates remain typed per-meeting
+failures, while optional General-summary corruption degrades to no summary as
+before.
+
+`ExportLibraryMarkdownBackup` is an actor that owns one active run. It checks
+the shared maintenance gate before each staged read, after loading one
+aggregate, after rendering one document, and after atomic publication. A
+suspended run retains its stage cursor, filename allocator, typed results, and
+at most one pending aggregate or rendered document. Publication is the commit
+point, so resume does not rerender or republish completed meetings.
+
+Normal completion and failure close and remove the stage. This decision is
+process-local: it does not persist destination authorization, collision
+reservations, a publication manifest, or ownership needed to adopt an
+abandoned stage after app termination.
+
+**Rationale:** one immutable on-disk stage preserves a coherent library moment
+while bounding live-database contention and in-memory content. Explicit
+checkpoints let recording take priority without duplicate publication, polling,
+or a second durable-work ledger. Relaunch-safe destination and stage recovery
+remain separate work rather than being implied by process-local suspension.
+
+## D182 — Prove backup-stage abandonment with kernel ownership (Jul 2026)
+
+**Context:** D181 removes a stage during normal completion and failure, but
+`SIGKILL`, a crash, or power loss can leave its private SQLite copy in the
+temporary directory. Deleting every directory at the next launch is unsafe:
+the release app, Dev app, or another process instance can still own an active
+export. A PID file can be reused, an age threshold guesses at ownership, and a
+heartbeat would add background work while still requiring a stale-time policy.
+
+**Decision:** every current-format stage holds an exclusive BSD `flock(2)` on
+an owner-only `.owner.lock` file for the full workspace lifetime. Stage
+creation and scanning also share a persistent root coordination lock so a
+scanner cannot observe a newly created directory before its owner lease exists.
+The coordinator file remains at the root; unlinking a lock file after release
+could let concurrent processes synchronize on different inodes.
+
+At process launch, the process-owned backup model asks StorageKit to scan at
+utility priority. Cleanup opens a regular, non-symlink owner file with
+`O_NOFOLLOW` and removes the workspace only when it can take a nonblocking
+exclusive lock, proving that no live owner retains the open-file-description
+lease. Active workspaces, symlinks, malformed entries, and legacy lockless
+directories are preserved fail-closed. Disposable test composition does not
+scan the host root. The scan contains no meeting content, path logging, timer,
+PID heuristic, or heartbeat.
+
+This establishes crash-safe ownership and cleanup only. It does not persist a
+destination security-scoped bookmark, reserve destination names, record atomic
+publication in a manifest, or adopt and continue a stage after relaunch.
+
+**Rationale:** the kernel releases `flock` ownership when a process exits, so
+abandonment is immediate and deterministic without guessing elapsed time.
+Root serialization closes the only creation/cleanup race, while fail-closed
+shape validation protects concurrent and older Portavoz installations. Keeping
+adoption separate avoids claiming relaunch durability before publication can
+be made idempotent across its move/manifest crash window.
+
+## D183 — Retain backup destination identity, not open access (Jul 2026)
+
+**Context:** D181 retains an in-process backup run across capture-policy
+suspension, but it retains only the originally selected destination URL. A URL
+does not preserve filesystem identity when the directory moves, while holding
+security-scoped access for an arbitrarily long suspended interval would leak a
+bounded kernel resource. The current hardened-runtime app does not adopt App
+Sandbox, so describing its access as security-scoped would also be inaccurate.
+
+**Decision:** ApplicationKit owns an opaque destination-bookmark value and a
+destination-access port. The port prepares identity only after maintenance
+admission and coherent source staging, then acquires one destination lease for
+the current execution interval. The use case inspects and publishes through
+the lease's resolved URL, refreshes the retained bookmark when resolution marks
+it stale, and closes the lease on every completion, suspension, and error path.
+Resuming a process-local run reacquires from the retained identity instead of
+requesting the folder again.
+
+PlatformKit implements the current adapter with a regular Foundation bookmark
+created using `withoutImplicitSecurityScope`. Focused filesystem evidence
+proves that identity follows a directory rename on the current macOS target.
+The app lease is intentionally a no-op resource boundary today because the app
+is not sandboxed. A future App Sandbox composition may replace only that
+adapter with balanced `startAccessingSecurityScopedResource()` and
+`stopAccessingSecurityScopedResource()` calls; ApplicationKit and the backup
+workflow do not change.
+
+This decision does not persist bookmark bytes, the filename allocator,
+publication results, or an atomic manifest. Process termination therefore
+still cannot adopt the staged source or continue publication safely.
+
+**Rationale:** durable identity and bounded access are separate concerns. A
+regular non-implicit bookmark accurately matches the current entitlement
+model, while an explicit lease prevents today's process-local workflow from
+normalizing unbounded access and gives a future sandbox adapter one auditable
+place to balance capability lifetime. Keeping persistence and the
+move/manifest crash window for the next slice avoids a false relaunch-resume
+claim.
+
+## D184 — Journal backup publication before and after the atomic move (Jul 2026)
+
+**Context:** D183 retains destination identity only inside the active actor.
+Even after persisting bookmark bytes, an app termination between moving a
+complete Markdown document into the destination and recording that move would
+leave the next process unable to distinguish “publish again” from “already
+published.” Persisting rendered Markdown in a work ledger would duplicate user
+content and enlarge the private recovery surface.
+
+**Decision:** every staged backup exposes the UUID already used by its private
+workspace. ApplicationKit uses that UUID as the recovery-operation identity
+and owns a narrow `LibraryMarkdownBackupRecoveryStore` port. Before publishing
+each rendered document, the workflow atomically saves one exact pending record:
+meeting identity, allocated portable filename, SHA-256, and byte count. After
+the no-replacement atomic move succeeds, it appends that record to completed
+publications and clears the pending reservation. Small operation metadata also
+stores the regular destination bookmark and an active/completed phase. The
+journal stores no transcript, summary, or rendered Markdown bytes.
+
+The macOS adapter writes version-1 JSON under one owner-only UUID operation
+directory in
+`Application Support/Portavoz/LibraryMarkdownBackupRecovery`. Metadata and one
+pending record are atomically replaced; successful completion moves that
+pending record atomically into an immutable sequence-named `completed`
+directory. This keeps steady-state work O(1) per document instead of rewriting
+the growing manifest after every meeting. Each record is capped at 1 MiB, all
+directories/files are private, and the root is excluded from backup. Loading
+and deletion reject symlinks, malformed or oversized records, unknown
+versions, noncontiguous sequences, invalid publication metadata, and
+operation-ID mismatches. Disposable composition uses a unique temporary root.
+
+The atomic move remains the publication commit point. A recovery-save failure
+after that move records the published result and exact pending journal
+completion in process memory before surfacing a stable fatal error. Retry
+finishes that journal transition before reading or publishing another document
+and therefore cannot publish the same document twice. A refreshed bookmark is
+persisted before replacing the actor's bookmark; failed publication clears its
+reservation before recording the typed failure. Terminal completion and
+source-read failure retain explicit process-local intent: retry removes the
+journal before closing the stage and does not reacquire a destination that is
+no longer needed. Storage cleanup now accepts only canonical lowercase
+UUID-named current-format workspaces and returns the exact IDs it proved
+abandoned. App launch removes only matching recovery documents, preserving
+active, noncanonical, malformed, and unknown work fail-closed.
+
+This decision persists evidence needed to reconcile the move/manifest crash
+window but does not perform that relaunch reconciliation yet. The SQLite
+stage's keyset cursor and any pending rendered document remain process-local,
+and launch still discards an abandoned stage plus its matching journal instead
+of adopting them.
+
+**Rationale:** reservation-before-move and completion-after-move establish the
+minimum auditable publication protocol without copying meeting content into a
+second durable store. Exact UUID cleanup keeps stage and journal lifecycles
+aligned. Keeping source-cursor persistence and stage reopening for the next
+slice avoids claiming end-to-end relaunch resume before every boundary is
+actually adoptable.
+
+## D185 — Reopen only an exact staged source at an exact keyset cursor (Jul 2026)
+
+**Context:** D184 makes destination publication observable across a crash, but
+StorageKit still exposes only a process-local stage actor. Adding application
+relaunch orchestration before the immutable SQLite source can be reopened
+safely would force launch code either to trust a path, restart from the
+beginning, or delete evidence it cannot validate. Persisting a meeting title,
+transcript, summary, or rendered document merely to locate the next row would
+also enlarge the private recovery surface without being necessary.
+
+**Decision:** the immutable backup stage exposes a content-free keyset cursor:
+the exact `startedAt` value and raw staged record identity already used by its
+`startedAt DESC, id ASC` traversal. StorageKit provides one adoption operation
+for a canonical stage UUID and optional cursor. It coordinates through the
+existing root lock, requires the workspace, owner file, and `source.sqlite` to
+be expected non-symlink shapes, and acquires the owner lease nonblockingly
+before opening the database read-only. Active ownership or a missing workspace
+returns unavailable. Malformed shapes, an unreadable database, a nonfinite or
+empty cursor, and a cursor that does not match exactly one live staged row fail
+closed without deleting the workspace. An adopted stage continues strictly
+after the validated cursor and retains the existing close/removal lifecycle.
+
+The application recovery contract does not persist this cursor yet, and the
+launch path does not invoke adoption. Pending-publication digest reconciliation
+also remains absent. Consequently this decision adds the safe storage primitive
+needed for relaunch continuation but does not claim that backups now resume
+after app termination.
+
+**Rationale:** a narrow, validated adoption primitive separates filesystem and
+SQLite ownership correctness from application recovery orchestration. The
+ordering pair is sufficient to resume the immutable keyset scan and contains
+no meeting prose. Read-only reopening plus exact row validation prevents a
+stale or forged checkpoint from silently skipping source data, while keeping
+the remaining crash-window work explicit and independently testable.
+
+## D186 — Advance backup recovery only after durable publication (Jul 2026)
+
+**Context:** D185 makes an immutable source stage adoptable at an exact
+content-free keyset position, but persisting the stage actor's cursor as soon as
+it reads a row would be unsafe. Rendering or destination publication can still
+fail afterward, and those typed per-meeting outcomes are currently held only by
+the process-owned run. A relaunched process must not continue after an outcome
+that its journal cannot reconstruct. Publication completion and source position
+also cannot be one atomic write because completed records are immutable
+sequence files while the cursor belongs to bounded metadata.
+
+**Decision:** ApplicationKit maps each nonempty staged-source checkpoint into a
+`LibraryMarkdownBackupSourceCursor` and carries it beside the pending document.
+After a destination move succeeds, the workflow first promotes the exact
+publication reservation into its immutable completed record. Only then may it
+apply `checkpointSource` to optional format-v1 recovery metadata. The recovery
+adapter rejects malformed cursors and any checkpoint while a publication
+reservation remains pending. It accepts the current cursor as an idempotent
+retry and accepts only a position later in the immutable
+`startedAt DESC, id ASC` traversal; rollback fails closed.
+
+If the publication completion succeeds but cursor persistence fails, the active
+run retains only the pending metadata checkpoint and retries it before any next
+source read. The destination move and completed publication record are not
+repeated. After the first source-entry, document-render, or publication
+failure, the run keeps reporting and processing later healthy meetings but
+freezes durable cursor advancement because that failure outcome is not yet in
+the journal.
+
+This decision does not reconcile a pending reservation against destination
+bytes, persist typed failure outcomes or a rendered document, or invoke stage
+adoption during launch. Cleanup still removes abandoned current-format stages
+and their matching recovery journals. T26 therefore remains open and full
+relaunch continuation is not claimed.
+
+**Rationale:** completion-before-checkpoint makes every persisted source
+position conservative: all successful publications at or before it are already
+durable, while unjournaled failures can never be silently skipped. An
+idempotent metadata retry closes the same-process crash boundary without
+rewriting completed evidence or republishing files. Keeping pending-digest
+reconciliation, failure reconstruction, and launch adoption as explicit later
+slices prevents a partial protocol from being described as restart-safe.
+
+## D187 — Reconcile only exact pending backup publication evidence (Jul 2026)
+
+**Context:** D184 reserves a destination filename and digest before the atomic
+move, while D186 advances the staged-source cursor only after immutable
+completion. A process can still terminate after reservation either before or
+after the move. On relaunch, the same pending record therefore cannot reveal
+whether the destination is absent, contains the intended bytes, or was occupied
+by different content. The reservation also did not retain the exact source
+cursor needed to complete a matching publication without restarting or
+silently skipping a row.
+
+**Decision:** every new pending publication carries the exact content-free
+source cursor when durable advancement remains safe. The recovery adapter
+validates the cursor independently and requires its record identity to equal the
+reserved meeting UUID. The optional field preserves decoding of format-v1
+journals created before this contract and marks new publications after an
+earlier process-local failure freezes advancement. No cursor-less reservation
+can advance source progress.
+
+`LibraryMarkdownBackupFiles` exposes typed evidence for one exact reservation.
+The macOS adapter opens the acquired destination directory with `O_NOFOLLOW`,
+opens the final filename relative to that directory descriptor with `openat`,
+`O_NOFOLLOW`, and `O_NONBLOCK`, requires a regular file with the reserved byte
+count, and streams SHA-256 in bounded chunks. It forwards cancellation into
+that utility task and checks it between reads. It never follows the reserved
+final name as a symbolic link.
+
+ApplicationKit owns one bounded reconciliation use case keyed by the immutable
+operation UUID. It loads active recovery state, repairs a lagging checkpoint
+from the latest immutable completed publication without destination access, and
+otherwise acquires one destination lease and persists refreshed bookmark
+identity before inspection. Missing evidence clears only the reservation so a
+future adopted source can retry that row. Exact matching evidence with a bound
+cursor promotes the pending record and then checkpoints its cursor. Conflicting
+evidence and every matching cursor-less record remain blocked and untouched.
+Destination and persistence failures are typed, cancellation propagates, and
+the lease always closes.
+
+This use case is not invoked by app launch yet. Typed failure/render
+reconstruction and the ordering of reconciliation, stage adoption, and cleanup
+also remain open. T26 therefore remains unresolved and Portavoz does not claim
+that a whole-library backup resumes after termination.
+
+**Rationale:** exact no-follow content evidence closes the reservation/move
+ambiguity without persisting meeting prose or guessing from filenames. Binding
+the source cursor to the same immutable publication makes a matching recovery
+safe, while missing and conflicting outcomes preserve user data. Separating the
+primitive from launch orchestration keeps the next restart slice independently
+reviewable and prevents a reusable recovery contract from being hidden in the
+macOS lifecycle model.
+
+## D188 — Journal typed backup failures before advancing the source (Jul 2026)
+
+**Context:** D186 conservatively froze the staged-source checkpoint after the
+first source, render, or publication failure because the released partial
+result existed only in process memory. D187 can reconcile destination bytes,
+but launch adoption still cannot continue past a failed row without either
+silently losing that outcome or repeating all later work. Persisting rendered
+Markdown would duplicate meeting content in private recovery state and create a
+second document lifecycle.
+
+**Decision:** the recovery journal now stores one immutable, independently
+sequenced failure record for each failed staged row. The bounded record contains
+the exact content-free source cursor, optional meeting identity, bounded title,
+and typed source/document/publication stage needed to reconstruct the released
+partial-result contract. It contains no transcript, summary, or rendered
+Markdown bytes. ApplicationKit normalizes the title to at most 4 KiB of UTF-8
+before persistence, so an unbounded domain title cannot strand the operation.
+Non-source failures require a meeting identity, and every
+present identity must match the cursor's staged record. Current metadata is
+format 2 and requires a private `failures` directory; format-1 journals without
+that directory remain readable and migrate before their first failure record.
+Failure files are immutable, contiguous, owner-only, bounded to 1 MiB, and an
+exact retry of an already persisted record is idempotent.
+
+ApplicationKit persists a failure before checkpointing that row. A failed
+failure write keeps the in-process row pending; a failed checkpoint retries only
+the metadata cursor and neither rerenders nor duplicates the failure record.
+Publication failure first clears its failed reservation, so a crash before the
+failure record leaves the durable cursor behind and safely retries the immutable
+source row. Later healthy publications again carry their exact cursor because
+all earlier outcomes are now durable. Reconciliation repairs a lagging cursor
+from the furthest durable publication or failure without destination access.
+
+Successful rendered documents are deliberately not journaled. Before a
+publication reservation exists, the durable cursor still points to the prior
+outcome, so an adopted immutable stage can replay the same row and render it
+again. This decision still does not invoke reconciliation or stage adoption at
+launch; T26 remains open and relaunch-safe whole-library backup is not claimed.
+
+**Rationale:** one minimal typed outcome per failed row restores monotonic source
+progress and exact partial-result reconstruction without turning the recovery
+journal into a second meeting-content store. Keeping the checkpoint behind both
+successful publication evidence and failure evidence makes every crash window
+conservative: work is either durably represented or replayed from the immutable
+stage.
+
+## D189 — Recover one whole-library backup from exact launch evidence (Jul 2026)
+
+**Context:** D185 can reopen one immutable SQLite stage at an exact content-free
+cursor, D187 can reconcile the reservation/move boundary, and D188 makes every
+failed-row outcome durable. Launch still removed abandoned stages before asking
+whether a matching journal needed them. Simply reversing that call order is not
+enough: a malformed journal might still name the only source, multiple journals
+make ownership ambiguous, recovered filenames can collide with files created
+while Portavoz was closed, and a destination failure after adoption must not
+delete the stage merely because its actor leaves scope.
+
+**Decision:** ApplicationKit owns one `RecoverLibraryMarkdownBackup` launch
+operation. It first catalogs every canonical lowercase UUID child of the private
+recovery root without trusting that child's shape or contents. The full catalog
+is passed to StorageKit cleanup as a preservation set, so even a canonical
+symlink or malformed journal protects its matching stage until strict loading
+reports the error. Zero operations performs ordinary abandoned-stage cleanup.
+More than one operation is ambiguous: Portavoz adopts none, deletes none, and
+blocks a new backup rather than choosing by timestamp, directory order, or PID.
+
+One operation enters the shared maintenance/media-export gate before
+reconciliation or stage adoption. ApplicationKit reconciles the exact pending
+publication and any lagging checkpoint, then adopts only the stage whose UUID
+and cursor match the journal. Recovered active state requires no pending
+reservation; contiguous publication and failure sequences; cursor-bound
+publications; unique filenames and source positions; a checkpoint equal to the
+furthest durable outcome; and an outcome count no greater than the immutable
+stage total. Completed state additionally requires the outcome count to equal
+that total. Invalid, missing, conflicting, cursor-less, or unavailable evidence
+remains untouched and blocks a second backup.
+
+The exporter rebuilds its collision allocator from the union of current
+destination Markdown names and durable completed filenames, reconstructs typed
+exported names and failures, and resumes strictly after the adopted cursor. A
+completed journal reconstructs its final result without destination access,
+removes the journal, and only then closes and deletes the stage. An adopted
+stage does not remove its workspace on deinitialization. Recovery setup failure
+uses explicit `abandon()` to close the read-only database and release the kernel
+lease while preserving the journal and source for a later launch. Capture can
+suspend recovery before reconciliation or adoption; the existing capture-stop
+signal retries the unresolved operation. No timer, polling task, PID heuristic,
+transcript, summary, or rendered Markdown is added.
+
+A fatal source read that completes terminal journal/stage cleanup also clears
+launch ownership. The coordinator checks whether the exporter still owns a
+prepared or active immutable run before treating an error as retryable, so a
+later capture-stop signal cannot reinterpret the remembered destination URL as
+authorization to start a new live-library backup.
+
+**Rationale:** catalog-before-cleanup prevents the recovery protocol from
+destroying evidence it has not yet validated. Exact reconciliation, adoption,
+and state validation turn every supported crash window into either durable
+progress or deterministic replay. Failing closed on ambiguity and conflict
+protects user files, while explicit abandon separates retryable ownership
+release from terminal deletion. The implementation now supports relaunch
+continuation; a real process-kill/relaunch exercise remains field evidence, not
+a prerequisite for the code-level contract.
+
+## D190 — Release owner-leased jobs explicitly on intentional suspension (Jul 2026)
+
+**Context:** durable post-capture jobs use an exclusive owner lease and periodic
+heartbeat because their model work and generated publication cannot be resumed
+from an internal cursor. A task cancellation previously returned from
+ApplicationKit while leaving the row `running`. Launch recovery could only
+interpret the later lease expiration as worker death, consuming an attempt and
+eventually exhausting work that had merely been suspended by policy or process
+coordination. Reusing the same ownership mechanism for semantic indexing,
+existing-library sync, or staged backup would add timers without improving
+their already exact replay boundaries.
+
+**Decision:** StorageKit adds one owner- and unexpired-lease-fenced suspension
+transition. It returns the claimed job to `pending`, resets non-resumable
+progress, clears lease/error/terminal fields, and refunds exactly the claim
+attempt that opened the interrupted execution. Stale owners and repeated
+suspension fail as lease loss. `ProcessPostCaptureJobs` invokes this transition
+when capability work throws `CancellationError` and emits a distinct
+`suspended` outcome only after the durable write succeeds, then stops the
+current drain invocation so it cannot immediately reclaim pending work. Lease
+loss remains a separate outcome; another persistence error stays a typed
+preservation issue.
+
+Replay-safe maintenance keeps its existing narrower ownership. Semantic
+backfill and the existing-library seed publish explicit paused outcomes at
+their durable database cursors. Whole-library backup journals every safe source
+advance and uses a kernel lease for its immutable stage. None receives a timer,
+PID heuristic, or heartbeat. Future graph rebuild must select one of these
+contracts only after its derived index and rebuild cursor exist.
+
+**Rationale:** an explicit release makes intentional suspension observable and
+repeat-safe without waiting for time to prove a worker dead. Refunding the claim
+is required: a pending row at `maxAttempts` is not claimable and would otherwise
+be stranded. Matching ownership strength to recovery granularity keeps the
+durable worker strict while avoiding artificial liveness machinery around
+idempotent checkpoint workflows.
+
+## D191 — Prove accelerated long capture separately and bound finalization heap (Jul 2026)
+
+**Context:** GOV-5 needs both synthetic three-hour continuity and real-time
+recording/interference evidence. Adding multi-hour cells to the exact 27-cell
+resource matrix would make ordinary collection impractical and would conflate
+deterministic file conservation with hardware, route, thermal, and power
+behavior. The first accelerated dual-channel Release run conserved every frame
+but retained roughly the full 691 MiB PCM payload after Stop. Short tests did
+not expose that `FileHandle.read(upToCount:)` produced one autoreleased `Data`
+per SHA-256 block on a long-lived utility queue.
+
+**Decision:** `RecordingSession.Summary` carries exact integer frame counts in
+addition to projected seconds. `CaptureFileWriter` owns one grow-only reusable
+PCM buffer per channel and an explicit idempotent close; Stop closes every
+writer before publication rather than depending on task-context destruction.
+The streaming SHA-256 loop reads and updates each 1 MiB block inside its own
+autorelease pool.
+
+A separate `bench-capture` CLI drives microphone and system sources through the
+production session. It admits one chunk pair, waits until both chunks have been
+persisted, then admits the next. `make long-capture-baseline` requires a clean
+commit and Release build, refuses to overwrite an existing receipt, rechecks
+source identity before destination-local atomic publication, and validates an
+exact-shaped, owner-only, source-commit-bound report. Canonical evidence
+requires exactly three logical hours at 16 kHz: 172,800,000 writer and
+published-file frames per channel, healthy CAFs, zero frame drift, and at most
+16 MiB incremental allocator heap. Unknown fields, private paths/content,
+debug builds, malformed numbers, partial channels, and inconsistent counts
+fail closed.
+
+Accelerated process physical footprint is excluded from this report because
+writing 691 MiB in seconds creates dirty-page pressure unlike real elapsed
+capture. The 16 MiB limit is a duration-invariance safety fence for the
+synthetic process, not a product RAM tier. The existing real-time resource
+contract remains unchanged and owns physical-footprint, thermal, power, disk,
+resident-model, and call-route acceptance.
+
+**Rationale:** deterministic frame conservation can run quickly and catch
+duration-proportional heap defects without multiplying every hardware cell.
+Keeping the contracts separate prevents a fast synthetic writer from making
+false real-call claims while still turning multi-hour capture and Stop into a
+repeatable release gate. Explicit close and scoped autorelease make the
+architecture's bounded-memory publication claim true rather than relying on
+ARC timing.
+
+## D192 — Trace Ask stages without admitting meeting content (Jul 2026)
+
+**Context:** progressive Ask must remove complete corpus backfill and optional
+generation from time-to-first-evidence without changing citation quality. The
+existing resource telemetry identifies only a broad user-initiated workload;
+the historical lexical and semantic probes cannot explain expansion,
+readiness, retrieval, or generation time inside one real Ask. Overloading the
+generic resource taxonomy with search-specific stages would couple unrelated
+governor policy to benchmark implementation.
+
+**Decision:** ApplicationKit owns a separate closed `AskPipelineTelemetry`
+port. One random process-local trace spans a validated search, evidence, or
+answer operation. `LocalAskMeetingRetrieval` emits matched intervals for corpus
+readiness, query expansion, lexical query, query embedding, semantic scan,
+fusion, and citation materialization. `AskMeetings` emits first evidence, the
+first token observable at its answer boundary, and a completed, cancelled, or
+failed terminal outcome. Empty and invalid requests create no trace.
+
+The trace types carry only closed operation/stage/milestone/outcome enums and
+random correlation UUIDs. The macOS composition root maps them to OSLog Points
+of Interest through one adapter whose API cannot receive question text,
+meeting or segment identity, citations, paths, model names, or error text. An
+explicit observer seam lets deterministic benchmarks receive the same event
+stream without parsing Instruments output. The current answer capability is
+not streaming, so first-token observation honestly coincides with the complete
+answer crossing ApplicationKit; it does not claim model-internal timing.
+
+This slice does not retain samples, create a benchmark report, alter corpus
+writes, reorder retrieval, or change model readiness. Those changes require a
+separate comparable evidence slice over this stable vocabulary.
+
+**Rationale:** a dedicated application-level trace makes every current latency
+component visible without weakening privacy or turning measurement labels into
+resource policy. Establishing stable before-state evidence first lets later
+progressive retrieval prove lower time-to-first-evidence and unchanged
+citations rather than merely moving work and assuming improvement.
+
+## D193 — Pair every Ask resource run with one authoritative pipeline receipt (Jul 2026)
+
+**Context:** D192 established a stable content-free event vocabulary, but the
+resource matrix still retained only broad process counters. A trace visible in
+Instruments was insufficient benchmark authority: it did not bind stage timing
+to the exact resource run, prove the current corpus readiness transition, or
+fail the matrix when citations changed. Parsing signpost text would also make
+the benchmark depend on a presentation format rather than the application
+contract.
+
+**Decision:** the hidden macOS Ask benchmark installs one observer around its
+single disposable `AskMeetings.local` operation. A strict native collector
+accepts one answer trace, every declared stage exactly once, first evidence,
+first observable answer token, and one successful terminal outcome. It samples
+monotonic wall and process CPU at those boundaries and atomically writes one
+owner-only, non-overwriting sidecar named for the same numeric run as the broad
+resource receipt. Duplicate, foreign, incomplete, failed, post-completion,
+misordered, or malformed-digest evidence cannot publish.
+
+The receipt contains only closed labels, timings, counts, a fixed corpus
+generation, a SHA-256 checksum over canonical public-fixture fields, cold
+readiness state, and a SHA-256 digest over validated fixture citation ordinals.
+Runtime trace/segment/meeting IDs, question and transcript text, generated
+answers, model names, paths, and errors remain outside the schema. Canonical
+timestamps use their IEEE-754 bit patterns rather than locale-sensitive text.
+
+The assembler requires exact one-to-one broad Ask and pipeline run sets. The
+evaluator reports p50/p95 wall and CPU for total time, first evidence, first
+observable token, post-evidence generation, and every stage; insufficient or
+unstable samples block. Corpus and citation identity must be deterministic
+within a memory profile and comparable across profiles. The current v1
+before-state deliberately requires all ten fixed segments to move from pending
+to ready during the request. SEARCH-1 must version or replace that readiness
+contract when request-time backfill is removed.
+
+**Rationale:** pairing native stage evidence with the already isolated host
+resource run makes performance changes explainable without exposing meeting
+content or allowing instrumentation to affect product policy. Exact corpus and
+citation gates distinguish a faster implementation from one that silently did
+less work, while an explicit before-state gives later progressive retrieval a
+real comparison boundary.
+
+## D194 — Freeze multilingual Ask quality before retrieval changes (Jul 2026)
+
+**Context:** D192–D193 make the current Ask latency and resource path
+explainable, but deterministic citation identity over a ten-segment performance
+fixture does not prove retrieval or answer quality. Removing request-time
+corpus writes, changing progressive orchestration, chunking, embeddings, or the
+vector engine without one stable quality boundary could make Ask faster by
+silently losing bilingual evidence, exact facts, abstention, or citation
+integrity. Using a second model as the only judge would also make the release
+gate nondeterministic and difficult to reproduce offline.
+
+**Decision:** benchmark tooling owns an adapter-neutral schema and a canonical
+public-synthetic fixture with exactly 240 judged queries: 60
+Spanish-to-Spanish, 60 English-to-English, 40 English-to-Spanish, 40
+Spanish-to-English, 20 code-switched, and 20 robustness cases. Robustness keeps
+Spanish evidence fixed while independently testing accent removal, spelling
+errors, technical-identifier noise, and missing-fact abstention. Exact fact
+intents require relevant evidence at rank one. Every query also declares
+graded evidence, canonical timestamp/owner labels, hard negatives, and an
+answer-or-abstain policy.
+
+One strict local evaluator rejects duplicate or unknown fields, incomplete
+query coverage, duplicate hits, unsafe identities, stale citation revisions,
+non-finite scores, and noncanonical public fixtures. It reports Hit@1,
+Recall@10, reciprocal rank, nDCG@10, factuality, citation coverage, answer
+policy accuracy, hard-negative hits, invalid/stale citations, and unsupported
+claims overall and per relationship. Passing requires exact facts at rank one,
+explicit overall and per-relationship retrieval/answer floors, canonical
+citations, correct abstention, no hard negatives, and zero unsupported claims.
+The observation schema contains no question, transcript, generated answer, or
+owner text; the owner-only non-overwriting scorecard contains only aggregate
+metrics plus fixture, adapter, build, and commit identity.
+
+The public corpus is tracked and deterministic. A later private anonymized pack
+must use the same schema but remains untracked. This decision adds no product
+runtime dependency and does not select an index or embedding provider. SEARCH-1
+cannot claim quality parity until its real retrieval path emits complete
+observations that pass this contract.
+
+**Rationale:** deterministic labels make regression detection local,
+repeatable, and independent of whichever model is under test, while factuality
+and citation metrics still permit separately versioned human or model-assisted
+annotation when producing a fixture. Freezing the scoring contract before the
+implementation changes makes latency improvements comparable rather than
+subjective and preserves multilingual, evidence-linked behavior as an explicit
+architecture invariant.
+
+## D195 — Observe production Ask retrieval without claiming answer quality (Jul 2026)
+
+**Context:** D194 freezes an adapter-neutral quality contract, but generated
+fixtures and evaluator tests do not prove that the shipped retrieval path can
+produce canonical observations. Linking benchmark code into the app or opening
+the user's library would weaken product boundaries and privacy. Conversely,
+filling answer scores from retrieval evidence would falsely claim generative
+factuality and citation coverage.
+
+**Decision:** `portavoz-cli bench-ask-quality` loads a verified quality fixture
+into a disposable owner-only `MeetingStore`, executes the real
+`LocalAskMeetingRetrieval` hybrid path with deterministic no-expansion control,
+maps ephemeral identities back to fixture identities, and atomically publishes
+one non-overwriting observation document. `SearchHit` and `AskCitation` carry
+the meeting transcript revision so every observed citation includes canonical
+revision provenance. The adapter never opens the user library and is not linked
+into the app.
+
+This first production adapter evaluates retrieval only. Every answer observation
+is explicitly `notEvaluated`, with null factuality and citation coverage and zero
+unsupported-claim assertions. The evaluator may report retrieval metrics, but
+the answer policy and quality gates remain blocked. A later separately versioned
+answer adapter or judge must provide that evidence; retrieval success cannot be
+promoted into an answer-quality claim.
+
+**Rationale:** exercising the shipped retrieval implementation closes the gap
+between a synthetic contract and product code while preserving privacy and
+dependency direction. Explicitly incomplete answer evidence keeps the release
+gate honest and lets retrieval architecture evolve without hiding the remaining
+generative-quality work.
+
+## D196 — Keep product Ask corpus-read-only (Jul 2026)
+
+**Context:** the signal-driven semantic maintenance owner already wakes at app
+launch, searchable mutations, capture completion, and explicit reconciliation,
+but `LocalAskMeetingRetrieval` still downloaded/prepared assets and drained
+every missing embedding before returning evidence. A user query therefore
+owned model setup, maintenance admission, database writes, and retrieval in one
+latency/cancellation scope. D192–D195 provide stage, corpus, citation, and
+multilingual quality evidence that can distinguish that historical path from a
+read-only request.
+
+**Decision:** product Ask retrieves exact FTS evidence first and never invokes
+`IndexSemanticCorpus`, persists an embedding, or requests semantic asset
+download. It inspects `hasAvailableAssets`; only when assets are already
+available does it borrow the process runtime with `allowAssetDownload: false`,
+embed query variants, and search vectors already published by maintenance.
+Missing assets and ordinary preparation/query failures produce no semantic
+candidates and preserve lexical evidence. `CancellationError` and task
+cancellation still terminate the request.
+
+Complete corpus drains remain owned by signal-driven background maintenance;
+Library may retain its existing bounded opportunistic batch in this slice.
+Explicit benchmark setup may index only its disposable store before observing
+a query. The native Ask resource sidecar advances to schema 2 and generation
+`ask-resource-v2`: it proves every fixture row was pending at seed time, zero
+rows were pending before and after the measured query, and both readiness
+states were true. The production quality observation adapter advances to
+`local-hybrid-preindexed-no-expansion-evidence-v2` and likewise prepares its
+disposable corpus outside query observation. Schema-1 cold-backfill receipts
+and adapter-v1 observations remain historical before-state evidence and are
+not silently mixed with version 2.
+
+This decision does not yet expose user-facing `ready`/`partial`/`building`/
+`unsupported`/`failed` state, move Library's bounded batch, activate durable
+index jobs, or claim accepted answer quality.
+
+**Rationale:** query cancellation and optional semantic capability should not
+control durable corpus progress, and a cold or failed model must never block
+exact local evidence. Separating benchmark preparation from query measurement
+keeps comparisons honest while making the architecture's ownership boundary
+enforceable in source and tests.
+
+## D197 — Centralize semantic readiness and product write ownership (Jul 2026)
+
+**Context:** D196 removed request-time corpus writes from Ask, but Library still
+advanced a bounded embedding batch while a user typed. Ask and Library also
+inspected runtime assets independently, so neither had one typed explanation
+for a complete, partially published, actively building, unsupported, or failed
+semantic corpus. Query cancellation could still own Library persistence, and
+the background supervisor's active/failure phase was not available to either
+consumer.
+
+**Decision:** ApplicationKit owns a closed `SemanticCorpusReadiness` contract
+with `ready`, `partial`, `building`, `unsupported`, and `failed` states.
+`ResolveSemanticCorpusReadiness` derives that state without preparation or
+writes from three inputs: installed query-vector capability, a one-row durable
+pending-embedding probe, and one lock-protected process maintenance phase. A
+complete corpus reports `ready` even if the last process pass failed. Pending
+rows report `partial` while idle, `building` during an active drain, and
+`failed` after an ordinary drain error. Missing query-vector capability reports
+`unsupported`.
+
+Exact FTS remains available in every state. Ask and Library may read already-
+published vectors in `ready`, `partial`, `building`, and `failed`; only
+`unsupported` skips semantic work. Both product query paths are corpus-read-
+only: they cannot own an indexing coordinator, invoke `IndexSemanticCorpus`,
+persist vectors, or request asset download. The signal-driven macOS supervisor
+is the sole product corpus writer and publishes its payload-free process phase
+to the shared resolver. Explicit benchmark preparation may continue writing
+only to its disposable store outside the observed product request.
+
+This phase is deliberately not durable progress. Missing `NULL` embedding rows
+remain the authoritative cursor. D200 later adds content-free scheduling
+ownership and restart recovery around that cursor without moving progress into
+the job ledger.
+
+**Rationale:** one typed read model gives every query surface identical,
+testable degradation while separating user latency and cancellation from
+durable corpus progress. Keeping persistence behind the background owner makes
+write scheduling independently governable without sacrificing exact search or
+the value of semantic rows that are already published.
+
+## D198 — Fence semantic publication by exact transcript source (Jul 2026)
+
+**Context:** the `NULL` embedding cursor was crash-resumable, but batch
+selection returned only segment ID and text and publication updated by segment
+ID alone. A transcript edit, reviewed replacement, or deletion racing the
+embedding model could therefore let an old vector reach a reused segment
+identity. Activating the dormant `.index` processing-job kind does not solve
+that race and would currently let degradable derived work drive the meeting's
+visible `processing`/`needsAttention` lifecycle.
+
+**Decision:** every semantic candidate carries segment ID, meeting ID,
+transcript revision, and exact text from selection through publication.
+StorageKit accepts an exact candidate/vector key set and conditionally writes
+each vector only while the same segment remains live and unembedded, its exact
+text is unchanged, and its live meeting remains at the selected transcript
+revision. Concurrent completion, correction, replacement, or tombstone is a
+content-free skipped outcome. `IndexSemanticCorpus` reports accepted full-text
+vectors, accepted empty micro-segment markers, and skipped rows separately;
+the current live replacement remains `NULL` for a later signal-driven pass.
+
+This is the first SEARCH-2 durability unit, not a second job cursor. `NULL`
+rows remain authoritative across pause, failure, and relaunch, Ask and Library
+remain read-only, FTS remains independent, and `.index` remains dormant until
+derived-maintenance scheduling can be separated from the meeting lifecycle.
+This decision itself does not add model/index-schema fingerprinting,
+invalidation, bounded retry ownership, or relaunch evidence. D199 subsequently
+adds the profile fingerprint and invalidation boundary; D200 subsequently adds
+independent retry ownership and relaunch recovery without changing this source
+fence.
+
+**Rationale:** stale derived data must be impossible before retry scheduling is
+made more durable. Compare-and-swap at the storage boundary protects every
+caller and preserves the smallest exact replay unit without manufacturing a
+second progress source or turning optional semantic maintenance into meeting
+recovery state.
+
+## D199 — Fence semantic reads and rebuilds by embedding compatibility (Jul 2026)
+
+**Context:** D198 proved that a vector belongs to an exact transcript source,
+but the persisted BLOB still did not identify the vector space that produced
+it. An operating-system model revision, dimension change, Portavoz pooling
+change, or binary-schema change could leave structurally valid but semantically
+incompatible rows queryable. Vector width alone cannot prove compatibility,
+and existing databases contain unprofiled vectors.
+
+**Decision:** PortavozCore owns `SemanticEmbeddingProfile`, a content-free
+typed identity containing the concrete model identifier and revision, vector
+dimension, pooling-pipeline identifier and revision, and vector-schema version.
+Its stable SHA-256 fingerprint is stored atomically beside each embedding.
+The prepared embedder is the authority for the active profile; app and CLI
+runtimes, readiness, maintenance, Ask, Library, and benchmark paths pass the
+same value through their existing boundaries.
+
+Storage rejects an invalid profile, a non-empty vector of the wrong dimension,
+and every non-finite value. Semantic lookup accepts a query only at the active
+dimension and scans only rows with the exact active fingerprint. Maintenance
+detects missing or incompatible rows, resets incompatible derived vector state
+to the existing `NULL` cursor, and rebuilds it under the active profile before
+publication. Empty libraries use a profile-free row-existence probe and do not
+touch model assets. Schema v17 adds nullable `segment.embeddingFingerprint` and
+fails closed by clearing legacy unprofiled embedding BLOBs; transcript, FTS,
+meeting revision, and all other authoritative rows remain untouched.
+
+This remains derived background maintenance, not meeting processing. Ask and
+Library stay corpus-read-only, exact FTS stays available during a rebuild, no
+query or background path downloads assets, and the dormant `.index` processing
+kind remains inactive. The fingerprint contains no meeting, transcript, or
+query content.
+
+**Rationale:** semantic results are valid only when both their source and
+vector space are current. A single typed profile and fail-closed storage fence
+make that invariant enforceable at every read/write boundary, while reusing the
+existing crash-resumable `NULL` cursor avoids a second ledger and preserves
+exact local search throughout migration and rebuild.
+
+## D200 — Own semantic maintenance independently from meetings (Jul 2026)
+
+**Context:** source- and compatibility-fenced `NULL` vector rows made indexing
+replayable, but ordinary failures still depended on another app signal and a
+relaunch before a dead worker lease expired had no deterministic future wake.
+The existing `processingJob.index` contract is meeting-scoped and may move an
+otherwise searchable meeting into `processing` or `needsAttention`, so it is
+not a valid owner for degradable library-wide derived work.
+
+**Decision:** schema v18 adds a content-free derived-maintenance source and job
+ledger independent from meeting rows. Triggers advance one semantic source
+generation for authoritative transcript mutations but exclude embedding
+publication. The active compatibility profile plus generation produces one
+idempotent operation fingerprint. Superseded pending operations are cancelled;
+one kind-wide lease, heartbeat, bounded attempts, stable error code, and future
+retry timestamp own scheduling only. `NULL` or incompatible segment vectors
+remain the sole progress cursor.
+
+ApplicationKit recovers expired ownership, admits and claims the operation,
+borrows only already-installed semantic assets, and settles success, capture
+suspension, or failure. Capture suspension clears the lease and refunds the
+attempt. Ordinary failure retries after 5 and 30 seconds before becoming a
+terminal derived result. The macOS supervisor schedules one cancellable wake
+for the earliest retry or live predecessor lease expiration; mutation and
+capture-stop signals still coalesce into one immediate rerun. Relaunch recovery
+therefore resumes only remaining vector rows without polling or duplicate
+publication.
+
+Exact FTS and compatible published vectors remain available in every state.
+Derived failure never changes meeting lifecycle, stores meeting/transcript
+content, or activates `processingJob.index`.
+
+**Rationale:** retry ownership and indexing progress have different recovery
+boundaries. A small independent lease envelope makes process death and bounded
+retry deterministic, while the existing row cursor remains the exact,
+idempotent proof of completed derived work.
+
+## D201 — Publish exact Ask evidence before generation (Jul 2026)
+
+**Context:** D196–D200 separated product queries from corpus maintenance, but
+Ask still invoked optional Foundation Models query expansion before exact FTS.
+A cold or busy local model could therefore delay evidence that SQLite already
+had, while the full Ask surface exposed only one undifferentiated spinner.
+Sequential lexical and semantic work also made semantic readiness part of the
+exact-result critical path.
+
+**Decision:** `AskMeetings` owns a storage-independent progressive evidence
+contract with `lexical` and `fused` phases while preserving its existing final
+answer API for CLI, MCP, the command palette, and meeting preparation. The
+local adapter first applies the deterministic bounded English/Spanish lexicon,
+then starts exact FTS and optional published-vector augmentation concurrently.
+Exact citations cross the application boundary as soon as FTS finishes. The
+bounded reciprocal-rank-fused set is immutable before answer generation begins
+and is the only evidence supplied to the answer model.
+
+Foundation Models query expansion is no longer on the first-evidence path. It
+runs only when deterministic bilingual lexical retrieval plus available
+semantic retrieval found no citation, admits at most three new normalized
+variants, and never downloads an asset. That late fallback remains inside the
+operation's total duration but does not emit a duplicate primary expansion
+stage; adding dedicated fallback-stage timing requires a separately versioned
+telemetry receipt. Ordinary semantic or generation failure still preserves
+exact evidence, while cancellation propagates through every concurrent task.
+
+The macOS full Ask model presents distinct finding, semantic-refinement, and
+answer-generation states, exposes early citations, and fences every update by
+the request generation. Cancel or navigation removes pending state and rejects
+late evidence or completion. Other consumers retain their final-result
+behavior.
+
+**Rationale:** local evidence should feel instantaneous and must not depend on
+optional generation. A two-phase application contract makes progressive UX a
+presentation choice without exposing storage or model details, while one final
+evidence fence keeps generated answers and citations coherent.
+
+## D202 — Define speaker-safe retrieval chunks before changing the index (Jul 2026)
+
+**Context:** production semantic retrieval still embeds one transcript segment
+per row. That preserves exact citations and correction invalidation, but very
+short fragments can lack enough context for useful ranking. Replacing the
+storage layout first would make attribution, mixed-language fidelity,
+incremental rebuild cost, and quality regressions inseparable from a schema
+migration. A meeting-wide transcript revision alone is also too broad an
+invalidation key: correcting one word must not require re-embedding unrelated
+turns.
+
+**Decision:** ApplicationKit defines a pure, storage-independent
+`RetrievalChunk` and deterministic `speaker-turn-v1` chunker. A chunk may join
+only adjacent nonempty segments that resolve to the same confirmed person, the
+same meeting-local speaker, or the local microphone. Unattributed system and
+room segments stay isolated. A different actor always starts another chunk,
+even when joining would improve length. Append admission is bounded to 900
+normalized characters, 45 seconds, and a 2.5-second gap; an oversized
+authoritative source remains indivisible rather than fabricating subsegment
+citations.
+
+Each chunk carries ordered source segment IDs, timestamps, channel,
+meeting-local speaker IDs, confirmed person IDs, and normalized per-source
+spoken-language tags. Spoken text is Unicode/whitespace normalized only; it is
+never translated or vocabulary-corrected by chunking. Chunk identity depends
+on meeting, chunker version, and ordered source membership. A separate source
+fingerprint includes each source's normalized text plus attribution, language,
+and timing, so moving words between unchanged source IDs is still a change.
+The transcript revision is retained as a publication fence but excluded from
+identity and rebuild admission, so a revision increment retains unaffected
+chunks while a correction republishes only overlapping evidence.
+
+This slice adds no table, vector, query adapter, product write, or UI behavior.
+The schema-v18 segment vectors remain the production default. Any persistence
+or retrieval adapter for chunks must resolve every selected chunk back to its
+current ordered source rows, run through the canonical multilingual quality
+pack and resource matrix under a distinct adapter identity, and match or beat
+segment retrieval before selection.
+
+**Rationale:** source-safe context must be proven before it becomes durable.
+A pure deterministic boundary lets competing chunk policies share one exact
+provenance model, makes selective correction invalidation testable, and keeps
+the current local-first search fully available while evidence is collected.
+
+## D203 — Score retrieval units through exact source membership (Jul 2026)
+
+**Context:** D202 defines speaker-safe candidate chunks, but the D195 quality
+observation represented every ranked result as one `segmentID`. Reusing that
+shape for a chunk would either hide additional sources, flatten them into
+independent ranks, or conceal a hard negative that shares the selected turn.
+None is a truthful comparison with the segment control. Building a second
+retrieval algorithm only for the benchmark would also stop testing the shipped
+ranking path.
+
+**Decision:** `portavoz-cli bench-ask-quality` accepts an explicit
+`segment|speaker-turn` retrieval unit. It projects the selected units into its
+disposable owner-only database, prepares the same semantic corpus, and runs the
+same `LocalAskMeetingRetrieval` implementation. The speaker-turn candidate uses
+the D202 chunk identity and spoken text; it creates no product table, migration,
+maintenance job, or query lane.
+
+New observations use schema 2. Every ranked hit contains one stable `unitID`
+and its complete ordered `sourceSegmentIDs`, plus meeting, first-source
+timestamp, and transcript revision. The evaluator normalizes historical
+schema-1 segment hits into one-source units. It scores rank by retrieval unit,
+recall by covered canonical sources, and rejects repeated units or sources.
+Unknown sources, incorrect order, a wrong meeting or first timestamp, and a
+stale revision fail citation integrity. A hard-negative source counts even
+when the same chunk also contains relevant evidence. Observation and scorecard
+artifacts remain content-free outside the private fixture and retain build,
+commit, adapter, and observation-schema identity.
+
+This slice enables comparison but does not declare a winner. The current
+canonical public fixture rarely contains adjacent rows from the same actor, so
+a later versioned corpus topology and paired comparison receipt must exercise
+real multi-segment turns before speaker-turn retrieval can claim parity. Product
+Ask, Library, schema v18, and segment-level vectors remain unchanged.
+
+**Rationale:** a richer retrieval unit is acceptable only if every piece of
+evidence remains inspectable at its original transcript identity. Reusing the
+production retrieval path isolates chunk topology as the variable under test,
+while source-aware scoring prevents apparent recall gains from hiding wrong or
+stale evidence.
+
+## D204 — Version corpus topology and compare retrieval candidates as one run (Jul 2026)
+
+**Context:** D203 can score segment and speaker-turn units truthfully, but the
+first public corpus generation grouped four different actors per meeting. The
+candidate therefore collapsed to the segment control on almost every row, and
+independent scorecards could still be compared across a different corpus,
+build, commit, or observation schema. Replacing the original fixture would
+also make historical evidence impossible to reproduce.
+
+**Decision:** tracked public fixture generations are immutable. The historical
+`public-synthetic-v1` fixture remains accepted at its original checksum. The
+current `public-synthetic-v2` fixture preserves the exact 240-query multilingual
+distribution but deterministically interleaves relationships into sixty
+four-segment meetings. Every meeting has two ordered two-segment same-actor
+turns, including mixed-language turns. Hard negatives come from another
+meeting, so the speaker-turn candidate is exercised without manufacturing a
+hard-negative failure in every relevant chunk.
+
+The offline comparator accepts one validated canonical fixture and two complete
+scorecards. The control must use the D203 segment adapter, the candidate the
+D203 speaker-turn adapter, and both must share build, commit, fixture checksum,
+and observation schema 2. It publishes an owner-only, atomic, non-overwriting,
+payload-free receipt with aggregate and per-relationship retrieval deltas.
+Candidate parity requires no degradation in Hit@1, Recall@10, MRR, nDCG@10, or
+exact-rank-one, canonical citations for both candidates, and no hard-negative
+increase. Identity, aggregate, or language-slice mismatch blocks the receipt.
+
+A `candidate-parity` receipt is quality evidence only. It does not choose the
+product adapter or authorize chunk persistence, semantic maintenance, or query
+changes. Resource cost, correction cost, answer quality, and accepted hardware
+evidence remain separate gates before production selection.
+
+**Rationale:** corpus topology must vary the retrieval unit without changing
+the judged distribution, while one paired receipt must prove both candidates
+were measured from the same source and build. Immutable generations preserve
+historical reproducibility; strict per-slice comparison prevents an aggregate
+gain from hiding a Spanish, English, mixed, or cross-lingual regression.
+
+## D205 — Publish retrieval comparisons only through a clean-source pair (Aug 2026)
+
+**Context:** D204 defines the comparison receipt, but manually invoking two
+CLI observations and three evaluator commands can mix commits, builds, fixture
+generations, or partial artifacts. The observation adapter also requested
+Apple's OS-managed embedding assets implicitly. That acquisition can take
+minutes, fail for host-service reasons, and contaminate the boundary between
+environment readiness and candidate retrieval quality.
+
+**Decision:** `make ask-quality-pair` is the accepted orchestration path for a
+segment versus speaker-turn comparison. It requires a clean worktree, derives
+the full HEAD SHA itself, validates the canonical v2 fixture, builds one Release
+CLI, and fixes both observations to the same receipt-safe build identity. The
+runner always passes `--asset-download never`. Direct development CLI runs may
+opt into `if-needed`, but the CLI default is also `never`; acquisition is a
+separate preparation concern and is never part of accepted quality evidence.
+
+The runner admits evaluator exit 1 only when a complete owner-only scorecard
+was published, because the current answer fields are deliberately
+`notEvaluated`. It then requires the comparator exit status to agree with its
+`candidate-parity|blocked` receipt and exact build/commit identity. All two
+observations, two scorecards, and the comparison are mode 0600 in one mode-0700
+staging directory. An exclusive sibling lock, non-overwriting destination, and
+final directory rename prevent a partial run from becoming comparable
+evidence. Setup, model, host-service, malformed receipt, or identity failure
+removes staging and exits as a contract error. Repository-local output must be
+ignored.
+
+This decision does not declare speaker-turn parity, choose production chunk
+storage, or weaken the resource, correction-cost, answer-quality, hardware, or
+field gates. Model unavailability is recorded as a blocked environment, never
+as a retrieval regression or fabricated score.
+
+**Rationale:** comparison evidence is useful only when both candidates have one
+immutable source identity and complete publication boundary. Separating asset
+preparation from measurement makes failures fast and attributable, while one
+private atomic run prevents accidental cross-build conclusions.
+
+## D206 — Inject one read-only semantic-index query port before shadow engines (Aug 2026)
+
+**Context:** Ask and Library called `MeetingStore.searchSemantic` directly.
+That is correct for the shipped Accelerate exact scan, but it makes a controlled
+shadow bake-off awkward: each consumer would need engine-specific branching,
+and a candidate could accidentally become coupled to query-vector creation,
+corpus maintenance, or user-visible fusion before its evidence is accepted.
+
+**Decision:** ApplicationKit owns one narrow `SemanticIndexSearching` query
+port. It accepts a finite vector space through the exact active
+`SemanticEmbeddingProfile` plus a bounded limit and returns ranked, current
+`SearchHit` projections. Ask and Library borrow the embedding runtime and create
+the query vector exactly as before, then call the injected port. Their default
+is `AccelerateExactSemanticIndex`, a behavior-preserving adapter over the
+existing SQLite-streamed Accelerate implementation.
+
+The seam is read-only and does not own embedding assets, vector publication,
+compatibility invalidation, maintenance scheduling, lexical search, fusion, or
+answer generation. Exact control remains the sole product result source.
+Candidate packages, persistence, shadow orchestration, content-free comparison
+telemetry, and engine selection remain separate SEARCH-5 slices. A future
+candidate adapter must still return authoritative current citation projections;
+it cannot make its derived index the meeting-data authority.
+
+**Rationale:** one injected port isolates the variable that the benchmark needs
+to compare without changing the safe exact-first product. Retaining the current
+adapter as the default creates a reversible Strangler seam and prevents a
+research engine from spreading into retrieval consumers or the durable writer
+before quality, resource, lifecycle, licensing, and packaging gates pass.
+
+## D207 — Shadow candidates never serve results or carry payload telemetry (Aug 2026)
+
+**Context:** D206 isolates semantic queries, but an adapter seam alone does not
+make a safe bake-off. Awaiting a candidate would add its latency to Ask;
+returning candidate hits would silently change product quality; logging queries,
+citations, model errors, or identifiers would violate the local-first evidence
+contract. A control failure also leaves no valid baseline for comparison.
+
+**Decision:** ApplicationKit provides a benchmark-only
+`ShadowComparingSemanticIndex`. It executes the exact control first and returns
+those hits without awaiting an explicitly injected candidate task. Candidate
+success, failure, or cancellation cannot change the returned value or throw into
+the control path. A control failure is propagated and schedules no candidate.
+Ask and Library continue to compose `AccelerateExactSemanticIndex` directly.
+
+Before telemetry emission, the wrapper reduces control and candidate hits to
+private segment/revision keys and emits only aggregate count, overlap,
+same-rank, optional top-hit agreement, closed outcome, vector dimension, limit,
+and duration fields. Candidate identity is a closed research-family enum. The
+event has no query, vector, meeting/citation identifier, title, transcript text,
+model identifier, path, or raw error field. No durable receipt, candidate
+dependency, index schema/writer, or app composition is introduced by this
+slice. Both telemetry and executor are mandatory constructor arguments; there
+is no evidence-disabled default that can silently spend candidate resources.
+
+**Rationale:** shadow evidence is useful only when control behavior and privacy
+are invariant by construction. Separating candidate scheduling and allowlisting
+event fields keeps the Strangler reversible, makes failures observational, and
+lets later adapters be measured without granting them product authority.
+
+## D208 — Admit semantic shadows as capture-safe, no-backlog maintenance (Aug 2026)
+
+**Context:** D207 makes candidate results non-serving and payload-free, but its
+explicit detached executor can still start multiple candidates, compete with a
+recording, or accumulate work outside the resource-governor boundary. Adding a
+candidate adapter before constraining admission would make resource interference
+part of the engine experiment and could harm the call-safe recording invariant.
+
+**Decision:** benchmark composition may provide
+`SemanticIndexShadowCoordinator` as the D207 executor. Every submitted candidate
+is evaluated through the existing `DurableMaintenanceGate` at `.admission` with
+the closed `.maintenance` / `.searchIndex` / `.execute` descriptor. The actor
+owns at most one active cooperative task and no backlog. Policy denial, an
+occupied flight, and capture suspension emit distinct closed skip outcomes;
+they never queue or run the candidate. Capture suspension cancels the active
+task, and resume waits for that task to settle before admitting later work.
+
+Exact control still returns immediately and remains the sole result authority.
+The coordinator carries no query, vector, citation, meeting, model, path, or raw
+error into telemetry. It has no app composition, durable receipt, package,
+schema, writer, or concrete candidate adapter. The unrestricted detached
+executor remains available only for explicit deterministic or benchmark use;
+shipping composition must not bypass governed admission if a shadow lane is
+ever enabled.
+
+**Rationale:** candidate cost must be bounded before candidate technology is
+introduced. Reusing one capture-aware maintenance gate prevents research work
+from competing with live audio, while single-flight/no-backlog behavior makes
+load deterministic and preserves the reversible exact-first Strangler seam.
+
+## D209 — Bind shadow evidence identity to the candidate implementation (Aug 2026)
+
+**Context:** D207 recorded a closed candidate-family label beside work submitted
+through the generic semantic-index port. The label and candidate were separate
+constructor arguments, so a benchmark call site could accidentally identify a
+sqlite-vec implementation as Core Spotlight or USearch. Aggregate telemetry
+would remain payload-free but become untrustworthy, and no later receipt could
+recover which implementation actually produced it.
+
+**Decision:** every research candidate conforms to
+`SemanticIndexShadowCandidateSearching`, which refines the D206 query port and
+owns one closed `SemanticIndexShadowAdapter` identity. The shadow decorator
+accepts only that identity-bearing candidate and derives completed, failed,
+cancelled, and skipped event identities from `candidate.adapter`. There is no
+independent adapter-label constructor argument.
+
+This contract does not introduce a concrete engine, package dependency,
+derived schema, index writer, app composition, or durable receipt. Exact
+Accelerate control remains the only product authority, and D208 admission still
+governs every optional benchmark candidate.
+
+**Rationale:** benchmark attribution must be correct by construction before
+engine work begins. Making identity an implementation property prevents label
+drift, keeps aggregate evidence explainable, and preserves the reversible
+shadow boundary without granting a candidate product authority.
+
+## D210 — Project derived ranks through current authoritative evidence (Aug 2026)
+
+**Context:** a sqlite-vec, USearch, or Core Spotlight candidate will maintain
+derived state that can lag transcript correction, deletion, or rebuild. The
+D206 query port returns complete `SearchHit` citations, so allowing an engine to
+construct those values would make derived storage an accidental content
+authority. Comparing stale text or an old transcript revision could also make
+aggregate agreement look valid while its source evidence is no longer current.
+
+**Decision:** research engines implement `SemanticIndexShadowRanking` and
+return only ordered `SemanticSearchCandidateIdentity` values containing segment
+ID and transcript revision. `ProjectedSemanticIndexShadowCandidate` bounds the
+ranked window to the requested limit and resolves it through `MeetingStore`.
+Storage preserves first-seen candidate order while omitting negative revisions,
+duplicate IDs, missing or deleted segments, deleted meetings, and any candidate
+whose revision differs from the current meeting transcript. It does not search
+beyond the bounded candidate window to replace rejected ranks.
+
+The ranker owns its D209 adapter identity. The projection returns authoritative
+current text, title, time, meeting identity, and revision; candidate-provided
+content cannot cross the query port. This slice adds no concrete engine,
+package, schema, writer, app composition, or durable shadow receipt, and exact
+Accelerate control remains the only product authority.
+
+**Rationale:** a derived index may propose rank but never evidence. Installing
+the revision-fenced projection before an engine experiment isolates ranking as
+the measured variable, makes correction/deletion races fail closed, and keeps
+future adapters reversible without duplicating authoritative meeting content.
+
+## D211 — Start engine research with pinned static sqlite-vec exact (Aug 2026)
+
+**Context:** D206-D210 make a non-serving candidate safe to compare, but the
+first concrete engine choice can still confound the experiment. sqlite-vec now
+has a stable v0.1.9 exact full-scan release and separate alpha ANN/DiskANN work;
+USearch provides HNSW with Swift support. Starting with either approximate path
+would mix packaging and execution cost with recall loss, build parameters, and
+incremental-index behavior. macOS system SQLite also blocks dynamic extensions
+by default, and a loadable dylib is an unnecessary signing and runtime surface.
+
+**Decision:** the first disposable SEARCH-5 engine is sqlite-vec v0.1.9 exact
+full-scan, statically compiled from the official amalgamation archive. The
+archive is pinned to SHA-256
+`b87cdda12112657ba5ab8842f0088a4090982eaf41f22b2bd6d495b81765a8c9`.
+`scripts/vendor-sqlite-vec.sh` downloads that release URL or accepts the same
+offline archive, verifies the digest before extraction, uses the upstream MIT
+terms from the tagged source, and stages only C source, header, that
+checksum-pinned license text, and provenance. The official amalgamation
+manifest contains only `sqlite-vec.c` and `sqlite-vec.h`, so the reviewed MIT
+text is retained separately under `scripts/vendor-metadata/` rather than
+pretending it came from the binary release asset. Existing destinations are
+never overwritten. Dynamic extension loading is forbidden.
+
+This slice selects and secures the source but does not vendor it, change
+`Package.swift`, create a schema or writer, implement a ranker, compose a
+benchmark, or alter product behavior. The next slice must statically compile
+the verified source and prove an isolated exact query before any meeting index
+exists. sqlite-vec ANN prereleases and USearch HNSW remain later candidates.
+
+**Rationale:** exact-versus-exact establishes packaging, latency, memory, disk,
+and correction cost without approximate-recall ambiguity. A small dependency-
+free C amalgamation fits the local-first and MIT/Apache policy, while strict
+digest verification and static linking keep the experiment reproducible and
+compatible with the signed macOS app. Deferring source activation also leaves
+the current build fully reproducible when network access is unavailable.
+
+## D212 — Compile sqlite-vec only as an isolated static research probe (Aug 2026)
+
+**Context:** D211 selected and checksum-pinned the first exact engine source,
+but linking a C extension into an app target before proving its static ABI would
+expand signing and runtime risk without producing useful benchmark evidence.
+The official release-asset transport was unavailable on the development host,
+while GitHub still exposed the immutable `v0.1.9` tagged C blob and the tagged
+header template through its authenticated content boundary.
+
+**Decision:** vendor the C amalgamation byte-identical to Git blob
+`de3176f9ca28a273c5086f1cc995ebf4e3c04c22` and SHA-256
+`ba081a47fa02eadc3cf6b16c314b695b84081269349aac722b4efa338fe8fd85`.
+Render the public header deterministically from the official tagged template,
+fixed version, tag commit, and tag-commit timestamp; retain its digest, the
+template/version blob identities, the archive digest, selected MIT license, and
+acquisition explanation in `Vendor/sqlite-vec/PROVENANCE.md`. The canonical
+vendoring script additionally verifies the archive's C digest and renders that
+same header, so a later offline archive reproduces the activated files.
+
+Compile the amalgamation textually inside `CSQLiteVecResearch` with
+`SQLITE_CORE`, `SQLITE_VEC_STATIC`, and `SQLITE_VEC_OMIT_FS`. Only
+`PortavozTests` depends on this target. Its sole executable proof opens an
+in-memory SQLite database, registers `vec0` directly, inserts four fixed
+vectors, and requires the exact query to return row 3 at zero distance. The app
+and CLI do not link the target. This slice creates no meeting schema, writer,
+ranker, shadow composition, durable observation, model, or user-visible path.
+
+**Rationale:** one static smoke separates source/build compatibility from the
+later ranking and benchmark experiment. Immutable blob and content digests keep
+the fallback acquisition auditable without claiming that a blocked ZIP was
+downloaded, while test-only linkage proves macOS compatibility without adding
+code, filesystem helpers, or dynamic-loader surface to either shipping binary.
+
+## D213 — Put a disposable sqlite-vec ranker behind authoritative projection (Aug 2026)
+
+**Context:** D212 proved the pinned static amalgamation and one query, but it
+did not exercise the D210 identity-only ranker contract or D207 aggregate
+comparison path. A direct product dependency, persisted `vec0` table, or app
+composition would grant an unmeasured engine authority too early. sqlite-vec
+also permits only one KNN sort term, so equal-distance row order is not the
+same deterministic contract as the current Accelerate traversal order.
+
+**Decision:** add `SQLiteVecResearchKit`, reachable only by `PortavozTests`,
+with `SQLiteVecExactShadowRanker` exposing an identity-only exact rank
+primitive without depending back on `ApplicationKit`. A test-owned
+`SemanticIndexShadowRanking` adapter provides the D210 research conformance.
+Construction builds one disposable in-memory
+cosine `vec0` table after validating one exact embedding profile, finite fixed-
+dimension vectors, nonnegative transcript revisions, and unique segment IDs.
+Queries require the same profile and emit only ordered segment/revision
+identity. The native wrapper requests the complete exact result and retains a
+bounded top-k by distance then original corpus position, making equal-distance
+evidence deterministic before D210 projection. Task cancellation is checked
+before and after native execution and signalled through a native atomic token
+and SQLite progress handler.
+
+Characterization composes the concrete ranker through
+`ProjectedSemanticIndexShadowCandidate` and
+`ShadowComparingSemanticIndex`: Accelerate control is returned immediately,
+StorageKit rehydrates current citation evidence, and only payload-free
+aggregate agreement is recorded. The app, CLI, and `ApplicationKit` do not
+depend on either research target. This decision creates no product schema,
+writer, durable receipt, app composition, or user-visible path, and accepts no
+quality or resource evidence.
+
+**Rationale:** exercising the complete Strangler path finds engine-specific
+correctness differences before persistence or product integration. A
+disposable index keeps authoritative data untouched and deletion/correction
+fencing in StorageKit. Deterministic tie normalization prevents false rank
+drift; its complete-result overhead is deliberately visible and must be
+measured before any adoption decision.
+
+## D214 — Measure exact engines through a content-free test root (Aug 2026)
+
+**Context:** D213 exercises sqlite-vec behind the complete projection and
+aggregate-shadow path, but a tiny characterization cannot establish scale cost
+or parity. Reusing a product writer, persisting observations, or emitting
+fixture identities would expand authority and privacy surface before the first
+measurement contract is understood. Comparing build numbers without naming
+their lifecycle boundaries would also be misleading because Accelerate reads
+authoritative StorageKit rows while the disposable candidate starts from
+prepared vectors.
+
+**Decision:** add a test-only schema-1 exact-path harness over one deterministic
+`synthetic-exact-path-v1` vector corpus. It runs the real scratch-`MeetingStore`
+`AccelerateExactSemanticIndex` and `SQLiteVecExactShadowRanker` with the same
+512-dimensional vectors, eight queries, top 10, and canonical 1k/10k/50k/100k
+scales. Record fixture preparation, control-store build, candidate-index build,
+and query wall distributions separately; alternate query execution order under
+`alternating-query-order-v1`. Treat control build as source/FTS/embedding
+publication cost and candidate build as prepared-vector index cost, not as a
+direct build-speed contest.
+
+The first 10k execution exposed sqlite-vec's hard 4,096 KNN result window in
+the D213 complete-result query. Keep the candidate exact and deterministic by
+using sqlite-vec's scalar `vec_distance_cosine` over the full virtual table,
+ordering by distance then source row, and returning only requested top-k. Add a
+4,097-row regression so canonical scales cannot silently fall back to an
+unsupported KNN limit.
+
+Run each selected scale in a fresh Release XCTest process. Emit one content-free
+JSON object to stdout containing only host/configuration, byte/count, timing,
+and aggregate agreement fields. Do not expose queries, vectors, citation
+identity, transcript content, model identity, paths, or raw errors; do not
+accept a durable output destination. The harness adds no product dependency,
+schema, writer, app/CLI command, scheduler, accepted receipt, or selection.
+
+**Rationale:** a closed synthetic root makes exact-path query cost and aggregate
+agreement reproducible without borrowing user data or candidate authority.
+Process isolation bounds cross-scale residency, separated phases prevent an
+invalid lifecycle comparison, and stdout-only observations force a later
+explicit validation/acceptance boundary before any engine decision.
+
+## D215 — Accept exact-path evidence through one closed host receipt (Aug 2026)
+
+**Context:** D214 emits useful content-free observations, but a copied line, a
+partial scale run, mixed hardware, unstable timing, or a dirty source checkout
+could still look like comparable evidence. Persisting raw observations first
+would also bypass the explicit acceptance boundary. Cross-host selection cannot
+be honest until every concrete host provides the same complete, source-bound
+shape.
+
+**Decision:** track one exact-path host-matrix contract. It requires the D214
+schema-1 fixture and alternating query policy, Release configuration, 512
+dimensions, eight queries, five runs per query, top 10, 1k/10k/50k/100k scales,
+three observations per scale, Apple Silicon, Sequoia or Tahoe, and an existing
+8 GB, 16 GB, or reference-memory profile. Reuse the established nearest-rank
+stability rule: p95/p50 above 1.25 blocks each individual query observation or
+repeated fixture, build, query-p50, or query-p95 distribution. Aggregate build
+figures only within the same engine and scale; never use them to compare the
+control's source/FTS/embedding publication lifecycle against the candidate's
+prepared-vector lifecycle.
+
+The evaluator consumes JSONL, rejects duplicate keys, unknown fields,
+non-finite or inconsistent values, mixed hosts, noncanonical configuration or
+engine order, incomplete result counts, excess observations, and byte-identical
+copied observations. Missing scales, unstable timing, or less than full
+expected-top-hit, engine-top-hit, or top-k-set overlap produce an exact-shaped
+blocked receipt; malformed evidence produces no receipt. Exact ordered-rank
+agreement remains visible but is not a host-receipt gate because equivalent
+floating cosine implementations may order lower same-set results differently;
+the separate multilingual MRR/nDCG scorecard owns that quality judgment. The
+aggregate contains only source commit,
+toolchain, closed host/configuration, byte/count/timing distributions,
+agreement, and per-scale state.
+
+The accepted runner starts from one clean commit, executes three complete D214
+matrices through ephemeral owner-only files, then verifies that commit and
+worktree are unchanged before exposing the aggregate on stdout. It accepts no
+raw or aggregate output path. One passing receipt proves one concrete host
+matrix only. It creates no product dependency, schema, writer, app command,
+durable baseline, cross-host verdict, engine comparison, or selection authority.
+
+**Rationale:** separating raw measurement, one-host acceptance, cross-host
+comparison, and product selection makes every trust transition explicit.
+Fail-closed exact shapes preserve privacy and expose missing or unstable work
+without allowing one convenient developer run to become architecture policy.
+
+## D216 — Validate three-profile evidence before retaining a baseline (Aug 2026)
+
+**Context:** D215 accepts one host at a time, but its schema-1 receipt retained
+only a final unstable label for the within-observation query ratio. A later
+consumer could not independently recompute that state, and three individually
+valid receipts could still be incomparable because of missing hardware tiers,
+single-OS coverage, or different source/toolchain identities. None of those
+conditions should silently become a baseline.
+
+**Decision:** evolve the host receipt to schema 2. Every aggregate engine row
+retains the maximum within-observation query p95/p50 ratio; `null` represents a
+nonzero p95 over a zero median and is unstable. Add an exact host-receipt
+validator that recomputes closed configuration, canonical scales, distribution
+counts and monotonicity, timing/agreement state, and final outcome without raw
+observations. It rejects an internal ratio below the lower bound demonstrated
+by its own aggregate distributions. Cross-host candidate/control ratios with a
+zero control denominator are `not-comparable`, including zero divided by zero,
+rather than an invented equality result.
+
+Track a separate cross-host contract requiring exactly one receipt for each
+8 GB, 16 GB, and reference-memory profile. The three-host set must represent
+both supported OS majors, Sequoia and Tahoe, at least once; do not require the
+unnecessary six-machine profile-by-OS Cartesian product. A passing scorecard
+also requires one source commit, one Apple Swift toolchain, and a passing host
+receipt for every profile. Missing profile or OS coverage, valid blocked host
+evidence, or source/toolchain mismatch emits a complete blocked scorecard.
+Malformed, duplicate, payload-bearing, or repeated-profile evidence emits no
+scorecard.
+
+The stdout-only scorecard may expose closed host/configuration fields, separate
+engine query p50/p95, candidate-to-control query ratios, exact-rank agreement,
+byte counts, and lifecycle-labelled build p50 values. It accepts no output
+destination. The versioned comparison policy divides candidate query timing by
+the control timing measured on that same host; a zero control denominator is
+`not-comparable`, never reported as an equal-performance ratio. The scorecard
+authorizes no retained baseline, budget, quality judgment, engine selection,
+product schema, writer, app composition, or user-visible candidate. Accelerate
+exact remains the sole serving authority.
+
+**Rationale:** coverage and comparability must be proven before performance can
+be interpreted. Recomputable receipts prevent a status label from becoming a
+trust shortcut, while a three-profile/two-OS matrix captures the supported
+resource and compatibility surfaces without multiplying machines that add no
+new acceptance dimension. Keeping the scorecard ephemeral preserves a final,
+explicit baseline-review and engine-decision boundary.
+
+## D217 — Retain one exact-path research baseline only after digest-bound review (Aug 2026)
+
+**Context:** D216 can prove that three independently accepted host receipts form
+one comparable cross-host scorecard, but deliberately emits that scorecard only
+to stdout. Redirecting stdout to a file is not an acceptance act: the file could
+change after review, come from a different source checkout, omit its receipts,
+or be mistaken for an engine-selection decision. A boolean `--accept` would
+record intent without binding that intent to the exact artifact reviewed.
+
+**Decision:** track one schema-1 baseline-admission contract and a tooling-only
+publisher. Admission requires the canonical D216 scorecard stdout file, its
+complete three-receipt JSONL source, the lowercase SHA-256 of the exact scorecard
+file, and its sole source commit. The active checkout must be clean at that
+commit before validation, immediately before publication, and immediately after
+publication. A final source mismatch withdraws the new artifact.
+
+Recompute the scorecard exactly from independently validated schema-2 receipts
+and the active contracts. Require a passing scorecard, canonical profile order,
+canonical stdout bytes, bounded UTF-8 JSON/JSONL inputs, exact scalar types, and
+no duplicate or unknown fields. Publish one owner-only file atomically without
+replacement. A destination inside the repository must already be ignored. The
+retained envelope includes the scorecard, its three aggregate receipts, source
+commit, scorecard-file and canonical receipt-set digests, and the review-policy
+version. It permanently fixes `authority` to `research-comparison-only` and
+`engineDecision` to `not-evaluated`; it accepts no reviewer identity or free-form
+notes.
+
+No real baseline is added to source control and this boundary defines no timing
+budget, quality verdict, candidate winner, product schema, writer, app
+composition, or user-visible authority. Accelerate exact remains the sole
+serving adapter.
+
+**Rationale:** explicit digest and source acknowledgement binds maintainer intent
+to one immutable aggregate evidence set instead of a mutable pathname or a
+click-through flag. Revalidation keeps the source receipts auditable, while
+private non-overwriting publication prevents an accepted run from being silently
+replaced. The acknowledgement does not authenticate the reviewer or prove
+engine superiority; those remain separate human and later selection gates.
+
+## D218 — Measure exact-path corrections through atomic disposable mutations (Aug 2026)
+
+**Context:** D214-D217 isolate exact query scale, host acceptance, cross-host
+comparison, and reviewed baseline retention, but SEARCH-5 also requires
+incremental add/update/delete and correction cost. Rebuilding the disposable
+candidate after every edit would hide its maintenance behavior; adding a writer
+to product storage before measuring it would grant an unselected engine durable
+authority. A mutable in-memory candidate can also corrupt deterministic tie
+order if deleted slots are silently reused or Swift identity state advances
+before the native transaction commits.
+
+**Decision:** extend only the test-owned sqlite-vec exact ranker with one atomic
+mutation batch. Existing segment identities update in their original source-row
+slot, deleted slots remain empty permanently, and new identities append as one
+contiguous suffix. Validate profile, dimensions, finite vectors, revisions,
+duplicate identities, missing deletes, overlaps, and append shape before
+starting one native `BEGIN IMMEDIATE` transaction. Delete/replace rows and add
+new rows inside that transaction; on any failure roll back and leave the actor's
+identity slots unchanged. Query bounds use live-row count while row validation
+uses the monotonic slot count.
+
+Add a test-only `synthetic-exact-path-mutation-v1` harness over the same
+1k/10k/50k/100k, 512-dimensional exact corpus family. Measure add, update, and
+delete batches of 1, 10, and 100 for five runs by default, alternating which
+engine mutates first. After every operation, require the real scratch-store
+Accelerate control and sqlite-vec candidate to agree on top hit and top-k source
+identity; retain exact ordered-rank agreement as a diagnostic. Record one full
+reconstruction per engine, but label control source/FTS/embedding publication
+and candidate prepared-vector construction as different lifecycles rather than
+comparing their values directly. Label mutation timing separately for the same
+reason: control add/update/delete includes authoritative source and embedding
+publication, while the candidate receives prepared vectors. A raw observation
+must not report a cross-engine mutation ratio.
+
+Emit one schema-1, content-free stdout observation from a fresh Release XCTest
+process per scale. The report may contain only closed operation names,
+host/configuration, byte/count, timing distributions, and aggregate agreement;
+it accepts no output path. This slice creates no accepted mutation baseline,
+cross-host correction receipt, crash/interruption proof, product schema, durable
+writer, app/CLI wiring, or serving authority. Accelerate exact remains the only
+product adapter.
+
+**Rationale:** atomic disposable mutation semantics expose the candidate's real
+incremental cost without risking authoritative user data. Stable monotonic slots
+preserve deterministic ties across corrections, and post-operation rank checks
+make deletion or update drift visible. Keeping raw measurements stdout-only
+preserves separate resource acceptance and engine-decision gates.
+
+## D219 — Require human review for complete mutation host evidence (Aug 2026)
+
+**Context:** D218 emits deterministic correction-cost observations, but one
+development smoke or one timing sample cannot support an engine decision.
+Reusing D215's 1.25 timing-stability threshold would silently declare a
+performance policy before mutation evidence exists on the required hardware.
+Retaining raw observations would also widen the research-data surface, while a
+receipt named `pass` could be confused with resource acceptance.
+
+**Decision:** define a separate schema-1 mutation-host contract over exactly
+three D218 observations per canonical 1k/10k/50k/100k scale. Every observation
+must come from one supported declared memory profile and OS, a Release build,
+the exact fixture/measurement/lifecycle versions, canonical engine and
+operation order, 1/10/100 batches, five samples per batch, finite monotonic
+timings, and bounded agreement counts. Duplicate JSON keys, copied
+observations, mixed hosts, excess evidence, unknown fields, and malformed
+configuration produce no receipt. Missing coverage or top-hit/top-k-set drift
+produces a complete `blocked` receipt.
+
+When coverage and agreement are complete, emit `review-required` under
+`human-threshold-free-mutation-review-v1`, not `pass`. Retain aggregate
+nearest-rank distributions for fixture preparation, full reconstruction, and
+each operation/batch, including within-observation p95/p50 ratio diagnostics.
+Do not compare the unlike control/candidate lifecycle values and do not apply a
+numeric timing threshold. The clean-source runner binds the receipt to source
+commit, Apple Swift toolchain, host profile, OS, and contract versions, checks
+the checkout before and after collection, accepts no output path, and deletes
+the temporary raw observations.
+
+This slice creates no real receipt, accepted baseline, cross-host verdict,
+performance threshold, product schema/writer, app/CLI composition, serving
+change, or migration authority. Accelerate exact remains the only product
+adapter.
+
+**Rationale:** structural completeness and rank parity can be enforced before
+real resource distributions exist, while timing policy cannot. An explicit
+human-review outcome makes that distinction machine-readable and prevents
+premature engine selection without sacrificing aggregate evidence needed for
+the later cross-host decision.
+
+## D220 — Keep cross-host mutation evidence in explicit review (Aug 2026)
+
+**Context:** D219 can prove that one host produced complete, content-free
+mutation observations with top-hit and top-k-set parity, but its
+`review-required` outcome is deliberately not a performance pass. Reviewing
+the required hardware matrix needs one portable document without silently
+introducing the query benchmark's candidate/control ratios or accepting a
+threshold before real correction-cost evidence exists.
+
+**Decision:** define a separate schema-1 cross-host review contract over
+exactly one revalidated D219 receipt for each 8 GB, 16 GB, and reference
+profile. The three receipts must collectively cover Sequoia and Tahoe and use
+one source commit, Apple Swift toolchain, fixture, measurement policy, host
+review policy, and Release configuration. Duplicate JSON keys, repeated
+receipts or profiles, tampered nested evidence, unsupported identity, and
+non-canonical scorecards produce no document. Missing coverage, a blocked host
+receipt, or source/toolchain divergence produces a complete `blocked`
+scorecard.
+
+Complete comparable evidence remains `review-required` under
+`human-threshold-free-mutation-cross-host-review-v1`. Preserve per-host
+aggregate rebuild and operation/batch distributions plus agreement counts for
+human review, but derive no candidate/control speed ratio, numeric threshold,
+or automatic pass. Build the scorecard as a detached value and require exact
+recomputation from its receipts. The CLI reads aggregate JSONL and writes only
+stdout; it does not retain a baseline.
+
+This slice creates no real field scorecard, accepted baseline, product schema,
+writer, adapter choice, app/CLI product composition, migration, or rollback
+authority. Accelerate exact remains the only product adapter.
+
+**Rationale:** hardware and OS coverage, input integrity, and common build
+identity are objective gates; unlike lifecycle performance is a review input.
+Keeping the outcome explicit prevents a complete evidence bundle from being
+mistaken for a product decision while making later maintainer review fully
+recomputable.
+
+## D221 — Retain mutation evidence only after explicit human acknowledgement (Aug 2026)
+
+**Context:** D220 produces one exactly recomputable cross-host mutation
+scorecard, but complete evidence deliberately remains `review-required` because
+control and candidate mutation timings describe unlike lifecycle boundaries.
+Redirecting that scorecard to a file neither records that a maintainer reviewed
+the distributions nor binds the review to immutable source evidence. Reusing
+the passing-query baseline contract would also imply performance authority that
+the correction-cost evidence does not have.
+
+**Decision:** define a separate schema-1 mutation-baseline admission contract.
+Admission requires one canonical D220 scorecard file, its lowercase SHA-256,
+its sole source commit, the exact three-receipt JSONL source, and the literal
+human acknowledgement `timings-reviewed-no-engine-decision-v1`. Revalidate the
+scorecard from independently validated receipts and preserve their canonical
+8 GB, 16 GB, and reference order. Only a complete `review-required` scorecard
+is admissible; blocked or malformed evidence produces no baseline and admission
+does not convert the outcome into `pass`.
+
+The active checkout must be clean at the accepted commit before evidence is
+read, immediately before publication, and immediately after publication. A
+post-publication mismatch withdraws the artifact. Publish one bounded,
+owner-only file atomically without replacing an existing path. Repository-local
+destinations must already be ignored. The retained envelope includes the exact
+scorecard, its three aggregate receipts, source commit, scorecard-file and
+canonical receipt-set digests, review policy, and fixed acknowledgement. Shared
+private-publication primitives enforce this policy for both query and mutation
+research baselines.
+
+The envelope permanently fixes authority to
+`research-correction-cost-only`, with `engineDecision` and
+`performanceDecision` both `not-evaluated`. It accepts no reviewer identity or
+free-form notes. No real mutation baseline is added to source control, and this
+boundary creates no threshold, engine verdict, product schema, writer, app
+composition, migration, or rollback authority. Accelerate exact remains the
+sole serving adapter.
+
+**Rationale:** an explicit, fixed acknowledgement makes the required human
+timing review machine-checkable without pretending to authenticate a reviewer
+or to prove one engine faster. Digest, receipt, and source binding make the
+retained aggregate reproducible; private non-overwriting publication prevents
+later replacement from silently changing what was reviewed. Keeping the
+scorecard's original `review-required` outcome preserves the separation between
+evidence retention and any future performance or product decision.
+
+## D222 — Freeze Meeting Detail behavior before decomposition (Aug 2026)
+
+**Context:** Meeting Detail remains the largest presentation surface and the
+next roadmap band will split its scene, generated document, transcript,
+playback, and secondary flows. Existing feature tests cover released journeys,
+but no machine-readable boundary assigned every journey to one owner or
+detected unreviewed changes across controls, identifiers, routes, sheets, and
+keyboard behavior. The older 5,000-segment baseline measured first projection
+and health work but not playback seek or 20,000-segment transcript scrolling.
+
+**Decision:** generate and track a canonical Meeting Detail interaction
+contract before changing the composition. It snapshots source-derived state,
+control, presentation, keyboard, identifier, and navigation signals across the
+reviewed detail files; assigns every `MeetingDetailUITests` journey to exactly
+one of ten feature owners; derives screenshot ownership from each test body;
+and binds the performance evidence, parser, and runner by SHA-256. Any boundary,
+owner, test, screenshot, or evidence change requires an explicit snapshot.
+
+Extend the disposable scale fixture to 5,000 and 20,000 segments. Hidden
+performance journeys require `-use-temp-store`, `-seed-scale`, and
+`-detail-performance-profile` together, emit payload-free signposts, and never
+read the user library. The 5k profile uses generated two-channel audio for
+exactly five seeks; the 20k profile performs exactly five transcript scrolls.
+SwiftUI and Animation Hitches traces retain a deterministic delayed summary
+mutation, while the Logging trace excludes it so the view replacement cannot
+cancel the interaction loop. Missing, excess, malformed, or referenced-cycle
+samples fail closed. The runner refuses the notarized release bundle.
+
+The Aug 2026 Xcode 26.6 evidence records 5k/20k first content at
+111.25/197.35 ms, seek/scroll p95 at 0.52/331.94 ms, and zero app hitches or
+potential hangs. Time Profiler contains both detail and transcript symbols.
+The SwiftUI template emitted no update rows for either profile, so exact body
+invalidation counts remain `unavailable-toolchain`; they are not zero and do
+not become an acceptance claim. The evidence is a refactor-parity baseline,
+not production telemetry, a product schema, or a new performance budget.
+
+**Rationale:** a reviewed inventory makes Strangler decomposition auditable:
+each extracted section must preserve its owner, journey, screenshot, and
+measured behavior. Restricting automation to a disposable store prevents
+benchmark code from becoming a production back door. Recording unavailable
+tool output explicitly preserves trust while still providing actionable first-
+content, interaction, hitch, hang, and symbol evidence for later decomposition.
+
+## D223 — Own Meeting Detail composition in an explicit scene (Aug 2026)
+
+**Context:** the D222 contract froze released behavior, but
+`MeetingDetailView` still observed process-wide `AppServices`, constructed its
+own route model, and mixed locale-dependent formatting with a 2,400-line
+presentation. Extracting visual sections on top of that ownership would let
+every child inherit the composition root and make route lifetime ambiguous.
+
+**Decision:** route every selected meeting through `MeetingDetailScene`. The
+scene is the sole Meeting Detail presentation type that receives `AppServices`
+and owns one `MeetingDetailModel` in `@State` for the route lifetime. The route
+keys scene identity by `MeetingID`, preventing a new destination from retaining
+the previous route's state. It passes
+the child immutable observed values and explicit meeting-scoped actions; the
+child never receives or discovers `AppServices`. Keep application workflows in
+their current owners and preserve every released gesture and result while the
+later decomposition narrows each section to only its relevant closure.
+
+Move locale and time-zone formatting into a Foundation-only,
+side-effect-free `MeetingDetailPresentation` value. It receives all varying
+inputs explicitly and cannot reach storage, platform capability, clocks, or
+application services. Expand the D222 reviewed source boundary to include the
+scene, producing 252 interaction signals across twelve files while preserving
+the same 23 journeys and ten feature owners. Scene/presentation diffs select
+all Meeting Detail UI journeys until later sections have independent mappings.
+
+**Rationale:** explicit scene ownership gives the route one observable model,
+makes the composition root mechanically enforceable, and creates a stable
+Strangler seam without a feature-parity rewrite. Pure presentation formatting
+is deterministic and directly testable, while explicit action projection keeps
+future child views from gaining broad capabilities by convenience.
+
+## D224 — Compose Meeting Detail from explicit review sections (Aug 2026)
+
+**Context:** D223 established one route owner, but `MeetingDetailView` still
+implemented meeting identity and participants, durable processing/privacy
+trust, and the complete generated document in the same large presentation
+type. That concentration mixed unrelated local UI state, made narrow UI-test
+selection impossible, and allowed a canonical Markdown action-item appendix to
+appear beside the equivalent typed To-dos controls.
+
+**Decision:** extract `MeetingDetailHeaderSection`,
+`MeetingDetailTrustSection`, and `MeetingGeneratedDocumentSection`. Each child
+receives immutable values and explicit actions and is forbidden from reaching
+`AppServices`, `MeetingDetailModel`, storage, or global preferences. Header
+suggestions remain inert until accepted and expose independent dismissal
+actions. The trust section owns only retry progress. The generated-document
+section owns only tab selection and keeps current/stale/unavailable evidence
+actions adjacent to overview, decision, open-question, and action-item claims;
+Apuntador reuses the same content-free evidence control.
+
+Add a Foundation-only `MeetingGeneratedDocumentPresentation` projection. It
+preserves each Markdown section's original ordinal so persisted evidence keeps
+resolving after visual filtering. It suppresses canonical `Action Items` or
+`Pendientes` sections only when typed commitments exist; otherwise legacy or
+partial summaries retain their Markdown content. Expand the reviewed
+interaction boundary to 265 signals across fifteen source files while keeping
+the same 23 UI journeys and ten owners, and map each extracted section only to
+its owned feature tests.
+
+**Rationale:** focused sections make presentation ownership and mutation
+capability auditable without changing the route or application workflow.
+Keeping ephemeral state beside its control reduces unrelated invalidation.
+The pure projection prevents duplicate task presentation without weakening
+legacy data or proof coordinates, and the shared evidence surface keeps trust
+behavior consistent wherever generated claims appear.
+
+## D225 — Read transcripts through a correction-ready snapshot (Aug 2026)
+
+**Context:** D224 removed generated-document presentation from the Meeting
+Detail coordinator, but that coordinator still built transcript rows, computed
+chapters, owned evidence focus, and wired every seek. Playback also found the
+active row by scanning the complete transcript every 200 ms. A later
+correction overlay must be able to split or merge visible rows without breaking
+persisted evidence coordinates or teaching SwiftUI which transcript version is
+authoritative.
+
+**Decision:** make `ApplicationKit.MeetingTranscriptContent` the immutable
+reading snapshot consumed by Meeting Detail. Each stable visible row carries
+its ordered immutable source-segment identities, speaker, channel, spoken
+language, timing, confidence, and finality. Chapters are projected from the
+same snapshot. The current `accepted` factory remains a one-source-to-one-row
+projection; a future correction composer may provide split or merged rows
+through the same public value without introducing correction policy into the
+view.
+
+Resolve evidence routes by source-segment identity and Library/Ask/Spotlight
+routes by timestamp. One small navigation value retains the focused visible row
+and an exact pending seek until playback exists. Active playback lookup uses a
+start-time upper-bound search plus a maximum-end segment tree, preserving the
+released overlap and gap behavior in logarithmic time rather than rescanning a
+large meeting on every playhead update.
+
+Extract the transcript and chapter surfaces behind explicit immutable values
+and actions. Row rendering remains a stable-ID `LazyVStack`; the shared focused
+viewport is generic over identifiable rows and keeps its playback-versus-live
+follow ownership as a pure policy. These presentation types cannot access the
+route model, services, store, or global preferences. Expand the reviewed
+interaction boundary to 267 signals across sixteen source files while retaining
+the same 23 UI journeys and ten feature owners. Transcript-section and reading-
+snapshot diffs select only audio, evidence, chapter/health, and scale journeys.
+
+**Rationale:** source mappings let immutable generated evidence survive future
+visual correction composition. One reading snapshot prevents rows and chapters
+from disagreeing, while indexed playback work keeps synchronization cost
+bounded for long meetings. Explicit values/actions preserve the D223 scene as
+the route owner and make correction policy independently testable before any
+editable overlay is introduced.
+
+## D226 — Compose Meeting Detail playback through one explicit section (Aug 2026)
+
+**Context:** D225 extracted transcript reading and navigation, but the Meeting
+Detail coordinator still rendered the complete docked player and audio-
+compression status inline. That left transport, waveform, clip export, clear
+playback, voice-only playback, and compression presentation split across the
+route coordinator and `MeetingPlayerBar`, making the playback boundary harder
+to review and narrowly test.
+
+**Decision:** extract `MeetingDetailPlayerSection` as the complete docked
+playback presentation boundary. It receives only the current playback session,
+immutable waveform buckets, compression capability/progress/message values,
+and explicit clip-export and compression actions. Playback preparation,
+compression, file re-resolution, pending seeks, and route lifetime remain in
+the model and application workflow; the section imports neither
+`AudioPlaybackKit` nor storage and owns no local state. `MeetingPlayerBar`
+continues to own only focused player interaction state and the native save
+panel needed for clip export.
+
+Give the section one accessibility-contained root without masking its existing
+nested controls. Map changes to this boundary only to the four playback and
+clip journeys. Expand the reviewed interaction boundary to 268 signals across
+seventeen source files while retaining the same 23 UI journeys and ten feature
+owners.
+
+**Rationale:** one explicit playback section makes the visual and interaction
+boundary auditable without moving audio policy into SwiftUI. Immutable values
+and narrow intents preserve the scene/model/application ownership chain, while
+focused UI-test selection protects released playback behavior without running
+unrelated Meeting Detail journeys.
+
+## D227 — Own Meeting Detail secondary flows through explicit boundaries (Aug 2026)
+
+**Context:** D226 extracted the playback dock, but the Meeting Detail
+coordinator still rendered the action row, secondary rail, and persisted
+Companion cards inline. It also owned separate booleans and payloads for
+rename, recap, custom structure, Gist, summary setup, speaker identity, person
+linking, and file export. Those independent flags could represent impossible
+overlapping presentations and made each flow hard to review or test without
+selecting the whole detail surface.
+
+**Decision:** extract two additional values/actions boundaries.
+`MeetingDetailActionSection` owns Refine, recap, export, Gist, and delete
+controls. `MeetingDetailRailSection` owns the independently scrolling recovery,
+privacy, health, chapters, and persisted Companion presentation. Their
+application work remains in the route model and ApplicationKit. They import no
+storage or composition root and own no local presentation state. Health
+availability is projected once by the coordinator so the rail does not rescan
+large transcripts merely to decide whether it is visible.
+
+Move route-lifetime presentation state to one scene-owned
+`MeetingDetailFlowState`. One typed route per sheet, dialog, alert, and file
+export makes mutually exclusive presentations unrepresentable, while explicit
+operation state may coexist with them. Refine review and the post-meeting mirror
+remain source-derived sheets because their lifetimes belong to the Refine
+service and just-recorded state rather than an independent Boolean.
+
+Give every extracted surface one accessibility-contained root without masking
+its existing nested controls. Map each new file only to its owned UI journeys.
+The reviewed interaction boundary now contains 262 signals across twenty source
+files while retaining the same 23 UI journeys and ten feature owners.
+
+**Rationale:** explicit sections make secondary behavior auditable without
+moving audio, persistence, identity, or processing policy into SwiftUI. Typed
+routes eliminate contradictory modal state. Immutable values, narrow intents,
+and feature-scoped tests preserve the scene/model/application ownership chain
+while protecting released behavior without running unrelated journeys.
+
+## D228 — Complete Meeting Detail through route-level composition (Aug 2026)
+
+**Context:** D224–D227 extracted the stable visual sections and replaced
+independent modal flags, but `MeetingDetailView` still implemented document,
+identity, Refine, notes, and platform effects in a collection of private
+extensions. It also retained cross-section transcript/playback navigation and
+modal rendering alongside the route observation lifecycle. The visible
+sections were narrow, but effect and presentation ownership remained harder to
+audit than the intended final architecture.
+
+**Decision:** keep `MeetingDetailView` as a compact route projection and
+observation-lifecycle surface, capped by architecture tests at 500 physical
+lines. Project a short-lived `MeetingDetailCoordinator` value from the route's
+model, scene values/actions, and scene-owned flow state. The coordinator owns
+no observation state and translates only explicit feature intents into route
+model or scene effects; identity and document operations live in focused
+extensions. Presentation children never receive the coordinator, model,
+services, storage, or provider adapters.
+
+Move sheets, dialogs, alerts, and file export into `MeetingDetailFlowHost`,
+which receives typed flow values and platform actions explicitly. Extract raw
+and enhanced notes into `MeetingDetailNotesSection`, Refine comparison into
+`MeetingDetailRefineReviewSheet`, and cross-section evidence/player navigation
+into one view-lifetime `MeetingDetailPlaybackNavigation`. The navigation owner
+may operate an already prepared playback session but cannot construct audio,
+storage, model, or provider capabilities. Keep summary regeneration and its
+search invalidation in one structured task so the extraction does not change
+operation ordering. Keep route mutation and the `mirrorAfterMeeting`
+preference in `MeetingDetailScene`; the child receives only explicit route and
+preference actions plus the projected preference value.
+
+Expand the reviewed interaction boundary to 263 signals across 27 source
+files while retaining ten feature owners and all 23 UI journeys. Add explicit
+UI-scope mappings for every new file and architecture tests that reject direct
+model effects in the root, broad dependencies in presentation children, and
+unbounded root growth.
+
+**Rationale:** route-level composition makes state and effect ownership
+legible without introducing a second observable owner or a feature-parity
+rewrite. Focused values/actions surfaces can be tested and changed
+independently, while the route model remains the application effect owner and
+scene flow remains the presentation-state owner. Preserving structured
+concurrency, interaction contracts, and scoped UI selection makes removal of
+the monolith a mechanical refactor rather than a behavioral migration.
+
+## D229 — Define correction composition before persistence (Aug 2026)
+
+**Context:** D225 gave Meeting Detail a correction-ready reading snapshot, but
+the system had not defined how several edits compose, which revision they may
+target, or when downstream consumers see them. Starting with storage or UI
+would make persistence details decide domain semantics and could silently feed
+partially corrected text into search, summaries, exports, or generated
+evidence.
+
+**Decision:** keep accepted raw or refined transcript segments immutable and
+define a pure ApplicationKit `ComposeTranscript` operation first. A typed event
+may replace text, change speaker attribution, split one segment, merge adjacent
+same-speaker/channel segments, suppress exactly one row, or restore a
+superseded edit. Each event targets one explicit accepted revision and
+immutable segment IDs. Identity-first input validation plus deterministic
+source and `(createdAt, UUID)` composition ordering selects active events;
+stale revisions, missing or repeated targets, overlapping active events,
+branched or target-changing supersession,
+non-finite event times, nonlexical replacements, partial or gapped splits,
+out-of-order/incompatible merges, provisional base rows, and ambiguous output
+row identities fail before a composed snapshot is returned. A split must
+partition the complete source interval, and both merge targets and
+supersession targets preserve their explicit source order.
+
+Both accepted and composed readings use `MeetingTranscriptContent`. Every row
+retains its source-segment IDs, and `MeetingTranscriptLineage` identifies raw
+versus refined material, the selected accepted/composed projection, and active
+correction IDs. The projection remains explicit even when composed and
+accepted rows are currently identical. Downstream use is an explicit
+`TranscriptReadingPolicy` choice, guarded by an initial source allowlist that
+contains only the composer itself. This slice deliberately adds no tables,
+migration, sync envelope, editing surface, invalidation, or automatic consumer
+switch; all current product paths remain on accepted content.
+
+**Rationale:** freezing composition semantics independently makes later event
+storage additive and keeps SwiftUI, GRDB, and generated artifacts from becoming
+policy authorities. Explicit lineage preserves auditability and source
+navigation, while fail-closed validation prevents stale or ambiguous edits
+from changing what users read. Deferring consumer adoption preserves every
+released feature until each path has its own correction and invalidation
+contract.
+
+## D230 — Persist and synchronize correction history without product adoption (Aug 2026)
+
+**Context:** D229 defines correction composition independently from storage,
+but process-local values cannot survive relaunch, explain undo, or synchronize
+across an opted-in private library. Letting a database row, opaque JSON payload,
+or transport adapter become the first durable contract would collapse domain
+validation, local persistence, cross-device convergence, and downstream product
+adoption into one risky migration.
+
+**Decision:** move the portable correction event and its typed payloads into
+`PortavozCore`. Each immutable event records the meeting and accepted transcript
+revision, ordered source-segment targets, operation kind, user author, source
+device, creation/update time, optional tombstone, and optional predecessor. A
+strict format-1 transport-neutral envelope canonicalizes order and rejects
+unknown versions, malformed operation shapes, duplicate identities, missing or
+branched predecessors, target-changing supersession, wrong meetings, and
+overlapping live terminal events. Meeting-local accepted targets, speakers,
+split intervals, and merge adjacency remain StorageKit validation because they
+require one current database snapshot.
+
+Add schema v19 with normalized `transcriptCorrection`, ordered target, scalar
+payload, and split-part tables. Parent material and child payload rows are
+immutable. The only update is one monotonic tombstone transition for privacy or
+malformed-event removal; undo is a new restore event that supersedes the current
+terminal event. Appending validates and inserts the complete event atomically,
+and an exact retry is idempotent after timestamps are canonicalized to database
+millisecond precision. History reads include tombstones so removing a terminal
+event cannot reactivate its predecessor. Target rows deliberately omit a
+segment foreign key: a later Refine replacement or source purge may make the
+target unavailable but must not rewrite what the user corrected. Every schema
+v1-v18 library migrates through empty additive tables, and legacy/imported
+meetings receive no synthetic events.
+
+Correction parent inserts and tombstones advance the content-free meeting sync
+journal exactly once; ordered targets and typed payload children never create
+extra generations. Meeting aggregate format 2 transports the canonically
+ordered typed history. Replay rejects immutable identity or payload rewrites and
+tombstone regression before replacing v2 history atomically. A legacy format-1
+aggregate cannot carry corrections and therefore preserves local correction
+history rather than treating absence as deletion. Trigger-generated replay
+work is acknowledged inside the same aggregate transaction.
+
+Persistence and synchronization do not authorize product adoption. Meeting
+Detail, search, summaries, exports, generated evidence, chapters, and playback
+continue to read accepted material. Derived invalidation and editing UI require
+later explicit decisions and characterization boundaries.
+
+**Rationale:** one Core contract lets local persistence and future transports
+share deterministic validation without reversing StorageKit and ApplicationKit
+dependencies. Typed additive tables make migration, corruption, and rollback
+observable; append-only undo and retained tombstones preserve auditability.
+Separating durable convergence from product visibility preserves every released
+feature while the remaining correction policies are implemented incrementally.
+
+## D231 — Adopt focused text and speaker corrections in Meeting Detail (Aug 2026)
+
+**Context:** D230 made correction history durable and convergent but deliberately
+kept every product path on accepted transcript material. The first editing
+surface must let a user correct ordinary text and attribution without making
+SwiftUI a domain authority, destructively rewriting evidence, or silently
+presenting stale summaries and search results as corrected.
+
+**Decision:** model text and speaker attribution as independent correction
+domains. Both may be active on the same accepted source segment, while
+split/merge/suppress remains one exclusive structural domain. A restore inherits
+its predecessor's domain, and malformed or cyclic history fails closed. Add the
+ApplicationKit `CorrectMeetingTranscript` command: it loads and validates the
+complete retained history, accepts one current accepted source row, derives the
+active terminal per domain, and atomically appends only the changed text and
+speaker events. Returning a domain to its exact original value emits a
+superseding restore event. A no-op emits nothing; exact unchanged text is never
+trimmed by a speaker-only edit. Both events use the same stable installation
+source-device identity.
+
+Extend the scoped Meeting Detail read model with ordered correction history and
+raw/refined base identity. Its application projection composes only events for
+the currently observed transcript revision; composition failure returns the
+accepted snapshot rather than partially applying history. No other consumer is
+authorized by this slice: search, summaries, exports, generated evidence, and
+semantic/FTS indexes remain on accepted material until explicit invalidation and
+adoption decisions land.
+
+Expose correction through a focused SwiftUI editor reachable only from a visible
+row that maps to one accepted source segment. It offers text and speaker controls,
+immutable original evidence, append-only history, keyboard default/cancel
+actions, progress/error state, durable Undo, and stable accessibility identifiers.
+A structurally corrected row explains why text/speaker editing is unavailable
+instead of opening an ambiguous editor. Presentation receives values and actions
+only; it imports neither StorageKit nor the meeting store. The reviewed Meeting
+Detail interaction contract now contains 289 signals, eleven owners, and 24 UI
+journeys, including one disposable end-to-end save/reopen/undo journey with
+app-window evidence.
+
+**Rationale:** independent lanes match the user's intent without forcing an
+unrelated text rewrite when attribution changes. Atomic application commands,
+immutable originals, and append-only restores preserve auditability and sync
+convergence. Limiting adoption to Meeting Detail gives immediate value while
+keeping every derived consumer honestly stale until the next correction slices
+define invalidation and regeneration.
+
+## D232 — Make structural transcript corrections explicit and recoverable (Aug 2026)
+
+**Context:** D231 adopted text and speaker lanes but intentionally left split,
+merge, and suppress unavailable. Structural edits need stronger target and time
+rules, and suppression must not become a convenient path to erase accepted
+recording evidence.
+
+**Decision:** add an ApplicationKit `RestructureMeetingTranscript` command over
+one exact accepted projection and revision. Split requires two lexical outputs
+and a strictly interior time boundary. Merge requires an explicit ordered,
+contiguous selection from one meeting, speaker, and audio channel; Meeting
+Detail offers only pairwise previous/next candidates and never infers a merge.
+Accepted merge intervals must remain time-monotonic. Generated event and split-
+part identities retry within one bounded budget and fail closed if they collide
+with accepted rows, retained events, or historical split parts.
+Suppress appends a typed event and removes only the composed row. Every output
+retains the ordered accepted source map.
+
+Expose structural actions through the focused correction surface. A hidden-
+line review keeps exact accepted text visible and offers durable Restore after
+the row leaves the composed reading. Restore remains immutable terminal lineage but is not applied to the reading
+projection or retained as a target owner, so restored evidence may receive a
+later explicit correction. Property lanes and structure remain mutually
+exclusive while active. The route supplies immutable values and explicit
+actions; SwiftUI owns no correction or persistence policy. One immutable
+structural projection precomputes accepted evidence, active ownership, merge
+candidates, and hidden rows for the complete Meeting Detail snapshot, leaving
+visible-row lookups constant time. Its bidirectional source map uses an evidence
+timestamp to select the matching visible split part and preserves the reverse
+mapping to immutable sources. The reviewed Meeting Detail boundary now
+contains 328 interaction signals, eleven owners, and 25 UI journeys.
+
+No derived consumer adopts structural corrections in this decision. Search,
+summaries, generated evidence, exports, chapters, FTS, and semantic indexes stay
+on accepted material until a separate invalidation policy prevents stale work
+from publishing.
+
+**Rationale:** explicit selection prevents grouping guesses, complete source
+maps preserve future audio navigation, and recoverable suppression removes
+reading noise without deleting evidence. Keeping invalidation separate avoids
+silently mixing corrected presentation with stale derived artifacts.
+
+## D233 — Fence derived artifacts by effective correction lineage (Aug 2026)
+
+**Context:** D229–D232 make transcript correction composition deterministic,
+durable, synchronized, and editable in Meeting Detail, but deliberately leave
+derived consumers on accepted material. Without one correction identity and an
+atomic invalidation boundary, old summary/index work can publish after an edit,
+fingerprint-identical cache entries can be reused from the wrong transcript
+overlay, and immutable summaries or Apuntador cards can look current while their
+source evidence has changed.
+
+**Decision:** define `TranscriptCorrectionRevision` as the convergent identity
+of the effective correction overlay for one accepted transcript revision. It is
+the literal `accepted` value when no event is active; otherwise it is a SHA-256
+fingerprint over meeting identity, accepted transcript revision, and the
+canonically ordered effective event IDs. Malformed history has no valid
+revision and fails closed.
+
+StorageKit computes that revision in the same database snapshot as correction
+append, tombstone, and format-2 sync replay. Only a before/after change cancels
+pending or running accepted-only `summary` and `index` jobs and advances the
+independent semantic-corpus source generation. Transcription and diarization
+work remain valid. Its timestamp is the maximum of the correction event,
+meeting, affected jobs, and current semantic-maintenance source, preventing an
+older synced event from moving local maintenance metadata backward. No
+correction transaction starts model execution or rewrites an immutable
+generated artifact.
+
+Every accepted-only retrieval path shares one SQL predicate that removes source
+rows with active corrections from FTS candidates, semantic reads, embedding
+candidates, vector publication, and current identity projection. Unaffected rows
+remain searchable. Restore makes an accepted row eligible again and the source-
+generation advance wakes maintenance. Corrected text is not yet materialized in
+an index, so this decision prefers an honest omission over returning stale text.
+
+Summary and Apuntador generation runs carry both accepted transcript revision
+and effective correction revision. Apuntador includes both in its operation
+fingerprint; the summary fingerprint remains content-derived, while cache and
+translation-pivot reuse additionally require a linked run with matching
+lineage. StorageKit rechecks the same lineage inside each artifact publication
+transaction. Legacy provenance is accepted only for an uncorrected
+revision-zero meeting.
+Explicit summary regeneration and review-metadata suggestions use composed rows.
+Generated evidence is projected back to ordered immutable accepted source IDs
+before persistence.
+
+The reviewed Meeting Detail boundary advances to 332 interaction signals,
+eleven owners, and 26 UI journeys, including one deterministic stale-
+artifact journey. Meeting Detail retains old summaries and Apuntador cards
+as immutable history but marks them stale, disables their evidence as
+current proof, offers explicit
+summary regeneration, and clears route-local generated chapter/title/recipe
+suggestions when correction lineage changes. Automatic Apuntador regeneration,
+corrected-text search/index storage, and composed export remain separate future
+adoptions.
+
+**Rationale:** one content-derived correction identity converges across devices
+without a mutable counter. Transactional cancellation plus publication fences
+prevents stale work at both ends of the race. Retaining immutable artifacts with
+truthful freshness preserves auditability, while explicit on-demand generation
+avoids surprising model cost and keeps correction writes fast. Excluding only
+affected accepted rows preserves useful search without pretending the corrected
+projection is already indexed.
+
+## D234 — Export corrected readings and converge private replicas without guessing (Aug 2026)
+
+**Context:** D233 makes the effective correction overlay safe for regeneration
+and invalidation, but document export still reads accepted-only rows and private
+sync still defers every live/live collision. That leaves a corrected meeting
+inconsistent across review and export, and it cannot distinguish independent
+edits that can converge from two devices changing the same authored truth.
+
+**Decision:** introduce one ApplicationKit `MeetingDocumentContent` projection
+for Markdown, PDF, SRT, WebVTT, CLI, and Gist. It loads one coherent Library
+snapshot, verifies the persisted correction revision against the complete
+history, composes only events for the accepted transcript revision, retains
+original source IDs and time intervals, and omits a summary whose correction
+lineage is stale. Any malformed or revision-mismatched snapshot fails closed
+before a renderer or remote publisher receives content. Correction provenance
+is explicit opt-in metadata. Markdown and PDF append an overlay disclosure and
+source map; WebVTT uses a valid `NOTE` plus corrected-cue markers; SRT uses only
+visible markers so its grammar remains portable. Meeting Detail keeps the option
+route-local and disables it when no correction exists; the CLI offers the same
+contract through `--correction-provenance`. Playback always seeks the immutable
+original audio coordinates. The reviewed Meeting Detail contract therefore
+advances to 334 interaction signals while retaining eleven owners and the same
+26 journeys; the existing export journey now owns deterministic app-window
+evidence for the provenance choice.
+
+Define a transport-neutral `TranscriptCorrectionReplicaMerge` in
+`PortavozCore`. Matching correction IDs require identical immutable fields;
+tombstones converge only through the existing monotonic transition. Disjoint
+text/speaker/structural lanes may union only when the complete accepted segment
+base and revision match. Competing lanes, divergent tombstones, and incompatible
+accepted bases fail closed without partial storage changes. During a private-
+sync collision, IntegrationsKit preserves the exact remote payload and blocks
+outgoing attempts across relaunch, explicit retry, and late save callbacks. An
+explicit local restore or tombstone may make both histories compatible; replay
+then merges them, deletes only the obsolete blocked attempt, releases the send
+fence atomically, and publishes the newest local generation. Remote deletion
+remains privacy-dominant and legacy format-1 peers remain local-wins.
+Only deterministic replica-merge and correction-history validation failures
+map to the user-visible correction conflict; unrelated database or storage
+failures remain typed failures and roll back instead of masquerading as an edit
+collision.
+
+Corrected-text search/index materialization, MCP transcript adoption, and
+automatic Apuntador regeneration remain separate decisions. The accepted raw or
+refined transcript and original audio are never rewritten.
+
+**Rationale:** every exported format should represent the same reading the user
+reviewed without pretending an overlay changed the recording. One projection
+prevents renderer drift, opt-in provenance keeps normal documents clean, and
+immutable source coordinates preserve audit and playback. Set union is safe for
+independent correction lanes, while a durable conflict fence prevents silent
+last-writer-wins loss when two devices edit the same claim.
+
+## D235 — Close correction composition with recovery and scale gates (Aug 2026)
+
+**Context:** D229–D234 define and adopt an immutable correction overlay, but
+examples alone did not prove that arbitrary operation order, mixed-language
+refined material, an interruption during derived-index invalidation, duplicate
+CloudKit delivery, or more than two replicas preserve the same truth. The
+roadmap also required one measured 20,000-segment composition boundary before
+the correction band could close.
+
+**Decision:** retain production policy unchanged and add deterministic quality
+authority at its existing boundaries. A seeded 64-case operation suite shuffles
+accepted rows and correction history while exercising replace, speaker, split,
+merge, suppress, and restore. A separate refined Spanish/English fixture
+requires each row to retain its spoken language, exact text, immutable source
+IDs, and explicit refined lineage. A database trigger aborts semantic-source
+generation after correction insertion; the complete transaction must leave no
+event, journal advance, job cancellation, search exclusion, or generation
+advance. Repeated delivery of one blocked remote correction is ignored before
+and after transport-state relaunch, while three compatible device histories
+must converge under every tested merge association.
+
+Add a test-only, content-free Release benchmark over 20,000 mixed-language
+segments and 400 distributed corrections. Inputs are prebuilt and permuted
+outside measurement; the report contains only fixture version, host shape,
+counts, build configuration, and p50/p95/max timing. The canonical reference
+gate is 250 ms p95. Five runs on the current 14-core arm64, 36 GiB reference Mac
+recorded p50 168.85 ms and p95/max 175.20 ms, producing 19,867 visible rows.
+The raw aggregate is retained in
+`docs/evidence/correction-composition-20260802.json` and the reproducible runner
+is `make correction-composition-benchmark`.
+
+This budget covers pure correction composition only. It does not convert the
+D222 UI baseline into a combined rendering budget, does not authorize corrected
+search materialization, and does not weaken the accepted-only retrieval fence.
+
+**Rationale:** deterministic permutations and injected failure boundaries prove
+semantic invariants better than a few UI examples, while one bounded aggregate
+benchmark prevents a correct overlay from becoming unusable on a large meeting.
+Keeping the harness payload-free and test-only preserves local-first privacy and
+prevents benchmark machinery from becoming a production back door.
+
+## D236 — Benchmark commitment candidates before creating continuity state (Aug 2026)
+
+**Context:** summary providers already emit evidence-linked generated action
+items, but a cross-meeting Commitment Radar needs a stricter meaning: an
+explicit future promise or assigned next step that a user can later confirm,
+reassign, reschedule, complete, reopen, or dismiss. Promoting generated action
+items directly would confuse suggestions, hypotheticals, status reports, and
+questions with commitments and could silently invent owners or deadlines.
+
+**Decision:** establish an adapter-neutral research gate before adding storage
+or UI. The canonical public fixture contains exactly 48 synthetic cases,
+balanced 16/16/16 across English, Spanish, and mixed speech, with 12 explicit
+commitments and nine cases for each negative class: suggestion, hypothetical,
+status report, and question. Each case contains bounded transcript turns, one
+generated action-item observation, and explicit candidate, owner, deadline,
+and evidence truth. A candidate counts only when its nonempty evidence IDs are
+present in both the transcript and generated action item; unsupported output
+fails closed. Scorecards report candidate precision, recall, F1, and false-
+positive rate, exact evidence, exact owner/deadline recovery, and owner/deadline
+false positives overall and by language/class.
+
+One runner supports a transparent deterministic research control and an
+explicit-loopback-IP OpenAI-compatible model adapter over the same public
+fixture. The model endpoint cannot contain credentials or address a nonlocal
+host. Optional per-case details are owner-only and non-overwriting; tracked
+research retains only aggregate public-fixture values. Scorecard comparison
+requires an identical canonical fixture and reports deltas only: quality stays
+`review-required`, the winner stays `not-evaluated`, and no product decision is
+made automatically. The first uncommitted-development observation of local
+`qwen3-coder:latest` produced candidate precision 0.588235, recall 0.833333,
+F1 0.689655, overall false-positive rate 0.194444, owner false-positive rate
+0.179487, and deadline false-positive rate 0.157895. It is explicitly not an
+engine selection or product evidence.
+
+Do not add a commitment entity, confirmation lifecycle, sync envelope, or UI
+in this slice. Generated `ActionItem` remains an immutable model observation;
+future continuity state must be a separate user-confirmed aggregate. A model
+may propose owner or deadline values but cannot confirm ownership, due dates,
+or completion.
+
+**Rationale:** false commitments are more damaging than an empty radar. A
+multilingual, evidence-bound benchmark quantifies that risk before schema and
+UX make it durable, while the adapter-neutral and loopback-only boundary keeps
+local model research replaceable, private, and incapable of silently changing
+product truth.
+
+## D237 — Persist only explicitly confirmed commitment continuity (Aug 2026)
+
+**Context:** D236 established that candidate extraction still has material
+false positives and therefore cannot choose an engine or promote generated
+action items automatically. Continuity nevertheless needs a durable domain
+boundary before a confirmation inbox or cross-meeting read model can be built.
+Conflating that boundary with candidate storage would let experimental model
+output become user truth and would make regeneration capable of overwriting
+ownership, due dates, or completion.
+
+**Decision:** add schema v20 as a confirmed-only aggregate. `ActionItem` remains
+the generated observation attached to an immutable summary; there is no
+`proposed` commitment status or candidate table. A commitment starts only at an
+explicit confirmation boundary from one of three origins: an existing generated
+action item with nonempty current-revision live same-meeting evidence, a live
+user note, or a manual entry. The aggregate stores one immutable title and
+source history plus append-only confirm, reassign, reschedule, complete, reopen,
+and dismiss events. Current `confirmed`/`done`/`dismissed` state, optional owner,
+and optional due date are projections updated in the same transaction as each
+new event. Invalid lifecycle transitions write nothing.
+
+Canonical ownership accepts only an exact live `PersonID`. Alias or name
+similarity may be presented later as a candidate, but cannot enter persistence.
+Source meeting, action-item, note, and segment identities are retained as
+historical references rather than cascade ownership; source/evidence/event rows
+and commitment title/creation identity are database-immutable.
+
+Define a canonical format-1 `CommitmentContinuityEnvelope` in PortavozCore and
+exact replay in StorageKit. Exact retries are idempotent; conflicting identity,
+missing local source truth, mismatched evidence, or unavailable exact people
+fails closed before any insert. This is a transport-neutral representation, not
+yet a `.portavoz` meeting-bundle field, CloudKit meeting record, CLI/MCP
+contract, or UI. Candidate admission, confirmation UX, library-global sync
+transport, and the Radar read model remain separate decisions.
+
+**Rationale:** storing only confirmed user truth makes candidate models
+replaceable and keeps summary regeneration harmless to longitudinal state.
+Append-only events preserve auditability and future convergence, while exact
+identity/evidence admission prevents aliases or stale generated output from
+silently becoming ownership claims.
+
+## D238 — Keep commitment review feedback source-bound and separate from candidate generation (Aug 2026)
+
+**Context:** D237 provides confirmed continuity, but the confirmation inbox also
+needs reversible dismiss and defer choices before a user-facing surface can be
+built. Persisting generated candidate text, proposed owners, or proposed dates
+would let experimental output become a second mutable truth and could make
+summary regeneration silently inherit decisions from an unrelated fresh action
+item.
+
+**Decision:** add schema v21 with one `commitmentReviewDecision` row keyed to an
+existing generated `ActionItem`. The row may contain only `dismissed`, or
+`deferred` with a revisit date strictly after its update time, plus creation,
+update, and tombstone timestamps. It stores no title, owner, deadline, evidence,
+score, model, or candidate payload. Mutations require the action item to belong
+to the newest live summary for the requested meeting and reject a source that is
+already confirmed.
+
+Build the inbox candidate as a transient ApplicationKit projection over the
+newest immutable summary, typed action-item evidence, current cast, review
+feedback, and confirmed continuity. Evidence remains mandatory. An owner may be
+suggested only when the source speaker already carries an exact live
+`PersonID`; alias and display-name similarity are not admission rules. No due-
+date suggestion is produced until a separately benchmarked extractor is chosen.
+
+Local confirmation and exact format-1 replay tombstone source feedback in the
+same transaction that inserts confirmed continuity. A unique partial index
+prevents one generated action item from backing more than one commitment.
+Meeting Detail observes the reconciliation independently from transcript,
+summary, Apuntador, privacy, processing, and notes. This decision adds no
+candidate engine, visual inbox, Radar query, bundle field, CloudKit transport,
+CLI, or MCP contract.
+
+**Consequences:** dismiss and defer remain explicit, reversible user treatment
+without becoming model material. A regenerated summary creates fresh action-
+item identities and intentionally does not inherit feedback. Exact owner
+identity and absent deadline suggestions can produce a sparse inbox, but the
+system fails closed instead of presenting guesses as durable truth. The later
+visual adoption may add confirm, edit, dismiss, defer, and source navigation
+without changing persistence semantics; D239 owns that adoption.
+
+## D239 — Make commitment admission evidence-first and explicit (Aug 2026)
+
+**Context:** D237 and D238 created confirmed-only continuity plus reversible
+source review, but users still needed a safe way to decide whether one generated
+action item should become longitudinal truth. Reusing the summary task list or
+adding a one-click confirmation without context would hide the distinction
+between generated observation and user-owned commitment, and could admit stale
+evidence, an inferred person, or a guessed deadline.
+
+**Decision:** render a separate Meeting Detail confirmation inbox from the
+transient ApplicationKit projection. Each pending candidate shows its generated
+wording, exact transcript evidence, exact linked-person suggestion when one
+already exists, and the explicit absence of a deadline suggestion. The evidence
+control uses the established playback-navigation owner to focus the immutable
+source and seek retained audio. Confirmation is unavailable when evidence is
+stale or missing.
+
+The user must open an editor before confirmation. That editor may change the
+title, choose one exact canonical person or leave ownership unassigned, and add
+a date manually. Confirm, dismiss, and defer are routed through
+`ManageMeetingCommitmentInbox`, an ApplicationKit use case backed by the narrow
+`MeetingCommitmentReviewRepository`; presentation receives immutable values and
+never imports StorageKit. Dismiss and defer remain reversible source treatment,
+while confirmation crosses the existing D237 persistence boundary and removes
+the source from the inbox. Each candidate keeps individual evidence and actions;
+there is no bulk operation that can hide evidence.
+
+**Consequences:** generated action items remain visible as generated content and
+cannot silently become continuity state. A sparse inbox is intentional: owner
+similarity, aliases, free-text dates, and model scores are not admission rules.
+The visual surface does not select a candidate engine, infer deadlines, create a
+Radar query, or extend bundle, CloudKit, CLI, or MCP contracts. Future read
+models can consume only the confirmed aggregate without depending on this UI.
+
+## D240 — Keep self, participant, and unassigned commitment ownership distinct (Aug 2026)
+
+**Context:** confirmed continuity stored only an optional canonical `PersonID`.
+That value could identify an external participant or be absent, but the
+structural local `Me` speaker is deliberately not a canonical person. Treating
+nil as both self and unassigned would make ownership filters dishonest, while
+creating a person for `Me` would violate the identity boundary.
+
+**Decision:** represent commitment ownership in PortavozCore as exactly one of
+`me`, `person(PersonID)`, or `unassigned`. Schema v22 adds the corresponding
+kind to the current projection and confirm/reassign events. Legacy rows with an
+exact person migrate to `person`; every legacy nil owner migrates to
+`unassigned`. The migration never infers self and restores immutable event
+history before application writes resume. Database triggers reject every
+kind/person mismatch.
+
+The continuity envelope advances to format 2 and writes the typed owner. Its
+decoder accepts format 1 by mapping an exact person to `person` and nil to
+`unassigned`; format 1 cannot represent self. Meeting Detail adds an explicit
+localized `Me` choice beside exact canonical participants and `Unassigned`.
+ApplicationKit carries that typed choice unchanged to the existing confirmed-
+only persistence boundary.
+
+**Consequences:** future read models can distinguish mine, others, and
+unassigned without name matching or synthetic identity. Existing libraries and
+portable format-1 data remain readable without retroactive guesses. This
+decision does not add a Radar query, candidate engine, automatic ownership,
+deadline inference, bundle field, CloudKit transport, CLI, or MCP contract.
+
+## D241 — Bound Commitment Radar as a confirmed-only read model (Aug 2026)
+
+**Context:** D237–D240 created evidence-backed, explicitly confirmed continuity
+with honest ownership, but a global view could still regress into per-row
+Meeting Detail hydration, mix generated candidates with user truth, or invent
+calendar semantics inside persistence. A useful Radar also needs source and
+history without allowing an unbounded library to become an unbounded read.
+
+**Decision:** define the Radar contract in PortavozCore and let ApplicationKit
+own relative-time policy through an injected calendar and clock. `dayStart`,
+the half-open seven-day due-soon boundary, and the seven-day new-activity
+boundary enter StorageKit as concrete dates. The read accepts explicit owner,
+urgency, and activity filters and never calls an intelligence provider.
+
+StorageKit executes one snapshot-consistent read with at most four set-based
+SELECT statements independent of root count: bounded roots, bounded oldest
+sources, bounded newest events, and referenced exact-person labels when needed.
+Root pages are limited to 200 and source/history rows to 20 per root; exact
+counts and truncation flags remain visible. Every result preserves durable
+source identities, lifecycle history, and optional source-meeting navigation.
+No row hydrates Meeting Detail.
+
+Urgency applies only to open confirmed work. Activity is derived from current
+status plus the latest immutable event: `done`/`complete` is completed,
+`confirmed`/`reopen` is reopened, and a latest recent `confirm` is new; other
+coherent open state is unchanged. Projection/history disagreement fails the
+read. Dismissed and tombstoned roots are excluded.
+
+**Consequences:** Radar distinguishes mine, exact people, and unassigned work
+and exposes bounded proof without importing model guesses into continuity. The
+macOS Library now owns a dedicated global route backed by a per-window model and
+narrow composition adapter. It filters by owner, due date, and activity, groups
+only by canonical owner or exact source meeting, and opens that durable source
+without per-row Meeting Detail hydration. The surface adds no schema migration,
+candidate engine, inferred owner/deadline, automatic promotion, reminder,
+bundle/CloudKit field, CLI, or MCP contract. Project/topic grouping remains
+deferred until a real project/topic entity exists; meeting navigation is source
+evidence, not a project proxy. The canonical 1k/10k Release benchmark remains
+separate quality work.
+
+## D242 — Gate Commitment Radar with a content-free Release benchmark (Aug 2026)
+
+**Context:** D241 bounds the Radar structurally, but query-count assertions do
+not prove that the real StorageKit read remains responsive as confirmed history
+grows. Adding cross-meeting suggestions before measuring the existing read
+would mix baseline cost with new schema and ranking work. Running against a user
+library would also make performance evidence private, unstable, and difficult
+to reproduce safely.
+
+**Decision:** retain a canonical content-free Release benchmark over fresh
+synthetic stores containing 1,000 and 10,000 confirmed commitments. Fixture
+construction occurs outside timing; one warm read precedes three to twenty
+measured reads, with five as the standard observation. Every run requests a
+100-root page, must return stable identities and exact totals, and must execute
+the maximum four-SELECT/WITH query shape. A synthetic exact canonical person
+keeps the optional name lookup active deliberately.
+
+The gate uses nearest-rank p95 with an absolute 100 ms budget. Its runner emits
+one aggregate schema-v1 JSON observation to stdout, keeps build/test progress on
+stderr, never opens a user library, and persists no report. The payload excludes
+commitment, source, event, meeting, text, and database-path identity. On the
+2 Aug 2026 arm64 reference host, five Release reads measured 4.06 ms p50 and
+4.25 ms p95 at 1,000 rows, then 25.10 ms p50 and 25.27 ms p95 at 10,000 rows.
+
+**Consequences:** COMMIT-3 now has reproducible scale evidence before
+cross-meeting continuity work begins. Statement growth, unstable result
+identity, or a p95 budget miss fails the benchmark instead of being accepted as
+incidental host noise. The observation authorizes neither a candidate engine
+nor a storage-engine replacement, and it says nothing about SwiftUI rendering,
+semantic linking quality, reminders, sync, CLI, or MCP latency; those remain
+separate contracts.
+
+## D243 — Append cross-meeting commitment evidence only after explicit confirmation (Aug 2026)
+
+**Context:** confirmed commitments and their bounded Radar exist, but a later
+meeting can produce a new generated action item about the same obligation. A
+semantic or person match may be useful evidence, yet automatically merging it
+would turn a ranking heuristic into durable user truth. Current transcript
+evidence alone is also insufficient because summary regeneration can retire an
+otherwise current-revision action item.
+
+**Decision:** add a typed `CommitmentLinkConfirmation` and route it through
+`ManageMeetingCommitmentInbox` to one atomic StorageKit operation. The target
+must be open. The action item must remain in the expected meeting's newest live
+summary, retain nonempty current-revision direct evidence, have no existing
+confirmed source, and come from a meeting not already represented in the target.
+Only after that explicit command does StorageKit append the immutable source and
+ordered evidence and tombstone any review treatment for the linked item.
+Its source timestamp is advanced beyond the target's latest source or lifecycle
+timestamp when the caller's wall clock regresses, preserving append order.
+
+The transaction does not create or merge a commitment, append a lifecycle
+event, or rewrite the canonical title, owner, due date, projection, or
+projection timestamps. It needs no migration. Candidate ranking cannot invoke
+the command; the current transient inbox projection remains read-only with
+respect to links.
+
+**Consequences:** later semantic/person scoring can remain non-serving until a
+user confirms the proposed relationship, while source history can accumulate
+without falsifying lifecycle history. A commitment accepts at most one linked
+source per meeting. The app repository adapter exists, but no SwiftUI link
+affordance or scorer ships in this slice. `firstSeenAt` records confirmation
+time, so future first-promised/last-discussed labels must derive meeting
+chronology explicitly. Sync/export, reminders, CLI, and MCP remain unchanged.
+
+## D244 — Rank commitment links from exact person and evidence identity only (Aug 2026)
+
+**Context:** D243 provides the only durable way to append later evidence to an
+open commitment, but it deliberately supplies no candidate policy. Reusing a
+model answer, display-name similarity, or an uncalibrated vector score here
+would let probabilistic output look like an identity decision. The current
+semantic query boundary returns an authoritative ordered list of segment
+identities, not calibrated scores, so it cannot yet support an honest global
+similarity threshold.
+
+**Decision:** add one pure, storage-independent PortavozCore ranker. A new
+action-item candidate may suggest an existing open commitment only when its
+known typed assignee exactly equals the confirmed target assignee and the
+caller's ordered semantic segment identities intersect the target's exact
+stored evidence identities. Nil or unassigned candidates, conflicting owners,
+same-meeting targets, closed or deleted commitments, malformed continuity
+values, duplicate identities, and any input beyond its fixed bounds abstain.
+
+The ranker accepts at most 20 semantic hits and 200 targets, inspects at most 20
+meeting and evidence identities per target, and returns at most three
+suggestions. It orders by earliest semantic hit, then greater exact evidence
+coverage, then commitment UUID for a stable tie. Every result carries only the
+candidate identity, target commitment, exact assignee, matched evidence IDs,
+and explainable one-based semantic rank. It cannot call ApplicationKit,
+IntelligenceKit, StorageKit, a provider, or the D243 mutation command.
+
+**Consequences:** the policy can be benchmarked without becoming a serving
+feature or creating a second semantic engine. No similarity threshold is
+selected until a cross-meeting quality pack supplies calibrated evidence. A
+future adapter must assemble current bounded targets and semantic identities,
+and a future UI must require the user to confirm through D243. This slice adds
+no schema, storage query, application composition, SwiftUI, automatic merge,
+chronology presentation, sync/export field, reminder, CLI, or MCP contract.
+
+## D245 — Separate semantic relevance from commitment-link legality (Aug 2026)
+
+**Context:** D244 can prove that a suggestion obeys the current exact-person,
+evidence-intersection, lifecycle, and cross-meeting rules, but that does not
+prove the semantic hit was relevant. An irrelevant top-k row from the correct
+person can be policy-valid and still create a false link. Conversely, the same
+obligation can be semantically relevant but illegal to link because it belongs
+to another person, the current meeting, an inactive commitment, or an
+unassigned candidate. Treating those outcomes as one label would hide the most
+important false-positive classes and could let a transparent Core policy be
+mistaken for retrieval-quality evidence.
+
+**Decision:** establish a second adapter-neutral public quality authority for
+cross-meeting links. Its reproducible schema-1 fixture contains exactly 36
+bounded synthetic cases: 12 English, 12 Spanish, and 12 mixed; 18 linkable and
+18 mandatory-abstention cases. It covers ordinary continuation, ambiguous
+multiple targets, local-user ownership, wrong person, no semantic overlap,
+same-meeting evidence, done and dismissed targets, and unknown ownership. Every
+case declares semantic-relevant target identities separately from legally
+linkable target identities and retains only synthetic action, commitment,
+meeting, and evidence material.
+
+An observation is bound to the canonical fixture digest and may contain at
+most the D244 limits of 20 ordered evidence identities and three suggestions.
+Unknown, duplicate, missing, or over-bounded identities fail closed. The
+evaluator reports semantic target Hit@1/Recall@20 separately from link
+precision/recall/F1, Hit@1/Recall@3, abstention accuracy, false-suggestion rate,
+and exact policy-explanation support, overall and by language/class. A
+policy-valid but semantically irrelevant link therefore remains a measured
+false positive. Optional per-case details are owner-only and non-overwriting.
+
+The perfect control exists only to prove fixture and evaluator arithmetic. All
+scorecards remain `review-required`, product decisions remain `not-evaluated`,
+and this slice defines no quality floor, similarity threshold, engine winner,
+runtime adapter, storage read, app composition, UI, mutation, or retained real-
+meeting evidence. A later product-path adapter must emit this exact observation
+contract before any suggestion can become user-visible, and D243 remains the
+only durable confirmation boundary.
+
+**Rationale:** semantic retrieval and domain admission fail for different
+reasons and need different evidence. A public multilingual pack makes both
+failures reproducible without user data, while a digest-bound, bounded,
+review-only evaluator prevents benchmark machinery from silently becoming a
+serving policy.
+
+## D246 — Observe commitment links through bounded product ports (Aug 2026)
+
+**Context:** D245 defines the observation contract for cross-meeting link
+quality, but it deliberately has no product-path adapter. Evaluating only a
+synthetic control would not prove that Portavoz can assemble current confirmed
+targets, use its real semantic query boundary, and apply D244 without creating
+a second engine or accidentally exposing suggestions. The adapter also needs
+to distinguish ordinary runtime unavailability from a legitimate abstention.
+
+**Decision:** add one non-serving ApplicationKit observer over the existing
+semantic-readiness, embedding-runtime, and `SemanticIndexSearching` ports. Its
+typed request carries the new ActionItem identity, meeting, text, and already
+resolved assignee. It trims and bounds the candidate text, requires a compatible
+published corpus, borrows only installed embedding assets with downloads
+disabled, validates one finite query vector, and accepts at most 20 unique
+ordered semantic segment identities. It then delegates legal admission solely
+to D244 and returns semantic hit identities separately from final proposals.
+
+StorageKit supplies one snapshot-consistent target read over open confirmed
+commitments. Roots are bounded to 200; source meetings and evidence identities
+are each bounded to 20 per root. Three set-based queries retrieve roots,
+sources, and evidence, using one extra ranked row to detect and omit malformed
+over-bounded aggregates. Identity decoding is strict. The adapter does not
+score, update, confirm, merge, or create continuity.
+
+Semantic unavailability, invalid candidate text, malformed vectors, and
+duplicate or over-bounded result identities fail through explicit typed errors.
+They are not converted into empty quality observations. The observer is not
+composed into `portavoz-app`, SwiftUI, CLI, or MCP, and cannot call the D243
+mutation boundary.
+
+**Consequences:** Portavoz now has a real, bounded product-path seam for
+collecting retrieval and admission evidence without serving it. D245 can next
+receive observations produced through the same semantic and persistence ports
+used by the product while keeping provider choice, score thresholds, accepted
+quality floors, UI, chronology presentation, and automatic behavior deferred.
+No schema, index, migration, model download, durable write, user-visible
+feature, sync/export field, reminder, or external API is added.
+
+## D247 — Measure commitment links through isolated product-path fixtures (Aug 2026)
+
+**Context:** D246 exposes the real read-only Storage/Application observation
+seam, but D245 cannot score it until fixture identities are mapped to durable
+meetings, transcript evidence, generated action items, canonical people, and
+confirmed continuity. Running all 36 fixture cases in one corpus would also let
+evidence from unrelated cases enter top-k results and turn benchmark leakage
+into apparent product quality.
+
+**Decision:** add a CLI-only product adapter for the exact D245 schema. It
+accepts only the canonical public fixture digest, creates one mode-0700 scratch
+root, and uses a separate `MeetingStore` database for every case. Each case is
+materialized through public product boundaries: target evidence becomes
+transcript segments; exact external people are created through the explicit
+speaker-link transaction; evidence-backed generated action items are saved in
+immutable summaries; and targets cross the confirmed-continuity transaction
+before optional complete/dismiss lifecycle events are applied. Fixture
+identities map deterministically to domain UUIDs and map back to the exact
+external IDs required by D245.
+
+The runner indexes each isolated corpus with `IndexSemanticCorpus`, invokes
+`ObserveCommitmentLinkSuggestions`, and emits semantic hits separately from
+D244 proposals. The adapter identity includes a bounded prefix of the exact
+embedding-profile fingerprint. Asset download defaults to `never` and requires
+an explicit `if-needed` CLI argument; D246's measured query still prohibits a
+download. Output uses one shared owner-only, atomic, non-overwriting CLI JSON
+publisher. The runner never opens the user library, enters app composition,
+serves a suggestion, invokes link confirmation, retains transcript text, or
+selects a threshold.
+
+**Consequences:** D245 can now score the real persistence, indexing, semantic
+query, and legal-admission path without exposing it. A dirty-head development
+smoke using the installed Apple profile completed all 36 cases and validated
+through the public evaluator: semantic Hit@1 was 0.969697, Recall@20 was 1.0,
+link precision was 0.777778, link recall was 1.0, abstention accuracy was
+0.666667, and six false suggestions remained. All proposals were explanation-
+supported, but same-owner distractors in no-overlap and wrong-person cases show
+that exact ownership plus evidence identity is not a semantic relevance floor.
+The result is review-required development evidence, not a clean-head baseline
+or product decision. Serving stays blocked pending an ignored anonymized pack,
+clean-head profile matrix, explicit similarity/abstention research, and an
+accepted quality floor.
+
+## D248 — Preserve profile-bound similarity without defining admission (Aug 2026)
+
+**Context:** the product-path link runner proved that exact owner and evidence
+identity are explainable but insufficient: six semantically irrelevant links
+survived legal admission. The exact Accelerate search already computes cosine
+similarity to rank every result, but `SearchHit` discarded that value before
+the non-serving observer could measure it. Choosing a threshold without the
+source score and embedding-profile identity would be irreproducible; applying
+one directly in Core or SwiftUI would turn one dirty-head smoke into policy.
+
+**Decision:** retain an optional profile-local semantic similarity on the
+authoritative transcript search projection. Lexical search and identity-only
+research projections leave it absent; the shipped exact semantic adapter
+attaches the already computed dot-product value without adding another scan or
+persisting it. Existing Ask and Library consumers continue to ignore it.
+
+The non-serving commitment-link observer now returns ordered
+`CommitmentLinkSemanticHit` values plus the exact embedding-profile
+fingerprint. It requires every semantic result to carry a finite cosine value
+within a small floating-point tolerance of `[-1, 1]`, clamps only that tolerance
+drift, and rejects ascending rank order. Missing, non-finite, out-of-range, or
+misordered evidence is a typed measurement failure rather than an abstention.
+The observer still passes only ordered segment identities into D244, so score
+cannot alter legal admission.
+
+**Consequences:** a later offline evaluator can replay explicit
+similarity/abstention candidates against the public and ignored real-meeting
+packs using evidence from the actual exact adapter. Scores remain transient,
+profile-bound, absent from persistence, support diagnostics, sync, bundles,
+MCP, app composition, and SwiftUI. This decision selects no threshold, margin,
+quality floor, engine, or product behavior and creates no user-visible feature.
+
+## D249 — Version scored commitment-link evidence separately from quality observations (Aug 2026)
+
+**Context:** D248 makes exact profile-local similarity observable, but D245's
+schema-1 quality document intentionally contains only external hit identities
+and legal suggestions. Adding scores in place would invalidate retained
+observations and couple the accepted adapter-neutral evaluator to an unfinished
+admission experiment. Publishing an unscored and a scored file from one command
+would also allow a second-file failure to leave an ambiguous partial run.
+
+**Decision:** add a separate schema-1, owner-only similarity-observation
+contract and a dedicated CLI command over the same isolated D247 product path.
+Each document binds the canonical fixture generation and digest, the full
+embedding-profile fingerprint, a bounded receipt-safe build identifier, and
+one full lowercase source commit. Every canonical case contains ordered
+external evidence identities with finite cosine scores in `[-1, 1]` plus the
+unchanged D244 suggestion rows needed for later policy replay. It carries
+literal `not-evaluated` and `not-approved` states.
+
+The adapter-neutral validator requires an exact schema, one unique row per
+fixture case, only known and unique evidence/target identities, D244's 20-hit
+and three-suggestion bounds, descending score order, exact provenance shapes,
+and the non-serving states. Owner-only atomic publication never overwrites an
+earlier receipt. D245's fixture, unscored observation schema, evaluator, and
+product command remain unchanged.
+
+**Consequences:** a later deterministic evaluator can sweep explicit
+similarity and abstention candidates from one provenance-complete artifact
+without rerunning retrieval or inferring scores from rank. This slice still
+selects no threshold, margin, quality floor, or winner; does not read a user
+library; and adds no app composition, persistence, diagnostics, sync, bundle,
+MCP, SwiftUI, confirmation, or serving behavior. A clean-head local-profile
+matrix and ignored anonymized real-meeting evidence remain required before any
+policy can be accepted.
+
+## D250 — Replay every distinct similarity-admission outcome without choosing one (Aug 2026)
+
+**Context:** D249 preserves exact product-path scores, but a fixed hand-written
+threshold grid could miss a behavior change or encode an arbitrary preference.
+Applying a threshold to raw semantic hits would also alter retrieval evidence,
+while allowing it to mask an unsupported legal suggestion could make a broken
+adapter appear safer than it is. Policy research therefore needs a deterministic
+boundary that separates retrieval from admission and can be recomputed exactly.
+
+**Decision:** add an adapter-neutral offline replay over one validated D249
+artifact and the canonical D245 fixture. Every baseline suggestion must first
+pass the existing exact legal/explanation check. For each suggestion, the replay
+uses the greatest similarity among its matched evidence, which is the first
+matched row in the validated descending semantic result. Raw semantic hits stay
+unchanged. Candidate admission applies only the inclusive rule `best matched
+evidence similarity >= minimum similarity`.
+
+The sweep sorts the unique baseline suggestion scores and derives one stable
+representative threshold for every distinct admission outcome: `-1.0` retains
+the complete legal baseline, midpoints between adjacent values represent each
+subsequent equivalence class, and a midpoint between the maximum and `1.0`
+represents full abstention when that interval exists. It therefore neither
+misses an observed behavior transition nor invents a coarse product grid.
+
+The schema-1 replay binds the exact source-observation digest plus fixture,
+adapter, embedding profile, build, and source commit. It records admitted and
+rejected suggestion counts, changed cases, full aggregate quality metrics, and
+language/class slices for every candidate. Validation recomputes the complete
+document rather than trusting supplied metrics or order. Output is owner-only,
+atomic, and non-overwriting, with literal `review-required`, `not-selected`,
+`not-evaluated`, and `not-approved` states.
+
+**Consequences:** reviewers can inspect the complete public-fixture precision,
+recall, and abstention frontier without rerunning embeddings or allowing the
+tool to name a winner. This decision selects no threshold, margin, quality
+floor, model, or engine and changes no product retrieval, Core policy,
+persistence, application composition, SwiftUI, confirmation, sync/export,
+diagnostics, public product CLI/MCP surface, or serving behavior. An ignored real-
+meeting contract, clean-head profile matrix, explicit human review, and an
+accepted multilingual quality floor remain mandatory before product wiring.
+
+## D251 — Keep real-meeting link calibration private, balanced, and owner-reviewed (Aug 2026)
+
+**Context:** D250 can enumerate public-fixture policy outcomes, but a synthetic
+pack cannot establish field precision. Retaining raw meetings, identities,
+paths, or account material in Git would violate Portavoz's local-first boundary.
+Conversely, an unconstrained private pack could change class or language
+denominators and make its metrics incomparable with the public authority.
+Automated pattern matching can catch obvious identifiers but cannot honestly
+certify that free text has been anonymized.
+
+**Decision:** define a separate schema-1 private companion fixture. It reuses
+the exact public 36-case structural and distribution contract: 12 English, 12
+Spanish, 12 mixed; the same nine class counts; 18 linkable and 18 mandatory-
+abstention cases; and identical candidate, target, evidence, assignee, and truth
+rules. Its root instead requires a `private-anonymized-*` generation, literal
+`private-anonymized-local` content source, and `owner-reviewed-redaction-v1`
+attestation. The owner must explicitly state that the pack contains no audio,
+filesystem paths, account identifiers, or direct identifiers.
+
+The validator rejects obvious email addresses, URLs, user/home filesystem
+paths, phone-like numbers, and UUIDs in candidate, target-title, and evidence
+text. Those checks are a fail-closed backstop, not a claim of automatic
+de-identification. CLI validation accepts only a regular non-symlink mode-
+`0600` file. If the file is under the repository root, `git check-ignore` must
+prove that it is ignored; `/private-evidence/` is the canonical local location
+and repository hygiene asserts that boundary. No private fixture is committed.
+
+**Consequences:** a future collector can receive field cases with the same
+metric shape as the public pack without weakening or mutating the canonical
+public fixture. This slice validates metadata, balance, structure, path safety,
+and obvious identifier patterns only; human owner review remains authoritative.
+It does not yet let the Swift product-path runner ingest a private fixture,
+collect scores, replay policy, retain a baseline, or choose a threshold. It
+adds no app composition, persistence, support diagnostics, sync/export, bundle,
+public CLI/MCP surface, SwiftUI, confirmation, or serving behavior.
+
+## D252 — Measure private commitment links without weakening public evidence (Aug 2026)
+
+**Context:** D251 defines a safe local shape for owner-reviewed field cases,
+but the D247/D249 Swift runner accepts only the reproducible public fixture
+digest. Broadening that command to accept either root would make a private file
+indistinguishable at the composition boundary, and reusing the public receipt
+kind would let field evidence be mistaken for the synthetic authority. A
+private collector must also avoid retaining the anonymized source text merely
+because it needs that text transiently to seed scratch stores.
+
+**Decision:** add a dedicated CLI command and distinct schema-1 private
+similarity receipt. The private loader accepts only a regular non-symlink mode-
+`0600` file with the D251 root, exact 36-case language/class/link/abstention
+balance, literal owner-reviewed redaction attestation, safe bounded identities,
+legal link truth, and the same obvious identifier backstops. The Make target
+runs the Python authority before collection, preflights the destination, and
+validates both the fixture and owner-only output afterward; repository-local
+evidence must remain gitignored.
+
+Every accepted case runs through the existing D247 isolated scratch
+`MeetingStore`, product semantic indexing operation, D246 observer, and D244
+legal admission. The receipt binds the full private fixture digest, content
+source, complete anonymization attestation, embedding-profile fingerprint,
+bounded build, and full source commit. Its rows contain only anonymized external
+case/evidence/commitment/person identities, ordered cosine values, and legal
+suggestions. Candidate, target, and evidence source text is never encoded. The
+receipt remains literally `not-evaluated` and `not-approved`, owner-only,
+atomic, and non-overwriting.
+
+The canonical public commands and digest checks remain unchanged. The private
+collector is absent from app composition and does not open the user library,
+serve or confirm a suggestion, replay a threshold, retain an accepted baseline,
+or enter persistence, diagnostics, sync/export, bundles, MCP, or SwiftUI.
+
+**Consequences:** owner-reviewed field cases can now produce provenance-complete
+scores through the same real product path as the public pack without mixing the
+two evidence authorities or leaking fixture text into the receipt. Human review
+still owns anonymization. Private policy replay, a clean-head profile matrix,
+quality-floor acceptance, and any serving decision remain separate pending
+slices.
+
+## D253 — Replay private commitment-link evidence without selecting policy (Aug 2026)
+
+**Context:** D252 produces field-derived similarity evidence, but the D250
+replay accepts only the canonical public receipt. Reusing the public command or
+receipt kind for private evidence would erase its owner-reviewed provenance and
+make a field candidate matrix look like synthetic authority. Duplicating the
+candidate arithmetic would create a second threshold policy that could drift
+silently.
+
+**Decision:** add a distinct private replay and validation path around one
+shared deterministic candidate core. The private path accepts only the D251
+mode-`0600` fixture and D252 mode-`0600` scored receipt, revalidates their exact
+fixture/anonymization/profile/build/commit relationship, and preflights an
+owner-only non-overwriting output that must be gitignored when repository-
+local. The output has its own `commitment-link-private-similarity-policy-replay`
+kind and binds both the complete fixture digest and complete scored-receipt
+digest plus the original provenance.
+
+For both authorities, retrieval stays fixed and only already legal D244
+suggestions are filtered. One inclusive threshold represents every distinct
+observed admission outcome; unsupported baseline suggestions fail closed. The
+private candidate matrix carries only aggregate counts and language/class
+metrics, never fixture text. Exact recomputation rejects changed candidates,
+ordering, source evidence, or review state. Its statuses remain literally
+`review-required`, `not-selected`, `not-evaluated`, and `not-approved`.
+
+**Consequences:** public and private runs now produce comparable candidate
+arithmetic without sharing evidence identity or choosing a winner. The shared
+core reduces policy drift, while separate validators and envelopes prevent
+private evidence from weakening the canonical public boundary. This slice does
+not retain a baseline, accept a quality floor, select a similarity threshold,
+or add app composition, persistence, diagnostics, sync/export, bundles, MCP,
+SwiftUI, confirmation, or serving behavior. A clean-head profile matrix and
+explicit human review remain pending.
+
+## D254 — Compare public and private commitment-link evidence on one clean profile (Aug 2026)
+
+**Context:** D250 and D253 can replay public and private score distributions,
+but separately collected receipts do not prove that the same executable,
+embedding profile, build, or source commit produced them. Their independently
+observed equivalence candidates can also use different threshold values, so
+placing the two replay files side by side is not a valid point-by-point
+comparison. A field matrix must prevent source drift without copying private
+fixture text into retained evidence.
+
+**Decision:** add one clean-head Release orchestrator and one exact comparison
+authority. The orchestrator validates the owner-reviewed private fixture,
+requires an unchanged committed checkout before and after collection, resolves
+the full HEAD, builds `portavoz-cli` once, and runs both the canonical public
+and separate private scored collectors through that executable with asset
+downloads fixed to `never`. It validates both receipts, produces both distinct
+replays, and publishes all five artifacts only after the complete matrix
+validates. A mode-`0700` sibling stage plus exclusive destination lock prevents
+partial or concurrent publication; every artifact is regular, non-symlink,
+mode `0600`, non-overwriting, and gitignored when repository-local.
+
+The comparison requires exact equality of embedding-profile fingerprint,
+build, and source commit. It binds complete fixture, scored-receipt, and replay
+digests for both authorities plus the private anonymization provenance. Because
+the score distributions can yield different replay candidates, it evaluates
+both fixtures at the sorted union of their observed inclusive thresholds. The
+same deterministic arithmetic produces aggregate, language, and class metrics
+without fixture text. Exact recomputation rejects changed inputs, candidate
+ordering, metrics, provenance, or review state.
+
+**Consequences:** a future real private pack can now be compared to the public
+authority under one local profile without source/executable drift or synthetic
+field evidence. The bundle remains literally `review-required`, `not-selected`,
+`not-evaluated`, and `not-approved`; it does not retain an accepted baseline,
+choose a threshold, accept a quality floor, or add app composition, storage,
+diagnostics, sync/export, bundles, MCP, SwiftUI, confirmation, or serving
+behavior. Collecting the real owner-reviewed pack and making an explicit human
+quality decision remain pending field work.
+
+## D255 — Require an explicit private calibration review before product evaluation (Aug 2026)
+
+**Context:** D254 can produce a provenance-complete public/private matrix, but
+the matrix deliberately contains every observed threshold outcome and names no
+winner. Automatically ranking those candidates would turn implementation code
+into an undeclared quality policy. Conversely, recording only a numeric
+threshold would lose the exact public/private, language, and class evidence the
+maintainer reviewed. No real private matrix exists in the repository, so this
+slice must define the decision boundary without fabricating its outcome.
+
+**Decision:** add a separate private calibration-review admission authority.
+It revalidates the owner-reviewed private fixture, the four scored/replay
+artifacts, and the D254 matrix by exact recomputation. Admission requires a
+clean checkout at the matrix's full source commit plus literal maintainer input
+for the exact matrix-file SHA-256, source commit, candidate ID, and fixed
+`selected-candidate-metrics-reviewed-no-serving-approval-v1` acknowledgement.
+The selected candidate must exist exactly once and admit at least one public
+and private suggestion.
+
+The retained schema-1 receipt binds matrix file/document digests, profile,
+build, source commit, both evidence authorities, selected threshold, and the
+candidate's complete public/private aggregate and language/class metrics. Those
+observed metrics are the accepted floor for a future confirmation evaluation;
+they are not a globally configured threshold or automatic model verdict. The
+owner-only output is atomic, non-overwriting, gitignored when repository-local,
+and withdrawn if the checkout changes after publication. Deterministic
+validation recomputes it from the complete private evidence bundle.
+
+**Consequences:** Portavoz now has an auditable capability for the required
+human quality decision without letting synthetic tests or code choose a
+candidate. The receipt is permanently `private-commitment-link-calibration-only`,
+`owner-selected-for-evaluation`, `accepted-for-confirmation-evaluation`,
+product `not-evaluated`, and serving `not-approved`. It does not enter app
+composition, product persistence, diagnostics, sync/export, bundles, MCP,
+SwiftUI, confirmation, or source-link commands. A real owner-reviewed private
+pack and explicit invocation remain mandatory before a tracked product policy
+or confirmation experiment can be designed.
+
+## D256 — Route Radar lifecycle actions through append-only continuity (Aug 2026)
+
+**Context:** confirmed continuity already stores complete, reopen, and
+reschedule as validated immutable events, but the global Commitment Radar was a
+read-only projection. Letting SwiftUI call StorageKit would reverse the feature
+boundary, while changing a due date in place would erase the history that makes
+the Radar trustworthy. A reminder snooze is also not a due-date change: it is a
+delivery decision with different lifecycle and audit semantics.
+
+**Decision:** add a narrow `ManageCommitmentRadar` ApplicationKit use case for
+only complete, reopen, and optional due-date reschedule. The use case owns the
+event identity and timestamp, attaches no source meeting, and delegates to the
+existing atomic append-event/project-current-state transaction. The per-window
+model serializes one mutation, retains the current page if the operation fails,
+and reruns the same bounded read after success. SwiftUI owns only the due-date
+editor and explicit intents; it imports neither StorageKit nor IntelligenceKit.
+
+Reminder snooze is deliberately absent. It will require separate reminder-
+delivery history and cannot be represented by rewriting a commitment deadline.
+No schema, candidate admission, notification, sync/export, bundle, CLI, or MCP
+surface changes in this slice.
+
+**Consequences:** users can now complete, restore, and reschedule confirmed work
+from its global review surface while every change remains durable and auditable.
+The existing projection/event consistency checks and bounded Radar query remain
+authoritative. Delivery schedules, notification permission recovery, review
+queues, and snooze still require later COMMIT-5 slices.
+
+## D257 — Persist commitment reminder delivery separately from due dates (Aug 2026)
+
+**Context:** D256 intentionally refused to model reminder snooze as a
+commitment reschedule. A process-local timer or notification identifier alone
+would lose delivery state across relaunch, while reusing the generic outbox
+would conflate local user attention with publication/sync delivery. A reminder
+also must never be created from an unconfirmed generated ActionItem or continue
+silently after the confirmed commitment changes.
+
+**Decision:** add schema v23 with one `commitmentReminderState` projection per
+commitment and an immutable `commitmentReminderEvent` ledger. The typed state
+machine accepts schedule, present, snooze, dismiss, and cancel. Every change
+appends one predecessor-linked event and updates the projection atomically.
+Schedule and active delivery transitions require an existing open confirmed
+commitment whose current due date exactly matches the cycle's captured
+`sourceDueAt`. Snooze preserves that fence and changes only `scheduledFor`;
+cancel remains available to retire a stale active cycle after completion or
+reschedule.
+
+The migration creates empty tables and no synthetic reminders. Event payload
+checks, a unique predecessor, a same-commitment predecessor trigger, immutable
+history, a composite latest-event foreign key, and monotonic projection time
+make malformed or branched persistence fail closed. D257 adds no
+UserNotifications adapter, permission request, scheduler, SwiftUI, sync/export,
+bundle, CLI, or MCP surface.
+
+**Consequences:** Portavoz now has a relaunch-safe local foundation for
+confirmed-only reminders and honest snooze history without weakening durable
+commitment truth. Later COMMIT-5 slices can resolve due deliveries and add
+permission-aware local presentation against one bounded projection. Until
+then, no new reminder is scheduled or shown to users.
+
+## D258 — Reconcile reminder intent through a content-free scheduler port (Aug 2026)
+
+**Context:** durable reminder state alone cannot recover a missing or stale
+operating-system request after relaunch. Letting a macOS adapter query and
+mutate SQLite directly would duplicate confirmation/due-date policy, while a
+bounded read that silently truncates could leave old reminders active. A due
+date change also cannot be implemented as a persisted cancel followed by a
+separate schedule: failure between those writes would strand the reminder in a
+terminal state and explicit dismissal must never be silently reversed.
+
+**Decision:** add one complete-count reconciliation projection containing
+unscheduled confirmed due commitments plus every active reminder that may need
+retirement. Terminal projections remain outside the operational set so old
+dismissals and cancellations cannot consume its bounded capacity.
+`ReconcileCommitmentReminders` fails before side effects on invalid, duplicate,
+or partial snapshots and talks only to an idempotent content-free scheduler
+port keyed by `CommitmentID`. Matching schedules are reasserted after relaunch;
+completed, deleted, and due-less commitments cancel active delivery; presented
+matching reminders and terminal user decisions remain unchanged. A first
+schedule uses the exact due date, or a small injected future delay when already
+overdue.
+
+Due-date replacement first upserts the stable scheduler request and then uses
+one StorageKit transaction to append cancel and schedule events and publish
+only the final projection. Initial persistence failure attempts compensating
+scheduler cancellation. Terminal cancel is allowed for a soft-deleted
+commitment whose row still exists, while schedule, present, and snooze retain
+the live confirmed exact-due fence. The scheduler input contains no title,
+transcript, person, or meeting content. No `UserNotifications` adapter,
+permission prompt, application timer, UI, sync/export, bundle, CLI, or MCP
+surface is added.
+
+**Consequences:** local delivery can converge idempotently after relaunch and
+partial failure without letting platform code own business policy or leaking
+commitment text into its request boundary. Reconciliation refuses to claim
+success when more than 256 relevant roots exist; paging or a larger measured
+bound must be designed rather than silently skipping work. Actual macOS
+notification scheduling, permission recovery, delivery actions, and reminder
+review UI remain explicit separate work.
+
+## D259 — Observe delivered notifications before reminder upsert (Aug 2026)
+
+**Context:** D258's idempotent scheduler model is sufficient while a request is
+pending, but Apple documents different behavior after delivery: adding a new
+request with the same identifier alerts again and replaces the delivered item.
+A relaunch that blindly reasserted every durable schedule could therefore
+duplicate a reminder. Reconciliation also runs outside a user gesture, so it
+must not ask for notification permission, and lock-screen content must not
+expose commitment, person, meeting, or transcript text.
+
+**Decision:** make scheduler upsert return either `scheduled` or one exact
+`alreadyPresented` observation carrying the original scheduled timestamp and
+the system delivery timestamp. ApplicationKit records a `present` transition
+instead of re-adding the request. If a prior attempt reached Notification
+Center but failed before its initial durable schedule write, reconciliation
+reconstructs a valid schedule/present pair from those content-free timestamps.
+Compensating cancellation remains limited to a newly scheduled request; an
+already-observed delivery is never erased because persistence failed again.
+
+The macOS executable implements the port with `UserNotifications`. One stable
+identifier derives from `CommitmentID`. The request stores only that identity,
+the scheduled timestamp, and the exact source due-date fence; visible content
+is generic localized copy. Exact pending requests are no-ops, exact delivered
+requests become presentation outcomes, stale delivered copies are removed
+before replacement, and cancellation removes both pending and delivered
+copies. Authorized, provisional, and ephemeral settings may schedule.
+Not-determined and denied settings fail closed. Permission request is exposed
+as a separate explicit method and is never called by upsert.
+
+The adapter remains outside `AppServices` composition in this slice. No launch
+owner, polling timer, permission UI, notification delegate/action, Radar
+control, sync/export, bundle, CLI, or MCP surface is added.
+
+**Consequences:** Portavoz now has a testable native macOS adapter that can
+converge operating-system delivery without duplicate alerts or sensitive
+notification content, while business eligibility remains in ApplicationKit
+and durable truth remains in StorageKit. Users still receive no commitment
+notification until a later explicit composition and permission-recovery slice
+installs the adapter and gives them control.
+
+## D260 — Compose commitment reminders behind explicit user permission (Aug 2026)
+
+**Context:** D259 supplied a privacy-safe native scheduler, but leaving it
+outside the executable graph meant confirmed due commitments never reached
+Notification Center. Asking for permission at launch would violate the
+local-first consent model, and a polling timer would keep reading storage while
+the app is idle. Reconciliation also needs to follow durable commitment
+mutations without allowing SwiftUI or the platform adapter to own eligibility.
+
+**Decision:** install one process-owned `CommitmentReminderModel` in
+`AppServices`. On launch it inspects the current notification authorization
+state without prompting. Only the explicit **Enable reminders** action in
+Commitment Radar may request authorization. Authorized, provisional, and
+ephemeral states enter the existing fail-closed reconciliation workflow;
+not-determined and denied states remain inert and visible to the user.
+
+The model is signal-driven rather than timer-driven. Launch authorization
+inspection, successful Meeting Detail confirmation, and successful Radar
+complete, reopen, or due-date mutations request reconciliation. A burst keeps
+at most one active pass and one coalesced rerun. The ApplicationKit workflow
+continues to decide which confirmed commitments qualify, StorageKit remains the
+durable authority, and the UserNotifications adapter receives only the stable
+identity/date metadata defined by D259. Disposable UI-test stores use an
+in-memory notification center and never touch host notification permission.
+
+No notification delegate, action button, snooze UI, review queue, external-
+sync mutation signal, sync/export field, bundle, CLI, or MCP surface is added.
+Denied permission is recoverable through an explicit status refresh after the
+user changes macOS settings; Portavoz does not rely on an undocumented Settings
+URL.
+
+**Consequences:** users can opt in to generic, local, confirmed-only due-date
+alerts from the Radar, while a normal launch never presents a permission dialog
+or performs periodic background reads. Relaunch and in-app commitment mutations
+converge through one observable process owner, and deterministic tests can
+exercise the complete flow without changing machine notification state.
+Notification actions, snooze controls, review queues, and signals for mutations
+arriving from another device remain later slices.
+
+## D261 — Treat reminder presentation as an exact durable input (Aug 2026)
+
+**Context:** D260 can schedule generic alerts, but foreground delivery and a
+Notification Center tap were not observed by Portavoz. Relaunch reconciliation
+eventually discovers delivered requests, yet a selected alert had no product
+destination, and letting the delegate mutate storage would duplicate due-date
+and terminal-state policy. Old Notification Center items can also outlive a
+replaced schedule.
+
+**Decision:** register the content-free reminder category and install the native
+notification-center delegate before application launch finishes. Both
+foreground delivery and the default alert response decode only the stable
+commitment identifier, scheduled time, source due-date fence, and system
+delivery time. They call `RecordCommitmentReminderPresentation`, an
+ApplicationKit use case that appends `present` only when the current durable
+reminder is still scheduled for the exact same time and exact same source due
+date. An already-presented delivery is idempotent; missing, replaced, terminal,
+malformed, or chronologically impossible input is ignored or rejected without
+reviving work.
+
+The default alert response then routes the process to Commitment Radar and
+activates the app. The delegate does not read StorageKit, does not carry
+commitment, person, meeting, or transcript text, and does not reinterpret
+eligibility. Foreground presentation remains a generic banner and sound. Custom
+action buttons, snooze/dismiss commands, review queues, external-sync mutation
+signals, and sync/export surfaces remain deferred.
+
+**Consequences:** selecting a private due alert now returns the user to the one
+confirmed-work review surface, while delivery history converges immediately and
+exactly once. Stale Notification Center items cannot restore cancelled work or
+block a later snoozed schedule. Relaunch recovery remains a fallback rather than
+the only presentation observer. Scoped bilingual XCUITest proves the route
+without touching host notification state.
+
+## D263 — Snooze a private alert without moving commitment truth (Aug 2026)
+
+**Context:** D257 already models reminder snooze separately from a commitment
+deadline, and D261 observes an exact native delivery, but users still cannot
+defer that alert. Reusing Radar's due-date editor would falsely change the
+business commitment. Letting the notification delegate append storage events
+or schedule a new request would duplicate ApplicationKit eligibility and
+reconciliation policy. A custom action also must not reveal private work or
+unnecessarily open the app.
+
+**Decision:** register one non-foreground **Remind me in 15 minutes** action on
+the existing content-free category. The native delegate classifies its stable
+identifier, decodes the same commitment identity and date fences as default
+delivery, completes the platform callback, and forwards a typed request to the
+process reminder model. It never reads StorageKit, embeds commitment text, or
+activates the app for snooze.
+
+`SnoozeCommitmentReminder` owns the durable transition. It first records the
+exact presentation through D261's use case, re-reads the resulting projection,
+and appends `snooze` only while status, original scheduled time, and source due
+date still match. The request requires finite monotonic delivery, handling, and
+next-alert times. Replaced, terminal, repeated, missing, and malformed inputs
+cannot rearm work. A successful mutation signals D260's process-wide
+reconciler, which removes the old delivered request and schedules the generic
+replacement. The confirmed commitment's `dueAt` and append-only continuity
+history remain unchanged.
+
+No dismiss command, Radar due-date mutation, new schema, polling timer,
+external-sync signal, sync/export field, bundle, CLI, MCP, or review queue is
+added. Deterministic tests exercise the workflow and native action metadata;
+there is no new app-window UI to justify an XCUITest.
+
+**Consequences:** users can defer a generic confirmed-work alert for fifteen
+minutes without weakening business truth or privacy. Snooze survives relaunch,
+duplicate notification responses are idempotent, and platform code remains an
+adapter rather than a policy owner. Explicit dismissal and pre/post-meeting
+review remain later COMMIT-5 slices.
+
+## D264 — Treat clearing a native alert as durable dismissal (Aug 2026)
+
+**Context:** D263 lets users defer a delivered alert, while the domain and
+storage already support a terminal reminder dismissal. The macOS category did
+not request dismissal callbacks, however, so clearing an alert in Notification
+Center left the durable projection presented. Although current reconciliation
+does not immediately rearm a matching presentation, a platform-visible choice
+should be captured explicitly rather than inferred from a missing delivered
+request. The native delegate must not own storage or commitment policy.
+
+**Decision:** opt the content-free reminder category into
+`customDismissAction`, classify `UNNotificationDismissActionIdentifier` as a
+closed response action, and forward the existing opaque commitment identity,
+scheduled time, source due date, delivery time, and callback handling time to
+ApplicationKit. The callback completes before asynchronous policy work and does
+not activate Portavoz.
+
+`DismissCommitmentReminder` validates finite monotonic chronology, records the
+exact presentation through D261's use case, re-reads the projection, and appends
+`dismiss` only while status, scheduled time, and source due date still match.
+The resulting projection is terminal and therefore excluded from process
+reconciliation. The confirmed commitment, its `dueAt`, and continuity history
+remain unchanged. Replaced, repeated, missing, terminal, and malformed
+responses are fail-closed no-ops.
+
+Foreground presentation and dismissal can arrive close enough to race across
+the ApplicationKit read/append boundary. If a present append loses that race,
+the presentation workflow re-reads the projection and accepts success only
+when the exact scheduled time and source due-date fences are already presented;
+every other failure remains visible. This allows the later dismiss transition
+to proceed without masking replacement or storage errors.
+
+No new schema, Radar mutation, permission request, reconciliation kick, polling
+timer, app-window UI, external-sync signal, sync/export field, bundle, CLI, MCP,
+or review queue is added. Deterministic tests characterize the native category,
+classifier, ApplicationKit workflow, storage timeline, and architecture
+boundary; Notification Center interaction remains a later field check.
+
+**Consequences:** clearing a generic private alert now has durable semantics and
+cannot be silently undone on relaunch. Platform code remains a content-free
+adapter, while ApplicationKit owns chronology and stale-delivery policy. The
+pre/post-meeting review queue and calendar/Shortcuts preview remain later
+COMMIT-5 work.
+
+## D265 — Bound generated-work review before composing new surfaces (Aug 2026)
+
+**Context:** Meeting Detail already offers exact evidence-first confirmation
+for one meeting, and Commitment Radar deliberately contains only confirmed
+truth. Pre-meeting preparation and post-meeting review still need a shared view
+of generated work that requires attention. Hydrating Meeting Detail once per
+candidate would create an unbounded N+1 read, while reusing Radar rows would
+blur generated suggestions into confirmed continuity. Presentation must also
+not read the clock, guess an owner or deadline, or confirm from a truncated
+evidence preview.
+
+**Decision:** add a storage-independent `CommitmentReviewQueueQuery` for either
+the whole library or an exact duplicate-free set of at most 50 meetings.
+ApplicationKit samples one concrete review time and caps each page at 100 roots
+and each evidence preview at 20 segments. StorageKit resolves the request in one
+snapshot with at most two set-based SELECT statements: roots plus ranked
+evidence. Each meeting contributes only open action items from its newest live
+summary across all recipes. Eligible roots require an ended live meeting and
+nonempty typed evidence, and exclude any confirmed source, dismissed review,
+or deferred review whose revisit time is still in the future. Due deferrals
+sort before new post-meeting work.
+
+Exact canonical owner hints may be returned only from a live linked speaker;
+no due date is inferred. Evidence status describes the complete source, while
+the returned segments are an explicitly bounded preview with exact count and
+truncation metadata. Stale or partially unavailable source evidence returns no
+preview rows. The queue is read-only and cannot confirm, remind, sync, export,
+or hydrate Meeting Detail. Exact confirmation remains on the existing
+per-meeting editor, and no app route or pre-meeting composition is added in this
+slice.
+
+**Consequences:** future pre- and post-meeting surfaces can share one honest,
+bounded source of review candidates without weakening the confirmed-only Radar
+or creating per-row reads. A future UI must open the exact source meeting for
+review and confirmation, explicitly present truncation, and route dismiss/defer
+through the existing ApplicationKit mutation boundary. Bundle, CloudKit, CLI,
+MCP, reminders, and external task creation remain unchanged.
+
+## D266 — Separate generated review from confirmed Radar truth (Aug 2026)
+
+**Context:** D265 provides one bounded whole-library source of generated work,
+but leaving it uncomposed makes post-meeting review discoverable only one
+meeting at a time. Mixing those candidates into the existing Radar list would
+make an AI suggestion look like a confirmed commitment. Confirming directly
+from a bounded evidence preview would also bypass the complete Meeting Detail
+review contract.
+
+**Decision:** compose the D265 library queue as a separately labeled **To
+review** mode inside Commitment Radar. Confirmed and review modes retain
+independent load, page, request-fence, mutation, and failure state. Review cards
+are visually identified as suggestions and expose only reversible **Dismiss**
+and **Review later** actions plus **Review in meeting**. The latter opens the
+complete source meeting and seeks to the first exact transcript source only
+when evidence is current; stale or unavailable evidence opens the meeting
+without claiming an exact timestamp. The app reuses the existing
+`ManageMeetingCommitmentInbox` mutation boundary, while direct confirmation
+remains exclusively in Meeting Detail.
+
+**Consequences:** users gain one bounded cross-meeting triage queue without
+weakening confirmed continuity, duplicating review policy, or introducing an
+N+1 Meeting Detail read. Confirmed filters, reminders, grouping, and mutation
+state cannot leak into suggestion review. Pre-meeting composition, candidate
+admission, external task creation, sync/export, CLI, and MCP remain unchanged.
+
+## D267 — Measure commitment field quality without retaining meeting content (Aug 2026)
+
+**Context:** the candidate and continuity quality packs measure synthetic model
+and linkage behavior, but COMMIT-6 also needs to quantify what users actually
+confirm or reject over time. Reusing raw transcript, action-item, person, or
+meeting records in a scorecard would create a second sensitive-data surface.
+Counting pending or deferred work as correct would also make precision improve
+without a human judgment, while dropping invalid confirmed evidence would hide
+the most important invariant failure.
+
+**Decision:** introduce one pure PortavozCore evaluator over a rolling 90-day
+cohort capped at 50,000 content-free observations. An observation contains only
+a UUID, an English/Spanish/mixed bucket, first-presentation and optional review
+timestamps, pending/deferred/dismissed/confirmed state, optional opaque local
+owner UUIDs and due dates, and one confirmation basis. It contains no text,
+name, title, path, meeting identity, model material, or provider metadata.
+
+Confirmed and dismissed observations alone form the terminal-review
+denominator. The field false-positive proxy is dismissals divided by terminal
+reviews. Owner and due-date precision include only claims that reached a
+terminal review: a dismissal is incorrect, while a confirmation must exactly
+match the opaque owner token or millisecond date. Evidence coverage includes
+confirmed generated direct evidence, user notes, and explicit manual origins;
+`missing` remains a valid input category that fails coverage. Confirmation
+latency uses deterministic nearest-rank p50/p95. The evaluator reports the same
+metrics overall and in stable language order, leaves zero-denominator rates
+undefined, rejects duplicate/malformed/out-of-window observations, and makes no
+threshold or product decision.
+
+The canonical public fixture contains twelve content-free synthetic
+observations across the exact 90-day window and intentionally exercises pending,
+deferred, dismissed, confirmed, corrected owner/date claims, manual evidence,
+and one missing-evidence failure. It proves evaluator arithmetic only. This
+slice adds no database query, persisted field observation, private fixture,
+diagnostic export, quality floor, application adapter, Settings surface, or
+notification recovery behavior.
+
+**Consequences:** future field evidence can be assembled behind a narrow port
+and compared without exposing meeting content or allowing incomplete reviews to
+inflate quality. Dismissal remains a field proxy rather than labeled model
+ground truth. A later slice must define the storage projection, anonymization
+and owner-only retention boundary, real fixture protocol, and explicit release
+gates before any metric can block or approve product behavior.
+
+## D268 — Persist content-free commitment presentation evidence (Aug 2026)
+
+**Context:** D267 defines score arithmetic but intentionally cannot observe the
+product. Generation time is not presentation time, current review decisions are
+mutable, and a confirmed commitment's current owner or due date can change
+after the user's first decision. Reconstructing field truth from current rows
+would therefore move the denominator, erase corrected mistakes, and silently
+lose unreviewed candidates when regeneration retires their source.
+
+**Decision:** add schema v24 with one immutable, idempotent
+`commitmentFieldPresentation` row per generated action item at its first real
+presentation. The row stores only an opaque presentation UUID, source
+action-item UUID, coarse English/Spanish/mixed/other-or-unknown language,
+optional domain-separated SHA-256 owner token, optional suggested due date, and
+first-presentation time. It stores no meeting identity, text, name, path,
+provider material, or foreign key that could delete the field record when the
+source is retired. Today's generated inbox infers no deadline, so the persisted
+due-date suggestion is intentionally absent.
+
+Presentation capture is allowed only for an open action item from an ended
+meeting's newest live summary with complete current direct evidence. Exact
+canonical-person suggestions receive an installation-local owner token;
+unassigned or ambiguous suggestions do not. Replays return the first record,
+including after source retirement, so presentation retries cannot rewrite the
+cohort.
+
+StorageKit assembles the current rolling 90-day cohort with one bounded SELECT
+of at most 50,001 rows and fails closed above D267's 50,000-observation limit.
+The first immutable confirmation event supplies confirmed owner/date/time truth
+instead of the mutable current projection. Current dismissal and defer state
+remain distinct; a source that disappears before terminal review becomes
+`withdrawn`, which stays visible but outside terminal precision. This is a
+current rolling observation query, not arbitrary historical reconstruction.
+
+**Consequences:** the product can measure first-presented generated commitment
+quality without retaining meeting content or letting later edits rewrite first
+confirmation truth. The ledger and query remain local-only and are absent from
+CloudKit, bundles, diagnostics, CLI, MCP, export, and application presentation.
+Manual and user-note commitments are representable in D267's evaluator but are
+not yet emitted by this generated-candidate adapter. A later slice must compose
+presentation recording and score display, define owner-reviewed anonymized
+evidence and an accepted floor, and keep every metric advisory until that gate
+exists.
+
+## D269 — Keep commitment field quality private and advisory (Aug 2026)
+
+**Context:** D268 persists the minimum content-free evidence but deliberately
+does not observe product presentation or expose quality to the user. Generation
+cannot stand in for a card that the user actually saw, a review mutation may
+retire its source before delayed instrumentation runs, and small local cohorts
+can look authoritative even though no accepted product floor exists. SwiftUI
+must not receive opaque owner tokens, presentation identities, or raw field
+observations merely to render a scorecard.
+
+**Decision:** ApplicationKit owns two narrow use cases. The presentation writer
+creates the observation identity and samples its clock when a review card first
+appears; idempotent StorageKit persistence preserves the original first-seen
+record across view retries. A review mutation makes its own best-effort
+presentation attempt before dismissing or deferring so source retirement cannot
+win the normal path. Process-local in-flight coalescing collapses concurrent
+appearance/review attempts, while persistent idempotency remains authoritative.
+Instrumentation failure never blocks the user's review and the visible card may
+retry later.
+
+The reader samples one rolling-window endpoint, evaluates the bounded cohort,
+and returns only `CommitmentFieldQualityScorecard`. Commitment Radar gives this
+read an independent **Quality** mode, request fence, loading/empty/failure state,
+and bilingual view. Every mode change invalidates all three request lanes so a
+late result cannot publish into an inactive surface. Presentation receives
+aggregate rates, counts, latency, and
+language buckets only. The surface explicitly says that the local rolling
+90-day numbers are private and advisory; it has no threshold, release verdict,
+automatic mutation, reminder action, or candidate decision authority.
+
+This field evidence remains absent from sync, export, diagnostics, bundles,
+CLI, MCP, and notifications. The scorecard does not become a Settings toggle or
+a background poll: it is loaded only when its Radar mode is selected.
+
+**Consequences:** real card exposure and explicit local reviews can now improve
+the user's understanding of suggestion quality without storing meeting content
+or turning an immature metric into policy. Because observation is intentionally
+nonblocking, a failed write can make the advisory cohort incomplete; it must not
+be described as an exhaustive audit. Owner-reviewed anonymized evidence and an
+accepted quality floor remain prerequisites for any future release gate or
+serving threshold.
+
+## D270 — Define Meeting Memory Graph questions before schema (Aug 2026)
+
+**Context:** a graph schema chosen from entity names alone would encode an
+unproven product shape before Portavoz can state which longitudinal questions
+must be answered, which evidence makes an answer valid, and when the correct
+behavior is to abstain. A synthetic corpus that shares unrelated truth across
+cases can also make an invalid adapter appear correct by leaking an answer that
+the isolated question did not support.
+
+**Decision:** define one adapter-neutral query contract before adding product
+storage. The canonical public-synthetic corpus contains the six named jobs:
+decision history, change since a prior meeting, one person's commitments,
+commitment blockers, first discussion, and contradictory or superseding
+decisions. Each job is exercised through English-to-English,
+Spanish-to-Spanish, English-to-Spanish, Spanish-to-English, code-switched, and
+mandatory-abstention cases for an exact 36-case cross-product.
+
+Every case owns an isolated meeting/evidence set, source facts with explicit
+generated/confirmed state, revision and freshness, expected typed result IDs,
+exact evidence IDs, and forbidden temptations. Expected answers are identities
+and evidence rather than generated prose. Abstentions use one typed reason per
+job and are valid only when both source text and typed oracle lack the required
+confirmed/current truth. The fixture's typed facts are evaluator-only oracle
+material; they do not choose a database model or become product entities.
+
+The generator and validator enforce canonical distribution, duplicate-key and
+identity safety, current confirmed answer truth, exact evidence ownership,
+language relationship, and abstention semantics. This slice adds no migration,
+topic/decision projection, background job, model, provider, UI, threshold, or
+graph engine. SQLite remains authoritative and a specialized graph remains
+unjustified until named product queries miss measured relational budgets.
+
+**Consequences:** GRAPH-1 and later adapters inherit a stable, bilingual,
+source-backed oracle and cannot silently redefine correctness around their own
+schema. The public corpus proves contract mechanics, not real-world quality.
+An owner-reviewed anonymized private pack, correction/rebuild behavior, and
+scale/latency evidence remain required before any longitudinal graph answer is
+served to users.
+
+## D271 — Keep topic identity relational and explicitly confirmed (Aug 2026)
+
+**Context:** the graph query contract needs topic continuity before decision or
+timeline queries can be implemented, but inferred labels are not durable
+identity. The same bilingual alias can describe different subjects, generated
+similarity can be wrong, and transcript correction or deletion can invalidate
+the evidence that originally suggested a link. Persisting generated clusters
+or mutable freshness would silently turn inference into authority and rewrite
+history.
+
+**Decision:** add schema v25 with four narrowly scoped relational tables.
+`topic` owns a UUID and an optional current redirect; `topicAlias` stores an
+immutable normalized presentation candidate that is unique only within one
+topic; `topicMeetingEvidence` stores immutable exact meeting, segment,
+transcript-revision, observed alias, proposal origin, user resolution, and any
+profile-local similarity candidate metadata; and
+`topicIdentityEvent` records every explicit merge or split append-only. Evidence
+source identifiers intentionally have no meeting or segment foreign key so
+physical deletion cannot erase why a link once existed.
+
+Constructing a `TopicLinkProposal`, including one produced by generated
+similarity, has no side effect. Explicit ApplicationKit commands atomically
+create or link a topic only from current exact evidence with no active
+correction. Linking first creates the observed topic and then redirects it to
+the user-selected active root, leaving alias and evidence on the reversible
+child. Alias lookup may return multiple active candidates and resolves merged
+aliases to their active UUID root. Explicit merge and split commands append
+history and update only the current redirect projection. Evidence status is
+derived on read: exact current revision and accepted source is current,
+revision drift is stale, and corrected or missing source material is
+unavailable.
+
+Every confirmation carries caller-supplied stable identities. A retry that
+finds immutable evidence already committed validates that the persisted
+identity and content are exactly the same before replaying it; it does not
+re-authorize that historical write against transcript state that may have
+changed later. The returned evidence still derives its current, stale, or
+unavailable status from present authoritative state. Reusing any proposal or
+identity-event ID with different content fails closed.
+
+This decision adds no proposal model, threshold, global taxonomy, background
+projection, decision continuity, app composition, query-serving adapter,
+specialized graph engine, sync/export format, CLI, or MCP behavior. Those must
+be earned independently against the graph query contract and real private
+evidence.
+
+**Consequences:** Portavoz can retain bilingual topic continuity without
+equating labels with identity or allowing a model to merge user knowledge. All
+identity changes are explicit, reversible as current projection, and auditable
+through immutable events; all links remain inspectable against exact source
+evidence. Historical evidence survives source purge but becomes honestly
+unavailable. The next slice may define decision continuity on this foundation,
+while correction-driven rebuild, scale evidence, UI, and serving remain open.
+
+## D272 — Promote generated decisions only through explicit confirmation (Aug 2026)
+
+**Context:** immutable summary decision evidence identifies exact generated
+bullets and transcript support, but generation is not user truth. A later
+meeting may restate, replace, or contradict an earlier decision; corrections or
+physical deletion may invalidate the source; and semantic similarity cannot be
+allowed to confirm a relationship. Reusing generated summary coordinates as a
+mutable cross-meeting identity would let regeneration rewrite history.
+
+**Decision:** add schema v26 beside the existing generated evidence. A
+`DecisionObservation` is read-only, uses the existing `SummaryDecisionID`, and
+always has status `observed`. It resolves the exact rendered bullet, summary,
+meeting, transcript revision, and ordered segment evidence. Loading or ranking
+that observation performs no mutation. Only an explicit ApplicationKit command
+may atomically create a separate stable decision UUID, immutable source
+snapshot, ordered durable segment identities, and initial `confirm` event from
+complete current accepted evidence with no active correction.
+
+The persisted current projection permits `confirmed`, `superseded`, or
+`reversed`; generated `observed` state is never inserted there. Additional
+meetings may support the same decision only through an explicit source-link
+command. The original confirmed statement remains stable while every accepted
+source retains its own exact observed wording, meeting, summary, generated
+decision, revision, and segment order. These source identities intentionally
+have no ownership foreign key to meeting, summary, or segment rows, so source
+purge changes derived availability to unavailable without erasing why the user
+confirmed the decision.
+
+Supersession and reversal are explicit relations between two current confirmed
+decision UUIDs. One terminal event is appended to the older target and names
+the newer successor; the target projection changes atomically while the
+successor remains confirmed. Self-relations, terminal-to-terminal rewrites,
+foreign confirmation sources, invalid lifecycle history, and identity reuse
+with different content fail closed. Exact retries validate persisted identity
+before mutable source state and return current derived availability.
+
+No provider, similarity threshold, automatic promotion, projection job,
+timeline, Ask lane, UI, sync/export envelope, CLI, MCP surface, or graph engine
+is added. Those boundaries must be earned separately against D270's query and
+evidence contract.
+
+**Consequences:** Portavoz can preserve decision history across meetings
+without treating model output as authority. Confirmed truth is explainable,
+source-backed, correction-aware, idempotent, and explicit about which newer
+decision superseded or reversed an older one. Decision discovery, bounded
+rebuilds, chronology presentation, and serving remain open slices rather than
+implicit side effects of this storage foundation.
+
+## D273 — Project memory topology as disposable durable state (Aug 2026)
+
+**Context:** D270 defines evidence-backed longitudinal questions, while D271
+and D272 establish explicit topic and decision authority beside existing
+confirmed people and commitments. Traversing those normalized source tables
+for every future question would couple serving latency to aggregate history,
+but introducing a graph engine or persisting inferred relationships would add
+complexity before product queries justify it. A derived projection also cannot
+advertise partial rebuilds as current, lose work during capture, or let one
+expired process publish after another owner resumes the same job.
+
+**Decision:** add schema v27 with one relational, disposable, versioned Meeting
+Memory Graph projection. Its v1 edge vocabulary is deliberately limited to
+meeting-person, meeting-topic, meeting-decision, meeting-commitment, and
+commitment-person. Every edge is rebuilt only from authoritative local rows.
+Observed topic evidence remains attached to its reversible child UUID while
+the disposable meeting-topic edge resolves to the current live family root.
+Confirmed historical relationships may remain topological edges; source
+freshness continues to be derived from authoritative evidence and is not
+copied into the graph.
+
+SQLite triggers advance one content-free kind-wide source generation and
+upsert one invalidation row per affected meeting, person, topic, decision, or
+commitment scope. Alias-only presentation edits and other fields that cannot
+change v1 topology do not schedule work. Topic merge/split changes invalidate
+the source plus old and new roots. Profile changes clear only typed edge tables
+and seed every authority scope; newer invalidations are retained rather than
+overwritten.
+
+Every bounded publication validates the exact running durable job, lease
+owner, target fingerprint, claimed source generation, and lease time. A batch
+commits complete scopes and removes only cursor rows no newer than the scope it
+rebuilt. Projection high-water advances only after no invalidation at or below
+the claimed generation remains. The public snapshot fails closed unless its
+profile equals the compiled v1 profile, its generation equals the current
+source generation, and the cursor is empty.
+
+ApplicationKit owns the resource-governed projector and durable orchestration.
+The macOS composition root owns one signal-driven supervisor, reuses the
+generic derived-maintenance lease/retry/suspension ledger, runs only outside
+capture, coalesces burst wakes, and resumes committed cursor state after lease
+expiry or relaunch. It borrows no model runtime. Launch, recording completion,
+and successful topology mutations signal reconciliation; triggers persist work
+but do not poll or execute it.
+
+This decision adds no serving timeline, evidence hydration, graph answer,
+ranking, provider, model, threshold, graph database, sync/export envelope,
+CLI/MCP surface, or UI. Those remain GRAPH-4 and later boundaries and must fail
+closed on stale evidence.
+
+**Consequences:** Portavoz now has bounded, crash-resumable local topology
+without making generated output authoritative or adding a specialized graph
+dependency. Corrections, deletion, reassignment, topic-family changes, and
+profile evolution converge by replay from source truth. The projection can be
+discarded and rebuilt at any time, while partial or incompatible state is never
+servable. Query semantics and evidence freshness remain explicit future work
+rather than hidden projection policy.
+
+## D274 — Rehydrate memory timelines from current authority (Aug 2026)
+
+**Context:** D273 deliberately stores disposable topology without evidence
+freshness or answer text. Serving those edges directly would let a corrected,
+deleted, partial, or profile-incompatible projection look like current truth.
+The first longitudinal product read also needs a precise meaning for “since
+last time” and must not infer that every decision in a meeting belongs to every
+participant. Portavoz still has no confirmed unresolved-question lifecycle;
+Apuntador cards are generated assistance, not durable user truth.
+
+**Decision:** add a bounded `MeetingMemoryTimelineQuery` for one exact current
+topic or person UUID. An optional exact related meeting is the through anchor;
+otherwise the latest related meeting is used. Its immediate prior related
+meeting is the baseline. No baseline, stale graph generation, incompatible
+profile, pending invalidation, missing subject, unrelated anchor, or invalid
+limit returns a typed abstention rather than a partial chronology.
+
+StorageKit executes topology lookup, continuity loading, evidence hydration,
+and result assembly in one SQLite read snapshot. Graph edges select candidate
+identities only. Every returned decision or commitment event is rehydrated from
+its current authoritative continuity record and exact ordered final accepted
+segments with no active correction and the matching meeting revision. Current
+same-meeting evidence wins over stale or unavailable older sources; otherwise
+omissions remain explicit. Output is newest-first, UUID-stable on ties, bounded
+to 1...100 items, and carries honest overflow plus stale/unavailable counts.
+Each item owns direct meeting, segment, and timestamp navigation.
+
+Topic timelines may expose confirmed decisions, explicit supersession or
+reversal, and newly confirmed commitments connected through that meeting's
+typed topology. Person timelines expose only commitments whose **current
+canonical owner** is that person. Participant topology establishes chronology
+but cannot attribute meeting decisions or historical commitments to a person.
+The read emits only confirmed authority wording and no generated narrative.
+Later commitment lifecycle changes are reported as unsupported until their
+events own exact source-segment identity; a nearby commitment source does not
+prove a reassignment, reschedule, completion, reopen, or dismissal. Unresolved
+questions are likewise unsupported until a separate explicit lifecycle exists;
+generated question text cannot substitute for it.
+
+ApplicationKit owns one narrow loading use case. This decision adds no schema,
+cache, answer synthesis, Ask lane, UI, model, threshold, graph engine,
+sync/export, CLI, or MCP contract. D270 corpus mapping, blocker authority, scale
+budgets, and private field evidence remain later gates.
+
+**Consequences:** Portavoz can now compare two related meetings with exact,
+correction-aware evidence while preserving SQLite as the source of truth and
+the graph as discardable acceleration. Consumers can distinguish an empty
+current timeline from unsupported fact classes and typed evidence failure.
+Broader longitudinal answers cannot claim completeness until unresolved
+questions/blockers and the remaining D270 jobs earn their own authority and
+quality evidence.
+
+## D275 — Bind commitment lifecycle changes to exact transcript evidence (Aug 2026)
+
+**Context:** D274 could prove a newly confirmed commitment from its exact
+source, but append-only reassignment, reschedule, completion, reopen, and
+dismissal events carried at most a meeting UUID. Borrowing the original promise
+or a nearby segment would misrepresent why a later state changed. Existing
+libraries can also contain valid user-authored lifecycle history that predates
+event-level evidence and must remain readable without being upgraded by guess.
+
+**Decision:** extend non-confirm `CommitmentEvent` values with optional exact
+authority: one source meeting UUID, that meeting's transcript revision, and an
+ordered non-empty set of unique segment UUIDs. Core format 3 validates that the
+event and evidence meeting agree; formats 1 and 2 remain decodable. Storage
+schema v28 persists the revision on the event and ordered segment identities in
+an immutable child table. The child intentionally has no segment foreign key,
+so transcript purge makes evidence unavailable instead of mutating history.
+
+The transition write validates one live matching meeting revision and final
+accepted segments without active corrections, then inserts event evidence and
+updates the commitment projection in one transaction. A SQLite insert trigger
+repeats the freshness boundary. Portable replay requires the same exact local
+evidence before mutation. The memory timeline rehydrates evidence again in its
+read snapshot and emits a typed state change rather than generated prose.
+Missing, stale, corrected, deleted, or non-final evidence is omitted honestly.
+Legacy lifecycle events remain loadable; when a query encounters one, its fact
+kind is reported as unsupported instead of attaching unrelated evidence.
+
+This decision changes no SwiftUI, model, ranking, Ask, graph topology,
+sync/export, CLI, or MCP surface. Commitment Radar actions performed outside a
+meeting continue to append valid user truth without transcript evidence and are
+therefore not evidence-backed chronology items.
+
+**Consequences:** later commitment state can participate in longitudinal memory
+only when Portavoz can navigate to the exact current words that authorized the
+change. Existing user history remains compatible, and the read model preserves
+the distinction between known state and provable meeting chronology. The next
+authority gap remains explicit unresolved-question and blocker continuity.
+
+## D276 — Confirm topic-scoped questions before longitudinal serving (Aug 2026)
+
+**Context:** D274 can disclose unresolved questions as unsupported but cannot
+serve them because Apuntador cards, summary open-question bullets, and Companion
+answers are generated artifacts. Promoting any of those outputs would turn a
+model guess into durable meeting truth. A question also has no safe person owner
+by default: the speaker who voiced it, the participant expected to answer it,
+and the person accountable for follow-up may all differ. Finally, opening a
+question does not prove why it was later resolved, reopened, or dismissed.
+
+**Decision:** add schema v29 with an explicit, topic-scoped question authority.
+A confirmation command requires one stable question UUID, one exact current
+root topic UUID, user-reviewed nonempty wording, and an exact current transcript
+revision with a nonempty ordered set of unique final accepted segments that have
+no active correction. The opening evidence and wording are immutable. Generated
+summary, Companion, and Apuntador records have no path to this boundary without
+a separate explicit user confirmation.
+
+Each resolve, reopen, or dismiss command appends one immutable event with its
+own exact meeting revision and ordered segment identities. Core permits only
+open-to-resolved, resolved-to-open, and open-or-resolved-to-dismissed
+transitions in strictly increasing event time. Storage validates the same
+current evidence before mutation, repeats the boundary in SQLite triggers, and
+updates the current projection atomically from the inserted event. Exact command
+retries return persisted authority; reuse of a question or event identity with
+different content fails closed. Evidence identities have no meeting or segment
+ownership foreign key, so source purge preserves the historical explanation
+while later reads report it unavailable.
+
+The Meeting Memory Graph v2 profile adds only meeting-question and
+topic-question topology. Opening/tombstone changes invalidate the source
+meeting and topic; lifecycle events invalidate only their evidence meeting
+because status does not change topic membership. Topic timelines select
+question UUIDs through those disposable edges and rehydrate the opening or
+transition from authoritative SQLite rows plus current exact evidence in the
+same snapshot. They emit typed opened, resolved, reopened, or dismissed facts
+with direct navigation. Person timelines report these kinds unsupported rather
+than inferring ownership.
+
+This decision adds no blocker relation, generated candidate promotion, UI,
+Ask synthesis, model, semantic threshold, graph database, sync/export envelope,
+CLI, or MCP contract. Those remain separate gates.
+
+**Consequences:** Portavoz can now preserve and revisit explicit unresolved
+questions across meetings without confusing generated assistance with truth or
+guessing who owns the question. Every lifecycle claim is independently
+navigable and correction-aware, and graph rebuilds remain disposable. The next
+authority slice is an explicit decision-to-commitment blocker relationship;
+broader D270 product serving still requires adapter and scale evidence.
+
+## D277 — Preserve explicit decision-to-commitment blocker continuity (Aug 2026)
+
+**Context:** the D270 `commitmentBlockers` job still had no authoritative
+relationship to serve. A decision appearing near a commitment, or generated
+Summary, Companion, and Apuntador prose saying that one blocks the other, is
+not durable user truth. A current active flag alone would also erase why a
+blocker was cleared and later reopened. Finally, a commitment can become
+unblocked while the decision-to-commitment relationship remains part of the
+meeting history, so graph topology and current serving state cannot be the same
+projection.
+
+**Decision:** add schema v30 with one explicit stable blocker UUID relating one
+confirmed live decision to one confirmed live commitment. Initial confirmation
+requires an exact current transcript revision and an ordered nonempty set of
+unique final accepted segments without active corrections. The relationship
+starts active. Clear and reopen are the only lifecycle transitions; each
+appends an immutable event with its own exact accepted-transcript evidence and
+strictly increasing time. Reopen additionally requires both endpoints to remain
+confirmed and live. Exact retries are idempotent, while reuse of a blocker or
+event identity with different content fails closed. Storage transactions and
+SQLite triggers independently enforce endpoint, evidence, transition,
+projection, and immutable-history constraints.
+
+Meeting Memory Graph profile v3 adds disposable `meeting-blocker` and
+`decision-commitment-blocker` topology. Every live opening and transition
+evidence meeting remains connected after a clear, and the stable relationship
+remains projected while its endpoints are live. Lifecycle status therefore
+does not invalidate or filter topology; deletion and relationship/evidence
+membership do. The topic timeline uses graph rows only to select candidate
+blocker UUIDs, then rehydrates authoritative opening or transition records and
+current exact evidence in the same SQLite snapshot. It emits typed blocked,
+cleared, and reopened facts with direct segment navigation. Active-blocker
+serving is a separate bounded read and requires the blocker and both endpoints
+to be currently active/confirmed/live.
+
+Generated summary, Companion, Apuntador, proximity, semantic similarity, and
+model output cannot call the confirmation or transition boundaries. No app UI,
+Ask synthesis, automatic candidate promotion, model threshold, graph database,
+sync/export envelope, CLI, or MCP contract is added by this slice.
+
+**Consequences:** Portavoz can now explain that a confirmed decision blocked a
+confirmed commitment, why that blocker changed, and where each claim was said,
+without turning generated language into authority or deleting cleared history.
+The graph remains disposable and status-independent while current serving stays
+strict. The remaining D270 gates are the corpus-to-product adapter, relational
+scale budgets, owner-reviewed field evidence, and eventual Ask/UI composition.
+
+## D278 — Serve explicit blocker facts without promoting graph topology (Aug 2026)
+
+**Context:** D277 established authoritative blocker continuity and disposable
+graph edges, but the D270 `commitmentBlockers` job still had no product query.
+Returning graph rows directly would make an acceleration structure appear
+authoritative. Hydrating every related record before bounding candidates would
+make one exact question unbounded, while applying the visible result limit
+before evidence validation could let a newer stale candidate hide an older
+current fact.
+
+**Decision:** add the first exact graph-fact query for one caller-supplied live
+`CommitmentID`. The public Core contract accepts only a 1...100 result limit
+and returns typed active `decision-blocks-commitment` facts or a typed
+abstention. StorageKit first requires a ready current graph projection, then
+uses only decision-commitment-blocker topology to select a deterministic
+bounded candidate window. It rehydrates blocker, decision, and commitment
+authority in the same SQLite read snapshot and requires the blocker to remain
+active plus both endpoints to remain confirmed and live.
+
+The exact fact evidence is the current accepted commitment source followed by
+the explicit blocker-confirmation source, with duplicate segments removed.
+The blocker evidence is the primary navigation target. Historical decision
+confirmation evidence is not appended merely because the decision is an
+endpoint: the D270 oracle requires the commitment and causal-relation sources,
+not unrelated provenance. Active corrections, transcript revision drift,
+missing/non-final segments, or a commitment without exact transcript evidence
+cannot become a fact. Unusable candidates are filtered before the visible
+result limit; bounded overflow remains explicit through `hasMore` or
+`candidate-budget-exceeded`, never a fabricated complete answer.
+
+ApplicationKit exposes one injected `LoadCommitmentBlockers` use case that
+returns typed facts and evidence only. The macOS Ask composition root does not
+adopt it in this slice. No natural-language commitment discovery, answer
+synthesis, UI, provider/model call, graph database, sync/export envelope, CLI,
+or MCP surface is added.
+
+**Consequences:** one named D270 job now has a source-backed product adapter
+whose graph is only a candidate index and whose facts remain explainable from
+authoritative local records. Query cost and output are bounded, correction
+behavior fails closed, and a missing exact commitment source is disclosed
+rather than silently weakened. Ask integration, person/topic/date/status
+filters, cross-lane selection, corpus mapping, private field evidence, and
+relational scale budgets remain separate GRAPH-5/GRAPH-6 gates.
+
+## D279 — Map canonical blocker cases through public product boundaries (Aug 2026)
+
+**Context:** D278 characterized its exact query with focused hand-built Store
+fixtures, while D270's six multilingual `commitmentBlockers` oracle cases still
+ran only in an adapter-neutral Python evaluator. Passing both independently did
+not prove that product persistence, projection, ApplicationKit orchestration,
+and canonical expected identities agreed. Importing oracle facts directly into
+runtime storage would make the test fixture appear authoritative and could hide
+missing confirmation boundaries.
+
+**Decision:** add a test-only product conformance adapter for exactly the six
+canonical blocker cases. Every case receives a fresh in-memory `MeetingStore`
+and deterministic local identities. The adapter saves exact transcript and
+Summary evidence, confirms the generated-action commitment, confirms the
+decision observation, confirms a blocker only when the corpus contains one
+explicit confirmed `blocks` relation, runs leased graph projection, and invokes
+`LoadCommitmentBlockers`. It maps only returned typed decision and transcript
+identities back to external corpus IDs, then requires exact ordered results,
+exact ordered evidence, exclusion of every forbidden result, and the declared
+unsupported-causality abstention.
+
+Generated `associatedWith` distractors are deliberately not persisted. The
+adapter cannot write authority directly through GRDB, imports no
+IntelligenceKit provider, reads no user library, and is absent from app, Ask,
+CLI, MCP, sync, and UI composition. The corpus remains a test oracle rather
+than a product data source.
+
+**Consequences:** the first named D270 product query now proves end-to-end
+conformance across English, Spanish, cross-language, code-switched, and
+abstention cases using the real local boundaries. This does not make natural-
+language commitment discovery or answer synthesis available, does not validate
+the other five jobs, and supplies no relational scale or private field
+evidence. Those remain later gates.
+
+## D280 — Keep first-discussion chronology authoritative and graph-checked (Aug 2026)
+
+**Context:** D271 made confirmed `TopicMeetingEvidence` the durable authority
+for a topic family's meeting membership, while D273 projected disposable
+meeting-topic topology. The D270 `firstDiscussion` job still had no product
+query. Ordering graph rows would make a rebuildable index decide chronology;
+skipping a stale earliest mention in favor of a later current mention would
+silently change the meaning of "first"; and resolving free-form labels inside
+the query would conflate identity discovery with evidence serving.
+
+**Decision:** add an exact `TopicFirstDiscussionQuery` for one caller-supplied
+`TopicID`. StorageKit resolves that identity to its current topic-family root,
+loads the complete authoritative family evidence in chronological meeting and
+segment order, and selects the canonical earliest row before considering
+freshness. A ready graph projection must contain the matching root-topic to
+meeting edge, but it cannot choose or reorder the result. The same SQLite read
+snapshot then hydrates the exact current accepted transcript segment and emits
+one typed `topic-discussed-in-meeting` fact with canonical topic/meeting UUIDs,
+authoritative labels, event time, exact evidence, and direct navigation.
+
+If the authoritative earliest row is stale, unavailable, corrected, or absent,
+the query abstains rather than substituting a later mention. A ready projection
+that lacks the exact authoritative edge reports `projection-inconsistent`.
+ApplicationKit exposes the injected `LoadTopicFirstDiscussion` boundary;
+natural-language topic discovery, Ask composition, answer generation, and
+cross-lane ranking remain separate work.
+
+Map exactly the six canonical `firstDiscussion` cases through fresh in-memory
+Stores using only public meeting, transcript, topic-confirmation, graph-job,
+and ApplicationKit APIs. Persist the distractor topic as a distinct confirmed
+identity, map returned typed evidence back to corpus IDs, and require exact
+results, exact evidence, forbidden-result exclusion, and the declared stale-
+evidence abstention. The adapter imports no IntelligenceKit or GRDB and cannot
+write authority directly.
+
+**Consequences:** Portavoz can now answer one exact identity-resolved
+first-discussion question without treating graph topology, labels, or generated
+prose as truth. English, Spanish, cross-language, code-switched, distractor,
+and stale cases exercise the real product boundaries. Ask still cannot discover
+or compose this lane, and the other four unimplemented D270 jobs, graph scale
+budgets, owner-reviewed private evidence, sync/export, CLI, MCP, and UI remain
+open.
+
+## D281 — Keep person commitments exact, current, and source-backed (Aug 2026)
+
+**Context:** the D270 `personCommitments` job had authoritative confirmed
+commitments, explicit `me`/person/unassigned ownership, and disposable
+commitment-person topology, but no exact graph-fact query. Reading graph edges
+as ownership could return stale or corrupted assignments; reusing Commitment
+Radar would hydrate presentation/history that this fact lane does not need; and
+accepting a display name in StorageKit would conflate ambiguous identity
+discovery with factual serving.
+
+**Decision:** add a bounded `PersonCommitmentsQuery` for one caller-supplied
+live `PersonID`. StorageKit first counts authoritative open confirmed
+commitments whose current assignee is exactly that person and requires the
+ready graph projection to contain the same complete active ownership set.
+Missing or partial commitment-person topology returns
+`projection-inconsistent`; no current work returns `no-active-commitments`.
+Only a matching projection may select a deterministic bounded newest-first
+candidate window.
+
+Every candidate is rehydrated from its complete commitment continuity envelope
+in the same SQLite read snapshot. Current status, exact typed assignee, wording,
+and source order remain authoritative. At least one current accepted transcript
+source is mandatory. If any reassignment exists, the latest reassign event must
+agree with the current assignee and carry its own exact current transcript
+evidence. The reassignment evidence is primary, followed by deduplicated
+original-promise evidence, and its event time becomes the fact time. An
+evidence-less or stale reassignment fails closed instead of borrowing the former
+owner's source. Other stale, unavailable, corrected, non-final, missing, or
+manual evidence without an exact segment also fails closed. Evidence validation
+precedes the visible result limit, candidate overflow stays explicit, and each
+typed `person-committed-to` fact carries current wording plus exact navigation.
+Completed, dismissed, `me`, unassigned, and other-person work is excluded.
+
+ApplicationKit exposes only an injected `LoadPersonCommitments` use case. Ask
+does not compose it, and free-form name/alias resolution remains outside the
+storage contract. The canonical ambiguous-Alex abstention therefore belongs to
+a later identity-resolution/product-conformance slice rather than a display-name
+parameter here. No model, answer synthesis, UI, graph database, sync/export,
+CLI, or MCP surface is added.
+
+**Consequences:** Portavoz now has an exact person/status fact lane that cannot
+let graph popularity, proximity, or labels invent ownership and cannot present
+completed work as current. Focused tests cover lifecycle exclusion, partial
+projection corruption, bounded ordering, stale evidence, unavailable identity,
+exact reassignment provenance, evidence-less reassignment, former-owner
+exclusion, and application delegation. Canonical multilingual mapping, identity
+discovery, cross-lane Ask selection, relational scale budgets, and private field
+evidence remain open.
+
+## D282 — Resolve person aliases once and abstain before factual serving (Aug 2026)
+
+**Context:** D281 deliberately accepted only an exact `PersonID`, while the
+canonical `personCommitments` corpus asks by human name. Five cases name one
+confirmed Mara, but the abstention case contains two deliberately distinct
+people who both have the exact alias Alex. Letting StorageKit choose one
+candidate would invent identity; making callers manually combine candidate
+lookup and fact loading would duplicate fail-closed semantics before Ask can
+compose the lane; and giving the lookup port mutation capabilities would let a
+read path merge people accidentally.
+
+**Decision:** split read-only `CanonicalPersonCandidateReading` from the
+explicitly mutating `CanonicalPeopleStore`. Add
+`LoadPersonCommitmentsByAlias` as a narrow ApplicationKit orchestration over
+that candidate port and the existing exact `PersonCommitmentFactReading` port.
+Its input is a caller-extracted alias plus the existing bounded item limit; it
+does not parse natural language. Blank aliases and invalid limits abstain as an
+invalid query, no exact normalized candidate abstains as person unavailable,
+and more than one distinct candidate abstains as ambiguous person. Only one
+candidate can become a `PersonCommitmentsQuery`, so StorageKit continues to
+receive exact UUID identity and remains unaware of names.
+
+Map all six canonical `personCommitments` cases through fresh in-memory Stores
+using only public meeting, speaker, person create/link, transcript, Summary,
+commitment confirmation/lifecycle, graph-maintenance, and ApplicationKit APIs.
+Persist every forbidden completed or other-person commitment rather than
+removing distractors in the adapter. Derive the lookup alias from fixture
+identity, never by parsing query prose, and map only returned typed commitment
+and transcript identities back to corpus IDs. Require exact ordered result and
+evidence identities, forbidden-result exclusion, and ambiguous-Alex abstention.
+The adapter imports neither GRDB nor IntelligenceKit and performs no direct
+authority write.
+
+**Consequences:** all three implemented source-backed graph fact lanes now
+cross their canonical public product boundaries. Person lookup is reusable,
+read-only, normalized by the existing store, and fail-closed for same-name
+people; it cannot create or merge identities. Ask still does not extract an
+alias, compose this use case, synthesize an answer, or rank graph facts against
+transcript retrieval. The remaining three D270 jobs, relational scale budgets,
+owner-reviewed private evidence, sync/export, CLI, MCP, and UI remain open.
+
+## D283 — Keep graph facts beside transcript evidence, never in its place (Aug 2026)
+
+**Context:** three exact source-backed graph queries now pass canonical product
+conformance, but Ask exposed only transcript lexical/semantic citations. Adding
+graph facts directly to the existing citation array would erase their typed
+subject, object, status, and abstention semantics; ranking them as transcript
+hits would let topology compete with source evidence; and sending them to the
+answer model before an explicit contract would make a dormant architecture
+slice change user-visible answers.
+
+**Decision:** add one independent `AskGraphFactRetrieving` lane. Its closed
+`AskGraphFactQuery` accepts only a caller-resolved exact commitment blocker,
+topic first discussion, or person commitment query. The local adapter delegates
+to the existing three ApplicationKit fact use cases and returns
+`MeetingMemoryGraphQueryResult` unchanged. `AskEvidenceBundle` stores transcript
+citations and a graph outcome separately. A lane that was not requested remains
+distinguishable from a typed domain abstention. Ordinary graph operational
+failure becomes an explicit unavailable outcome without removing transcript evidence;
+cancellation still cancels the complete bundle.
+
+`AskMeetings.evidenceBundle` runs the two lanes concurrently, while every
+released `search`, `evidence`, and `answer` API remains source compatible and
+continues to use transcript retrieval alone. The answer provider still accepts
+only `[AskCitation]`; no graph fact is converted into generated prose or added
+to transcript RRF. Production local composition owns the exact graph adapter,
+but no current UI, CLI, MCP, command-palette, or meeting-brief path requests the
+new bundle.
+
+**Consequences:** Ask has a reversible, testable seam for longitudinal facts
+without weakening exact transcript evidence or changing shipped answers. The
+next slices must resolve explicit person/topic/date/status filters, define the
+typed fact-aware synthesis contract, and measure bounded cross-lane selection
+before any user-facing composition. Graph telemetry, the remaining three D270
+jobs, relational scale budgets, private evidence, sync/export, CLI, MCP, and UI
+remain open.
+
+## D284 — Resolve exact Ask filters without changing fact authority (Aug 2026)
+
+**Context:** D283 gave Ask a separate typed graph-fact lane, but callers could
+only submit an already-resolved graph query. Filtering a returned page by an
+unresolved name would risk guessing between same-name people or topics.
+A post-page date or status filter would also be semantically wrong: a matching
+fact can sit beyond the candidate limit, and first-discussion chronology must
+be evaluated inside the requested range rather than filtered after choosing an
+all-time winner.
+
+**Decision:** add a caller-extracted `AskGraphFactFilterRequest` in
+ApplicationKit. It accepts at most one exact person or topic alias, one finite
+half-open occurrence range, and one typed fact status. The local resolver uses
+the existing read-only canonical-person and canonical-topic candidate ports;
+zero or multiple candidates abstain, and candidate lookup cannot mutate or
+merge identity. The resolved identity must equal the exact `PersonID` or
+`TopicID` already carried by the compatible graph query. Mixed identity
+dimensions, identity mismatch, or attaching an identity to another graph job
+is invalid before fact retrieval.
+
+Add one shared `MeetingMemoryGraphFactFilter` to the three exact query
+contracts. Its finite half-open occurrence interval and closed typed status are
+intersected with any existing exact constraints before the query enters
+StorageKit; disjoint constraints abstain as `no-matching-facts`. Blocker
+confirmation time and the authoritative person-commitment occurrence time
+(latest reassignment, otherwise commitment creation) participate in candidate
+SQL before ordering and limit. First-discussion serving chooses the earliest
+authoritative topic evidence inside the range; meeting and segment chronology
+is batch-loaded, and an unknown occurrence fails closed rather than skipping a
+potentially earlier source.
+Every candidate is still rehydrated and rechecked against the same filter in
+the SQLite snapshot. The fixed active/confirmed fact shapes reject incompatible
+statuses as a typed no-match.
+
+**Consequences:** Ask now has a deterministic, local, ambiguity-safe filter
+boundary for exact person, topic, occurrence date, and fact status without
+changing transcript retrieval, answer generation, storage schemas, or factual
+authority. Pagination and chronology remain truthful because filtering occurs
+before the visible limit, never over an already bounded page. It is not a
+natural-language parser and no released UI, CLI, MCP, command-palette, or
+meeting-brief consumer invokes it yet. Typed fact-aware synthesis, bounded
+cross-lane selection, the other three D270 fact jobs, telemetry, scale budgets,
+and private field evidence remain separate gates.
+
+## D285 — Give Ask synthesis typed facts and exact source segments (Aug 2026)
+
+**Context:** Ask could retrieve source-backed graph facts beside transcript
+citations, but its answer provider accepted only `[AskCitation]`. Flattening a
+fact into that ranked array would discard subject/object/status semantics, let
+graph popularity impersonate transcript relevance, and make generated prose
+the only visible representation of a relationship. Passing a fact without its
+current exact source segments would also weaken the provenance contract already
+enforced by storage.
+
+**Decision:** preserve the released transcript-only `AskMeetingAnswering` port
+and add a separate opt-in `AskEvidenceBundleAnswering` port over one storage-
+independent `AskSynthesisInput`. The new input keeps transcript citations and a
+closed typed graph lane separate. Each admitted
+`AskGraphFactSynthesisEvidence` carries the original typed fact plus exact
+source citations derived from current authoritative evidence. Admission
+requires non-empty evidence, the declared primary segment, unique segment
+identities, and consistent current material when a segment appears in both
+lanes. Typed domain abstention, operational unavailability, and malformed
+provenance remain distinguishable; malformed graph evidence is excluded
+without erasing valid transcript material.
+
+Add one opt-in `AskMeetings.answerBundle` workflow. It accepts an already exact
+graph job and optional exact filter, runs the existing two-lane retrieval, sends
+the typed synthesis input to generation, and returns the unchanged evidence
+bundle beside optional generated text. Existing released `answer` calls keep
+their transcript-only provider and response shape. Fact-aware generation
+requires both independently ranked exact transcript citations and a valid
+source-backed graph page: graph facts cannot replace an empty transcript result,
+and a transcript retrieval error still fails the complete operation. Page
+truncation, projection generation, and stale or unavailable evidence omissions
+travel with the admitted facts so incomplete graph results cannot authorize an
+exhaustive "all" or "none" claim.
+
+IntelligenceKit represents graph relationships as `RAGFact` values with exact
+`RAGPassage` sources inside a disclosure-bearing `RAGFactPage`. Transcript
+passages and facts receive separate prompt markers; graph sources are
+deduplicated only by exact segment identity. Fact markers communicate structure
+but are not valid citations. Generated claims must cite exact transcript or
+graph-source segment markers, and invalid primary, duplicate, inconsistent, or
+stale source provenance fails before model execution.
+
+**Consequences:** Ask now has a reversible, local fact-aware synthesis contract
+without changing released UI behavior, transcript RRF, storage schemas, or graph
+authority. Evidence survives model absence and ordinary generation failure.
+At this decision boundary cross-lane selection was intentionally absent, so no
+presentation, CLI, MCP, command-palette, or meeting-brief surface could adopt
+graph-aware generation until bounded selection proved exact evidence could not
+be drowned by volume.
+
+## D286 — Reserve transcript rank before bounded graph facts (Aug 2026)
+
+**Context:** the typed synthesis boundary kept graph relationships out of
+transcript RRF, but it still passed every retrieved fact and exact source to the
+opt-in provider. A large graph page could therefore consume the local model's
+context, make repeated topology look more important than the independently
+ranked transcript evidence, or require dropping only part of one fact's exact
+provenance. Deduplicating sources without disclosing the resulting selection
+would also make an incomplete page appear complete.
+
+**Decision:** run one deterministic ApplicationKit selector after transcript
+RRF and before the opt-in fact-aware provider. Reserve the unchanged first six
+transcript citations. Then admit one query-ordered contiguous prefix of at most
+four graph facts, never more facts than selected transcript citations. A fact
+is atomic with all exact source segments. Admit at most eight unique graph
+sources not already present in the transcript selection; overlapping exact
+sources consume zero additional budget and reuse their transcript prompt
+marker. Stop before the first fact that would exceed the source budget rather
+than skipping it for a cheaper later relationship. If no fact fits, return a
+typed selection-budget-exceeded graph lane and do not generate.
+
+Carry candidate, selected, additional-source, and omitted-fact counts in one
+closed selection disclosure. Selection omissions participate in page
+completeness. ApplicationKit validates that disclosure against the selected
+material, while IntelligenceKit independently validates the same counts,
+facts-to-transcript bound, exact source overlap, and additional-source count
+before constructing a prompt. Prompt source deduplication is identity-based:
+an overlapping graph source cites `[T…]`; only a new source receives `[S…]`.
+
+**Consequences:** graph volume cannot alter transcript RRF or displace the
+reserved transcript prefix, and no selected relationship loses provenance.
+The model receives bounded, deterministic, omission-aware material while the
+answer result retains the full unselected two-lane evidence bundle. There is no
+schema, graph authority, model, or released-product behavior change. Released
+Ask, UI, CLI, MCP, command-palette, and meeting-brief surfaces remain
+transcript-only; remaining graph jobs, scale evidence, telemetry, and explicit
+adoption are separate decisions.
+
+## D287 — Clear playback ducks only where a full ramp cycle fits (Aug 2026)
+
+**Context:** clear playback ducks the microphone outside transcript-confirmed
+local turns, ramping up 60 ms before each turn and back down 120 ms after it.
+`CleanPlaybackPolicy` merged only overlapping ranges, so two turns separated by
+any positive gap stayed distinct. When that gap was shorter than one full
+duck-and-recover cycle the emitted ramps overlapped — an observed pair produced
+a release ramp of `[262.680, 262.800]` immediately followed by an attack ramp
+of `[262.700, 262.760]` nested inside it. `AVMutableAudioMixInputParameters`
+answers an out-of-order or overlapping ramp with an Objective-C exception,
+which Swift cannot catch, so opening the meeting aborted the process. Nine of
+39 real local meetings carried at least one such pair; every one of them was
+unopenable, and refining a transcript could introduce the condition because it
+rewrites turn timings.
+
+**Decision:** decide separation with the same arithmetic the schedule emits.
+Two ranges stay distinct only when the earlier release ramp ends no later than
+the later attack ramp starts; otherwise they merge into one audible range —
+ducking for under `attack + release` is inaudible anyway. Volume events become
+pure policy: `CleanPlaybackPolicy.volumeSchedule` returns the complete typed
+timeline, and `MeetingAudioComposition` only replays it. Because the merge
+predicate and the schedule compute identical expressions, no rounding at the
+boundary can leave the schedule overlapping.
+
+The AVFoundation boundary additionally validates the schedule with
+`isStrictlyOrdered` and returns no mix when it is violated, so a future policy
+regression degrades to an unducked microphone instead of terminating the app.
+
+**Consequences:** meetings with rapid back-and-forth turns open and play. Very
+closely spaced local turns are ducked as one range rather than individually,
+which is the audible intent. Clip export shares the composition and inherits
+the fix. There is no schema, capture, transcript, or storage change.
+
+## D288 — Replace a superseded summary instead of losing it (Aug 2026)
+
+**Context:** the post-capture workflow enqueues the summary job while
+publishing the diarization artifact, and binds it to a fingerprint computed
+from the attributed material still in memory. The summary worker later recomputes
+that fingerprint from a durable `MeetingDetail` read and refuses to run when the
+two differ. Nothing replaced the refused job: `reconcileProcessingLifecycle`
+treats `cancelled` as neither pending nor failed, so the meeting settled on
+`ready` with `lastProcessingError` cleared and no summary, and Meeting Detail
+showed the ordinary **Generate summary** button as though the user had simply
+never asked.
+
+Two meetings in a 47-meeting local library reached that state, six seconds after
+capture, with no transcript correction anywhere in their history. Recomputing
+their enqueued fingerprint from the frozen durable rows failed across every
+combination of segment order, output language, glossary, provider, and
+transcript revision, while the same reconstruction reproduced a succeeded
+meeting's fingerprint exactly. The prediction is therefore not reliably
+reproducible from the rows it fences, and no single drifting input explains it.
+
+Separately, the reviewed transcript projection those fingerprints hash ordered
+segments by `startTime` alone. The microphone and system channels routinely open
+a segment at the same instant — both affected meetings contain such pairs — so
+that projection had no total order and the fingerprint was not a function of the
+durable rows.
+
+**Decision:** stop depending on the prediction being right.
+`TranscriptSegmentOrder` is the one transcript order shared by every durable
+read and every in-memory artifact: start time, then segment identity, which
+`ORDER BY startTime, id` reproduces byte-for-byte. The reviewed detail
+projection and the export aggregate adopt it, and the post-capture workflow
+canonicalizes attributed material before it both fingerprints and publishes it,
+so the producing stage and the consuming stage agree by construction.
+
+When the summary worker still finds a mismatch it cancels the stale attempt and
+admits a replacement bound to the fingerprint it just read, in the same
+transaction. Storage admits one replacement per kind per meeting — the attempt
+being cancelled is still `running`, so an earlier cancelled sibling means the
+repair already happened and a second drift means the input keeps moving. The
+existing `(meeting, kind, fingerprint)` idempotency key makes a repeated
+replacement a no-op. The completion action moves to the attempt that settles the
+meeting rather than firing on a cancellation that still owes it a summary.
+
+This does not extend to D233. A transcript correction cancels accepted-only
+`summary` and `index` work inside the correction transaction with the owner
+lease cleared, so it can never reach the worker's replacement path; explicit
+regeneration remains the contract for corrected material. What D233 left
+missing there is the signal, not the job: `MeetingDetailSummaryPlaceholder`
+now states that the automatic summary was cancelled — distinguishing a
+superseded input from an unavailable engine — directly above the generation
+button that repairs it. The meeting keeps reporting `ready`, which is true: its
+audio and transcript are intact, and `needsAttention` would offer recording
+recovery for a summary that was never a recording problem. The reviewed Meeting
+Detail boundary advances to 372 interaction signals, twelve owners, and 28 UI
+journeys.
+
+**Rationale:** a fingerprint that fences durable work must be a function of
+durable state; a total order makes that true and removes one proven source of
+drift. Because the field evidence shows drift this repository cannot yet fully
+explain, correctness cannot rest on having found every cause — replacing the
+attempt repairs the meeting whatever the cause, while the one-replacement bound
+keeps a genuinely unstable input from spinning the worker. Leaving the
+lifecycle state alone keeps `ready` honest and puts the explanation where the
+user can act on it.
+
+## D289 — Keep one local planning file and one durable gap ledger (Aug 2026)
+
+**Context:** planning truth was spread across four documents totalling roughly
+405 KB. `docs/ROADMAP.md` held the forward bands, `docs/refactor-20260714.md`
+held a migration program whose bands 0–6 were complete, and
+`docs/STRATEGY-20260716.md` mixed engineering guidance with pricing, website,
+marketing, and competitive strategy. All three were local-only. The tracked
+`docs/GAPS.md` had grown to 65 KB, most of it prose describing resolved gaps
+whose rationale already lived in `DECISIONS.md` and the specs. A session could
+not answer "what is pending" without reading all four and reconciling their
+overlapping, partly stale status claims.
+
+**Decision:** `docs/ROADMAP.md` becomes the single local planning authority. It
+carries the program rules, the shared definition of done, a per-ticket working
+agreement, the architecture context a pending ticket needs, a one-line-per-slice
+delivered ledger, and an ordered ticket queue. Completed work is never described
+at length there — it points at its decision numbers, because `DECISIONS.md` is
+already the authority for why something was done.
+
+Business strategy — pricing policy, packaging, commerce provider selection,
+website and marketing principles, and product anti-goals — moves to the tracked
+`docs/PRODUCT.md`, which already owned vision, positioning, and the competitive
+map. `docs/refactor-20260714.md` and `docs/STRATEGY-20260716.md` are deleted.
+
+`docs/GAPS.md` stays tracked and keeps every gap as a ledger row, but a resolved
+row is compressed to its verdict plus decision references. Open and partial rows
+state their remaining scope in full, because a tracked document must remain
+self-sufficient — it may not depend on the gitignored roadmap for its meaning.
+
+**Consequences:** the planning corpus drops from about 405 KB to 111 KB with no
+pending work, acceptance criterion, or field-validation item lost. One file
+answers "what is next", one answers "what is missing", one answers "why", and
+one answers "what is built". The hygiene script keeps rejecting all three
+retired planning paths if they are ever tracked.
+
+## D290 — Score every Ask query variant in one corpus traversal (Aug 2026)
+
+**Context:** deterministic bilingual expansion turns one question into several
+query variants so an unaccented Spanish phrasing can reach accented source text.
+`LocalAskMeetingRetrieval` then called the semantic port once per variant, and
+the exact Accelerate control answers each call by streaming every compatible
+embedding BLOB out of SQLite. Three variants therefore streamed and scored the
+whole corpus three times to produce one fused result, and the cost grew with
+both corpus size and expansion breadth — on the retrieval path whose budget is
+first evidence.
+
+**Decision:** the semantic port gains a batch entry point that takes the query
+variants together and returns results corresponding positionally to them. The
+protocol supplies a default that loops the single-query call, so an adapter that
+cannot fuse the work — including every shadow research candidate — keeps exactly
+its previous behavior. `AccelerateExactSemanticIndex` overrides it, and
+StorageKit scores all variants during one cursor: the row is read once, each
+variant's dot product runs against the same BLOB, and each variant keeps its own
+bounded top-k with the unchanged score-then-traversal-order tie-break.
+
+A variant that does not match the active profile, or whose score is not finite,
+contributes nothing while keeping its position, because the caller's fusion
+ranks by variant order. The single-query entry point is now a wrapper over the
+batch, so both paths share one implementation.
+
+**Consequences:** Ask reads the corpus once per request instead of once per
+variant, and expansion breadth stops multiplying I/O. Ranking, fusion, top-k
+bounds, profile fencing, and citation authority are unchanged — the equivalence
+is asserted per variant against the previous per-query scan. There is no schema,
+product, or UI change.
+
+## D291 — Keep the batched scan's hot loop free of per-row overhead (Aug 2026)
+
+**Context:** D290's batched traversal rebased a query slice and took an `inout`
+array-element reference once per row *per variant*. At corpus scale that is
+100k pointer rebases and 100k bounds-and-exclusivity checks for work that does
+not change between rows. A same-host A/B against the pre-change build measured
+the one-variant path slower after batching, which would have made the
+optimization a trade rather than a win for Library search and any single-query
+consumer.
+
+**Decision:** slice every variant once before the row loop, and hold the
+candidate lists through `withUnsafeMutableBufferPointer` so admission writes
+through a direct element pointer. The scan keeps one shape for every variant
+count; there is no separate single-query loop to drift from the batched one.
+
+**Consequences:** the measured one-variant p95 improved from 177.66 ms to
+154.25 ms and p50 from 144.89 ms to 137.02 ms on the same host.
+
+The attribution evidence in `docs/evidence/semantic-batch-attribution-20260806.json`
+is explicitly diagnostic. It reproduces the property D290 exists for — three
+variants cost about one traversal rather than three — in both builds. It does
+**not** settle whether a residual one-variant regression remains: the runs
+disagree with themselves, one of them measuring three variants faster than one,
+so this workstation's noise exceeds the effect. Every run there, including the
+pre-change build at 129.14 ms, sits far above both the 100 ms budget and the
+92.85 ms committed baseline, which is itself evidence that the host is not the
+release authority PERF-001 requires. Confirming the budget stays a controlled-host
+measurement in the field queue, and SEARCH-3 is not claimed closed on budget.
+
+
+## D292 — Declare skill capability before reading what a skill acts on (Aug 2026)
+
+**Context:** Band 8 turns confirmed memory into actions. The material those
+actions run over is a transcript — text other people spoke, read by a model.
+Any design where the thing being acted on can influence what the action is
+allowed to do is a prompt-injection hole with a real external effect at the end
+of it. Nothing in Portavoz had a skill vocabulary yet, so this is the moment the
+boundary is cheap to set.
+
+**Decision:** a skill publishes an immutable `SkillDefinition` — id, version,
+capability set, confirmation policy — and that declaration is the ceiling. A
+`SkillProposal` may request a subset of it and never a superset;
+`SkillAdmissionPolicy` refuses `undeclaredCapability` without inspecting
+anything else. Arguments are typed values (`meeting`, `segment`, `person`,
+`commitment`, bounded `text`, `date`), so there is no free-form command string
+for injected text to inhabit; admission validates their shape and never their
+meaning.
+
+Confirmation is per proposal by default and expires after fifteen minutes, so a
+proposal the user left unconfirmed is re-proposed rather than executed later
+against changed material. A standing rule may replace that confirmation only
+when every requested capability is reversible, checked both at definition time
+and against the requested subset that will actually run. Remote capability
+additionally requires separately permitted egress.
+
+`SkillExecutionState` distinguishes the states that cannot have acted
+(`proposed`, `previewed`, `dismissed`) from those that may have
+(`confirmed` onward), and `SkillExecution` carries an idempotency key stable
+across retries of one proposal.
+
+**Consequences:** this slice is pure policy in `PortavozCore` with no executor,
+no storage, no UI, and no adapter. No skill can run yet, which is the point: the
+admission rule exists before anything can be admitted. The shipped no-egress
+tier will declare only `readMeetingMaterial`, `writeLocalDraft`, and
+`writeLocalFile`; `sendRemote` stays declarable but unused until external
+integrations are a separate decision.
+
+## D293 — Claim the effect before running it (Aug 2026)
+
+**Context:** D292 decides whether a skill *may* run. Nothing yet decides whether
+it *already has*. A skill's effect is outside Portavoz — a reminder draft, a
+file — so a retry, a relaunch after a crash, or two windows acting at once must
+not produce it twice. Deciding that in memory loses the answer exactly when it
+matters, at relaunch.
+
+**Decision:** schema v31 adds the shape the reminder lifecycle already
+established — an append-only `skillExecutionEvent` log as the authority and one
+`skillExecutionState` projection so relaunch answers "did this already run?" in
+one read instead of replaying history.
+
+The claim is the `idempotencyKey`, unique across the table, so two proposals can
+never own one effect and a repeat confirmation of one proposal returns the
+existing claim rather than creating a second. `(proposalID, attempt, kind)` is
+unique too, so a duplicated transition is refused by the database rather than by
+trusting the caller to have checked.
+
+Transitions are deliberately asymmetric about what may already exist. A
+`succeeded` execution is never admitted again. An `executing` one found at
+relaunch is also not admitted: the process died mid-run, so the effect may or
+may not exist and the caller must reconcile rather than repeat. A `failed` one
+may retry under an incremented attempt, so the log distinguishes the retry from
+the original. Cancellation is legal only before the run begins; afterwards only
+the outcome can be recorded, because the effect may already be real.
+
+History is ordered by insertion rather than by `occurredAt`. Two transitions can
+share a timestamp, and ordering by time with an id tiebreak sorted a
+confirmation after the run it authorized whenever both landed in the same
+instant. The log is append-only, so insertion order is the causal order.
+
+Events carry a typed `FailureCategory` and never a message, because a failure
+string is the easiest place for meeting-derived text to leak into a durable
+record.
+
+**Consequences:** storage and policy only — no executor, no adapter, no UI, and
+no skill that can run. Secrets stay in Keychain and never reach these tables.
+
+## D294 — Admit, then claim, then act (Aug 2026)
+
+**Context:** D292 decides whether a skill may run and D293 whether it already
+has. Composing them is where the ordering becomes load-bearing, and where the
+two decisions can quietly become three.
+
+**Decision:** `ExecuteSkill` runs admission first. A refused proposal writes
+nothing, because a claim with no admission would leave an execution nobody can
+settle and nothing to reconcile it against. An unregistered skill is refused at
+the same point, for the same reason: a claim with no way to perform it could
+never reach a terminal state.
+
+The durable claim then happens strictly before the effect, so a crash between
+them is recoverable as an interrupted run rather than an invisible one.
+`beginSkillExecution` remains the **only** place that decides which states may
+proceed. The executor's first draft duplicated that policy, gating on
+`confirmed` alone, and thereby blocked the retry the store explicitly allows
+after a failure — the duplicated rule had already drifted from the one it
+copied. The executor now passes any existing claim through and lets storage
+answer.
+
+Effects are ports. `SkillEffectPerforming` hides the platform entirely, so
+ApplicationKit never imports EventKit, and `ReminderDraftSkill` decides what a
+draft contains as a pure projection over typed arguments before any framework
+is involved. Exactly one title and at most one due date; a second of either is
+refused rather than resolved, because guessing which the user meant is how a
+draft ends up asserting something they never confirmed.
+
+A failure records a typed `FailureCategory` taken from the error itself through
+`CategorizedFailure`; an untyped error settles as `recoverable` rather than
+inventing a severity.
+
+**Consequences:** the full path — admit, claim, perform, settle — is exercised
+end to end with one reversible, no-egress skill. Delivery to the platform, the
+other four skills, and the product surface remain separate. No user-visible
+behavior changes yet, so there is no CHANGELOG entry.
+
+## D295 — A skill is a contract over work the product already does (Aug 2026)
+
+**Context:** the no-egress tier names five actions — reminder draft, recap,
+meeting-package export, open a cited meeting, pre-meeting brief. Three of them
+already exist as shipped capabilities with their own use cases. Writing skill
+versions of that work would create a second implementation of each, free to
+drift from the one the rest of the product uses.
+
+**Decision:** a skill contributes the *contract* — declared capabilities, typed
+arguments, confirmation, an idempotency key naming one intended effect, and a
+durable receipt — and delegates the work. `RecapDraftEffect` calls
+`RecapComposer`, `MeetingPackageExportEffect` calls `ExportMeetingBundle`, and
+`PreMeetingBriefEffect` calls `PrepareMeetingBrief`. An architecture ratchet
+pins those delegations so a future edit cannot quietly inline the work.
+
+Argument projection refuses rather than resolves: a recap of two meetings is
+not a recap, so two `meeting` arguments are an error instead of a choice. The
+package export excludes audio, because one confirmation should not move far
+more than its preview showed. The export is the only local skill declaring
+`writeLocalFile`, which is irreversible and therefore permanently ineligible
+for a standing rule even though it never leaves the Mac.
+
+The idempotency key names the effect, not the subject: exporting one meeting to
+two destinations is two effects, so the destination is part of the key.
+
+**Deliberately deferred, and why.** AUTO-2 owns no user interface — the
+Automation center is AUTO-6 and Shortcuts/App Intents are AUTO-3 — so:
+
+- **Opening a cited meeting** is a navigation action needing a route that only
+  those bands introduce.
+- **Start/stop recording through App Intents** is AUTO-3's surface, and
+  `StartRecordingIntent` already ships.
+- **The EventKit reminder adapter** stays a port with no implementation.
+  Delivering to Reminders needs `NSRemindersFullAccessUsageDescription` and a
+  new TCC prompt, and nothing in this band can invoke it. Shipping a permission
+  request with no feature behind it, plus an adapter no code path reaches, is
+  worse than the port alone.
+
+**Consequences:** four declared local skills, none able to leave the Mac,
+asserted rather than assumed by `LocalSkills.isEntirelyLocal`. No user-visible
+behavior changes yet — nothing can propose a skill — so there is no CHANGELOG
+entry and no XCUITest applies.
+
+## D296 — Reclaim a dead worker's lease at claim time, not only at launch (Aug 2026)
+
+**Context:** post-capture jobs carry a 120-second lease with a 30-second
+heartbeat, so a worker that dies mid-job always leaves 90–120 seconds of lease
+behind. `recoverExpiredProcessingJobs` had exactly one production caller,
+launch recovery, which runs immediately on relaunch — while that lease is still
+valid. Nothing recovered it, `claimNextProcessingJob` selected only `pending`
+rows so it saw an empty queue, and `nextScheduledProcessingDate` considered only
+future `notBefore` values, so no wake was ever armed. The meeting stayed in
+`processing` with a spinner for the rest of the session, and only a second
+relaunch more than two minutes after the crash released it. A plain Cmd-Q or a
+Sparkle update during diarization was enough to reach it — there is no
+termination handler anywhere in `Sources/`.
+
+The sibling derived-maintenance lane already solved this: `claimDerivedMaintenance`
+recovers inline before selecting, and `nextScheduledDerivedMaintenanceDate`
+unions `leaseExpiresAt` for running rows.
+
+**Decision:** mirror that lane. `recoverExpiredProcessingJobs` gains a static
+form callable inside an existing write, and `claimNextProcessingJob` calls it
+before selecting, so the next claim by any worker reclaims abandoned work.
+`nextScheduledProcessingDate` becomes the minimum of future `notBefore` values
+for pending jobs and `leaseExpiresAt` for running ones, both still fenced on a
+live meeting, so the supervisor arms a wake at lease expiry instead of never.
+
+**Consequences:** an interrupted post-capture job resumes within one lease
+period without a relaunch. An unexpired lease still belongs to its owner —
+reclaiming remains impossible before expiry, and a reclaim is a new attempt
+against the same bounded retry budget. A tombstoned meeting's lease wakes
+nobody. Two deterministic tests fail against the previous implementation and
+pass against this one.
+
+## D297 — Never migrate the recordings root over a live capture (Aug 2026)
+
+**Context:** `migrateAudio` enumerates every meeting directory under the
+recordings root and, when the destination is on another volume, `moveItem`
+fails and the fallback runs `copyItem` then `removeItem` — deleting the source.
+Its comment justified that with "meeting dirs are immutable UUID-named
+recordings", which is false for exactly one directory: the one being recorded.
+
+Settings is a separate scene with no recording-phase gate, and its "Change…"
+control is disabled only while a migration is already running, so choosing an
+external volume mid-meeting was reachable. The live directory would be copied
+as a snapshot and then unlinked while `RecordingSession`'s writers still held
+it open; every sample after the copy point lands in an unlinked inode. At Stop,
+publication fails on the vanished staging path and `reconcileEmptyCapture`
+finds the truncated copy, so the user is told audio was *preserved* while an
+arbitrary tail of the meeting is gone. Choosing an external volume is the main
+reason to use this setting, so the destructive branch was the common one.
+
+**Decision:** recording safety outranks the setting, so the move fails closed.
+`ManageRecordingStorage` takes an optional `RecordingStorageActivity` and
+throws `recordingInProgress` before any file work when capture or post-capture
+is busy; `processing` counts as busy because workers still read that audio and
+publication resolves paths under the current root. Inspection stays available,
+so Settings can still show where recordings live during a meeting.
+
+`migrateAudio` additionally accepts `skipping:` names it must leave in place.
+That is defence in depth rather than the primary gate: a future caller that
+forgets the activity check still cannot unlink a directory whose writers are
+live, and the skipped meeting simply stays at the old root.
+
+**Consequences:** the user is asked to finish the recording first instead of
+silently losing its tail. A partially migrated library remains readable because
+`RecordingsLocation.resolve` already falls back across roots. Tests cover the
+refusal, that no file work precedes it, that inspection still works while busy,
+and that a reserved directory is neither copied nor unlinked.
+
+## D298 — A live-lane failure at Stop still raises recovery (Aug 2026)
+
+**Context:** `LiveTranscriptionAttacher.finish()` clears `active` and only then
+drains the consumer tasks, but `liveLaneFailed()` opened with
+`guard active else { return }`. The engine's final flush — the likeliest place
+for a transcription failure, because that is where SpeechAnalyzer finalizes and
+tears down — therefore recorded nothing.
+
+`requiresRecovery` stayed false, so `StopRecording` saw non-empty live captions
+with no recovery flag, enqueued only diarization over those partial captions
+instead of a full durable transcription, and committed the meeting as complete.
+The tail of the conversation was permanently missing from the transcript while
+the finalized CAF files still contained it. `finish()` reads `requiresRecovery`
+after the drain, so the guard was the only thing preventing correct behaviour.
+
+**Decision:** separate the two concerns the guard had merged. Recording the
+failure always happens; only the live-caption UI notification is gated on
+`active`, because that surface is genuinely gone once the session ends.
+
+**Consequences:** a transcription failure during Stop now falls back to durable
+re-transcription from the finalized audio, which is what the recovery flag
+exists for. A test drives an engine that fails as its audio stream closes and
+fails against the previous implementation.
+
+## D299 — Inspection that could not finish keeps its channel (Aug 2026)
+
+**Context:** `AudioSilence.fileIsSilent` promises in its own docstring to return
+false when a file cannot be read, "better to transcribe a channel than to
+silently drop one we failed to inspect". The failure-to-*open* path honoured
+that, but a read failure part way through the file `break`ed out of the loop and
+fell through to `return true`, so a file we could not finish inspecting was
+reported silent and its channel dropped.
+
+**Correction (same day).** This entry first named a crash-truncated *capture*
+file as the case. That is wrong, and measurably so: `CaptureFileWriter` uses CAF
+precisely because its data chunk is sized to EOF, so a killed recording's
+declared length equals its readable bytes and every read succeeds. The reachable
+inputs come from elsewhere — `resolveExternalRefineAudio` passes arbitrary
+user-imported files, and `MeetingAudioLayout` resolves compressed `.m4a` copies
+and legacy WAV — plus any read that fails because the recordings volume went
+away mid-scan. The fix is unchanged; the justification was not true and is
+recorded here rather than quietly rewritten.
+
+**Decision:** only reaching the end of the file intact may conclude silence. A
+read that fails short of the end returns false, exactly as an unopenable file
+does; an empty read remains an ordinary end-of-file. Three tests cover a
+truncated file, an unreadable path, and an audible file.
+
+Separately, dictation's engine feed becomes `.bufferingNewest(128)`, matching
+the recording lane. Its producer never suspends on the consumer, so the previous
+unbounded stream let a stalled engine grow the backlog for as long as dictation
+ran. Dropping the oldest audio is the trade live transcription already makes.
+
+**Consequences:** a damaged channel is transcribed rather than discarded, and no
+live audio handoff in the app is unbounded.
+
+## D300 — Correction lane resolution indexes the history once (Aug 2026)
+
+**Context:** `TranscriptCorrectionPolicy.correctionDomain(of:in:)` grouped the
+whole correction history by id on every call, and every caller resolves the lane
+of *each* active correction — twice per compose, once per Meeting Detail
+snapshot. That is quadratic in a meeting's correction count. Measured on 8 000
+segments with 4 000 corrections: **p95 12 749 ms**, on the interactive path.
+
+**Decision:** `TranscriptCorrectionDomainIndex` indexes one history once and
+answers per-event lookups. Per-event semantics are unchanged, including which
+event id a duplicate reports — the duplicate check is deferred to the query so
+the refusal still names the event that was asked about, rather than an arbitrary
+event discovered while indexing. `correctionDomain(of:in:)` remains, implemented
+on top of the index, for the single-event callers.
+
+Same fixture after: **p95 185 ms**, a 69× reduction, and
+`testDenseCorrectionHistoryStaysWithinTheCompositionBudget` now guards it.
+
+**Consequences:** a heavily corrected meeting stays interactive. Composition
+cost is now dominated by the segments, not by the correction history.
+
+## D301 — A skill's destination travels in the proposal (Aug 2026)
+
+**Context:** `MeetingPackageExportSkill.idempotencyKey(for:destination:)`
+scopes an export by its destination, but the effect never read one — the writer
+resolved a path of its own. The key could therefore distinguish two writes the
+effect could not, so one confirmation authorised a path the user never saw in
+the preview it confirmed.
+
+**Decision:** the destination is a typed argument of the proposal. The effect
+projects it with the same "exactly one, validated" rule the meeting subject
+uses, and `MeetingPackageWriting.write(_:for:to:)` receives it. Key and effect
+now derive the destination from one place. `PreMeetingBriefSkill` gains the
+matching `event(from:)` projection, so no effect reads raw arguments any more.
+
+**Consequences:** what the receipt says was written, and where, is what
+happened. Both previously untested effects now have behavioural tests, including
+that a failed export leaves nothing written.
+
+## D302 — Playback ordering is judged on the ticks AVFoundation receives (Aug 2026)
+
+**Context:** D287 made the clear-playback schedule fail closed on an out-of-
+order or empty volume ramp, because AVFoundation raises an uncatchable ObjC
+exception instead of returning an error. The check ran on `TimeInterval`
+seconds, but the schedule is delivered as `CMTime` at timescale 600. Two events
+ordered by microseconds are one instant at 1/600 s, so a ramp proven non-empty
+in seconds could still reach AVFoundation empty — the exact crash D287 closed,
+through the gap the check did not cover.
+
+**Decision:** the timescale belongs to the policy. `CleanPlaybackPolicy.tick`
+quantizes, `isStrictlyOrdered` compares ticks, and the composition builds
+`CMTime` from that same tick. `audibleRanges` refuses a bound that has no tick
+at all — a non-finite or astronomically large time would make the ordering check
+reject the whole schedule and silence clear playback for the entire meeting.
+
+**Correction (same day).** This entry first claimed the sub-tick *length* check
+was what stopped the schedule failing. Measured, that is false: keeping a
+sub-tick range still passes `isStrictlyOrdered`, because both ramp emissions are
+already tick-guarded and `.level` events have no non-emptiness requirement. The
+length check is tidiness — such a turn raises and lowers the microphone at the
+same instant, so its instructions do nothing. The representable check is the
+crash guard. The code is unchanged; the stated reason was wrong.
+
+**Consequences:** what is validated is exactly what AVFoundation receives.
+
+## D303 — The live turn timeline is the session's, not the consumer's (Aug 2026)
+
+**Context:** `PyannoteDiarizer.diarize` positioned each window by counting the
+windows it had consumed, starting at zero. Live diarization attaches only once
+system levels arrive and the runtime is acquired — after capture has begun — and
+reads an `AsyncStream` with `.bufferingNewest(128)`, which drops audio under
+back-pressure. Every live turn was therefore placed earlier than it happened,
+drifting further with each drop, and the live speaker labels drifted against the
+caption timeline they relabel.
+
+**Decision:** windows are anchored to `AudioChunk.timestamp`, the session clock
+the capture layer already stamps (and already pads across output-switch gaps).
+A chunk that does not continue where the held buffer ends releases that buffer
+as its own window instead of splicing a jump cut into one window. The logic
+lives in `DiarizationWindowCutter` — pure and synchronous, so the timeline is
+tested without the model.
+
+The gap that triggers a re-anchor is measured between chunk timestamps, never
+against how many *resampled* samples are held: the resampler's output count is
+not an exact function of elapsed time, and measuring against the buffer would
+accumulate its rounding until a contiguous stream read as a drop.
+
+**Consequences:** live labels stay aligned with the captions regardless of when
+the consumer attached or what the stream dropped.
+
+## D304 — A failed recordings migration puts back what it moved (Aug 2026)
+
+**Context:** `migrateAudio` moves meeting directories one at a time and the
+caller only persists the new root once it returns. A throw part way through left
+recordings under the destination while the root still pointed at the origin —
+and `RecordingsLocation.resolve` only ever looks at the current and default
+roots, so those recordings were reachable from neither.
+
+**Decision:** a failure restores every directory that run moved, so a thrown
+error really does mean nothing happened. The failing entry's hidden
+`.partial-<name>` cross-volume temp is removed too — it is a complete copy of
+that meeting's audio, and a later resume could not tell it from a finished
+directory. Restoration puts the destination copy back *over* an existing source rather
+than deleting it: the resume branch drops its source with `try?`, so a source
+that is present may be a partial leftover, and trusting it would destroy audio.
+
+**Correction (same day).** The first attempt used `FileManager.replaceItemAt`,
+which fails this job twice and was caught by an adversarial pass that
+reproduced both on a mounted volume. It cannot cross volumes at all (EXDEV) —
+and crossing volumes is the only reason the migration has a copy path — so on
+an external drive it stranded every directory it was meant to restore. On one
+volume it can also throw *after* it has already swapped: the good copy lands
+correctly, the old contents are left at the destination's **real** name, and
+the caller is told the entry was stranded. A later resume then reads that name
+as a finished migration and drops the restored source, destroying the audio.
+
+`putBack` replaces it: the existing origin is renamed aside to a hidden
+`.superseded-<name>` **inside the source folder** — a rename needs no
+permission to delete children, and `contentsOfDirectory` skips hidden entries,
+so no later migration can mistake it for a meeting — then `moveItem` brings the
+copy back, which does cross volumes. A failed move puts the origin back, so a
+restore that cannot finish leaves it no worse. Both failure shapes now have
+tests; the cross-volume one mounts a scratch disk image and skips where it
+cannot.
+
+When a restore itself fails, the error becomes
+`RecordingsMigrationError.stranded`, carrying a count and the folder — enough to
+find them, without naming meetings in an error message. The app adapter
+translates it into `ManageRecordingStorageError.recordingsStranded` so
+presentation reads an ApplicationKit error, and Settings gives it its own
+message: every other migration failure is a true no-op, and the existing
+"Nothing was lost" text is precisely what this case is not.
+
+**Consequences:** a failed migration is a no-op, or it says precisely what it
+could not undo — and never silently tells the user nothing was lost when
+recordings really are in another folder.
+
+## D305 — Library observation regions are column-scoped (Aug 2026)
+
+**Context:** `observeLibraryMeetings` and `observeLibrarySearch` tracked
+`Table("segment")` as a whole. The semantic backfill writes `embedding` and
+`embeddingFingerprint` on `segment` in batches, so every batch commit re-fetched
+the entire library, recomputed every voice mix, and re-ran any active full-text
+query. The more of the library was being indexed, the more often it happened.
+
+**Decision:** both observations track only the `segment` columns their queries
+read — `librarySegmentRegion` and `searchSegmentRegion`. GRDB narrows the region
+to those columns, so an embedding write no longer intersects either, while any
+change to what the projections actually show still does. An architecture ratchet
+refuses a whole-table `segment` region in that file.
+
+**Consequences:** indexing is invisible to the library, and search results stay
+exactly as fresh as before.
+
+## D306 — A release gate never asserts a model's exact words (Aug 2026)
+
+**Context:** `testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState`
+asserted that a specific Spanish sentence appeared after Enter. That sentence is
+`RAGAnswerer` output — an on-device Foundation Models session. When the model is
+unavailable or throttled, `AskMeetings` honestly falls back to "Closest passages
+from your meetings:" with the same citations, and the gate failed. Measured on a
+quiet machine: **3 of 6 runs failed**, none of them a regression.
+
+**Decision:** the test asserts the property it is named for instead. The
+`palette-answer` element renders only from `state.answer`, which nothing but
+`submit()` sets, so its presence *is* the proof that Enter ran the full Ask
+workflow rather than reusing the instant FTS hits — and the citation still
+proves the receipt reaches the exact second. Same strength for the stated
+property, no dependency on a model. 6 of 6 runs pass after the change.
+
+No UI gate may assert generated text. A model's availability is not a property
+of this repository, and a gate that fails for it teaches the team to ignore red.
+
+**Consequences:** the bilingual gate means what it says again.
+
+## D307 — A palette query that did not change cannot cancel its own answer (Aug 2026)
+
+**Context:** `CommandPaletteModel.updateQuery` bumped the generation and
+cancelled the in-flight answer on *every* binding update, including one whose
+text was unchanged. SwiftUI delivers such updates — coalesced typing, an IME
+commit, a re-render with the same value — and after `onSubmit` that left the
+palette showing hits, no answer, and nothing to restart it.
+
+**Decision:** an update whose text equals the current query returns early.
+`answer` also clears `isAnswering` for its own generation in a `defer`, so a
+future cancel that forgets to bump the generation cannot leave the flag set and
+make `submit` refuse every later Enter. That second part is defence in depth and
+is documented as such: removing it leaves every palette test green, so it is
+unreachable today rather than a fix for a live defect.
+
+**Consequences:** Enter always produces an answer or an honest failure.
+
+## D308 — Decision↔topic aboutness is explicit authority, never co-occurrence (Aug 2026)
+
+**Context:** the three remaining memory-graph jobs — decisionHistory,
+decisionConflicts, changeSince — all answer a question about a *subject*, and no
+decision↔topic edge existed. The cheap route, joining
+`topic → meeting → decision`, returns every decision taken in any meeting where
+the topic was mentioned: proximity dressed up as aboutness, exactly the failure
+the corpus distractors exist to catch, and exactly what D270/D271 forbid the
+graph to invent.
+
+**Decision:** schema v32 adds the authority, modelled on the existing
+continuity shapes. `decisionTopicLink` carries `confirmed`/`retracted` with a
+partial-unique "one active link per pair" (a mis-click retraction must not
+poison the pair forever); `decisionTopicLinkSource` is immutable and copies the
+exact summary/meeting origin, observed statement, topic label, and
+`sourceTranscriptRevision` — no foreign keys, so purge cannot erase why the
+user linked; `decisionTopicLinkEvent` is append-only with one confirm and at
+most one retract.
+
+The structural rule sits in the v32 confirm trigger, not only in Swift: a
+confirm event is legal only over a source whose observation the decision
+*itself already owns* as evidence (`decisionContinuitySource` for the same
+decision). Nothing that merely co-occurred in a meeting can satisfy that, from
+any code path, present or future.
+
+The disposable `meetingMemoryGraphDecisionTopic` edge derives from confirmed
+live links alone, targets the topic family's current root (a merge changes
+traversal without rewriting authority), and is rebuilt under both the decision
+and topic scopes. Mutation-tested: rewriting either rebuild site to
+co-occurrence fails the acceptance test, including in an incremental
+decision-only rebuild where the topic scope cannot mask it, and removing the
+trigger's ownership clause fails the direct-SQL test.
+
+`ConfirmDecisionTopicLink`, `RetractDecisionTopicLink`, and
+`LoadDecisionTopicLinks` are the only commands; semantic retrieval may suggest,
+never execute. No UI surface exists yet — the confirmation gesture ships with
+the adapter slice that consumes it.
+
+**Consequences:** GRAPH-5b's three adapters can now be honest: "about
+`atlas-001`" always resolves through user-confirmed authority with exact source
+evidence, and a rebuild from nothing reproduces the same edges.
+
+## D309 — decisionConflicts and changeSince answer from the aboutness authority (Aug 2026)
+
+**Context:** with D308's decision↔topic authority in place, two of the three
+remaining memory-graph jobs could become honest. Both ask about a *subject* —
+"which decisions about `atlas-001` conflict?", "what changed about it since the
+last meeting?" — and both are the same underlying relationship: one confirmed
+decision explicitly superseding or reversing another.
+
+**Decision:** one shared adapter serves both jobs. Candidates come only from
+`decisionTopicLink` (family-resolved, confirmed, live); the projection edge is
+cross-checked and a missing edge abstains as `projectionInconsistent` rather
+than being silently repaired; every returned fact is rehydrated from decision
+continuity with the exact current source segments of *both* decisions, replaced
+first, successor second. A relationship where either side is about the topic is
+relevant to it.
+
+`decisionConflicts` is the unanchored reading. `changeSince` resolves one exact
+anchor meeting *before topology is consulted* — an unknown or deleted baseline
+abstains as `missingTemporalBaseline`, mirroring the canonical corpus's rule
+that "since when" is never guessed — and then keeps only relationships whose
+event occurred after the anchor ended. Decisions about the topic with no
+confirmed relationship abstain as `unsupportedConflict`: a generated note that
+"guessed" a replacement was never confirmed, so it does not exist as authority
+and needs no exclusion logic.
+
+Mutation-tested: ignoring the anchor fails the boundary test, and rewriting
+candidate selection to meeting co-occurrence fails against a fixture that keeps
+a fully confirmed, co-occurring, *unlinked* decision pair in the same meetings —
+the discriminator proximity cannot pass.
+
+**Consequences:** five of the six D270 jobs now answer from source-backed
+authority. `decisionHistory` remains open, and the decision-topic confirmation
+gesture still has no UI surface; both ship together as the band's next slice.
+
+## D310 — decisionHistory answers only with current confirmed truth (Aug 2026)
+
+**Context:** the last of the six D270 jobs. "What did we decide about X" must
+return the decision that stands — the superseded one and a decision about a
+different subject are exactly the corpus's forbidden results, and a generated
+observation that nobody confirmed cannot answer at all.
+
+**Decision:** `DecisionHistoryQuery` serves current confirmed decisions linked
+to the topic family through the D308 authority. A superseded decision keeps its
+link — decisionConflicts serves it — but its projected status excludes it here;
+the exclusion is mutation-tested. The returned fact stands on the authority row
+itself (`decisionAboutness(linkID)`), and abstains
+`insufficientConfirmedDecision` when the topic has no current confirmed
+decision, matching the canonical corpus reason name exactly as every other job
+does. All 6 canonical cases traverse public product boundaries, with the
+distractor decision linked to *its own* subject's topic — as an honest user
+would leave it — and still excluded.
+
+**Consequences:** all six D270 jobs now answer from source-backed authority.
+GRAPH-6 is unblocked once the confirmation gesture ships.
+
+## D311 — The decision confirmation gesture composes both authorities (Aug 2026)
+
+**Context:** decision continuity (D270-band) and the decision-topic authority
+(D308) were store-complete with no production caller — no released surface ever
+confirmed a decision. The graph jobs those authorities feed were tested against
+seeded truth only.
+
+**Decision:** the Decisions tab offers one explicit gesture per generated
+decision bullet: **Confirm…**, rendered only over current, resolvable evidence.
+The sheet quotes the exact statement and takes an optional topic; on confirm,
+`ConfirmDecisionAboutTopic` composes `ConfirmObservedDecision` and — when a
+topic was named — `ConfirmDecisionTopicLink`. A typed label with exactly one
+existing alias match links to that topic; no match creates one grounded on the
+decision's own evidence segment; an ambiguous label refuses rather than
+guessing identity, and the decision stays confirmed so the user can retry the
+link. Re-running the gesture on a confirmed observation reuses the decision, so
+a topic can be added later. The durable state renders as a badge naming the
+topics, with an explicit accessibility label so the state is announced whole.
+
+**Consequences:** the six graph jobs now have a real production writer behind
+them. Retraction UI and a dedicated review surface remain open, recorded in the
+roadmap rather than implied.
+
+## D312 — GRAPH-6: relational storage meets the product queries (Aug 2026)
+
+**Context:** band 7's exit gate had to prove the relational projection serves
+the longitudinal product queries at scale, or produce the ADR for a graph
+engine. The harness seeds a deterministic synthetic corpus — dense repeated
+topics, merged-topic families, same-name canonical people, per-topic
+supersession chains — through the same public confirmation paths the product
+uses, projects through the real maintenance path, and measures every one of the
+six D270 jobs.
+
+**Measured (in-memory store, Apple Silicon; 30 samples per lane; evidence in
+`docs/evidence/meeting-memory-graph-scale-20260807.json`):** at 10k meetings /
+1k topic families / 10k confirmed decisions and commitments, every job answers
+between 2.3 ms and 76.1 ms p95 against the 250 ms interactive budget — worst
+lane firstDiscussion at 76.1 ms, over 3× headroom. Recursive-CTE probes for
+topic-family roots (10k topics with merges) and supersession chains stay under
+6 ms, so recursive read models are not a blocker either. Disk 119 MB; physical
+footprint delta under 6 MB.
+
+**Decision:** the specialized-graph-engine gate stays closed. SQLite remains
+authoritative, the projection remains disposable, and no ADR is needed.
+
+Two findings are recorded rather than smoothed over. Full rebuild-from-zero
+projection is superlinear — 414 edges/s at 1k falling to 48.9 at 10k
+(17.6 minutes) because per-scope rebuilds load every live topic row to resolve
+family roots; the normal incremental path touches few scopes, and the job is
+checkpointed, resumable, and capture-yielding by design, so this is a GAPS
+throughput item, not a gate failure. And returning to the canonical profile
+after an alternate one at the same source generation is refused by operation
+idempotency — reachable only via binary downgrade, also in GAPS.
+
+The always-on invariants run on every push at small scale: no edge without
+provenance across all seven projection tables, correction-awareness (rewriting
+the transcript under the current decision's evidence abstains stale while an
+untouched subject answers), and rebuild determinism proven through a full
+profile reset comparing raw authority-keyed edge sets.
+
+**Consequences:** band 7 is code-complete. What remains for the band is UI
+(link retraction) and field validation, not storage design.
+
+## D313 — Corrected text reaches search through a per-segment projection; MCP appends portavoz-reading/2 (Aug 2026)
+
+**Context:** correction composition was complete (D225, D229–D235) but a
+corrected word made its line unfindable: any active correction removed the
+segment from FTS and semantic serving, MCP reads stayed accepted-only, and the
+originally designed fix — materializing composed rows into a correction-local
+index — was proven unsound under adversarial review. `segmentID` is the
+citation identity of the whole stack (RRF fusion deduplicates by it, Library
+selection resolves by it, commitment-link evidence throws on duplicates), and
+composed rows are not 1:1 with segments: a split mints N rows from one
+segment, a merge collapses several. Synchronous recomposition inside the
+write transaction was also impossible — `ComposeTranscript` lives in
+ApplicationKit, which StorageKit must not import.
+
+**Decision:** serve corrected text only where it is 1:1 with a segment.
+
+1. **`segmentCorrectedText` (v33)** holds at most one row per segment — the
+   active `replaceText` correction's text — with an FTS5 mirror maintained by
+   the same GRDB trigger mechanism as v1's `segmentSearch`. The projection is
+   disposable and rebuilt transactionally by every path that changes
+   correction state or the accepted revision (append, tombstone, replica
+   merge, sync replay, refine, re-transcription), plus a v33 backfill so
+   upgraded libraries find their corrected text immediately. Active-ness is
+   resolved by `SegmentCorrectedTextProjection` over
+   `TranscriptCorrectionPolicy.effectiveCorrections` — one shared answer to
+   "which corrections count", not a second one.
+2. **The search lane gets its own predicate.**
+   `acceptedSegmentHasNoActiveTextAffectingCorrectionSQL` excludes only
+   corrections that change what text exists (`replaceText`, `split`, `merge`,
+   `suppress`). An active `changeSpeaker` no longer hides its line from
+   search — that was a bug, since neither the text nor its embedding changed.
+   Evidence and continuity lanes keep the stricter any-correction predicate:
+   a speaker correction does change who said it, which those lanes cite.
+3. **Search unions the two lanes.** Accepted-text hits and corrected-text
+   hits merge under one bm25 ordering; a segment can never serve from both
+   because the projection row exists exactly when the predicate excludes the
+   accepted text. Citation identity stays the accepted `segmentID`, so Ask
+   fusion, Library selection, and evidence linking are untouched.
+4. **MCP appends, never mutates.** The six existing tools are frozen — same
+   names, order, accepted-only text, clamps, and error strings — and three
+   tools are appended under the `portavoz-reading/2` contract:
+   `get_transcript_v2` (composed reading, on-demand `ComposeTranscript`, row
+   pagination), `get_summary_v2` and `get_action_items_v2` (accepted reading
+   with correction provenance). Every v2 response opens with one content-free
+   header line — `portavoz-reading/2 meeting=<uuid> base=<n>
+   correction=<accepted|16-hex|unavailable> reading=<composed|accepted>
+   composed=<current|pending>` — and fails closed: corrected text serves only
+   when the full composition succeeds against the current revision; anything
+   else downgrades to the accepted reading and says so.
+
+**Deliberately excluded:** split/merge/suppress content stays out of search
+(their rows have no 1:1 segment identity); semantic search still serves no
+text-replaced segment (its stored embedding describes the original text);
+Spotlight stays correction-unaware; Apuntador regeneration policy remains
+deferred until source/evidence semantics are characterized. All four are
+recorded in GAPS, not silently absorbed.
+
+**Consequences:** fixing one word makes the line findable by its corrected
+text and unfindable by the stale one, with search, Ask, Library, and MCP all
+converging on the same segment identity. Existing MCP consumers observe no
+change unless they opt into the appended tools.
+
+## D314 — Graph rebuild resolves topic families in SQL, not by loading the table (Aug 2026)
+
+**Context:** the GRAPH-6 verdict (D312) recorded one known cost honestly
+instead of smoothing it: rebuild-from-zero was superlinear because every
+topic/decision scope called `liveTopicRecords` — a full fetch of all live
+topics — to resolve merge-family roots, making a full reset roughly
+scopes × topics row loads (414 edges/s at 1k collapsing to 48.9 at 10k;
+17.6 minutes for a complete rebuild).
+
+**Decision:** family resolution moves into two recursive CTEs that stay
+O(family) per scope. `topicFamilyRootID` walks one redirect chain upward with
+the same failure semantics as the in-memory `topicRoot` walk — a redirect
+cycle (bounded by an explicit depth cap) and a redirect into a tombstoned or
+missing topic both throw; a missing starting topic returns nil. One deliberate
+narrowing: broken chains in *other* families are no longer visited, so they
+fail their own scope instead of every scope. `topicFamilyMemberIDs` walks
+downward with `UNION` recursion so a corrupt cycle terminates. The three graph
+rebuild scopes use these helpers; query-lane call sites keep their measured,
+budget-passing shape and are deliberately untouched.
+
+**Measured (same in-memory harness and fixture as D312; evidence in
+`docs/evidence/meeting-memory-graph-rebuild-20260807.json`):** 2 766 edges/s
+at 1k and 1 892.9 edges/s at 10k — 27.2 s for the full 10k rebuild, 38.7×
+the baseline and near-linear across the decade. Conformance, projection
+checkpoint/resume, and the always-on scale invariants (including rebuild
+determinism via raw edge-set comparison) all pass unchanged.
+
+**Consequences:** the D312 GAPS throughput item is resolved; a full
+profile-fingerprint reset at 10k meetings costs under half a minute inside
+the existing checkpointed, capture-yielding maintenance job.
+
+## D315 — The Ask answer judge is deterministic, content-free, and says what it cannot see (Aug 2026)
+
+**Context:** SEARCH-0b's honest-quality boundary (D192–D196) judges retrieval
+but left answers explicitly unevaluated — nothing could say whether the
+generated answer respected the abstention policy or grounded its citations,
+and Q7's chunking comparison needs exactly that judge.
+
+**Decision:** `scripts/ask_answer_quality.py` adds a separately versioned
+answer judge (answer schema 1, its own observation and scorecard kinds; the
+retrieval schema is untouched). The observation contract is content-free:
+per fixture query it carries only the outcome (`answered`/`abstained`), the
+cited segment identities, and a character count — answer text is a forbidden
+key, so the same contract serves the public synthetic fixture and a future
+private anonymized pack. Validation fails closed: every fixture query judged
+exactly once, no unknown or duplicate citation, an abstention must be
+evidence-free, and an answer without a single citation (or with an empty
+artifact) is inadmissible rather than low-scoring. The judge scores
+`answerOutcomeAccuracy`, `citationPrecision`, `evidenceRecall`,
+`falseAnswerCount`, `missedAnswerCount`, and `hardNegativeCitationCount`
+(the hallucination surrogate), with optional explicit floors.
+
+**Deliberate limit, stated instead of hidden:** every scorecard carries
+`"proseQuality": "notEvaluated"`. A deterministic judge verifies grounding
+and policy, not eloquence; a semantic quality judge would need a model and
+remains a separate, unmade decision.
+
+**Consequences:** collecting answer observations from the product adapter and
+the private pack (the remaining Q6 items) now has a fixed, fail-closed
+contract to land on, and chunking comparisons (Q7) can include answer
+grounding without inventing a metric per run.
+
+## D316 — Skill proposals surface beside their meeting, and dismissal is durable (Aug 2026)
+
+**Context:** the no-egress skill tier (D292–D295, D301) was complete but
+unreachable — no user could run a skill. The obvious wiring was refuted
+before building: routing the existing manual flows (recap sheet, export
+panel) through `ExecuteSkill` would receipt artifacts the user did not send,
+because the manual surfaces allow edits that never travel in the typed
+arguments. The skills tier's differentiator is the PROPOSAL motion, so the
+proposal needed its own surface.
+
+**Decision:** phase 1 anchors proposals to their subject. A badged offers
+menu beside Meeting Detail's document actions proposes the meeting-scoped
+skills — recap draft and text-only package export — once the meeting has a
+summary. Each offer opens the confirmation sheet, which shows the EXACT artifact (the composed recap
+verbatim; the meeting title and chosen destination for export) plus the
+declared capabilities, and confirming runs the durable execution machinery:
+claim before effect, one auditable receipt per intent, failure categories
+typed. Receipts render in the meeting's trust rail beside the privacy
+receipt. The export destination is resolved by the native save panel BEFORE
+the proposal exists, so the confirmed proposal never resolves a path behind
+the user's back; recap delivery is the pasteboard — exactly what the manual
+sheet's Copy does, and the user still sends it themselves.
+
+The exact-preview contract crosses confirmation as an immutable snapshot, not
+as permission to re-read the meeting later. Confirmation re-composes current
+durable material and compares it with the sheet's preview before any claim; a
+changed meeting requires a fresh preview. The accepted material snapshot then
+feeds the effect, so a second store read cannot change the copied draft.
+Pasteboard rejection is a typed failed effect, not a successful receipt.
+Cancellation remains available only before the durable begin/handoff: the
+executor records that no-effect terminal state, while the sheet disables both
+cancel and interactive dismissal once execution is running.
+
+Dismissal became durable state (schema v34, `skillOfferDismissal`): the AUTO
+contract makes `dismissed` terminal from `proposed`, but the execution tables
+only begin at confirmation. The offer key is the stable intent identity
+(skill + meeting), deliberately not the random per-render proposal ID, so a
+regenerated banner can never resurrect a declined offer. A succeeded recap
+retires its offer (the draft exists; re-drafting is the manual sheet's job);
+export keeps offering because each destination is a distinct intended
+effect; a failed run keeps offering because retry is legitimate.
+
+**Two presentation lessons recorded for the next surface.** A ViewBuilder
+branch that renders nothing is never installed, so a load trigger attached
+to the offers view could never fire before the first offers arrive — the
+empty state renders a hidden 1×1 anchor so the tree keeps a node to hang
+the trigger on. And Meeting Detail tolerates NO persistent vertical
+insertion: a banner inside the height-ratcheted artifacts viewport pushed
+the document's own controls out of the box (seven gates failed), a banner
+above it displaced the sections below (four more) — exactly what those
+gates exist to catch — so the proposals took a zero-height slot in the
+actions row instead.
+
+**Deliberately excluded from phase 1:** the reminder-draft skill's UI (its
+delivery adapter needs EventKit and a permission moment of its own), the
+pre-meeting brief (its subject is a calendar event, not a past meeting), a
+Skills management pane (phase 2, when egress skills need consent and
+standing-rule management), and any menu-bar moment (phase 3; its
+verification cost is documented in the roadmap).
+
+**Consequences:** a user can now run a skill end to end — proposal, exact
+preview, explicit confirmation, durable receipt — with nothing leaving the
+Mac, and the phase-2 pane will be born with real receipts in it.
+
+## D317 — Skills controls are durable execution authority, not preferences (Aug 2026)
+
+**Context:** phase 1 made two local skills reachable and left durable receipts,
+but there was no central place to understand or stop them. A Settings-only
+`UserDefaults` switch would let the app, CLI, and future process surfaces
+disagree. A pane listing all four declared contracts as runnable would also be
+dishonest: reminder delivery and the event-scoped brief surface have not
+shipped. Finally, a switch evaluated only when a proposal is rendered cannot
+revoke an already-open confirmation sheet.
+
+**Decision:** `LocalSkillCatalogue` is the central ApplicationKit projection.
+It marks recap draft and text-only package export `available`, and reminder
+draft plus pre-meeting brief `planned`. Schema v35 stores content-free policy
+beside execution authority: singleton `skillControl` owns global pause and
+sparse `skillDisablement` rows own individual choices. Missing disablement
+means enabled; global pause is an independent override and never rewrites the
+sparse set. Missing or corrupt singleton state fails closed.
+
+Meeting offer loading consults this policy before presenting proposals.
+`ExecuteSkill` independently reads it again immediately before admission and
+before the durable claim, so an old pane snapshot or open confirmation sheet
+cannot authorize an effect. The Settings pane writes through
+`ManageSkillControl`, which accepts only known, available catalogue entries.
+It projects 20 recent content-free receipts by default; application requests
+are clamped to 50, storage refuses more than 100, and SQLite serves
+`updatedAt DESC, proposalID ASC` through a direction-matched index. Malformed
+persisted receipt identities fail the read instead of disappearing.
+
+Egress consent and standing-rule controls remain absent until a real egress
+adapter exists. Irreversible package export keeps explicit confirmation per
+destination. Planned entries are labels, not disabled switches that imply an
+implementation.
+
+**Consequences:** the management pane, proposal surface, and final execution
+gate share one durable authority across processes; pause is reversible without
+forgetting individual choices; receipt cost stays bounded as history grows;
+and Phase 2 does not over-promise reminder, brief, or network automation.
+
+## D318 — Map only local-internal Portavoz databases for exact semantic reads (Aug 2026)
+
+**Context:** the authoritative 8 Aug release ledger measured the exact
+100,000-vector scan at 139.64 ms wall / 141.98 ms CPU p95 against a 100 ms
+budget. Reproduction on the current clean parent produced two stable misses at
+128.16/129.30 ms and 126.44/127.29 ms. A Release CPU sample located the work:
+5,535 of 6,330 search frames were inside `sqlite3_step`, 2,997 samples ended in
+`pread`, and only 117 ended in Accelerate's dot product. Ranking, bounded top-k,
+and winner hydration were not the first bottleneck; SQLite was copying the same
+large sequential BLOB pages through its private page cache on every query.
+
+**Decision:** keep `AccelerateExactSemanticIndex`, the normalized Float32 BLOB
+schema, one-cursor multi-query scan, correction fences, and authoritative
+hydration unchanged. A file-backed macOS `MeetingStore` configures only
+`main.mmap_size` to a hard application cap of 512 MiB when Foundation reports
+that the symlink-resolved database directory belongs to a local, internal
+volume. SQLite may clamp or ignore the advisory request and uses ordinary reads
+beyond it. The mapping is read-only, virtual, file-backed, and demand-paged; it
+is not an eager 512 MiB heap allocation. In-memory stores, other platforms, and
+non-local, removable, or unclassified volumes retain the default `xRead` path.
+
+This is deliberately narrower than enabling mmap for arbitrary SQLite files.
+SQLite documents that an underlying I/O fault on a mapped page becomes a
+process signal instead of a recoverable database error. The shipped database
+is one app-owned file under internal Application Support, with no selectable
+external location or second process writer; the volume guard excludes the
+known network/removable cache-consistency hazards. Any future external library
+location, attached authority database, or multi-process writer must revisit
+this decision. The residual local-media I/O-signal risk remains explicit rather
+than being misreported as eliminated.
+
+**Consequences:** three independently seeded 20-query Release runs at
+100,000 × 512 dimensions measured wall p95 67.25/63.98/63.49 ms and CPU p95
+68.07/64.90/64.30 ms, with 9.22–9.47 MiB baseline process footprint and
+0.16–0.19 MiB incremental p95. The canonical 9 Aug release ledger then measured
+63.53/64.54 ms wall/CPU p95 and 0.17 MiB incremental footprint on the same
+Tahoe reference host while every other measured journey remained within its
+budget. Two file-store characterizations assert the effective bound and exact
+ranking/similarity parity across close/reopen, while a third ratchets symlink
+resolution before volume classification. No schema migration, candidate engine,
+resident vector cache, ranking change, or new product writer is introduced;
+multi-host Sequoia/Tahoe evidence remains an independent acceptance gate.
+
+## D319 — Database launch failure is a recoverable root state, never a partial app (Aug 2026)
+
+**Context:** `AppServices.init` terminated the process with `fatalError` when
+the authoritative meeting database could not open. That prevented a misleading
+half-functional Library, but corruption, permissions, unavailable storage, or
+a failed migration also gave the user no safe way to retry, retain evidence,
+or produce support diagnostics. Constructing service owners before attempting
+the store would make a retry path equally unsafe: a failed launch could install
+global telemetry or start model, sync, scheduler, and hot-key state without its
+authority.
+
+**Decision:** `AppServices` is throwing and opens `MeetingStore` before it
+constructs any other process service. The SwiftUI root owns one observable
+`AppLaunchModel` with exactly three states: opening, one complete ready service
+graph, or database unavailable. Only the ready transition can install the
+AppKit delegate destination and start benchmark owners, pressure monitoring,
+search reconciliation, reminders, sync, backup recovery, capture/job recovery,
+provider discovery, or dictation registrations; activation is idempotent.
+Retry replaces the failed state with a newly attempted complete graph. A native
+App Intent that arrived while the database was unavailable stays buffered and
+is re-notified, not consumed, after readiness.
+
+The unavailable state exposes three bounded actions. Retry performs no repair.
+Recovery copy reads the failed authority and its committed WAL into a hidden
+private snapshot inside the user-selected destination, opens only that snapshot
+read-only, uses SQLite online backup, requires
+`PRAGMA quick_check == ok`, applies mode `0700`/`0600`, and publishes by a
+same-directory rename to a unique visible folder. It never overwrites, migrates,
+renames, deletes, or writes the source; a failed operation removes only its
+hidden stage. If the authority or WAL size/modification evidence changes while
+the private snapshot is copied, publication fails instead of claiming a
+coherent recovery point. Launch diagnostics are content-free JSON: app/build, numeric OS,
+typed failure authority/category/code, and source-file presence/size. They
+contain no path, raw SQLite message, SQL, transcript, title, identifier, or
+other library content. Diagnostics are first written to a hidden mode-`0600`
+sibling and only then atomically published, so no permissive file exists if
+permission hardening fails.
+
+The deterministic failure switch and injectable database path are accepted
+only together with `-use-temp-store`. XCUITest first materializes a valid
+disposable SQLite authority, then fails before service composition so the real
+read-only copy and diagnostics journey is exercised without touching the host
+library. Normal process environment cannot redirect the production database.
+The surface uses standard SwiftUI/AppKit APIs available from the macOS 14.4
+deployment floor; it does not adopt a Tahoe-only presentation API.
+
+**Deliberately excluded:** Portavoz does not infer corruption repair, restore a
+copy over the authority, auto-delete, silently recreate an empty production
+library, export raw errors, or present the normal app with disabled controls.
+Choosing which retained copy to restore remains an explicit future workflow;
+support can inspect the bounded diagnostic without receiving meeting content.
+
+**Consequences:** a database-open failure now leaves Portavoz running in one
+focused bilingual recovery surface with the original library unchanged.
+Unit tests prove source-byte preservation, restored meeting parity, private
+permissions, non-overwrite, corrupt-input cleanup, content-free diagnostics,
+stable retry identity, and complete-graph retry. One bilingual real-app
+XCUITest proves the process remains alive, normal Library controls remain
+absent, copy and diagnostics succeed, the source is unchanged, and a repeated
+failure returns to recovery.
+
+## D320 — First Listen owns microphone and SpeechAnalyzer work as one cancellable session (Aug 2026)
+
+**Context:** Tahoe onboarding starts Apple's SpeechAnalyzer before Portavoz's
+downloaded speech models exist. The engine created an unstructured input feeder:
+cancelling or failing the result consumer finished its output but could leave
+that feeder reading a still-open audio stream and retaining the analyzer.
+First Listen also opened the microphone before awaiting Apple's optional speech
+asset, so a cold wait accumulated chunks in an unconsumed default stream. Its
+cleanup used an unawaited task, and moving from the first step did not cancel it
+because the root onboarding view itself remained mounted.
+
+**Decision:** `SpeechAnalyzerEngine` gives its input feeder lexical ownership
+inside one throwing task-group scope. Normal result completion, result failure,
+and parent cancellation cancel and drain that child before the output job ends;
+the AnalyzerInput continuation always finishes. One actor gate invokes
+`cancelAndFinishNow()` at most once and is triggered early enough to unblock a
+feeder that is finalizing. Empty chunks fail admission before buffer creation,
+and the PCM copy has no forced optional address.
+
+`FirstListenController` resolves caption readiness before it acquires the
+microphone. One injected capture boundary and one session identity own capture,
+caption delivery, teardown, and presentation publication. Continue, Skip,
+dismissal, explicit cancellation, or a newer run invalidate that identity,
+cancel the caption consumer, and await capture plus analyzer cleanup. A stale
+run cannot publish completion or failure into the current onboarding state.
+Sequoia retains the same capture lifecycle with captions unavailable; the
+SpeechAnalyzer branch remains availability-gated to macOS 26.
+
+**Consequences:** cold Tahoe preparation has no hidden microphone backlog,
+leaving First Listen stops listening, and consumer cancellation cannot retain a
+SpeechAnalyzer feeder. Twelve deterministic unit cases cover readiness ordering,
+cancel-before-capture, cancellation while awaiting captions, exactly-once
+capture teardown, available/unavailable caption outcomes, internal cancellation
+recovery, partial-sample disposal, completed-sample reuse, stale-phase exclusion,
+and structured feeder completion/error/cancellation plus coalesced cleanup
+completion. The existing
+bilingual Onboarding XCUITest remains the real-app navigation gate; microphone
+and Apple asset behavior still require real-device field evidence rather than a
+CI simulation.
+
+## D321 — A Skill retry resumes its original durable proposal (Aug 2026)
+
+**Context:** storage gives one proposal exclusive ownership of an idempotency
+key. Meeting Detail previously created the proposal only when the user pressed
+Confirm, so a recoverable effect failure left its durable claim under one UUID
+while the next press manufactured another. Storage correctly rejected that
+second UUID as a competing claim. The confirmation sheet and failure state
+therefore promised a retry that the application could not execute.
+
+**Decision:** Meeting Detail allocates the proposal UUID with the exact preview
+and carries it through the coordinator, model, app client, and proposal factory
+for every Confirm press. The effect key remains the durable identity of the
+intended action and can never transfer to another proposal. If SwiftUI
+reconstructs the presentation after an attempt, an exact StorageKit lookup by
+that key returns its original owner and the app reattaches to that UUID.
+
+Preview revalidation still happens before claim lookup or execution. The
+existing executor remains the only authority that distinguishes a failed
+attempt, which may increment and retry, from a succeeded, dismissed, or
+interrupted attempt, which must not repeat. Recap delivery is process-owned so
+an adapter's retry state survives presentation work. A disposable-store-only
+XCUITest adapter rejects its first pasteboard handoff and delegates the second
+to the real system pasteboard; production construction cannot select it. The
+sheet renders the recoverable reason beside the retry control rather than only
+behind the modal presentation.
+
+**Consequences:** a failed recap advances the original attempt and delivers the
+same artifact the user approved. A fresh competing proposal is still rejected,
+and an already succeeded or potentially interrupted effect is never repeated.
+Unit tests cover identity routing, proposal construction, and exact durable
+owner lookup; the real app's English and Spanish XCUITest journey covers
+failure, visible recovery, retry, receipt, sheet dismissal, and byte-for-byte
+pasteboard output. No schema migration or external egress was introduced.
+
+## D322 — A resident brief proposal is scoped to one opaque calendar event (Aug 2026)
+
+**Context:** the pre-meeting brief capability already existed as a manual
+Library action and as an unexposed local Skill contract. Phase 3 needed a real
+proposal moment without making the resident menu bar prompt for Calendar,
+recomposing after confirmation, guessing event identity from private title and
+time, or bypassing the durable policy and execution authority delivered by the
+first two Skills phases. EventKit documents that its local event identifier can
+change when an event moves calendars and may be lost after a full sync.
+
+**Decision:** `UpcomingEvent` stores one bounded, byte-preserved opaque platform
+identifier. The EventKit adapter omits events without a valid identifier,
+queries only when full access already exists, and resolves a proposal with
+`event(withIdentifier:)`; it never matches title or timestamp. Missing or
+changed identity makes the proposal stale. `LoadPreMeetingBriefOffer` combines
+the next event with the shared fail-closed Skills policy, event-scoped durable
+dismissal, and existing execution state. Only no owner or the same failed owner
+is actionable. That rule is rechecked at confirmation: a rebuilt presentation
+may attach to a different UUID only when its prior effect failed; a different
+settled or potentially delivered owner cannot claim the new preview.
+
+The menu-bar model composes one exact `MeetingBrief` before it creates the
+confirmation UUID. The sheet renders that immutable artifact and declared
+local capabilities. Immediately before `ExecuteSkill`, the app re-resolves and
+compares the complete event snapshot. `PreMeetingBriefEffect` receives the
+approved brief directly and crosses one process-owned local-draft delivery
+boundary; it cannot query Calendar, Ask, storage, or a model after approval.
+Cancellation and observation identity are checked after resident async reads
+and after execution before presentation state is published. Success retires
+the offer and adds the ordinary global Skill receipt; failure retains the
+original proposal for retry; dismissal persists independently for that event.
+
+The XCUITest fixture requires both disposable storage and an explicit menu-bar
+content flag. It mounts the production content/model in the app window because
+the actual `MenuBarExtra` shell is owned by SystemUIServer and is not
+deterministically automatable across supported macOS versions. It never reads
+the host Calendar. Actual status-item, TCC, identifier-sync, and cross-version
+behavior remain an explicit Sequoia/Tahoe field gate.
+
+**Consequences:** Skills Settings now marks pre-meeting briefs available. The
+resident proposal previews and delivers the same cited artifact, never sends
+data off-device, and leaves a content-free durable receipt. Unit and
+architecture tests cover identity bounds, policy, retry, cancellation, exact
+material, exact lookup, and fixture isolation; one English and one Spanish
+real-app journey cover preview through receipt. Reminder-draft permission work,
+external egress consent, standing rules, and physical cross-version shell
+evidence remain open.
+
+## D323 — A reminder proposal binds one confirmed commitment to one exact list (Aug 2026)
+
+**Context:** the local Reminder Draft Skill contract and durable execution
+authority already existed, but no subject surface or EventKit effect adapter
+could run it. Reusing notification reminders would conflate content-free alert
+history with a user-authored Reminders item. Prompting from a resident load,
+selecting a fallback list after preview, or querying one execution per Radar
+row would also violate explicit consent, exact-preview, and bounded-read rules.
+
+**Decision:** Commitment Radar projects at most 200 confirmed, non-deleted
+commitments through one ApplicationKit use case. Policy, dismissal, and durable
+execution state are read in three bounded operations, including one batch
+idempotency-key query. A per-window `ReminderDraftModel` previews the canonical
+title and due date and inspects authorization without prompting. Only the
+explicit **Allow Reminders Access** action may request full Reminders access.
+Full access resolves the default list to a bounded, byte-preserved opaque
+identifier plus display title, both of which remain attached to the preview.
+
+Confirmation re-reads the exact commitment, proposal surface, Skill policy,
+durable owner, authorization, and destination. Only the same failed durable
+owner is retryable. One process-owned actor retains a single `EKEventStore` for
+default-list lookup, exact identifier re-resolution, `EKReminder` construction,
+and save. Permission, list removal, or title drift fails closed; no title match
+or alternative list is allowed. An explicit list refresh rebinds and displays
+the current default before another confirmation, avoiding a retry loop against
+stale destination data. The canonical preview arguments are the exact effect
+arguments. Success retires the offer and leaves the content-free receipt
+on the commitment and in Skills Settings; dismissal is scoped to that
+commitment and never removes a receipt.
+
+The disposable UI-test boundary starts authorization undetermined and grants it
+only through the production permission action. It exposes one fake list and
+never reaches host TCC or Reminders. The shipping and UI-host bundles both carry
+the localized full-access purpose string.
+
+**Consequences:** all four local Skills are now honestly available in the
+central catalogue, so Settings omits its empty planned section. Unit and
+architecture tests cover bounds, batching, canonical arguments, durable retry,
+state fencing, permission, destination drift, same-store save, fixture
+isolation, and bundle configuration. One English and one Spanish real-app
+journey cover explicit access through subject and global receipts. Actual TCC
+prompt text, default-list behavior, save semantics, and permission/list drift
+on physical Sequoia and Tahoe Macs remain an explicit field gate; external
+egress consent, standing rules, and AUTO-3 through AUTO-6 remain open.
+
+## D324 — Native recording actions foreground one process and never invent Stop success (Aug 2026)
+
+**Context:** the first native App Intent could start recording, but AUTO-3 had
+no system action for ending the live session. Its foreground contract also used
+`openAppWhenRun`, which the macOS 26 SDK deprecates in favor of
+`supportedModes`; replacing it outright would break the macOS 14.4 deployment
+floor because `IntentModes` itself starts at macOS 26. A Stop action cannot
+honestly return success merely because it posted a notification: the app may be
+opening, the database may still be unavailable, capture may be preparing or
+already finalizing, and the durable stop workflow can still expose typed
+recovery.
+
+**Decision:** Start and Stop declare immediate foreground execution on macOS
+26+ and retain Apple's documented deprecated compatibility property for earlier
+supported macOS versions. The SDK-only intents file remains the single metadata
+source. Packaging accepts exactly `StartRecordingIntent` and
+`StopRecordingIntent`; no App Shortcuts provider, URL lookup, project-module
+import, or second recording controller is introduced.
+
+Stop posts one buffered process-local request. If the complete service graph is
+not ready, that request survives launch or database recovery. Once ready, the
+AppKit delegate consumes it with exactly one synchronous disposition: accepted,
+no active recording, recording still preparing, already stopping, or recovery
+required. An invocation that returns before a delegate exists says only that
+Portavoz will handle the request after opening. Each non-actionable result names
+one next step. Accepted work is fenced by one delegate-owned task, navigates to
+the live recording surface, and calls the process-owned
+`RecordingController.stop`; the dialog says **stopping**, never **stopped**.
+Preparing and already-stopping states also bring the live surface forward.
+Recovery-required uses a distinct non-starting route that reuses the typed
+failure UI; only its explicit retry control can begin another capture.
+Processing and typed failure recovery therefore remain visible, and a repeated
+action cannot start a competing finalization. The
+accepted task strongly owns the service graph until Stop returns, while its
+weak delegate reference prevents an ownership cycle.
+
+The disposable real-app fixture requests Stop only after the production Start
+workflow has returned in `.recording`; it then requires capture to leave the
+live state and surface the existing typed no-audio recovery. Unit tests cover
+cold republishing, synchronous one-shot resolution, duplicate fencing, and all
+recording-phase dispositions. App Intent source changes select that one journey
+in English and Spanish. The stable, Dev, and UI-test bundle identities remain
+separate.
+
+**Consequences:** user-created Shortcuts can now start and stop Portavoz without
+addressing capture hardware or persistence outside the app. Sequoia keeps the
+released foreground behavior while Tahoe adopts the modern API. Local metadata,
+package, and bilingual UI evidence do not prove physical Shortcuts picker, Siri,
+Spotlight, cold database recovery, or cross-version registration behavior for
+Stop; those remain explicit Sequoia/Tahoe field gates. Meeting, person, and
+confirmed-commitment App Entities and the remaining AUTO-3 through AUTO-6 work
+are still open.
+
+## D325 — App Entities resolve bounded private identity into one exact app route (Aug 2026)
+
+**Context:** AUTO-3 still lacked native values for choosing a meeting, a
+canonical person, or a user-confirmed commitment from Shortcuts and Siri.
+Mirroring persistence models into App Intents would expose unrelated private
+fields, while loading a complete library for every picker keystroke would make
+system queries unbounded. A second retained service registry would also compete
+with the database lifecycle already owned by `AppServices`. Finally, opening a
+commitment behind the Radar window's previous filters could make a valid exact
+route look missing.
+
+**Decision:** the SDK-only metadata source declares three narrow `AppEntity`
+values and `EntityStringQuery` types: meeting title/date, canonical-person
+name, and confirmed-commitment title/optional due date. Entity resolution uses
+Apple's standard `AppDependencyManager`; the application installs one
+database-backed catalog only after the authoritative store opens. Its
+ApplicationKit request rejects more than 50 identifiers, result limits outside
+1...50, normalized text over 120 characters, and mixed exact/text selectors.
+StorageKit performs escaped literal SQL matching, excludes tombstones and
+dismissed commitments, preserves
+exact identifier order, and returns at most the requested bound without
+hydrating transcripts, audio, summaries, or evidence. System suggestions use
+20 rows.
+
+Three foreground `OpenIntent`s re-read the exact identity immediately before
+handoff. A meeting opens its Detail, a person opens Commitment Radar with a
+visible reversible canonical-owner focus, and a commitment opens only that
+exact Radar item. Exact commitment identity overrides prior Radar owner, due,
+and activity filters; person focus temporarily overrides owner and uses all
+due/activity states. **Show all** restores the window's previous filters.
+Missing values route to Library or unfiltered Radar with one explicit recovery
+sentence; database failure opens the same surfaces so their existing recovery
+state remains reachable. The process bridge keeps only the latest destination
+while launch is blocked, consumes it once after the complete service graph
+exists, validates every UUID before constructing a typed route, and never
+builds an unbounded navigation queue.
+
+`AppEntity`/`EntityStringQuery` remain compatible with the macOS 14.4
+deployment floor. `IndexedEntity` conformance is availability-gated to macOS
+15+, but this slice does not publish person or commitment entities through
+Core Spotlight and therefore makes no native Spotlight-indexing claim. The
+existing protected meeting-document index remains separate. Packaging now
+fails unless metadata contains exactly five actions, three entities, and three
+queries, and still rejects automatic App Shortcuts. The disposable UI fixture
+invokes the same SDK-only open-action logic as each production `OpenIntent`
+after seeding, passes its disposable catalog explicitly, and never queries the
+user's real library. It does not call `perform()` directly because App Intents
+initializes `@AppDependency` only inside the system-owned execution flow.
+
+**Consequences:** user-created Shortcuts can choose and open one local meeting,
+canonical person, or confirmed commitment through a bounded private catalog,
+with exact visible navigation and reversible focus. Unit tests cover bounds,
+literal wildcard handling, tombstone/dismissal exclusion, canonical identity,
+exact order, forged IDs, filter precedence, and one-shot recovery. One English
+and one Spanish real-app journey cover all three destinations. Physical
+Shortcuts picker/search, Siri disambiguation, cold database recovery, native
+entity Spotlight publication, and registration on Sequoia and Tahoe remain
+field or later AUTO-3 evidence; AUTO-3 is not closed by local metadata alone.
+
+## D326 — One protected Spotlight generation changes shape by OS capability (Aug 2026)
+
+**Context:** D325 supplied three native App Entities but did not publish them.
+Adding a second entity index beside the released meeting-document index would
+show duplicate meetings and schedule two competing full-library workers.
+Replacing document search outright would regress the macOS 14.4 deployment
+floor, where App-Entity indexing is unavailable. A native entity snapshot must
+also preserve the released capped meeting-body search instead of becoming a
+title-only regression.
+
+**Decision:** one process-scoped `SpotlightIndexer` now owns one protected named
+`app.portavoz.search.v3` generation. On macOS 15 and later it publishes meeting,
+canonical-person, and non-dismissed confirmed/done commitment values through
+`CSSearchableIndex.indexAppEntities`; on 14.4 it publishes the existing meeting
+documents. Both modes replace the complete index in 500-value batches and use
+different versioned SHA-256 client-state prefixes, so an OS capability change
+cannot mistake the other representation for current data. Meeting App Entities
+reuse the D85 title, date, newest cross-recipe summary, and first 40 live
+segments under the same 4,000-character cap. People carry only canonical name;
+commitments carry only title and optional due date.
+
+StorageKit supplies one transactionally consistent, platform-neutral snapshot
+for the entity mode. Tombstones and dismissed commitments remain excluded.
+The worker retains burst coalescing, bounded retry, launch repair, content-free
+telemetry, and no-content logging. The new AppIntents overlay does not mark its
+async index receiver Sendable under strict Swift 6, so the entity backend uses
+a task-local named `CSSearchableIndex` rather than transferring an actor-owned
+framework reference. Only after v3 has valid client state does cleanup remove
+the older named and default indexes; the old named index receives a foreign
+migration state so an older app rebuilds rather than accepting an empty index.
+
+**Consequences:** Sequoia and Tahoe have one native private entity search
+generation instead of duplicate meeting results, while Sonoma retains released
+meeting search. Local tests prove projection fences, mode-state separation,
+retry/coalescing/migration behavior, and exact searchable attributes. Metadata
+and bilingual real-app navigation remain necessary but do not prove system
+result presentation, picker registration, Siri disambiguation, or cold recovery
+on physical Sequoia and Tahoe; those field gates keep AUTO-3 open.
+
+## D327 — An email Skill opens one reviewed draft and never owns Send (Aug 2026)
+
+**Context:** Portavoz already has a manual editable recap and system ShareLink,
+but the confirmed-Skill surface had only local effects. The first AUTO-4 adapter
+must prove a real external boundary without inventing recipients, reusable
+consent, delivery success, or a parallel recap implementation. Treating an
+email composer as local would also be misleading: the external client may save
+or sync meeting-derived text as soon as it receives the draft.
+
+**Decision:** `EmailRecapDraftSkill` is the single definition in a new
+`ExternalSkills` registry, leaving `LocalSkills.isEntirelyLocal` intact. It
+declares `readMeetingMaterial` and `sendRemote`, is irreversible, and requires
+`explicitPerProposal` confirmation. One meeting UUID is the complete typed
+argument and scopes the stable meeting-level idempotency key; no recipient,
+address book, account, or destination is inferred or stored.
+
+The skill delegates to the existing summary-only `RecapComposer` and renders
+its Markdown through the existing plain-text exporter. Meeting Detail captures
+the exact durable meeting/speaker/summary material shown in the sheet and uses
+an email-specific preview shape, so a clipboard recap approval cannot authorize
+an external-app handoff. Confirmation re-reads and recomposes the material
+before any claim and refuses a changed subject, body, or preview kind. The
+sheet shows the complete subject/body, explicitly states that recipients are
+empty, warns that the email app may save or sync the text, and says that the
+user still presses Send. The Settings toggle enables proposals only; it is not
+egress consent. The sheet's submit action alone supplies the exact proposal's
+egress permission to `ExecuteSkill`. Its UUID and `proposedAt` timestamp are
+captured with the preview and retained across clicks; confirmation cannot mint
+a fresh timestamp to extend the 15-minute admission window.
+
+The macOS adapter creates `NSSharingService(.composeEmail)` task-locally on the
+main actor, verifies it can accept the approved body, assigns an empty
+`recipients` array plus the approved subject, and performs that handoff. It
+contains no network client, email SDK, credential, AppleScript, recipient
+lookup, or Send command. An unavailable composer is a recoverable failed
+effect. AppKit provides no synchronous proof that the external client saved or
+sent a message, so a successful content-free receipt means **composer handoff
+requested**, never delivered or sent. That success retires only the email offer;
+a failed attempt keeps the original durable proposal retryable. An interrupted
+`executing` owner remains receipted but is not offered again because the
+composer may already have opened; ambiguity never authorizes a duplicate.
+Its UI says that the handoff status is unknown rather than claiming the client
+did not open.
+Meeting Detail reads the local and external one-shot execution keys in one
+bounded exact-key batch, and combines that with one literal package-prefix
+receipt read, so adding this adapter does not create a per-offer query loop.
+
+Disposable UI automation injects an inert opener which exercises the real
+proposal, admission, claim, effect, settlement, and receipt path without
+launching the host email client. Unit coverage pins the external registry,
+capabilities, one-meeting projection, exact composer reuse, egress refusal
+before claim, preview separation, delivery failure, and receipt retirement.
+Bilingual XCUITest pins the full preview, no-recipient/sync disclosures,
+localized action, unchanged clipboard, foreground app, receipt, and independent
+offer retirement.
+
+**Consequences:** Portavoz gains one useful external Skill while remaining a
+drafting assistant rather than an email sender. There is no schema, credential,
+standing rule, unattended egress, recipient automation, or background network
+work. Physical default-client availability, draft presentation, and handoff on
+Sequoia and Tahoe remain explicit field evidence; local automation must not be
+reported as proof of those system-owned surfaces.
+
+## D328 — A secret-Gist Skill is exact, one-shot, and fail-closed after egress (Aug 2026)
+
+**Context:** Portavoz already had a manual GitHub Gist exporter, a Keychain
+token, a canonical correction-aware Markdown renderer, and a data-egress
+gateway that persists a content-free attempt before `URLSession`. AUTO-4b
+needed to make that capability proposal-driven without adding another
+renderer, a second network stack, reusable consent, or a false promise that a
+timed-out `POST /gists` did not create anything. GitHub's create-Gist endpoint
+does not accept a caller-owned idempotency key, so ordinary automatic retry is
+not safe after transport becomes possible.
+
+**Decision:** `SecretGistPublishSkill` is the second definition in
+`ExternalSkills`. It declares `readMeetingMaterial` and `sendRemote`, requires
+`explicitPerProposal` confirmation, accepts exactly one meeting UUID, and owns
+one meeting-scoped one-shot key. The confirmation preview is a typed
+`SecretGistDraft`: the exact canonical Markdown bytes, slugged `.md` filename,
+meeting-title description, and fixed `api.github.com` destination. It states
+that the Gist is secret only in GitHub's unlisted sense and that anyone holding
+the URL can read it. Enabling the Settings row never authorizes publication.
+The complete Markdown stays selectable in a read-only TextKit viewport, which
+avoids one monolithic SwiftUI `Text` layout for long transcripts without
+truncating or changing the material being approved.
+
+Preview and effect reuse `PrepareMeetingDocument`, `AppGistDocumentPublisher`,
+`GistPublisher`, and `URLSessionDataEgressGateway`. Confirmation re-renders the
+current meeting and compares the complete typed draft before resolving or
+writing any Skill claim. The GitHub token is loaded from Keychain during
+publisher preparation before `ExecuteSkill`; a missing token is therefore a
+known pre-egress failure and can be retried after configuration. No token,
+Markdown, filename, description, or returned URL enters a durable Skill or
+privacy receipt.
+
+The exact proposal UUID also becomes the `DataEgressEventID`. The gateway
+inserts that UUID into `dataEgressEvent` before `URLSession` can observe the
+request. If confirmation is reconstructed or a prior attempt is replayed, the
+stable Skill key reattaches to its original proposal owner; a duplicate egress
+UUID then fails at the local primary key before a second transport. This is a
+fail-closed duplicate fence, not a claim that GitHub supports request
+idempotency.
+
+After publisher preparation, every provider, response-decoding, settlement,
+interruption, or transport failure is conservatively **outcome unknown**. A
+failed or still-executing Gist receipt suppresses the offer and never exposes
+an automatic or in-sheet retry; the UI tells the user to inspect GitHub first.
+When GitHub returned a URL but local success settlement failed, that URL remains
+available only in the confirmation sheet's terminal result surface while the
+receipt stays honest. A clean 201 plus local settlement transitions that same
+sheet to the returned URL and records both the content-free egress attempt and
+the ordinary Skill success. Keeping the terminal result inside the existing
+sheet avoids racing a second presentation controller against sheet dismissal.
+
+Disposable UI composition still runs the real proposal, canonical renderer,
+`GistPublisher` request codec, egress metadata checks, durable disposable
+receipts, effect, and settlement. Its gateway substitutes only transport with
+a provider-shaped 201 response and stable fake URL; it cannot touch the host
+network or Keychain. Unit and architecture gates pin exact preview/effect
+identity, pre-claim drift refusal, proposal-to-egress UUID equality, no second
+transport after replay, typed ambiguous outcomes, canonical endpoint reuse,
+and removal of endpoint force unwraps. Bilingual XCUITest pins the complete
+Markdown, filename, host, audience warning, localized action, result URL,
+Skill receipt, privacy egress receipt, Settings status, and independent offer
+retirement.
+
+**Consequences:** Portavoz can publish exactly one reviewed secret Gist without
+becoming an autonomous exporter. There is no new schema, token store, renderer,
+transport, standing rule, background task, or unattended retry. The code uses
+only APIs available at the macOS 14 deployment target, so it introduces no new
+Sequoia/Tahoe availability split. Real GitHub authentication, provider response,
+network interruption, browser opening, and result presentation on physical
+Sequoia and Tahoe remain explicit field evidence and must not be inferred from
+the disposable adapter.
+
+## D329 — Spotlight adopts correction-fenced text without expanding identity (Aug 2026)
+
+**Context:** the D85 Spotlight snapshot met its 100,000-meeting budget by
+selecting every meeting, one summary, and only 40 transcript rows in one SQL
+read. It still indexed accepted segment text after D313 gave lexical search a
+transactional corrected-text lane, and it continued to publish a known-stale
+summary after the correction overlay changed. Moving full transcript
+composition into the app indexer would either load complete libraries or
+restore per-meeting reads. Publishing split or merge rows as segment results
+would also reopen the unresolved citation-identity contract that D313 kept out
+of search.
+
+**Decision:** Spotlight keeps one result identity per meeting and adopts the
+same bounded text policy as lexical search. Its transcript CTE unions accepted
+segments that have no active text-affecting correction with current-revision
+`segmentCorrectedText` rows, ranks that union by the accepted segment timeline,
+and then applies the existing first-40 and 4,000-character caps. Speaker-only
+corrections retain the accepted text. Active split, merge, and suppress targets
+are omitted; their composed replacement rows remain outside search until a
+shared structural identity contract exists. Restore makes the accepted row
+eligible again.
+
+Schema v36 adds sparse `transcriptCorrectionSearchState`: one meeting ID,
+accepted transcript revision, and opaque effective correction revision only
+while an active overlay exists. The same transaction that refreshes D313 text
+now deletes and rebuilds both projections for append, tombstone, replica merge,
+sync replay, Refine, and re-transcription; migration backfills only meetings
+that have correction history. The row contains no transcript, summary, speaker,
+provider, or destination content.
+
+The Spotlight summary CTE publishes only provenance that matches that sparse
+revision. A direct or legacy summary is eligible only for an accepted reading;
+a generated summary for a corrected meeting must carry the exact current
+`sourceCorrectionRevision`. Invalid JSON, a missing generation run, a stale
+revision, or active history without current sparse state omits the summary
+instead of failing the complete snapshot or serving stale words. Corrected
+transcript rows also require the current sparse revision and
+their live terminal replacement event. The published fields remain unchanged,
+so the existing SHA-256 client state naturally replaces the index only when
+the actual title/date/body or entity catalog changes.
+
+The storage read begins with one content-free `EXISTS` probe inside the same
+SQLite snapshot. With no active correction history or sparse state it retains
+D85's fast transcript statement plus D329's unconditional summary-provenance
+checks; otherwise it runs the correction-aware CTEs above. This keeps the common
+100,000-meeting path within its established performance budget without
+weakening missing-state or malformed-provenance fail-closed behavior. Both
+routes remain set based and bounded; the probe does not restore per-meeting
+reads.
+
+Successful Meeting Detail text and structural correction writes now wake the
+shared search-reconciliation funnel; failed writes do not. The process actor,
+protected v3 index, 500-value batches, mode split, retry policy, launch repair,
+and macOS 14.4/15 availability boundary stay unchanged. Tests cover corrected
+and stale text, current/stale/malformed summary lineage, structural omission,
+restore, missing-state fail-closed behavior, migration backfill, client-state
+replacement, and success-only invalidation.
+
+**Consequences:** a corrected word can reach both lexical search and the
+meeting's Spotlight body without reviving the D85 N+1 architecture, while a
+known-stale summary stops matching system search. Structural composed content,
+semantic re-embedding, and Apuntador regeneration remain explicit T28 gaps.
+Deterministic projection/backend tests do not prove physical result presentation
+or Core Spotlight recovery on Sequoia and Tahoe; those remain field evidence.
+
+## D330 — Corrected transcript text owns a fenced semantic lane (Aug 2026)
+
+**Context:** D313 made active `replaceText` corrections immediately findable by
+FTS, and D329 reused that projection for bounded Spotlight documents. Semantic
+maintenance still excluded the accepted segment as soon as its text changed,
+but had no current corrected source to embed or search. Replacing the accepted
+vector would make restore unnecessarily rebuild immutable material; scanning a
+second lane for every accepted-only library would also put the established
+100,000-vector exact-path budget at risk.
+
+**Decision:** schema v37 adds nullable `embedding` and
+`embeddingFingerprint` columns to the disposable `segmentCorrectedText`
+projection. The immutable accepted vector remains on `segment`. Exactly one
+source lane is eligible for a segment: accepted text when no active
+text-affecting correction owns it, or the current corrected row when a live
+terminal `replaceText` event, sparse correction state, and accepted transcript
+revision all agree. Restore therefore exposes the already cached accepted
+vector without re-embedding it.
+
+Semantic candidates carry an explicit accepted/corrected source identity; the
+corrected identity includes the correction UUID. Publication is one
+compare-and-swap update over segment ID, meeting ID, correction ID, accepted
+revision, exact corrected text, missing vector state, live meeting/segment,
+current sparse state, and terminal correction ownership. A superseded,
+structural, deleted, stale, conflicting, or unfenced source is a content-free
+skip and remains on the durable `NULL` cursor only if a current lane still
+exists. Non-positive candidate limits return no rows rather than reaching
+SQLite's negative-`LIMIT` unbounded behavior.
+
+Correction projection refresh preserves an existing corrected vector only when
+correction ID, accepted revision, corrected text, and language all still match;
+unrelated correction activity cannot force needless re-embedding, while any
+source drift clears the derived value. Profile invalidation covers both tables.
+The existing background semantic owner, capture checkpoints, durable lease,
+bounded batches, readiness states, and no-download policy need no second
+scheduler or cursor.
+
+Exact search performs one content-free probe inside the same GRDB read
+snapshot. If no current corrected vector exists, it retains the accepted-only
+stream and deterministic fingerprint/order. Otherwise one ordered `UNION ALL`
+stream scores accepted and corrected vectors once per query batch. Hit
+materialization revalidates the same current corrected source and returns its
+text under the accepted segment ID, so citation/navigation identity does not
+expand. Storage code is decomposed into lexical search, semantic maintenance,
+and semantic retrieval owners; no ApplicationKit or app composition enters the
+database path. The D210 research projection remains accepted-only because its
+identity carries segment ID and accepted revision but no correction lineage;
+an actively corrected row is omitted rather than applying a stale candidate
+rank to different text.
+
+**Consequences:** an accepted word replaced by the user becomes semantically
+findable after ordinary background maintenance, readiness honestly returns to
+partial while that vector is pending, and undo reuses the accepted vector.
+Active split, merge, and suppress output still has no shared search-result
+identity and remains excluded; automatic Apuntador regeneration also remains
+separate. Deterministic migration, correction, publication, readiness, search,
+restore, and bilingual app tests do not prove model assets, correction-heavy
+latency, or memory behavior on physical Sequoia/Tahoe hosts, so those remain
+explicit performance and field-evidence gates.
+
+## D331 — Recheck stale Apuntador cards only on explicit corrected review (Aug 2026)
+
+**Context:** D233 honestly retains Apuntador cards as stale after a transcript
+correction and disables their evidence, but leaves no recovery action. The
+post-Refine pipeline can rebuild a complete accepted snapshot, and explicit
+summary regeneration already consumes composed corrected rows. Reusing either
+without an evidence rule would persist ephemeral split/merge IDs that StorageKit
+correctly rejects; running automatically on each correction would also surprise
+the user with model cost or configured BYOK traffic and make editing latency
+depend on intelligence availability.
+
+**Decision:** add one explicit section-level recheck when any Meeting Detail
+Apuntador card is stale. ApplicationKit owns a `RegenerateCompanionCards` use
+case over `MeetingTranscriptGenerationMaterial`. The app adapter reuses the
+bounded post-Refine turn pipeline under a distinct `meeting-review` workflow.
+The live-recording enable toggle does not gate a direct user request, while the
+Foundation Models classifier still requires macOS 26 and available Apple
+Intelligence; a configured, consented BYOK endpoint remains only the knowledge-
+answer provider.
+
+The generation request carries the composed-row-to-accepted-source map. Its
+private version-3 operation fingerprint binds each relevant generated row and
+its ordered source IDs. Question and cited-answer evidence expands through that
+map and deduplicates in first-use order before persistence, so
+replace/split/merge material can inform the model while durable links continue
+to target immutable accepted segments. Suppressed rows never enter the
+generated material.
+
+Only a complete pass with no terminal outcome replaces the whole card snapshot,
+including with an empty set when no eligible question remains. Model
+unavailability, cancellation, any incomplete pass, transcript/correction drift,
+invalid evidence, or a late transaction failure preserves every previous stale
+card. Explicit-review storage rejects a new card without immutable question
+evidence. Current terminal runs are saved best effort. The replacement
+transaction rechecks meeting and transcript identity, effective correction
+revision, workflow, succeeded run, and every evidence link before tombstoning
+the old snapshot. Correction writes still start no model work, and automatic
+regeneration remains absent.
+
+**Rationale:** an explicit whole-snapshot action gives stale assistance a safe
+recovery path without weakening local-first consent, correction responsiveness,
+or immutable evidence. One accepted-source projection prevents corrected
+generation from inventing a second evidence identity system, while atomic
+replacement makes partial answers and stale races observationally impossible.
+
+## D332 — Semantic assets prepare only from an explicit Settings action (Aug 2026)
+
+**Context:** Ask and Library intentionally preserve exact FTS and never request
+Apple's Latin contextual-embedding assets while the user types. Background
+maintenance also accepts only already-installed assets. That protects latency,
+capture, and consent, but a clean Mac had no way to enable semantic augmentation
+or even see why it was absent. Asset availability and corpus completeness were
+also easy to conflate. The current macOS 26.5 SDK confirms that contextual
+assets are downloaded over the air and recommends considering `NLEmbedding` for
+semantic similarity, but that guidance alone is not evidence that replacing
+Portavoz's bilingual compatibility-profile-fenced model improves the product.
+
+**Decision:** ApplicationKit separates a side-effect-free
+`InspectSemanticSearchAssets` contract from the sole explicit
+`PrepareSemanticSearchAssets` workflow. Inspection requires a valid model
+profile and reads only `hasAvailableAssets`. Preparation returns unsupported
+without touching the runtime, loads an already-installed model with download
+permission disabled, and passes `allowAssetDownload: true` only when a valid
+model reports missing assets. `SentenceEmbedder` remains the only source that
+calls Apple's `requestAssets()` API.
+
+The Intelligence Settings pane owns the only button for that workflow. One
+process-scoped observable model serializes clicks and persists status across
+Settings-window lifetime. Its app client runs semantic-family resource
+admission first, so protected capture fails with a retryable finish-recording
+state. Ordinary failure is retryable, cancellation re-inspects readiness, and
+only verified readiness wakes the existing signal-driven corpus supervisor.
+Settings never indexes the library itself. Ask, Library, launch, and automatic
+maintenance retain `allowAssetDownload: false`; exact FTS remains available in
+every asset and corpus state.
+
+The UI describes macOS ownership, background indexing, exact-search fallback,
+and variable storage cost. A Tahoe 26.5 reference-host probe observed the
+revision-1, 512-dimensional Latin model supporting 20 languages including
+English and Spanish, about 79 MiB process RSS, and a 301 MiB app-specific
+compiled BNNS cache. These are scoped observations, not a universal download
+size. A fake model exists only behind both temporary-store isolation and a
+dedicated XCUITest flag; bilingual UI automation can therefore prove the real
+explicit transition without touching host assets.
+
+**Consequences:** clean installations have an honest opt-in recovery path and
+semantic preparation can no longer hide behind search latency. Corpus progress
+continues through the existing readiness and durable-maintenance contracts.
+Physical clean-install disk deltas and runtime behavior on Sequoia and other
+Tahoe builds remain field evidence. Replacing contextual embeddings with
+`NLEmbedding`, sqlite-vec, USearch/ANN, or another engine still requires the
+accepted bilingual quality, latency, memory, correction, rebuild, and rollback
+matrix rather than documentation preference alone.
+
+## D333 — Derive Skills privacy disclosure from executable capabilities (Aug 2026)
+
+**Context:** the Phase-2 Skills pane correctly kept durable enablement separate
+from per-proposal consent, but every available row still displayed the same
+green `On this Mac` badge. That copy contradicted the executable contracts for
+Email Recap and Secret Gist, which both declare `sendRemote`, and it overstated
+the local rows as well: a chosen file, clipboard consumer, native Reminders
+list, or system app can sync without Portavoz performing a network request.
+Hardcoding two lists of identifiers in SwiftUI would eventually drift from the
+admission policy it claims to explain.
+
+**Decision:** `SkillControlCenterItem` derives one bounded disclosure from its
+immutable `SkillDefinition`. A definition that declares any external effect is
+an `externalHandoff`; every other definition is a
+`noDirectNetworkHandoff`. Settings renders the former as material that may
+leave Portavoz and the latter only as the absence of a direct Portavoz network
+handoff. It independently renders explicit-per-proposal confirmation as
+approval required every time. Neither statement is selected from a title,
+localized copy, registry position, or skill identifier.
+
+**Consequences:** enabling Email Recap or Secret Gist can no longer look like
+reusable egress permission, and local/native effects no longer promise that an
+OS-managed destination cannot sync. The change adds no capability, adapter,
+standing rule, transport, consent persistence, or retry path. New external
+Skills automatically inherit the conservative disclosure as soon as their
+executable definition declares `sendRemote`; unit, architecture, localization,
+and bilingual real-app tests keep that projection from regressing.
+
+## D334 — Structural transcript rows own shared search identity (Aug 2026)
+
+**Context:** accepted segments and active text replacements are one-to-one, so
+the existing lexical and semantic lanes can use the accepted segment UUID.
+Structural corrections change cardinality: one split creates several visible
+rows, one merge combines several accepted rows, and suppression creates no
+visible content. Treating any of those as one accepted segment would make
+deduplication, citations, semantic publication, and UI navigation ambiguous;
+excluding them left what the user saw different from what Search, Ask, and
+Spotlight could find.
+
+**Decision:** schema v38 adds a disposable `transcriptStructuralSearchRow`
+projection with an FTS mirror, optional profile-fingerprinted semantic vector,
+and an ordered `transcriptStructuralSearchSource` relation back to live
+accepted segments. An active split emits one row per authored part under that
+part's stable UUID. An active merge emits one row under its correction UUID.
+Suppression emits no row. Restore removes the derived structural rows and
+reactivates the accepted rows and their cached accepted vectors.
+
+`SearchHit.segmentID` remains a compatibility name for the visible retrieval
+unit and now has an explicit `resultID` source of truth plus ordered
+`sourceSegmentIDs`. Application Library and Ask values preserve both. Product
+navigation continues to use meeting plus exact timestamp, so it never assumes
+that a structural result is a stored accepted segment. Durable graph and
+generated-artifact evidence remain accepted-source authority.
+
+Correction refresh rebuilds replacement text, sparse correction lineage, the
+structural projection, and source relations in the same transaction on every
+append, tombstone, replica merge, sync replay, accepted-revision replacement,
+or rebuild. Existing structural vectors survive only when result identity,
+correction identity, revision, kind, text, language, and timing still match.
+FTS, semantic candidate selection/publication/materialization, Library
+observation, and Spotlight revalidate current correction ownership and live
+source rows. Semantic publication uses the result UUID, so split parts are
+independent candidates and a stale pre-restore result is a content-free skip.
+Accepted-only semantic libraries keep their established fast scan.
+
+**Consequences:** queries can span the accepted boundaries of a visible merge,
+split parts are found independently, suppressed speech stays absent, and undo
+restores accepted identities without model work. The projection is derived,
+device-local, excluded from sync/export authority, and rebuildable from
+immutable correction history plus accepted transcript material. This closes
+the missing structural identity in code; correction-heavy latency, memory,
+cold recovery, Core Spotlight registration, and physical Sequoia/Tahoe model
+behavior remain field-evidence gates rather than inferred release claims.
+
+## D335 — Receipt inspection replays one content-free causal chain (Aug 2026)
+
+**Context:** Skills Settings exposed the newest bounded execution receipts, but
+each row flattened the durable result into one status. A user could not inspect
+whether a run was confirmed, began, failed, retried, or completed, even though
+schema v31 already stores that exact append-only evidence. Reading the current
+projection and events independently would introduce a race: another process
+could settle a run between reads and produce a terminal status beside a
+timeline that still ended at `begin`. Showing raw proposal arguments or the
+idempotency key would also turn a content-free audit surface into a potential
+meeting-identity leak.
+
+**Decision:** the first AUTO-6 slice makes each recent receipt inspectable.
+StorageKit returns `SkillExecutionAudit` from one SQLite read snapshot containing
+the exact current record and its predecessor-linked events in causal insertion
+order. An unknown persisted failure category is an error instead of silently
+becoming `nil`; StorageKit also verifies each predecessor pointer and the
+current projection's latest-event tail. `LoadSkillReceiptInspection` maps that
+validated storage vocabulary into a typed presentation timeline and replays the
+permitted state machine, including attempt increments on retry; a missing,
+empty, impossible, or projection-inconsistent chain fails closed. The audit
+query probes at most 257 events and rejects a chain longer than the 256-event
+presentation ceiling rather than materializing unbounded local history.
+
+The Settings sheet receives only skill identity/version, current state and
+attempt, timestamps, typed failure category, and causal event labels. It never
+receives the idempotency key, proposal arguments, destination, provider result,
+or meeting material. Its retry button retries only the audit read and cannot
+claim, execute, or repeat an effect. Causal ordering remains insertion-based;
+wall-clock time is display evidence and may move backward. The implementation
+uses only APIs available at the macOS 14.4 deployment floor.
+
+**Consequences:** a user can now understand one Skill run and retry history
+without exposing its content or authorizing a new action. This is an incremental
+AUTO-6 control-center slice, not the complete Automation center: proposed and
+waiting queues, receipt-level workflow actions, explanation of proposal inputs,
+and AUTO-5 standing rules remain open. No schema, egress consent, external
+adapter, background task, or unattended execution was added.
+
+## D336 — Skill activity scopes query durable execution state directly (Aug 2026)
+
+**Context:** the first Skills pane showed only the 20 newest executions. A
+confirmed run waiting to begin or an older failed run could fall outside that
+window, and filtering the bounded recent array in SwiftUI would make the
+result look complete while silently hiding matching durable history. Proposed
+offers cannot yet join the same surface honestly: they are owned by individual
+presentation flows rather than one central durable proposal authority.
+
+**Decision:** Core defines four execution-review scopes: Recent, Waiting,
+Needs attention, and Completed. Waiting is exactly durable `confirmed` state;
+Completed is `succeeded` or pre-handoff `cancelled`; Needs attention excludes
+only those known waiting and terminal states, so a future unknown state remains
+visible fail closed. Every StorageKit read validates a 1...100 limit and orders
+by `(updatedAt DESC, proposalID ASC)`. Schema v39 adds one partial index in that
+order for each state scope. Scoped SQL explicitly uses its matching index so
+SQLite cannot prefer the older state-leading index and then sort a sparse or
+empty result in a temporary B-tree.
+
+`LoadSkillControlCenterRequest` and its snapshot carry the selected scope. The
+Settings segmented control renders receipts only when the returned scope still
+matches the selection; loading and error states therefore cannot relabel stale
+rows. A scope-only read failure is isolated from the already verified pause and
+per-Skill policy, while a failed mutation still disables those controls until
+the durable policy is re-read. The existing receipt inspector remains read
+only and unchanged.
+
+**Consequences:** users can find waiting, active/failed, and terminal runs
+without a full-history scan or a misleading client-side filter. The three
+partial indexes together contain one entry per execution—the cardinality of
+one full index—while preserving exact newest-first plans for each state group.
+This slice adds no proposal queue, proposed-offer persistence, workflow action,
+standing rule, egress authority, background execution, or adapter. Explaining
+why an offer appeared and what data it will use requires the next central
+durable proposal slice rather than inference from whichever UI is open.
+
+## D337 — Proposed Skills use one content-free observed-offer authority (Aug 2026)
+
+**Context:** Meeting Detail, the resident pre-meeting card, and Commitment
+Radar each owned actionable offers only in transient presentation flows.
+Settings therefore could not honestly show a Proposed queue, explain why an
+offer appeared, or name the data categories it would read. Reconstructing
+offers by scanning meetings, transcripts, commitments, and EventKit would make
+the review surface a second product-policy engine and would centralize private
+content. Effect capabilities alone were also insufficient disclosure: they say
+what an adapter may do, not which meeting or platform material influences its
+output. Finally, v34 limited a dismissal key to 200 characters while the
+released calendar boundary accepts byte-opaque EventKit identities up to 2,000
+UTF-8 bytes, so one valid long offer could not be durably dismissed.
+
+**Decision:** every `SkillDefinition` declares a nonempty bounded set of
+`SkillInputDataClass` values, and every exact `SkillProposal` requests a
+nonempty subset alongside its requested capabilities. Admission rejects either
+undeclared ceiling violation. The six released Skills declare their actual
+meeting details, summary, transcript, notes, Companion history, commitment,
+calendar event, and selected-destination inputs explicitly.
+
+Schema v40 adds `skillOfferProposal` plus normalized
+`skillOfferProposalInput`. A `SkillOfferRegistration` is keyed internally by
+the existing stable offer intent but exposes an unrelated random review UUID.
+It stores only Skill identity/version, typed reason and subject, exact input
+classes, first/last observation, and optional expiry. Meeting and commitment
+subjects use cascade cleanup; calendar identity remains opaque and expires at
+the event start. The migration also rebuilds `skillOfferDismissal` with one
+shared 2,200-byte key ceiling, preserving existing rows and provider identity
+bytes without trimming.
+
+Every released producer reconciles at most 200 unique candidate intents before
+returning offers. Inactive evaluated candidates retire, while dismissal and
+one-shot confirmation delete their matching authority inside the same write
+transaction. Exact execution UUID and preview still belong to confirmation,
+not discovery: package export is intentionally destination-free at offer time
+and may lead to several destination-scoped execution claims, so its reusable
+offer authority is not one exact `SkillProposal`.
+
+The Settings read prunes expired rows before a pinned newest-first index walk,
+loads input classes in one bounded batch, and refuses more than 100 storage or
+50 application rows. ApplicationKit then requires a current available catalogue
+entry, exact Skill version, compatible typed reason, and declared input subset;
+global pause and individual disablement remain the shared deny authority. The
+SwiftUI section receives no stable offer key, subject identity, title,
+transcript, preview, argument, destination, recipient, or execution action. Its
+proposal load and failure state are independently request-fenced, so an
+unverified proposal read shows no rows without disabling already verified
+policy controls.
+
+**Consequences:** users can inspect why a real product surface proposed a Skill
+and which exact data categories it may use without creating a central content
+index or reusable consent. The original surface remains the only owner of the
+exact preview and confirmation. Same-version input-explanation drift is rejected
+once observed; changing that contract requires a Skill version increase.
+Calendar deletion can be learned only when its owning surface sees it again, so
+expiry remains the content-free upper bound. This slice adds no Settings-side
+confirm/dismiss/retry/revoke action, standing rule, background execution,
+adapter, transport, or egress authority; those remain separate AUTO-6/AUTO-5
+work with physical Sequoia, separate-hardware Tahoe, and VoiceOver evidence.
+
+## D338 — Proposed dismissal is opaque, linearizable, and claim-fenced (Aug 2026)
+
+**Context:** D337 gave Settings a content-free Proposed queue but deliberately
+left it read only. Reusing the existing stable offer key in SwiftUI would expose
+meeting, commitment, or opaque calendar identity. Optimistically hiding a row
+would also be unsafe: a storage failure could lose the visible proposal without
+recording the user's decision. More importantly, a real subject surface may
+have read an offer before Settings dismisses it, and an already-open
+confirmation may still hold an exact valid preview. Deleting only the central
+row would let stale reconciliation recreate it or let the stale sheet execute
+after the user said no.
+
+**Decision:** Settings sends only the unrelated v40 review UUID through
+`DismissSkillOfferReview`. Storage resolves a nonexpired authority row, inserts
+its existing `skillOfferDismissal` tombstone, and deletes the proposal in one
+SQLite write transaction. Missing, expired, concurrently retired, and repeated
+UUIDs return the same content-free unavailable outcome. The app reloads after a
+verified dismissed/unavailable result; a thrown mutation retains the exact row,
+shows an inline retry, and does not disable independently verified Skill policy.
+
+Reconciliation reads dismissals for its bounded active set inside the same
+write and deletes/skips those authorities before upsert. A producer whose
+subject read preceded the dismissal therefore cannot recreate a hidden row.
+Every execution request now carries its reviewed `offerKey` separately from the
+exact effect `idempotencyKey`. Storage accepts equality for one-shot offers or
+an exact `offerKey + ":"` prefix for reusable package destinations, rejects
+unrelated slots, and checks the durable dismissal inside the confirmation
+transaction before granting any new claim. An exact owner that committed first
+is resolved before the tombstone check so retry remains idempotent. Opaque
+provider identity bytes are preserved rather than compared with a trimmed copy.
+
+**Consequences:** SQLite write serialization supplies one linearization point.
+If dismissal commits first, later stale reconciliation remains absent and an
+open confirmation receives typed `offerDismissed` without a claim or effect.
+If a one-shot confirmation commits first, it retires the review and a later
+dismissal UUID is simply unavailable. A reusable package claim deliberately
+keeps its destination-free review: a later dismissal fences every new
+destination while the exact effect owner that already committed remains
+idempotently resolvable. No schema, preview storage, central content scan,
+Settings confirmation, receipt retry/revoke, standing rule, background
+execution, adapter, transport, or egress consent is added. The implementation
+uses APIs available at the macOS 14.4 floor; physical VoiceOver, Sequoia, and
+separate-hardware Tahoe behavior remain field evidence.
+
+## D339 — Waiting approval revocation is content-free and handoff-fenced (Aug 2026)
+
+**Context:** the indexed Waiting scope exposed durable executions in
+`confirmed` state, but the receipt inspector could only explain them. A user
+who changed their mind before execution began had no central way to withdraw
+that one approval. Reconstructing a proposal or retrying an effect from the
+receipt would be unsafe: the control-center projection intentionally has no
+preview, arguments, subject identity, destination, or idempotency key. An
+optimistic row removal would also lie if storage rejected the mutation, and a
+cancel racing the execution handoff must not report success after the effect
+may have started.
+
+**Decision:** a receipt exposes **Revoke approval** only after one verified
+inspection reports durable `confirmed` state. SwiftUI sends only the proposal
+UUID to `RevokeWaitingSkillExecution`. Its narrow storage protocol exposes only
+`cancelSkillExecution`; it has no claim, begin, settle, proposal, adapter, or
+effect authority. The existing storage transition atomically changes
+`confirmed` to terminal `dismissed` and appends one `cancel` event. Unknown or
+no-longer-confirmed executions share one content-free unavailable outcome.
+Unexpected admission shapes fail closed as inconsistent authority.
+
+Storage serializes cancellation with `beginSkillExecution`. If revocation
+commits first, begin observes the terminal state and no effect starts. If begin
+commits first, revocation is unavailable because handoff may already have
+started. A thrown mutation keeps the verified Waiting receipt and exposes an
+inline retry; a verified revoked or unavailable result reloads both the
+inspection and selected scope from storage. UI-test fixture and failure flags
+are admitted only with the disposable temporary store.
+
+**Consequences:** a user can stop one waiting run without granting Settings
+enough information to execute or retry it, and every accepted revocation is a
+durable causal event rather than optimistic presentation state. The action is
+absent after begin, on terminal/failed receipts, and whenever inspection cannot
+verify authority. This adds no schema, effect retry, proposal confirmation,
+standing rule, background executor, adapter, transport, destination authority,
+or egress consent. Physical VoiceOver behavior and cross-process race timing on
+Sequoia and separate Tahoe hardware remain field evidence.
+
+## D340 — Proposed review returns to context without moving consent (Aug 2026)
+
+**Context:** D337 explained each content-free Proposed row and D338 let the user
+dismiss it, but the copy only told people to find the original surface
+themselves. A failed execution receipt cannot safely supply that path: it has
+no subject, proposal arguments, preview, destination, or idempotency key, and a
+remote failure may have an unknown outcome. Giving the bounded list a subject
+identity would weaken its privacy boundary. Opening the main `WindowGroup` by
+identifier alone would also create a duplicate library window whenever the
+existing one was merely behind Settings. Finally, SwiftUI provides no public
+action that programmatically presents a `MenuBarExtra`.
+
+**Decision:** meeting and commitment rows expose **Review in context**.
+SwiftUI sends only the unrelated review UUID to
+`ResolveSkillOfferReviewDestination`. Storage resolves a current nonexpired,
+nondismissed, individually enabled authority row in one snapshot and returns a
+transient typed subject record. ApplicationKit revalidates Skill identity,
+catalogue version, global pause, individual policy, reason, and subject shape,
+then maps only to Meeting Detail, focused Commitment Radar, or the resident menu
+bar. Missing, expired, disabled, dismissed, and concurrently retired rows share
+one unavailable result. Malformed authority fails closed. No subject enters the
+bounded review snapshot or remains in SwiftUI state after routing.
+
+Navigation writes the existing inert `AppServices.pendingRoute`, opens the
+primary scene, and dismisses Settings. The main `WindowGroup` now presents one
+constant `MainWindowIdentity.primary` value; every programmatic open supplies
+that value, so SwiftUI brings an existing main window forward or creates it only
+when absent. Calendar rows show **Review in menu bar** as resident guidance and
+do not attempt private status-item traversal or simulate a click. A thrown
+resolution keeps the proposal row and exposes an inline retry.
+
+**Consequences:** the central panel can return people to the surface that owns
+the exact preview without becoming a confirmation or retry engine. Routing
+alone cannot claim, begin, settle, choose a destination, or perform an effect;
+the destination rebuilds and revalidates its own proposal. The change uses
+public SwiftUI window APIs available below the macOS 14.4 floor and adds no
+schema, stored content, receipt retry, standing rule, background executor,
+adapter, transport, or egress authority. Physical VoiceOver behavior and real
+window restoration on Sequoia and separate Tahoe hardware remain field
+evidence.
+
+## D341 — Failed-receipt recovery stores subject, never effect authority (Aug 2026)
+
+**Context:** a failed execution receipt could explain its causal history but
+could not safely return to the surface that owned its exact preview. The
+execution projection stored only a proposal UUID, Skill identity/version,
+idempotency key, state, attempt, and event tail. Parsing an idempotency key to
+guess a meeting, commitment, or calendar owner would make an implementation
+string into authorization. A generic Retry button would be worse: local
+projection failure may be safe to review again, while a remote or destructive
+failure may have crossed its handoff and already produced an outside effect.
+Deleting the original meeting or commitment must also remove any navigation
+authority without erasing the durable content-free receipt.
+
+**Decision:** every executable `SkillDefinition` declares one
+`SkillSubject.Kind`; every exact `SkillProposal` carries one matching valid
+`SkillSubject`, represented exactly once in typed arguments and covered by the
+definition's input-data declaration. Admission rejects a missing, duplicated,
+mismatched, or invalid subject before the claim.
+
+Schema v41 adds the current optional `failureCategory` to
+`skillExecutionState`, backfills it from the exact latest failure event, and
+uses triggers to require it if and only if state is `failed`. A separate
+`skillExecutionSubject` row is written in the same confirmation transaction.
+It contains only proposal UUID plus exactly one meeting, commitment, or bounded
+opaque calendar identity. Meeting and commitment foreign keys cascade this row
+when the subject is deleted; the execution state and event receipt remain.
+Existing pre-v41 executions intentionally receive no subject backfill. Offer or
+idempotency keys are never parsed, and confirming an existing proposal with a
+different subject is rejected.
+
+`LoadSkillReceiptInspection` classifies recovery only after replaying the
+causal chain and reading current policy. External and destructive categories
+are always **verify externally**. Other failures require a live subject, the
+same currently available catalogue definition/version/subject kind, global
+resume, and individual enablement. Meeting and commitment subjects may return
+to context; calendar recovery stays in the resident menu bar. Missing, deleted,
+legacy, stale, disabled, malformed, or unknown authority is unavailable.
+
+Settings sends only the proposal UUID through
+`ResolveSkillReceiptRecoveryDestination`, which repeats audit, policy, and
+catalogue validation and returns at most an inert typed destination. SwiftUI
+stores that destination until the receipt sheet's `onDismiss`, then sets the
+existing `pendingRoute`. After the sheet has fully dismissed, the Settings root
+opens the value-scoped primary window and invokes `close()` on its weakly
+captured exact presenting `NSWindow`. The sheet's `DismissAction` owns only the
+sheet, and both a presenter-root `DismissAction` and `dismissWindow` left the
+Settings host open in real-app XCUITest. `NSApp.keyWindow` has already returned
+to the primary scene by the time `onDismiss` runs, so process-wide inference is
+also unsafe. The
+original destination must reconstruct a fresh exact proposal and obtain a new
+confirmation. A thrown resolution keeps the receipt and retries only
+destination verification; no argument, preview, offer key, idempotency key,
+destination, confirmation, claim, settlement, adapter, or effect port enters
+the control center.
+
+**Consequences:** a recoverable local failure now has an honest path back to
+review without turning a receipt into reusable consent. Calendar and
+outcome-unknown external work retain their stronger resident/verification-only
+boundaries. Subject deletion revokes recovery navigation without destroying
+audit history, and legacy rows fail closed rather than receiving guessed
+authority. The migration and UI use APIs available below the macOS 14.4 floor.
+Physical VoiceOver behavior, real external reconciliation, Sequoia, and
+separate-hardware Tahoe behavior remain field evidence. Standing rules,
+unattended execution, and central effect retry are still absent.
+
+## D342 — Receipt dismissal restores context in the row-owned focus scope (Aug 2026)
+
+**Context:** the Phase-2 Skills pane could open a receipt inspector and native
+Escape dismissed it, but the presenting row had no explicit continuation
+contract. A mouse-driven XCUITest on a host with macOS Keyboard Navigation off
+also looked like a focus regression even though AppKit intentionally excludes
+buttons from that focus mode. A raw `performAccessibilityAudit(.all)` was not a
+usable gate: XCTest inspected the hidden primary window behind Settings and
+reported unrelated native SwiftUI contrast, action, and hierarchy findings.
+Recovery routing adds a second constraint because the Settings window closes;
+restoring focus there would compete with the admitted destination.
+
+**Decision:** the Settings root remembers only the exact inspected proposal
+UUID. An ordinary sheet dismissal waits for AppKit to remove the modal focus
+scope, confirms that the Skills pane is still present, and emits one bounded
+focus request. A recovery destination clears both the remembered UUID and any
+focus request before opening the primary scene and closing Settings.
+
+`SkillActivitySection`, which owns the receipt controls, owns the matching
+`FocusState` and `AccessibilityFocusState`. Its rows explicitly accept the
+activation focus interaction and bind both focus channels to `proposalID`. The
+request handler accepts an initial value because SwiftUI may reconstruct the
+section after sheet dismissal, then yields once so the row targets exist before
+applying focus. The receipt sheet itself receives no focus or navigation
+authority, and every task is finite and guarded against a changed pane or a
+replacement sheet.
+
+The XCUITest runner enables macOS Keyboard Navigation only when the dedicated
+focus journey or a full catalogue will run. It snapshots the exact prior global
+preference and restores it on normal exit, interruption, hangup, or termination;
+unrelated scoped suites do not mutate it. The journey scopes XCTest's sufficient-
+description audit to identified Skills controls, proves native Escape dismissal,
+and uses Space reopening the same receipt as the observable keyboard-focus
+contract. Functional UI tests continue to cover native control actions instead
+of accepting unrelated whole-process audit findings.
+
+**Consequences:** keyboard and assistive users retain their exact position after
+inspection without moving effect, subject, or recovery authority into Settings.
+The change uses public SwiftUI APIs available at the macOS 14.4 floor and adds
+no schema, storage read, retained window, AppKit introspection, standing rule,
+retry, or effect execution. Deterministic automation proves the real app on the
+current Tahoe-family host; physical VoiceOver, Sequoia, and separate Tahoe
+hardware remain field evidence.
+
+## D343 — Skills activity keeps policy and receipt truth independent (Aug 2026)
+
+**Context:** the status-scoped activity UI rejected a snapshot from a different
+scope, but it continued rendering rows from a matching snapshot while that same
+scope refreshed. A verified revocation could therefore leave its old row visible
+until storage returned. The combined control-center use case also threw away a
+successfully read policy whenever the independent receipt query failed. Settings
+then had no typed way to distinguish missing policy authority from unavailable
+history, and receipt loading disabled controls whose policy was already verified.
+Generic empty copy and silent asynchronous replacement made the transition less
+clear for keyboard and VoiceOver users.
+
+**Decision:** `LoadSkillControlCenter` starts policy and bounded receipt reads
+concurrently but gives them separate outcomes. Policy failure still throws and
+fails the pane closed. After policy succeeds, a non-cancellation receipt failure
+returns that verified catalogue/policy, the requested scope, no rows, and an
+explicit `SkillControlCenterReceiptLoadState.unavailable`. Cancellation always
+propagates instead of becoming a partial result.
+
+`SkillActivityPresentationState` is the single rendering boundary. Loading has
+priority over a same-scope snapshot, followed by unavailable, verified empty,
+and verified rows. Policy mutations may begin during a receipt load: they first
+invalidate its UUID fence, then own the write and authoritative reload, so the
+older task cannot publish afterward. Receipt loading does not disable verified
+policy or proposal actions. Scope-specific empty titles never imply deletion.
+
+The terminal empty and unavailable states are combined semantic elements and
+request one localized medium-priority announcement with the public
+`NSAccessibility.post` application notification. SwiftUI on the supported macOS
+SDK has no live-region modifier, and the `updatesFrequently` trait would
+misdescribe one-off status transitions, so loading is silent and Retry remains a
+separate control. The delayed and failure fixtures are legal only with the
+temporary UI-test store.
+
+**Consequences:** changing activity scope and refreshing after a receipt mutation
+hide stale rows immediately without sacrificing independently verified control
+authority. Receipt-only failures no longer masquerade as policy failures or
+verified emptiness. The slice adds no schema, unbounded read, central effect
+retry, observer, retained accessibility object, timer, standing rule, or effect
+authority. Automated semantics and bilingual real-app transitions are local
+evidence; physical VoiceOver, Sequoia, and separate Tahoe hardware remain field
+validation.
+
+## D344 — UI gates observe host ownership without resetting it (Aug 2026)
+
+**Context:** macOS XCUITest shares host-wide automation infrastructure. During
+the D343 closure, one concurrent UI suite opened a SecurityAgent authentication
+window and later unrelated Apple automation invalidated several app connections
+without producing a Portavoz crash. The old preflight warned whenever Gancho
+was merely running, queried only UserNotificationCenter through an unbounded
+System Events AppleScript, and unconditionally killed `testmanagerd`. That
+combination could miss the actual SecurityAgent blocker, hang while probing,
+or disrupt a different repository's active suite while still allowing ours to
+start into contaminated evidence.
+
+**Decision:** the Make target gives only its own stale Portavoz Dev instance a
+three-second bounded quit request, then delegates host classification to a
+read-only checker. The checker takes
+two snapshots one second apart and starts no XCUITest unless both are clean.
+The process probe uses `ps` executable identity plus arguments to reject active
+`xcodebuild test`/`test-without-building` commands and UI-test runners. It does
+not reject an ordinary build, an idle XcodeBuildMCP server, unit-only `xctest`,
+or the persistent `testmanagerd`, and it never terminates any of them.
+
+A separate current-toolchain Swift 6 probe uses public CoreGraphics window-list
+metadata and HIToolbox's process-agnostic Secure Input query, both available
+below the macOS 14.4 floor. It asks only for on-screen, non-desktop owner/layer
+values plus whether any process enabled Secure Input, ignores Notification
+Center's negative-layer desktop surfaces, and returns bounded visible
+Notification Center/SecurityAgent counts plus one boolean keyboard-protection
+state. The public query exposes no PID; the probe never reads `kCGWindowName`,
+bounds, dialog text, controls, or credentials. The orchestrator applies
+explicit timeouts, validates the exact JSON shape, and fails closed when either
+inventory is unavailable or malformed. It reports only blocker categories and
+never dismisses a prompt.
+The UI-test bundle installs no interruption monitor for external system
+prompts, so it cannot answer a privacy or authentication decision that appears
+after the final sample.
+
+**Consequences:** already-present authentication alerts, notification alerts,
+Secure Input ownership, Xcode test commands, and UI runners now fail before
+Portavoz spends a build or produces misleading product failures. The checker
+cannot reserve Apple's global automation service: an unrelated client can
+still start after the second
+sample, and a generic accessibility client may have no safe process signature.
+Those cases remain result-bundle/host classification followed by a quiet-host
+rerun, not evidence of a Portavoz crash. The LaunchServices claimant check
+remains advisory because rebuilding that database is also a system-wide
+mutation. No shipping binary, product permission, application behavior, or
+minimum deployment target changes.
+
+## D345 — Semantic performance evidence is comparable only through sealed identity (Aug 2026)
+
+**Context:** SEARCH-0b still cited two apparently equivalent 100,000-vector,
+512-dimension Release observations: 90.22 ms wall p95 from 17 July and 92.85 ms
+from 26 July. Both name the same broad host and benchmark configuration, but
+the earlier artifact has no toolchain and neither one retains source commit,
+dirty state, built-binary identity, exact embedding profile, asset state,
+fixture/query-pack identity, or stage boundaries. The runner also let the
+performance ledger add toolchain metadata after measurement. Calling their
+2.63 ms difference a regression, improvement, or noise would therefore assert
+a cause that the artifacts cannot prove.
+
+**Decision:** `bench-semantic` advances to observation schema 2. Each fresh
+Release process records the exact `SemanticEmbeddingProfile`, whether the
+Apple Latin assets are already installed under an explicit never-download
+policy, the deterministic public-synthetic corpus/vector generator, the exact
+present-vector query pack, and separate wall/process-CPU distributions for
+store open, corpus seed, warmup queries, and measured queries. The measured
+vectors remain deterministic normalized Float32 values; model assets qualify
+the compatibility environment but do not generate the timed corpus.
+
+`run-semantic-scale-baseline.sh` validates requested scales before building,
+snapshots the source commit plus a twice-collected content digest over Git
+status, the full tracked diff against `HEAD`, and every untracked path, mode,
+size, symlink target, and content digest. It then builds one Release CLI and
+binds its SHA-256 and size to the Apple Swift/Xcode target and exact
+hardware/OS identity, then runs every scale in a fresh process. The strict
+assembler rejects duplicate JSON keys, unknown fields, booleans masquerading
+as integers, non-finite/non-monotonic or wrong-count distributions,
+profile/configuration mismatch, incomplete top-k, corpus arithmetic drift,
+cross-process host/profile/asset/fixture changes, or any source, binary,
+toolchain, or host change after the build. Publication is owner-only and
+atomic. The performance ledger may not restamp this sealed toolchain.
+
+One recomputable comparability digest covers source, binary, toolchain, host,
+build configuration, embedding profile, assets, fixture, query pack, stage
+policy, configuration, and measured scales. Only the clean canonical
+1k/10k/50k/100k matrix with 20 measured queries per scale is retention
+eligible. A dirty or custom matrix can be compared only to another manifest
+with the exact same digest and remains `comparable-development`. Identity
+drift is `not-comparable`. The comparator reports only observations and
+nearest-rank aggregates; its fixed decision authority is `none`.
+
+**Consequences:** the tracked historical reconciliation preserves the exact
+90.218/92.850 ms wall and 91.257/94.252 ms CPU observations but classifies the
+pair `not-comparable` because schema 1 lacks required identity. That is the
+honest reconciliation; no code can retroactively reconstruct missing evidence.
+Future current-control claims require repeated clean schema-2 manifests on the
+same stable host, followed by the existing profile/Sequoia/Tahoe field matrix.
+This slice changes no product retrieval, ranking, schema, model, chunk, engine,
+writer, scheduler, or user-visible behavior, and it does not close private
+real-meeting answer quality or authorize SEARCH-4b/5 selection.
+
+## D346 — Retain repeated semantic control only after measured-query stability (Aug 2026)
+
+**Context:** D345 made individual Release manifests comparable but its general
+comparator retained only the 100k query p95 values and an opaque identity hash.
+It did not prove three observations existed at every scale, expose other stage
+or footprint aggregates, or decide whether the query measurement agreed with
+itself. Six clean observations from committed D345 source also showed why the
+distinction matters: measured-query timing stayed tight while the third 100k
+corpus seed was 1.41x the first two for one query variant and 1.64x for three.
+Treating every undersampled lifecycle stage as stable would be false; omitting
+the variation would be equally misleading.
+
+**Decision:** add a separate `semantic-scale-control-baseline` receipt. It
+accepts exactly three unique clean schema-2 manifests with one recomputed
+identity, canonical 1k/10k/50k/100k scales, 20 measured queries per scale, and
+either `queryVariants=1` or the explicitly diagnostic `queryVariants=3` shape.
+Duplicate observations, dirty source, identity/configuration drift, unsupported
+variants, missing scales, or measured-query wall/CPU p95-to-p50 or
+across-observation max-to-min p95 above 1.25 produce no receipt.
+
+The receipt retains the complete content-free identity payload, three raw
+manifest digests, three distinct measurement-payload digests, and the
+content-free per-observation distributions required to recompute every
+count/size/footprint and wall/CPU summary. A receipt SHA-256 covers the retained
+result. Only the 20-sample measured-query stage owns
+the stability gate. Store open and corpus seed have one sample per process and
+warmup has two, so their ratios stay explicit diagnostic evidence and cannot
+pass or fail query stability. At 100k, the canonical receipt applies the
+existing 100 ms wall-and-CPU current-control target. A three-variant receipt is
+always diagnostic, has a separate identity, and receives no budget authority.
+Neither receipt can claim cross-host coverage, retrieval/answer quality,
+serving authority, or engine selection.
+
+**Consequences:** three alternating clean D345 runs on Mac16,6 / macOS 26.5.2
+produced canonical one-vector wall/CPU p95 maxima of 73.921/74.503 ms at 100k,
+with within-run ratios at most 1.028/1.025 and across-run ratios 1.038/1.033.
+The separate three-vector diagnostic measured 80.374/81.627 ms, with
+within-run ratios at most 1.026/1.025 and across-run ratios 1.024/1.027. The
+canonical current control therefore passes on this one reference host; no
+cross-identity speedup or regression is derived. Raw manifests remain
+ephemeral and only the two aggregate receipts are tracked. Stable comparable
+evidence from the required 8/16 GiB profiles and both Sequoia/Tahoe families,
+plus owner-supplied private quality evidence, remains required before chunk or
+engine selection. `scripts/run-semantic-control-baseline.sh` makes the protocol
+repeatable: it fails fast on a dirty checkout, alternates the one- and
+three-vector matrices, rechecks source before publication, validates both
+receipts, and writes them owner-only without retaining raw manifests.
+
+## D347 — Cross-host semantic control requires real profile and OS receipts (Aug 2026)
+
+**Context:** D346 proves the 100 ms current-control budget only on one 36 GiB
+Mac16,6 running Tahoe. It defines no consumer that can combine aggregate
+receipts without accidentally accepting the diagnostic three-vector identity,
+mixing workloads, double-counting one memory profile, or promoting missing
+Sequoia evidence into a pass. Rebuilding the later evidence tooling directly
+inside the D345 source checkout would also make that source dirty and destroy
+the identity the next host must reproduce.
+
+**Decision:** add a self-verifying `semantic-scale-cross-host-matrix`. It
+accepts one to three complete D346 aggregate receipts but only the canonical
+one-vector scope. The required set is one receipt in each existing shared
+resource profile: 7–10 GiB, 14–18 GiB, and at least 32 GiB reference memory.
+The three receipts collectively cover macOS 15 Sequoia and macOS 26 Tahoe.
+This follows the established cross-host contract; it does not silently expand
+the requirement into every profile/OS Cartesian pair.
+
+Source, clean state, Swift and Xcode version/build, Release configuration,
+semantic compatibility profile, asset policy, synthetic fixture/query pack,
+stage policy, and canonical scales must be byte-for-byte equivalent. Host
+identity may differ. The Swift target is retained per receipt and must match
+that host's architecture and OS major, so it is not falsely treated as one
+cross-OS toolchain constant. The Release binary is likewise retained per host
+and excluded from the shared workload identity. Duplicate receipts or
+profiles, unsupported hosts, incoherent targets, and workload drift produce no
+matrix. Cross-host qualification remains Apple-Silicon-only.
+
+Every output embeds the validated aggregate receipts and exactly recomputes its
+profile/OS coverage, shared workload identity, outcome, reasons, authority, and
+matrix SHA-256. Missing profile or OS coverage is
+`incomplete-required-matrix` with no cross-host authority. A complete matrix
+may report only whether every receipt met the established 100 ms wall-and-CPU
+current-control budget. It never derives a cross-host performance ratio or
+claims retrieval quality, answer quality, chunk policy, serving authority, or
+engine selection.
+
+Both collectors separate their current validation-tool root from an optional
+`PORTAVOZ_SEMANTIC_SOURCE_ROOT`. This lets field hosts use the D347 validator
+while building a separate clean worktree at the exact D345 commit carried by
+the reference receipt. Source inspection, Release build, binary hashing, and
+measurement all remain rooted in that clean checkout.
+
+**Consequences:** the first tracked matrix embeds only the real Tahoe/reference
+receipt and is honestly 1/3 complete. It names 8 GiB, 16 GiB, and Sequoia as
+missing and carries no cross-host budget authority. No unavailable hardware
+evidence is fabricated, and SEARCH-0b remains open for those field receipts and
+owner-supplied private real-meeting quality evidence.
+
+## D348 — Retrieval chunks carry correction publication authority (Aug 2026)
+
+**Context:** D202's pure speaker-turn candidate predates the immutable
+correction overlay. Its `RetrievalChunk` carries the accepted transcript
+revision but not D233's effective `TranscriptCorrectionRevision`. D330 and D334
+now make accepted, replacement, split, and merge material independently
+searchable, so any future chunk publication that cannot name the exact
+correction overlay could reuse a candidate across different current text or
+speaker authority. Treating the correction revision as chunk identity instead
+would cause an unrelated correction elsewhere in the meeting to rebuild every
+unchanged turn.
+
+**Decision:** require every `RetrievalTurnChunker.chunks` call to provide a
+typed correction revision and retain it on every derived `RetrievalChunk`.
+The presentation-only `unavailable` sentinel is rejected. There is no default:
+the uncorrected public benchmark passes `.accepted` explicitly, so a future
+corrected caller cannot accidentally omit provenance.
+
+Transcript and correction revisions are publication fences, not membership or
+source identity. Neither enters the stable chunk ID or `sourceFingerprint`.
+`RetrievalChunkDelta` compares current source membership and content exactly as
+before, returns the current values for retained chunks, and therefore advances
+both fences without scheduling an unchanged chunk for re-embedding. A text,
+speaker, person, language, timing, or membership change still upserts only the
+overlapping derived unit.
+
+**Consequences:** the speaker-turn candidate is now correction-ready at its
+pure ApplicationKit boundary without adding storage, a migration, an index
+writer, product composition, or serving authority. Segment vectors remain the
+shipping default. SEARCH-4b still lacks short conversational-window and
+semantic-boundary candidates, paired quality/resource/correction evidence for
+those strategies, and an accepted production-selection decision.
+
+## D349 — Short conversation windows remain bounded evidence candidates (Aug 2026)
+
+**Context:** D202 evaluates complete single-actor turns, but many meeting facts
+depend on a short question/response exchange. Simply sliding a window over
+turns would repeat canonical segments across ranked units. Observation schema
+2 rejects that ambiguity because one source appearing at multiple ranks would
+inflate retrieval evidence and make citation and hard-negative accounting
+non-canonical. Flattening several actors into one apparent speaker would also
+discard the topology the candidate is meant to test.
+
+**Decision:** add a pure `conversation-window-v1` candidate derived only from
+validated `speaker-turn-v1` chunks. It greedily emits non-overlapping windows
+of at most three complete consecutive turns. Adjacent turns must resolve to
+different actors, using confirmed person, meeting-local speaker, local
+microphone, then isolated-turn identity precedence. A window keeps the
+single-turn append budgets of 900 normalized characters, 45 seconds, and a 2.5
+second inter-turn gap; exceeding any budget starts a new unit. An indivisible
+canonical turn that already exceeds a budget remains isolated rather than
+being split, truncated, dropped, or duplicated, so its cost remains explicit
+candidate evidence.
+
+Every `RetrievalChunk` now carries exact ordered turn boundaries in addition
+to its flat canonical sources. Each turn retains source, speaker, person,
+channel, language, and time authority, so a multi-actor window is context and
+never one synthetic speaker. Conversation windows inherit turn validation and
+the mandatory transcript/correction publication fences. Their stable identity
+and source fingerprint are versioned independently; the correction revision
+still remains outside rebuild identity.
+
+The disposable Ask benchmark admits `conversation-window` as an explicitly
+named candidate with its own adapter and deterministic projected identities.
+The paired runner can select either registered candidate, and the comparator
+continues to require the segment control while rejecting unknown candidate
+adapters. Canonical sources never repeat across the candidate corpus. The app,
+StorageKit schema, semantic maintenance owner, Library, Ask serving path, and
+segment default remain unchanged.
+
+**Consequences:** the public-synthetic-v2 topology projects each meeting into
+one exact four-source conversation unit instead of two single-speaker turns,
+making question/response context comparable through the existing production
+retrieval path without weakening citation semantics. A text-only correction
+that preserves turn topology and resource-bound window membership invalidates
+only its containing window. A correction crossing a character append budget,
+or a split, merge, insertion, removal, or actor change, can reflow later greedy
+windows; that cost remains explicit candidate evidence rather than a false
+locality guarantee. This slice adds candidate code and deterministic
+comparison capability only; it does not claim quality parity, private-answer
+quality, resource superiority, or serving authority. Clean paired
+quality/resource/correction evidence and the separate semantic-boundary
+candidate still precede any product-selection decision.
+
+## D350 — Semantic boundary proposals fail closed before implementation (Aug 2026)
+
+**Context:** SEARCH-4b still needs a semantic-boundary candidate, but selecting
+a tokenizer or model first would bypass the citation and bilingual constraints
+learned from the existing candidates. Splitting one transcript segment into
+multiple sentence units would repeat its canonical source identity across
+ranks, which observation schema 2 deliberately rejects. A multi-actor semantic
+unit could also erase turn authority, and a language-specific sentence model
+could silently compare English and Spanish vectors from unrelated spaces.
+Apple's current Natural Language guidance directs semantic-similarity work
+toward `NLEmbedding` sentence embeddings, while those embeddings are selected
+by language and revision. The OS sentence tokenizer, by contrast, exposes no
+model/revision identity suitable for stable cross-host candidate evidence.
+
+**Decision:** add a pure `RetrievalSemanticBoundaryPreflight` contract in
+ApplicationKit before implementing any semantic chunker. It grants only
+benchmark admission. A proposal must carry a bounded lowercase identifier and
+positive revision, operate on complete canonical turns, preserve ordered actor
+topology, avoid source overlap, and use at least two turns without exceeding
+the conversation-window ceilings of three turns, 900 characters, 45 seconds,
+and a 2.5-second adjacent gap. Tighter bounds are allowed and fingerprinted.
+Intra-source sentence fragments, product-serving scope, actor flattening,
+overlap, non-finite limits, and an unversioned OS tokenizer fail closed.
+
+The only admitted boundary signal is semantic similarity with a valid exact
+`SemanticEmbeddingProfile` and a finite per-space cosine threshold in
+`-1...1`. English and Spanish are mandatory. A proposal may explicitly declare
+one shared bilingual vector space and threshold, or provide distinct language
+profiles with independently calibrated thresholds that force a boundary at
+every language transition and never compare cross-space vectors. Duplicate or
+malformed languages, ambiguous reused partitioned profiles, and more than
+sixteen profiles are rejected. A stable SHA-256 covers
+the candidate, scope, source, actor, resource, threshold, language-space, and
+model-profile identities; canonical sorting and signed-zero normalization keep
+semantically identical proposals from acquiring different identities. No text,
+query, vector, meeting, or source identifier enters that fingerprint.
+
+**Consequences:** D350 selects the safety envelope, not a model or chunking
+algorithm. The contract imports neither NaturalLanguage nor StorageKit, loads
+no assets, derives no chunks, changes no schema, and is absent from the app and
+serving composition. A declared shared-space capability still requires runtime
+and quality evidence; admission cannot prove a model card or OS capability.
+The current contextual embedder remains the shipping segment-vector authority,
+and `NLEmbedding`, a pinned open model, or any other semantic-boundary signal
+must first implement this contract and pass clean bilingual quality, resource,
+correction-cost, and Sequoia/Tahoe comparison before any product decision.
+
+## D351 — Semantic boundaries stay partitioned and benchmark-only (Aug 2026)
+
+**Context:** D350 defines the safe proposal envelope but deliberately leaves
+the concrete model, boundary algorithm, and evidence path open. Apple's current
+sentence embeddings are selected by language: on the current Tahoe-family host
+the English and Spanish sentence profiles expose different dimensions. Treating
+them as one coordinate space would make cross-language cosine meaningless.
+Materializing every meeting vector would also add avoidable memory cost to an
+experiment whose decision depends only on adjacent complete turns. Finally, a
+static adapter label would let a changed Apple revision, dimension, threshold,
+or policy reuse incompatible quality receipts.
+
+**Decision:** implement `RetrievalSemanticBoundaryChunker` as a pure
+ApplicationKit, benchmark-only candidate over the existing validated complete
+turns. It makes one forward pass and keeps only the current draft plus adjacent
+vectors as boundary state. Every supported turn is vectorized once. Adjacent
+turns join greedily only when they share one normalized primary language and
+exact profile, meet that language's cosine threshold, and stay within the
+conversation-window append ceilings. Source membership remains complete,
+ordered, and non-overlapping; actor turns are never flattened. Missing,
+unsupported, or mixed-language turns are isolated without vectorization, and
+every English/Spanish transition is a boundary. The implementation refuses
+shared spaces and fails closed on language, profile, dimension, finite-value,
+or nonzero-magnitude disagreement.
+
+Add `CLIAppleSentenceBoundaryEmbedding` as the sole concrete outer adapter. It
+lives only in `portavoz-cli`, selects the exact current revision through
+`NLEmbedding.sentenceEmbedding(for:revision:)`, verifies runtime language and
+dimension, and never requests downloads. English and Spanish have distinct
+`SemanticEmbeddingProfile` values and provisional cosine thresholds of 0.60
+and 0.75. The thresholds are fingerprinted experimental inputs, not model
+calibration claims. The exact adapter identity is
+`semantic-v1.<proposal-sha256>`. The disposable quality mapping, evaluator, and
+paired runner preserve and validate that dynamic identity while retaining all
+canonical source members in observation schema 2.
+
+**Consequences:** D351 adds deterministic candidate mechanics and a clean
+evidence route, not a product choice. The app, StorageKit, semantic maintenance,
+Ask serving, Library serving, and the canonical segment default remain
+unchanged. The one-pass decision state avoids retaining a vector corpus, but
+the canonical turn projection and output are still materialized, so this is not
+a total constant-memory claim. A current-host live vector smoke proves only API
+availability on that machine. The provisional thresholds and Apple profiles
+must still pass clean paired bilingual quality, resource, correction-cost,
+private-corpus, and physical Sequoia/Tahoe evidence before any serving or
+storage proposal.
+
+## D352 — Ask quality evidence rejects randomized ties (Aug 2026)
+
+**Context:** three fresh Release processes ran the exact D351 segment control
+and semantic-boundary candidate over `public-synthetic-v2`. All three retained
+the same source identity, dynamic adapter, citation validity, Recall@10,
+hard-negative count, and blocked candidate verdict, but several equal-rank
+semantic hits exchanged positions. `LocalAskMeetingRetrieval` reduced every
+segment to its best rank across query variants and then sorted a Swift
+dictionary by rank alone. Dictionary iteration order is intentionally
+process-randomized, so equal ranks leaked that randomness into user citations
+and rank-sensitive quality metrics. The one-run pair orchestrator could not
+detect the drift even though SEARCH-0b requires deterministic evidence.
+
+**Decision:** preserve best-rank authority and break equal semantic ranks by
+the earliest deterministic query variant, then by stable result UUID before
+RRF. Non-tied semantic rank, lexical rank, scores, source projection, and
+citation content do not change. The clean-pair
+orchestrator now runs the segment control and selected candidate three times in
+alternating fresh Release CLI processes. Each role must produce byte-identical
+schema-2 observations before evaluation; any disagreement removes the private
+staging directory and publishes no partial comparison. A sixth owner-only
+`ask-quality-determinism` receipt records the run count and SHA-256 digests of
+the two canonical observations and their comparison. The runner accepts only
+three to five repetitions, defaults to three, keeps asset downloads disabled,
+and retains the existing clean-commit and dynamic-adapter fences. CLI help must
+list the semantic-boundary retrieval unit that D351 made executable.
+
+**Consequences:** repeating the same local Ask query now gives equal-rank
+evidence a stable order across processes, and candidate evidence cannot be
+published from one lucky ordering. Previously arbitrary ties may move once to
+their variant-then-UUID order; this is an explicit determinism fix rather than
+a relevance claim. The three D351 diagnostic pairs remain blocked: the semantic
+candidate improved aggregate retrieval and kept zero invalid/stale citations,
+but added 39 hard-negative hits and regressed code-switched and same-language
+relationship slices. No threshold is tuned from that one host, no candidate is
+selected, and resource, correction-cost, private-corpus, Sequoia, and
+independent Tahoe evidence remain open.
+
+## D353 — Chunk resource evidence stays threshold-free (Aug 2026)
+
+**Context:** D351 added a concrete semantic-boundary candidate, but the first
+quality comparison carried no construction, memory, or correction-cost
+evidence. Comparing one timing from a warm process would mix model preparation,
+candidate construction, indexing, and serving lifecycles. It would also invite
+a product or performance verdict from one synthetic corpus on one Tahoe-family
+development host. Correction publication fences, representation-only text
+changes, topology changes, and structural split/merge operations exercise
+different invalidation behavior and must remain distinguishable.
+
+**Decision:** add a CLI-only, content-free resource/correction observation for
+the segment source control, `speaker-turn-v1`, `conversation-window-v1`, and
+the dynamic `semantic-v1.<proposal-sha256>` candidate. One fresh process owns
+one role. Concrete Apple model construction happens before measurement and
+never requests asset downloads; the measured construction lifecycle begins at
+candidate derivation and ends before any persistent index write or query. It
+reports wall time, process CPU, baseline/peak/ending physical footprint,
+resulting unit/source/turn counts, and semantic boundary counters. It never
+emits transcript text, meeting/source/unit identities, vectors, model names,
+queries, or paths.
+
+The correction matrix rebuilds only one deterministic meeting and records
+construction cost plus retained, upsert, and removed unit counts for publication
+fences, Unicode/whitespace-equivalent text, replacement text, actor and language
+changes, and structural split/merge. Semantic vector calls remain separate from
+delta upserts because this benchmark candidate has no incremental vector cache
+or product writer. The clean orchestrator binds observations to fixture digest,
+source commit, Release build, toolchain digest, explicit host profile, runtime
+OS, hardware shape, and dynamic adapter. It rotates all four roles across three
+to five fresh processes, requires exact structural agreement while retaining
+raw timing samples, publishes owner-only non-overwriting artifacts, and leaves
+candidate selection and performance `not-evaluated`. No numeric pass threshold
+is derived.
+
+**Consequences:** the canonical public-synthetic-v2 corpus produces 120
+complete turns but zero baseline semantic vector calls: every turn either
+contains mixed English/Spanish source metadata or carries the explicit mixed
+sentinel, so the partitioned candidate correctly refuses cross-space cosine.
+The clean receipt must therefore be `blocked` for semantic resource coverage
+rather than laundering model-load footprint into vector-construction evidence.
+The matrix still characterizes deterministic unit and correction invalidation
+mechanics for every role. A separate public, truthful bilingual resource fixture
+with homogeneous complete turns, plus physical Sequoia and independent Tahoe
+hosts and owner-reviewed private evidence, is required before resource review.
+This decision changes no app composition, StorageKit schema, semantic writer,
+Ask/Library serving path, product default, threshold, or engine authority.
+
+## D354 — Bilingual semantic resource coverage uses a separate warm fixture (Aug 2026)
+
+**Context:** D353 correctly blocked semantic resource review because the judged
+Ask quality fixture has no homogeneous complete turns. Rewriting that fixture
+to make a resource benchmark pass would silently change the multilingual
+quality corpus. D353 also constructed the two Apple sentence-embedding objects
+before sampling, but its zero-vector corpus never exercised either language
+path. A runtime that performs meaningful work on first `vector(for:)` could
+therefore place first-use cost inside the measured candidate stage once a new
+fixture reached those paths.
+
+**Decision:** keep `public-synthetic-v2` unchanged and add a separate canonical
+`public-bilingual-homogeneous-v1` resource fixture. Its deterministic generator
+owns 60 meetings, 480 sources, and 240 complete two-source turns: 120 English
+and 120 Spanish. Four distinct actors per meeting preserve every D353
+correction scenario. The verifier requires the exact public generation and
+rejects duplicate JSON keys, unknown fields, repeated identities, meeting/order
+drift, unsafe bounds, and mixed-language turns. The CLI owns a separate bounded
+Swift loader rather than importing quality-query semantics into resource work.
+
+Version the observation and receipt to schema 2. The semantic role admits the
+proposal and validates one fixed public-synthetic English vector and one fixed
+public-synthetic Spanish vector before any resource sample. The warmup phrases
+are not fixture text; preparation counts are content-free and nonsemantic roles
+must report zero. Baseline footprint includes the prepared runtime while first
+model use remains outside incremental construction samples. The collector binds
+the exact fixture generation and homogeneous-language counts, rejects duplicate
+or nonstandard observation JSON and cross-role host drift, derives the fixture
+digest from the exact byte snapshot accepted by the verifier, rechecks clean
+source after compilation and before publication, and blocks any semantic
+construction count below all 240 turns. Complete coverage yields
+`review-required`, not `pass`; no timing floor or cross-engine ratio is added.
+
+**Consequences:** public resource characterization can now exercise both
+language-partitioned vector spaces without weakening quality provenance or
+prewarming the actual measured turns. Schema-1 D353 artifacts remain historical
+and cannot mix with schema-2 evidence. A `review-required` receipt proves only a
+complete, warm, content-free one-host construction/correction matrix. It does
+not prove model quality, performance superiority, private-corpus behavior,
+physical Sequoia, independent Tahoe hardware, cross-host stability, persistent
+indexing, serving, or product acceptance. The app, StorageKit, Ask, Library,
+semantic maintenance, segment default, provisional thresholds, and engine
+authority remain unchanged.
+
+## D355 — Nemotron Latin remains a pinned non-serving live challenger (Aug 2026)
+
+**Context:** `bench-live` already gives live engines the same real-time pacing,
+finalization-lag, WER/CER, and JSON evidence boundary, but Parakeet had no
+executable open-model challenger. FluidAudio 0.15.5 now exposes a multilingual
+Nemotron streaming manager and an upstream Latin 1120 ms CoreML build. Importing
+the whole repository would add unused preprocessors and decoder variants, a
+moving branch would make later evidence irreproducible, timestamp-based delta
+deduplication can drop RNN-T tokens that share a time, and placing an
+unqualified candidate in app composition would turn upstream claims into a
+product decision. Its OpenMDW-1.1 terms also require owner review before
+distribution policy can be accepted.
+
+**Decision:** add one research-only `ModelCatalog.nemotronLatin1120` descriptor
+pinned to exact revision `1a41b75758b0337ff67db7d5408280aaaf23074e` and ten
+individually sized and SHA-256-pinned artifacts: encoder, fused decoder/joint,
+metadata, and tokenizer. FluidAudio's native Swift mel path and fused B1 decode
+make all other repository artifacts inapplicable. Add
+`NemotronLatin1120Engine`, which preloads one immutable shared model set and
+creates all converter, cache, prediction, and decoder state per stream. The
+adapter accepts only an explicit English or Spanish hint, rejects vocabulary
+prompts it cannot honor, validates finite positive PCM and finite monotonic
+token intervals, consumes cumulative timings with an integer cursor, finalizes
+once, and cleans up on success, failure, or cancellation. The shared live
+benchmark must propagate engine/file errors rather than score or write a
+partial hypothesis; it rejects invalid duration/audio, cancels and drains its
+real-time feeder on error, and fails if an engine ends before input completion.
+
+Expose the candidate only as the exact opt-in CLI value
+`bench-live --engine nemotron-latin-1120`. Validate its hints before model
+download, then reuse the existing reference and JSON harness unchanged.
+`ModelCatalog.recommended(for: .liveTranscription)` continues to return
+Parakeet, and the macOS app, recording flow, scheduler, residency ledger,
+Settings model UI, and durable recovery do not reference Nemotron. Gated
+real-model coverage requires a separately installed verified model and explicit
+environment opt-in; ordinary tests and XCUITest never download it.
+
+**Consequences:** Portavoz now has reproducible challenger plumbing and unit
+ratchets for artifact scope, default routing, language/capability admission,
+stable delta projection, malformed model output, and final deduplication. It
+does not yet have a Nemotron Portavoz quality result, model-residency/thermal
+result, physical Sequoia/Tahoe result, code-switching acceptance, or approved
+OpenMDW redistribution/attribution decision. The descriptor's rounded 0.02
+real-time factor reflects an upstream machine-dependent aggregate and is never
+Portavoz evidence. Parakeet remains the live product authority unless the
+owner-reviewed bilingual matrix wins within the existing D7/D137 latency and
+resource budgets and the license review is explicitly accepted.
+
+## D356 — Legacy CLI input is bounded before side effects and capture tasks drain (Aug 2026)
+
+**Context:** the original development CLI commands parsed numbers with
+`Int`/`Float`/`Double` plus a fallback to the current default. Malformed values
+therefore looked successful, while negative recording or benchmark durations
+could later trap when converted to `UInt64`. Negative FTS corpus dimensions
+could trap in ranges or allocation, their product could overflow, and a
+negative Ask limit could behave as an effectively unbounded request. The
+recording and concurrent M2 harnesses also created unstructured work whose
+cancellation and startup-failure ownership was incomplete. Newer evidence
+commands already have strict typed option structs, but importing another direct
+argument-parser dependency solely for these internal commands would not repair
+their capture lifetimes.
+
+**Decision:** retain the small hand-written development dispatcher and add one
+shared throwing value reader for its seven legacy commands. It rejects missing
+or empty strings, a following option in place of a value, malformed and
+non-finite numbers, and values outside explicit closed bounds before any model,
+database, capture, file, or corpus work begins. Durations are 1 through 86,400
+seconds, Ask limits 1 through 50, process IDs positive `pid_t` values,
+diarization thresholds strictly between zero and one, DER collars zero through
+60 seconds, meetings 1 through 100,000, and segments per meeting 1 through
+10,000. FTS corpus size uses checked multiplication and has a separate
+1,000,000-segment ceiling.
+
+Use clock durations with `Task.sleep(for:)` rather than converting unchecked
+user input to nanoseconds. The recording command finishes every channel stream
+and awaits each live transcription; failure or cancellation first stops
+capture, then cancels and drains those jobs. The M2 harness creates its batch
+task only after microphone startup succeeds. Its cancellation path stops the
+microphone, finishes the feed, cancels the feeder/consumer and batch work, and
+awaits both top-level jobs. Its successful measurement still drains the live
+feed and waits for the already-running batch pass so the acceptance report does
+not change semantics.
+
+**Consequences:** invalid legacy options fail closed instead of selecting a
+default, trapping in a numeric conversion, or allocating an attacker-sized
+synthetic corpus. Returning from a cancelled capture command no longer means
+owned capture/transcription work may still be running. The helper is not a
+promise that the development CLI has a stable public argument ABI, and this
+decision does not change the app, MCP protocol, production schedulers, model
+selection, or product behavior. Real microphone, process-tap, and concurrent
+model evidence remains hardware- and permission-dependent; unit and source
+ratchets cannot certify those field conditions.
+
+## D357 — Existing encrypted voice data requires explicit recovery (Aug 2026)
+
+**Context:** the local voiceprint and remembered-participant gallery are
+biometric data split between AES-GCM ciphertext and a device-only Keychain key.
+Their read paths treated an existing file with a missing key as absent or empty,
+and gallery mutations additionally converted every decrypt, authentication, or
+decode failure into an empty collection. A later enrollment, remember, or
+remove action could therefore create a replacement key and overwrite or delete
+the only encrypted identity evidence. Both stores also force-unwrapped the
+sealed representation. Settings swallowed the user's own status failure, and
+the remembered-voices view attached its initial load to a conditional group
+that could render no child, so neither the gallery nor its failure was
+guaranteed to appear.
+
+**Decision:** use one shared storage boundary for both encrypted voice stores.
+If ciphertext already exists, key creation is forbidden: missing and malformed
+key material are typed failures, and unreadable ciphertext, authentication, or
+decoding failures propagate unchanged. Every gallery mutation must decrypt and
+decode the authoritative collection before constructing a replacement. Guard
+the AES-GCM combined representation rather than force-unwrapping it. Only the
+existing explicit delete/reset actions may remove the unreadable file and key;
+after that boundary, a fresh key and enrollment/gallery are allowed.
+
+Settings must present unreadable own-voice and gallery state without claiming
+that anything changed. It offers a separate retry and explicit destructive
+reset, retains any already verified gallery rows on reload failure, and renders
+an initial loading anchor so the first asynchronous read always starts. The
+deterministic unavailable fixture is conjunctively gated by `-use-temp-store`;
+it can exercise the real Settings journey but cannot inspect or mutate host
+Keychain or biometric files.
+
+**Consequences:** losing or corrupting Keychain material no longer authorizes
+silent biometric replacement, and corrupt ciphertext can no longer become an
+empty gallery during mutation. The user must deliberately discard unreadable
+identity state before reenrolling, because Portavoz cannot recover plaintext
+without the original key. This changes neither voice matching, thresholds,
+automatic-name admission, synchronization policy, nor model lifetime. Unit and
+real-app automation prove fail-closed preservation and recovery presentation;
+they do not prove a real Keychain-reset journey, recover lost biometric data,
+or replace physical Sequoia/Tahoe and VoiceOver evidence.
+
+## D358 — Encrypted voice identity mutations are serialized across processes (Aug 2026)
+
+**Context:** D357 made each encrypted read fail closed but did not make a
+multi-step mutation indivisible. Two `VoiceGallery` values could both decrypt
+the same collection and atomically replace it in succession, silently losing
+one newly remembered participant. An own-voice save could also cross a delete
+between its file and Keychain operations and leave ciphertext without its key.
+App adapters execute these synchronous capabilities on independent utility
+tasks, and the stable app, Dev app, and CLI may share the same local identity
+root. A Swift actor or in-memory mutex would protect only one instance/process;
+`Synchronization.Mutex` additionally requires macOS 15 while the package still
+compiles for macOS 14.4.
+
+**Decision:** guard each encrypted identity payload with a persistent,
+content-free sidecar (`voiceprint.lock` or `voice-gallery.lock`) and hold one
+exclusive BSD `flock` lease across the complete authoritative transaction:
+file-presence recheck, Keychain read/create/delete, decrypt/decode,
+read-modify-write, encryption and atomic replacement, or payload deletion.
+Open the sidecar with `O_CLOEXEC | O_NOFOLLOW`, force mode `0600`, retry
+`EINTR`, and fail before touching identity state when open, permission, or lock
+acquisition fails. The sidecar remains after explicit reset so reset and save
+cannot cross. A public `exists` property remains only a momentary UI/test
+snapshot and is never mutation authority.
+
+Keep the capability API synchronous and the existing app adapters on their
+utility executor. Once a transaction has been admitted, caller cancellation
+waits for that short file/Keychain boundary rather than splitting it. The file
+descriptor releases the advisory lock on scope exit, thrown error, or process
+termination.
+
+**Consequences:** gallery additions/removals are linearizable per payload even
+across separately constructed stores and processes, while own-voice save/load/
+delete cannot interleave their ciphertext and key halves. Independent files do
+not block each other, the lock stores no biometric material, and no macOS
+15-only synchronization API raises the deployment floor. Deterministic tests
+hold one store inside the secret boundary and prove a contender cannot enter,
+then verify both gallery updates survive and save-then-delete leaves neither
+file nor key. They also verify empty mode-`0600` sidecars and fail-closed
+symlink handling. Automation does not replace a physical stable/Dev/CLI
+abrupt-termination exercise on Sequoia and Tahoe. BSD locking is advisory, so
+a still-running pre-D358 process does not cooperate; mixed-version exclusion
+remains an operational constraint rather than a data-migration guarantee.
+
+## D359 — Verified non-failed Skill receipts may reopen their exact source (Aug 2026)
+
+**Context:** the Skills control center could inspect every causal execution
+receipt, revoke a run still waiting for handoff, and return a failed local run
+to a fresh recovery review. A succeeded, executing, waiting, or cancelled
+receipt still became a dead-end even when schema v41 retained a current exact
+meeting or commitment owner. Reusing failed-run recovery for this broader
+journey would incorrectly make historical evidence depend on current pause or
+enablement policy, while resolving subjects in SwiftUI would expose authority
+and duplicate the existing inert navigation boundary.
+
+**Decision:** classify source context independently from failed-run recovery.
+After replaying the bounded causal audit, a non-failed receipt may expose a
+meeting or commitment route only when its current subject is valid, its owner
+still exists, and its Skill identity, catalogue version, availability, and
+subject kind still match. Calendar receipts remain resident menu-bar guidance
+because public SwiftUI has no supported `MenuBarExtra` opener. Historical
+source review deliberately ignores global pause and individual disablement;
+failed receipts retain D341 recovery policy, including external/destructive
+verification-only behavior.
+
+Resolve the action through a proposal-UUID-only ApplicationKit use case that
+depends on the content-free audit-reading port, not execution policy. It may
+return only the existing inert `SkillOfferReviewDestination` and may not
+confirm, claim, begin, settle, retry, or perform an effect. Settings generalizes
+its weak-window source/recovery bridge but still receives no subject, offer key,
+idempotency key, arguments, preview, destination content, result, or effect
+port. A failed route keeps the receipt, causal evidence, independent Waiting
+revocation, and a route-only retry.
+
+**Consequences:** existing execution evidence can lead back to the exact place
+that explains it even when future Skill execution is paused, without turning
+Settings into an execution surface. Deleted or legacy subjects, stale catalogue
+versions, mismatched kinds, malformed histories, failed receipts on the general
+route, and calendar subjects without a public opener fail closed. Deterministic
+unit and bilingual real-app tests cover successful and failed routing and prove
+the execution history is unchanged; physical VoiceOver, Sequoia, separate-
+hardware Tahoe, and resident menu-bar interaction remain field evidence.
+
+## D360 — Re-admit an unsatisfied graph profile without inventing authority (Aug 2026)
+
+**Context:** the graph maintenance operation fingerprint deliberately combines
+kind, target profile, and authoritative source generation. That makes duplicate
+admission idempotent, but it also made one binary-downgrade sequence terminal:
+after canonical → alternate → canonical at an unchanged source generation, the
+second canonical admission found its old `succeeded` row, claim found no
+`pending` work, and the projection remained unavailable until an unrelated
+authority mutation created another operation fingerprint. A cancelled target
+could stall the same way. Advancing source generation for a profile request
+would falsely describe derived policy as authority; deleting the old job or
+adding a random operation identity would discard deterministic idempotency.
+
+**Decision:** keep the existing operation fingerprint and make readmission a
+narrow graph-only scheduler policy. Inside the same admission transaction that
+cancels obsolete pending work, reload and fully validate the exact persisted
+job. If its state is `succeeded` or `cancelled` and the current projection still
+requires that target — because its active profile differs or invalidation rows
+remain — move the same row back to `pending`. Preserve job ID, operation
+fingerprint, target profile, source generation, and creation time; reset attempt
+to zero, apply the current bounded maximum, and clear prior scheduling, lease,
+error, start, and finish state. `pending` and `running` jobs are not rewritten,
+and `failed` remains terminal so repeated profile selection cannot bypass the
+bounded failure policy. Semantic maintenance retains its original no-readmit
+policy.
+
+The first profile-reset batch clears all disposable edge tables, including the
+later decision-topic family, then reseeds every authority scope under the
+existing lease/publication fence. No schema migration, authority write, source-
+generation advance, polling loop, graph engine, answer composition, sync field,
+CLI, MCP, or UI control is added.
+
+**Consequences:** completed and cancelled graph targets recover deterministically
+across repeated same-generation profile transitions while keeping one exact
+durable operation identity. Checkpoint/resume, expired-owner recovery,
+capture-yielding batches, snapshot fail-closure, and failure bounds are
+unchanged. Focused projection tests prove completed and cancelled readmission
+plus terminal-failure exclusion; the always-on scale invariant now resets
+alternate → canonical and compares all
+authority-keyed edge sets, including decision-topic aboutness. Released Ask and
+field-evidence limits remain separate.
+
+## D361 — Release one exact graph query before natural-language inference (Aug 2026)
+
+**Context:** all six Meeting Memory Graph jobs crossed public Core, Storage,
+projection, and ApplicationKit boundaries, but no released query surface used
+them. Free-form extraction would have needed to guess a job and possibly a
+person alias before the user could verify identity. It would also have coupled
+the first graph result to model availability even though the exact typed facts
+and source evidence already existed. Foundation Models is unavailable on
+Sequoia and may be unavailable by policy or setup on Tahoe.
+
+**Decision:** add a separate **By person** surface to the full Ask window rather
+than changing free-form Ask. Search the existing protected canonical-person
+SQLite catalogue with a 21-row request, display at most 20 rows plus overflow,
+and accept only one exact currently displayed `PersonID` selected by the user.
+Do not parse question text, infer aliases, merge identities, or fall back to a
+nearby person.
+
+Pass that identity directly to `LoadPersonCommitments` with its maximum
+100-fact bound. Before presentation, validate the complete page through
+`AskGraphFactSynthesisPage` and require every row to be an active
+person-to-commitment relationship whose subject is the selection and whose
+object matches its commitment ID. Render the typed fact directly with
+truncation and omission disclosure; every source action reuses the exact
+meeting-and-timestamp route. Keep canonical-person and commitment tasks under
+independent per-window cancellation and generation fences. A temporary-store
+XCUITest fixture may project one real disposable confirmed event because the
+background projector is deliberately disabled for temporary stores.
+
+**Consequences:** one of six graph jobs now has a released, source-backed,
+identity-safe UI without Foundation Models on Sequoia or Tahoe. The graph-aware
+answer bundle, exact alias-filter boundary, free-form Ask, command palette,
+CLI, MCP, and meeting briefs remain unchanged and transcript-only. The other
+five dedicated job surfaces, natural-language extraction, private evidence,
+sync/export, telemetry, physical VoiceOver, clean-install Sequoia, and
+separate-hardware Tahoe validation remain open. This decision does not create
+new graph authority, write user data, select another graph engine, or claim
+private-corpus answer quality.
+
+## D362 — Release current decisions behind one exact topic selection (Aug 2026)
+
+**Context:** D361 proved the first identity-safe graph consumer through a
+canonical person selector, while the roadmap still prioritized topic/history
+before any free-form graph inference. `LoadDecisionHistory` already served
+current confirmed decisions for one exact topic family, but the only public
+topic lookup was exact-alias authority and the broad linkable-topic read would
+hydrate the full active catalogue. Reusing either directly for typeahead would
+mix mutation semantics with presentation or introduce an unbounded Swift read.
+Guessing a topic from question prose would recreate the ambiguity D361 avoided.
+
+**Decision:** add a read-only `LoadConfirmedTopicCatalog` ApplicationKit
+boundary with a 1...50 result bound and 120-character normalized-query bound.
+Storage searches active normalized aliases, escapes literal wildcard input, and
+uses one recursive SQLite CTE to resolve matched merged children to distinct
+live roots before stable ordering, limiting, and Swift hydration. Empty input
+returns only bounded live roots. Catalogue text remains discovery metadata and
+never authorizes a fact; full Ask accepts only one exact currently displayed
+`TopicID` selected by the user.
+
+Add **By topic** as a separate full-Ask surface. Pass that exact identity to
+`LoadDecisionHistory` with its existing 100-fact maximum. Before presentation,
+validate the complete page through `AskGraphFactSynthesisPage` and require every
+row to be a confirmed decision-about-topic relationship whose object and live
+label match the selection and whose primary evidence exists. Keep catalogue and
+decision tasks under independent per-window cancellation and generation fences;
+oversized, duplicate, merged, malformed, wrong-topic, or incomplete responses
+fail closed. Reuse the existing exact meeting-and-timestamp evidence route.
+
+**Consequences:** two of six graph jobs now have released source-backed,
+identity-safe SwiftUI consumers without Foundation Models on Sequoia or Tahoe.
+A deterministic temporary-store fixture confirms a real summary decision about
+a real topic, projects the disposable graph, and bilingual XCUITest follows its
+evidence. No schema, authority write from the explorer, FTS table, graph engine,
+model prompt, sync/export field, CLI, MCP, palette, brief, or free-form Ask
+behavior is added. The substring catalogue returns and hydrates only a bounded
+page, but SQLite may still scan active aliases for a leading-wildcard match;
+measure a materially larger topic catalogue before selecting FTS, prefix-only,
+or another index. The other four dedicated jobs, private evidence, telemetry,
+physical VoiceOver, clean-install Sequoia, and separate-hardware Tahoe remain
+open.
+
+## D363 — Release first confirmed discussion inside exact topic memory (Aug 2026)
+
+**Context:** D362 already established a bounded, alias-aware topic catalogue and
+required the user to choose one canonical live `TopicID`. Four dedicated graph
+jobs remained without released presentation. `LoadTopicFirstDiscussion` was the
+next coherent topic journey because its authoritative earliest occurrence,
+source evidence, typed abstention, and six-case canonical conformance were
+already implemented. Adding another top-level Ask surface would duplicate topic
+identity selection, while calling the result “first ever” would overstate an
+explicit-confirmation boundary.
+
+**Decision:** extend the existing **By topic** surface with a subordinate
+**Current decisions / First confirmed discussion** selector. Pass only the
+user-selected `TopicID` to `LoadTopicFirstDiscussion`; topic search text remains
+discovery metadata and no model or natural-language resolver chooses authority.
+Keep one generation-fenced fact task shared by the two jobs so changing the job,
+topic, Ask surface, or window cancels and rejects late results.
+
+Admit a first-discussion result only when `AskGraphFactSynthesisPage` validates
+it and the page is complete: exactly one confirmed topic-to-meeting fact for the
+selected topic, exactly one current primary source, matching object/source
+meeting identities and titles, and an occurrence timestamp equal to meeting
+start plus the source segment offset. Any extra fact/source, pagination,
+omission, entity mismatch, or temporal mismatch fails closed. Render the exact
+meeting, date, and source navigation with the narrower phrase **first confirmed
+discussion**.
+
+**Consequences:** three of six dedicated graph jobs now have released,
+source-backed, identity-safe SwiftUI consumers without Foundation Models or a
+Tahoe-only API. The existing disposable confirmation fixture can exercise the
+new path through independent English and Spanish XCUITest and exact evidence
+seek without mutating storage authority. No schema, new search index, graph
+engine, model prompt, sync/export field, CLI, MCP, palette, brief, or free-form
+Ask behavior is added. Active blockers still need an exact commitment selector;
+decision conflicts and change-since still need bounded decision/meeting anchors.
+Private evidence, telemetry, physical VoiceOver, clean-install Sequoia, and
+separate-hardware Tahoe validation remain open.
+
+## D364 — Release confirmed decision changes inside exact topic memory (Aug 2026)
+
+**Context:** D362–D363 already give one canonical live `TopicID` an exact
+current-decision and first-confirmed-discussion journey. Three dedicated graph
+jobs remained without presentation. `LoadDecisionConflicts` was the next most
+cohesive consumer because it needs only that same exact topic identity and its
+source-backed reader, while active blockers still need an exact commitment
+selector and change-since needs a second exact meeting anchor. Adding another
+top-level Ask surface or inferring a topic from prose would duplicate selection
+or weaken authority.
+
+**Decision:** add **Decision changes** as the third subordinate **By topic**
+job. Pass only the selected `TopicID` and the existing 100-fact maximum to
+`LoadDecisionConflicts`. Keep the single topic fact task and generation fence,
+so changing the job, topic, Ask surface, or window cancels the read and rejects
+late results. Topic labels remain discovery metadata; no model chooses graph
+authority.
+
+Before presentation, require `AskGraphFactSynthesisPage` to validate the page
+and every row to be one confirmed decision-relationship event with distinct
+successor and replaced decision identities, nonempty statements, at least two
+exact current source segments, and one exact primary source. Render the
+successor as **Changed to**, the prior statement as **Replaced**, retain all
+evidence, and place the successor's primary source first for navigation.
+Preserve pagination and stale/unavailable omission disclosure. Treat
+`unsupportedConflict` as an honest no-confirmed-change state, not a vague query
+failure.
+
+**Consequences:** four of six dedicated graph jobs now have released,
+source-backed, identity-safe SwiftUI consumers without Foundation Models or a
+Tahoe-only API. A deterministic temporary-store fixture confirms an unlinked
+earlier decision, links the successor to the exact topic, confirms their
+supersession, projects the real disposable graph, and lets independent English
+and Spanish XCUITest verify both statements, both sources, and the successor
+seek. No schema, authority write from the explorer, search index, graph engine,
+model prompt, sync/export field, CLI, MCP, palette, brief, or free-form Ask
+behavior is added. Exact active blockers, exact topic-plus-meeting change-since,
+private evidence, telemetry, physical VoiceOver, clean-install Sequoia, and
+separate-hardware Tahoe validation remain open.
+
+## D365 — Release active blockers behind one exact current commitment (Aug 2026)
+
+**Context:** D361 already lets a user select one canonical `PersonID` and load
+that person's current confirmed commitments. After D364, two dedicated graph
+jobs remained without presentation. `LoadCommitmentBlockers` already accepted
+an exact `CommitmentID`, returned only active source-backed causal authority,
+and needed no new identity catalogue; change-since still needs a separately
+designed exact meeting-anchor selector. Inferring either a commitment or
+causality from prose would weaken the explicit authority model.
+
+**Decision:** add **Show active blockers** to each validated commitment card in
+**By person**. Start the bounded `CommitmentBlockerQuery` only when the exact
+identity is still present in the current person-commitment result. Give the
+nested read its own weak task and generation fence; changing person, reloading
+commitments, selecting another commitment, changing Ask surface, or closing the
+window cancels and rejects late publication.
+
+Before presentation, require `AskGraphFactSynthesisPage` to validate the page
+and every row to be an active decision-to-commitment fact whose object identity
+and title equal the selected current commitment. Preserve all exact sources and
+present the fact's blocker-confirmation source first. Do not require two
+citations: storage legitimately deduplicates evidence when commitment and
+blocker authority share one segment, but that exact primary blocker segment
+remains mandatory. Render unsupported causality as an honest no-active-blocker
+state, distinct from malformed evidence and operational failure.
+
+**Consequences:** five of six dedicated graph jobs now have released,
+source-backed, identity-safe SwiftUI consumers without Foundation Models or a
+Tahoe-only API. A temporary-store-only fixture confirms the commitment, a
+separate Spanish decision, and their causal blocker, then projects the real
+disposable graph. Independent English and Spanish XCUITest verify both exact
+sources and follow the blocker primary source to 00:04 using synthetic audio.
+No schema, authority write from the explorer, inferred causality, search index,
+graph engine, model prompt, sync/export field, CLI, MCP, palette, brief, or
+free-form Ask behavior is added. Exact topic-plus-meeting change-since, private
+evidence, telemetry, physical VoiceOver, clean-install Sequoia, and separate-
+hardware Tahoe validation remain open.
+
+## D366 — Release change-since behind exact topic and meeting selection (Aug 2026)
+
+**Context:** D361–D365 released five identity-safe graph consumers. The final
+dedicated job, `LoadChangeSince`, already required one exact `TopicID` and one
+exact `sinceMeetingID`, but its result does not echo the temporal baseline.
+Inferring “last meeting” from question prose or restricting the anchor to a
+topic-related meeting would add unsupported authority. Adding its catalogue and
+cards directly to the already large topic files would also create avoidable
+presentation and testing risk.
+
+**Decision:** add **Changes since** as the fourth subordinate **By topic** job.
+Reuse `LoadAutomationEntities.meetings` as a bounded, newest-first, title-only
+discovery catalogue: request 21, display 20 plus overflow, and allow only a
+currently visible exact `MeetingID` to enter `ChangeSinceQuery` beside the
+already selected exact `TopicID`. Accept any live meeting as the baseline. Show
+`endedAt` when present and otherwise `startedAt`, exactly matching StorageKit's
+temporal contract; reject invalid aggregate dates and catalogue shape.
+
+Own meeting discovery in a focused per-window weak cancellable model. Changing
+topic, job, meeting query, or exact anchor clears facts and cancels the request;
+publication must still match topic, anchor, job, and generation because the
+result cannot validate the baseline itself. Reuse one strict decision-
+relationship preparation and rendering boundary for decision conflicts and
+change-since, preserving distinct endpoints, at least two exact current
+sources, the successor primary source, and typed page disclosure. Replace the
+three-way segmented job picker with a native radio group so four localized jobs
+remain legible and follow standard macOS accessibility behavior.
+
+**Consequences:** all six dedicated graph jobs now have released, source-backed,
+identity-safe SwiftUI consumers without Foundation Models or a Tahoe-only API.
+The existing temporary fixture already contains an exact earlier **Planning
+baseline** meeting and later confirmed replacement, so bilingual XCUITest can
+select the baseline, verify both Spanish statements and both sources, and seek
+the successor at 00:03 without new schema or user data. No graph authority,
+natural-language inference, search engine, model prompt, sync/export field,
+CLI, MCP, palette, brief, or free-form Ask behavior is added. Private owner-
+reviewed evidence, telemetry, physical VoiceOver, clean-install Sequoia, and
+separate-hardware Tahoe validation remain open.
+
+## D367 — Observe exact graph query timing without content (Aug 2026)
+
+**Context:** D361–D366 released identity-safe product consumers for all six
+exact Meeting Memory Graph jobs. The relational harness supplies deterministic
+synthetic scale evidence, but the live product had no per-job timing boundary
+from which to collect supported-host receipts. Reusing the general Ask pipeline
+taxonomy would mislabel direct exact reads and could encourage question or
+evidence payloads. Starting timing before alias resolution would also record an
+ambiguous identity lookup as an authorized person query.
+
+**Decision:** define a separate ApplicationKit observation port with a closed
+six-job taxonomy: commitment blockers, topic first discussion, person
+commitments, decision conflicts, change since, and decision history. A trace
+contains only a random process-local UUID and its job. Completion contains only
+facts, abstained, cancelled, or failed. The disabled adapter remains the
+default.
+
+Measure the repository boundary inside each exact use case. For alias-based
+person commitments, start only after exactly one candidate resolves. Compose
+the shared graph-fact workflow from those measured use cases rather than adding
+an outer span. The app injects one process-scoped `OSSignposter` adapter whose
+interval messages expose only job and outcome and whose observer lifetime uses
+an explicit removable token.
+
+**Consequences:** Instruments and controlled probes can distinguish timing and
+terminal behavior for every released exact graph read without logging meeting,
+person, topic, commitment, decision, question, answer, source, count,
+abstention-reason, or error material. Nothing is persisted or sent over a
+network. This adds no UI, graph authority, schema, query semantics, model, or
+performance baseline; accepted Sequoia/Tahoe receipts and physical VoiceOver,
+private-corpus, sync/export, CLI/MCP, and broader graph-answer evidence remain
+external gates.
+
+## D368 — Collect exact graph product timing without user content (Aug 2026)
+
+**Context:** D367 created the only content-free timing seam for the six released
+exact graph reads, but signposts alone are not reproducible field evidence. A
+manual Instruments capture could mix background work, use a private library,
+omit build provenance, or silently compare different host conditions. The
+existing synthetic relational scale harness does not execute the composed app
+path.
+
+**Decision:** add one hidden process-owning app runner over the complete public
+disposable fixture. It must execute the existing six ApplicationKit use cases
+through `AppMeetingMemoryGraphQueryTelemetry`, suppress normal post-seed search
+reconciliation, perform one unmeasured warmup, and measure 5...1,000 iterations
+per job. A six-minute independent deadline prevents a hung app process.
+
+The process-local collector requires matched traces, exactly the requested
+factful samples for every closed job, arm64/AC/nominal/non-Low-Power host state,
+and the fixed public fixture generation. It emits only wall/process-CPU
+nearest-rank p50, p95, and maximum summaries plus categorical host/run metadata;
+trace and domain identities, text, evidence, domain counts, paths, and raw
+errors are structurally excluded. Files are owner-only, atomic, and
+non-replacing.
+
+The canonical script refuses a dirty worktree, requires one real Developer ID
+identity, builds and signs one isolated Release app plus its embedded frameworks
+with that same team, assigns a separate bundle identity, then collects at least
+three fresh processes. Ad-hoc signing fails closed because hardened-runtime
+library validation cannot load separately ad-hoc-signed embedded Sparkle. A
+strict duplicate-key-rejecting assembler requires contiguous runs with
+identical host and iteration evidence and binds the final receipt to the exact
+source commit, version, and build.
+
+**Consequences:** Portavoz can now produce reproducible content-free timing
+input from the actual composed graph-query path without reading a user library
+or creating a second query implementation. The collector changes no UI,
+authority, schema, model, ranking, query limit, serving behavior, or budget. One
+Tahoe machine is not Sequoia or cross-hardware evidence, and the receipt itself
+accepts no latency policy; supported-host acceptance, private owner-reviewed
+behavior, physical VoiceOver, and broader graph adoption remain separate gates.
+
+## D369 — Receipt inspection reads execution policy only when recovery needs it (Aug 2026)
+
+**Context:** D359 made non-failed receipt source review independent from pause
+and per-Skill enablement, and D341 made external/destructive failures
+verification-only. The route resolver already depended only on the content-free
+audit, but `LoadSkillReceiptInspection` still started an execution-policy read
+for every receipt before causal replay. An unrelated missing or temporarily
+unavailable policy could therefore hide verified historical evidence or the
+warning to verify an outcome outside Portavoz. It also spent one unnecessary
+database read on every normal receipt inspection.
+
+**Decision:** load one read-consistent audit first, verify its proposal identity,
+and replay the complete bounded causal chain before deriving presentation.
+Resolve non-failed recovery as unavailable, external/destructive failures as
+verification-only, and missing/legacy/stale local subjects as unavailable
+without reading execution policy. Only an otherwise-valid failed local subject
+and matching current catalogue version may request current global pause and
+per-Skill enablement. Check structured-task cancellation before the audit,
+after that optional policy read, and before publishing the inspection.
+
+Keep local recovery fail-closed: if its required policy read fails, the
+inspection remains unavailable and no recovery route appears. A temporary-store
+test adapter fails only this optional policy port; the real-app waiting-receipt
+journey proves historical source review, causal evidence, and independent
+revocation still work without consulting it. Unit tests count exact policy
+reads for non-failed, external, and local-recovery cases.
+
+**Consequences:** verified historical evidence and outcome-unknown external
+guidance no longer disappear because unrelated future-execution controls cannot
+be read, and ordinary inspection performs less I/O. Local recovery still needs
+current policy and receives no cached or optimistic authority. No schema,
+receipt payload, standing rule, confirmation, retry, adapter, transport, effect,
+or deployment-floor change is introduced. Deterministic automation exercises
+public APIs available at the macOS 14.4 floor; physical VoiceOver, Sequoia, and
+separate-hardware Tahoe behavior remain field evidence.
+
+## D370 — An unverified Skill-control mutation recovers by reading, never replaying (Aug 2026)
+
+**Context:** Skills Settings already retained the last verified snapshot and
+disabled policy controls when a mutation or its owned refresh failed, but its
+only guidance was to close and reopen Settings. The same view had a
+generation-fenced control load that could safely recover durable truth, yet no
+action exposed it from that stale state. Automatically retrying the mutation is
+not safe: the write may have committed even when its response or following read
+failed, so replay could create a duplicate or reverse a later choice.
+
+**Decision:** keep the stale snapshot visibly fail-closed and add one explicit
+**Reload controls** action. It invokes only the existing control-center read,
+never `ManageSkillControl`. A successful read adopts the durable global pause,
+per-Skill values, and selected receipt scope before re-enabling controls; a
+failed read keeps the same disabled state and retry. Recovery stays in the
+current Settings scene rather than requiring window reconstruction.
+
+Add a temporary-store-only mutation-failure argument that commits the requested
+policy write and then throws instead of returning; subsequent reads remain
+healthy. Cover the real app in both locales: the unverified toggle must not look
+committed before a read, controls must disable, reload must adopt the committed
+durable value and clear stale state, and the Skills pane must remain open. Give
+the action a stable accessibility identifier and keep its selector in the
+diff-to-UI-test catalogue. While auditing that boundary, require the older
+proposal-read failure argument to be temporary-store-only as its quality
+contract already stated.
+
+The first closure catalogue exposed an independent harness defect on a
+multi-display host: the Spanish Voice Settings journey reached a lower control,
+then XCTest tried to scroll its ancestor at a negative global coordinate and
+could not synthesize a hit point. Temporary-store windows therefore share one
+AppKit placement boundary that uses `NSScreen.screens.first`, the documented
+zero screen. It moves both the disposable primary window and real Settings
+scene and constrains Settings to the visible frame; the harness rejects a
+negative Settings anchor before continuing. Production launches never enter
+this path and keep the user's saved multi-display placement.
+
+**Consequences:** users can recover from transient or ambiguous persistence
+failures without losing context, while Portavoz never guesses whether to repeat
+a write. This adds no schema, optimistic state, background retry, confirmation,
+effect authority, adapter, consent, or standing rule. Automation exercises the
+public SwiftUI/AppKit path on the local Tahoe-family host; physical VoiceOver,
+Sequoia, and separate-hardware Tahoe behavior remain field evidence.
+
+## D371 — Skill activity expands through one bounded replacement read (Aug 2026)
+
+**Context:** every Skills activity scope used the 20-receipt application
+default even though the established request contract already clamps reads to a
+50-receipt maximum and StorageKit refuses more than 100. The pane disclosed the
+20-row window but provided no way to reach an older receipt. Loading 50 by
+default would make every scope change more expensive, while infinite scroll or
+view-owned accumulation would weaken the bounded memory and query contract.
+
+**Decision:** start every selected scope at 20. Show **Show more runs** only
+when that verified page is full, and let it replace the projection through one
+request at the existing 50-row application ceiling. The action disappears
+after expansion. Scope changes reset to 20 before loading; same-scope refreshes
+and verified policy mutations retain the selected 20-or-50 limit. Scope,
+requested limit, and load generation must all match before the view adopts a
+response. Do not add cursors, automatic prefetch, background polling, appended
+view state, receipt mutation, or a larger storage query.
+
+A temporary-store-only fixture creates 25 content-free confirmed package-export
+executions under one reusable offer with 25 distinct destination-scoped effect
+slots. The bilingual real-app test proves exactly 20 rows appear initially,
+all 25 appear only after the identified expansion action, and the action does
+not turn into repeated pagination. Pure tests pin the 20/50 transition and
+reset behavior, while the diff-to-XCUITest catalogue keeps the journey attached
+to Skills sources.
+
+**Consequences:** the panel can inspect older durable evidence without paying
+the maximum read cost for its common path or holding an unbounded receipt
+collection. No schema, index, execution authority, proposal content, standing
+rule, adapter, egress consent, or platform API changes. Automation remains
+local Tahoe-family evidence; physical VoiceOver, Sequoia, and separate-hardware
+Tahoe behavior remain field evidence.
+
+## D372 — Verified Skill activity refreshes only on explicit request (Aug 2026)
+
+**Context:** receipt state can change after the Skills pane loads because an
+already confirmed execution may begin or settle outside the Settings-owned
+mutation path. The pane refreshed after its own receipt mutation and whenever
+the user changed scope, but a verified empty or populated scope had no direct
+way to re-read durable truth. Closing Settings or changing filters is hidden
+refresh behavior; adding a timer, observer, or automatic polling owner would
+increase database work and introduce a lifetime that the read-only panel does
+not otherwise need.
+
+**Decision:** expose **Refresh activity** only for a verified empty or populated
+scope. The action invokes the existing generation-fenced control-center read
+with the current scope and current 20-or-50 requested limit. It publishes the
+ordinary loading state, which hides the old rows immediately, and adopts a
+response only while scope, limit, and generation still match. Loading and
+unavailable states expose no competing refresh; unavailable retains its
+existing exact retry. The action does not reload proposals, mutate a receipt,
+confirm or execute a Skill, install a timer, or observe the database.
+
+The bilingual real-app fixture reuses the 25 confirmed package-export receipts
+and the established delayed non-Recent read. It selects Waiting, expands from
+20 to all 25 rows, activates the identified refresh, observes the loading state
+with no stale rows, and verifies that all 25 return under the retained 50-row
+window. Pure presentation tests admit refresh only for verified empty/receipt
+states, and source ratchets keep the action read-only and timer-free.
+
+**Consequences:** users can reconcile a long-lived Skills pane with current
+durable execution state without changing filters, losing their bounded history
+position, or paying an automatic polling cost. No schema, index, scheduler,
+observer, background task, receipt mutation, execution authority, adapter,
+standing rule, egress consent, or deployment-floor change is introduced.
+Automation remains local Tahoe-family evidence; physical VoiceOver, Sequoia,
+separate-hardware Tahoe, and cross-process timing remain field evidence.
+
+## D373 — Skill activity filters one exact catalogue identity at query time (Aug 2026)
+
+**Context:** lifecycle scopes and bounded 20-to-50 expansion made the central
+activity history useful, but a mixed history still required users to scan every
+visible Skill. Filtering only the 20 or 50 rows already loaded by the view would
+be incorrect: a selected Skill could have older matching receipts beyond that
+window, producing a false empty result. Loading every receipt before filtering
+would violate the existing bounded query and memory contract.
+
+**Decision:** add an optional exact catalogue Skill identity to the
+control-center request and returned snapshot. Storage composes that identity
+with Recent, Waiting, Attention, or Completed before ordering and limiting, so
+the result remains a bounded database query rather than a view-owned subset.
+Schema v42 adds four `(skillID, updatedAt DESC, proposalID ASC)` indexes: one
+complete newest-first index and three state-scoped partial indexes mirroring
+v39. Unfiltered reads retain their v35/v39 indexes. The use case rejects a
+non-catalogue filter before starting either store read, and Storage rejects
+empty, padded, or oversized identities fail closed.
+
+Changing scope or Skill resets the requested window to 20. Same-selection
+refreshes and verified mutations preserve the current 20-or-50 window. Scope,
+Skill identity, limit, and load generation must all still match before Settings
+adopts a response; loading hides prior rows immediately. The accessible menu
+lists only currently available catalogue Skills plus **All skills**, and a
+verified empty state names the selected localized Skill. The real-app bilingual
+journey observes a delayed filter transition, exact empty and populated results,
+one 20-to-25 expansion, and reset from 50 back to 20.
+
+**Consequences:** users can inspect one Skill without false empty states,
+unbounded materialization, payload search, or background work. Each execution
+now occupies both an unfiltered and filtered complete index plus one unfiltered
+and filtered state index; the added write/disk cost is accepted for predictable
+ordered review reads and is guarded by migration and query-plan tests, not an
+unmeasured latency claim. No receipt payload, FTS lane, cursor, scheduler,
+standing rule, confirmation, execution authority, adapter, consent, or
+deployment-floor change is introduced. Automation remains local Tahoe-family
+evidence; physical VoiceOver, Sequoia, and separate-hardware Tahoe behavior
+remain field evidence.
+
+## D374 — Skill activity filters durable updates through one rolling query (Aug 2026)
+
+**Context:** lifecycle and exact-Skill filters made the bounded activity history
+useful, but users could not focus on runs that changed recently. Filtering the
+20 or 50 rows already loaded by the view would produce false empty states and
+miss older rows inside the requested period. Loading all receipts into memory
+would violate the existing bounded review contract. Current n8n and Zapier
+history surfaces also treat date filtering as a first-class review lens, while
+their replay/delete actions are not safe analogies for Portavoz's durable audit
+receipts.
+
+**Decision:** add four explicit update periods: **Any time**, **Past 24 hours**,
+**Past 7 days**, and **Past 30 days**. The application resolves the rolling
+period from an injected reference date on each explicit read and passes Storage
+only an optional inclusive absolute `updatedAt` lower bound. Storage composes
+that predicate with lifecycle scope and optional exact Skill before newest-first
+ordering and `LIMIT`. Non-finite references and cutoffs fail closed before
+materialization. The v35/v39 indexes serve time-only reads and the v42 indexes
+serve combined Skill/time reads, so the slice adds no migration.
+
+Changing scope, Skill, or period resets the requested window to 20. A refresh
+or verified mutation under the same selection preserves 20 or 50 but resolves a
+fresh rolling boundary. Scope, Skill, period, limit, and load generation must
+all still match before Settings adopts a response; loading hides stale rows.
+The accessible localized period menu and empty-state copy make the selected
+lens explicit. Pure tests cover all four period-to-cutoff mappings, inclusive
+boundary semantics, invalid-date pre-read rejection, index plans, and stale
+presentation fencing. A deterministic bilingual real-app journey covers
+20-to-25 expansion, delayed period transitions, exactly five recent rows,
+Skill/period composition, localized empty state, and reset back to 20.
+
+**Consequences:** users can narrow activity by durable last update without
+page-local filtering, unbounded materialization, or a second clock owner. The
+meaning is deliberately update time, not original execution start: a waiting,
+started, retried, settled, or revoked run belongs to the period of its latest
+durable state. No payload search, FTS lane, cursor, timer, observer, scheduler,
+replay, delete, confirmation, execution authority, standing rule, adapter,
+egress, schema, or deployment-floor change is introduced. Automation remains
+local Tahoe-family evidence; physical VoiceOver, Sequoia, and
+separate-hardware Tahoe behavior remain field evidence.
+
+## D375 — Skill activity proves continuation with one sentinel row (Aug 2026)
+
+**Context:** D371 exposed **Show more runs** whenever the initial projection
+contained 20 receipts. A full visible window did not prove that a 21st matching
+receipt existed. Exactly 20 matches therefore produced a false continuation
+promise and a redundant replacement read at 50 that returned the same rows.
+Running a separate `COUNT`, accumulating cursors, or loading all history would
+add work or weaken the bounded review contract merely to decide one affordance.
+
+**Decision:** every control-center receipt read requests exactly one row beyond
+its clamped visible limit. ApplicationKit publishes only the first 20 or 50
+receipts and records whether the bounded result contained that successor
+sentinel. Settings offers expansion only while the current window is below 50
+and the verified snapshot carries that evidence. Receipt-read failure clears
+both rows and continuation; an exactly full 20-row result has no action. The
+50-row product ceiling remains absolute even when a 51st result exists. Scope,
+exact Skill, rolling period, visible limit, and generation continue to fence
+adoption.
+
+The temporary-store boundary has a dedicated exact-20 fixture and bilingual
+real-app journey that requires 20 visible rows with no expansion action. Unit
+coverage distinguishes a full window with a successor from an exactly full
+window, proves the sentinel never becomes visible, verifies failure has no
+continuation authority, and pins the maximum StorageKit request to 51.
+Architecture ratchets require the sentinel derivation and UI consumption rather
+than the old visible-count heuristic.
+
+**Consequences:** the common query reads at most 21 rows instead of 20 and an
+expanded query at most 51 instead of 50, still through one existing indexed
+bounded read and well below StorageKit's hard limit of 100. The one-row cost
+removes a misleading control and avoids the much larger redundant reload at the
+exact-page boundary. No schema, index, `COUNT`, cursor, prefetch, timer,
+observer, scheduler, receipt mutation, execution authority, standing rule,
+adapter, egress, consent, or deployment-floor change is introduced. Automation
+remains local Tahoe-family evidence; physical VoiceOver, Sequoia, and
+separate-hardware Tahoe behavior remain field evidence.
+
+## D376 — Empty Skill activity clears only its narrowing filters (Aug 2026)
+
+**Context:** exact-Skill and update-period filters can truthfully produce an
+empty lifecycle scope. The localized empty state explained which lenses found
+nothing, but recovery required reopening one or two menus and reversing each
+selection manually. A generic retry would repeat the same empty query, while
+resetting the lifecycle scope would discard the user's actual review question.
+A permanent reset control would add noise when no narrowing filter is active.
+
+**Decision:** expose **Clear activity filters** only beside a verified empty
+result with an active exact-Skill or update-period filter. Keep it outside the
+combined empty explanation so assistive technology retains a distinct
+interactive element. Before changing state, Settings revalidates that the
+snapshot matches the selected scope, Skill, and period; has verified receipt
+authority; is empty; and has no competing load, policy mutation, or proposal
+mutation. The synchronous action clears only the exact Skill and period. It
+preserves Recent, Waiting, Attention, or Completed, and the existing
+selection-owned task resets the bounded window to 20 and performs the ordinary
+generation-fenced read. The action is absent for unfiltered empty results,
+receipt rows, loading, and unavailable history; individual menus remain
+available for changing one lens at a time.
+
+The existing bilingual composed-filter real-app journey reaches a deterministic
+empty Waiting result, activates the identified control, observes loading,
+requires the first 20 matching package runs, proves **All skills** and **Any
+time** were restored while Waiting stayed selected, and verifies the action
+disappears. It then reapplies the period and Skill filters so the prior
+composition and 20-row reset regression remain covered. Pure presentation and
+architecture tests pin the verified-empty visibility rule, exact parent guard,
+scope preservation, and localization/accessibility identifier.
+
+**Consequences:** no-match recovery is direct without turning empty state into
+a generic retry or erasing lifecycle intent. The slice adds no storage read
+shape, schema, index, clock, count, cursor, timer, observer, receipt mutation,
+execution authority, adapter, standing rule, egress consent, or deployment
+floor change. Automation remains local Tahoe-family evidence; physical
+VoiceOver, Sequoia, and separate-hardware Tahoe behavior remain field evidence.
+
+## D377 — Proposed Skills refresh only through explicit bounded review (Aug 2026)
+
+**Context:** the central Proposed projection loads when the Skills pane appears
+and after mutations the pane itself owns. A meeting, commitment, calendar, or
+policy surface can create, retire, pause, or disable an offer while a long-lived
+Settings window remains open. Reconstructing Settings reconciles the rows but
+is unnecessary friction. Polling, a timer, or another observer would add hidden
+work and a second lifecycle owner to a deliberately bounded review surface.
+Reusing the failure retry while the current snapshot is verified would falsely
+label an ordinary reconciliation as recovery from an unavailable authority.
+
+**Decision:** a verified empty or populated Proposed projection exposes one
+identified **Refresh proposed Skills** action. Settings revalidates that a
+verified proposal snapshot exists, no proposal read failed, and no proposal
+read, policy mutation, review navigation, or dismissal is in flight before it
+calls the existing `LoadSkillOfferReview` path. Receipt loading remains
+independent because it has separate authority. The existing proposal load UUID
+fences adoption and the use case retains its 100-row StorageKit/50-row
+ApplicationKit ceilings, expiry pruning, catalogue validation, and policy
+filtering.
+
+While refresh is in flight, the last verified empty or populated snapshot may
+remain visible, but one identified progress state replaces the refresh action
+and every offer action is disabled. A successful read atomically replaces the
+projection. Failure clears it and exposes only the existing unavailable **Try
+again** path; initial loading and unavailability never expose competing refresh
+authority. A temporary-store-only four-second delay makes that inert retained
+state observable in the existing bilingual real-app transition journey. Pure
+presentation and architecture tests pin visibility, fencing, identifiers, and
+reuse of the existing load.
+
+**Consequences:** users can reconcile offer truth without closing Settings or
+accepting hidden background work. This is a read-only control: it cannot create,
+dismiss, confirm, execute, or retry a Skill. No storage read shape, schema,
+index, clock, cursor, timer, observer, proposal producer, mutation, effect
+authority, standing rule, adapter, egress consent, or deployment-floor change
+is introduced. Automation remains local Tahoe-family evidence; physical
+VoiceOver, Sequoia, and separate-hardware Tahoe behavior remain field evidence.
+
+## D378 — Same-Skill proposals use content-free accessible positions (Aug 2026)
+
+**Context:** the central Proposed authority is subject-scoped and can
+legitimately contain two offers for the same Skill, for example an email recap
+for each of two meetings. Review and dismissal controls previously named only
+their action and Skill. Their durable accessibility identifiers remained unique,
+but Voice Control and VoiceOver exposed duplicate human-facing action names.
+Adding a meeting title or opaque subject identity would fix the collision by
+breaking the queue's privacy contract. Persisting another label would duplicate
+presentation state, and giving Settings execution authority remains forbidden.
+
+**Decision:** derive one failable, one-based accessibility position from each
+offer's offset in the current verified Proposed snapshot and its complete count.
+Append the localized **Proposal n of total** phrase to the row and every review,
+dismissal, retry, or resident action. Keep the random review UUID as SwiftUI
+identity; the position is presentation metadata only. The existing 50-item
+ApplicationKit ceiling bounds the compatibility array passed to `ForEach`.
+Although the current SDK gives `EnumeratedSequence` direct collection
+conformance, that conformance is available only on macOS 26; using it would
+silently raise this view above the Sequoia floor. Invalid offsets or totals
+create no row instead of publishing a false position.
+
+The disposable-store fixture creates an older second meeting with a real
+summary and reconciles both meetings through `LoadMeetingSkillOffers`, rather
+than inserting authority rows directly. Its bilingual real-app journey requires
+two email-recap offers, two review names, and two dismissal names with the same
+distinct positions over the complete eight-offer snapshot. Pure coverage pins
+negative, empty, out-of-range, and valid one-based position construction.
+
+**Consequences:** repeated offers for one Skill are addressable by localized
+assistive control names without exposing a title, transcript, preview,
+destination, recipient, argument, stable offer key, subject UUID, or durable
+list position. Ordinals may change after a refresh, dismissal, policy change,
+expiry, or execution because they truthfully describe the current verified
+snapshot; no external reference may depend on them. This adds no storage read,
+schema, index, clock, query, timer, observer, task, lifecycle owner, proposal
+mutation, execution authority, adapter, standing rule, egress consent, or
+deployment-floor change. Automation remains local Tahoe-family evidence;
+physical VoiceOver, Voice Control, Sequoia, and separate-hardware Tahoe behavior
+remain field evidence.
+
+## D379 — Freeze 0.8.0 at a finite, understandable release candidate (Aug 2026)
+
+**Context:** the Skills and Meeting Memory Graph foundations had reached six
+fixed review-first actions and six exact source-backed Ask jobs, but the rolling
+AUTO-6 sequence still selected another optional improvement after every green
+slice. That process had no product-defined stop condition. The Settings UI also
+presented the internal term **Skills** unchanged in English and Spanish without
+explaining that these are concrete suggested actions which remain inert until
+review. A user could therefore see a mature safety/control plane and still not
+know what the feature was for. Expanding the catalogue, adding standing rules,
+or inventing a visual graph would increase release risk without repairing that
+comprehension problem.
+
+**Decision:** freeze the 0.8.0 product candidate at the six currently registered
+actions and the six currently released structured graph jobs. Public copy calls
+the former **Suggested actions** / **Acciones sugeridas** and gives the Settings
+pane one stable, localized explanation: Portavoz derives review-first actions
+from meeting evidence and nothing runs until the user reviews and confirms it.
+The related catalogue, proposal, history, receipt, and recovery copy uses
+**action** consistently. Internal Swift `Skill` types, identifiers, storage
+columns, migrations, telemetry, and accessibility identifiers remain unchanged;
+this is a presentation vocabulary boundary, not a risky domain rename.
+
+No additional action kind, user-authored action, AUTO-5 standing rule, free-form
+graph synthesis, visual graph, graph database, alternate search/model authority,
+Quick Look target, iOS surface, or new launch claim enters 0.8.0. A further code
+change is admissible only when an existing release gate exposes a reproducible
+blocker inside the frozen scope.
+
+The finite exit is one exact 0.8.0 Release Candidate whose source SHA has:
+
+1. integrated hosted-CI/review evidence rather than a local-only branch;
+2. the canonical deterministic reliability receipt, required local model gate,
+   and authoritative release-host performance ledger;
+3. a Developer-ID-signed, production-CloudKit-provisioned, notarized, stapled,
+   Gatekeeper-accepted DMG and exact distribution receipt;
+4. the eight D147 physical/field packages for built-in audio and AirPods on
+   Sequoia and Tahoe, callback recovery, long call, model cold start, and mixed
+   language; and
+5. one fail-closed release-readiness scorecard reporting `PASS` for that exact
+   version, build, commit, and artifact digest.
+
+Push, pull-request integration, tag, publication, Sparkle appcast, Homebrew cask,
+and release remain separate explicit-authority operations. Other unresolved
+GAPS are either accepted limitations that constrain 0.8.0 claims or post-release
+backlog; they do not silently become implementation work.
+
+**Consequences:** the current goal now terminates at a qualified Release
+Candidate instead of continuing through an unlimited feature queue. Users get
+plain bilingual vocabulary without losing stable domain/storage contracts or
+backward compatibility. The graph remains a relational implementation detail
+served through six explicit people/topic evidence views, not a promised visual
+map or autonomous knowledge engine. Deterministic automation still cannot
+substitute for physical Sequoia/Tahoe, VoiceOver/Voice Control, provisioned
+CloudKit, real external-effect reconciliation, or real-conversation evidence.
+
+## D380 — Reserve model context and keep real-audio gates content-free (Aug 2026)
+
+**Context:** the candidate's real-model rehearsal exposed two release blockers.
+On macOS 26.5.2, a 4,500-character Foundation Models map chunk produced a final
+guided request containing 4,089 tokens against the 4,096-token maximum;
+OS-owned instructions, schema, output, and tokenization had consumed the
+historical margin. The Parakeet integration test also assumed that an arbitrary
+`PORTAVOZ_TEST_WAV` would contain one of two English words. When that assertion
+failed, it interpolated the complete recognized private conversation. Removing
+that interpolation was insufficient because FluidAudio 0.15.5's public
+`AppLogger` always mirrors DEBUG diagnostics—including partial transcript
+text—to stderr and exposes no log-level or sink configuration.
+
+**Decision:** cap each Foundation Models map chunk at 4,000 characters, retain
+the 3,000-character final structured-material cap and 250-token map output, and
+pin those boundaries in pure tests. An oversized single transcript line is
+split in one forward Character-boundary traversal instead of bypassing the cap
+or repeatedly rescanning each remainder. If a fresh map
+session still throws `exceededContextWindowSize`, only that chunk retries at
+successively halved budgets down to a 500-character floor; cancellation and
+every other generation error propagate unchanged. The canonical
+`make test-model-gated` lane runs all six classes in SwiftPM Release
+configuration. The Parakeet test skips before opening a fixture when compiled
+with `DEBUG`; the release runner rejects any FluidAudio DEBUG console line,
+assigns private permissions to captured logs, never echoes raw failure logs,
+and removes each log after class review or shell interruption. HUP, INT, and
+TERM handlers exit nonzero after the shared EXIT cleanup rather than being
+swallowed. The Parakeet
+assertion accepts a bounded spoken WAV only through valid PCM metadata,
+nonempty segments, at least eight lexical characters, and duration-bounded
+timestamps. It never expects vocabulary and no failure message contains
+recognized text.
+
+**Consequences:** current Apple Intelligence retains deterministic convergence
+with measured guided-generation headroom, while future OS tokenization drift
+recovers through a finite local retry or fails at the explicit 500-character
+floor rather than looping or publishing a partial result. Real-model release
+evidence is candidate-representative and content-free at the console boundary.
+Direct DEBUG Parakeet integration is intentionally unavailable until FluidAudio
+offers a configurable privacy-safe logger; production model selection,
+transcript persistence, user-visible UI, deployment floor, and the six-class
+model capability boundary do not change.
+
+## D381 — Move the finite release target to an evidence-backed Apuntador 1.0 (Aug 2026)
+
+**Context:** D379 deliberately stopped an unbounded Skills sequence at a safe
+six-action and six-graph release candidate. That baseline remains valuable, but
+the user explicitly chose to complete a materially stronger Apuntador before
+the next public release and to make that release Portavoz 1.0.0. Treating this
+as permission for another rolling feature queue would recreate the problem
+D379 solved. Depending on private meetings or asking the user to perform routine
+QA would also leave the expanded assistant unrepeatable and under-tested.
+
+**Decision:** retain D379's six-action/six-graph behavior as the compatibility
+and safety baseline, and replace only its release target with one finite ordered
+sequence: UI-test runtime qualification; reliability/streaming/cancellation/
+latency; manual Ask on every supported macOS version; explicit meeting,
+library, and web source policy; cited, freshness-aware, consented, bounded, and
+prompt-injection-resistant web answers; interview assistance; separately typed
+local notes; and bounded opt-in proactive assistance. No slice may silently
+widen sources, perform an autonomous external mutation, hide an unavailable or
+insufficient-evidence state, or start the next optional workflow.
+
+Autonomous validation is a cross-cutting product requirement rather than a
+late release rehearsal. Checked-in public or synthetic bilingual meeting,
+interview, and note corpora carry exact ground truth. A deterministic local web
+fixture covers citations, freshness, slow/offline/provider-failure behavior,
+hostile content, and prompt injection. Real installed Foundation Models, ASR,
+and embeddings may run through explicit capability-gated lanes whose receipts
+are content-free. Cancellation, timeout, partial-response, corruption,
+relaunch, performance, memory, concurrency, stress, and no-crash behavior are
+automated wherever the platform permits. Each product slice closes through
+adversarial preflight, deterministic tests, the minimum-safe real-app XCUITest
+scope, one local Conventional Commit, and updated durable truth.
+
+Portavoz 1.0.0 admission still requires the exact integrated SHA, complete
+bilingual XCUITest, release model/performance/reliability gates, a verified
+Developer ID distribution artifact, production CloudKit truth when claimed,
+and the existing physical/field matrix. Interactive permissions and Apple
+Intelligence setup, real accounts and external effects, notarization,
+production CloudKit, physical Sequoia/Tahoe hardware, VoiceOver/Voice Control,
+and real-field evidence remain irreducible; deterministic fixtures must never
+report those cells as passed. Push, pull request, merge, signing/notarization,
+tag, publication, and remote changes retain their separate explicit-authority
+boundary.
+
+**Consequences:** the active goal has a stronger but bounded product outcome:
+an exact Portavoz 1.0.0 candidate rather than the earlier 0.8.0 candidate. The
+sequence improves useful assistant breadth without weakening local-first
+privacy, source provenance, review-first effects, supported macOS behavior, or
+the release stop rule. Quick Look, iOS, user-authored standing rules, visual
+graph work, broader graph sync/export/CLI/MCP, commerce, and alternate serving
+retrieval or ASR authorities remain outside this finite scope unless a current
+release gate exposes a reproducible blocker.
+
+## D382 — Scope and budget state-driven XCUITest evidence (Aug 2026)
+
+**Context:** the D379 complete bilingual gate contained 109 cases and consumed
+about 43 minutes of summed XCTest duration per locale on the local host. The
+suite paid XCTest's roughly one-second first-poll floor across hundreds of
+existence waits, repeated fixed scroll gestures in Skills Settings, and three
+sets of overlapping microjourneys. Running that complete gate for every narrow
+feature would make mandatory UI validation prohibitively slow; removing
+assertions, parallelizing two host-contending macOS automation sessions, or
+accepting an unchanged green retry would make the evidence weaker instead.
+
+**Decision:** keep XCUITest mandatory but select the smallest fail-safe tier.
+Known production owners map to explicit feature scopes and English evidence;
+unknown production Swift paths fall back to the complete English catalogue.
+Copy, localization, seed, routing, shared harness, catalogue, and release-
+boundary changes expand to the complete bilingual catalogue. Integration,
+release-candidate, and release qualification always run complete bilingual
+evidence. One `build-for-testing` result is reused and locales run sequentially
+through `test-without-building`.
+
+The shared test support uses one main-actor RunLoop-driven bounded predicate
+loop. Existence, value, selection, disappearance, enabled/hittable state, label,
+and stable-frame waits check immediately and then poll only until their explicit
+deadline; negative and inequality predicates require the element to exist.
+Skills scrolling is geometry-aware and bounded by the target and viewport
+instead of replaying a fixed gesture count. Two Insights checks, three
+onboarding checks, and the exact-Skill activity-filter microtest are consolidated
+into three bounded journeys that retain the original assertions, reducing the
+catalogue from 109 to 105 cases. An atomic seed snapshot is not adopted: the
+measured dominant costs are accessibility waits and navigation, while freezing
+a persisted database would couple UI evidence to schema migration and stale
+derived-state hazards without removing the required real-app relaunches.
+
+Every real run retains its xcresult and emits a content-free JSON receipt with
+locale, case identities, results, per-case durations, aggregate duration,
+distribution, one-build and test-wall durations, and a budget verdict. Full
+runs require exact catalogue cardinality and full-suite total/p95 budgets;
+scoped runs require exact selector cardinality. A versioned per-journey budget
+prevents a faster aggregate from hiding one severe regression. Executable
+policy tests reject undeclared cases, empty or orphaned scopes, duplicate
+selectors, known retired overlaps, unsafe source mappings, budget/catalogue
+drift, blind sleeps, and native first-poll existence waits. A failing pass is
+diagnostic evidence; it is never erased by an unchanged retry.
+
+**Consequences:** feature bands can retain real-app crash/navigation/assertion
+coverage without paying the complete bilingual integration cost each time,
+while localization, shared-harness, unknown-source, and release changes still
+fail safe. The policy intentionally trades naive parallel wall-clock gains for
+stable host-isolated measurements. On the local macOS 26.5.2 (25F84), arm64,
+Xcode 26.6 host, like-for-like candidate duration fell from 2,591.999 to
+1,108.209 seconds in English and from 2,607.498 to 1,114.714 seconds in Spanish
+(57.2% in each locale); p95 fell from 51.218/50.210 to 20.265/20.678 seconds.
+The complete English catalogue passed 105/105. The first complete Spanish pass
+finished all 105 cases but exposed one asynchronous stale-card assertion; that
+red result was retained, diagnosed, changed to a bounded disappearance
+predicate, and the exact four changed journeys then passed 4/4 in both locales
+without an unchanged retry. Final budgets are 1,300 seconds per locale, 30
+seconds p95, and a measured per-journey threshold; the sequential CI timeout is
+60 minutes. The local Tahoe-family runtime comparison
+qualifies only this host and toolchain; it cannot certify physical Sequoia,
+separate Tahoe hardware, VoiceOver/Voice Control, permissions, signing,
+notarization, CloudKit, accounts, external effects, or field behavior.
+
+## D383 — Freeze autonomous bilingual Apuntador and loopback-web evidence (Aug 2026)
+
+**Context:** the finite 1.0.0 scope requires realistic meeting, interview,
+note, web, resilience, and quality evidence without asking the user to supply
+private meetings or perform routine QA. Existing Ask retrieval fixtures are
+deep but segment-oriented: they do not type an interview objective or a
+user-authored note, prescribe terminal cancellation/offline/relaunch outcomes,
+or provide deterministic HTTP faults and hostile pages. Adding product features
+before a stable cross-slice evidence vocabulary would let each implementation
+invent incompatible fixtures, metrics, and success claims.
+
+**Decision:** establish two public-synthetic, non-serving authorities. The
+first freezes exactly six bilingual typed sources and 24 scenarios. Meetings
+and interviews preserve participants and audio timestamps; interviews preserve
+an objective; notes preserve author/time and are forbidden from inventing audio
+or participants. Every kind/language pair carries answer, abstention, exact
+evidence/claim, and hard-negative/forbidden ground truth. Bilingual scenarios
+also prescribe cancel-before-evidence, timeout, offline, provider-down,
+corrupted-state, and relaunch outcomes.
+
+Adapters emit no source, question, transcript, note, or answer text. Their
+checksum-bound observation names every scenario exactly once with only stable
+claim/evidence identities, typed outcome, first-evidence/completion duration,
+late-publication count, and content-free build/host identity. The deterministic
+scorecard requires exact outcome/citation/claim quality, zero forbidden or
+hard-negative output, zero post-terminal publication, and frozen latency
+ceilings. It labels prose, memory/leaks, real-model quality, physical hardware,
+and field behavior unevaluated rather than converting fixture mechanics into a
+release claim.
+
+The second authority is a strict loopback-only HTTP server with canonical
+fresh/stale/missing-date and directly cited pages, redirect, slow, truncated,
+503, disconnected, offline, fixed non-reflecting 404, and bilingual hostile
+prompt-injection cases. Hostile content is always untrusted data, response
+metadata makes freshness/trust observable, local links must resolve inside the
+fixture, and the server cannot bind an external interface. The canonical
+fixtures, budgets, validators, and live loopback behavior run in repository
+hygiene and through one explicit Make target.
+
+**Consequences:** future assistant slices share one deterministic public
+ground-truth and transport-fault vocabulary, and routine regression can run
+without Internet, accounts, private content, or user participation. The
+authority is intentionally not a product adapter: it adds no serving source,
+web request, note ingestion, interview workflow, model selection, or UI. Each
+of those still needs its own implementation, real-app bilingual journey,
+measured memory/leak/stress evidence, and minimum-safe admission. Installed
+Foundation Models/ASR/embeddings, physical Sequoia/Tahoe, VoiceOver/Voice
+Control, real providers, distribution, and real-field behavior remain separate
+irreducible evidence.
+
+## D384 — Put bounded progressive Ask ownership in ApplicationKit (Aug 2026)
+
+**Context:** full Ask already exposed exact lexical and fused evidence, but local
+answer generation returned one complete string. The UI disabled submission while
+that work ran, so a user could not replace a stale question; the per-window
+conversation grew without a ceiling; Foundation Models cancellation could be
+lost during query-expansion fallback; and the shared intelligence scheduler
+could accept a late value from an opaque operation that ignored cancellation.
+Adding more Apuntador sources on top of those contracts would multiply stale
+publication, latency, memory, and abrupt-failure risk.
+
+**Decision:** ApplicationKit owns the progressive protocol independently of any
+model provider. One request admits bounded exact lexical updates followed by one
+immutable fused citation set, and the provider's return must match it. Generated
+updates are cumulative, finite, coalesced, and validated before presentation;
+question, result, citation text, answer text, and snapshot count all have explicit
+ceilings; each citation also admits at most 4,096 ordered source segment identities.
+Generation has an eight-second cooperative timeout with content-free
+`notRequested`, `generated`, `unavailable`, `failed`, and `timedOut` terminal
+states. Cancellation remains an error and is checked around every retrieval,
+storage, semantic, model, and callback boundary. Timeout closes answer admission
+before provider cancellation; ordinary failure and timeout preserve evidence.
+
+On macOS 26, the on-device adapter consumes Foundation Models cumulative
+`String` snapshots inside the existing interactive single-flight scheduler. On
+Sequoia or when Apple Intelligence is unavailable, it returns evidence without
+pretending generation occurred. Final-string adapters keep compatibility by
+emitting one cumulative update. The scheduler checks cancellation again after
+opaque work returns and stores no early-cancellation tombstones. Generative query
+expansion is throwing, so cancellation cannot degrade into an ordinary fallback.
+
+Full Ask accepts a new nonempty submission while work is pending: it cancels and
+generation-fences the old request, renders identified partial answer text, keeps
+only the newest 20 exchanges, weakly captures the window model, and uses Swift
+6's isolated deinitializer to cancel owned work. The deterministic real-app
+adapter shortens its observable phase delays and streams a partial answer. The
+existing complete Ask journey is extended rather than duplicated and remains the
+minimum-safe English/Spanish feature gate.
+
+**Consequences:** users see useful local text earlier and can correct a question
+without waiting, while malformed, oversized, timed-out, cancelled, or stale
+providers cannot become final success. Structured cancellation is cooperative:
+Portavoz does not claim it can hard-kill arbitrary provider code, but the closed
+application gate prevents late publication and a weak task bridge prevents a
+closed window from being retained. Installed-model quality/performance, physical
+Sequoia/Tahoe, VoiceOver/Voice Control, distribution, CloudKit, and real-field
+behavior remain separate release evidence. This closes the progressive-
+reliability code scope, not the later manual-source, Web, interview, note,
+proactive, or 1.0.0 admission work.
+
+## D385 — Route explicit manual Ask through the selected local engine (Aug 2026)
+
+**Context:** the released Library and command-palette Ask route already worked
+on every supported macOS as exact evidence retrieval, but answer generation was
+hard-wired to Foundation Models. A Sequoia user could configure local Ollama or
+download the verified embedded MLX model for summaries and still receive only
+evidence from manual Ask. Reusing summary generation directly would mix output
+contracts, while attributing cross-library Ollama material to the first cited
+meeting would create a false privacy receipt.
+
+**Decision:** manual Ask samples the existing explicit `summaryEngine` choice
+for every request. Apple Foundation Models answers only when its macOS-26
+capability is available; configured fixed-loopback Ollama and verified embedded
+MLX answer on Sequoia or Tahoe. A selected but unready engine returns typed
+unavailable state and exact citations; it never falls through to another
+provider. Automatic live Apuntador, query expansion, graph-bundle synthesis,
+web sources, and source-selection policy do not inherit this route.
+
+IntelligenceKit owns a provider-neutral `RAGTextAnswering` contract and one
+grounded prompt builder. All providers receive numbered exact passages, the
+shared quoted-source prompt-injection guard, a 500-token output request, and an
+aggregate ceiling of 12,000 characters plus 48,000 UTF-8 bytes. Oversize input
+fails before provider invocation and is never truncated. Foundation Models
+retains cumulative streaming through the interactive scheduler. Ollama and MLX
+use the protocol's one-final-snapshot compatibility path; ApplicationKit still
+admits and bounds every observable and final answer.
+
+The app installs a lock-protected selected-engine router only after
+`AppServices` is fully initialized, avoiding a closure over a partial service
+graph. Duplicate installation is inert, not process-fatal. MLX provider values
+cross the existing process-owned runtime, residency ledger, and idle-release
+policy; no second runtime or download authority exists. Ollama is pinned to the
+existing localhost endpoint and crosses a distinct `ask-answer-generation` /
+`meeting-answer-material` gateway contract requiring local-engine consent and
+a provable loopback destination.
+
+Schema v43 adds a separate global content-free egress receipt table for that
+cross-library operation. It has no meeting identity or payload fields and
+accepts only the narrow local Ask metadata. Receipt persistence still precedes
+transport and fails closed. Per-meeting privacy receipts remain unchanged.
+Presentation shares one localized mapping across Ask and the command palette:
+unavailable, failed, and timed-out generation are distinct, while exact
+citations remain readable and navigable.
+
+**Consequences:** explicit manual Ask now uses the local engine the user chose,
+including Ollama or embedded MLX on Sequoia, without weakening grounding,
+privacy receipts, model residency, or cancellation. The existing real-app Ask
+journey runs with simulated Sequoia capabilities rather than adding a duplicate
+microtest. Installed-model quality/latency/memory, physical Sequoia and Tahoe,
+VoiceOver/Voice Control, CloudKit, distribution, and real-meeting behavior
+remain external evidence. This closes selected-engine manual Ask; explicit
+source policy and later Web, interview, note, proactive, and 1.0.0 admission
+work remain open.
+
+## D386 — Require an explicit fail-closed source for manual Ask (Aug 2026)
+
+**Context:** after D384 made Ask cancellation-safe and D385 made generation use
+the selected local engine, every public call still implied the complete local
+Library. The 1.0 plan needs Library, one meeting, and later Web to be different
+authorities. Adding a UI-only filter would allow injected adapters, corrected
+text, semantic fallback, graph facts, CLI, or MCP to widen a request silently.
+The current semantic index is library-wide, and Web has no consented serving
+adapter yet.
+
+**Decision:** every public `AskMeetings` search, evidence, and answer call must
+carry an `AskSourceScope` with no default: `.library`, one exact
+`.meeting(MeetingID)`, or `.web`. Local retrieval implements Library and exact
+meeting scope. A legacy or injected retriever that does not implement meeting
+scope throws a typed policy error; Web throws before any local capability runs.
+Graph-fact bundles accept only Library because the released graph authority is
+cross-meeting. The command palette, CLI, MCP, resource benchmark, and meeting
+brief explicitly pass Library rather than inheriting mutable UI state.
+
+Exact meeting scope is enforced in both retrieval lanes. Storage binds the
+meeting identity separately inside accepted, corrected, and structural FTS
+subqueries before their rank limits. Semantic retrieval keeps the released
+12-candidate Library request; a meeting request asks the current exact index for
+at most 256 candidates and removes foreign meetings before rank admission or
+publication. The application boundary revalidates scoped search results and
+progressive/final citations before any caller receives them, so an injected or
+faulty adapter cannot bypass the policy. This is a bounded compatibility step
+over today's library-wide vector authority, not a sublinear-search claim. Late
+expansion and fallback
+retain the same source.
+
+The full Ask model owns a bounded 20-row, identity-unique local meeting
+catalogue and requires an explicit selection; oversized, duplicate-identity,
+or blank-title responses fail closed, and it never auto-selects or guesses.
+Changing source or exact meeting cancels and generation-fences pending work.
+Pending and completed
+exchanges retain the chosen source. The UI presents Library, Meeting, and Web;
+Web is visibly unavailable and disables submit without falling back. Meeting
+choices include a localized start date so duplicate titles remain usable. The
+resident command palette displays its fixed Library authority. All new controls
+have stable accessibility identifiers, and the existing bilingual Ask journey
+is extended rather than duplicated.
+
+**Consequences:** a question cannot cross from one meeting into the Library or
+from unavailable Web into local data without an explicit caller change. Search,
+corrected/structural transcript serving, progressive evidence, generation, and
+presentation share one source contract. The 256-candidate meeting semantic
+ceiling may trade recall for bounded work on very large libraries; current exact
+FTS remains authoritative and future search-engine optimization must preserve
+this fail-closed contract. D386 adds no Web transport, consent, citations, or
+freshness policy; those remain direct-Web serving work. Installed-model
+quality/performance,
+physical Sequoia/Tahoe, VoiceOver/Voice Control, CloudKit, distribution, and
+real-field evidence remain external gates.
+
+## D387 — Serve consented direct Web pages as cited untrusted evidence (Aug 2026)
+
+**Context:** D386 separated Web from Library and Meeting authority but left it
+unavailable. Useful current public evidence must not require uploading a
+meeting, inventing a search-provider contract, depending on an account, or
+allowing arbitrary page instructions to influence product policy. Broad Web
+discovery and search-result scraping would add unstable provider, consent,
+ranking, freshness, and abuse contracts that this candidate cannot qualify
+honestly.
+
+**Decision:** Web Ask accepts one directly pasted public page in the macOS UI
+(the application contract remains bounded to three explicit URLs). Consent is
+approved for one exact question/source request and is invalidated by editing
+either value, consumed on submit, and never reused. Production admits only
+remote named-host HTTPS URLs on the default port, without credentials or
+fragments; deterministic UI tests admit loopback HTTP/HTTPS. Redirects are
+never followed, so the disclosed address remains the only transport
+destination. URL syntax rejects literal IP and common private-name forms in
+production, but this is not complete DNS-rebinding or Internet-host trust
+protection.
+
+The HTTP GET contains no body, question, meeting identity, transcript, model,
+or local evidence. It crosses the receipt-before-transport gateway as
+`public-web-source-request` with `explicit-web-ask` consent. Schema v44 rebuilds
+the global content-free journal so Web attempts record only operation, scope,
+host/provider, consent, and time with a nil model. URL path/query, page,
+question, prompt, citation, and answer are absent. Responses stream to 512 KiB,
+redirects fail, and only UTF-8 HTML/XHTML/plain text is parsed into at most
+16,000 visible Unicode characters / 64 KiB. Script, style, template, SVG, and
+noscript content—including hidden dates—is excluded. Observed freshness uses
+the deterministic fixture header, visible `time[datetime]`, then
+`Last-Modified`; unknown/future dates stay unknown and an observed source older
+than 90 days is stale.
+
+`PortavozCore` owns the storage-independent Web citation and retrieval-port
+contracts so the concrete integration does not depend back on ApplicationKit.
+`ApplicationKit.AskWeb` owns cancellation, an eight-second answer timeout,
+ordered concurrent retrieval, partial failures, and progressive publication.
+Web citations are a separate type with direct URL, title, excerpt bounds,
+observed/retrieved dates, and freshness; they cannot enter meeting navigation.
+The selected local answer engine receives only the question plus bounded Web
+excerpts through a provider-neutral prompt. Every page is untrusted data, XML
+boundaries are escaped, and generated output is discarded unless it contains
+only in-range `[n]` citation markers and no raw HTTP URL. Direct source links
+and freshness remain visible when generation fails or times out. A loopback
+Ollama attempt remains receipt-before-transport but is classified as
+`public-web-answer-material`, never as meeting-answer material.
+
+The existing bilingual full-Ask XCUITest journey starts the canonical
+loopback-only fixture, proves submit is blocked before consent, answers in EN
+or ES through the real app/gateway/parser, exposes a direct citation and
+freshness, consumes consent, and then continues the exact-meeting journey.
+Package integration uses real URLSession and SQLite receipts for bilingual,
+stale, undated, hostile, redirect, partial, disconnected, provider-down, slow-
+cancel, cap, and migration cases. No user meeting, Internet, provider account,
+or private transcript is required.
+
+**Consequences:** direct-Web serving provides cited, freshness-aware public-
+page answers without mixing Web and meeting evidence or pretending that
+Portavoz offers broad search discovery. Explicit direct URLs can be less convenient than a
+search engine, and syntax policy cannot certify DNS resolution or page safety;
+those are stated limitations, not hidden fallbacks. Physical Sequoia/Tahoe,
+installed-model quality/latency/memory, VoiceOver/Voice Control, production
+CloudKit, signed/notarized distribution, Internet variability, third-party
+terms, and real-field behavior remain external 1.0 gates. Interviews, notes,
+and bounded proactive assistance remain separate work.
+
+## D388 — Keep interview assistance pull-based and source-closed (Aug 2026)
+
+**Context:** Portavoz already showed live captions, bounded objectives, automatic
+Apuntador cards, and an on-demand next-question suggestion, but it did not expose
+the exact question an interviewer had just asked or help the user draft a
+source-backed response. Reusing automatic Companion generation would publish
+before explicit intent, use a different engine policy, and make a stale partial
+caption look authoritative. Treating callback order as conversation order would
+also let delayed transcription replace the current question or reorder evidence.
+
+**Decision:** Interview Assist is an explicit recording-toolbar mode and never
+owns capture. A pure ApplicationKit policy inspects only the latest 24 caption
+callbacks, selects the chronologically latest final question from the system or room
+channel, and admits at most the eight most recent chronologically ordered final
+turns whose exact start/end interval precedes that question in the same meeting.
+Questions admit at most 600 characters / 4,800 UTF-8 bytes; each evidence turn
+admits 2,000 characters / 12,000 bytes. Invalid time intervals, mixed meetings,
+duplicate identities, partial evidence, and a question older than 180 seconds of
+transcript progress fail closed. The visible question remains exact transcript
+text; no model rewrites it.
+
+Answer generation occurs only when the user presses **Find grounded answer**
+during the same active recording. The app samples the exact local Ask engine for
+that request: Foundation Models when available on Tahoe, or the explicitly
+selected loopback Ollama / verified embedded MLX engine on supported Sequoia or
+Tahoe. Missing readiness never falls through. The provider receives only the
+question and admitted earlier captions through the existing bounded grounded
+prompt. ApplicationKit applies an eight-second timeout and accepts no more than
+2,000 characters / 16,000 bytes of final prose. Every sentence must carry only
+valid in-range `[n]` citations; missing, forged, partial, or malformed citations
+and ordinary model abstentions become typed insufficient evidence. Unavailable,
+failure, and timeout remain distinct while the exact question and captions stay
+visible.
+
+One recording-scoped presentation model cancels and generation-fences work on
+question revision, disable, dismissal, Stop, and recording reset. It weakly
+bridges the recording owner so an escaping liveness check cannot retain the
+capture graph. Interview mode relabels the existing objectives surface and adds
+finite admission—eight objectives, each at most 280 characters / 2,048 UTF-8
+bytes—but does not silently insert objectives into an answer. Answers are
+ephemeral: Portavoz does not persist them as notes, speak them, answer for the
+user, start hidden capture, make a Web request, or execute an external action.
+
+**Consequences:** the user can see the current interview question and request a
+private draft whose claims point to exact earlier conversation, while late
+callbacks, stale providers, overlapping turns, and unsupported prose cannot
+become success. Deterministic EN/ES temporary-store capture and answer adapters
+exercise the production use case, model, selected-engine bridge, accessibility
+surface, and exact citations without a private meeting or installed model.
+Installed-engine quality/latency/memory, physical Sequoia/Tahoe, VoiceOver and
+Voice Control, distribution, CloudKit, and real-interview behavior remain
+separate evidence. This closes pull-based interview assistance; typed notes and
+bounded proactive help remain separate work.
+
+## D389 — Keep manual Notes Ask typed, raw, and locally authored (Aug 2026)
+
+**Context:** Portavoz already preserves timestamped user notes and stores an
+optional AI-enhanced note as a separate generated document, but manual Ask
+could serve only transcript, graph, or direct-Web evidence. Reusing transcript
+citations would falsely imply a speaker, audio interval, or participant claim.
+Searching enhanced documents would let model output present itself as the
+user's own memory, and scanning every context item on each question would not
+give large libraries a bounded search path.
+
+**Decision:** full Ask adds an explicit **Notes** source with an independent
+`AskNotes` workflow, `AskNoteCitation`, retrieval port, answer port, and
+provider-neutral `RAGNotePassage`. Only live `contextItem.kind == note` rows
+owned by live meetings can enter this lane. Each citation retains its exact raw
+note UUID, owning meeting identity and title, stable `local-user` authorship,
+meeting-relative offset, derived authored instant, exact text, and
+`user-context-item` provenance. `enhancedNote` and every other context-item kind
+have no conversion path. Notes cannot enter transcript, graph, or Web adapters,
+and those adapters reject Notes before running.
+
+Schema v45 adds a synchronized external-content FTS5 projection over context
+item text and rebuilds existing rows during migration. Product reads still
+filter to live raw notes and live meetings before deterministic rank, time, and
+identity ordering. Retrieval evaluates at most three offline bilingual query
+variants with 24 candidates each, publishes the first nonempty lexical set,
+then completes one bounded fused set. It admits at most 12 whole notes, 4,000
+characters / 16 KiB per note, and 8,000 characters / 32 KiB in aggregate; it
+never truncates a source and silently changes its meaning. Absolute authorship
+is derived from meeting start plus the durable note offset so import and sync
+do not rewrite chronology.
+
+The selected local Ask engine receives only the question and typed raw-note
+passages. The prompt labels every escaped note element as untrusted data and
+forbids transcript, recording, participant, or AI-enhanced claims. An
+eight-second timeout, caller cancellation, one evidence gate, and generation
+fencing close late publication. Generated prose is accepted only when every
+sentence carries an exact in-range `[n]` marker and ordinary note-specific
+abstentions remain insufficient evidence. Unavailable, failure, timeout, and
+insufficient evidence preserve exact note sources separately from transcript
+and Web citations.
+
+The existing bilingual full-Ask XCUITest journey now covers Web, Notes, and one
+meeting in one real-app launch. Its disposable seed persists one Spanish raw
+note and the test asserts local author, meeting, exact 00:12 offset, generated
+answer, and source badge in English and Spanish. Public synthetic note cases
+cover answer/abstention, hard negatives, offline/provider failure, corruption,
+relaunch, prompt injection, cancellation, concurrency, and bounded FTS scale
+without private meetings or installed models.
+
+**Consequences:** users can ask across their own explicit raw notes without
+turning those notes into fake transcript evidence or trusting generated notes
+as authorship. This is a search-and-answer surface, not a standalone note
+editor, silent enhancement, automatic action, Web search, or participant
+attribution. Foundation Models remains Tahoe-only when available; selected
+loopback Ollama or verified MLX remains the supported Sequoia/Tahoe path.
+Installed-engine quality/latency/memory, physical Sequoia/Tahoe, VoiceOver and
+Voice Control, production CloudKit, notarized distribution, and real-note field
+behavior remain external gates. Typed raw-note Ask is complete; bounded
+proactive assistance remains open.
+
+## D390 — Keep proactive meeting help explicit, inert, and source-closed (Aug 2026)
+
+**Context:** Portavoz already exposes an always-visible measured talk-balance
+cue, a user-authored objective checklist, automatic Foundation Models question
+cards, and pull-only catch-up, next-question, and interview assistance. A broad
+"proactive AI" loop would duplicate those surfaces, require provider readiness,
+retain transcript content in background tasks, and risk presenting generated
+advice or hidden Web activity without a user request. The 1.0 candidate instead
+needs a finite transparent nudge that works on both Sequoia and Tahoe and can be
+qualified without a private meeting or installed model.
+
+**Decision:** proactive help is an explicit per-recording opt-in with an
+independent pause/resume control. It is off for every new recording. A pure
+`IntelligenceKit` policy examines at most 64 newest finalized captions behind
+the mutable live tail, requires unique canonical same-meeting identities,
+finite ordered presentation-safe intervals no longer than the declared recent
+window, a same-meeting mutable tail,
+unique canonical identity and bounded nonblank text for that tail, and at most
+eight bounded trimmed objectives. Any
+malformed, mixed-meeting, duplicate, noncanonical, oversized, or
+non-representable timeline authority fails closed.
+
+Only two deterministic signals exist. First, after at least eight finalized
+turns spanning 180 seconds, the policy may surface the first open user-authored
+objective that has not already emitted. Second, when the latest five-minute
+window carries at least 60 seconds of attributed speech and the microphone owns
+at least 65 percent, it may surface one measured talk-balance nudge. Objective
+signals have priority. Every card retains the exact meeting, segment identities,
+time range, and measured speech duration; the balance card also retains the
+measured fraction. The policy emits at most one candidate per evaluation,
+requires 180 seconds between emissions, and never emits the same signal twice
+during one recording.
+
+Evidence and suggestion initializers remain internal to `IntelligenceKit`.
+Callers may construct only the bounded user-authored objective input; the app
+can present admitted output but cannot bypass the policy with a manufactured
+card.
+
+One main-actor recording model owns enabled/paused state, deduplication, the
+last emission offset, and at most three visible inert cards. Pause preserves
+visible evidence and admits nothing new. Disabling clears visible cards but
+does not re-arm already emitted evidence. Stop, recording-start reset, and the
+next-session transition clear all proactive state. Completing or removing an
+objective retracts its visible card even while paused. Evaluation is
+synchronous and creates no task, provider call, timer, persistence, Web request,
+model prompt, network receipt, spoken response, navigation, or external action.
+
+The toolbar and panel state the two watched sources and the absence of model,
+Web, and automatic action. Cards can only be read or dismissed. Stable
+`recording-proactive-*` identifiers cover opt-in, pause/resume, status, cards,
+dismissal, and exact source disclosure. The existing bilingual recording
+journey uses a deterministic closed-caption timing mode to prove opt-in,
+objective evidence, pause/resume, disable clearing, and no same-signal replay
+without adding another app launch.
+
+**Consequences:** Portavoz gains bounded proactive help on its Sequoia floor and
+Tahoe without creating a second automatic generation scheduler or weakening
+the existing selected-engine/source/consent contracts. The talk-balance card is
+a more explicit finite coaching surface over the same measured channel truth as
+the compact cue; it makes no social or speaker-identity inference. This closes
+the finite proactive product surface, not broad autonomous assistance, broad
+Web discovery, hidden research, automatic objective completion, or external
+mutation. Installed-model and ASR quality, memory/leak/stress measurements,
+physical Sequoia/Tahoe, VoiceOver/Voice Control, production CloudKit,
+signed/notarized distribution, hosted integration, and real-meeting behavior
+remain separate 1.0 admission evidence.
+
+## D391 — Make exact 1.0 admission one expanded fail-closed ledger (Aug 2026)
+
+**Context:** D147's original ledger predates the finite Apuntador 1.0 scope. It
+could report PASS after five deterministic proofs, one distribution proof, and
+eight hardware/field packages even though D381 now also requires autonomous
+validation, installed-model coverage, performance and resource evidence,
+upgrade/recovery, complete bilingual UI, reviewed integration and hosted CI,
+production-sync truth, and physical assistive-technology review. The
+distribution receipt joined the artifact to version/build and digest but did
+not carry the Git commit, so the final scorecard's exact source identity still
+depended on an operator assumption.
+
+**Decision:** evolve only the tracked contract and scorecard to schema 2 while
+retaining schema-1 input receipts and protocol-2 field manifests. The contract
+contains exactly 29 release-blocking proofs across eight closed classes:
+deterministic automation, complete candidate automation, reviewed source
+integration, signed build, production sync, real hardware, physical assistive
+technology, and user field. The candidate receipt separately names frozen
+scope, autonomous validation, installed-model coverage, authoritative
+performance, resource/memory, synthetic long capture, upgrade/recovery, and
+complete bilingual XCUITest. Other strict qualification scopes name reviewed
+integration plus hosted CI, production-sync admission, and VoiceOver/Voice
+Control on both Sequoia and Tahoe.
+
+A qualification receipt is exact-shaped, content-free, bound to
+version/build/full commit, and contains every proof for one known scope exactly
+once. Unknown scopes, proof IDs, classes, extra keys, incomplete receipts,
+duplicate scopes, stale identities, and non-finite or unsafe values are
+malformed rather than missing evidence. A missing receipt remains a normal
+blocking state so the evaluator can always produce an actionable scorecard.
+Only the verified gate runner, reviewed integration workflow, sync field
+workflow, or assistive field workflow may create its corresponding receipt;
+the evaluator does not convert adjacent commands or prose into proof.
+Scopes with an owner-specific authority report carry its canonical SHA-256 and
+must remain beside the exact `authority.json`; evaluation rejects copied-alone,
+renamed, missing, or drifted pairs.
+
+Production packaging accepts an optional `PORTAVOZ_RELEASE_COMMIT` only when it
+is one full lowercase SHA and stamps it as `PortavozSourceCommit`. The release
+wrapper makes that value mandatory, requires it to equal `HEAD`, and rejects a
+dirty tracked worktree both before and after the long app build. Distribution
+verification reads the stamp from the independently extracted DMG app,
+requires it to match the expected commit before writing evidence, and records
+version, build, commit, and DMG SHA-256. The schema-2 scorecard exposes the
+exact digest only when a distribution receipt exists; therefore PASS
+necessarily identifies one exact artifact.
+
+**Consequences:** the former 14-cell evidence set can no longer bless a 1.0
+candidate while newer release requirements remain outside the ledger. Missing
+candidate, integration, sync, assistive, distribution, physical, or field
+evidence now stays explicitly BLOCKED. This decision does not run, invent, or
+weaken any gate; later qualification bands still have to produce each
+automated receipt and collect irreducible evidence. It adds no push, pull
+request, signing,
+notarization, CloudKit mutation, field collection, or publication authority,
+and it stores no meeting, transcript, note, prompt, answer, account, path, or
+support payload.
+
+## D392 — Let one runner own candidate-automation truth (Aug 2026)
+
+**Context:** D391 made all eight candidate-automation proofs release-blocking,
+but intentionally did not add a way to manufacture their receipt. Running a
+neighboring command and then hand-authoring eight `pass` values would not prove
+that the installed-model lane executed, that performance evidence was
+authoritative, that resource and long-capture outputs matched the source, or
+that the complete bilingual UI catalog ran. A generic qualification recorder
+would recreate that ambiguity in executable form.
+
+**Decision:** freeze a schema-1 candidate contract and give its execution to
+`scripts/candidate_automation.py`. The runner requires an entirely clean
+checkout, fixes the full `HEAD`, and rechecks both around every gate. It runs
+sequentially to avoid benchmark and model contention: deterministic release
+reliability, the public bilingual Apuntador corpus, six Release installed-model
+classes, the strict performance ledger, one automatically selected current-host
+Release resource profile, the canonical synthetic three-hour capture, seven
+upgrade/recovery classes, and the complete English/Spanish real-app XCUITest
+catalog. It validates each specialized artifact instead of accepting proof
+states as arguments, and writes the owner-only exact-version/build/commit
+qualification receipt only after all eight proofs pass. Output directories are
+new per run; an interrupted or failed run leaves no qualification receipt.
+
+Installed-model execution never asks for a user meeting. The contract pins a
+public synthetic English text and an alternating Samantha/Paulina EN/ES
+conversation; the runner renders both locally, rejects an empty, unreadable,
+multichannel, sub-second, or over-ten-minute audio result, passes those scratch
+files only to the six model classes, and deletes them in a `finally` boundary.
+It sets the model-test opt-in itself and removes inherited private model,
+UI-audio, and waveform paths from the other gates. Diarization tests verify an
+installed model and never call the downloading lifecycle; missing assets skip
+and therefore block the class rather than silently fetching during release
+qualification. Resource collection is ad-hoc signed in its private scratch
+identity, never with an inherited distribution signing identity.
+
+The tracked performance policy partitions every declared metric. All twelve
+automated scale, semantic, and Spotlight metrics must be measured with an
+authoritative single-host ledger and have `pass` or explicitly budgetless
+`diagnostic` state. The thirteen waveform, Instruments, and manual/real-data
+metrics must remain exactly `not-measured`; no additional omission is allowed
+and no omission is promoted to pass. The resource proof requires exactly three
+passing samples for all nine scenarios, a passing exact-run Ask pipeline,
+Release configuration, actual host profile, and exact source identity. The UI
+proof requires both locales, the complete 106-case budget inventory, zero
+failed/skipped/duplicate cases or budget violations, and the shared build
+duration produced by the one-build runner.
+
+**Consequences:** the candidate receipt now has an auditable owner and cannot
+be produced through a `--proof pass` or generic record command. It is still
+local candidate automation, not universal performance or hardware evidence.
+The exact thirteen visible performance omissions, additional resource hosts,
+physical Sequoia/Tahoe, VoiceOver/Voice Control, reviewed integration and
+hosted CI, signed/notarized distribution, production CloudKit, accounts, and
+real-field behavior remain separate gates and cannot be inferred from D392.
+The runner reads no private meeting and uses only existing public/synthetic
+fixtures or content-free receipts; model integration may use already installed
+assets but never emits transcript output.
+
+## D393 — Render candidate diarization voices as distinct PCM sources (Aug 2026)
+
+**Context:** the first candidate to reach D392's installed-model gate rendered
+the tracked bilingual conversation through one `say` process containing voice
+markup. Both batch and live real-model diarization tests observed only `S1` and
+the runner correctly emitted no qualification receipt. Lengthening that one
+conversation did not help. Even separately rendered Samantha and Paulina turns
+remained one cluster on the installed model, so accepting file duration or
+markup shape would have certified neither two audio voices nor the production
+diarization path. A separately rendered Daniel/Paulina fixture passed both
+paths without private meeting audio.
+
+**Decision:** retain one tracked four-turn bilingual conversation, but require
+the exact alternating sequence Daniel/Paulina/Daniel/Paulina and 50–90 words
+per turn. The candidate runner invokes one explicit local `say -v` process per
+turn, requests mono 16 kHz Int16 WAV, validates every bounded segment, and
+atomically joins them with three exact 700 ms PCM silence intervals. The joined
+owner-only file must contain at least 60 seconds of valid audio before the
+installed-model classes receive it. Embedded voice markup is only a tracked
+turn delimiter; it is never submitted to the speech process or treated as
+proof of audio identity. Every intermediate and final scratch file remains
+inside the candidate output and is deleted on success or failure.
+
+**Consequences:** autonomous qualification now exercises two voices the
+installed diarization model demonstrably separates, while keeping the corpus
+public, bilingual, bounded, offline, and repeatable. Tooling tests pin the
+voice sequence, minimum turn content, exact PCM join, private mode, explicit
+voice commands, and cleanup. A missing system voice, malformed audio, one-
+speaker result, missing installed model, or later model regression remains a
+candidate failure; the runner neither downloads a replacement nor weakens the
+two-speaker assertion. This current-host synthetic pass still does not certify
+real-meeting DER, physical Sequoia/Tahoe, accessibility, distribution,
+CloudKit, or field behavior.
+
+## D394 — Summarize deterministic Swift failures without content or retries (Aug 2026)
+
+**Context:** the next clean candidate on
+`93ffd2074bedafb48db685d29f70d672f618095d` stopped in its first deterministic
+package suite with exactly one failure across 2,748 tests. The ordinary streamed
+output exceeded the orchestration capture, so the failing XCTest identity was
+not available afterward and no deterministic or candidate qualification
+receipt was written. Four later sequential full-suite runs passed, but those
+unchanged reruns were diagnostic only and could neither erase the red candidate
+nor identify its failure. SwiftPM's `--xunit-output` on the current toolchain
+wrote only the Swift Testing report and omitted the 2,748 XCTest cases, so it
+could not close this observability gap.
+
+**Decision:** the deterministic runner creates one mode-0700 temporary
+directory under a process-wide mode-077 umask and streams the full package run
+through one mode-0600 private log. It captures the Swift and `tee` pipeline
+statuses separately. A Swift failure invokes a bounded parser that accepts at
+most 16 MiB and prints only stable, deduplicated XCTest identifiers; it never
+prints an assertion, source path, transcript, note, prompt, answer, or other log
+payload. Missing, empty, oversized, unreadable, and unrecognized logs disclose
+only an unavailable marker. Cleanup runs after a pass, failure, or signal, and
+the runner exits with the original Swift status. A capture failure is itself a
+gate failure. There is no automatic retry and no XML surrogate.
+
+**Consequences:** the next candidate failure can name its bounded XCTest scope
+without retaining or publishing private test output, while successful release
+evidence still requires one uninterrupted original package pass. Tooling tests
+pin ordering, deduplication, bounded reads, malformed-input withholding, and
+CLI disclosure; repository hygiene also syntax-checks the owning Bash runner.
+This diagnostic does not classify an intermittent failure as fixed, turn a
+later green run into candidate proof, or close any physical Sequoia/Tahoe,
+assistive-technology, distribution, CloudKit, hosted-CI, or field gate.
+
+## D395 — Isolate correction timing from the deterministic Debug suite (Aug 2026)
+
+**Context:** the first clean candidate after D394 again stopped with one of
+2,748 package tests failing. The new content-free summary identified the dense
+correction-history budget case in `TranscriptCorrectionScaleBenchmarkTests`.
+That test ran five wall-clock samples of an
+8,000-segment/4,000-correction fixture inside the full Debug suite;
+nearest-rank p95 over five samples is the maximum, so one unrelated host stall
+failed release admission. On the unchanged source, the intended
+isolated Release authority then passed twenty 20,000-segment/400-correction
+samples at 91.311 ms p50, 92.774 ms p95, and 93.702 ms maximum against the
+existing 250 ms budget. The product path had not regressed; the timing owner
+was misplaced.
+
+**Decision:** keep the dense Debug test as deterministic semantic
+characterization: five input permutations must retain 4,000 corrections,
+exactly 6,667 composed rows, and identical complete composed content, but
+elapsed time cannot fail the ordinary package suite. A source-level
+architecture ratchet preserves D300 by requiring one prebuilt
+correction-domain index in each of the validation and row-projection passes and
+forbidding the per-event whole-history convenience entry point from
+`ComposeTranscript`. Hard wall-clock admission moves to the existing
+content-free Release harness, now using twenty prebuilt permutations so
+nearest-rank p95 is not the single maximum. The deterministic release runner
+executes that isolated 20,000-segment/400-correction gate sequentially after
+the full package suite and before later gates; p95 above 250 ms remains an
+immediate failure and there is no automatic retry. Direct benchmark activation
+also defaults to twenty samples when no explicit diagnostic count is supplied.
+
+**Consequences:** package correctness stays deterministic under unrelated host
+load while the candidate gains a stronger, statistically meaningful Release
+performance gate instead of losing coverage or raising a budget. The original
+five-sample Aug reference remains historical evidence, not a substitute for the
+new candidate measurement. This current-host synthetic result still does not
+certify combined Meeting Detail rendering, correction-heavy search, other
+hardware profiles, physical Sequoia/Tahoe, distribution, CloudKit,
+accessibility, or field behavior.
+
+## D396 — Prove the ad-hoc resource app reached its benchmark (Aug 2026)
+
+**Context:** the clean `1c5ad3f` candidate passed deterministic, public,
+installed-model, performance, and release-build gates, then produced no idle,
+recording, or Stop fragment in the first resource process. `open -W` returned
+zero, the bundle and deep signature verified, and the runner therefore reported
+only an incomplete sample shape. The content-free crash report and a bounded
+direct dyld probe showed the actual pre-main failure: hardened-runtime library
+validation rejected the separately ad-hoc-signed embedded Sparkle framework as
+a different signing team. D392 deliberately withholds a user's distribution
+identity from autonomous candidate automation, while D368 correctly requires a
+real same-team identity for separately accepted graph timing evidence.
+
+**Decision:** keep ordinary local, Developer-ID, and distribution entitlements
+unchanged. Only the disposable `app.portavoz.mac.resource-bench` copy may select
+one tracked benchmark entitlement when its signing identity is ad hoc. That
+entitlement preserves hardened runtime and capture permission while adding the
+standard library-validation exception needed to load the embedded ad-hoc
+framework. A real-identity resource run selects the normal build entitlements
+and fails closed if the exception appears. This does not relax D368's real-team
+requirement or change the shipping bundle.
+
+Before generating fixtures or opening a measured window, LaunchServices runs a
+minimal process-owning probe. It requires the disposable-store flag, one unique
+absolute output, and writes exactly one fixed content-free marker through an
+exclusive no-follow descriptor with mode 0600 and `fsync`, then exits. The
+shell requires the exact marker and mode and removes it. A zero `open -W` status
+without the marker is a launch failure; it cannot fall through to a misleading
+missing-resource-fragment error. Unit and policy tests pin duplicate/relative/
+overwrite rejection, marker permissions and content, the exact entitlement
+delta, real-identity exclusion, and launch-preflight ownership.
+
+**Consequences:** current-host candidate automation can reach the real app
+resource harness without borrowing a private signing identity, while a dyld or
+LaunchServices regression fails before the long matrix begins. The benchmark
+exception is not a distribution, security, notarization, or same-team signing
+claim. Microphone TCC remains an honest interactive host prerequisite, and the
+result still does not certify other memory tiers, physical Sequoia/Tahoe,
+VoiceOver/Voice Control, production CloudKit, hosted CI, or field behavior.
+For candidate automation this prerequisite is superseded by D398's explicitly
+synthetic recording input; physical capture keeps the interactive field gate.
+
+## D397 — Read the signed library-validation entitlement literally (Aug 2026)
+
+**Context:** the first exact `797ae9f` candidate passed deterministic scope,
+the complete package suite, isolated correction timing, recording stress,
+scoped bilingual UI, public fixtures, installed-model gates, and the measured
+performance ledger. The resource lane then rejected its signed ad-hoc app
+before launch. The entitlement was present, but `plutil -extract` interpreted
+the periods in `com.apple.security.cs.disable-library-validation` as key-path
+separators and therefore reported a missing value.
+
+**Decision:** keep the D396 post-signing assertion and its fail-closed policy.
+Read the embedded entitlement with a literal plist-key lookup instead. Ad-hoc
+resource evidence requires the key to exist with exact boolean `true`; a real
+Developer-ID run requires the key to be absent. Decode errors and non-boolean
+values fail both paths. Policy and architecture tests reject the known
+dotted-key `plutil -extract` form and pin the three-state parser.
+
+**Consequences:** a parser mismatch can no longer block a correctly scoped
+scratch app or tempt a future change to remove the security assertion. This is
+only a candidate-runner correction. It does not qualify the failed candidate,
+change shipping entitlements, relax library validation for real identities, or
+certify resource, TCC, distribution, physical-host, or field gates.
+
+## D398 — Make recording resource evidence autonomous and finite (Aug 2026)
+
+**Context:** the exact clean `2b1c9ab` candidate passed deterministic scope,
+2,750 package tests, isolated correction timing, recording stress, scoped
+bilingual UI, public fixtures, installed-model gates, and the authoritative
+measured performance partition. Its first Release recording-resource process
+then waited indefinitely before writing a log or fragment. A content-free
+process sample showed no runnable benchmark worker, while TCC recorded an
+interactive microphone prompt for `app.portavoz.mac.resource-bench`: the
+scratch app had been re-signed ad hoc, so its code requirement no longer
+matched the existing Developer-ID microphone grant. Candidate automation had
+both delegated routine QA to the user and exposed an unbounded process wait.
+
+**Decision:** candidate resource recording no longer uses physical input. The
+three recording cells require one hidden runtime only when all of
+`-use-temp-store`, `--bench-record`, `--bench-resource-output`, and
+`--bench-resource-synthetic-capture` are present. It emits a bounded public
+real-time 16 kHz microphone/system signal and feeds the production
+`RecordingSession`, CAF writers, live-transcription attachment, Stop workflow,
+resource telemetry, semantic-indexing concurrency, and batch-transcription
+concurrency. It constructs neither `MicrophoneSource` nor `ProcessTapSource`
+and makes no TCC request. Resource receipt schema 2 binds the exact
+`public-synthetic-dual-channel-v1`, 16 kHz, 1,600-frame input contract; missing,
+different, or content-bearing provenance fails closed.
+
+Every LaunchServices benchmark invocation also receives one bounded in-app
+watchdog, armed before database and service composition. The
+watchdog admission requires a disposable isolated benchmark, accepts only one
+60–7,200-second value, and exits with status 124 if AppKit, TCC, model work, or
+teardown outlives the owner timeout. The shell requires that bound to exceed
+both the tighter model-operation timeout and the longest idle-plus-recording
+phase by at least 420 seconds. A separate shell guard gives the in-app owner 30
+additional seconds, then terminates only the disposable scratch app and its
+`open -W` wait if LaunchServices itself has not returned. A timeout writes no
+passing sample, resource receipt, or candidate qualification.
+
+**Consequences:** a clean candidate can measure realistic product recording
+interference repeatedly without private meetings, user audio, TCC resets, or a
+human permission click, and it cannot wait forever. This deliberately removes
+physical capture and permission behavior from candidate automation rather than
+faking their success. Real microphone/process-tap TCC, device routing,
+acoustics, 90-minute calls, additional memory tiers, physical Sequoia/Tahoe,
+VoiceOver/Voice Control, distribution, CloudKit, hosted CI, and field behavior
+remain separate gates.
+
+## D399 — Prepare one-time Refine runtime state outside repeated samples (Aug 2026)
+
+**Context:** the exact clean `fd09b77` candidate passed deterministic scope,
+2,754 package tests, recording stress, scoped bilingual UI, public fixtures,
+installed-model lanes, and the authoritative performance partition. Its
+resource receipt then blocked Refine stability. Run one took 137.808 seconds
+wall, 46.452 seconds process CPU, and wrote 1.755 GB; runs two and three took
+about 4.75 and 4.72 seconds and wrote nothing. The closed workload ledger
+attributed 131.554 seconds of run one to `qualityTranscription/load`. The
+nearest-rank p95/p50 rule correctly rejected that distribution: the first
+sample had paid one-time host/Core ML preparation that artifact verification
+alone does not perform.
+
+**Decision:** before the three measured Refine processes, run exactly one
+bounded, unmeasured scratch-app preparation through the production composition
+root. It force-verifies the already-installed Whisper, tokenizer, and
+diarization artifacts, acquires and finishes the Whisper runtime, and only then
+acquires and finishes the diarization runtime. Sequential leases mirror the
+product workflow and avoid manufacturing simultaneous heavy-model residency.
+It may reuse only the normal verified model cache; no download, user library,
+Keychain, voiceprint, or participant gallery is admitted.
+
+The preparation publishes one fixed content-free marker through the existing
+exclusive no-follow, mode-0600, `fsync` writer. Resource receipt schema 3 binds
+the exact `refine-runtime-preparation-v1` prerequisite. Assembly rejects a
+missing, duplicate, unsupported, symlinked, wrong-owner, wrong-mode, unreadable,
+or different marker. Every measured Refine sample remains a separate app
+process with no app-resident runtime, and all existing timeout, model
+verification, workload, privacy, and stability checks remain in force.
+
+**Consequences:** repeated Refine samples no longer depend on accidental prior
+host cache state or an unchanged retry, while each measured process still pays
+its real per-process load and execution cost. This does not turn the preparation
+into a passing sample and does not certify the first-ever Refine activation
+experience; its latency, disk writes, thermal behavior, cancellation, and user
+feedback remain explicit field/UX evidence. The failed `fd09b77` candidate
+stays failed. Additional memory tiers, independent physical Sequoia/Tahoe,
+VoiceOver/Voice Control, distribution, CloudKit, hosted CI, and field behavior
+remain separate gates.
+
+## D400 — Require actionable absolute timing variance in resource evidence (Aug 2026)
+
+**Context:** the exact clean `cc9d2e4` candidate completed deterministic
+validation, recording stress, scoped bilingual XCUITest, public fixtures, every
+installed-model lane, the authoritative performance ledger, and all three
+resource rounds. D399 made Refine stable at about 4.74–4.86 seconds wall and
+2.71–2.77 seconds CPU with zero measured disk writes. Candidate validation then
+blocked Stop because its CPU p95/p50 was 1.282589, although the absolute spread
+was only 47.0938 milliseconds and wall time was stable. The next blocking row
+would have been Ask's `fusion` stage: ratio 1.317343 over only 0.021791
+milliseconds. A pure relative ratio is ill-conditioned for small measurements;
+neither distribution represented a user-visible or resource-actionable
+regression. The candidate remains failed and emitted no qualification receipt.
+
+**Decision:** resource receipt and scorecard schema 4 retain the three-sample
+nearest-rank distributions and every raw aggregate unchanged. A wall or CPU
+distribution is unstable only when both its p95/p50 ratio is above 1.25 and its
+p95-minus-p50 delta is at least the tracked 100-millisecond blocking floor. If
+p50 is zero, p95 must reach that same floor before blocking. The contract may
+choose a stricter lower floor but cannot raise it above 100 milliseconds.
+Candidate validation applies the same rule to every resource scenario, the
+aggregate Ask timings, and every Ask stage. Dedicated UX/performance gates
+continue to own sub-100-millisecond latency rather than turning timer noise into
+a resource-matrix failure.
+
+**Consequences:** the exact Stop and Ask-fusion evidence that exposed the
+ill-conditioned ratio is admitted by a deterministic versioned policy rather
+than by an unchanged retry, while D398's 4.751-to-137.808-second Refine
+distribution remains unstable by both thresholds. An exactly 100-millisecond
+spread still blocks when its ratio is above 1.25. This correction does not
+raise a product latency budget, clip evidence, qualify `cc9d2e4`, accept a
+multi-host baseline, or close first-use Refine, physical Sequoia/Tahoe,
+VoiceOver/Voice Control, distribution, CloudKit, hosted CI, or field behavior.
+
+## D401 — Confirm performance candidates with one retained fixed set (Aug 2026)
+
+**Context:** the exact clean `6e9476f` candidate passed deterministic scope,
+public bilingual validation, every installed-model class, and every hard
+performance budget. Its first authoritative ledger then measured Detail core
+read at 18.334959 ms against a 15.480667 ms comparison baseline, an 18.44%
+budgetless delta. `PORTAVOZ_PERF_STRICT=1` immediately blocked qualification,
+although PERF-008 says a single delta is only a candidate until three stable
+runs agree. Two sequential isolated diagnostic ledgers on the same source,
+host, and toolchain measured about +11.6% and +14.7%; both were diagnostic and
+all hard budgets remained green. The three observations therefore did not
+confirm the first candidate. The candidate remains failed because its runner
+had no authority to interpret that set.
+
+**Decision:** evolve `candidate-automation.json` to schema 2 and pin its
+`confirmationRuns` to the same exact integer 3 declared by
+`perf-thresholds.json`. Candidate automation runs the authoritative ledger
+without standalone strict mode. Exit 0 publishes that first clean run. Exit 2
+opens exactly two more sequential runs; exit 1 or any other status still blocks
+immediately. Every ledger must be authoritative, exact-inventory, internally
+stable, and from the identical host and toolchain, and its exit code must match
+its candidate set.
+
+The three-run set is closed before its outcome is interpreted. A metric that
+is `regression-candidate` in all three is a confirmed blocker. Different
+candidate sets with no completely clean run are inconclusive and also block.
+Otherwise the last clean run is atomically published as the canonical ledger.
+All observed ledgers remain owner-only, and a validated content-free receipt
+records only run number, exit code, ledger SHA-256, candidate metric IDs,
+outcome, and selected run. Qualification still admits only canonical `pass` or
+budgetless `diagnostic` metrics; it never accepts a candidate state, changes a
+baseline, discards an adverse observation, or runs more than the declared set.
+
+**Consequences:** one scheduling outlier can no longer contradict PERF-008 and
+abort a candidate as though it were a confirmed regression. The fixed retained
+set is not an unchanged full-candidate retry and cannot be extended until a
+green observation appears. A hard budget miss, unresolved or unstable metric,
+non-authoritative ledger, host/toolchain drift, exit mismatch, digest tampering,
+three matching candidates, or a no-clean mixed set remains fail closed. This
+current-host automation still does not certify other memory tiers, physical
+Sequoia/Tahoe, VoiceOver/Voice Control, signed distribution, production
+CloudKit, hosted CI, or field behavior.
+
+## D402 — Let GitHub own reviewed source-integration truth (Aug 2026)
+
+**Context:** D391 made reviewed source integration and hosted CI two exact
+release cells, but only the evaluator schema existed. The repository had no
+producer for the `source-integration` receipt, so a hand-authored exact-shaped
+JSON file could satisfy those cells without proving a PR, review, default-
+branch integration, or hosted run. Candidate automation cannot own this
+evidence because a local checkout cannot prove remote review or CI state. The
+current release branch is also hundreds of commits ahead of `origin/main`, so
+local green evidence is not integration evidence.
+
+**Decision:** add one manual-dispatch, read-only GitHub Actions owner backed by
+the tracked `source-integration-qualification.json` contract. It accepts a
+dispatch only from `main`, checks out trusted `main`, and requires the dispatch
+ref, checked-out HEAD, `GITHUB_SHA`, and requested full commit to be the same
+clean source before making a token-authenticated API call. It never executes a
+caller-selected side branch with its Actions-read token. GitHub REST must show
+that commit as the unique non-draft merge introducing a pull request to `main`
+and as the exact current `main` head, not merely a reachable ancestor. Review
+reduction keeps the latest
+decisive state per reviewer. At least one owner/member/collaborator other than
+the author must currently approve the exact PR head, and no reviewer may retain
+a change request; bots, outsiders, self-review, stale-head approvals, and
+dismissed reviews do not count.
+
+Hosted evidence is the exact commit's `CI` push workflow on `main`, with
+`build-and-test`, `ios-portability`, `sequoia-compatibility`, `lint`, and
+`repository-hygiene` each present once and successful. The contract rejects
+multiple unchanged-commit CI runs and any `run_attempt` other than one, so a
+green retry cannot replace the first observation. Missing, queued, cancelled,
+failed, duplicate, or metadata-drifted evidence blocks before output. The
+workflow permissions are only `actions:read`, `contents:read`, and
+`pull-requests:read`; it has no pull-request-target trigger and no remote write
+permission.
+
+The producer run is part of the same authority. Its workflow title includes the
+exact requested commit, and the script queries that workflow's dispatches. The
+current in-progress run must be the only matching dispatch, with the exact
+workflow identity and `run_attempt == 1`; a second dispatch or rerun cannot
+mint a replacement receipt for unchanged source.
+
+Only that live query may write the existing exact-shaped
+`source-integration` qualification receipt. A sibling owner-only authority
+report retains release identity, numeric PR/review/run IDs, and fixed job names
+without titles, bodies, actors, comments, logs, paths, or content. The script
+accepts version/build/commit/output only—never proof states or a replacement
+contract—and output is new, atomic, and mode 0600 inside a mode 0700 directory.
+The generic receipt binds the authority report's canonical SHA-256, and release
+evaluation requires both unchanged siblings rather than trusting a copied JSON
+receipt.
+
+**Consequences:** final admission can no longer turn a locally manufactured
+integration receipt into two green cells. A solo-maintainer release needs a
+genuine independent reviewer for this gate, and an integrated merge/squash
+creates a new commit that must rerun candidate automation. D402 implements no
+push, PR, review, merge, workflow dispatch, distribution, CloudKit, physical
+hardware, assistive-technology, or field evidence; those actions and proofs
+remain explicitly authorized external work.
+
+## D403 — Preserve the provisioned identity for sync qualification (Aug 2026)
+
+**Context:** the documented production-CloudKit field path supplied the
+`app.portavoz.mac` Developer ID profile to `make install`. `make-app.sh` first
+built and verified that exact production identity, but the install recipe then
+changed `CFBundleIdentifier` to `app.portavoz.mac.dev`, re-signed the outer app,
+and never rechecked the profile App ID. The capability verifier checked the
+container, service, environments, and expiration, but not Info.plist identity,
+the profile application-identifier, or the App ID and developer-team claims in
+the manually created signature. It also concatenated the profile prefix and
+bundle ID without the required delimiter. A green build therefore could
+describe a bundle the embedded production App ID did not authorize. Installing another
+exact-production-ID app beside the user's notarized copy would replace that bug
+with LaunchServices/TCC identity ambiguity.
+
+**Decision:** join CloudKit capability verification to exact app identity. The
+final Info.plist must contain `app.portavoz.mac`. The embedded profile must have
+one or more nonempty `ApplicationIdentifierPrefix` values and an
+`application-identifier` (or namespaced Apple alias) equal to a declared
+`<prefix>.<bundle identifier>`; two aliases are accepted only when their values
+match. The build materializes the profile-owned
+`com.apple.application-identifier` and
+`com.apple.developer.team-identifier` into a generated production-entitlements
+file instead of hard-coding account identity in source. The final signature,
+profile entitlement, prefix list, profile team list, and Info.plist must agree.
+Missing, malformed, conflicting, wildcard, or foreign identities fail before
+launch or notarization. Exact signed container, CloudKit service, Production
+environment, production APNs, accepted profile service wildcard, and expiry
+checks remain unchanged.
+
+Ordinary `make install` fails before building when a production provisioning
+profile is supplied. A separate production-sync qualification builder requires
+the fixed release version, numeric build, full source commit, a clean matching
+tracked checkout before and after construction, a real signing identity, and
+the profile. It calls the production app builder, confirms production
+entitlements including the profile-derived App ID and Team ID, preserves
+`app.portavoz.mac`, changes only the display name to
+`Portavoz Sync Qualification`, re-signs the outer bundle, and re-verifies its
+signature, capability/profile identity, version, build, and source stamp. It
+publishes only under `dist/`; it never copies to `/Applications`, registers with
+LaunchServices, or opens beside the stable app. The future sync evidence owner
+will execute the binary directly with scratch stores and explicit qualification
+arguments.
+
+**Consequences:** a provisioned Dev-name artifact can no longer pass an
+intermediate production check, omit Xcode's normal identity claims during
+manual signing, or then lose its authorized identity. Release,
+distribution, and sync qualification share the same fail-closed App ID rule,
+while normal development and XCUITest retain separate unprovisioned identities.
+This band does not sign an artifact, access an iCloud account, mutate CloudKit,
+exercise push/account transitions, prove the two-Mac matrix, or create a
+production-sync receipt. Those remain separately authorized physical evidence
+owned by the later staged producer.
+
+## D404 — Let the exact app own staged production-sync evidence (Aug 2026)
+
+**Context:** D403 can build an exact-identity, production-provisioned app, but
+packaging cannot prove that the shipped CloudKit lifecycle converges. The D147
+evaluator accepted a correctly shaped `production-sync` receipt without an
+executable producer. A manual checklist or generic pass recorder could
+therefore claim two-Mac sync without proving separate existing-library consent,
+durable retry/relaunch, push wake, account boundaries, tombstones, or the exact
+candidate. Testing with a private meeting would also make routine qualification
+depend on user data and risk leaking content into evidence.
+
+**Decision:** freeze one 27-stage contract over role A and role B and execute
+each stage through the unchanged signed app. One owner-generated manifest binds
+release version/build/commit, bundled contract digest, executable digest, a
+random run nonce, and random identities for a fixed public English/Spanish
+meeting. The strict hidden mode accepts only the wrapper's fixed AppKit pairs,
+one disposable shell flag, and the exact stage tuple; every other launch
+argument fails closed. The wrapper removes every inherited `PORTAVOZ_*`
+override before injecting one
+role-local shell database path. The synchronous watchdog validates that closed
+environment before preference handling. It keeps ordinary notification/App
+Intent launch plumbing and process owners dormant and does not construct the
+ordinary `AppServices` graph; the inert app shell
+constructs only the real `CloudMeetingSyncLifecycle` plus
+`CloudKitMeetingSyncPlatform` over role-local scratch stores. The public seed's
+automatic journal entry is acknowledged first, so Enable alone cannot smuggle
+the existing library into sync; Include Existing must explicitly readmit it.
+
+Both the Python command owner and the app process require completed contract
+prerequisites before mutation. Each role's receipts form an exact digest chain,
+and every stage has a unique process nonce. Fixed scratch/evidence directory
+components are created one level at a time with owner-only permissions; either
+layer rejects a symbolic-link escape or special entry before database or
+receipt I/O. Cross-Mac operation transfers only the mode-0600 manifest and
+prerequisite receipts; scratch databases never move.
+The `await-push` and `push-source` stages are concurrent siblings after
+`b.receive-retry`: B registers for remote notifications and announces `READY`,
+but first writes a content-free marker bound to its process and host. A must
+consume that copied marker digest before publishing; B's final receipt must bind
+the same marker and process. B may synchronize only from the delegate's remote
+wake and must observe the exact push state within the bounded wake/timeout budget.
+The six network/account transitions carry a closed external-action token. The
+wrapper requires the exact acknowledgment before launch, but only the app's
+observed lifecycle/account result can enter the receipt.
+
+Stage receipts are content-free and exact-shaped: release, executable,
+code-resource seal, provisioning-profile, contract, and corpus digests;
+role/stage/sequence; predecessor and process identity; run-scoped host/account
+hashes, lifecycle counts, push wakes, the nullable live-stage marker digest,
+and OS facts. The host scope hashes IOPlatformUUID with the run nonce; raw
+platform/account identity never leaves the process. Finalization requires all
+and only the 27
+receipts plus the one live-stage marker and no other evidence files, two
+distinct IOPlatformUUID-derived host scopes, one original account shared across
+roles, a genuinely different switched account and restoration, one consistent
+OS identity per role plus a cross-version pair containing one Sequoia Mac and
+one Tahoe-or-newer Mac, valid chains and states, then publishes
+the authority and generic admission receipt atomically as one directory. There
+is no caller-supplied proof state and status never mints authority. The generic
+receipt binds the authority's canonical SHA-256, and release evaluation requires
+the unchanged sibling pair.
+
+**Consequences:** Portavoz now has an autonomous, repeatable producer for the
+code and receipt protocol, using no private meeting. It still cannot fabricate
+the external observation: the exact app/profile/container, two clean Macs, real
+iCloud accounts, offline transition, APNs delivery, and account switch must be
+run with explicit authorization. Until that physical matrix completes, no
+production-sync receipt exists and the release gate remains blocked. This band
+does not sign, notarize, distribute, mutate a remote repository, or claim
+Sequoia/Tahoe/assistive-technology/field evidence beyond receipts actually
+collected. Host-scope inequality is not hardware attestation; the authorized
+runbook and retained operator evidence must still establish two physical Macs.
+
+## D405 — Bind physical assistive observations to one fixed public journey (Aug 2026)
+
+**Context:** the schema-2 release ledger requires VoiceOver and Voice Control
+on Sequoia and Tahoe, but it accepted a correctly shaped generic qualification
+receipt without an executable evidence owner. Full bilingual XCUITest proves
+the real app's accessibility identifiers, labels, focus, activation, and
+journeys under automation; it cannot prove that a human actually completed
+those journeys with either assistive technology on physical target hosts. An
+unbounded manual checklist would invite scope drift, private meeting data,
+screenshots, retries to green, or an assistive claim detached from the exact
+candidate. macOS exposes documented VoiceOver state through
+`NSWorkspace.isVoiceOverEnabled`; this project found no documented public
+equivalent for current Voice Control activation.
+
+**Decision:** freeze four cells—VoiceOver and Voice Control on macOS 15
+Sequoia and macOS 26-or-newer Tahoe families—each executed in English then
+Spanish. Both technologies share one exact host/build within a platform, while
+the two platform families use different run-scoped host values. Every locale
+launches the unchanged Developer-ID-signed `app.portavoz.mac.dev` executable
+directly with a disposable database/audio/defaults root, the public demo,
+duplicate-Skill and Waiting-receipt seeds, and synthetic Interview Assist. The
+stable app, user library, private meeting, microphone, external account,
+network, installed model, and Web source are outside this protocol.
+
+The fixed journey has six ordered checkpoints: Library plus exact search,
+Meeting Detail notes and evidence navigation, local Ask notes/meeting citation
+navigation, distinct Skills actions plus receipt focus restoration, grounded
+Interview Assist, and visible recording Stop/recovery. Each checkpoint maps to
+existing real-app XCUITest selectors, but only the trusted human observation
+can fill the physical cell. VoiceOver requires a separately typed human
+confirmation and a positive documented `NSWorkspace` state. Voice Control
+uses the separately typed human confirmation only; a nullable system
+observation is the explicit authority model, not missing data. The operator
+must not use a pointer or another assistive technology to rescue a checkpoint.
+
+One owner-generated run manifest requires a clean exact checkout, an exact-byte
+all-pass candidate-automation receipt, and a matching signed Dev bundle. It
+binds version/build/commit, contract and candidate digests, executable,
+Info.plist, CodeResources, Developer ID kind, and a run-salted team scope.
+Cells bind technology, platform, exact arm64 OS build, a run-salted
+IOPlatformUUID host scope, and a random nonce. Locale sessions bind a unique
+identity-checked process, exact empty seed-ready marker, and activation
+authority. A single run-root reservation serializes launch admission across
+technologies and locales, and inherited Portavoz/test-runner/XCTest variables
+are removed before the closed disposable environment is injected.
+
+Observations have exact content-free shapes, require a separately typed
+`checkpoint:outcome` acknowledgment, and form one immutable SHA-256 predecessor
+chain per locale. Atomic writes use a same-directory fully written hard link so
+concurrent output can never replace an existing receipt. A failure remains in
+the chain, gracefully terminates only the exact owned Dev process, removes the
+disposable runtime only after confirmed exit, blocks the whole cell, and
+requires a new run. A cleanup timeout preserves scratch state and fails rather
+than hiding a possible orphan. There is no
+delete, edit, arbitrary proof-state, or retry command.
+
+Finalization requires all and only four cells with complete passing EN/ES
+chains, unique cell/process nonces, shared host/build within each platform,
+different host scopes across platforms, exact app/candidate/source identity,
+owner-only modes, and no extra, symbolic-link, special, or runtime entries. It
+publishes a new owner-only `assistive-technology-authority` and generic
+qualification receipt atomically as siblings; release evaluation requires the
+unchanged pair and canonical authority digest. The publisher never chmods an
+existing shared parent.
+
+**Consequences:** physical accessibility qualification is now finite,
+repeatable, bilingual, private-data-free, and bound to the exact release
+candidate rather than to a screenshot or hand-authored pass. Failure and host
+drift cannot be hidden by overwriting evidence. This owner still cannot
+fabricate trusted human use or physical hardware: IOPlatformUUID-derived scope
+inequality is not attestation, and XCUITest is not VoiceOver/Voice Control
+evidence. Until authorized operators complete the four real cells, no
+assistive receipt exists and Portavoz 1.0.0 remains blocked. This decision
+performs no signing, notarization, distribution, CloudKit/account operation,
+remote mutation, or field claim.
+
+## D406 — Keep prompt contracts below model availability (Aug 2026)
+
+**Context:** the Sequoia compatibility lane builds with Xcode 26.3, so
+`canImport(FoundationModels)` is true even though the macOS 15 runtime cannot
+run Foundation Models. SwiftPM/XCTest discovered a test class annotated
+`@available(macOS 26.0, *)` and executed its synchronous methods anyway. Two
+independent first-attempt hosted runs ended with signal 11 after starting the
+same typed-RAG prompt-formatting case. Buffered XCTest output initially made an
+earlier GRDB observation suite look causal; comparison of both raw logs proved
+that suite had completed. No crash report identified the exact Swift-runtime
+fault, so changing production cancellation again or simply skipping the prompt
+contract on Sequoia would be unsupported.
+
+**Decision:** deterministic meeting prompt instructions and fact-aware context
+formatting are provider-neutral contracts, not Foundation Models adapter
+behavior. `PromptFactory` owns the chapter, brief, meeting-type, and title
+instructions. `RAGAnswerPrompt` retains transcript-only admission and
+`RAGFactAnswerPrompt` owns the typed transcript/fact/source markers and page/
+selection disclosure. All compile before the Foundation Models import and
+availability boundary. The macOS-26 adapter consumes these exact values and
+owns only model availability, `LanguageModelSession`, scheduling, streaming,
+and generation.
+
+Package prompt tests reference only those pure authorities and run on every
+supported macOS runtime; they never name an availability-gated adapter. A
+source-level architecture ratchet requires each adapter to use its pure
+authority, keeps fact-aware formatting before `canImport(FoundationModels)`,
+and rejects reintroducing model-adapter references or a Foundation Models
+conditional in the prompt contract suite.
+
+**Consequences:** prompt bytes, marker semantics, model choice, generation,
+egress, UI, storage, and the deployment floor do not change. Sequoia can verify
+the same injection guard and exact-source prompt construction as Tahoe without
+loading weak-linked model metadata. Local success establishes structure only;
+the first fresh exact-head hosted Sequoia run remains the causal acceptance
+gate, and physical Sequoia/Tahoe model quality remains separate field evidence.
+
+## D407 — Bind correction sheets to immutable route targets (Aug 2026)
+
+**Context:** the first exact-head hosted XCUITest after D406 passed all Swift,
+Sequoia, lint, and hygiene jobs, but both transcript-correction journeys failed
+on the compact 900-by-674 test window. The correction accessory was stable and
+its click was synthesized. The captured accessibility hierarchy then contained
+one disabled main window and no sheet, dialog, editor, or structural control.
+`MeetingTranscriptSection` set a row in local state and presented a native sheet
+whose body recomputed optional editor contexts from a later view snapshot. If
+both lookups were absent during presentation, SwiftUI could open conditionally
+empty content and leave no accessible recovery surface. Reclassifying the
+XCUITest query, adding delay, retrying the run, or increasing a timeout would
+not repair that product state.
+
+**Decision:** make correction presentation part of the existing D227/D228
+scene-owned flow contract. A visible row first resolves its optional text and
+structural editor contexts and captures those values with the exact accepted
+reading and base transcript revision in one immutable
+`TranscriptCorrectionTarget`. Only a nonempty target may activate the typed
+`correctTranscript` route. `MeetingDetailFlowHost` renders the text/structural
+editor from that captured payload and sends its exact reading and revision back
+through explicit actions; dismissal clears the payload with the route. An
+impossible missing payload renders a localized-safe unavailable surface rather
+than an empty sheet. The nested transcript section owns no correction sheet or
+correction-row state, though its separate hidden-evidence review remains local
+pending its own migration.
+
+The same portability band gives each saved live objective one stable
+accessibility identifier instead of querying a localized `Text` element type.
+The Commitment Inbox journey continues to prove exact current evidence and the
+full explicit confirmation boundary, but uses a bounded predicate-driven
+vertical reveal for its action. Exact evidence-to-audio navigation remains
+covered by the summary, decision, action-item, and Apuntador journeys that all
+exercise the same `MeetingEvidenceSources` component; the commitment test no
+longer duplicates that navigation or fixed host-specific wheel counts.
+
+**Consequences:** correction commands retain their immutable-evidence,
+append-only, revision-fenced behavior; this changes presentation ownership, not
+correction policy or storage. Compact supported macOS windows cannot enter the
+known disabled-empty-sheet state, and every invariant violation remains visible
+instead of trapping the user. XCUITest removes one duplicated navigation path
+without removing component coverage and replaces timing/geometry assumptions
+with observable accessibility state. Local success is not hosted Sequoia proof:
+the first exact-head hosted correction journeys remain the causal acceptance
+gate, while physical Sequoia/Tahoe and assistive-technology qualification remain
+separate release evidence.
+
+## D408 — Require viewport-contained activation in compact review flows (Aug 2026)
+
+**Context:** exact-head D407 passed every Swift/Sequoia/lint/hygiene job and its
+four target journeys locally, but hosted run `33081639721` retained the same
+four unique XCUITest failures. Direct xcresult SQLite attachment recovery and
+Zstandard hierarchy decoding corrected the causal diagnosis. On the compact
+900-by-674 runner, the accepted-line correction button occupied y=515...543
+outside its transcript viewport y=434...512. After two bounded scrolls, the
+Commitment review action remained y=504...524 outside its artifacts viewport
+y=218...398. In both cases XCTest reported the clipped control hittable, so the
+harness stopped scrolling and synthesized a no-op click; the route never
+received an activation and no sheet could open. The Interview objective was
+successfully admitted—the count and later answer/evidence assertions passed—but
+the identifier attached to its leaf SwiftUI `Text` was absent from the hosted
+accessibility representation.
+
+**Decision:** `isHittable` is necessary but insufficient for controls inside a
+bounded scroll viewport. A review journey may activate such a control only
+after its nonempty frame is completely contained by the identified viewport
+frame and remains stable. The reveal performs at most its declared scroll
+budget, checks after every scroll, and fails rather than sleeping, retrying the
+click, or increasing a timeout. The focused and text-only transcript surfaces
+share the stable `detail-transcript-scroll` identifier. Both correction
+journeys reveal their exact source action through that viewport; the Commitment
+journey applies the same geometry rule to `detail-artifacts-section`.
+
+Dynamic recording-objective identity belongs to its containing accessibility
+row. That row publishes the stable UUID-derived identifier and exact objective
+text as its label while retaining toggle/remove actions with `.contain`.
+Neither fix changes correction targets, commitment confirmation, interview
+admission, persistence, generation, or egress.
+
+**Consequences:** compact user scrolling and test activation now agree on what
+is actually visible across supported macOS accessibility implementations. A
+clipped AX descendant cannot make a no-op click look ready, and the bounded
+policy is architecture-ratcheted. The defensive D407 immutable route target
+remains valid, but it was not the complete cause of the hosted failures. The
+four formerly failing English journeys pass 4/4 locally after D408; fresh
+exact-head hosted evidence remains required before closing portability. Physical
+Sequoia/Tahoe and VoiceOver/Voice Control qualification remain separate gates.
+
+## D409 — Replace runner-speed timing with finite feature handshakes (Aug 2026)
+
+**Context:** exact D408 head `600a46ec` passed hosted current-SDK, Sequoia,
+lint, and hygiene CI, then hosted Scoped UI run `33092974838` evaluated all 106
+English journeys because the pull request contained the complete long-lived
+branch diff. It retained 104 passes and two failures. Interview Assist admitted
+the objective and later produced its exact grounded answer/evidence, but the
+new objective row had not been materialized below the compact scroll viewport.
+Ask produced the final exact answer and citation, but a screenshot between its
+refining and generating assertions consumed fixed 500/350 ms fixture windows.
+The same run measured 1,699.537 seconds of summed XCTest, p95 38.424 seconds,
+and 552 seconds of build time; the slowest Skills journeys repeatedly paid
+test-only four-second sleeps. Retrying unchanged, lengthening sleeps, raising
+budgets, dropping transient assertions, or running the complete branch history
+for every feature would preserve neither determinism nor useful feedback time.
+
+**Decision:** intermediate test-fixture state is controlled by observation,
+not elapsed time. Disposable Ask empty retrieval, lexical evidence, and partial
+answers, plus non-Recent Skills receipt and proposal reads, use distinct UUID-scoped
+ready/continue file pairs. The app removes stale signals before each phase,
+accepts only signals directly below its process temporary directory, publishes
+ready, checks cancellation every 50 ms, resumes after the test-owned continue
+signal, and removes both files. A missing/malformed configuration,
+signal-creation failure, cancellation, or 600-probe exhaustion fails; there is
+no timer fallback. These seams require both `-use-temp-store` composition and
+an explicit simulation argument, so production scheduling and data are
+unchanged. The runner derives paths from the app's isolated launch `TMPDIR`,
+not its own process temporary directory, and canonicalizes the parent directory
+before comparison. The app validates against that exact environment value, not
+Foundation's independently resolved default temporary directory; both sides
+fail if the isolated launch root is absent. XCUITest releases each phase only
+after it has asserted the exact loading/refining/partial state; replacement
+cancels the empty retrieval and must remove its ready file.
+
+Interview Assist waits for the admitted-objective count, performs one bounded
+scroll before querying the dynamic row, and requires the answer action's whole
+frame inside the assist viewport before activation. Pull-request `synchronize`
+events select the minimum-safe diff from the immediately preceding PR head;
+initial PR evaluation retains the base-branch diff and manual integration
+dispatch retains the complete catalogue. Shared harness, localization, and
+unknown executable paths keep their existing fail-safe expansion. If a
+force-pushed preceding object is not present in the complete scope checkout,
+selection expands from the base branch instead of failing narrow.
+
+**Consequences:** feature pushes no longer replay hundreds of already-reviewed
+commits or depend on runner speed to catch a transient state. The retained red
+hosted result remains part of the evidence; the next head must change code and
+pass its minimum-safe scope. The changed local code passed the path validator
+3/3, the four causal Ask/Skills journeys 4/4 in 113.595 seconds, and the full
+minimum-safe English selection 56/56 from one reused build without retry. Its
+content-free receipt records 668.084 seconds of summed XCTest, p95 28.095
+seconds, and no budget violation; the Interview journey passed in 11.412
+seconds. This is not permission to merge on scoped evidence alone: exact-head
+hosted qualification and final integration/RC/release still require a fresh
+complete bilingual 106-case run with exact aggregate and per-journey budgets,
+plus the existing physical Sequoia/Tahoe, VoiceOver/Voice Control,
+distribution, CloudKit, and field gates.
+
+## D410 — Assign each XCUITest risk to one bounded journey (Aug 2026)
+
+**Context:** exact D409 head `3b793cfd` passed hosted current-SDK, Sequoia,
+lint, and hygiene CI. Hosted Scoped UI run `33106386007` then selected the
+intended 56 English journeys and passed 55. Interview Assist admitted its
+objective and later returned the exact grounded answer and evidence, but a
+fixed negative 240-point scroll moved the inserted row toward the pruned side
+of the compact accessibility viewport before two five-second waits. All 23
+Skills cases passed functionally, while seven missed their unchanged runtime
+budgets; the broad control-to-receipt journey measured 121.265 seconds. Its
+timeline showed repeated accessibility traversal of action-specific copy,
+receipt scopes already owned by focused activity journeys, all three receipt
+events one by one, and two whole-app accessibility audits. Raising budgets,
+retrying unchanged, or deleting focused risk owners would not improve feedback
+or robustness.
+
+**Decision:** dynamic Interview rows are discovered by the conjunction of
+their stable identifier prefix and exact accepted label. Their existing
+bounded geometry reveal may move toward the known earlier-content position
+while the row is absent from the accessibility tree, then requires a nonempty,
+hittable, viewport-contained, stable frame. No fixed host-sized reveal remains.
+
+Stable-frame waiting retains its 250-millisecond default contract but starts
+that interval with the first valid nonempty hittable frame, resetting it on any
+movement or loss of hittability. It no longer requires a second identical
+sample merely to start the interval and a third to finish it.
+
+The broad Skills journey owns one coherent risk chain: exact six-action live
+count, representative local and external disclosure, global pause, individual
+choice durability across Settings reconstruction, absence while paused,
+resume, explicit confirmation, durable receipt projection, content-free
+privacy, and complete three-event history. Pure package tests retain the exact
+six identities, local/external classification, input ceilings, and policy.
+Dedicated real-app journeys retain Reminder, Brief, Email, Gist, receipt-scope,
+filtering, transition, keyboard-focus, and accessibility behavior. The broad
+journey therefore does not repeat every action's copy, Gist data-class proof,
+or the receipt-scope tour. Its one accessibility audit runs with the receipt
+sheet open; XCTest audits every open app window, so that pass covers both the
+background Settings surface and the sheet. Source ratchets reject the retired
+fixed scroll, redundant scope helper, second audit, or loss of those focused
+risk owners. Runtime budgets are unchanged.
+
+**Consequences:** this is consolidation, not a narrower product claim. One
+failed owner still blocks its risk, the full 106-case bilingual catalogue
+remains the integration/release gate, and no retry can substitute for a code
+change. The final local candidate passed all 106 cases in both locales with no
+budget violation; exact-head hosted receipts must still demonstrate that the
+Interview portability failure and measured Skills overruns are closed on the
+independent runner. Local automation still cannot certify physical
+Sequoia/Tahoe, VoiceOver/Voice Control, distribution, CloudKit, or field
+behavior.
+
+## D411 — Settle viewport geometry and keep one UI owner per risk (Aug 2026)
+
+**Context:** exact D410 head `5b6db823` passed hosted current-SDK, Sequoia,
+lint, and hygiene CI. Hosted Scoped UI run `33114439299` selected the complete
+106-case English catalogue because D410 changed the shared XCUITest support
+file. It retained 104 functional passes, but Interview Assist never exposed
+its admitted objective and the ordinary transcript-correction journey scrolled
+its action above the compact viewport before activation. The run also measured
+1,375.478 seconds of summed XCTest against the unchanged 1,300-second ceiling.
+Its timeline and recovered hierarchy established two deterministic causes:
+Interview moved toward earlier content although an inserted objective lives
+later in the assist scroll, while Meeting Detail performed an immediate
+visibility precheck after each fixed wheel step and could overscroll before the
+accessibility frame settled. The structural-correction journey also repeated
+real-store merge/search/restore/suppress semantics and generic Library
+navigation, and the email journey repeated the central Settings receipt
+projection already owned by other real-app journeys. Retrying the same head,
+raising budgets, or increasing waits would preserve those defects and costs.
+
+**Decision:** absent Interview rows move toward later content in at most
+48-point steps. Interview and Meeting Detail each use a local bounded
+geometry-aware reveal: direction comes from the target relative to the current
+viewport, every step is capped, and one predicate waits for a nonempty,
+hittable, completely contained frame to remain unchanged for the declared
+interval. A target already inside the viewport waits without another scroll;
+an unresolvable target fails instead of clicking, sleeping, or retrying.
+
+The disposable 20,000-segment journey replaces its three-second summary delay
+with the existing UUID-scoped ready/continue handshake. It observes summary
+revision 1 before releasing revision 2, then verifies chapters and the live
+replacement. The 5,000-segment journey owns the representative scale
+screenshot and initial-summary rendering; the 20,000-segment journey owns the
+larger subscription/performance boundary without taking a duplicate image.
+
+The structural real-app journey continues to prove split, merge, both durable
+restores, suppression, disappearance from the visible transcript, and recovery
+through hidden evidence. Real-store tests exclusively own search across a
+merged boundary, restoration of accepted result identity, and suppression
+exclusion; the seeded Library journey owns search-result navigation to the
+exact timestamp. The email real-app journey owns preview, recipient and send
+boundaries, external handoff, receipt wording, clipboard isolation, host-app
+containment, and independent offer retirement. The Gist journey plus central
+Skills journeys own the cross-window Settings receipt projection. Source
+ratchets require each retained owner and reject those known duplicate chains.
+No runtime budget changes.
+
+**Consequences:** compact runners cannot advance a second scroll while the
+first target frame is still settling, and the known later-content Interview
+row no longer receives a directionally wrong reveal. Fixed-time scale
+synchronization and measured duplicate UI work leave the hosted path without
+weakening product assertions: every removed UI assertion has an explicit
+real-store or real-app owner. A fresh six-case causal slice passed 6/6 in
+106.080 seconds, then the changed-file selector passed all 36 affected English
+journeys in 320.085 summed XCTest seconds (p95 23.262, maximum 26.792) with one
+build and unchanged budgets. The D410 red run remains evidence; D411 still
+requires exact-head hosted qualification. Local Swift build, current-SDK
+warnings-as-errors, strict SwiftLint, repository hygiene, the canonical
+2,787-test package suite (15 explicit model-gated skips), and 25 independent
+237-test recording/recovery stress iterations are green. The first complete
+package run found and then closed one documentation-vocabulary violation; the
+accepted complete run followed that fix rather than treating a retry as proof.
+The complete bilingual catalogue remains the integration/release gate, and
+physical Sequoia/Tahoe, VoiceOver/Voice Control, distribution, CloudKit, and
+field behavior remain separate evidence.
+
+## D412 — Anchor dynamic UI state and isolate detail-scale evidence (Aug 2026)
+
+**Context:** exact D411 head `2e00e18a` passed hosted current-SDK,
+Sequoia, lint, and repository-hygiene run `33122838333`. Hosted Scoped UI run
+`33122838235` selected 36 English journeys and passed 33. Its retained xcresult
+showed three distinct failures rather than grounds for a retry: Interview made
+six guessed scrolls while the new objective row was absent from the
+accessibility tree; SwiftUI exposed the selected Commitment owner option's
+dynamic identifier on the native pop-up instead of the outer Picker identifier;
+and the 20,000-segment detail fixture started three unrelated search-
+reconciliation lanes before its first presentation settled. The latter missed
+both initial-detail assertions and contributed to a 690.209-second suite with
+p95 55.350 seconds. Raising budgets or rerunning the unchanged head would hide
+these ownership defects.
+
+**Decision:** Interview first reveals the already-materialized objective-count
+anchor, then resolves and contains the exact identifier-plus-label row. Its
+geometry helper no longer guesses a direction for an absent target. The
+Commitment journey resolves the single native pop-up inside the stable editor
+boundary; exact menu-item identifiers continue to prove the selected assignee
+without depending on which option identifier SwiftUI projects onto the pop-up.
+
+Disposable detail-scale launches publish the same terminal seed file signal as
+other finite fixtures. Both scale journeys wait for the seeding attempt to
+return before presentation assertions; rejected or failed seeds release the
+wait and then fail on their missing exact content instead of consuming a blind
+timeout. The detail-scale fixture does not start Spotlight, semantic, or graph
+reconciliation: those paths retain independent product and scale gates, while
+this fixture owns first detail content, chapters, and live summary replacement.
+The revision-1/continue/revision-2 handshake remains, and no timeout or runtime
+budget increases.
+
+**Consequences:** every wait now corresponds to an observable owner state, and
+the detail benchmark no longer measures unrelated background indexing. The
+retained hosted red result remains causal evidence. The three exact hosted-red
+journeys passed 3/3 locally in 53.481 summed XCTest seconds with p95 24.260.
+The accepted package run passed all 2,787 tests with 15 explicit model-gated
+skips; current-SDK build, first-party warnings-as-errors, strict lint, and
+repository hygiene are also green.
+
+Because the shared support file changed, local UI qualification retained the
+complete bilingual boundary. The accepted English receipt passed 106/106 in
+984.522 summed seconds with p95 18.997; the accepted Spanish receipt passed
+106/106 in 1,048.014 summed seconds with p95 25.170. Both used unchanged
+budgets. An intervening Spanish run is not product evidence: its result bundle
+identified a foreground `com.github.Electron` window from a concurrent task
+and retained that external process's crash inside `XCTAutomationSupport`.
+After that lane ended, the exact interrupted Spanish journey passed in 4.464
+seconds before the complete catalogue passed. No Portavoz assertion, timeout,
+or budget was weakened. `make install` then rebuilt, signed, copied, registered,
+and opened only the `app.portavoz.mac.dev` bundle at `/Applications/Portavoz
+Dev.app`; its pre-launch deep verification passed. After quitting that Dev
+process, an independent deep-strict check passed for both the installed Dev
+bundle and the untouched `app.portavoz.mac` release bundle. No CloudKit
+provisioning profile was available, so the Dev install remains local-only.
+Exact-head hosted qualification remains required after publication; complete
+one-run bilingual candidate automation and physical supported-host evidence
+remain later integration authorities.
+
+## D413 — Pay UI containment and activation only when required (Aug 2026)
+
+**Context:** exact D412 commit `35c76f9f` was published without force. Hosted
+CI run `33132928134` passed the current SDK, Sequoia, strict lint, and repository
+hygiene. The first hosted Scoped UI run `33132928108` correctly expanded a
+shared-harness change to the complete bilingual catalogue. English passed
+105/106 before the Interview journey failed; Spanish did not run. Its retained
+activity tree showed the objective count becoming visible before the exact
+identifier-plus-label objective row entered the accessibility tree, and the
+reveal helper returned after a few immediate absence probes. The same receipt
+measured 1,425.288 summed XCTest seconds and p95 30.584 against unchanged
+1,300/30-second gates, plus eight individual overages.
+
+The activity tree also exposed systematic costs rather than grounds to raise
+budgets. Interview and Meeting Detail each owned a near-identical helper that
+spent up to one second trying to prove stable containment after every 48-point
+scroll even while the target was still geometrically outside the viewport.
+Common launch and Settings paths also activated an app that XCTest already
+reported foreground, and three over-budget Skills paths repeated a stable-frame
+proof immediately after their geometry helper had established full viewport
+containment.
+
+**Decision:** the Interview journey waits up to five seconds for the exact
+accepted objective row before attempting geometry. Interview and Meeting
+Detail use one shared vertical reveal implementation. It caches the viewport,
+caps every step at 48 points, observes a real target-frame change after an
+outside step, and performs the stable hittable containment proof only after the
+target is inside. An absent, immovable, or still-uncontained target fails; no
+sleep, retry, timeout increase, or budget increase is admitted.
+
+The affected Skills controls use their existing contained geometry proof
+followed by `waitForHittable`, rather than a second stable-frame loop. Ordinary
+`XCUIApplication.terminate()` teardown remains:
+an instrumented `NSRunningApplication.terminate()` experiment still appeared
+as the same roughly one-second clean process-exit interval in XCTest activity,
+so the official test API was retained instead of committing an unmeasured
+workaround. Startup still fences both `.notRunning` and the exact
+`app.portavoz.mac.uitest-host` process inventory.
+
+An activation-elision experiment was also rejected by broader evidence.
+Although `launch()` is synchronous and `.runningForeground` proves process
+state, that state does not prove frontmost key-window ownership across a long
+macOS catalogue. The first complete English run after elision executed all 106
+cases but recorded ten failures across five owners: four interactions produced
+no expected route or mutation, one Settings window placement missed its proof,
+and structural undo resolved against text still visible inside its editor.
+Startup and critical interaction preparation therefore retain explicit
+`activate()`. Structural undo waits for the correction editor to disappear
+before it resolves the restored row; editor-local source text is not a terminal
+publication signal.
+
+**Consequences:** the hosted race now has an observable publication owner,
+outside scroll steps no longer pay an impossible containment wait, and common
+contained paths avoid redundant automation queries without hiding a moving
+control. The first diagnostic nine-case English run passed 9/9 in 159.921
+summed XCTest seconds with p95 29.573 and disproved the proposed AppKit teardown
+saving. The next nine-case run passed 9/9 in 137.181 summed seconds, p50 15.255,
+p95/maximum 24.003, and every individual budget green, but the later complete
+106-case English attempt invalidated activation elision: it retained 96 passing
+cases and measured 1,130.824 summed seconds with p95 26.295, while five owners
+failed. Those first-attempt failures are retained rather than retried unchanged.
+After restoring explicit activation and adding terminal editor-dismissal proof,
+the changed-code causal English selector for those five owners passed 5/5 in
+51.271 summed XCTest seconds with p95 24.543 and every unchanged individual
+budget green.
+Functional assertions, selector scope, screenshots, locale coverage, timeouts,
+and runtime budgets remain unchanged. The final local gate reused one build and
+passed 106/106 English in 1,001.211 summed seconds (p50 6.724, p95 18.849,
+wall 1,017) plus 106/106 Spanish in 977.724 summed seconds (p50 7.381,
+p95 19.048, wall 1,003); both unchanged aggregate and individual budgets were
+green without retry. A new exact-head hosted bilingual first attempt remains
+required before D413 can close the integration boundary; physical
+Sequoia/Tahoe, assistive-technology, distribution, CloudKit, and field evidence
+remain separate authorities.
+
+## D414 — Materialize clipped accessibility rows and tolerate bounded scroll stalls (Aug 2026)
+
+**Context:** exact D413 commit `b0650928` was published without force. Hosted
+CI run `33168727132` passed the current-SDK, Sequoia, strict-lint, and
+repository-hygiene jobs. The first hosted Scoped UI run `33168727155` expanded
+the shared-harness change to all 106 English cases, passed 104, failed
+Interview Assist and Commitment evidence review, and did not start Spanish.
+Its retained content-free receipt measured 1,374.951 summed XCTest seconds,
+p95 25.261 seconds, and a failed 1,300-second aggregate budget. The Interview
+hierarchy showed the admitted objective count while the preceding exact
+objective row remained clipped out of the accessibility tree. Commitment
+stopped after one synthesized wheel event produced no observed movement; the
+retained D412 pass of the same owner required six bounded gestures. A single
+missed wheel event was therefore not terminal evidence. Common stable-frame
+paths also paid a separate existence wait before their frame-and-hittability
+predicate.
+
+**Decision:** an Interview objective that precedes a visible semantic count
+anchor may materialize through a dedicated bounded overload before its
+existence is required. It scrolls only in that known direction, caps each step
+at 48 points, and transfers the remaining total attempt budget to the ordinary
+containment proof once the row appears. The shared reveal refreshes viewport
+geometry on every attempt and compares raw viewport frames with raw frames;
+inset and uninset rectangles are never compared as motion evidence. A
+coalesced wheel event consumes one bounded attempt but does not immediately
+fail. Exhausting the declared attempt count remains the only terminal scroll
+authority.
+
+Stable-frame waiting uses one bounded predicate that requires a nonempty,
+hittable frame and then observes its unchanged interval. It does not pay an
+independent existence preflight. Timeouts, step size, runtime budgets, product
+assertions, locale scope, and official activation/teardown behavior remain
+unchanged. Source ratchets reject restoration of the impossible Interview
+existence gate, inset/raw viewport comparison, a terminal single-event stall,
+an unbounded anchor transfer, or the duplicate stable-frame preflight.
+
+**Consequences:** the initial causal repair passed the exact two hosted-red
+English owners 2/2 without retry in 33.579 summed XCTest seconds. Adversarial
+review then corrected one inset-versus-raw viewport comparison and preserved
+one total attempt budget before final qualification. The accepted package run
+passed 2,788 tests with 15 explicit model-gated skips; current-SDK first-party
+warnings-as-errors, strict SwiftLint, repository hygiene, and diff checks are
+green.
+
+The final candidate reused one eight-second build and passed the complete
+106-case catalogue in both locales without retry or budget change. English
+measured 939.336 summed XCTest seconds (p50 6.564, p95 17.090, maximum 46.836,
+wall 961); Spanish measured 975.360 (p50 6.669, p95 17.355, maximum 49.792,
+wall 994). Interview passed in 12.107/13.042 seconds and Commitment in
+14.711/15.413 seconds. Every aggregate and individual budget is green. Fresh
+exact-head hosted qualification remains required before this correction
+closes. Physical Sequoia/Tahoe, assistive-technology, distribution, CloudKit,
+and field evidence remain separate authorities.
+
+## D415 — Let product state reveal dynamic rows and prove activation outcomes (Aug 2026)
+
+**Context:** exact D414 commit `70ca33ab` passed hosted current-SDK, Sequoia,
+strict-lint, and repository-hygiene run `33175667643`. Scoped UI run
+`33175667674` executed all 106 English journeys, passed 104, failed Interview
+Assist and Commitment evidence review, and did not start Spanish. Its retained
+receipt measured 1,687.208 summed XCTest seconds and p95 34.501 seconds against
+unchanged budgets. Decoded screen recordings corrected the earlier inference.
+Interview entered the exact objective text, but all six positive 48-point wheel
+events were visible no-ops: neither content nor scrollbar moved. Its later
+grounded answer and citation still worked. Commitment's review button became
+fully visible and remained visible, but the AX containment/hittability helper
+returned false. The single click after that failed assertion invoked XCTest's
+native scroll and opened the exact editor. A focused local diagnostic found the
+objective's exact label and UUID-derived identifier and passed in 14.182
+seconds; it did not make the hosted wheel delivery reliable.
+
+**Decision:** accepted dynamic state owns its visible publication. Each live
+objective row is a SwiftUI scroll target keyed by its existing domain UUID.
+`RecordingView` observes only a one-row identifier insertion and centers that
+new target without animation or a test-only argument. Removal, reset, check-off,
+duplicate input, and rejected input cannot recenter the assist surface.
+Interview XCUITest waits for the identifier-plus-exact-label row, then invokes
+the ordinary stable containment proof with zero permitted scrolls. A wheel
+gesture can no longer be the mechanism that makes an accepted product row
+visible.
+
+Commitment review requires exact action existence, performs one native XCTest
+activation, and accepts success only when the exact editor appears. It does not
+repeat the click or reject a working visible action solely from stale hosted AX
+geometry. Geometry-aware reveal remains required for transcript correction and
+Interview answer actions whose product state does not itself request focus.
+Timeouts, step size, selectors, aggregate and individual runtime budgets, and
+locale requirements are unchanged. Source ratchets require the product-owned
+UUID scroll, zero-gesture Interview proof, and Commitment's ordered existence,
+single activation, and exact postcondition.
+
+**Consequences:** compact-window users see a newly accepted objective
+immediately instead of depending on an external wheel event. The test now
+observes that product guarantee rather than implementing it, and Commitment
+evidence distinguishes one successful route activation from an unreliable AX
+precondition. The focused architecture contract compiles and passes. Full
+causal English XCUITest then passed both formerly hosted-red owners without
+retry in 21.844 summed seconds: Interview 12.099 and Commitment 9.745, with p95
+12.099 and every unchanged budget green. The accepted full package run passed
+2,788 tests with 15 explicit model-gated skips and no failure in 131.417
+seconds. Current-SDK first-party warnings-as-errors, strict SwiftLint across
+742 files, repository hygiene, and diff checks are green.
+
+The final local UI gate reused one build and passed the complete 106-case
+catalogue in both locales without retry or budget change. English measured
+932.267 summed XCTest seconds with p95 17.428; Spanish measured 931.961 with
+p95 18.164. Every aggregate and individual budget passed. Exact commit
+publication and fresh hosted evidence remain required before this correction
+closes. Physical Sequoia/Tahoe, assistive technology, distribution, CloudKit,
+and field evidence remain separate authorities.
+
+## D416 — Prove admission before testing dynamic-row publication (Aug 2026)
+
+**Context:** exact D415 commit `b63010bf` passed hosted current-SDK, Sequoia,
+strict-lint, and repository-hygiene run `33184784185`. Its first Scoped UI run
+`33184784215` selected and executed 48 English journeys, passed 47, failed only
+Interview Assist, and did not start Spanish. The retained receipt measured
+894.906 summed XCTest seconds and p95 49.019 seconds; Interview measured 30.672
+against its unchanged 20-second budget. `xcresulttool` exposed two assertions:
+the UUID row did not exist and therefore could not be contained.
+
+The activity tree and screen recording prove the failure preceded D415's
+product scroll. The objective-count element existed before activation because
+Interview mode always renders it. The exact text remained in the focused field
+after the partially bottom-clipped plus control received one synthesized click;
+no objective was admitted, so no UUID insertion or product scroll could occur.
+The later grounded answer and exact citation still passed. The same plus control
+retains independent real-app coverage in the consolidated recording journey.
+
+**Decision:** a dynamic-row journey must first prove the exact admitted state,
+not the existence of a permanent status element. Interview submits through the
+field's advertised Return path while the field still owns keyboard focus, then
+requires the exact localized `1 of 8`/`1 de 8` counter before querying the
+UUID-prefix plus exact-label row. Only that admitted row may satisfy D415's
+zero-gesture containment proof. The test does not click the boundary-clipped
+plus control or retry an ignored event; the independent recording journey
+continues to cover that button.
+
+Exact label/content predicates subsume redundant preceding existence probes for
+the current question, grounded answer, and citation. No product source,
+selector catalogue, sleep, retry, wait ceiling, aggregate budget, individual
+budget, assertion, or locale requirement changes. D416 by itself maps to the
+one changed Interview journey; the combined correction also changes shared UI
+support under D417, so the fail-safe selector expands fresh hosted evidence to
+the complete bilingual suite. Complete bilingual XCUITest remains the local
+band gate and the final integration/release gate.
+
+**Consequences:** this separates activation authority, admitted model state,
+and product-owned publication into three ordered observations. A hosted no-op
+can no longer masquerade as a scroll/materialization defect, and the journey
+spends no time polling for a state whose mutation never occurred. The first
+focused English real-app run passed without retry in 12.745 seconds under the
+unchanged 20-second budget; its exact one-of-eight count and UUID-row
+containment prove D415's production scroll once admission actually occurs.
+Post-D417 complete local qualification passed 106/106 English journeys in
+968.202 summed XCTest seconds with p95 18.543 and 106/106 Spanish journeys in
+964.891 seconds with p95 18.746. Interview passed in 11.544 and 11.704 seconds,
+respectively. Fresh exact-head hosted qualification remains required before
+D416 closes. Physical Sequoia/Tahoe, assistive technology, distribution,
+CloudKit, and field evidence remain separate authorities.
+
+## D417 — Fail closed while a dynamic accessibility query is absent (Aug 2026)
+
+**Context:** D416's first complete English qualification passed all 106 product
+journeys, but an unrelated Brave crash inflated one meeting-row click to 14.483
+seconds and made the otherwise-passing Decision journey exceed its unchanged
+20-second budget. The retained receipt remains red. After Brave relaunched, a
+single replacement qualification restored the suite to 948.048 summed XCTest
+seconds and p95 17.837, but exposed a different functional failure in the
+tabbed-summary journey before it reached any summary assertion.
+
+The seed transaction, foreground handoff, and first library-row readiness proof
+had completed. The row then disappeared during the seeded sidebar's one-time
+observation replacement. `waitForStableFrame` read `frame` before proving that
+its dynamic query still matched, so XCTest emitted `Failed to get matching
+snapshot` instead of treating the transient absence as an unsatisfied bounded
+predicate. A preceding assertion did not provide safety because XCTest
+assertions record failure and continue execution.
+
+**Decision:** stable-frame polling must fail closed on a temporarily absent
+query. Every poll first evaluates `exists`; an absent element clears the frame
+candidate and stability clock and returns `false`. Only an existing match may
+read `frame` and evaluate the existing non-empty-frame plus hittability gate.
+This is not a retry, sleep, timeout increase, gesture, selector, or budget
+change. The architecture contract preserves the single bounded stability
+predicate and now requires the existence guard to precede the frame read.
+
+**Consequences:** dynamic SwiftUI identity replacement can consume the existing
+bounded poll window without causing an abrupt XCTest snapshot failure. A query
+that never returns still fails at the original timeout, and a reappearing row
+must establish a fresh stable interval before activation. The two red receipts
+remain retained as causal evidence rather than being relabeled as green retries.
+The first focused post-change real-app run passed Interview in 11.742 seconds
+and the formerly failing tabbed-summary journey in 8.567 seconds, with 20.310
+summed seconds and p95 11.742. The complete post-change bilingual gate then
+passed 106/106 English journeys in 968.202 summed seconds with p95 18.543 and
+106/106 Spanish journeys in 964.891 seconds with p95 18.746; every aggregate
+and individual budget passed. The warnings-as-errors build passed in 22.35
+seconds, and the full Swift suite passed 2,788 tests with 15 expected
+model-gated skips and zero failures in 119.718 test seconds. Fresh exact-head
+hosted qualification remains required. The 106-test selector catalogue, its 56
+policy tests, both focused source-order ratchets, strict SwiftLint across 742
+files, repository hygiene, and diff whitespace checks also passed. The shared-
+support delta selects the complete bilingual suite rather than a feature-only
+subset. Physical Sequoia/Tahoe, assistive technology, distribution, CloudKit,
+and field evidence remain separate authorities.
+
+## D418 — Prove stable controls at admission and acceptance, not every poll (Aug 2026)
+
+**Context:** exact D416/D417 commit `4bc23129` passed all four hosted CI jobs in
+run `33195622267`. The first exact-head Scoped UI run `33195622246` selected
+the complete bilingual catalogue because shared support changed. All 106
+English journeys passed functionally, including Interview in 16.156 seconds
+and the formerly abrupt tabbed-summary journey in 11.826 seconds; Spanish did
+not start because the unchanged runtime gate failed after English. The retained
+receipt measured 1,458.192 summed XCTest seconds, p50 11.335, p95 28.187, and
+maximum 66.325 against the 1,300-second aggregate budget, with six additional
+individual overages.
+
+The equivalent accepted local English receipt measured 968.202 summed seconds,
+p50 6.904, p95 18.543, and maximum 49.688. Across all 106 owners, the hosted
+median duration ratio was 1.472 and the aggregate delta was 489.990 seconds.
+The Interview activity tree retained the same 67-step query/action sequence but
+spanned 16.124 seconds hosted versus 11.469 locally; launch, typing, geometry,
+and accessibility operations were all slower. The 48 owners shared with the
+previous hosted correction improved from 894.904 to 619.765 summed seconds,
+which rejects a general D417 regression. `waitForStableFrame` has 77 call sites
+and queried `exists`, `frame`, and `isHittable` on every 50-millisecond sample
+inside its unchanged stability window.
+
+The first endpoint-only focused slice passed 5/5 real-app journeys in 109.506
+summed seconds. A second changed-code slice asked the shared condition helper to
+sample stable geometry at the 0.25-second acceptance boundary, but passed the
+same 5/5 in 112.854 seconds and still emitted six existence/frame samples for
+one stable control. `RunLoop.run(mode:before:)` may return whenever it handles
+an ordinary source, so the prior implementation re-evaluated the condition
+before `nextProbe`; its public `pollInterval` was not an enforced cadence.
+
+**Decision:** stable-frame waiting keeps D417's existence-before-frame guard,
+nonempty-frame requirement, candidate reset rules, 0.25-second default stable
+interval, and original timeout. A new frame is admitted only when it is
+hittable. The next run-loop-driven sample occurs at the already-declared stable
+interval instead of repeating remote existence, geometry, and hittability
+queries every 50 milliseconds. Once the same sampled frame has covered that
+interval, hittability is evaluated again immediately before success; a changed
+frame restarts the clock, and a failed final check clears both candidate and
+clock. A zero stable interval still succeeds only after the admission-edge
+hittability proof and retains the ordinary positive polling fallback if the
+first candidate is unavailable.
+
+The shared condition primitive now uses `RunLoop.run(until:)` to continue
+servicing default-mode events through the declared probe boundary. It remains
+responsive to application work and is not a fixed sleep, but an early run-loop
+source can no longer trigger an extra accessibility query. Every existing
+50-millisecond predicate keeps its declared cadence, deadline, initial probe,
+and final deadline probe. An unsatisfied deadline returns that last result
+instead of issuing one duplicate post-deadline query.
+
+Source ratchets require exactly those two hittability evaluations, preserve
+their order around the stable-interval check, and retain the absence guard
+before geometry. They also reject restoring the one-source run-loop call that
+made `pollInterval` advisory. This slice does not change the separate contained-
+scroll helper. No sleep, retry, timeout, selector, gesture, product assertion,
+locale, aggregate budget, or individual budget changes.
+
+**Consequences:** the most common stable-control helper no longer spends host
+accessibility round trips on samples that cannot yet be accepted, while a
+temporarily absent, empty, disabled, obscured, or final-frame-changed target
+still fails closed. After enforcing the run-loop boundary, the third changed-
+code focused slice passed the same five high-risk journeys 5/5 in 111.179
+summed seconds. The final complete real-app gate reused one build and passed
+106/106 English journeys in 981.113 summed seconds (p50 6.920, p95 18.761,
+maximum 51.068) and 106/106 Spanish journeys in 1,003.552 seconds (p50 7.012,
+p95 18.930, maximum 53.432), with no aggregate or individual budget violation.
+Warnings-as-errors build, 2,788 Swift tests with 15 expected model-gated skips,
+strict lint over 742 files, repository hygiene, catalogue/scope policy, and
+diff checks also passed.
+
+That local result proves preserved behavior and budget compliance, not a
+measured end-to-end speedup: versus D417, English increased 12.911 seconds
+(1.33%) and Spanish increased 38.661 seconds (4.01%), while the English median
+per-owner ratio was 1.011. The six owners that failed only on the hosted D417
+runner all passed locally and four became modestly faster, but ordinary run
+variance dominates the total. The first exact-head hosted receipt therefore
+remains the authority for whether this bounded query reduction repairs that
+runner's runtime gate. Automated evidence does not certify physical
+Sequoia/Tahoe, assistive technology, distribution, CloudKit, or field behavior.
+
+That first hosted authority is retained as red rather than retried. Exact D418
+commit `a1199bee` passed hosted current-SDK, Sequoia, lint, and hygiene run
+`33203798869`. Scoped UI run `33203798892` passed all 106 English journeys
+functionally but stopped before Spanish on 1,771.372 summed seconds, p50
+11.712, p95 32.243, maximum 109.240, 20 individual overages, and failed
+aggregate plus p95 gates. D418 therefore preserved behavior but did not close
+the hosted runtime gate.
+
+## D419 — Let containment own geometry and spend one actionable query per edge (Aug 2026)
+
+**Context:** the exact D417 and D418 activity trees reject both an assertion
+regression and a useful hosted query reduction. The largest D418 owner, the
+consolidated Skills period/filter journey, kept effectively the same work:
+341 versus 342 top-level activities, 522 versus 523 activities recursively,
+and 337 aligned operations. Both runs issued 151 existence and 184 find
+activities. Its duration nevertheless rose from 63.732 to 109.240 seconds;
+within the aligned sequence, existence gaps added 16.537 seconds and find gaps
+added 19.122 seconds. The D418 Interview tree saved only one existence activity
+and retained all 44 find activities.
+
+On this slow runner, one accessibility sample already took at least the
+250-millisecond stable interval, so admission and acceptance already occurred
+on adjacent samples before D418 changed their run-loop cadence. The remaining
+cost is remote property count. A stable sample separately asked `exists`,
+`frame`, and `isHittable`. Twenty-one Skills controls also repeated the complete
+stable-frame proof immediately after their bounded geometry helper had already
+established viewport containment. Retrying the same commit, raising budgets,
+or removing risk assertions would preserve that duplicate work.
+
+**Decision:** every stable-frame sample first asks `isHittable`, which is the
+existing safe predicate used by the suite for absent, disabled, or obscured
+queries. A false result clears the candidate and clock before any frame read.
+A true result admits the frame read; the same guard runs again at the declared
+acceptance edge before the accepted frame is read. This preserves D417's
+absence-before-frame behavior and D418's final-actionability requirement while
+removing one separate remote property at each edge. Candidate reset, nonempty
+geometry, frame equality, stable interval, run-loop cadence, and every deadline
+remain unchanged.
+
+For Skills Settings, the existing bounded `scrollToVisible` helper continues
+to own viewport containment. It reads the target frame once per bounded
+attempt, returns immediately when contained, and performs one final frame proof
+only after all six attempts are exhausted. This replaces the former `where`
+filter, which resampled visibility for every loop value and then read the same
+frame again inside an admitted attempt. Controls immediately following that
+proof use one bounded `waitForHittable` before activation instead of
+recomputing stable geometry. This extends the accepted D413 rule to all 21
+remaining duplicate chains; controls without a containment proof retain
+stable-frame waiting. Source ratchets require hittability before frame, reject
+a separate existence query inside the stable helper, reject a contained Skills
+control followed by another stable-frame proof, and bound the scroll helper to
+one frame snapshot per attempt plus its exhausted-loop proof. No selector,
+launch, gesture direction or clamp, assertion, timeout, locale, aggregate
+budget, or individual budget changes.
+
+**Consequences:** the correction reduces remote accessibility work instead of
+assuming a faster host or relabeling the retained failure. The first eight-owner
+real-app slice passed in 180.340 summed seconds after the stable-frame and
+contained-control changes. Repeating the same selectors only after the helper
+itself changed passed in 150.734 seconds, 29.606 seconds (16.42%) faster, with
+every individual budget green. The consolidated Skills filter owner fell from
+287 to 173 top-level and 468 to 354 recursive activities, including 127 to 73
+existence and 154 to 94 find activities; its six gestures and ten match-count
+queries were unchanged. Interview retained its exact 65/107 activity shape,
+showing that the reduction is scoped to the changed helper rather than a broad
+host-speed claim. The one-build complete gate then passed all 106 English
+journeys in 905.317 summed seconds (p50 6.721, p95 18.695, maximum 38.083) and
+all 106 Spanish journeys in 905.670 seconds (p50 6.603, p95 18.594, maximum
+37.976), with no aggregate or individual budget violation. Against D418 local
+evidence this is 75.796 seconds (7.73%) faster in English and 97.882 seconds
+(9.75%) faster in Spanish. Warnings-as-errors build, 2,788 Swift tests with 15
+expected model-gated skips, strict lint over 742 files, repository hygiene,
+catalogue/scope policy, and diff checks also passed.
+
+Exact D419 commit `9707b9b5` then passed all four hosted CI jobs in run
+`33215973171`. Its first Scoped UI run `33215972156` passed all 106 English
+journeys functionally but stopped before Spanish on the unchanged runtime
+gate: 1,482.123 summed seconds, p50 10.603, p95 28.231, maximum 69.725, nine
+individual overages, and the 1,300-second aggregate violation. This is a
+material improvement over D418's 1,771.372 seconds and twenty overages, but it
+does not close the PR. The first exact-head receipt remains retained rather
+than retried unchanged.
+
+## D420 — Establish each static accessibility boundary once (Aug 2026)
+
+**Context:** D419 proved its intended query reduction on the hosted runner but
+left 182.123 seconds above the aggregate ceiling. Across all 106 retained
+activity trees, 1,922 find activities consumed 364.252 seconds and 1,659
+existence activities consumed 346.693 seconds. Main-window readiness alone
+issued 110 existence and 440 find activities: every launch separately proved
+existence and then sampled actionable geometry twice. One final main-window
+sample in the 20,000-segment fixture consumed 11.091 seconds while the seed
+transaction was busy even though no journey clicks the window itself.
+
+Settings repeated a full stable-frame proof for each static sidebar category
+after the Settings window had already established its placement. Skills also
+re-resolved the same window, scroll view, and viewport on each bounded reveal,
+and the contained-frame helper sampled every 50 milliseconds despite owning a
+100-millisecond stability interval. These are duplicated boundary proofs, not
+missing product assertions. D413 remains binding: process foreground state is
+not key-window ownership, so explicit activation and official termination may
+not be removed.
+
+**Decision:** launch keeps its ordered foreground wait and explicit activation,
+then proves the main window through one bounded `isHittable` predicate. The
+window is not an activation target; every clicked product control retains its
+own stable or contained actionability proof. Seed readiness similarly lets the
+meeting row's bounded hittability predicate subsume a preceding existence
+poll, while Meeting Detail still reasserts activation and stable row geometry
+before clicking a dynamically replaced library item.
+
+Opening Settings owns one 100-millisecond stable-frame proof on the General
+sidebar anchor. Once that static window boundary is placed, category selection
+reasserts activation, proves only category hittability, clicks, and requires
+the exact destination control. Skills caches that window's immutable scroll-
+view frame for the lifetime of the open Settings window and invalidates the
+cache on every open or close; target frames and every bounded gesture remain
+live. Positive localized-label matching checks the most common label property
+before the value/title fallbacks. Contained-frame polling uses its declared
+stability interval as the minimum probe cadence. A screenshot request owns its
+static window/element snapshot directly instead of paying a preceding existence
+query and then resolving the same snapshot again; screenshots are attached only
+after the journey's exact product assertions have passed, and a failed snapshot
+still fails XCTest.
+
+Source ratchets preserve activation ordering, stable clicked controls, exact
+destination postconditions, cache invalidation, live target geometry, bounded
+six-gesture scrolling, and the absence-safe hittability gates. This slice does
+not change a product source file, selector, product assertion, timeout, retry,
+gesture, test case, locale, aggregate ceiling, or individual runtime budget.
+
+**Consequences:** the correction targets the exact remaining hosted property
+work without inferring a faster machine or hiding a red receipt. The focused
+English boundary suite passed 11/11 without retry in 177.026 summed XCTest
+seconds with every unchanged individual budget green. D420 is locally
+qualified together with D421's complete bilingual receipt below; the first
+exact-head hosted result remains required before the PR closes. Physical
+Sequoia/Tahoe, assistive technology, distribution, CloudKit, and field evidence
+remain separate authorities.
+
+## D421 — Consolidate only same-fixture UI journeys with explicit state resets (Aug 2026)
+
+**Context:** D420 removes duplicated static accessibility discovery, but PR #30
+still needs enough hosted margin below the unchanged 1,300-second aggregate
+ceiling. Seven Meeting Detail cases each launched the same disposable seed to
+assert either four citation routes or three static review surfaces. Keeping
+separate processes for identical immutable fixture setup repeats application,
+database, search, and accessibility startup without adding isolation. Naively
+joining the four citation cases would weaken them: every source points to the
+same row at 00:03, so the first selection could make the next three assertions
+pass without proving another navigation.
+
+**Decision:** four source cases become one bounded evidence journey. It retains
+the summary, decision, action-item, and Apuntador source values, exact selected
+row, 00:03 player assertion, and four screenshot attachments. Before each
+source after the first, the journey activates the transcript's 00:00 row and
+requires the cited row to be unselected and playback to have left 00:03. The
+following source must therefore perform a fresh, observable transition.
+
+The raw-notes, right-rail, and generated-document cases become one review
+journey. Notes, privacy, health, sync disclosure, chapters, Apuntador cards,
+and their three screenshots are asserted before the only durable mutation; the
+generated-document assertion, coauthoring tab, completed action item, and its
+fourth screenshot remain last. No state from that mutation can satisfy an
+earlier surface check.
+
+The authoritative feature catalogue, Meeting Detail ownership contract,
+assistive-technology automation checkpoint, real-audio lane, and runtime
+catalog use the two new selectors. Catalogue size falls from 106 to 101 cases
+per locale because seven owners become two; every original assertion and all
+eight screenshots remain. Each new journey keeps the existing 20-second
+individual budget. The 30-second p95 and 1,300-second per-locale aggregate are
+unchanged. No product source, timeout, retry, gesture bound, locale, or release
+authority changes.
+
+**Consequences:** the catalog validator reports exactly 101 owned and budgeted
+tests with no orphan or retired selector. The two new English journeys passed
+2/2 without retry in 28.538 summed seconds. Their seven predecessors measured
+44.455 seconds on the same host, so the bounded consolidation saves 15.917
+seconds (35.80%) in that slice while retaining all assertions and screenshots.
+
+The accepted complete package run passed 2,788 tests with 15 explicit
+model-gated skips and zero failures in 121.980 XCTest seconds. A single
+13-second build then fed the complete real-app catalogue without retry:
+English passed 101/101 in 837.187 summed seconds (p50 6.655, p95 17.505,
+maximum 36.449) and Spanish passed 101/101 in 841.151 seconds (p50 6.692,
+p95 18.092, maximum 36.805). Every unchanged aggregate and individual budget
+passed. Relative to D419's last pre-consolidation local receipt, this saves
+68.130 seconds (7.53%) in English and 64.519 seconds (7.12%) in Spanish.
+Current-SDK first-party warnings-as-errors, strict SwiftLint across 742 files,
+repository hygiene, catalogue/contract policy, and diff checks are green.
+
+Fresh exact-head hosted evidence remains required. This is a runtime
+optimization, not permission to combine tests that need fresh process,
+permission, failure-injection, persistence, or destructive state.
+
+## D422 — Reset shared evidence through a stable chapter boundary (Aug 2026)
+
+**Context:** exact D420/D421 head `2a4f9823` passed hosted current-SDK,
+Sequoia, lint, and repository-hygiene CI. Its first Scoped UI run completed all
+101 English journeys with the global runtime gates now green at 1,073.362
+summed seconds and 25.181 seconds p95. It still failed three reset assertions
+inside the consolidated evidence journey and stopped before Spanish. The
+retained result bundle showed every transcript `00:00` reset synthesizing the
+same pointer event outside the visible timestamp target while playback stayed
+at `0:03` and the cited row stayed selected. The failed polling added fifteen
+seconds and pushed that owner over its unchanged 20-second budget.
+
+The same run found the 20,000-segment scale owner functionally green but 1.364
+seconds above its individual budget. Its activity log attributed the remaining
+cost to application-wide text queries for summary revisions across the lazy
+20,000-row accessibility tree, not to the typed handshake or product
+projection.
+
+**Decision:** a shared-evidence reset uses the existing `chapter-0` control,
+whose full visible button owns a stable accessibility identifier, then pauses
+the player through its existing transport control. It separately requires the
+playhead to leave `0:03` and the cited row to become unselected before the next
+source activation. Summary, decision, action-item, and Apuntador sources still
+must each restore the exact row and `0:03`, and all four screenshots remain.
+
+The 20,000-segment owner resolves `detail-generated-document` once and queries
+both summary revisions only inside that semantic boundary. The fixture title,
+transcript readiness, chapter projection, revision handshake, selectors,
+timeouts, retries, locales, and all runtime budgets are unchanged. The hosted
+workflow's explanatory catalogue count is corrected from 106 to the
+authoritative 101; executable scope policy was already correct.
+
+**Consequences:** the first corrected focused English run passed both affected
+real-app journeys without retry. Evidence navigation passed in 17.364 seconds
+under its 20-second budget; the 20,000-segment owner passed in 16.211 seconds
+under 23.817 seconds. Their 33.575-second aggregate and 17.364-second p95 were
+green. After D423/D424 corrected two independently exposed test owners, one
+shared seven-second build fed the complete real-app catalogue: English passed
+101/101 in 851.326 summed seconds (p50 6.720, p95 18.533, maximum 35.965) and
+Spanish passed 101/101 in 848.513 seconds (p50 6.795, p95 18.094, maximum
+36.213). Evidence navigation passed in 16.073/15.620 seconds and the 20,000-
+segment owner in 15.222/14.612 seconds. Every unchanged budget passed. First
+replacement-head hosted evidence remains required before the PR is green. This
+correction does not convert automated evidence into physical Sequoia/Tahoe,
+assistive-technology, distribution, CloudKit, or field certification.
+
+## D423 — Classify launch-recovery artifacts by their publication contract (Aug 2026)
+
+**Context:** D422's first complete English real-app run passed all 30 Meeting
+Detail owners and the unchanged global runtime budgets, but retained one
+independent Library failure before Spanish. The launch-recovery view reported a
+successful copy, while its XCUITest counted two entries in the selected
+directory and expected one. That assertion treated every filesystem entry as a
+published recovery and then indexed an unspecified first entry. It could not
+distinguish one visible recovery directory from hidden filesystem metadata or
+identify a leaked hidden publication stage.
+
+**Decision:** the test classifies destination artifacts according to the
+storage boundary. Any `.portavoz-recovery-*` directory is a leaked private
+stage and fails explicitly. A published copy must be a non-hidden directory;
+exactly one must exist after one activation, and that identified directory
+must contain the verified `portavoz.sqlite`. Unrelated hidden metadata is not
+a product publication and is excluded. The selected copy is unwrapped instead
+of indexing an unordered filesystem result. An architecture ratchet preserves
+the stage-leak check, visible-copy cardinality, and safe unwrap.
+
+**Consequences:** the correction does not change launch-recovery product code,
+repeat-click behavior, the source-preservation assertion, selectors, timeout,
+retry policy, locale, or runtime budget. It makes a failure identify the
+violated product contract rather than an undifferentiated directory count.
+The focused English real-app journey passed 1/1 without retry in 4.186 seconds
+under its unchanged budget. The complete bilingual catalogue then passed this
+owner in 3.791 seconds English and 3.960 seconds Spanish. Automated evidence
+still does not certify physical Sequoia/Tahoe, assistive technology,
+distribution, CloudKit, or field behavior.
+
+## D424 — Bound the consolidated review journey to its semantic owners (Aug 2026)
+
+**Context:** after D423 corrected launch-recovery artifact classification, the
+second complete English real-app run passed all 101 journeys functionally with
+the aggregate and p95 gates green at 872.823 and 18.836 seconds. The retained
+policy failure was one 21.400-second review journey against its unchanged
+20-second budget. Its activity tree showed repeated application-wide lookups
+for controls already owned by the notes, secondary-rail, and generated-document
+boundaries. It also captured the unchanged window twice in succession solely
+to retain the two evidence names inherited from the pre-consolidation tests.
+
+**Decision:** the journey resolves each semantic owner once and queries only
+its descendants. Notes own their title, raw text, and enhancement control; the
+secondary rail owns health, privacy, chapters, and Apuntador; the generated
+document owns its overview, tabs, and action item. The action item uses one
+stronger stable-and-hittable wait rather than a preceding existence lookup plus
+the same stability proof. Privacy and transcript-navigation evidence still
+produce both named attachments, but both are created from one immutable
+`XCUIScreenshot` because no product state changes between them. The shared
+screenshot helper supports one or several names while capturing the window
+exactly once. The executable Meeting Detail contract derives ownership from
+both single-name calls and literal multi-name arrays, rejects dynamic arrays,
+and keeps the canonical evidence snapshot unchanged.
+
+**Consequences:** every original content assertion, exact navigation/mutation
+postcondition, evidence name, selector, timeout, locale, and runtime budget is
+retained. The slice removes redundant accessibility discovery and an identical
+window capture; it does not hide slowness with retries or a larger ceiling.
+The first corrected focused English run passed 1/1 without retry in 12.992
+seconds under the unchanged 20-second budget, 8.408 seconds (39.29%) below the
+retained complete-suite observation. The complete bilingual catalogue passed
+the owner in 13.126 seconds English and 13.709 seconds Spanish, with every
+unchanged individual and aggregate budget green. The complete package passed
+2,788 tests with 15 explicit skips and zero failures in 138.125 seconds;
+warnings-as-errors, strict lint over 742 files, repository hygiene, and the
+ownership policy suite are green. Replacement-head hosted evidence remains
+required. Automated evidence does not certify physical Sequoia/Tahoe,
+assistive technology, distribution, CloudKit, or field behavior.
+
+## D425 — Separate hosted UI function from controlled runtime authority (Aug 2026)
+
+**Context:** exact correction head `e4767a34` passed all four hosted CI jobs on
+its first attempt. The retained Scoped UI run then passed all 101 English real-
+app journeys with zero functional failures, but the job failed only its fixed
+wall-clock receipt and aborted before Spanish. The hosted distribution measured
+1,349.604 summed seconds, p50 10.098, and p95 31.994. The same exact source had
+already passed the controlled local run at 851.326 seconds, p50 6.720, and p95
+18.533. Five unrelated owners crossed their fixed ceilings together, including
+unchanged transcript-correction journeys, while every assertion passed. This
+was host-wide runtime variance, not evidence of five simultaneous product
+regressions. A heterogeneous GitHub macOS allocation therefore cannot be the
+hard performance authority promised by those local/stable-host budgets.
+
+The monolithic job also coupled build, English, Spanish, receipt enforcement,
+and artifact publication. Any English runtime-policy result stopped Spanish,
+wasting a full build and delaying diagnosis even when the product catalogue was
+functionally green.
+
+**Decision:** hosted Scoped UI has explicit phases. It generates the project
+and builds the application/test products exactly once without acquiring the UI
+automation service. English and Spanish then run, when selected, as independent
+first attempts from those exact products. Each locale performs the read-only
+quiet-host preflight immediately before automation. Locale steps retain their
+real outcomes but use `continue-on-error` only so every selected first attempt
+can finish; it is not a retry and cannot make the job green. Result bundles and
+runtime receipts are uploaded before one final classifier evaluates both step
+outcomes.
+
+The classifier fails closed for a missing/malformed receipt, a selected locale
+that did not run, a non-passing XCUITest, or infrastructure/harness uncertainty.
+It classifies those receipts separately as product/test regression or
+infrastructure/harness failure. GitHub-hosted wall-clock budget drift is an
+annotated advisory only when every functional case passed and the complete
+content-free receipt is valid. The unchanged runtime budget document remains
+blocking by default in `run-ui-tests.sh`, so local/stable-Mac integration, RC,
+and release evidence still enforce every per-journey, total, and p95 ceiling.
+No timeout, budget, selector, locale, assertion, or coverage contract is raised
+or removed.
+
+**Consequences:** ordinary feature PRs still run their minimum-safe selected
+XCUITest scope. Localization, seed/shared-harness, unknown executable impact,
+integration, and release closure still expand fail-safe exactly as before. A
+slow hosted allocation can no longer claim a product regression after 101/101
+functional passes, while runtime drift stays visible in the artifact, warning,
+and step summary. Both selected locales now produce evidence before the final
+verdict. Infrastructure uncertainty still blocks rather than producing a false
+green. The pipeline adds no retries and retains one build, deterministic seed,
+unchanged budgets, complete bilingual release authority, and physical
+Sequoia/Tahoe, assistive-technology, distribution, CloudKit, and field gates.
+
+The phased implementation passed 104 focused orchestration, scope, classifier,
+and host-preflight tests. Its focused real-app path built once in 14 seconds,
+preflighted after the build, and passed 1/1 with a valid hard-budget receipt.
+The complete package then passed 2,789 tests with 15 explicit model-gated skips
+and zero failures in 128.302 seconds; warnings-as-errors, strict lint over 742
+files, and repository hygiene were green. The mandatory complete real-app gate
+reused one 13-second build without retry: English passed 101/101 in 816.160
+summed seconds (p50 6.356, p95 17.342, maximum 34.668), and Spanish passed
+101/101 in 824.903 seconds (p50 6.519, p95 17.938, maximum 35.157). Every
+unchanged individual, aggregate, and p95 budget passed under controlled
+authority. Fresh replacement-head hosted evidence remains required.
+
+## D426 — Geometric containment is not XCUITest interaction readiness (Aug 2026)
+
+**Context:** the first exact D425 hosted run `33233725996` proved that its final
+classifier did not convert a functional red into a timing advisory. Spanish
+passed all 101 cases and crossed only four hosted wall-clock ceilings. English
+emitted a complete 101-case receipt but
+`testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence` failed
+its explicit pre-click hittability assertion. The retained activity showed the
+shared `revealVertically` helper synthesize one 12-point scroll, observe the
+split correction button geometrically inside the transcript viewport, and then
+return false when stable hittability had not yet arrived. XCTest continued the
+method after recording the assertion: the immediately following native click
+automatically performed another 12-point inward reveal, activated the exact
+button, and completed every remaining split/undo/merge/hide/restore assertion.
+The product workflow was intact; the helper had made `CGRect.contains` a false
+terminal authority.
+
+**Decision:** geometric containment can finish a reveal only when the target
+also proves one stable hittable frame. A contained but not-yet-hittable control
+continues within the same existing `maxScrolls` bound. Each next gesture moves
+the target toward the viewport's vertical center, clamped by the unchanged
+48-point maximum; an exactly centered but occluded target receives a bounded
+12-point nudge. The helper still waits on observed geometry/hittability, never
+sleeps, never retries a test, and returns false after the original finite
+attempt budget. The structural-correction assertion and every functional
+postcondition remain unchanged.
+
+**Consequences:** transformed SwiftUI transcript rows no longer fail merely
+because AppKit hit-test ownership lags geometric containment by one scroll
+event. The source contract ratchets the two containment checks, inward clamp,
+and absence of the prior early-return form. The focused architecture test and
+the exact real-app structural journey passed in English and Spanish with hard
+budgets (24.713 and 25.542 seconds). Because the shared XCUITest harness changed,
+the complete controlled bilingual gate was mandatory and passed without retry
+from one 5-second build: English 101/101 in 815.706 summed seconds (p50 6.339,
+p95 17.835, maximum 37.262) and Spanish 101/101 in 819.278 seconds (p50 6.469,
+p95 17.505, maximum 35.363). All unchanged individual, aggregate, and p95
+budgets passed. Fresh replacement-head hosted evidence remains required.
+
+## D427 — Project background owners; do not centralize their work (Aug 2026)
+
+**Context:** launch recovery, durable meeting processing, Spotlight, semantic
+indexing, and memory-graph projection already had separate replay, coalescing,
+lease, capture, and retry authorities. Users could not see their combined state
+or know whether capture had deferred derived maintenance. Adding a central job
+runner or polling stores from Settings would duplicate those authorities,
+weaken crash recovery, create unnecessary work, and tempt the UI to invent a
+percentage from heartbeats that prove only lease liveness. Copying identifiers,
+titles, paths, transcript text, or raw errors into a dashboard would also widen
+the privacy boundary.
+
+**Decision:** `AppServices` owns one process-lifetime `@MainActor @Observable`
+`BackgroundWorkCenterModel`. Each of the five existing owners pushes typed
+begin, observation, retry/failure, and settlement events into it. Monotonic
+per-owner tokens reject completions from superseded work. The model never
+polls, persists, queries a store, starts a task or timer, schedules work, owns a
+runtime, or replaces an owner. Its snapshots contain only closed phase, stage,
+outcome and failure-category values, aggregate counts, attempt numbers, retry
+dates, and timestamps. Meeting identity/content, paths, provider payloads,
+owner lease strings, and raw errors are excluded. The 0.25 post-capture
+heartbeat remains invisible and cannot become percentage progress.
+
+Settings receives one searchable **Background activity** pane with one stable
+row per owner. Running state is indeterminate; terminal counts, exact attempt,
+localized next-wake time, and a closed safe failure reason remain inspectable.
+Actions invoke only the original owner. A compact toolbar control appears only
+for active, waiting, retry, or attention state and deep-links to the pane.
+Protected capture explicitly defers semantic and graph work, and the existing
+capture-stop reconciliation resumes both. The surface has no Foundation Models
+dependency and therefore works on Sequoia and Tahoe.
+
+The content-free presentation fixture requires both `-use-temp-store` and
+`-seed-background-work`. A separate disposable-only supervisor flag drives the
+real capture exclusion/resume path. Two consolidated bilingual XCUITest
+journeys cover all owners plus recording priority, with stable identifiers and
+hard per-case budgets; unit and architecture tests fence privacy, stale events,
+retry dates, callback wiring, no-owned-task lifetime, and all five publishers.
+
+**Consequences:** users gain one truthful operational view without introducing
+a second scheduler, extra background polling, payload retention, or fabricated
+progress. Closing a Settings window cannot cancel an owner or lose durable
+work. The projection deallocates with its service graph and callbacks avoid a
+cycle through weak owner edges where needed. A status is operational evidence,
+not release certification: physical Sequoia/Tahoe, assistive technology,
+signed distribution, CloudKit, and field behavior remain independent gates.
+The focused final run passed 2/2 English in 13.768 summed seconds (p95 7.308)
+and 2/2 Spanish in 12.537 seconds (p95 6.338), from one build with no retry and
+both hard budgets green. Final current-tree qualification passed the warnings-
+as-errors build, all 2,799 package tests with 15 explicit asset skips, strict
+lint over 744 production files, repository hygiene, and one-build sequential
+103/103 English plus 103/103 Spanish XCUITest without retry. Automation still
+does not close the independent physical or distribution gates above.
+
+## D428 — Attribute UI runtime to the test, not a post-teardown runner stall (Aug 2026)
+
+**Context:** the first complete OBS-0 English run passed all 103 real-app
+journeys. Its raw XCTest tree nevertheless reported 40.353 seconds for
+`testSummaryFeedbackIsExplicitReversibleAndLocal`, crossing the unchanged
+20-second local ceiling. The exact activity tree began at `Start Test` and
+reached `Tear Down` in 10.338 seconds; all product waits, interactions,
+assertions, screenshot capture, and application termination were inside that
+span. XCTest added another 30.015 seconds to the outer case duration after the
+teardown boundary. The next eleven longest cases differed from their activity
+spans by only 0.002–0.087 seconds, and four retained prior observations of this
+same journey measured 10.751–11.336 seconds. This was a runner accounting
+stall, not a product performance regression.
+
+**Decision:** runtime receipt schema 2 retains XCTest's reported case duration
+as its conservative default. A passing case is eligible for activity review
+only when it crosses its individual budget, or when a complete-catalogue total
+or p95 crosses its aggregate budget. The exact result bundle must contain one
+run, one top-level `Start Test`, and one later top-level `Tear Down`. Only a
+finite attributed span no greater than the reported duration, with at least
+one second left after teardown, may replace the reported duration for budget
+calculation. The receipt records the identifier, reported duration, attributed
+duration, excluded harness duration, and closed
+`post-teardown-unattributed-time` reason. Missing, ambiguous, malformed, failed,
+sub-second, or still-slow evidence keeps the reported duration and therefore
+fails closed.
+
+Hosted and release-candidate classifiers validate the schema, closed
+measurement policy, exact case ownership, unique adjustment identity, passing
+functional result, one-second floor, and duration algebra within the
+three-decimal receipt precision. The xcresult remains the raw evidence. No
+test is retried, no budget or timeout changes, and no product assertion is
+converted into an advisory. D425's hosted separation remains unchanged:
+functional, completeness, receipt, and infrastructure uncertainty are
+blocking; heterogeneous hosted runtime drift alone is advisory.
+
+**Consequences:** reprocessing the retained OBS-0 result yields 830.357
+attributed seconds, p50 6.389, p95 17.335, maximum 36.109, and one explicit
+30.015-second harness exclusion under the unchanged budgets. The functional
+103/103 result does not become stronger or weaker; the hard performance gate
+now measures work attributable to the test boundary instead of a proven
+post-teardown runner stall. A real 40-second activity span, a failed case, or
+an unreadable activity tree remains red. The fresh final bilingual run did not
+need the exclusion path: English passed 103/103 in 853.399 seconds (p50 6.379,
+p95 17.811, maximum 36.339) and Spanish passed 103/103 in 859.154 seconds (p50
+6.554, p95 18.181, maximum 36.890), with zero adjustments, zero retries, and
+every unchanged budget green.
+
+## D429 — Advance CI only through deterministic evidence boundaries (Aug 2026)
+
+**Context:** PR #30's exact remote head `19084e4e` eventually passed the four
+package CI jobs and all 103 English plus 103 Spanish real-app journeys on their
+first attempts. The retained run history nevertheless showed three different
+signals under the same red workflow name: genuine failed assertions, complete
+functional passes whose only red signal was heterogeneous hosted wall-clock
+drift, and host automation becoming unavailable before a test case began. The
+workflow also selected a synchronized push from `github.event.before` without
+proving that the previous head had completed its selected UI evidence. A failed
+or infrastructure-only head could therefore become the next incremental base.
+Meanwhile `macos-latest`, newest-installed-Xcode selection, and unversioned
+Homebrew installs made the environment change independently of source; the
+current-SDK job separately built and tested with different compiler flags.
+
+**Decision:** keep the existing release-authority job identities but give each
+one a single deterministic owner. `repository-hygiene` runs the repository and
+tooling policy corpus once on Linux before macOS allocation. `build-and-test`
+uses the explicit `macos-26` image, Xcode 26.6 through `DEVELOPER_DIR`, and one
+`run-swift-tests.sh -Xswiftc -warnings-as-errors` invocation so compilation and
+tests share flags. `sequoia-compatibility` uses `macos-15`, Xcode 26.3, and one
+complete package invocation. `lint` runs the official SwiftLint 0.65.0 Linux
+archive only after verifying its fixed SHA-256. Hosted XcodeGen similarly uses
+the official 2.46.0 archive and fixed digest. Missing versions or digest drift
+fail as environment-contract errors rather than silently selecting a newer
+tool.
+
+Scoped UI no longer trusts the immediately previous push. A first-attempt
+successful workflow may publish one content-free artifact named for its exact
+head only after either selecting no UI work or completing every selected
+functional case. The next run queries at most 30 completed runs, accepts one
+unique non-expired artifact only from `run_attempt == 1`, and requires its SHA
+to be both a descendant of the PR base and an ancestor of the new head. API,
+shape, artifact, expiry, force-push, or ancestry uncertainty falls back to the
+PR base. Manual dispatch remains complete bilingual. A rerun may diagnose but
+cannot publish an anchor or satisfy the final UI gate.
+
+Each locale now also writes a strict content-free execution receipt before the
+workflow classifies it. Product assertions, executed-but-incomplete suites,
+unknown nonzero exits, missing or malformed receipts, scope/count mismatch,
+and every unknown infrastructure signal remain blocking. The sole hosted
+exception is the exact pre-case `Timed out while enabling automation mode`
+signature with no runtime receipt: it becomes an annotated infrastructure
+advisory, never verified evidence and never an incremental anchor. The next
+push therefore reselects all changes since the last actually verified head.
+There is no test retry, timeout increase, assertion suppression, selector
+truncation, or runtime-budget change. Local/stable-Mac integration, RC, and
+release still require the full bilingual hard-budget gate.
+
+**Consequences:** a feature push pays only for changes since durable functional
+UI proof, while a failed or unavailable hosted attempt cannot erase missing
+coverage. Known host-service unavailability stops making a product PR red but
+also cannot claim a UI pass. Deterministic policy tests ratchet the release job
+names, exact OS/Xcode pairs, checksums, first-attempt ancestry, duplicate or
+expired artifacts, force-push fallback, execution classifications, and absence
+of test retries. This local implementation is not hosted evidence: a fresh
+published first-attempt run is still required. Physical Sequoia/Tahoe,
+VoiceOver/Voice Control, signed distribution, production CloudKit, provider
+accounts, and field behavior remain separate gates.
+
+## D430 — Measure live assistance before replacing its serving policy (Aug 2026)
+
+**Context:** live question detection, Interview Assist, rolling-summary window
+selection, and live-translation routing already have bounded production owners,
+but they lacked one comparable bilingual quality/reliability authority. The
+released question path also depended on Foundation Models after its deterministic
+prefilter, making anecdotes or private meetings an unsafe basis for the planned
+Sequoia replacement. A model benchmark that bypassed app-private coordinators
+would not characterize cancellation, relaunch, or late publication in the
+shipping composition.
+
+**Decision:** freeze `public-bilingual-v1`, a public-synthetic corpus with 32
+question events across English, Spanish, code switching, and noisy ASR; seven
+interview scenarios; five rolling-summary windows; six translation routes; and
+eight cancel/relaunch faults. Bind it by SHA-256 to a separate budget for
+precision, recall, false prompts per hour, abstention, exact policy results,
+zero late publication, first/steady latency, footprint growth, and thermal
+state. The strict Python authority validates complete identities and writes a
+content-free, owner-only, non-replacing scorecard. Completing a measurement is
+separate from passing serving targets.
+
+Run the production policies from a hidden Release app mode, not a parallel
+test implementation. The app-target runner uses `TurnEndpointPolicy`,
+`InterviewQuestionPolicy`, `LiveSummaryWindowPolicy`, and
+`LiveTranslationRouting`; its reliability pass exercises the actual companion,
+interview, summary, and translation lifecycle owners with controlled
+continuations. It records only stable scenario IDs, closed decisions, timings,
+and aggregate process CPU, footprint, energy, thermal, and power state. Fixture
+ground truth is not decoded into the serving measurement path. The mode starts
+before `AppServices`, so it never opens a meeting database or starts ordinary
+background work.
+
+The released model-free prefilter lane runs on Sequoia and Tahoe and is a
+baseline, not a claim that every target passes. The Foundation Models lane is
+an explicit macOS 26 challenger over already-installed system assets: it fails
+before measurement when unavailable, never prepares/downloads a model, never
+reads a private meeting, and may become a serving candidate only when the
+checksum-bound scorer passes with `--require-targets`. A dirty worktree remains
+informational; only a clean observation on stable AC power, nominal thermal
+state, and without Low Power Mode can become controlled local evidence. Every
+timing domain must contain exactly one aggregate sample per declared iteration.
+Neither lane proves physical Sequoia/Tahoe behavior, model prose
+quality, signed distribution, accessibility, CloudKit, or field reliability.
+
+**Consequences:** LIVE-1 can select a Sequoia detector against a reproducible
+control instead of replacing Foundation Models by preference. LIVE-2 can reuse
+the same exact policy and resource boundary for provider-neutral summary and
+translation challengers. `make test-live-assist-validation`,
+`make live-assist-baseline`, and the opt-in
+`make live-assist-foundation-models` keep contract testing, observation, and
+serving admission distinct. One bounded bilingual real-app journey remains the
+mandatory UI canary; the hidden benchmark adds no user-facing control.
+
+## D431 — Make live question admission provider-neutral on Sequoia (Aug 2026)
+
+**Context:** the released Apuntador used a deterministic lexical prefilter and
+then required Apple's Foundation Models classifier. That made the feature
+unavailable on the supported Sequoia floor, even though question admission is a
+small classification problem rather than a generative one. BYOK could answer a
+general-knowledge question but could not replace the Apple classifier, so
+Settings correctly hid the toggle. LIVE-0 then showed that both the released
+prefilter and the installed Foundation Models comparison lane were below the
+frozen bilingual quality target. Replacing one opaque provider with another
+without a reproducible corpus, abstention policy, packaged asset, provenance,
+or real-app journey would only move the gate.
+
+**Decision:** make one checked-in compiled Natural Language classifier the
+authoritative live question admission path on Sequoia and Tahoe. Its frozen
+Create ML max-entropy source is trained from a byte-reproducible 560-example
+CC0 public-synthetic corpus across English, Spanish, code switching, noisy ASR,
+quoted questions, and fragments; training and LIVE-0 holdout sentences must be
+disjoint. Pin the training corpus, source model, and complete compiled model
+tree. SwiftPM copies the compiled asset into the IntelligenceKit resource
+bundle, and app packaging fails if that serving resource is missing.
+
+Keep deterministic surface features calibrated but non-authoritative. Reject
+invalid probability vectors, admit a sufficiently strong independent question
+or a lower-confidence model result only beside exact syntax/name evidence, and
+preserve a separate explicit abstention class. The original normalized caption
+is the displayed/evidenced question; neither the classifier nor an optional
+challenger rewrites source speech. Classify routing conservatively: meeting-
+specific material stays context, non-directed logistics stays silent, exact
+owner-directed logistics becomes an asked-you question-only card, and only
+remaining factual/technical material is eligible for BYOK general knowledge.
+
+Compose one provider-neutral generator inside the existing recording-scoped
+bounded/cancellable owner. The bundled detector always owns admission.
+Foundation Models may challenge and answer on macOS 26 when the app-owned
+capability is available, but its classifier identity is recorded separately
+and it cannot gate the base result. Without a usable answer engine, publish an
+honest question-only card; a BYOK failure falls back to that card rather than a
+hidden provider. Content-free generation provenance records the authoritative
+classifier, optional challenger, and actual answer provider separately.
+Question-only presentation never offers copy or invents answer provenance.
+
+Settings exposes the existing Apuntador toggle and owner name on every
+supported OS when the mandatory resource loads; a load failure disables the
+toggle and explains the required reinstall rather than leaving a dead control.
+It says that offline bilingual
+detection works on Sequoia and that Tahoe/Apple Intelligence supplies optional
+on-device answers; explicitly configured BYOK remains general-knowledge-only.
+The correction-aware post-meeting refresh retains its existing macOS-26
+Foundation Models requirement and must remain described separately.
+
+Extend the D430 Release-app authority with a `bundled-question` adapter that
+runs every frozen scenario through the real checked-in model and declares the
+asset installed. A deterministic EN/ES XCUITest enables Apuntador through
+volatile temporary-store defaults, emits one frozen remote question through the
+normal caption callback, disables the optional Tahoe challenger via the
+app-owned simulated capability, and expects a question-only card. Scope policy
+maps the LIVE-1 owners to that consolidated recording/Sequoia journey; copy or
+localization changes still expand fail-safe to the complete bilingual gate.
+
+**Consequences:** live detection now works without Foundation Models on the
+Sequoia floor, while richer Tahoe answers remain an additive enhancement. The
+first dirty-tree real-app candidate run passed all frozen targets with 1.0
+precision/recall/abstention, zero false prompts and late publication, 3.284 ms
+cold latency, 0.606 ms steady p95, and 1,556,528 bytes footprint growth. The
+clean exact feature commit `b660eff8` then passed the same complete authority
+with 1.0 precision/recall/abstention, zero false prompts and late publication,
+48.380 ms cold latency, 1.716 ms steady p95, and 5,537,888 bytes footprint
+growth. Its controlled-local serving-candidate scorecard SHA-256 is
+`db33d1a3d12f5115185faa27f34946e55e4771a151a23b7d1dd18dfe23ce5f65`.
+Model/corpus changes must intentionally update every digest and rerun the same
+authority; a later source commit cannot inherit this receipt. Physical
+Sequoia/Tahoe, real-meeting usefulness, answer prose, signed distribution,
+Instruments leaks, and assistive technology remain explicit external gates;
+deterministic or hosted tests cannot certify them.
+
+## D432 — Keep Notification Center bypass local and category-scoped (Aug 2026)
+
+**Context:** the read-only XCUITest host preflight correctly stopped before the
+LIVE-1 bilingual run because a Notification Center alert was visible. The
+operator explicitly accepted that category for this feature run. Dismissing the
+alert would mutate user-owned state, while disabling the entire preflight would
+also admit authentication windows, Secure Input, or competing automation and
+turn host contamination into misleading product failures.
+
+**Decision:** retain the fail-closed preflight by default and add one exact
+local environment switch,
+`PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS=true`. It removes only the
+content-free Notification Center count from both bounded samples. SecurityAgent,
+Secure Input, active `xcodebuild test`, and UI-test runners remain blockers. Any
+value other than exact lowercase `true` or `false` fails closed. CI never sets
+the switch, and the checker still reads no title, content, control, or owner
+identity and dismisses nothing.
+
+**Consequences:** an explicitly accepted local notification overlay no longer
+prevents otherwise deterministic XCUITest, without creating a general
+"force" mode or weakening hosted evidence. The result may still fail naturally
+if the overlay steals focus; that remains an honest functional failure rather
+than something automation retries away.
+
+## D433 — Publish provider-neutral live help before optional refinement (Aug 2026)
+
+**Context:** D171 bounded rolling-summary work but still made Foundation Models
+the sole producer and advanced no cursor until the provider completed. That
+left the supported Sequoia floor without a rolling summary and made an optional
+provider outage replay old evidence. Apple Translation also keyed late results
+only by a stable row UUID, even though a live caption can keep that UUID while
+its source text grows. Finally, smaller Qwen conversions looked attractive for
+live latency but had upstream size claims rather than Portavoz quality,
+compatibility, memory, or energy evidence.
+
+**Decision:** make a pure `IntelligenceKit` reducer the authority for rolling
+summary progress on every supported macOS version. Each bounded D171 window is
+folded into a checkpoint of at most 24 exact extracts and 6,000 characters.
+Same-identity caption revisions replace prior material, notes can rerender the
+checkpoint without replaying transcript rows, and English/Spanish headings are
+deterministic. The checkpoint, visible summary, and identity cursor publish
+before any model suspension. The reducer has no model, network, persistence,
+or app dependency.
+
+The explicitly selected Apple Foundation Models, fixed-loopback Ollama, or
+verified embedded MLX engine may refine that already-useful checkpoint. The app
+composition owns those adapters, runs supported model work at background
+priority, skips providers in temporary-store UI tests unless explicitly
+enabled, and fences publication by recording identity, cancellation, and one
+content-free source revision. Every adapter shares one 12-second application
+timeout. Optional inference runs only when the resource governor returns
+`admitNow`; reduced concurrency, pressure, deferral, timeout, or checkpoint-
+pause retains the deterministic result instead of competing with capture.
+Provider failure never rolls the cursor back or creates polling work.
+
+Treat Apple Translation asset state explicitly as installed, downloadable, or
+unsupported. An installed pair runs without asking again; only a downloadable
+exact source/target pair needs user consent. Preparation failure returns to
+that deliberate boundary. Execution failure uses a bounded 1, 2, 4, then
+8-second retry schedule, reset by success. A result may publish only while its
+pair, row identity, exact source text, and source language still match the
+current caption. Partial/blank results and duplicate current row identities
+fail closed and cannot mark a batch complete.
+
+Pin Qwen3.5 0.8B and 2B MLX conversions by exact revision, artifact size, and
+SHA-256 as evaluation-only challengers. They are reachable only through exact
+benchmark tokens; Settings, normal routing, and `recommended(for:)` retain the
+verified 4B serving descriptor. Promotion requires installed-asset Portavoz
+quality, first/steady latency, peak memory, energy, thermal, cancellation, and
+real-app evidence. D430 receipts add only checkpoint identities/language/size,
+translation asset actions/retry schedule, and invalid-publication counts; no
+caption, note, translation, or generated prose enters the receipt.
+
+**Consequences:** Sequoia and Tahoe always have bounded useful rolling
+highlights even when no generative model is ready. Local generation remains an
+additive quality layer rather than a capture dependency, and live translation
+cannot flash a stale result from an earlier form of a growing caption. The
+deterministic corpus and tests establish policy/reliability behavior, not model
+prose quality, installed challenger compatibility, physical-device latency,
+Instruments leak freedom, or field usefulness; those remain explicit gates.
+
+## D434 — Create one GitHub issue only from an exact reviewed action item (Aug 2026)
+
+**Context:** Portavoz already had a tested GitHub issue exporter and a
+Keychain-backed GitHub token, but issue creation was available only through the
+explicit CLI boundary. Reusing the whole-meeting proposal menu or silently
+choosing a repository would hide the real subject and destination. GitHub's
+create-issue endpoint supplies no caller idempotency token, so a lost response
+cannot prove whether the remote mutation occurred. The 1.0 expansion requires
+one narrow external adapter without weakening the review-first or content-free
+receipt contracts established by D327/D328.
+
+**Decision:** add `github-issue-create` as an external, irreversible,
+`explicitPerProposal` Skill over one current pending action item. Its direct
+Todo-row control appears only when the current summary has exactly one evidence
+record for that item and the evidence resolves against the current transcript.
+The two-stage SwiftUI sheet first admits one canonical ASCII
+`owner/repository`, then displays the exact repository, title, complete body,
+numbered citations, and remote-egress boundary. Owners are 1...39 ASCII
+alphanumeric characters with interior hyphens; repository names are 1...100
+ASCII alphanumeric, hyphen, underscore, or dot characters except `.` and `..`.
+Path, query, fragment, percent, empty-component, or Unicode ambiguity fails
+closed.
+
+`PrepareGitHubIssueDraft` reads one coherent correction-aware Meeting Detail
+projection. It refuses stale summaries, missing or completed items, multiple
+evidence records, unavailable/stale evidence, duplicate transcript identities,
+or malformed correction history. At most eight current citations of at most
+400 characters enter the body; the single-line title is at most 240 characters
+and the complete body at most 20,000. Citation identity, timestamp, speaker,
+and excerpt are exact reviewed material. Scaffolding follows the summary
+language (English or Spanish), not the app locale, because it is shareable
+meeting content. Duplicate speaker records resolve first-record-wins rather
+than terminating the process; ambiguous transcript evidence refuses the draft.
+
+Confirmation recomputes the complete draft and requires byte-for-byte equality
+before reading the existing Keychain token, claiming the Skill, writing a
+receipt, or starting transport. `ExecuteSkill` re-reads current policy at the
+normal admission and claim boundaries. The proposal contains exact meeting,
+action-item, and repository arguments; its stable idempotency key also contains
+all three. Its proposal UUID is the `DataEgressEventID`, whose content-free
+primary-key row is inserted before `GitHubIssuesExporter` can observe the
+request. The app reuses the existing canonical exporter and gateway; no second
+GitHub request codec or token store is introduced.
+
+Production transport uses an ephemeral session with cookies and caches
+disabled, 15-second request and 20-second resource deadlines, and
+`waitsForConnectivity = false`. A success is accepted only for HTTPS
+`github.com`, no user/port/query/fragment ambiguity, exact reviewed owner and
+repository, literal `issues`, and one positive decimal issue number. Any
+provider, transport, decode, settlement, or interruption failure after remote
+attempt handoff is terminal **outcome unknown**. Portavoz never retries it
+automatically and directs the user to inspect GitHub before any deliberate new
+attempt. The returned URL is transient; tokens, repository, issue material,
+and provider URL never enter Skill or privacy receipts.
+
+Disposable real-app automation keeps the production draft, request codec,
+metadata, receipt-before-transport, execution, response-fence, and settlement
+boundaries while substituting a no-network provider-shaped response and never
+reading Keychain. The existing Gist journey is extended in the same launch and
+remains bilingual under its unchanged runtime budget. Real repository
+permissions, Keychain, provider behavior, slow/offline/interrupted network,
+browser opening, physical Sequoia/Tahoe behavior, VoiceOver/Voice Control, and
+signed distribution remain separate field authorities.
+
+**Consequences:** Portavoz can turn one explicit meeting commitment into one
+reviewed GitHub issue without inventing a repository, silently changing
+evidence, or claiming a remote failure is safe to retry. Adding another
+repository adapter, OpenAI-compatible mutation, mutable MCP operation, batch
+issue creation, or standing rule requires a separate named contract and cannot
+reuse this proposal's consent. AUTO-5 remains limited to reversible local
+effects and cannot invoke this Skill.
+
+## D435 — Persist standing rules as closed local authority before execution (Aug 2026)
+
+**Context:** AUTO-5 introduces user-authored “always run” behavior. Reusing an
+ordinary enabled-Skill bit or `explicitPerProposal` confirmation would blur the
+difference between catalogue availability, one reviewed execution, and durable
+unattended authority. Starting with arbitrary prompts, content predicates, or
+external effects would also make upgrades, duplicate delivery, and relaunch
+recovery impossible to fence before an executor exists.
+
+**Decision:** create a separate device-local `StandingSkillRule` contract and
+schema-v46 table. A rule stores only its UUID, exact Skill ID/version, one
+closed trigger, one content-free subject predicate, one closed action, a daily
+execution ceiling, enabled state, and timestamps. It stores no event, meeting,
+attendee, transcript, title, provider, destination, credential, prompt, or
+result. Reads and writes are bounded to 32 rules; each daily ceiling is 1...8.
+The trigger/predicate/action tuple is unique, so creating the same template is
+idempotent rather than silently changing the existing authority.
+
+The first and only admitted template is **prepare every upcoming pre-meeting
+brief**, mapped to the exact current `PreMeetingBriefSkill` definition with a
+default daily ceiling of three. Creation requires a valid reversible
+definition with neither an external effect nor local-file writing. Clipboard,
+file export, reminders, network handoff, destructive work, GitHub, Gist, email,
+and user-supplied executable predicates remain per-proposal-only. Adding any
+template or enum case is an authority expansion that requires its own product
+and evidence gate.
+
+Standing-rule authority remains independent from the global pause and
+per-Skill disablement controls. The control projection reports the rule's own
+state but considers it effectively enabled only when the exact template/version
+is current and both existing controls admit that Skill. A stale definition can
+be disabled or deleted but never re-enabled. Persisted malformed identities,
+unknown enum values, invalid bounds, and non-finite or reversed timestamps fail
+closed.
+
+This slice adds no event observer, scheduler, execution claim, daily accounting,
+receipt, model call, network operation, or SwiftUI control. Creating, disabling,
+or deleting authority writes no Skill execution event. AUTO-5b must separately
+bind the exact calendar event, duplicate/recursion fences, daily accounting,
+crash/relaunch recovery, cancellation, and immutable receipts before any rule
+may perform work; AUTO-5c owns bilingual user controls and history/recovery.
+
+**Consequences:** Portavoz now has a migration-safe, inspectable authority
+boundary that cannot accidentally authorize today's external Skills or become
+valid merely because a stale Skill is re-enabled. It is not yet an automation
+feature a user can activate, and it does not prove event delivery, relaunch
+execution, UI, physical Sequoia/Tahoe behavior, accessibility, signed
+distribution, CloudKit, or field usefulness.
+
+## D436 — Execute standing briefs through one crash-safe local owner (Aug 2026)
+
+**Context:** Persisted standing authority is not enough to run unattended work.
+An EventKit notification can be duplicated, delayed, or delivered while a
+manual proposal already owns the event; a process can terminate between
+generation and receipt settlement; and recording can begin while a brief is
+being prepared. Treating an observer callback, timer, or in-memory task as
+execution authority would create duplicate drafts, unbounded retry, or model
+contention during capture.
+
+**Decision:** schema v47 adds an append-once
+`standingSkillExecutionAuthority` row joined to the existing durable Skill
+execution owner and one immutable `standingSkillArtifact`. The authority stores
+only the rule snapshot identity, closed action, SHA-256 fingerprint of the
+opaque event identifier plus exact start instant, bounded local-day window, and
+authorization time. One unique action/fingerprint pair owns an occurrence;
+rule deletion cannot erase historical authority. The artifact stores one
+format-versioned local pre-meeting brief, capped at 128 KiB and verified by a
+persisted SHA-256 digest. Neither table participates in CloudKit, portable
+meeting bundles, or support diagnostics.
+
+Claim is one SQLite transaction. It re-reads the exact current rule, global
+pause, per-Skill disablement, one-shot dismissal, any manual owner for the same
+event, the rule's single-flight state, and the local-day daily count before it
+creates the normal `confirmed` Skill execution plus standing authority. The
+application computes a DST-safe local-day window whose duration cannot exceed
+30 hours. Invalid identities, stale versions, malformed time, duplicate
+proposal/idempotency ownership, or a budget beyond the rule's 1...8 ceiling
+fail closed.
+
+Preparation is admitted only from zero to two hours before the exact event and
+has a 30-second execution deadline. It uses the existing local
+`PrepareMeetingBrief` workflow, then re-resolves the event and requires the
+complete event value to remain equal before encoding. Success appends
+`begin`/`succeed` and inserts the artifact in one transaction; failure appends
+`begin`/typed `fail` in one transaction. Confirmed and recoverable-failed
+owners may resume through at most three automatic attempts. An `executing`
+owner is outcome-unknown and is never repeated. Explicit cancellation or a
+changed event retires a new confirmed owner, while recording preemption keeps
+that exact owner confirmed for later resumption.
+
+The macOS composition owns one signal-driven supervisor. Launch recovers
+bounded pending owners before admitting new events. EventKit change
+notifications are invalidation signals only, and the supervisor schedules at
+most one wake for the next two-hour boundary or the next local-day horizon
+refresh, whichever comes first; it never polls EventKit or SQLite. The daily
+boundary is required because EventKit's bounded today-plus-tomorrow query would
+otherwise become stale while a long-running app receives no calendar edits.
+Concurrent wakes coalesce behind one serialized worker. Every capture phase
+cancels current background preparation and the inactive transition re-kicks
+it. Disposable-store composition installs neither a host-calendar read nor a
+TCC prompt.
+
+**Consequences:** a persisted rule can now produce one durable, local,
+relaunch-safe brief for an exact calendar occurrence without external egress,
+duplicate recursion, or recording contention. The contentful artifact remains
+unexposed until the bilingual AUTO-5c controls/history surface is implemented;
+ordinary users still cannot create the rule in this slice. Real EventKit/TCC
+delivery, physical Sequoia/Tahoe behavior, accessibility, signed distribution,
+and field usefulness remain separate qualification gates.
+
+## D437 — Standing actions share one inspectable control and execution owner (Aug 2026)
+
+**Context:** D435/D436 made the closed local rule and its crash-safe executor
+real, but ordinary users still could not create, pause, recover, or inspect it.
+A Settings implementation could not safely infer history from the general
+receipt list, expose calendar content in a control projection, or construct a
+second executor for retries. Real-app validation also found that v47 hashed the
+floating-point bit pattern of an EventKit `Date` while GRDB durably stores dates
+at millisecond precision, so a valid submillisecond occurrence changed identity
+after its first SQLite round trip.
+
+**Decision:** ApplicationKit owns one `StandingSkillAutomationCenterSnapshot`
+that composes the bounded standing-rule control projection with only standing-
+authority receipts. The default history window is 20, expands once to 50 using
+one successor sentinel, and never scans general Skill history. Contentful brief
+artifacts load separately by proposal UUID and pass the existing size, digest,
+format, and codec validation before entering presentation. Create, enable, and
+delete mutations enter the existing supervisor through `reconcileNow`; an
+explicit retry enters that same serialized owner through `retryNow(proposalID)`
+and processes only the selected failed receipt, without discovering new events
+or resuming unrelated owners. Every mutation returns a newly verified snapshot;
+none instantiates or bypasses the serialized executor. Deleting current
+authority preserves immutable receipts and artifacts.
+
+Settings presents one bilingual **Automatic local actions** section under
+Suggested actions. It explains the local/reversible boundary, previews the only
+admitted template, lets the user select a 1...8 daily ceiling, create the rule,
+inherit the existing global pause, enable or disable it, delete it through an
+inline confirmation, inspect bounded status/history, retry only a recoverable
+failed owner, and open a verified private brief. Reads and mutations fail
+closed; an ambiguous mutation offers a read-only reload and never repeats the
+write. Every control has a stable accessibility identifier.
+
+Schema v48 changes standing occurrence identity to the opaque event ID plus the
+start instant rounded to the same millisecond precision GRDB persists. Resume
+and final event-snapshot validation use that canonical temporal equality while
+still requiring exact ID, title, and attendee values. The migration rekeys v47
+authority fingerprints and their Skill idempotency keys atomically through
+proposal-scoped staging values, preserving uniqueness independently of update
+order. A public/synthetic bilingual real-app seed uses the production store,
+supervisor, receipt, retry, and artifact paths with no model or host Calendar;
+one deterministic first-attempt failure covers the complete lifecycle without
+private user data.
+
+**Consequences:** AUTO-5 is now an inspectable user feature rather than hidden
+authority. It remains one closed, bounded, reversible, device-local pre-meeting
+brief rule; clipboard, files, reminders, email, Gist, GitHub, network, and
+destructive actions still require exact per-proposal review. Automated tests do
+not certify real EventKit/TCC delivery, physical Sequoia/Tahoe behavior,
+VoiceOver/Voice Control, notarized distribution, CloudKit, or field usefulness;
+those remain separate release authorities.
+
+## D438 — Prove shared iOS portability before composing a mobile product (Aug 2026)
+
+**Context:** `Package.swift` declared iOS 17, while the iOS plan described
+several Kits as portable without a destination build. A real iPhone Simulator
+compile immediately found macOS-only home-directory fallbacks in the default
+model, database, and voiceprint roots; after those were fixed, Foundation Models
+macros still had macOS-only availability and the CloudKit capability adapter
+used the macOS-only `SecTask` API. The future companion also lacked a defined
+conflict rule for confirmed commitments and a bounded identity/lease contract
+for asking a Mac to perform heavier work. Adding an app target on top of those
+unknowns would mix source portability, product behavior, signing, sync, and
+hardware failures in one noisy gate.
+
+**Decision:** make source portability its own compiler authority.
+`scripts/check-ios-portability.sh` resolves one installed iPhone Simulator 26+
+SDK and sequentially builds `PortavozCore`, `StorageKit`, `ApplicationKit`, and
+`IntegrationsKit` for `arm64-apple-ios17.0-simulator` in one scratch graph. The
+fixed-Xcode macOS-26 CI workflow owns this as an independent required job rather
+than duplicating the macOS test suite. Model, storage, and voice defaults use
+`URL.applicationSupportDirectory`. Every Foundation Models provider and
+generated response type declares iOS 26 as well as macOS 26 availability;
+`canImport` is never treated as a deployment-version check. IntegrationsKit
+cross-builds its sync types, but signed-entitlement inspection remains macOS-
+only and returns capability unavailable on iOS until a real signed app adapter
+exists.
+
+Freeze two future domain contracts without composing them. First,
+`CommitmentReplicaMerge` performs deterministic canonical set union over two
+validated format-3 continuity envelopes. Shared source and event identities
+must be exactly equal, the immutable title cannot change, and the combined
+events must replay through the existing lifecycle. Compatible histories are
+commutative, idempotent, and associative; an incompatible concurrent lifecycle
+is an explicit conflict, never timestamp last-writer-wins. Commitments remain
+outside the current meeting CloudKit aggregate.
+
+Second, `DeferredMacWorkRequest` carries only a UUID, meeting/device identity,
+closed refine/diarization/summary kind, source transcript revision, lowercase
+SHA-256 input fingerprint, three-attempt maximum, and time. Its stable
+idempotency key excludes transport UUIDs and binds the exact material. A
+versioned `DeferredMacWorkSnapshot` uses compare-and-swap revision, one opaque
+Mac owner and lease token, at-most-15-minute renewal, expiry takeover, exact
+command replay, typed failure, cancellation, supersession, and source-fenced
+success. No audio, transcript, path, prompt, model, provider, credential, or
+result content enters either value. There is no persistence, CloudKit record,
+worker, iOS requester, or UI composition in this decision.
+
+Mobile implementation must remain finite and evidence-ordered: signed
+read-only text continuity first; in-person microphone capture second; notes,
+review, corrections, and commitments third; explicit heavy-work handoff only
+after text sync is field-proven; iPad PiP and Watch notifications only as later
+feasibility experiments. Public/synthetic bilingual corpora, deterministic
+real-app seed journeys, offline/slow/corrupt/relaunch/cancellation faults,
+installed-asset receipts, resource stress, and no-crash tests own routine QA.
+Permissions, interactive AI setup, external accounts, physical devices,
+Bluetooth routes, battery/thermal behavior, VoiceOver/Voice Control, signed
+distribution, production CloudKit, two-device convergence, and 30-day no-loss
+remain explicit field authorities.
+
+**Consequences:** the repository now detects a real iOS API/deployment break at
+the compiler boundary with a separately attributable CI failure, and the first
+mobile sync/handoff implementation has deterministic conflict and ownership
+contracts to adopt. This does not create or ship an iOS/iPadOS/watchOS target,
+enable CloudKit on iOS, sync commitments or audio, execute remote work, prove a
+model on an iPhone, or satisfy any physical/release gate.
+
+## D439 — Preserve standing reconciliation when its owner cannot verify work (Aug 2026)
+
+**Context:** review of the exact local 1.0 candidate found that the standing-
+brief supervisor used blanket `try?` at its serialized reconciliation boundary.
+An unexpected rule-store or EventKit-resolution failure therefore cleared the
+current in-memory signal and resumed an explicit Settings waiter as if work had
+been verified. Create, enable, delete, or Retry could then read a healthy control
+snapshot and present success even though the requested autonomous reconciliation
+never ran. A cancelled worker could also resume after `stop()` and mutate its
+replacement's in-memory ownership.
+
+**Decision:** unexpected reconciliation failure restores the exact scope that
+was removed from the queue: either the full invalidation or the selected proposal
+UUID set. Explicit waiters use throwing continuations, and `AppServices`
+propagates the error before its read-back so the existing fail-closed mutation UI
+retains the last verified snapshot and offers only a read reload. Exact event
+movement remains an expected per-occurrence skip after its authority is retired;
+other executor, store, and resolver failures are no longer erased. A monotonic
+generation makes any worker that resumes after `stop()` inert.
+
+The failure path does not add polling, a heartbeat, an automatic retry timer, or
+another executor. It leaves the scope pending but waits for a later EventKit,
+capture, or policy invalidation or explicit request, preventing a tight failure
+loop while preserving the crash-safe durable owner.
+
+**Consequences:** Settings cannot claim that an automatic action mutation was
+fully reconciled when the execution owner could not verify it, and a transient
+failure no longer loses the exact pending work. The regression uses one failed
+durable owner, one injected event-resolution failure, and one later signal to
+prove the same proposal succeeds on attempt two. This does not make host
+EventKit/TCC, physical Sequoia/Tahoe, assistive technology, distribution,
+CloudKit, or field behavior automated evidence.
+
+## D440 — Treat cancellation-shaped dependency errors as unverified mutations (Aug 2026)
+
+**Context:** D439 correctly distinguished a cancelled reconciliation worker
+from a dependency that throws `CancellationError` while that worker remains
+active. The Settings presentation boundary still caught the error type alone
+and silently treated both cases as caller cancellation. Its stale Create,
+enable, delete, and retry controls also remained enabled despite copy requiring
+a reload. A resolver or store adapter could therefore preserve the work yet
+hide the unverified mutation and accept another mutation against stale state.
+
+**Decision:** a standing Settings operation is silently abandoned only when
+`Task.isCancelled` is true. Any error from an active presentation task,
+including `CancellationError`, enters the existing ambiguous-mutation state.
+That state rejects and disables every durable standing-rule mutation until one
+verified read replaces the snapshot. Read-only artifact review and the explicit
+reload remain available. A temporary-store-only event-source fixture injects
+one cancellation-shaped resolution failure for a complete real-app recovery
+journey; it never reaches EventKit or private data.
+
+**Consequences:** cancellation remains responsive when SwiftUI actually removes
+the task, but an adapter cannot erase its own failure by choosing a cancellation
+error type. The UI and application authority now agree that only a verified
+read re-enables mutations. This automated fixture does not certify physical
+macOS behavior, TCC, accessibility technologies, distribution, CloudKit, or
+field evidence.
+
+## D441 — Cancel an explicit standing waiter without cancelling its worker (Aug 2026)
+
+**Context:** the serialized standing supervisor correctly allowed multiple
+Settings requests to join one process-owned reconciliation, but stored their
+throwing continuations in an unscoped array. Cancelling one caller did not wake
+that caller or remove its continuation. It remained retained until unrelated
+calendar preparation completed and could then report late success, even though
+the caller no longer owned presentation. Cancelling the shared worker instead
+would be equally wrong because another Settings request and durable background
+work may still depend on it.
+
+**Decision:** every explicit reconciliation and selected-retry waiter receives
+one random UUID and is stored independently. `withTaskCancellationHandler`
+removes and resumes only that identity with `CancellationError`; cancellation
+is checked before registration, inside the synchronous continuation handoff,
+and after resumption. Reconciliation completion, failure, and `stop()` drain
+only the identities still registered. Caller cancellation never cancels the
+shared worker, drops its pending scope, or changes another waiter's result.
+
+**Consequences:** a dismissed or superseded Settings operation releases its
+continuation promptly while the exact automatic brief may still settle safely
+for the process and any other waiter. The focused regression gates the worker,
+cancels one joined request, observes its cancellation before release, then
+proves a second request receives successful durable artifact settlement. This
+does not claim forceful pre-emption of arbitrary model code or certify physical
+macOS, EventKit/TCC, accessibility technologies, distribution, CloudKit, or
+field behavior.
+
+## D442 — Bound GitHub citation clocks before integer rendering (Aug 2026)
+
+**Context:** the reviewed GitHub issue draft required citation timestamps to be
+finite and nonnegative, then rendered the clock through an unchecked
+floating-point-to-`Int` conversion. A corrupt but finite transcript offset above
+`Int.max` therefore passed the draft boundary and terminated the process before
+the issue review could fail closed. The adversarial characterization reproduced
+the exact Swift trap and signal 5.
+
+**Decision:** `GitHubIssueCitation` owns one platform-derived maximum timestamp
+with a wide margin below `Int.max`. Draft validation and the private clock
+formatter both enforce finite, nonnegative, in-range time. Formatting is
+throwing and maps an invalid value to `citationsUnavailable`; it never clamps,
+lies about evidence time, reads credentials, or reaches transport.
+
+**Consequences:** impossible imported or corrupted timing can no longer close
+Portavoz while a user prepares an issue. Ordinary meeting offsets remain many
+orders of magnitude below the bound, and reviewed content, correction lineage,
+idempotency, egress consent, and response validation remain unchanged. This
+does not certify real GitHub, Keychain, network, physical macOS, accessibility,
+distribution, CloudKit, or field behavior.
+
+## D443 — Recheck capture authority inside delayed standing suspends (Aug 2026)
+
+**Context:** the synchronous recording controller updates one lock-protected
+capture state, then bridges the standing supervisor through independent
+unstructured tasks. Actor isolation serializes whichever task arrives first;
+it does not preserve their creation order. A delayed active-phase suspend could
+therefore arrive after the inactive transition had already kicked the worker,
+cancel that worker, preserve `needsReconciliation`, and leave no owner running
+until an unrelated calendar invalidation or relaunch. The adversarial sequence
+reproduced this as a deterministic timeout.
+
+**Decision:** `suspendForCapture()` must re-read the shared authoritative
+capture state when it executes. A truly active capture preserves the existing
+preemption behavior. If capture is already inactive, the stale suspend becomes
+an idempotent `kick()` and returns without cancelling the current worker or its
+scheduled recovery authority.
+
+**Consequences:** rapid recording start/stop transitions cannot strand a
+confirmed automatic brief merely because task scheduling inverted their actor
+arrival. Capture still has priority, no polling or retry timer is added, and
+the standing executor remains single-flight. This local characterization does
+not certify physical Sequoia/Tahoe capture timing, EventKit/TCC, accessibility,
+distribution, CloudKit, or field behavior.
+
+## D444 — Conserve exact synthetic frames across resource Stop samples (Aug 2026)
+
+**Context:** the exact first-attempt `e0c3c062` candidate passed deterministic
+scope, recording stress, scoped bilingual XCUITest, public validation, every
+installed-model class, and every measured performance budget. Its three
+reference-host resource rounds then measured Stop at 141.829, 148.244, and
+243.818 milliseconds wall and 224.074, 245.517, and 361.572 milliseconds CPU.
+The CPU p95/p50 ratio was 1.472 with a 116.055-millisecond absolute spread, so
+schema 4 correctly withheld qualification as unstable. The v1 public source
+fixed sample rate and chunk shape but remained driven only by wall-clock ticks;
+task pre-emption could move a different final chunk count or inference backlog
+across the recording/Stop boundary. An unchanged retry could not prove whether
+that variance belonged to Portavoz or to incomparable input.
+
+**Decision:** `public-synthetic-dual-channel-v2` gives each microphone and
+system source one exact frame target derived from the already bounded recording
+duration. The detached producer remains real-time and stops yielding at that
+target. Product Stop first cancels and awaits the producer, then publishes only
+the bounded missing tail before closing the stream, so the production writer
+and live-model teardown always drain the same planned PCM. Invalid duration or
+non-chunk-aligned frame plans fail through optional admission rather than a
+precondition trap. A written-frame mismatch yields no capture, and the outer
+runner refuses to write any measured fragment unless the real durable Stop
+workflow reaches `.done`. The schema-4 1.25 ratio and inclusive
+100-millisecond absolute stability floor remain unchanged.
+
+**Consequences:** repeated resource Stop evidence becomes comparable by fixing
+the input instead of weakening, retrying, or relabeling the failed candidate.
+The focused source test stops early and still observes the complete exact frame
+plan; a second test rejects malformed plans without terminating the process.
+The failed `e0c3c062` run remains failed and has no qualification receipt. A new
+clean committed candidate must still pass all eight proofs from the beginning.
+This benchmark-only source does not certify physical capture, TCC, routes,
+acoustics, Sequoia/Tahoe hardware, accessibility, distribution, CloudKit,
+provider behavior, or field use.
+
+## D445 — Validate the exact signed appcast before declaring a release ready (Aug 2026)
+
+**Context:** the canonical release runbook made Sparkle's `generate_appcast`
+binary and its dedicated Keychain key prerequisites, and promised a signed
+`appcast.xml` beside every DMG and cask. The one-command script nevertheless
+treated a missing signer as a warning, rendered the cask, exited successfully,
+and printed `Release <version> ready`. It also trusted a zero signer exit without
+checking that the expected feed existed or described the exact artifact. A
+release could therefore appear complete while existing users had no valid
+Sparkle update path.
+
+**Decision:** `make-release.sh` requires an executable signer before the
+expensive signed build. After the signer exits, a separate standard-library XML
+verifier admits exactly one regular feed item and requires its
+`sparkle:shortVersionString`, `sparkle:version`, enclosure URL, and enclosure
+byte length to match the requested version, build, and DMG. The enclosure must
+also carry a valid-base64 64-byte EdDSA signature. Missing, symlinked, empty,
+oversized, malformed, unsigned, duplicate, stale, or mismatched evidence exits
+64 before cask rendering or the readiness message.
+
+**Consequences:** release completion now means the exact DMG has a structurally
+complete signed Sparkle feed rather than merely that the signer process was
+attempted. Nine isolated tooling cases run the real orchestration against
+temporary stubs and cover missing signer, absent output, symlinked output,
+malformed signature, wrong version, wrong build, wrong URL, wrong length, and
+exact success without signing, notarizing, publishing, or touching either
+installed app. Cryptographic trust still depends on the protected Sparkle
+Keychain key and final real updater/distribution validation; deterministic
+tests do not certify those external boundaries.
+
+## D446 — Attribute UI runtime only inside the test-owned activity boundary (Aug 2026)
+
+**Context:** the first exact D445 candidate passed all 105 English real-app
+journeys, but its hard local runtime gate retained one 34.835-second case
+against an unchanged 20-second ceiling. The exact xcresult shows `Start Test`
+at 1788079623.318, `Set Up` at 1788079653.344, and `Tear Down` at
+1788079658.151. XCTest therefore spent 30.026 seconds resolving its package
+graph before setup while the application journey itself occupied 4.807
+seconds. D428 could prove and exclude a post-teardown stall but still counted
+this symmetric pre-setup harness wait as product work.
+
+**Decision:** runtime receipt schema 3 requires one unambiguous top-level
+`Start Test`, `Set Up`, and later `Tear Down` for any passing over-budget case.
+The only attributable duration is `Set Up` through `Tear Down`. At least one
+second must remain outside that boundary; the receipt records pre-setup and
+post-teardown exclusions separately, their exact total, the reported and
+attributed spans, and the closed `outside-test-activity-boundaries` reason.
+Missing, ambiguous, non-finite, out-of-order, inconsistent, failed, sub-second,
+or still-slow evidence retains XCTest's outer duration and fails closed.
+Hosted and exact-candidate classifiers require the same schema, policy,
+identity, finite values, and arithmetic.
+
+The changed-file selector classifies the workflow, build/runner, preflight,
+scope, execution/runtime classifiers, verified-base and anchor owners,
+candidate receipt validator, and runtime budget as shared UI evidence owners.
+Changing any of them expands to the complete bilingual catalogue before the
+general tooling/documentation exclusions are considered.
+
+**Consequences:** reprocessing the retained result reports 30.026 seconds
+before setup, 0.002 seconds after teardown, 30.028 seconds of total harness
+exclusion, and 4.807 seconds attributable to the active-recording journey. The
+105-case English receipt becomes 883.180 summed seconds, p50 6.612, p95 19.377,
+maximum 38.139, with every unchanged budget green. The original candidate
+remains failed and Spanish remains unexecuted; a new clean committed candidate
+must run both locales from the beginning. No timeout, budget, assertion,
+selector, locale, retry, or functional result changes, and the raw xcresult
+remains the immutable authority. The fresh shared-harness qualification then
+passed 105/105 English and 105/105 Spanish from one build with zero adjustments
+under the unchanged budgets.
+
+## D447 — Require real product completion before accepting leak evidence (Aug 2026)
+
+**Context:** D381 left memory leaks and the broader stress/no-crash matrix open.
+The existing resource baseline measures bounded process footprint but cannot
+prove that objects are released. A direct `leaks --atExit` launch of the exact
+Release application also exposed a more dangerous false green: instrumentation
+enabled MallocStackLogging, hardened-runtime library validation rejected the
+separately signed Sparkle framework, the target died before product work, and
+the `leaks` command still exited zero. Tool status alone could therefore claim
+success for an application that never reached the scenario.
+
+**Decision:** candidate automation schema 3 owns one current-host, content-free
+leak receipt over four exact Release-app paths: released Live Assist policy, the
+bundled question classifier used on Sequoia and Tahoe, deep Ask, and semantic
+indexing. One build is copied to a private scratch directory; only that
+disposable copy is ad-hoc signed with the existing benchmark-only
+library-validation exception. Neither installed app nor the shipping signature
+is modified. Apple's at-exit tool runs with memory content and stacks withheld,
+no network, disposable storage, and public synthetic inputs.
+
+Every scenario requires zero tool exit, zero reported leaks and bytes, one
+unique product completion marker, and fresh regular evidence accepted by the
+existing Live Assist or resource validator. Fatal task-port, dynamic-library,
+signal, or early-launch output blocks even when the tool exits zero. The
+owner-only receipt binds exact release/source/host/toolchain identity, canonical
+scenario order, closed policy, and evidence digests. Five iterations apply
+explicitly to each Live Assist workload; Ask and indexing retain their one
+canonical bounded workload rather than hiding different semantics behind one
+global repetition count. Missing, symlinked, oversized, duplicated, reordered,
+malformed, incomplete, leaking, or identity-mismatched evidence blocks the
+candidate.
+
+**Consequences:** a candidate can no longer substitute process-footprint data,
+mocked output, an early dyld death, or the tool's exit code for real leak
+evidence on these four Apuntador paths. The gate remains intentionally narrower
+than a complete allocation/lifetime trace: it does not prove absence of every
+retained cycle, long-duration memory stability, installed Foundation Models or
+provider behavior, physical Sequoia/Tahoe, accessibility technologies, signed
+distribution, production CloudKit, or field reliability. Those gates remain
+explicitly open.
+
+## D448 — Bind leak evidence to maximum Live Assist repetition (Aug 2026)
+
+**Context:** D447's trusted runner passed its fixed five-iteration value to the
+real application, but the retained schema-1 fragment and receipt did not carry
+that value and the Live Assist evidence adapter did not compare the observed
+resource iteration count with the tracked contract. A caller assembling forged
+fragments could therefore preserve valid-looking digests and zero-leak fields
+while omitting proof of the declared workload. Adding another soak workflow
+would duplicate the same product paths and contradict the scoped, owner-based
+CI design.
+
+**Decision:** keep one leak/stability owner and raise both in-process Live Assist
+lanes to the application's supported maximum of 100 iterations. Receipt schema
+2 records the exact iteration count on every fragment and scenario. The parser
+requires the released and bundled observation artifacts to report exactly 100;
+deep Ask and semantic indexing remain one canonical workload each and must
+report exactly one. Candidate automation continues to pass the tracked value to
+the runner and rejects any workload-count drift. No retry, second workflow, new
+product mode, or broader CI job is introduced.
+
+**Consequences:** the same inexpensive Release-app gate now proves zero detected
+at-exit leaks plus no crash across 100 repeated released-prefilter rounds and
+100 repeated bundled-classifier rounds, and the retained receipt can no longer
+overstate that intensity. This is high-iteration in-process stability, not an
+hours-long temporal soak, Instruments lifetime trace, installed provider/model
+memory result, Ask/indexing repetition matrix, or physical Sequoia/Tahoe claim;
+those authorities remain open.
+
+## D449 — Scope leak-owner UI evidence to its product paths (Aug 2026)
+
+**Context:** D447 initially classified the leak parser, runner, and contract as
+shared XCUITest harness, forcing all 105 journeys in both locales for changes
+that cannot build, select, measure, or accept UI evidence. That duplicated
+unrelated Settings, Meeting Detail, Skills, and showcase coverage and conflicted
+with the project's feature-PR scoping policy. Candidate automation itself does
+validate final UI receipts and must remain a full shared-harness owner.
+
+**Decision:** give the three leak-specific evidence owners one explicit
+bilingual UI scope containing the existing Ask, background-work, and Live
+Assist product journeys: 12 unique tests per locale. Keep
+`scripts/candidate_automation.py`, the selector, runtime classifier, runner,
+budget, localization, and shared seed owners in the full bilingual fallback.
+Policy tests require the leak set to stay disjoint from shared harness and pin
+the exact 12-test union. Complete bilingual remains mandatory for integration,
+RC, release, and any selector/shared-harness change.
+
+**Consequences:** future leak-contract/parser/runner changes retain real-app
+coverage of every visible product path they qualify while avoiding 93 unrelated
+launches per locale. This change modifies only selection cost, not assertions,
+budgets, retries, locale coverage, product code, candidate closure, or the final
+105-plus-105 release gate. D449 itself changes the selector and therefore must
+pass the complete bilingual catalogue once.
+
+## D450 — Repeat real Ask and indexing work inside the existing leak owner (Aug 2026)
+
+**Context:** D448 proved high-iteration stability for the inexpensive Live
+Assist lanes but retained one Ask and one indexing operation. Reusing
+`--bench-resource-run` as intensity would corrupt its receipt-identity meaning.
+Repeated Ask telemetry also cannot enter the strict one-trace pipeline probe,
+and rerunning indexing after its first drain would report success over an empty
+corpus. A second soak workflow would duplicate ownership and CI cost.
+
+**Decision:** keep the same four-scenario Release-app owner and add the separate
+bounded `--bench-resource-iterations` option, accepted only from 1 through 10.
+The tracked contract moves repetition onto every scenario and fixes the matrix
+at 100/100/10/10. Deep Ask runs the same current production workflow ten times
+inside one resource window. The first operation remains the canonical complete
+pipeline trace; every operation must return nonempty generated text, exact
+valid fixture citations, and the same citation-identity digest. Resource
+telemetry must contain exactly ten completed queue-wait and execution spans.
+
+Semantic indexing prepares ten 1,024-segment public-synthetic corpora before
+measurement. Iteration one retains the canonical temporary app store; the
+other nine use distinct disposable file-backed GRDB stores under the private
+benchmark root. Every iteration therefore executes the real embedding and
+publication path rather than an empty maintenance pass, and resource telemetry
+must contain exactly ten completed maintenance spans. Leak receipt schema 3,
+candidate contract schema 4, and contract schema 2 reject missing, extra,
+failed, or count-drifted workloads. The benchmark Swift owners join the same
+12-test bilingual product-path scope; selector changes still require one full
+bilingual qualification.
+
+**Consequences:** one clean current-host candidate can now prove zero detected
+at-exit leaks plus no crash across repeated installed Foundation Models Ask and
+installed Apple-embedding indexing, without retries or another workflow. A
+pre-change Release calibration measured one Ask resource window at 1.109
+seconds and one 1,024-segment indexing window at 8.161 seconds, so ten is a
+bounded evidence load rather than an arbitrary CI soak. This still does not
+prove hours-long temporal stability, every retained cycle, thermal behavior,
+cross-hardware or physical Sequoia/Tahoe coverage, other installed providers,
+or field usefulness; those authorities remain open.
+
+## D451 — Measure candidate performance before instrumentation-heavy gates (Aug 2026)
+
+**Context:** the first exact `9a98196d` candidate passed deterministic scope,
+recording stress, scoped bilingual UI, public validation, all installed-model
+classes, and the repeated Apuntador leak owner. Its first performance ledger
+was authoritative and passed every hard budget, with one budgetless Detail-core
+candidate. Confirmation run two kept semantic CPU p95 inside budget at 76.04
+milliseconds but semantic wall p95 rose to 113.97 milliseconds and 1.55 times
+its own median. The ledger correctly withheld a verdict as informational and
+the candidate wrote no qualification receipt. The runner had executed Apple
+leak instrumentation immediately before the latency-sensitive ledger; the host
+audit afterward found no residual Portavoz process but did find active system
+symbolication and unrelated host load. Repeating unchanged until green would
+not be evidence.
+
+**Decision:** preserve one sequential fail-closed candidate owner, but run the
+authoritative performance ledger and its fixed PERF-008 confirmation as its
+first specialized gate. Deterministic XCTest, model execution, Apple leak
+instrumentation, resource collection, long capture, upgrade/recovery, and full
+bilingual XCUITest follow only after performance succeeds. A characterization
+test pins performance ahead of the deterministic, leak, and resource gates.
+The performance contract, budgets, stability rules, exact three-run set,
+retained adverse observations, source/host/toolchain identity, and accepted
+exit states do not change.
+
+**Consequences:** the candidate no longer creates compiler, model,
+symbolication, or resource competition before measuring latency, and a host
+that is already noisy fails early instead of wasting the full qualification
+run. External contention, an unstable sample, a hard miss, an unresolved
+metric, or a confirmed regression still blocks; the order change is neither a
+retry, a baseline change, nor permission to discard adverse evidence. It does
+not convert hosted CI, other hardware tiers, physical Sequoia/Tahoe,
+distribution, CloudKit, assistive technology, or field evidence into local
+proof.
+
+## D452 — Acknowledge citation seeks only after playback applies them (Aug 2026)
+
+**Context:** the first complete bilingual UI run after D451 passed all 105
+English journeys but the Spanish command-palette journey timed out waiting for
+the cited three-second playhead. The palette answer, citation, destination
+detail, and player all existed. The identical assertion had failed on an older
+PR and then passed isolated reruns; that retained diagnosis explicitly required
+a pending-state correction if it recurred. The process mailbox was being
+cleared as soon as a matching detail copied the request into view-local state.
+If SwiftUI reconstructed that detail before playback preparation completed, the
+new view had neither the process request nor the old local pending seek.
+
+**Decision:** keep each identity-bearing `MeetingSeekRequest` in `AppServices`
+until the matching Meeting Detail has both accepted it into transcript
+navigation and applied it to a non-nil prepared playback session. The playback
+navigation owner returns whether application actually occurred. Only that true
+result acknowledges the exact request UUID; a stale acknowledgement cannot
+clear a newer seek. View appearance, model revision, request observation, and
+playback completion may all attempt delivery idempotently. A missing player
+retains both the process mailbox and the view-local pending target. No timeout,
+retry, locale exception, assertion, or UI budget changes.
+
+**Consequences:** command-palette, Ask, Library, and Spotlight citation routes
+survive same-route delivery and route/view reconstruction without extending
+test waits. A later request wins by identity, and a playback preparation
+failure remains pending rather than being falsely acknowledged. Pure tests
+characterize no-player retention, architecture ratchets require acknowledgement-
+after-application and UUID fencing, and the existing bilingual same-route
+XCUITest remains the end-to-end authority.
+
+## D453 — Isolate explicitly accepted Notification Center overlays from disposable XCUITest windows (Aug 2026)
+
+**Context:** D432 let a local operator ignore only Notification Center in the
+read-only preflight without dismissing user-owned state. The exact `90ab4432`
+candidate proved that classification alone was not sufficient. Its complete
+English catalogue ran under one persistent `UserNotificationCenter` window at
+CoreGraphics layer 8. XCTest repeatedly reported that modal as an interrupting
+element; controls behind it stopped being hittable or received no interaction,
+and the retained result ended with 11 failures across four UI owners. The same
+commit had already passed 105/105 English and 105/105 Spanish on a clear host,
+so treating the overlay run as a product regression or retrying it unchanged
+would both be dishonest.
+
+**Decision:** keep the D432 default and exact local switch unchanged. When and
+only when the XCUITest runner receives exact lowercase
+`PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS=true`, forward that value to
+each disposable app launch. The existing `-use-temp-store` window-placement
+boundary raises only the test main window and real Settings window to AppKit's
+standard `NSWindow.Level.statusBar`. That standard level is above the accepted
+modal-panel-level Notification Center overlay while remaining below pop-up-menu
+and screen-saver levels. Production windows never enter the boundary. The
+harness still reads no alert title or content, installs no interruption
+monitor, clicks no alert action, terminates no process, and changes no
+notification or Focus setting. SecurityAgent, Secure Input, competing tests,
+and malformed override values remain fail-closed before launch; CI never sets
+the override. The preflight reports both content-free Notification Center
+counts when the category is actually present, or explicitly reports that the
+override relaxed nothing when both observations are zero.
+
+**Consequences:** an operator-approved persistent Notification Center alert can
+coexist with deterministic local XCUITest without occluding app hit targets or
+mutating host state. This is explicit test-host isolation, not evidence that
+Portavoz handles arbitrary system overlays in production. A non-Notification
+system prompt, a prompt that appears after preflight, Secure Input, another
+automation client, or any functional assertion still invalidates the run. The
+change is shared harness ownership, so it requires exact affected-journey proof
+plus the complete sequential bilingual catalogue before candidate evidence may
+be trusted. A clear-host pass is still useful functional evidence but is never
+labelled as proof against a live overlay.
+
+## D454 — Normalize imported leak-evidence failures at the owner boundary (Aug 2026)
+
+**Context:** independent review of the D447–D453 source found that the leak
+owner translated `resource_baseline` failures into its own closed error but let
+`live_assist_validation` failures and evidence-hash I/O errors escape. A
+malformed or concurrently unavailable content-free artifact still blocked the
+candidate, but did so through an abrupt Python traceback rather than the stable
+owner diagnostic, weakening privacy and making failure classification depend on
+an implementation detail of the imported validator.
+
+**Decision:** catch the imported Live Assist validator's typed error and the
+bounded fixture checksum's I/O error at the adapter boundary, then raise one
+path-free `ApuntadorLeakBaselineError`. Evidence SHA-256 reads likewise convert
+I/O failure into the leak owner's domain error. The CLI retains its existing
+single-line fail-closed exit and publishes no fragment. Exact schema, workload,
+leak, completion-marker, and digest requirements remain unchanged.
+
+**Consequences:** corrupt or disappearing evidence cannot terminate the parser
+with a raw dependency traceback or leak scratch paths through that traceback.
+The candidate remains red and no qualification is written. This does not turn
+mocked parser coverage into Apple leak evidence or change the current-host,
+physical-platform, distribution, CloudKit, assistive, or field gates.
+
+## D455 — Index the canonical live transcript order (Aug 2026)
+
+**Context:** the first exact D454-head candidate failed closed in its first
+specialized gate. The diagnostic 2-hour/5,000-segment Detail-core p95 measured
+18.073, 19.932, and 20.749 milliseconds across the fixed three-run PERF-008
+set, versus the tracked 15.481-millisecond baseline. Every hard search,
+semantic, Spotlight, and footprint budget remained green. D454 changed no
+Swift product source, but recent current-product Detail-core observations had
+already clustered near the 15-percent comparison edge after correction-aware
+Meeting Detail expanded the core read. Inspection of the exact storage query
+showed SQLite filtering live segments through the meeting-only index and then
+building a temporary B-tree to establish the required `(startTime, id)` total
+order for all 5,000 rows. An unchanged candidate retry or a wider comparison
+tolerance would hide that deterministic work rather than remove it.
+
+**Decision:** advance the local schema to v49 and add one partial index over
+`segment(meetingID, startTime, id)` where `deletedAt IS NULL`. Keep the existing
+Meeting Detail predicate and total order unchanged; the query planner can now
+read live rows in canonical order directly from the index. A migration test
+pins the exact key and partial predicate, while a query-plan ratchet requires
+the index and rejects a temporary B-tree. The PERF-008 baseline, tolerance,
+fixed confirmation count, authority rules, and hard budgets do not change.
+
+**Consequences:** every initial Meeting Detail core load and transcript-driven
+refresh avoids one full live-transcript ordering sort. Tombstoned rows remain
+outside the added index, while correction history, revision fencing, refined
+source detection, sync/export behavior, and row content remain unchanged. The
+failed `4969b5bf` candidate stays failed and cannot be relabeled by this fix; a
+new clean exact commit must pass the ordinary preflight, tests, mandatory
+bilingual real-app gate, and fresh candidate automation. The index still needs
+physical Sequoia/Tahoe, signed distribution, production CloudKit, assistive,
+and field evidence through their separate owners.
+
+## D456 — Prebuild once and observe performance-host readiness (Aug 2026)
+
+**Context:** candidate automation correctly moved PERF-008 ahead of XCTest,
+models, leak instrumentation, and resource collection, but each scale,
+semantic, and Spotlight wrapper still invoked `swift build -c release` itself.
+The first latency sample could therefore overlap compiler or
+`coresymbolicationd` work created by the runner. The failed exact D454-head
+candidate retained a stable Detail comparison regression even though every
+hard budget stayed green; a cooled prebuilt diagnostic after D455 returned the
+same path inside tolerance. A fixed sleep, unchanged retry, or wider tolerance
+would not prove that measured work was isolated.
+
+**Decision:** candidate automation builds `portavoz-cli` in Release exactly
+once and binds every performance harness to that regular executable's SHA-256,
+source commit, and measured build duration. Each authoritative ledger must then
+pass a bounded, content-free host-readiness owner before sampling. The owner
+requires three consecutive observations whose aggregate CPU is at most 25
+percent of logical capacity, one-minute load is at most 0.5 per logical
+processor, compiler/symbolication CPU is at most 2 percent, power is AC in
+automatic mode, and thermal state is nominal. It waits at most 300 seconds,
+retains only numeric observations and closed reason identifiers, and fails
+before benchmarking when the predicate does not settle. Standalone performance
+builds use the same single-binary helper. Every raw and selected ledger retains
+the readiness receipt; confirmation schema 2 binds the exact binary and build.
+
+**Consequences:** the runner no longer creates compiler work between Release
+build identity and its latency samples, and a lingering compiler,
+symbolication, power, thermal, CPU, or load condition is a classified
+infrastructure block rather than a product regression. The readiness owner
+does not terminate other processes, inspect commands or content, sleep for a
+fixed cooldown, retry a full candidate, or weaken any metric. PERF-008 keeps
+its 25-metric partition, hard budgets, 15/20-percent comparison tolerances, and
+fixed one-or-three-run decision. A ready local host still cannot certify
+physical Sequoia/Tahoe, signed distribution, production CloudKit, assistive
+technology, or field evidence.
+
+## D457 — Keep resource samples inside one declared steady workload (Sep 2026)
+
+**Context:** the exact clean `0caa3123` candidate passed authoritative
+performance on its first and only run, deterministic release scope, 2,912
+package tests, correction composition, recording stress, scoped bilingual UI,
+public fixtures, every installed-model lane, and the real-app Apuntador leak
+owner. Resource collection then completed but candidate admission rejected
+idle, recording, recording-plus-batch, and Stop as unstable. The adverse samples
+were actionable rather than timer noise: idle process CPU rose from about 4.15
+to 5.64 seconds; one recording process rose from about 16.87 to 47.14 seconds;
+its Stop drained for 2.21 seconds instead of about 0.3; and one batch sample
+read 500.88 MiB and executed for 11.42 seconds instead of about 0.5.
+
+Inspection found three benchmark-owned lifecycle leaks. Isolated app startup
+suppressed service-level owners but still mounted `ContentView`, its view tasks,
+product commands, and the menu-bar extra. Synthetic audio emitted a chunk and
+then slept for a relative 100 milliseconds, accumulating every scheduling
+delay into a variable tail that Stop had to publish synchronously. Finally,
+recording-engine construction did not exercise the stateless live manager, and
+batch preparation acquired Parakeet but did not exercise `transcribeFile`, so
+both lazily paged first-use paths depended on incidental host cache residency.
+
+**Decision:** keep the real signed app, ApplicationKit workflows, production
+recording session, schedulers, models, exact frame plan, three samples, and
+schema-4 stability policy unchanged. Isolated benchmark launches now mount only
+inert scene content and suppress product commands and the menu-bar extra. The
+synthetic source paces chunks against absolute `ContinuousClock` deadlines
+derived from one start instant; late scheduling catches up to that plan instead
+of extending every later deadline. After all recording engines load, every
+recording process drains one fixed unmeasured two-second public stream through
+the exact stateless live manager before readiness. Recording-plus-batch also
+executes and validates one unmeasured transcription through the exact runtime
+and scheduler before the probe, then measures the same operation during active
+recording. A preparation failure remains fatal and publishes no sample.
+
+**Consequences:** idle no longer includes view-owned maintenance or rendering;
+recording and Stop retain exact total input without scheduler drift deciding
+which phase drains it; and batch evidence measures steady interference rather
+than accidental model-page residency. This is neither a threshold relaxation
+nor an unchanged candidate retry. The failed `0caa3123` candidate remains
+failed and emitted no qualification receipt; a new exact clean commit must pass
+ordinary preflight, mandatory bilingual XCUITest, and fresh candidate
+automation. The resource matrix still does not certify physical capture,
+Sequoia/Tahoe hardware, signed distribution, production CloudKit, assistive
+technology, or field behavior.
+
+## D458 — Warm exact semantic indexing without consuming the measured corpus (Sep 2026)
+
+**Context:** the exact clean `04c395e6` candidate passed deterministic release
+scope, package and Tooling tests, recording stress, scoped bilingual UI, every
+installed-model lane, the Apuntador leak owner, and eight of nine resource
+scenarios. Candidate admission still failed closed because
+recording-plus-indexing process CPU was 56.74, 32.07, and 31.36 seconds. Its
+wall time and exact indexing span stayed stable, and standalone indexing later
+in each run was stable at about 15.3 seconds. The resource runner executes
+recording-plus-indexing before standalone indexing. Preparing the embedding
+runtime loaded its assets but did not exercise the exact `IndexSemanticCorpus`
+batch, storage-publication, and vector-shape path, leaving that first use to one
+measured sample. Reusing the measured store for a warmup would be invalid: it
+would drain the pending corpus and turn the measured operation into a no-op.
+
+**Decision:** before either standalone or recording-plus-indexing opens its
+resource probe, execute and validate one unmeasured `IndexSemanticCorpus.all`
+operation over the same 1,024-segment public English fixture, the same semantic
+runtime, the same content-free telemetry port, the same 256-row batches, and
+the same hard timeout. The warmup owns a separate `MeetingStore.inMemory()` and
+does not prepare or download the runtime again. The real measured workload is
+prepared first in its disposable store and remains completely pending until
+the probe opens. A warmup timeout, incomplete corpus, invalid profile, missing
+assets, or execution failure remains fatal and publishes no resource sample.
+
+**Consequences:** both indexing cells now measure a declared steady exact-use
+path rather than incidental first-process cache residency, while still
+measuring all real embedding, indexing, telemetry, and storage work against an
+untouched corpus. No product workflow, scenario order, sample count, stability
+threshold, timeout, collector, or candidate retry policy changes. The failed
+`04c395e6` candidate remains failed and emitted no qualification receipt; a new
+exact clean commit must pass ordinary preflight, mandatory bilingual XCUITest,
+and fresh candidate automation. First-ever semantic activation latency and
+physical Sequoia/Tahoe, distribution, CloudKit, assistive-technology, and field
+behavior remain separate evidence gates.
+
+## D459 — Keep opportunistic model discovery outside isolated probes (Sep 2026)
+
+**Context:** the exact clean `389e6040` candidate proved D458's intended
+correction: both semantic-indexing cells passed, including stable exact
+recording-plus-indexing spans. Candidate admission nevertheless failed first on
+idle CPU, while a diagnostic evaluation also marked recording, Stop, Summary,
+and recording-plus-batch unstable. Those scenarios were outside D458's
+indexing-only change. Every fresh `AppServices` composition still scheduled a
+production convenience task that called `refreshMLXReadiness()`. For the shared
+benchmark model store, its first process-local lookup re-hashed every pinned
+Qwen3.5 artifact, including the 2.26 GB model, without joining any scenario
+preparation or resource telemetry. Depending on storage residency, that task
+could overlap idle, engine loading, active recording, Stop, or another model.
+Summary could also race it with its own required forced verification.
+
+**Decision:** preserve opportunistic installed-MLX discovery for ordinary app
+launches, but do not schedule it when `BenchMode.runsIsolatedBenchmark` owns the
+process. Each benchmark remains responsible for its declared assets and exact
+preparation. In particular, Summary still force-verifies the pinned descriptor
+before opening the probe; recording, batch, Ask, indexing, graph, and launch-
+preflight modes do not acquire an unrelated MLX verification task. Keep the
+real signed app, product workflows, scenario order, three samples, timeouts,
+collectors, stability thresholds, and fail-closed candidate policy unchanged.
+
+**Consequences:** process CPU, footprint, and disk reads can no longer include
+an initializer-owned multi-gigabyte hash that was unrelated to the measured
+scenario. Production still refreshes the Settings-facing installed-model state
+at launch, and Summary evidence still proves exact artifact integrity before
+measurement. The failed `389e6040` candidate remains failed and emitted no
+qualification receipt; D459 requires ordinary preflight, mandatory bilingual
+XCUITest, a new clean commit, and one fresh exact candidate rather than a retry.
+Physical Sequoia/Tahoe, signed distribution, CloudKit, assistive technology,
+and field behavior remain separate evidence gates.
+
+## D460 — Attribute readiness interference without process inventory (Sep 2026)
+
+**Context:** the one exact clean D459 candidate (`66063313`, version 1.0.0
+build `202609012115`) stopped before its third PERF-008 observation and wrote no
+qualification receipt. Run one had two comparison candidates, run two was clean
+after 222.517 seconds of readiness waiting, and run three never measured because
+compiler/symbolication CPU stayed above the unchanged two-percent ceiling for
+the complete 300-second bound. Its final samples retained 4.4, 36.6, and 5.3
+percent plus the closed `build-or-symbolication` reason. Load, aggregate CPU,
+power, and thermal state were acceptable. Receipt schema 1 intentionally
+discarded executable identity, so the retained failure could not distinguish a
+build driver, compiler, linker, source-analysis service, or symbolicator. A
+blind retry would lose the useful failure without proving its cause.
+
+**Decision:** evolve only the content-free readiness receipt to schema 2. Keep
+the final bounded sample window and aggregate interference CPU, and additionally
+group positive interference into exactly six closed classes: build driver,
+Swift compiler, Clang compiler, linker, source analysis, and symbolication.
+Each retained class carries only its summed CPU percentage. Never record an
+executable name, path, PID, command argument, workspace, source token, or
+payload. Validate exact object shape, sorted unique classes, the closed
+vocabulary, positive finite values, and an exact rounded sum back to the
+existing aggregate. Keep the policy version, process matcher, two-percent
+ceiling, three consecutive observations, 300-second bound, PERF-008 fixed run
+set, and fail-closed behavior unchanged.
+
+**Consequences:** the next blocked receipt can identify which safe executable
+class owned the interference without exposing host process inventory or
+granting the runner authority to terminate anything. A sample with zero
+observed interference carries an empty contributor list; a ready sample may
+retain positive contributors below the unchanged two-percent ceiling. Existing
+schema-1 receipts remain historical evidence and cannot qualify changed source.
+D460 itself requires ordinary preflight,
+mandatory minimum-safe bilingual XCUITest, a clean Conventional Commit, and one
+fresh exact candidate; D459's failed candidate remains failed and is not
+retried. Physical Sequoia/Tahoe, signed distribution, production CloudKit,
+assistive technology, and field behavior remain separate evidence gates.
+
+## D461 — Converge the dependency baseline before final review (Sep 2026)
+
+**Context:** exact D460 source passed its complete local candidate and its first-
+attempt PR-head hosted gates, but `main` then advanced by one dependency-only
+commit. That commit resolves FluidAudio 0.15.6, pins WhisperKit 1.1.0, and
+resolves Sparkle 2.9.6. Asking for final human review on the older graph would
+either review a stale candidate or defer dependency conflict and qualification
+risk until after approval. The D460 decision text also overclaimed that every
+ready readiness sample had no contributors, while its own qualifying receipt
+truthfully retained 0.7 percent symbolication below the unchanged two-percent
+ceiling. The current package inventory is 2,917 tests rather than the stale
+2,910 documentation ratchet.
+
+**Decision:** merge the exact current `main` dependency commit into the PR
+branch before final review, without changing Portavoz product code or relaxing
+any package, model, performance, resource, leak, or UI gate. Correct the D460
+wording and current quality inventory in the same bounded integration commit.
+Validate public SwiftPM artifacts with SwiftPM's official `--disable-keychain`
+option when the local credential service blocks public artifact resolution;
+this changes only credential lookup, not the package graph, artifact digests,
+or build products. Treat the resulting two-parent commit as new source: run
+warnings-as-errors, all package tests, strict lint, repository hygiene, and the
+minimum safe bilingual real-app XCUITest before publication, then require one
+fresh exact candidate and first-attempt hosted evidence for that exact head.
+
+**Consequences:** the independent reviewer sees the same dependency graph that
+will be proposed for integration, and no D460 receipt is reused for changed
+source. FluidAudio and WhisperKit behavior is re-exercised by the installed-
+asset candidate lanes; Sparkle remains subject to the later signed distribution
+gate. A Keychain-stalled dependency download is retained as an infrastructure
+failure rather than a product failure, and no retry can manufacture qualifying
+evidence after a real test or admission failure. Passing D461 still does not
+provide independent review, integration into `main`, exact-main qualification,
+signed/notarized distribution, production CloudKit, physical Sequoia/Tahoe,
+assistive-technology, or field evidence.
+
+## D462 — Admit active reference-host throughput before each performance harness (Sep 2026)
+
+**Context:** the one exact D461 candidate (`63dd9849`, version 1.0.0 build
+`202609020651`) passed the D460 passive readiness predicate after 14.555 seconds
+but then produced a broadly slow, internally dispersed first performance
+ledger. Exact FTS, Detail, semantic store opening, corpus seeding, and semantic
+query CPU were roughly 29–55 percent slower than the immediately preceding
+exact candidate; semantic wall and CPU crossed their hard budgets only in that
+unstable observation. The ledger correctly became informational and no
+qualification receipt was written. Under a later explicitly non-qualifying
+reserved window, the unchanged Release binary returned exact FTS, lexical Ask,
+Detail, and semantic timings to their established ranges. That strongly
+implicates unobserved host capacity, but it does not retroactively qualify
+D461. One-minute load is not a sufficient replacement signal because earlier
+valid candidates passed at comparable load.
+
+**Decision:** evolve readiness to policy v2 and receipt schema 3. After the
+unchanged three-sample passive CPU/load/compiler/power/thermal window, hash one
+fixed one-MiB zero block 512 times in each of five consecutive Python `hashlib`
+samples. Verify the constant digest, retain only ordered wall/process-CPU
+milliseconds and recomputable percentiles, and require wall and CPU p95 at or
+below 200 milliseconds plus p95/p50 at or below 1.15. A failing active window
+resets passive admission inside the same 300-second admission deadline; the
+loop starts no calibration at that deadline and a calibration completing after
+it can only retain a blocked receipt. A probe already in flight may finish only
+to record that overrun; it never retries a ledger or candidate. Obtain a new
+receipt immediately before scale, semantic, and Spotlight, bind all three to
+the exact source and prebuilt binary SHA-256, and require all three in candidate
+contract schema 6. Three independent clean-host calibration rounds measured
+wall maxima 157.190–161.171
+milliseconds and CPU maxima 157.149–161.112, leaving about 24 percent headroom
+to the fixed ceiling. Keep the passive thresholds, product metrics, hard
+budgets, comparison tolerances, iteration counts, and PERF-008 confirmation
+semantics unchanged.
+
+**Consequences:** candidate admission now tests the missing active-throughput
+property without using product code as its host oracle, inventing a cooldown,
+loosening a product budget, or turning a failed run into a green retry. The
+calibration algorithm, byte count, sample count, ceilings, and dispersion bound
+are exact contract data; future Python/crypto/toolchain or reference-hardware
+drift must be reviewed explicitly rather than silently widening the policy.
+The sentinel is a reference-host admission check, not proof for older Macs,
+physical Sequoia/Tahoe, battery behavior, signed distribution, CloudKit,
+assistive technology, or field performance. The failed D461 candidate remains
+failed; D462 needs the ordinary preflight, mandatory minimum-safe bilingual
+real-app XCUITest, clean Conventional Commit, and one fresh exact candidate.
+
+## D463 — Budget the complete hosted bilingual job, not individual tests (Sep 2026)
+
+**Context:** D461's exact-head first-attempt hosted UI run built the shared
+products in 9 minutes 26 seconds and completed all 105 English journeys without
+a functional failure. Spanish then ran for about 21 minutes before GitHub
+cancelled the enclosing `scoped-ui-tests` job at its exact 60-minute ceiling.
+The preserved 346 MiB artifact contains the complete English schema-3 runtime
+and execution receipts but no finalized Spanish receipt. The classifier and
+gate correctly failed closed and emitted no verification anchor. Previous
+hosted runs had completed near 53 minutes; current legitimate build and locale
+variance therefore consumed an orchestration ceiling that had become tighter
+than the evidence it was intended to preserve.
+
+**Decision:** raise only the enclosing hosted `scoped-ui-tests` job timeout from
+60 to 90 minutes. Keep one shared build, sequential independent English and
+Spanish attempts, result-bundle preservation before classification, and the
+first-attempt exact-head anchor rule. Keep every selector, assertion, XCTest
+wait, controlled-host per-journey/catalogue/p95 budget, hosted runtime receipt,
+classifier outcome, and no-retry policy unchanged. Ratchet the 90-minute value
+inside the exact job section so unrelated workflow timeouts cannot satisfy the
+contract.
+
+**Consequences:** one legitimate complete bilingual run has roughly 30 percent
+headroom over the observed approximately 69-minute build-plus-two-locale path,
+including upload and classification, without making a slow or incomplete test
+green. A job reaching 90 minutes still cancels and fails closed, cannot publish
+an incremental verification anchor, and must be diagnosed rather than blindly
+rerun. Hosted timing remains heterogeneous functional evidence, not controlled
+performance authority or physical Sequoia/Tahoe, assistive-technology, signed-
+distribution, CloudKit, provider, or field evidence.
+
+## D464 — Keep comparable resource samples adjacent (Sep 2026)
+
+**Context:** the one exact clean `26283c37` candidate passed its first
+authoritative performance ledger, deterministic release scope, 2,917 package
+tests, correction benchmark, strict lint, 25/25 recording stress, selected
+bilingual XCUITest with zero harness adjustments, public fixtures, all six
+installed-model lanes, and the four-path zero-leak Apuntador baseline. Resource
+collection then completed, but candidate admission rejected Stop as unstable:
+wall samples were 140.255, 263.791, and 906.912 milliseconds, while process CPU
+was 232.975, 427.332, and 1,226.974 milliseconds. Both distributions exceeded
+the unchanged 1.25 p95/p50 ratio and 100-millisecond absolute floor.
+
+The collector owned one round-major loop. Every comparable lifecycle sample
+was therefore separated by recording-plus-indexing, recording-plus-batch,
+Refine, Summary, Ask, and standalone indexing processes. Those launches were
+individually isolated and prepared, but they could not reset shared macOS file
+cache, model-page, or accelerator residency. A later Stop observation thus
+inherited a different sequence of model-heavy host state from the observation
+it was compared with, even while power and thermal state remained nominal.
+
+**Decision:** collect each scenario family as one contiguous three-run block
+before advancing to the next family. Idle, recording, and Stop remain together
+because one real recording lifecycle owns those three measurement windows.
+Recording-plus-indexing, recording-plus-batch, Refine, Summary, Ask, and
+standalone indexing each retain their own block and ordering. Keep the same
+fresh copied-app process per sample, disposable stores and audio roots, exact
+fixtures, preparations, process watchdogs, counters, raw receipt shape, sample
+count, 1.25 ratio, 100-millisecond floor, and candidate fail-closed policy.
+Source-level tests require exactly seven grouped loops and bind each emitted
+fragment to the loop that owns its scenario.
+
+**Consequences:** samples interpreted as one distribution are no longer spaced
+across unrelated multi-gigabyte model workloads, while each measured operation
+still pays its real isolated process cost and exact declared preparation. This
+is not a threshold relaxation, evidence discard, scenario retry, or
+qualification of `26283c37`; that candidate remains failed and emitted no
+`qualification.json`. D464 requires ordinary preflight, mandatory minimum-safe
+bilingual real-app XCUITest, a clean Conventional Commit, and one new exact
+candidate. The matrix still cannot certify first-use latency, physical
+Sequoia/Tahoe hardware, TCC and device routes, signed distribution, production
+CloudKit, assistive technology, or field behavior.
+
+## D465 — Densely observe the passive performance window (Sep 2026)
+
+**Context:** the first strict exact D464 candidate (`e6c30928`, version 1.0.0
+build `202609021723`) recorded Detail-core regression candidates at 19.66 and
+18.45 milliseconds in the first two fixed PERF-008 runs. Its third run never
+started measurement because scale host readiness remained blocked for 300.025
+seconds across 146 observations. A separate non-qualifying 60-second readiness
+diagnostic on a newly reserved host also blocked. One-Hz content-free sampling
+then observed `coresymbolicationd` above the unchanged 2-percent ceiling in 31
+of 60 samples, with p95 26.1 percent and no more than two consecutive clean
+samples. The existing three observations at two-second intervals covered only
+0, 2, and 4 seconds, so a periodic daemon could phase-alias that sparse cadence,
+appear absent at all three points, and run during the benchmark that followed.
+No confirmation or `qualification.json` exists, and an unchanged retry would
+not repair that evidence gap.
+
+**Decision:** advance readiness policy to v3 and candidate contract schema to
+7. Require ten consecutive passive observations every 500 milliseconds before
+active calibration. This gives ten rather than three samples at four times the
+temporal frequency over a 4.5-second observed span, slightly longer than the
+former four-second span.
+Candidate contract validation rejects any other cadence or sample count. Keep
+the 300-second deadline, aggregate CPU/load predicates, exact 2-percent closed-
+class compiler/symbolication ceiling, AC automatic power, nominal thermal
+state, five fixed 512 MiB SHA-256 samples, 200-millisecond wall/CPU ceilings,
+1.15 dispersion limit, executable/source identity, product metrics, comparison
+tolerances, and three-run PERF-008 decision unchanged.
+
+**Consequences:** periodic work with the measured duty cycle now blocks before
+a ledger rather than being missed between sparse observations and appearing as
+a product regression. The receipt remains schema 3 because its shape and
+validation are unchanged; its embedded v3 policy and up-to-ten retained
+content-free samples make the denser decision recomputable. The owner still
+does not inspect process identity or payload, terminate a daemon, sleep for a
+fixed cooldown, discard a measured run, or retry a candidate. This change does
+not make the current host ready, qualify D464, or close physical
+Sequoia/Tahoe, distribution, CloudKit, assistive-technology, or field gates. A
+new clean exact commit still requires ordinary preflight, mandatory bilingual
+real-app XCUITest, and one fresh candidate.
+
+## D466 — Exclude an active Portavoz app from performance admission (Sep 2026)
+
+**Context:** the strict D465 candidate had already terminated before a later
+Portavoz Dev launch. A read-only process snapshot then showed that app using
+about half of one CPU, and a three-second content-free stack sample confirmed
+live CoreAudio IO, sliding-window ASR, Core ML inference, and diarization. This
+does not explain or change the failed D465 evidence. It does reveal a separate
+blind spot: on a many-core Mac, one active Portavoz recording can stay below the
+aggregate CPU/load thresholds and may report zero CPU in an individual sample,
+despite competing for the exact audio, accelerator, model, memory, and
+filesystem resources whose isolation the performance gate claims.
+
+**Decision:** advance performance-host readiness to policy v4, its receipt to
+schema 4, and the candidate contract to schema 8. Every passive observation
+counts processes whose exact executable basename is `portavoz-app`; any positive
+count adds the closed `portavoz-app-active` reason and resets the clean window,
+regardless of sampled CPU. Retain only `activePortavozAppCount` in evidence.
+Never retain bundle path, PID, arguments, meeting state, or content. Pin
+`requiresNoPortavozApp: true` in the candidate contract and reject an attempted
+false value. Keep the existing ten observations at 500-millisecond cadence,
+300-second deadline, aggregate CPU/load predicates, two-percent closed-class
+compiler/symbolication ceiling, power/thermal requirements, active SHA-256
+calibration, product budgets, comparison tolerances, and fixed PERF-008
+confirmation unchanged.
+
+**Consequences:** a candidate can no longer benchmark beside the stable, Dev,
+or another copied Portavoz app merely because one instantaneous CPU value looks
+small. The bounded owner may still settle naturally after the app closes, but
+it does not terminate or inspect the app and cannot convert a blocked host into
+a product regression. D465 remains failed with no qualification receipt. D466
+requires ordinary preflight, deterministic tests, mandatory bilingual real-app
+XCUITest, a clean Conventional Commit, and one fresh exact candidate. It does
+not satisfy physical Sequoia/Tahoe, distribution, CloudKit, assistive-
+technology, independent-review, or field gates.
+
+## D467 — Classify external runtime interference without process inventory (Sep 2026)
+
+**Context:** the one strict exact D466 candidate (`45384b7d`, version 1.0.0
+build `202609021740`) failed closed in its first Scale readiness gate before
+throughput calibration or product measurement. Its schema-4 receipt retained
+515 observations over 300.063 seconds. The final window had zero active
+Portavoz apps and zero compiler/symbolication contribution, but one-minute load
+was 12.08–12.53 on fourteen logical processors and aggregate CPU was
+214.2–533.2 percent. A read-only snapshot immediately after failure found
+multiple high-CPU Node/Vitest workers from an unrelated repository that began
+during the declared exclusive window; its next phase produced many headless
+Chromium and media-encoding workers. No scorecard or qualification exists, and
+that attempt remains failed rather than becoming a retry candidate.
+
+**Decision:** advance performance-host readiness to policy v5 and receipt
+schema 5, and candidate automation to contract schema 9. Keep the same
+two-percent recognized-interference ceiling, but expand its closed ordered
+class vocabulary with JavaScript runtimes, non-Swift build runtimes, browser
+automation, media processing, and container/virtualization processes. Match
+only normalized executable basenames in memory, including macOS parenthesized
+names, then retain only the closed class and summed CPU percentage already used
+by the receipt. Pin the complete class list in the candidate contract. Keep
+aggregate CPU/load, active Portavoz
+exclusion, ten 500-millisecond observations, 300-second deadline, power and
+thermal requirements, active SHA-256 calibration, product budgets, comparison
+tolerances, and fixed PERF-008 confirmation semantics unchanged.
+
+**Consequences:** a competing Node test, non-Swift build, browser-automation or
+media-processing lane, or active container/VM can no longer appear only as
+anonymous aggregate pressure or remain below the aggregate many-core ceiling
+while exceeding the existing class-specific limit. Paths, PIDs, arguments,
+repository names, commands, payloads, and content never enter evidence.
+Unclassified work still fails through aggregate
+CPU/load, so the new policy is strictly stronger and does not manufacture a
+green result. It does not stop another process, enforce cooperation from other
+tools, guarantee that no work starts after admission, qualify D466, or replace
+physical Sequoia/Tahoe, distribution, CloudKit, assistive-technology, or field
+evidence. D467 requires the ordinary preflight, deterministic tests, mandatory
+minimum-safe bilingual XCUITest, a clean Conventional Commit, and one fresh
+exact candidate.
+
+
+## D468 — Distinguish passive Secure Input from an actual automation failure (Sep 2026)
+
+**Context:** the public Secure Input bit remained enabled after the previously
+recorded owner no longer resolved to a live process. A user-authorized diagnostic
+on the unchanged source ran two existing real-app keyboard journeys in each
+locale from one build. All four passed, with no retry or harness adjustment,
+while the system still reported Secure Input enabled afterward. No system
+protection was disabled. The bit alone therefore does not establish an XCUITest
+input failure; requiring logout before any test was overly restrictive.
+
+**Decision:** supersede D344's unconditional Secure Input rejection and the
+corresponding Secure Input clauses in D432/D453. Retain the exact public
+process-agnostic boolean in both bounded read-only observations, but emit one
+advisory when either sample reports it. Remove only that passive bit from the
+blocking classifier. Keep visible SecurityAgent/Notification Center windows,
+competing Xcode test actions/UI runners, unavailable probes, malformed payloads,
+and the existing explicit Notification Center-only exception semantics intact.
+Do not identify an owner, change TCC or keyboard protection, install interruption
+monitors, or add an environment-wide skip switch.
+
+**Consequences:** real keyboard assertions and result-bundle failure
+classification, not this passive bit, decide whether input works. Every UI
+assertion, timeout, runtime budget, locale, candidate proof, and no-retry policy
+remains unchanged. A visible authorization prompt still blocks the run; an
+authorization or automation interruption during testing remains a failed run.
+The four-case diagnostic remains non-qualifying. The changed policy requires
+deterministic regression tests, complete bilingual XCUITest, a clean commit,
+and a fresh exact candidate; it does not satisfy physical Sequoia/Tahoe,
+distribution, CloudKit, assistive-technology, independent-review, or field gates.
+
+**Validation refinement:** the first complete bilingual execution preserved a
+real ES failure: a native name-completion popover overlapped the rename alert's
+Save button although the expected name had been typed. The existing journey
+now verifies its exact field value, uses a normal Tab focus transition to end
+editing, requires hittable Save, and verifies the sheet disappears. No product
+mutation, AutoFill selection, global preference, external prompt handler, or
+retry was added. The original failed full run remains retained; the corrected
+focused EN/ES run does not replace the complete bilingual gate.
+
+## D469 — Use consistent thermal admission and retain incomplete diagnostics (Sep 2026)
+
+**Context:** an exact candidate stopped before its first recording-plus-batch
+resource measurement because thermal pressure never settled. A subsequent
+same-host observation showed no `pmset` warnings while Foundation reported
+`fair`. This does not establish the state at the earlier performance admission,
+but proves that absence of those warnings cannot stand in for the public signal
+used by the native resource gate. The generic timeout omitted its observation
+history, and collector cleanup deleted previously completed content-free
+fragments, leaving insufficient evidence for diagnosis.
+
+**Decision:** compile one small Foundation Swift probe into a private temporary
+workspace before performance admission and execute only that prepared binary
+inside the sampling loop. Map nominal to admissible and fair/serious/critical
+to pressured; unknown, malformed, missing, non-executable or failed probes fail
+closed. Do not add an override path or fallback to `pmset`. Preserve the existing
+readiness policy, calibration, sample requirements, deadlines and budgets.
+Native resource readiness keeps its two consecutive nominal observations within
+60 observations five seconds apart. Its timeout includes only closed state
+counts and the last state, never process identities, paths or payloads.
+Cancellation is not converted into a thermal failure, and invalid injected
+observation counts are rejected before sampling.
+
+On collection failure, retain the unique owner-only incomplete collection for
+diagnosis while cleaning raw fixture/log/app scratch normally. Preserve the
+original failure/interruption status. Only the existing complete successful
+assembly moves into the requested output; retained fragments cannot substitute
+for the eight-proof candidate owner's qualification receipt.
+
+**Consequences:** this strengthens admission and diagnosis; it does not repair
+or qualify a past failed candidate, guarantee that the host stays quiet after
+admission, establish the cause of heating, or relax a physical condition to
+make tests green. Deterministic native-probe/parser, cancellation, bound and
+cleanup tests plus mandatory minimum-safe bilingual XCUITest precede a clean
+commit. Physical hardware, distribution, production sync, reviewed integration,
+assistive technology and field evidence remain separate authorities.
+
+**UI validation refinement:** the resumed Gist/issue journey passed every
+functional assertion but exceeded its unchanged time budget. Activity evidence
+showed repeated AX resolution for each label/value pair. Its text helper and
+the existing email/compatibility consumers now read both attributes from one
+fallible, element-local snapshot. No cross-interaction cache, empty fallback,
+removed assertion, timeout change or budget adjustment is introduced. All three
+consumers require bilingual execution; adverse pre-change results remain failed.
+This optimizes test observation, not production behavior, and does not claim to
+repair external browser interruptions or automation-authorization failures.
+
+## D470 — Synchronize cancellation tests with provider entry (Sep 2026)
+
+**Context:** both hosted platform lanes exposed a cancellation test that could
+exhaust one thousand scheduler yields before its vector adapter was called.
+Separately, a late architecture-document edit violated the existing durable
+vocabulary contract after the local Swift suite had already run.
+
+**Decision:** observe explicit adapter entry with a bounded XCTest expectation
+before cancelling. Preserve the cancellable vector delay, require one request
+before and after cancellation, propagate unexpected failures, and cancel the
+owned task on early exit. Correct the documentation rather than weakening its
+vocabulary guard. Run the final complete Swift suite after all code and
+repository-document edits, followed by mandatory bounded bilingual XCUITest.
+
+**Consequences:** test synchronization is independent of a scheduler-iteration
+count. This does not change production retrieval, widen performance budgets,
+turn a failed hosted run green, or certify an unmeasured candidate.
+
+## D471 — Fence semantic preparation readiness inspections (Sep 2026)
+
+**Context:** the process-scoped semantic preparation model checked its running
+state only before awaiting an availability inspection. Settings reentry could
+leave that read in flight while explicit preparation started or completed. An
+older missing-assets result could then replace the running or ready state,
+making the prepare action available again despite the shared-owner contract.
+Main-actor isolation prevents data races, not this stale-result interleaving.
+
+**Decision:** capture one monotonic inspection generation per refresh, reject
+cancelled or superseded results after suspension, and invalidate all outstanding
+inspections when explicit preparation begins. Keep preparation as the sole
+owner of its running and terminal state. Retain the existing capture governor,
+explicit download policy, cancellation recovery, and background-index wake.
+Add no task, lock, polling loop, runtime dependency, or platform requirement.
+
+**Consequences:** old inspections cannot reopen preparation or replace newer
+readiness. Deterministic model tests control the completion order with bounded
+entry expectations and drained continuations; the existing Settings journey
+also verifies pane reentry. Full Swift tests, preflight, and scoped bilingual
+real-app XCUITest remain required before committing, with Dev-only installation
+after UI validation. No host workload is stopped to obtain those gates, and no
+prior candidate receipt qualifies this changed source.
+
+
+## D472 — Reject cancelled live translation publication (Sep 2026)
+
+**Context:** live translation already fenced callbacks to their source/target
+pair and exact caption revision, but the controller did not reject cancelled
+tasks. A callback delivered after same-pair reselection could publish failure
+or unsupported state, and cancelled lane entry or preparation failure could
+clear newer download consent. Three actual cancelled-task regression tests
+reproduced these mutations; pair changes alone had not covered this contract.
+
+**Decision:** use one caller-cancellation and pair-admission predicate at the
+controller's mutation boundary. Route preparation-failure consent revocation
+through it. Reject cancelled lane entry, check cancellation before provider
+work and while consuming responses, and distinguish cancellation from failed
+or partial translation. Preserve exact source-revision admission, genuine
+failure backoff, explicit per-pair downloads, bounded routing, and wake cleanup.
+
+**Consequences:** superseded cancelled work cannot regain mutation authority
+merely because the same pair is selected again. No scheduler, lock, model,
+platform minimum, permission, or test budget is added or changed. Deterministic
+cancelled-task tests and existing real-app recording journeys are complementary;
+neither replaces physical Apple Translation asset/permission evidence.
+
+## D473 — Own benchmark deadline processes through completion (Sep 2026)
+
+**Context:** resource and leak wrappers cancelled their background watchdog
+shell but not its sleeping child. Finished benchmarks could therefore leave
+orphan timers retaining the caller's output pipe until the original deadline.
+Executable Bash tests reproduced the hang in both actual runner functions.
+
+**Decision:** use one directly owned Python deadline process with monotonic
+waiting and no sleeping grandchild. Reap that exact PID at completion and signal
+cleanup. Verify launcher parentage before TERM/KILL; let the shell retain
+responsibility for its disposable app. Record timeout through exclusive
+owner-only evidence before signalling, and reject timeout or unexpected timer
+failure even when the launcher itself exits zero. Preserve existing operation
+deadlines and measurement budgets. Both launchers use the leak watchdog's
+bounded five-second TERM-to-KILL escalation, with parentage checked again.
+
+**Consequences:** completed collection closes its pipeline promptly rather than
+appearing to run for another timer interval. Actual-pipe tests synchronize target
+and timer readiness and cover completion, cancellation, expiration and timer
+failure; deterministic tests cover ownership and diagnostic failure boundaries.
+This repairs orchestration lifetime only, not resource variance or product
+performance. Adverse measurements remain adverse, and no old candidate receipt
+qualifies a changed source.
+
+## D474 — Reserve standing observers before asynchronous subscription (Sep 2026)
+
+**Context:** a calendar read could return after capture preemption or Stop and
+recreate a boundary wake, even cancelling a newer worker's wake. Start also
+awaited its subscription before reserving ownership, admitting two observers
+or resurrecting one after Stop. Five gated-dependency tests reproduced these
+lifecycle failures without a real calendar, arbitrary sleeps, or model output.
+
+**Decision:** reserve the process-owned observation task atomically in the
+actor, then subscribe before its initial reconciliation. Reject cancelled
+policy/calendar completions before changing wake state, recheck capture before
+scheduling, and check cancellation inside actor-owned background signal
+admission. Fence a retired worker before restoring pending requests as well as
+before settlement. Keep explicit reconciliation independent from cancellation
+of an individual caller and preserve nonblocking Stop.
+
+**Consequences:** the single worker and next-boundary wake remain the only
+execution owners. No new scheduler, polling, provider, permission, schema,
+automatic action, or platform requirement is introduced. Read-only internal
+task handles support exact lifecycle joins in characterization tests. These
+tests establish owner behavior, not field evidence of an unauthorized effect
+or a solution to the separately observed recording CPU variance.
+
+
+## D475 — Ground product comparisons in dated primary evidence (Sep 2026)
+
+**Context:** current positioning mixed product goals with unsupported market
+exclusivity, competitor privacy and archive claims, stale prices/valuations,
+and an unconditional no-download description of OS speech. It also excluded
+all standing rules despite the later bounded local brief rule.
+
+**Decision:** retain the local-first, bilingual, source-backed product direction,
+but separate dated vendor observations from Portavoz design inferences and
+our own executed evidence. A limited market sample never proves universal
+feature absence. Distinguish local custody, sharing, training, retention,
+export, and plan access. Explain missing Apple speech assets explicitly and
+recognize the bounded local rule without admitting general automation.
+
+**Consequences:** this corrects documentation, not pricing, entitlements,
+providers, dependency licenses, serving routes, OS floors, or release gates.
+Historical benchmark results remain historical and do not become current
+qualification. Recheck primary sources and exact versions/plans before any
+public comparison; promotion still requires our own judged bilingual quality
+and resource evidence.
+
+## D476 — Attribute Ask retrieval without inventing a serving route (Sep 2026)
+
+**Context:** a repeated public-corpus pair improves overall retrieval while
+adding hard negatives and harming individual relationships. Canonical quality
+observations do not include the actual embedding profile, preparation coverage,
+or enough evidence to separate lexical, semantic, and fusion contributions.
+Published embedding rows can contain all-zero vectors.
+
+**Decision:** add a distinct, installed-assets-only CLI diagnostic around the
+existing production retrieval callbacks and injectable batched semantic index.
+Retain the canonical observation unchanged inside a private diagnostic
+envelope. Record actual profile/fingerprint, conserved preparation counts,
+vector classes, lexical evidence, and exact pre-fusion variant order/limits.
+Validate every candidate and reuse the canonical quality scorer. Report the
+successful original-query semantic cohort explicitly rather than inventing a
+merged semantic ranking or scoring failed/uninvoked scans as successful empty
+results. Cancellation, incomplete preparation and profile drift fail closed.
+
+**Consequences:** no product ranking, provider, chunk, schema, budget, query
+expansion, UI, or remote authority changes. Artifacts contain canonical IDs and
+aggregate counts, not source/query text, vectors, generated answers or arbitrary
+provider errors. A diagnostic is never serving approval. Repeat source-bound
+collection in fresh processes and retain all attempts before interpreting
+quality differences; use the existing comparator for any later promotion.

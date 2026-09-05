@@ -117,6 +117,40 @@ final class MeetingExporterTests: XCTestCase {
         XCTAssertTrue(markdown.contains("## Transcript"))
     }
 
+    func testMarkdownCorrectionProvenanceIsExplicitAndDeterministicallyOrdered() throws {
+        let (record, speakers, segments, _) = fixture()
+        let revision = try XCTUnwrap(TranscriptCorrectionRevision(
+            rawValue: String(repeating: "c", count: 64)))
+        let laterRow = UUID(uuidString: "F0000000-0000-4000-8000-000000000002")!
+        let earlierRow = UUID(uuidString: "F0000000-0000-4000-8000-000000000001")!
+        let provenance = TranscriptCorrectionExportProvenance(
+            baseTranscriptRevision: 6,
+            correctionRevision: revision,
+            activeCorrectionIDs: [UUID(), UUID()],
+            sourceSegmentIDsByExportedSegmentID: [
+                laterRow: [segments[1].id],
+                earlierRow: [segments[0].id],
+            ])
+
+        let markdown = MeetingExporter.markdown(
+            meeting: record,
+            speakers: speakers,
+            segments: segments,
+            correctionProvenance: provenance)
+
+        XCTAssertTrue(markdown.contains("## Transcript correction provenance"))
+        XCTAssertTrue(markdown.contains("Accepted transcript revision: 6"))
+        XCTAssertTrue(markdown.contains("Applied corrections: 2"))
+        XCTAssertTrue(markdown.contains("original audio remain unchanged"))
+        let earlierRange = try XCTUnwrap(markdown.range(of: earlierRow.uuidString))
+        let laterRange = try XCTUnwrap(markdown.range(of: laterRow.uuidString))
+        XCTAssertLessThan(earlierRange.lowerBound, laterRange.lowerBound)
+        XCTAssertTrue(
+            try MeetingExporter.pdf(fromMarkdown: markdown)
+                .starts(with: Data("%PDF".utf8)),
+            "PDF must consume the same provenance-bearing Markdown projection")
+    }
+
     func testPDFIsValidAndPaginates() throws {
         let (record, speakers, _, summary) = fixture()
         // Enough transcript to overflow one US Letter page.
@@ -242,11 +276,77 @@ final class IssueExporterTests: XCTestCase {
         XCTAssertTrue(body["body"]!.contains("Ana"))
     }
 
+    func testGitHubExactRequestPreservesReviewedMaterial() throws {
+        let reviewedBody = "## Evidence\n\n- `00:03` **Ana**: Ship Friday."
+        let request = try GitHubIssuesExporter.request(
+            title: "Ship the release",
+            body: reviewedBody,
+            repository: " owner/repo ",
+            token: "ghp_x")
+
+        XCTAssertEqual(
+            request.url?.absoluteString,
+            "https://api.github.com/repos/owner/repo/issues")
+        XCTAssertEqual(
+            request.value(forHTTPHeaderField: "Content-Type"),
+            "application/json")
+        let payload = try XCTUnwrap(request.httpBody)
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: payload) as? [String: String])
+        XCTAssertEqual(object["title"], "Ship the release")
+        XCTAssertEqual(object["body"], reviewedBody)
+    }
+
+    func testGitHubRejectsAmbiguousRepositoriesWithoutGatewayCall() async throws {
+        let gateway = CapturingDataEgressGateway(
+            responseData: Data(#"{"html_url":"https://github.com/o/r/issues/7"}"#.utf8),
+            statusCode: 201)
+        let invalidRepositories = [
+            "owner", "owner/repo/extra", "/repo", "owner/", "../repo",
+            "owner/..", "owner/repo?state=open", "owner/repo#fragment",
+            "owner/repo%2Fevil", "owner name/repo",
+        ]
+
+        for repository in invalidRepositories {
+            let publisher = GitHubIssuesExporter(
+                repository: repository,
+                token: "ghp_x",
+                gateway: gateway)
+            do {
+                _ = try await publisher.publish(
+                    title: "Ship",
+                    body: "Reviewed body",
+                    meetingID: meetingID)
+                XCTFail("Expected invalid repository: \(repository)")
+            } catch let error as IssueExporterError {
+                guard case .invalidRepository = error else {
+                    return XCTFail("Unexpected error: \(error)")
+                }
+            }
+        }
+        let snapshot = await gateway.snapshot()
+        XCTAssertNil(snapshot)
+    }
+
     func testGitHubParsesIssueURL() throws {
+        let repository = try XCTUnwrap(GitHubRepository("o/r"))
         let url = try GitHubIssuesExporter.parseResponse(
-            Data(#"{"html_url": "https://github.com/o/r/issues/7", "number": 7}"#.utf8))
+            Data(#"{"html_url": "https://github.com/o/r/issues/7", "number": 7}"#.utf8),
+            expectedRepository: repository)
         XCTAssertEqual(url.absoluteString, "https://github.com/o/r/issues/7")
         XCTAssertThrowsError(try GitHubIssuesExporter.parseResponse(Data("{}".utf8)))
+        for invalid in [
+            "http://github.com/o/r/issues/7",
+            "https://example.com/o/r/issues/7",
+            "https://github.com/other/r/issues/7",
+            "https://github.com/o/r/issues/0",
+            "https://github.com/o/r/issues/7?tab=activity",
+        ] {
+            let payload = try JSONSerialization.data(withJSONObject: ["html_url": invalid])
+            XCTAssertThrowsError(try GitHubIssuesExporter.parseResponse(
+                payload,
+                expectedRepository: repository), invalid)
+        }
     }
 
     func testGitHubPublishRoutesActionItemThroughGateway() async throws {

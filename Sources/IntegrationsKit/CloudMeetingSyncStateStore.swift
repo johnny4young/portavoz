@@ -14,7 +14,7 @@ public actor CloudMeetingSyncStateStore {
     private let stateFileURL: URL
     private let codec: CloudMeetingRecordCodec
     private let retryPolicy: CloudSyncRetryPolicy
-    private var snapshot: CloudMeetingSyncSnapshot
+    var snapshot: CloudMeetingSyncSnapshot
 
     public init(
         rootDirectory: URL,
@@ -70,8 +70,10 @@ public actor CloudMeetingSyncStateStore {
                 snapshot.consentedAccountFingerprint = nil
                 snapshot.consentGrantedAt = nil
                 snapshot.initialSeedRequestedAt = nil
+                snapshot.initialSeedPreparedAt = nil
                 snapshot.initialSeedCompletedAt = nil
                 snapshot.initialSeedAccountFingerprint = nil
+                snapshot.initialSeedCursorMeetingID = nil
             }
             snapshot.accountStatus = status
             snapshot.currentAccountFingerprint = availableFingerprint
@@ -103,12 +105,50 @@ public actor CloudMeetingSyncStateStore {
         }
     }
 
-    public func requestInitialSeed(at date: Date) throws {
+    @discardableResult
+    public func requestInitialSeed(at date: Date) throws -> Bool {
         try requireReadyTransport()
+        if snapshot.initialSeedAccountFingerprint == snapshot.currentAccountFingerprint,
+           snapshot.initialSeedRequestedAt != nil {
+            return false
+        }
         try commitSnapshot {
             snapshot.initialSeedRequestedAt = date
+            snapshot.initialSeedPreparedAt = nil
             snapshot.initialSeedCompletedAt = nil
             snapshot.initialSeedAccountFingerprint = snapshot.currentAccountFingerprint
+            snapshot.initialSeedCursorMeetingID = nil
+        }
+        return true
+    }
+
+    public func recordInitialSeedProgress(
+        through meetingID: MeetingID
+    ) throws {
+        try requireRequestedInitialSeed()
+        guard snapshot.initialSeedPreparedAt == nil else {
+            throw CloudMeetingTransportError.invalidState(
+                "prepared initial seed cannot advance its cursor")
+        }
+        if let cursor = snapshot.initialSeedCursorMeetingID {
+            let current = cursor.rawValue.uuidString
+            let proposed = meetingID.rawValue.uuidString
+            guard proposed >= current else {
+                throw CloudMeetingTransportError.invalidState(
+                    "initial seed cursor cannot move backwards")
+            }
+            if proposed == current { return }
+        }
+        try commitSnapshot {
+            snapshot.initialSeedCursorMeetingID = meetingID
+        }
+    }
+
+    public func markInitialSeedPrepared(at date: Date) throws {
+        try requireRequestedInitialSeed()
+        guard snapshot.initialSeedPreparedAt == nil else { return }
+        try commitSnapshot {
+            snapshot.initialSeedPreparedAt = date
         }
     }
 
@@ -136,24 +176,19 @@ public actor CloudMeetingSyncStateStore {
         let payload = try MeetingSyncEnvelopeCodec.encode(envelope)
         let digest = MeetingSyncEnvelopeCodec.sha256(payload)
         let prior = snapshot.attempts.first { $0.meetingID == envelope.meetingID }
-        if let prior {
-            guard prior.sourceDeviceID == envelope.sourceDeviceID else {
-                throw CloudMeetingTransportError.generationCollision
-            }
-            if envelope.generation < prior.generation {
-                throw CloudMeetingTransportError.staleGeneration
-            }
-            if envelope.generation == prior.generation {
-                guard prior.payloadSHA256 == digest else {
-                    throw CloudMeetingTransportError.generationCollision
-                }
-                return prior
-            }
+        if let existing = try resolvedExistingAttempt(
+            prior,
+            for: envelope,
+            payloadDigest: digest,
+            at: date
+        ) {
+            return existing
         }
 
         let fileName = Self.payloadFileName(for: envelope)
         let fileURL = payloadDirectory.appendingPathComponent(fileName)
         try CloudSyncProtectedFile.write(payload, to: fileURL)
+        let isCorrectionConflict = hasBlockingDeferredReplay(for: envelope.meetingID)
         let attempt = CloudSyncAttempt(
             meetingID: envelope.meetingID,
             sourceDeviceID: envelope.sourceDeviceID,
@@ -162,10 +197,10 @@ public actor CloudMeetingSyncStateStore {
             payloadFileName: fileName,
             payloadSHA256: digest,
             payloadByteCount: payload.count,
-            phase: .ready,
-            attemptCount: 0,
-            nextRetryAt: date,
-            lastFailure: nil)
+            phase: isCorrectionConflict ? .blocked : .ready,
+            attemptCount: isCorrectionConflict ? 1 : 0,
+            nextRetryAt: isCorrectionConflict ? nil : date,
+            lastFailure: isCorrectionConflict ? .serverConflict : nil)
         let previousSnapshot = snapshot
         snapshot.attempts.removeAll { $0.meetingID == envelope.meetingID }
         snapshot.attempts.append(attempt)
@@ -234,18 +269,32 @@ public actor CloudMeetingSyncStateStore {
         savedRecord: CKRecord
     ) throws -> Bool {
         let index = matchingAttemptIndex(for: envelope)
-        let payloadFileName = index.map { snapshot.attempts[$0].payloadFileName }
-        let deferredFiles = index == nil
+        let preservesConflict = hasBlockingDeferredReplay(for: envelope.meetingID)
+        let payloadFileName = preservesConflict
+            ? nil
+            : index.map { snapshot.attempts[$0].payloadFileName }
+        let deferredFiles = index == nil || preservesConflict
             ? []
             : snapshot.deferredReplays
                 .filter { $0.meetingID == envelope.meetingID }
                 .map(\.payloadFileName)
         try commitSnapshot {
-            try storeRecordMetadata(savedRecord, meetingID: envelope.meetingID)
+            if !preservesConflict {
+                try storeRecordMetadata(savedRecord, meetingID: envelope.meetingID)
+            }
             if let currentIndex = matchingAttemptIndex(for: envelope) {
-                snapshot.attempts.remove(at: currentIndex)
-                snapshot.deferredReplays.removeAll {
-                    $0.meetingID == envelope.meetingID
+                if preservesConflict {
+                    snapshot.attempts[currentIndex].phase = .blocked
+                    snapshot.attempts[currentIndex].attemptCount = max(
+                        1,
+                        snapshot.attempts[currentIndex].attemptCount)
+                    snapshot.attempts[currentIndex].nextRetryAt = nil
+                    snapshot.attempts[currentIndex].lastFailure = .serverConflict
+                } else {
+                    snapshot.attempts.remove(at: currentIndex)
+                    snapshot.deferredReplays.removeAll {
+                        $0.meetingID == envelope.meetingID
+                    }
                 }
             }
         }
@@ -298,6 +347,8 @@ public actor CloudMeetingSyncStateStore {
     public func retryPendingAttempts(at date: Date) throws -> Int {
         let indexes = snapshot.attempts.indices.filter {
             snapshot.attempts[$0].phase != .ready
+                && !hasBlockingDeferredReplay(
+                    for: snapshot.attempts[$0].meetingID)
         }
         guard !indexes.isEmpty else { return 0 }
         try commitSnapshot {
@@ -367,7 +418,8 @@ extension CloudMeetingSyncStateStore {
     /// crash before the local attempt reaches a terminal outcome.
     public func stageDeferredReplay(
         _ envelope: MeetingSyncEnvelope,
-        from record: CKRecord
+        from record: CKRecord,
+        blocksOutgoing: Bool = false
     ) throws {
         let decoded = try codec.decode(record)
         let decodedPayload = try MeetingSyncEnvelopeCodec.encode(decoded)
@@ -376,22 +428,18 @@ extension CloudMeetingSyncStateStore {
             throw CloudMeetingTransportError.payloadCorrupted
         }
         let digest = MeetingSyncEnvelopeCodec.sha256(payload)
-        if let prior = snapshot.deferredReplays.first(where: {
+        let prior = snapshot.deferredReplays.first(where: {
             $0.meetingID == envelope.meetingID
                 && $0.sourceDeviceID == envelope.sourceDeviceID
-        }) {
-            if envelope.generation < prior.generation {
-                throw CloudMeetingTransportError.staleGeneration
-            }
-            if envelope.generation == prior.generation {
-                guard digest == prior.payloadSHA256 else {
-                    throw CloudMeetingTransportError.generationCollision
-                }
-                try commitSnapshot {
-                    try storeRecordMetadata(record, meetingID: envelope.meetingID)
-                }
-                return
-            }
+        })
+        if try refreshMatchingDeferredReplay(
+            prior,
+            envelope: envelope,
+            payloadDigest: digest,
+            record: record,
+            blocksOutgoing: blocksOutgoing
+        ) {
+            return
         }
         let fileName = Self.deferredPayloadFileName(for: envelope)
         let fileURL = payloadDirectory.appendingPathComponent(fileName)
@@ -411,7 +459,11 @@ extension CloudMeetingSyncStateStore {
                     changedAt: envelope.changedAt,
                     payloadFileName: fileName,
                     payloadSHA256: digest,
-                    payloadByteCount: payload.count))
+                    payloadByteCount: payload.count,
+                    blocksOutgoing: blocksOutgoing))
+                if blocksOutgoing {
+                    blockOutgoingAttempt(for: envelope.meetingID)
+                }
                 try storeRecordMetadata(record, meetingID: envelope.meetingID)
             }
         } catch {
@@ -509,7 +561,7 @@ extension CloudMeetingSyncStateStore {
     }
 }
 
-private extension CloudMeetingSyncStateStore {
+extension CloudMeetingSyncStateStore {
     func commitSnapshot(_ mutation: () throws -> Void) throws {
         let previous = snapshot
         do {
@@ -534,6 +586,14 @@ private extension CloudMeetingSyncStateStore {
         }
         guard snapshot.isTransportReady else {
             throw CloudMeetingTransportError.accountUnavailable
+        }
+    }
+
+    func requireRequestedInitialSeed() throws {
+        try requireReadyTransport()
+        guard snapshot.initialSeedState == .requested else {
+            throw CloudMeetingTransportError.invalidState(
+                "initial seed must be explicitly requested")
         }
     }
 

@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -20,29 +21,48 @@ jobs:
       tests: ${{ steps.select.outputs.tests }}
       locales: ${{ steps.select.outputs.locales }}
       summary: ${{ steps.select.outputs.summary }}
+      base: ${{ steps.verified_base.outputs.base }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
+      # Full policy/unit ownership stays in CI/repository-hygiene. This job
+      # performs only the prerequisite needed to select this exact head.
       - name: Validate the selector catalog
+        run: python3 scripts/ui_test_scope.py --validate-catalog
+
+      - name: Resolve the last first-attempt verified UI ancestor
+        id: verified_base
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          python3 scripts/ui_test_scope.py --validate-catalog
-          python3 -m unittest Tests.Tooling.test_ui_test_scope
-          python3 -m unittest Tests.Tooling.test_run_ui_tests
+          python3 scripts/ui_test_verified_base.py \
+            --repository "$REPOSITORY" \
+            --workflow ui-tests.yml \
+            --branch "$HEAD_BRANCH" \
+            --head "$HEAD_SHA" \
+            --fallback "$BASE_SHA" \
+            --format github >> "$GITHUB_OUTPUT"
 
       - name: Select UI evidence
         id: select
         env:
           EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          VERIFIED_BASE_SHA: ${{ steps.verified_base.outputs.base }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             python3 scripts/ui_test_scope.py --all --format github >> "$GITHUB_OUTPUT"
           else
             python3 scripts/ui_test_scope.py \
-              --base "$BASE_SHA" --head "$HEAD_SHA" --format github >> "$GITHUB_OUTPUT"
+              --base "$VERIFIED_BASE_SHA" --head "$HEAD_SHA" \
+              --format github >> "$GITHUB_OUTPUT"
           fi
 
       - name: Explain the selection
@@ -50,7 +70,9 @@ jobs:
           SUMMARY: ${{ steps.select.outputs.summary }}
           TESTS: ${{ steps.select.outputs.tests }}
           LOCALES: ${{ steps.select.outputs.locales }}
+          VERIFIED_BASE: ${{ steps.verified_base.outputs.summary }}
         run: |
+          echo "${VERIFIED_BASE:-manual full-suite request}"
           echo "$SUMMARY"
           echo "Locales: ${LOCALES:-none}"
           echo "Selectors: ${TESTS:-none}"
@@ -58,31 +80,53 @@ jobs:
   scoped-ui-tests:
     needs: scope
     if: needs.scope.outputs.required == 'true'
-    runs-on: macos-latest
-    # A release-boundary diff can legitimately select all 55 tests in both
-    # locales. Preserve that evidence and leave enough time to upload both
-    # result bundles instead of weakening the selector.
-    timeout-minutes: 55
+    runs-on: macos-26
+    # Localization/shared-harness and manual integration runs legitimately
+    # select all 105 tests in both locales. One build feeds independent locale
+    # attempts; both receipts are preserved before the deterministic gate. This
+    # 90-minute job-orchestration ceiling is not a per-test/runtime budget.
+    timeout-minutes: 90
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    outputs:
+      verified: ${{ steps.classify.outputs.verified }}
+      state: ${{ steps.classify.outputs.state }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Select newest Xcode
-        run: |
-          NEWEST="$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' -print | sort -V | tail -1)"
-          echo "Selecting $NEWEST"
-          sudo xcode-select -s "$NEWEST"
+      - name: Verify fixed Tahoe toolchain
+        run: scripts/verify-ci-toolchain.sh 26 26.6
 
-      - name: Install XcodeGen when absent
-        env:
-          HOMEBREW_NO_AUTO_UPDATE: "1"
-          HOMEBREW_NO_INSTALL_CLEANUP: "1"
-        run: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Install checksum-pinned XcodeGen 2.46.0
+        run: scripts/install-ci-xcodegen.sh "$RUNNER_TEMP/portavoz-xcodegen"
 
-      - name: Run only impacted UI tests
+      - name: Build selected UI products once
         env:
           UI_TESTS: ${{ needs.scope.outputs.tests }}
-          UI_TEST_LOCALES: ${{ needs.scope.outputs.locales }}
-        run: make test-ui-scoped
+        run: make test-ui-build
+
+      - name: Run English functional UI evidence
+        id: ui_en
+        if: contains(needs.scope.outputs.locales, 'en')
+        continue-on-error: true
+        env:
+          UI_TESTS: ${{ needs.scope.outputs.tests }}
+          UI_TEST_LOCALES: en
+          # GitHub-hosted macOS wall-clock variance is reported in the receipt,
+          # not promoted to performance authority. Local/stable-Mac integration
+          # keeps the same unchanged budgets blocking by default.
+          UI_TEST_ENFORCE_RUNTIME_BUDGET: "false"
+        run: make test-ui-run
+
+      - name: Run Spanish functional UI evidence
+        id: ui_es
+        if: contains(needs.scope.outputs.locales, 'es')
+        continue-on-error: true
+        env:
+          UI_TESTS: ${{ needs.scope.outputs.tests }}
+          UI_TEST_LOCALES: es
+          UI_TEST_ENFORCE_RUNTIME_BUDGET: "false"
+        run: make test-ui-run
 
       - name: Preserve scoped UI evidence
         if: always()
@@ -92,6 +136,21 @@ jobs:
           path: dist/ui-test-results
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Classify functional evidence and hosted runtime drift
+        id: classify
+        if: always()
+        env:
+          UI_TEST_LOCALES: ${{ needs.scope.outputs.locales }}
+          ENGLISH_OUTCOME: ${{ steps.ui_en.outcome }}
+          SPANISH_OUTCOME: ${{ steps.ui_es.outcome }}
+        run: |
+          python3 scripts/ui_test_ci_gate.py \
+            --results dist/ui-test-results \
+            --locales "$UI_TEST_LOCALES" \
+            --english-outcome "$ENGLISH_OUTCOME" \
+            --spanish-outcome "$SPANISH_OUTCOME" \
+            --github-output "$GITHUB_OUTPUT"
 
   ui-test-gate:
     needs: [scope, scoped-ui-tests]
@@ -104,7 +163,14 @@ jobs:
           SCOPE_RESULT: ${{ needs.scope.result }}
           UI_REQUIRED: ${{ needs.scope.outputs.required }}
           UI_RESULT: ${{ needs.scoped-ui-tests.result }}
+          UI_VERIFIED: ${{ needs.scoped-ui-tests.outputs.verified }}
+          UI_STATE: ${{ needs.scoped-ui-tests.outputs.state }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
+          if [[ "$RUN_ATTEMPT" != "1" ]]; then
+            echo "A rerun may diagnose CI, but cannot manufacture qualifying UI evidence." >&2
+            exit 1
+          fi
           if [[ "$SCOPE_RESULT" != "success" ]]; then
             echo "UI scope selection failed: $SCOPE_RESULT" >&2
             exit 1
@@ -113,4 +179,51 @@ jobs:
             echo "Selected UI tests did not pass: $UI_RESULT" >&2
             exit 1
           fi
-          echo "Scoped UI gate passed (required=$UI_REQUIRED, result=$UI_RESULT)."
+          if [[ "$UI_REQUIRED" == "true" ]]; then
+            case "$UI_STATE:$UI_VERIFIED" in
+              passed:true)
+                echo "Scoped UI functional evidence is complete."
+                ;;
+              infrastructure-advisory:false)
+                echo "::warning::Known hosted UI infrastructure was unavailable; this head will not become a verification anchor."
+                ;;
+              *)
+                echo "Scoped UI classification is missing or contradictory: $UI_STATE/$UI_VERIFIED" >&2
+                exit 1
+                ;;
+            esac
+          fi
+          echo "Scoped UI gate passed (required=$UI_REQUIRED, result=$UI_RESULT, verified=${UI_VERIFIED:-not-required})."
+
+  verification-anchor:
+    needs: [scope, scoped-ui-tests, ui-test-gate]
+    if: >-
+      always() &&
+      github.run_attempt == 1 &&
+      needs.ui-test-gate.result == 'success' &&
+      (needs.scope.outputs.required != 'true' ||
+       needs.scoped-ui-tests.outputs.verified == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Create content-free exact-head verification anchor
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          UI_REQUIRED: ${{ needs.scope.outputs.required }}
+          UI_TESTS: ${{ needs.scope.outputs.tests }}
+          UI_LOCALES: ${{ needs.scope.outputs.locales }}
+        run: |
+          python3 scripts/ui_test_verification_anchor.py \
+            --commit "$HEAD_SHA" \
+            --required "$UI_REQUIRED" \
+            --tests "$UI_TESTS" \
+            --locales "$UI_LOCALES" \
+            --output dist/ui-verification/receipt.json
+      - name: Preserve verified-head anchor
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ui-verification-${{ github.event.pull_request.head.sha || github.sha }}
+          path: dist/ui-verification/receipt.json
+          if-no-files-found: error
+          retention-days: 90

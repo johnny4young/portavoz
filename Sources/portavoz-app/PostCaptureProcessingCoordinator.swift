@@ -11,11 +11,16 @@ import StorageKit
 /// kick repeatedly; due work is drained serially and SQLite is never polled.
 @MainActor
 final class PostCaptureProcessingSupervisor {
+    private weak var backgroundWork: BackgroundWorkCenterModel?
     private var drainTask: Task<Void, Never>?
     private var wakeTask: Task<Void, Never>?
     private var rerunRequested = false
     private var kickGeneration = 0
     private let owner = "post-capture-\(UUID().uuidString.lowercased())"
+
+    init(backgroundWork: BackgroundWorkCenterModel? = nil) {
+        self.backgroundWork = backgroundWork
+    }
 
     func kick(services: AppServices) {
         kickGeneration += 1
@@ -38,14 +43,25 @@ final class PostCaptureProcessingSupervisor {
             for issue in result.issues {
                 PostCaptureProcessingCoordinator.log(issue)
             }
-            await self.finishedDrain(services: services)
+            await self.finishedDrain(
+                result: result,
+                token: telemetry.workToken,
+                services: services)
         }
     }
 
-    private func finishedDrain(services: AppServices) async {
+    private func finishedDrain(
+        result: ProcessPostCaptureJobsResult,
+        token: BackgroundWorkRunToken?,
+        services: AppServices
+    ) async {
         drainTask = nil
         if rerunRequested {
             rerunRequested = false
+            backgroundWork?.finishProcessingDrain(
+                token,
+                result: result,
+                retryAt: nil)
             kick(services: services)
             return
         }
@@ -53,9 +69,21 @@ final class PostCaptureProcessingSupervisor {
         let generation = kickGeneration
         do {
             let next = try await services.processPostCaptureJobs.nextScheduledDate()
-            guard generation == kickGeneration, drainTask == nil, let next else { return }
-            scheduleWake(at: next, services: services)
+            guard generation == kickGeneration, drainTask == nil else { return }
+            backgroundWork?.finishProcessingDrain(
+                token,
+                result: result,
+                retryAt: next)
+            if let next {
+                scheduleWake(at: next, services: services)
+            }
         } catch {
+            guard generation == kickGeneration, drainTask == nil else { return }
+            backgroundWork?.finishProcessingDrain(
+                token,
+                result: result,
+                retryAt: nil,
+                schedulingFailed: true)
             PostCaptureProcessingCoordinator.logSchedulingFailure(error)
         }
     }
@@ -85,7 +113,7 @@ enum PostCaptureProcessingCoordinator {
     static func resumeAfterRecovery(services: AppServices) async {
         do {
             if try await seedFixtureIfRequested(services: services) {
-                services.requestSpotlightReindex()
+                services.requestSearchReconciliation()
             }
         } catch {
             logger.error("Could not prepare processing fixture: \(error.localizedDescription)")
@@ -163,6 +191,7 @@ private final class PostCaptureProcessingTelemetry {
         subsystem: "app.portavoz.mac", category: .pointsOfInterest)
     private weak var services: AppServices?
     private var interval: OSSignpostIntervalState?
+    private(set) var workToken: BackgroundWorkRunToken?
 
     init(services: AppServices) {
         self.services = services
@@ -171,10 +200,21 @@ private final class PostCaptureProcessingTelemetry {
     func receive(_ event: PostCaptureProcessingEvent) {
         switch event {
         case .started(let kind, let attempt):
+            workToken = services?.backgroundWork.begin(
+                .processing,
+                stage: .processing(kind),
+                attempt: attempt)
             interval = Self.signposter.beginInterval(
                 "Durable processing",
                 "kind=\(kind.rawValue, privacy: .public) attempt=\(attempt, privacy: .public)")
-        case .finished(_, _, let outcome, let changed):
+        case .finished(let kind, let attempt, let outcome, let changed):
+            if let workToken {
+                services?.backgroundWork.finishProcessingJob(
+                    workToken,
+                    kind: kind,
+                    attempt: attempt,
+                    outcome: outcome)
+            }
             if let interval {
                 Self.signposter.endInterval(
                     "Durable processing",
@@ -182,7 +222,7 @@ private final class PostCaptureProcessingTelemetry {
                     "outcome=\(outcome.rawValue, privacy: .public)")
                 self.interval = nil
             }
-            if changed { services?.requestSpotlightReindex() }
+            if changed { services?.requestSearchReconciliation() }
         }
     }
 }
@@ -225,8 +265,10 @@ extension AppServices {
                 for: ModelCatalog.mlxQwen35)
             else { return nil }
             return PostCaptureSummaryProviderSelection(
-                provider: MLXSummaryProvider(
-                    modelDirectory: installation.directory),
+                provider: makeMLXSummaryProvider(
+                    modelDirectory: installation.directory,
+                    priority: .background,
+                    workloadClass: .postCapture),
                 providerID: MLXSummaryProvider.providerID,
                 modelID: ModelCatalog.mlxQwen35.id,
                 modelRevision: ModelCatalog.mlxQwen35.revision)

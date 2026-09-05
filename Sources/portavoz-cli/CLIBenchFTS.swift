@@ -14,22 +14,40 @@ enum BenchFTSCommand {
         var meetings = 1_000
         var segmentsPerMeeting = 80
 
-        var index = 0
-        while index < arguments.count {
-            switch arguments[index] {
-            case "--meetings":
-                index += 1
-                if index < arguments.count { meetings = Int(arguments[index]) ?? meetings }
-            case "--segments-per-meeting":
-                index += 1
-                if index < arguments.count {
-                    segmentsPerMeeting = Int(arguments[index]) ?? segmentsPerMeeting
+        do {
+            var index = 0
+            while index < arguments.count {
+                switch arguments[index] {
+                case "--meetings":
+                    meetings = try CLIOptionValue.integer(
+                        arguments,
+                        index: &index,
+                        option: "--meetings",
+                        range: CLIOptionBounds.benchmarkMeetings)
+                case "--segments-per-meeting":
+                    segmentsPerMeeting = try CLIOptionValue.integer(
+                        arguments,
+                        index: &index,
+                        option: "--segments-per-meeting",
+                        range: CLIOptionBounds.segmentsPerMeeting)
+                default:
+                    print("Unknown option: \(arguments[index])")
+                    return
                 }
-            default:
-                print("Unknown option: \(arguments[index])")
-                return
+                index += 1
             }
-            index += 1
+        } catch {
+            print("error: \(error.localizedDescription)")
+            return
+        }
+        guard let totalSegments = CLIOptionBounds.ftsSegmentCount(
+            meetings: meetings,
+            segmentsPerMeeting: segmentsPerMeeting)
+        else {
+            print(
+                "error: benchmark corpus must not exceed "
+                    + "\(CLIOptionBounds.maximumFTSSegments) segments")
+            return
         }
 
         let directory = FileManager.default.temporaryDirectory
@@ -45,7 +63,6 @@ enum BenchFTSCommand {
             let seedStart = Date()
             try await seed(store: store, meetings: meetings, segments: segmentsPerMeeting)
             let seedElapsed = Date().timeIntervalSince(seedStart)
-            let totalSegments = meetings * segmentsPerMeeting
             print(String(
                 format: "Seeded %d segments in %.1f s (%.0f/s)",
                 totalSegments, seedElapsed, Double(totalSegments) / seedElapsed))

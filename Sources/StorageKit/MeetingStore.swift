@@ -8,6 +8,15 @@ public enum StorageError: Error, LocalizedError {
     case meetingNotFound(MeetingID)
     case invalidImportedMeeting(String)
     case invalidRefinedMeeting(String)
+    case invalidSemanticEmbedding(String)
+    case invalidDerivedMaintenanceJob(String)
+    case invalidTranscriptCorrection(String)
+    case invalidCommitment(String)
+    case invalidMeetingQuestion(String)
+    case invalidDecisionCommitmentBlocker(String)
+    case invalidSkillOffer(String)
+    case invalidStandingSkillRule(String)
+    case invalidStandingSkillExecution(String)
     case staleRefineDraft(meetingID: MeetingID, expected: Int, actual: Int)
     case invalidRecordingReservation(String)
     case invalidProcessingJob(String)
@@ -15,10 +24,14 @@ public enum StorageError: Error, LocalizedError {
     case invalidDataEgressEvent(String)
     case invalidSyncState(String)
     case invalidPersonLink(String)
+    case invalidTopicContinuity(String)
+    case invalidDecisionContinuity(String)
     case invalidSummaryClaim(String)
     case processingJobNotFound(ProcessingJobID)
     case processingJobLeaseLost(ProcessingJobID)
     case processingJobInputChanged(ProcessingJobID)
+    case derivedMaintenanceJobNotFound(DerivedMaintenanceJobID)
+    case derivedMaintenanceJobLeaseLost(DerivedMaintenanceJobID)
     /// Persisted identity is immutable. Corrupt rows must fail loudly rather
     /// than being assigned a fresh UUID and silently becoming another entity.
     case invalidPersistedUUID(table: String, column: String, value: String)
@@ -34,6 +47,24 @@ public enum StorageError: Error, LocalizedError {
             return "invalid imported meeting: \(reason)"
         case .invalidRefinedMeeting(let reason):
             return "invalid refined meeting: \(reason)"
+        case .invalidSemanticEmbedding(let reason):
+            return "invalid semantic embedding publication: \(reason)"
+        case .invalidDerivedMaintenanceJob(let reason):
+            return "invalid derived maintenance job: \(reason)"
+        case .invalidTranscriptCorrection(let reason):
+            return "invalid transcript correction: \(reason)"
+        case .invalidCommitment(let reason):
+            return "invalid commitment continuity: \(reason)"
+        case .invalidMeetingQuestion(let reason):
+            return "invalid meeting question continuity: \(reason)"
+        case .invalidDecisionCommitmentBlocker(let reason):
+            return "invalid decision-to-commitment blocker continuity: \(reason)"
+        case .invalidSkillOffer(let reason):
+            return "invalid Skill offer authority: \(reason)"
+        case .invalidStandingSkillRule(let reason):
+            return "invalid standing Skill rule: \(reason)"
+        case .invalidStandingSkillExecution(let reason):
+            return "invalid standing Skill execution: \(reason)"
         case .staleRefineDraft(let meetingID, let expected, let actual):
             return "refine draft for \(meetingID.rawValue.uuidString) expected transcript revision "
                 + "\(expected), current revision is \(actual)"
@@ -49,6 +80,10 @@ public enum StorageError: Error, LocalizedError {
             return "invalid sync state: \(reason)"
         case .invalidPersonLink(let reason):
             return "invalid canonical person link: \(reason)"
+        case .invalidTopicContinuity(let reason):
+            return "invalid topic continuity: \(reason)"
+        case .invalidDecisionContinuity(let reason):
+            return "invalid decision continuity: \(reason)"
         case .invalidSummaryClaim(let reason):
             return "invalid summary claim: \(reason)"
         case .processingJobNotFound(let id):
@@ -57,6 +92,10 @@ public enum StorageError: Error, LocalizedError {
             return "processing job lease is no longer owned: \(id.rawValue.uuidString)"
         case .processingJobInputChanged(let id):
             return "processing job input changed before completion: \(id.rawValue.uuidString)"
+        case .derivedMaintenanceJobNotFound(let id):
+            return "no such derived maintenance job: \(id.rawValue.uuidString)"
+        case .derivedMaintenanceJobLeaseLost(let id):
+            return "derived maintenance lease is no longer owned: \(id.rawValue.uuidString)"
         case .invalidPersistedUUID(let table, let column, let value):
             return "invalid persisted UUID in \(table).\(column): \(value)"
         case .invalidPersistedValue(let table, let column, let value):
@@ -93,17 +132,79 @@ public struct SummaryInfo: Sendable {
     public let createdAt: Date
 }
 
-/// One full-text search hit, newest meeting first.
+/// One authoritative transcript search projection.
+///
+/// Lexical and identity-only projections leave `semanticSimilarity` absent.
+/// Exact semantic search supplies its profile-local cosine value so research
+/// observers can measure retrieval without making Storage the admission-policy
+/// owner.
 public struct SearchHit: Sendable {
     public let meetingID: MeetingID
     public let meetingTitle: String
-    public let segmentID: UUID
+    /// Stable identity of the visible retrieval unit. Accepted and replacement
+    /// rows use the accepted segment UUID; split parts use their part UUID and
+    /// merges use their correction UUID.
+    public let resultID: UUID
+    /// Ordered immutable accepted evidence from which this result was composed.
+    public let sourceSegmentIDs: [UUID]
+    /// Compatibility name for consumers whose retrieval unit predates
+    /// cardinality-changing transcript corrections.
+    public var segmentID: UUID { resultID }
     /// Complete segment content for retrieval; UI surfaces should prefer the
     /// highlighted, bounded `snippet` below.
     public let text: String
     /// Matched terms wrapped in [brackets] by FTS5.
     public let snippet: String
     public let startTime: TimeInterval
+    /// Revision of the meeting transcript that produced this evidence.
+    public let transcriptRevision: Int
+    /// Profile-local cosine evidence produced by exact semantic search only.
+    /// It is not a product relevance threshold and must not be compared across
+    /// embedding profiles.
+    public let semanticSimilarity: Float?
+
+    init(
+        meetingID: MeetingID,
+        meetingTitle: String,
+        segmentID: UUID,
+        text: String,
+        snippet: String,
+        startTime: TimeInterval,
+        transcriptRevision: Int,
+        semanticSimilarity: Float? = nil
+    ) {
+        self.meetingID = meetingID
+        self.meetingTitle = meetingTitle
+        self.resultID = segmentID
+        sourceSegmentIDs = [segmentID]
+        self.text = text
+        self.snippet = snippet
+        self.startTime = startTime
+        self.transcriptRevision = transcriptRevision
+        self.semanticSimilarity = semanticSimilarity
+    }
+
+    init(
+        meetingID: MeetingID,
+        meetingTitle: String,
+        resultID: UUID,
+        sourceSegmentIDs: [UUID],
+        text: String,
+        snippet: String,
+        startTime: TimeInterval,
+        transcriptRevision: Int,
+        semanticSimilarity: Float? = nil
+    ) {
+        self.meetingID = meetingID
+        self.meetingTitle = meetingTitle
+        self.resultID = resultID
+        self.sourceSegmentIDs = sourceSegmentIDs
+        self.text = text
+        self.snippet = snippet
+        self.startTime = startTime
+        self.transcriptRevision = transcriptRevision
+        self.semanticSimilarity = semanticSimilarity
+    }
 }
 
 /// The SQLite-backed store (GRDB + FTS5, D4 contract in `StorageSchema`).
@@ -114,23 +215,28 @@ public struct SearchHit: Sendable {
 /// `MeetingStore+Search.swift`, and `MeetingStore+Retention.swift` — this
 /// core file keeps the meeting/speaker/segment and context-item paths.
 public final class MeetingStore: Sendable {
+    /// Bound SQLite's file-backed mapping so large, sequential embedding reads
+    /// avoid rebuilding the page cache on every exact semantic query. The
+    /// mapping reserves virtual address space; macOS pages content on demand,
+    /// and SQLite falls back to ordinary reads beyond this cap.
+    static let maximumMemoryMappedDatabaseBytes: Int64 = 512 * 1_024 * 1_024
+
     /// Internal (not `private`) so the extension files above can reach it;
     /// still never exposed publicly.
     let database: DatabaseQueue
 
-    /// `~/Library/Application Support/Portavoz/portavoz.sqlite`
+    /// The platform Application Support container under `Portavoz/portavoz.sqlite`.
     public static var defaultDatabaseURL: URL {
-        let base =
-            FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
-                "Library/Application Support")
-        return base.appendingPathComponent("Portavoz/portavoz.sqlite")
+        URL.applicationSupportDirectory
+            .appendingPathComponent("Portavoz/portavoz.sqlite")
     }
 
     public init(databaseURL: URL) throws {
         try FileManager.default.createDirectory(
             at: databaseURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        self.database = try DatabaseQueue(path: databaseURL.path)
+        self.database = try DatabaseQueue(
+            path: databaseURL.path,
+            configuration: Self.databaseConfiguration(for: databaseURL))
         try StorageSchema.migrator().migrate(database)
     }
 
@@ -142,6 +248,32 @@ public final class MeetingStore: Sendable {
     private init(database: DatabaseQueue) throws {
         self.database = database
         try StorageSchema.migrator().migrate(database)
+    }
+
+    private static func databaseConfiguration(for databaseURL: URL) -> Configuration {
+        var configuration = Configuration()
+        #if os(macOS)
+        // SQLite documents mmap as a local-filesystem optimization. Fail
+        // closed for network, removable, or unclassified volumes so the
+        // ordinary xRead path remains the portable authority.
+        let directory = memoryMappedDatabaseDirectory(for: databaseURL)
+        let volume = try? directory.resourceValues(
+            forKeys: [.volumeIsLocalKey, .volumeIsInternalKey])
+        guard volume?.volumeIsLocal == true,
+              volume?.volumeIsInternal == true
+        else { return configuration }
+        configuration.prepareDatabase { database in
+            try database.execute(
+                sql: "PRAGMA main.mmap_size = \(Self.maximumMemoryMappedDatabaseBytes)")
+        }
+        #endif
+        return configuration
+    }
+
+    static func memoryMappedDatabaseDirectory(for databaseURL: URL) -> URL {
+        databaseURL.standardizedFileURL
+            .resolvingSymlinksInPath()
+            .deletingLastPathComponent()
     }
 
     // MARK: - Meetings
@@ -186,6 +318,7 @@ public final class MeetingStore: Sendable {
                 // Text unchanged → the stored embedding stays valid.
                 if existing?.text == segment.text {
                     record.embedding = existing?.embedding
+                    record.embeddingFingerprint = existing?.embeddingFingerprint
                 }
                 try record.save(db)
             }

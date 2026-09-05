@@ -1,0 +1,15 @@
+{
+  "authority": "research-correction-cost-only",
+  "baselineSchemaVersion": 1,
+  "engineDecision": "not-evaluated",
+  "hostReceiptSchemaVersion": 1,
+  "maximumBaselineBytes": 2097152,
+  "maximumReceiptStreamBytes": 1048576,
+  "maximumScorecardBytes": 524288,
+  "performanceDecision": "not-evaluated",
+  "requiredReviewAcknowledgement": "timings-reviewed-no-engine-decision-v1",
+  "requiredScorecardOutcome": "review-required",
+  "reviewPolicyVersion": "explicit-human-review-digest-and-source-v1",
+  "schemaVersion": 1,
+  "scorecardSchemaVersion": 1
+}

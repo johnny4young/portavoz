@@ -43,7 +43,7 @@ final class ObjectiveCheckPolicyTests: XCTestCase {
 
 @MainActor
 final class RecordingObjectivesModelTests: XCTestCase {
-    func testAddTrimsAndNeverDuplicatesCaseInsensitively() {
+    func testAddTrimsAndNeverDuplicatesCaseInsensitively() async {
         let model = RecordingObjectivesModel()
         model.add("  Cerrar el presupuesto  ")
         model.add("cerrar el presupuesto")
@@ -51,7 +51,7 @@ final class RecordingObjectivesModelTests: XCTestCase {
         XCTAssertEqual(model.objectives.map(\.text), ["Cerrar el presupuesto"])
     }
 
-    func testManualToggleChecksUnchecksAndClearsTheModelMark() {
+    func testManualToggleChecksUnchecksAndClearsTheModelMark() async {
         let model = RecordingObjectivesModel()
         model.add("Definir el alcance")
         let id = model.objectives[0].id
@@ -65,7 +65,7 @@ final class RecordingObjectivesModelTests: XCTestCase {
         XCTAssertNil(model.objectives[0].checkedAt, "a second toggle unchecks")
     }
 
-    func testContextItemsFoldCheckOffStateIntoContent() {
+    func testContextItemsFoldCheckOffStateIntoContent() async {
         let model = RecordingObjectivesModel()
         model.add("Acordar la fecha")
         model.add("Revisar riesgos")
@@ -81,11 +81,37 @@ final class RecordingObjectivesModelTests: XCTestCase {
         XCTAssertTrue(items.allSatisfy { $0.meetingID == meetingID })
     }
 
-    func testResetClearsEverything() {
+    func testResetClearsEverything() async {
         let model = RecordingObjectivesModel()
         model.add("Uno")
         model.reset()
         XCTAssertTrue(model.objectives.isEmpty)
+    }
+
+    func testObjectiveCountAndTextBudgetsFailClosed() async {
+        let model = RecordingObjectivesModel()
+        for index in 0..<RecordingObjectivesModel.maximumObjectives {
+            model.add("Objective \(index)")
+        }
+        model.add("One too many")
+        XCTAssertEqual(
+            model.objectives.count,
+            RecordingObjectivesModel.maximumObjectives)
+        XCTAssertEqual(model.admissionIssue, .limitReached)
+
+        model.remove(model.objectives[0].id)
+        XCTAssertNil(model.admissionIssue)
+        model.add(String(
+            repeating: "x",
+            count: RecordingObjectivesModel.maximumObjectiveCharacters + 1))
+        XCTAssertEqual(model.admissionIssue, .tooLong)
+        XCTAssertFalse(model.objectives.contains { $0.text.hasPrefix("xxx") })
+
+        model.add(String(repeating: "👩🏽‍💻", count: 200))
+        XCTAssertEqual(
+            model.admissionIssue,
+            .tooLong,
+            "a short grapheme count must still respect the UTF-8 memory budget")
     }
 }
 

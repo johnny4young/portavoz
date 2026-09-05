@@ -2,7 +2,7 @@ import Foundation
 import PortavozCore
 
 /// Storage- and model-independent material shown before an upcoming meeting.
-public struct MeetingBrief: Sendable {
+public struct MeetingBrief: Codable, Equatable, Sendable {
     public let event: UpcomingEvent
     public let related: [RelatedMeeting]
     public let openItems: [OpenItem]
@@ -20,7 +20,8 @@ public struct MeetingBrief: Sendable {
         self.whatToKnow = whatToKnow
     }
 
-    public struct RelatedMeeting: Identifiable, Equatable, Sendable {
+    public struct RelatedMeeting:
+        Codable, Identifiable, Equatable, Sendable {
         public var id: MeetingID { meetingID }
         public let meetingID: MeetingID
         public let title: String
@@ -43,7 +44,7 @@ public struct MeetingBrief: Sendable {
         }
     }
 
-    public struct OpenItem: Identifiable, Equatable, Sendable {
+    public struct OpenItem: Codable, Identifiable, Equatable, Sendable {
         public let id: UUID
         public let meetingID: MeetingID
         public let meetingTitle: String
@@ -88,7 +89,7 @@ public struct MeetingBrief: Sendable {
         }
     }
 
-    public struct KnowPoint: Identifiable, Equatable, Sendable {
+    public struct KnowPoint: Codable, Identifiable, Equatable, Sendable {
         public let id: UUID
         public let text: String
         public let meetingID: MeetingID
@@ -145,7 +146,10 @@ public struct PrepareMeetingBrief: ApplicationUseCase {
             attendees: event.attendees)
         let query = ([event.title] + event.attendees).joined(separator: " ")
         let citations = try await degrade(to: []) {
-            try await ask.evidence(query, limit: 12)
+            try await ask.evidence(
+                query,
+                source: .library,
+                limit: 12)
         }
         let ranked = BriefRelevance.rank(passages: citations, terms: terms)
         async let summaryMarkdowns = degrade(to: [MeetingID: String]()) {

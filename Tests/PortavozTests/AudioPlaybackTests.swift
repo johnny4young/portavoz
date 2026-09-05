@@ -75,6 +75,61 @@ final class WaveformTests: XCTestCase {
         XCTAssertTrue(buckets.allSatisfy(\.micDominant))
     }
 
+    func testGenerationChecksCancellationBetweenBoundedReads() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("wf-cancel-\(UUID().uuidString).wav")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let format = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: 16_000,
+            channels: 1,
+            interleaved: false)!
+        let frames = AVAudioFrameCount(160_000)
+        var writer: AVAudioFile? = try AVAudioFile(
+            forWriting: url,
+            settings: format.settings)
+        let buffer = AVAudioPCMBuffer(
+            pcmFormat: format,
+            frameCapacity: frames)!
+        buffer.frameLength = frames
+        buffer.floatChannelData![0].initialize(repeating: 0.25, count: Int(frames))
+        try writer!.write(from: buffer)
+        writer = nil
+
+        var checks = 0
+        XCTAssertThrowsError(try Waveform.generate(
+            micFile: url,
+            systemFile: nil,
+            buckets: 100
+        ) {
+            checks += 1
+            if checks == 4 { throw CancellationError() }
+        }) { error in
+            XCTAssertTrue(error is CancellationError)
+        }
+        XCTAssertEqual(
+            checks,
+            4,
+            "obsolete generation must stop at the next fixed-size file chunk")
+    }
+
+    func testCancellableGenerationRejectsAnAlreadyCancelledCaller() async {
+        let task = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await Waveform.generateCancellable(
+                micFile: nil,
+                systemFile: nil,
+                buckets: 100)
+        }
+
+        do {
+            _ = try await task.value
+            XCTFail("an obsolete Meeting Detail task must not start waveform IO")
+        } catch {
+            XCTAssertTrue(error is CancellationError)
+        }
+    }
+
     /// A loud–silent–loud shape yields one silent range in the middle, and
     /// short dips below `minLength` are ignored.
     func testSilentRangesFindsSustainedGaps() {
@@ -307,6 +362,209 @@ final class MeetingPlayerTests: XCTestCase {
             CleanPlaybackPolicy.audibleRanges([1...2], duration: 0).isEmpty)
         XCTAssertTrue(
             CleanPlaybackPolicy.audibleRanges([], duration: 20).isEmpty)
+    }
+
+    /// Turns closer than one duck-and-recover cycle cannot be separated
+    /// without overlapping ramps, so policy merges them into one range.
+    func testCleanPlaybackPolicyMergesTurnsTooCloseToDuckBetween() {
+        let cycle = CleanPlaybackPolicy.attack + CleanPlaybackPolicy.release
+        XCTAssertFalse(
+            CleanPlaybackPolicy.canDuckBetween(
+                earlierEnd: 262.68, laterStart: 262.76),
+            "the observed 0.08 s gap is under the \(cycle) s cycle")
+        XCTAssertEqual(
+            CleanPlaybackPolicy.audibleRanges(
+                [262.56...262.68, 262.76...263.4],
+                duration: 600),
+            [262.56...263.4])
+        XCTAssertEqual(
+            CleanPlaybackPolicy.audibleRanges(
+                [10...11, 11.5...12], duration: 600).count,
+            2,
+            "well-separated turns still duck between")
+    }
+
+    /// The merge boundary is decided with the same arithmetic the schedule
+    /// emits, so a pair that survives as two ranges is always orderable — no
+    /// rounding at the boundary can produce an overlapping schedule.
+    func testCleanPlaybackSeparationBoundaryNeverProducesOverlap() {
+        let attack = CleanPlaybackPolicy.attack
+        let release = CleanPlaybackPolicy.release
+        for step in -20...20 {
+            let gap = attack + release + Double(step) * 0.000_000_001
+            let ranges: [ClosedRange<TimeInterval>] = [10...11, (11 + gap)...12]
+            let merged = CleanPlaybackPolicy.audibleRanges(
+                ranges, duration: 600)
+            let schedule = CleanPlaybackPolicy.volumeSchedule(
+                audibleRanges: ranges, duration: 600)
+            XCTAssertTrue(
+                CleanPlaybackPolicy.isStrictlyOrdered(schedule),
+                "gap \(gap) produced an overlapping schedule")
+            if merged.count == 2 {
+                XCTAssertTrue(CleanPlaybackPolicy.canDuckBetween(
+                    earlierEnd: merged[0].upperBound,
+                    laterStart: merged[1].lowerBound))
+            }
+        }
+    }
+
+    /// The regression that aborted the app when opening a refined meeting:
+    /// two local turns 0.08 s apart produced a release ramp of [262.68,
+    /// 262.80] and then an attack ramp of [262.70, 262.76] nested inside it,
+    /// which makes AVFoundation raise an uncatchable Objective-C exception.
+    func testCleanPlaybackScheduleStaysOrderedForNearAdjacentTurns() {
+        let schedule = CleanPlaybackPolicy.volumeSchedule(
+            audibleRanges: [
+                262.56...262.68, 262.76...263.4,
+                276.0...276.04, 276.12...277.0,
+                320.4...320.6, 320.76...321.5,
+            ],
+            duration: 1_440.96)
+        XCTAssertFalse(schedule.isEmpty)
+        XCTAssertTrue(
+            CleanPlaybackPolicy.isStrictlyOrdered(schedule),
+            "near-adjacent turns must not produce overlapping ramps")
+    }
+
+    /// The ordering invariant has to hold for every shape the transcript can
+    /// produce, not only the observed one: turns at the timeline edges, exact
+    /// duplicates, inverted and out-of-order input, and dense speech.
+    func testCleanPlaybackScheduleIsOrderedForAdversarialRanges() {
+        let duration: TimeInterval = 120
+        var dense: [ClosedRange<TimeInterval>] = []
+        for index in 0..<400 {
+            let start = Double(index) * 0.19
+            dense.append(start...(start + 0.05))
+        }
+        let cases: [[ClosedRange<TimeInterval>]] = [
+            [0...0.01],
+            [0...duration],
+            [(duration - 0.01)...duration],
+            [5...6, 5...6, 5...6],
+            [30...31, 10...11, 20...21],
+            [-50 ... -1, 200...300, 10...11],
+            [0...0.03, 0.04...0.07, 0.08...0.11],
+            dense,
+        ]
+        for ranges in cases {
+            let schedule = CleanPlaybackPolicy.volumeSchedule(
+                audibleRanges: ranges,
+                duration: duration)
+            XCTAssertTrue(
+                CleanPlaybackPolicy.isStrictlyOrdered(schedule),
+                "unordered schedule for \(ranges.prefix(3))")
+            XCTAssertTrue(
+                schedule.allSatisfy { $0.start >= 0 && $0.end <= duration },
+                "schedule left the timeline for \(ranges.prefix(3))")
+        }
+    }
+
+    /// The schedule is validated in seconds but delivered as CMTime at 1/600 s.
+    /// An event pair ordered by microseconds is *one* instant to AVFoundation,
+    /// and an empty ramp there raises the same uncatchable exception as an
+    /// empty one in seconds (D287) — so ordering is judged after quantization.
+    func testCleanPlaybackOrderingIsJudgedOnTheTicksAVFoundationReceives() {
+        // 1/600 s ≈ 1.667 ms. These two are ordered in seconds and identical
+        // once quantized.
+        XCTAssertFalse(CleanPlaybackPolicy.isStrictlyOrdered([
+            .ramp(from: 0, to: 1, start: 10, end: 10.000_1),
+        ]))
+        XCTAssertTrue(CleanPlaybackPolicy.isStrictlyOrdered([
+            .ramp(from: 0, to: 1, start: 10, end: 10.002),
+        ]))
+
+        // A turn shorter than one tick raises and lowers the microphone at the
+        // same instant, so its instructions do nothing; it is dropped rather
+        // than emitted. (Keeping it would still pass the ordering check —
+        // that is tidiness, not the crash guard.)
+        let subTick = CleanPlaybackPolicy.volumeSchedule(
+            audibleRanges: [10 ... 10.000_5],
+            duration: 60)
+        XCTAssertTrue(subTick.isEmpty)
+        XCTAssertEqual(
+            CleanPlaybackPolicy.audibleRanges([10 ... 10.000_5], duration: 60)
+                .count,
+            0)
+
+        // The crash guard is the representable check. A bound this large has no
+        // tick, and letting it reach the schedule would make `isStrictlyOrdered`
+        // refuse everything — silencing clear playback for the whole meeting
+        // rather than for one impossible turn.
+        XCTAssertNil(CleanPlaybackPolicy.tick(2e16))
+        XCTAssertNil(CleanPlaybackPolicy.tick(.infinity))
+        let unrepresentable = CleanPlaybackPolicy.volumeSchedule(
+            audibleRanges: [2e16 ... 2.1e16, 10...11],
+            duration: 3e16)
+        XCTAssertTrue(CleanPlaybackPolicy.isStrictlyOrdered(unrepresentable))
+        XCTAssertFalse(
+            unrepresentable.isEmpty,
+            "the representable turn survives its impossible neighbour")
+
+        // A real turn alongside a sub-tick one keeps clear playback working.
+        let mixed = CleanPlaybackPolicy.volumeSchedule(
+            audibleRanges: [5 ... 5.000_5, 10...11],
+            duration: 60)
+        XCTAssertTrue(CleanPlaybackPolicy.isStrictlyOrdered(mixed))
+        XCTAssertEqual(
+            mixed,
+            CleanPlaybackPolicy.volumeSchedule(
+                audibleRanges: [10...11],
+                duration: 60))
+    }
+
+    func testCleanPlaybackOrderingRejectsOverlappingAndEmptyRamps() {
+        XCTAssertFalse(CleanPlaybackPolicy.isStrictlyOrdered([
+            .ramp(from: 1, to: 0, start: 262.68, end: 262.8),
+            .ramp(from: 0, to: 1, start: 262.7, end: 262.76),
+        ]))
+        XCTAssertFalse(CleanPlaybackPolicy.isStrictlyOrdered([
+            .level(volume: 0, at: 5),
+            .level(volume: 1, at: 4),
+        ]))
+        XCTAssertFalse(CleanPlaybackPolicy.isStrictlyOrdered([
+            .ramp(from: 0, to: 1, start: 5, end: 5),
+        ]))
+        XCTAssertFalse(CleanPlaybackPolicy.isStrictlyOrdered([
+            .level(volume: 0, at: .nan),
+        ]))
+        XCTAssertTrue(CleanPlaybackPolicy.isStrictlyOrdered([]))
+    }
+
+    func testCleanPlaybackScheduleDucksBetweenWellSeparatedTurns() {
+        let background = CleanPlaybackPolicy.backgroundMicrophoneGain
+        let attack = CleanPlaybackPolicy.attack
+        let release = CleanPlaybackPolicy.release
+        XCTAssertEqual(
+            CleanPlaybackPolicy.volumeSchedule(
+                audibleRanges: [10...11],
+                duration: 60),
+            [
+                .level(volume: background, at: 0),
+                .ramp(from: background, to: 1, start: 10 - attack, end: 10),
+                .level(volume: 1, at: 11),
+                .ramp(from: 1, to: background, start: 11, end: 11 + release),
+            ])
+        XCTAssertTrue(
+            CleanPlaybackPolicy.volumeSchedule(
+                audibleRanges: [], duration: 60).isEmpty)
+    }
+
+    /// The release ramp is clipped at the end of the audio rather than
+    /// running past it, and a turn starting inside the attack window ramps
+    /// from the timeline origin.
+    func testCleanPlaybackScheduleClampsRampsToTheTimeline() {
+        let background = CleanPlaybackPolicy.backgroundMicrophoneGain
+        let attack = CleanPlaybackPolicy.attack
+        XCTAssertEqual(
+            CleanPlaybackPolicy.volumeSchedule(
+                audibleRanges: [(attack / 2)...20],
+                duration: 20),
+            [
+                .level(volume: background, at: 0),
+                .ramp(from: background, to: 1, start: 0, end: attack / 2),
+                .level(volume: 1, at: 20),
+            ],
+            "no release ramp fits past the end of the audio")
     }
 
     @MainActor

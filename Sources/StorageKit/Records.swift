@@ -318,6 +318,8 @@ struct SegmentRecord: Codable, FetchableRecord, PersistableRecord {
     var deletedAt: Date?
     /// Float32 LE, L2-normalized sentence embedding (v2, local RAG).
     var embedding: Data?
+    /// SHA-256 compatibility identity for the model and vector schema.
+    var embeddingFingerprint: String?
 
     init(
         _ segment: TranscriptSegment,
@@ -340,6 +342,7 @@ struct SegmentRecord: Codable, FetchableRecord, PersistableRecord {
         self.updatedAt = updatedAt
         self.deletedAt = nil
         self.embedding = nil
+        self.embeddingFingerprint = nil
     }
 
     var segment: TranscriptSegment {

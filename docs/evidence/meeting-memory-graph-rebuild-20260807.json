@@ -1,0 +1,87 @@
+{
+  "after": {
+    "queries10k": [
+      {
+        "answeredRuns": 30,
+        "job": "decisionHistory",
+        "p50Milliseconds": 54.774583,
+        "p95Milliseconds": 58.061082999999996
+      },
+      {
+        "answeredRuns": 30,
+        "job": "decisionConflicts",
+        "p50Milliseconds": 81.679958,
+        "p95Milliseconds": 89.30975
+      },
+      {
+        "answeredRuns": 30,
+        "job": "changeSince",
+        "p50Milliseconds": 69.49725,
+        "p95Milliseconds": 76.744625
+      },
+      {
+        "answeredRuns": 30,
+        "job": "firstDiscussion",
+        "p50Milliseconds": 84.88741700000001,
+        "p95Milliseconds": 88.405
+      },
+      {
+        "answeredRuns": 30,
+        "job": "personCommitments",
+        "p50Milliseconds": 19.223333,
+        "p95Milliseconds": 20.679584000000002
+      },
+      {
+        "answeredRuns": 30,
+        "job": "commitmentBlockers",
+        "p50Milliseconds": 2.523792,
+        "p95Milliseconds": 2.906166
+      }
+    ],
+    "rebuildFromZero": {
+      "1000": {
+        "edgesPerSecond": 2766.0639668405324,
+        "projectedEdgeCount": 5150,
+        "projectionSeconds": 1.861851375
+      },
+      "10000": {
+        "edgesPerSecond": 1892.8527311464277,
+        "projectedEdgeCount": 51500,
+        "projectionSeconds": 27.207610583
+      }
+    },
+    "recursiveProbes10k": [
+      {
+        "name": "topicFamilyRoots",
+        "p95Milliseconds": 8.027291,
+        "rows": 10000
+      },
+      {
+        "name": "supersessionChain",
+        "p95Milliseconds": 0.21554199999999998,
+        "rows": 10
+      }
+    ]
+  },
+  "baseline": {
+    "rebuildFromZero": {
+      "1000": {
+        "edgesPerSecond": 414.0
+      },
+      "10000": {
+        "edgesPerSecond": 48.9,
+        "projectionMinutes": 17.6
+      }
+    },
+    "source": "docs/evidence/meeting-memory-graph-scale-20260807.json"
+  },
+  "change": "Per-scope topic family resolution moved from loading every live topic row into memory (liveTopicRecords per scope) to two recursive CTEs (topicFamilyRootID, topicFamilyMemberIDs) in MeetingStore+TopicContinuityIdentity.swift; the three graph rebuild scopes in MeetingStore+MeetingMemoryGraph.swift now stay O(family) instead of O(all topics) per scope.",
+  "date": "2026-08-07",
+  "kind": "meeting-memory-graph-rebuild-throughput",
+  "notes": [
+    "38.7x at 10k (48.9 -> 1892.9 edges/s); the 1k -> 10k ratio is now 2766 -> 1893 edges/s, i.e. near-linear instead of the 8.5x baseline degradation.",
+    "Query lanes stay within the 250 ms interactive budget (worst decisionConflicts 89.3 ms p95); this run shared the host with a concurrent XCUITest suite, so lane p95s are an upper bound.",
+    "Same in-memory store harness and synthetic-graph-scale-v1 fixture as the GRAPH-6 verdict; correctness lanes (conformance, projection, scale invariants incl. rebuild determinism) all green on the same commit."
+  ],
+  "ticket": "GAPS rebuild-throughput item recorded by D312"
+}

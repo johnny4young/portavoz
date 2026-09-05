@@ -12,6 +12,9 @@ struct RecordingView: View {
     /// Calendar event this recording came from (brief's "Record this
     /// meeting") — nil for a blank recording.
     let event: UpcomingEvent?
+    /// Recovery routing reuses the exact failure UI but must never trigger a
+    /// new capture merely because SwiftUI constructed the destination.
+    let startsAutomatically: Bool
     /// Shared with the menu bar and the HUD (AppServices): the session
     /// must be visible and stoppable from outside this view.
     private var controller: RecordingController { services.recording }
@@ -24,6 +27,9 @@ struct RecordingView: View {
     /// One-tap dismiss for the "no incoming audio" nudge (in-person meetings
     /// legitimately have a silent system channel).
     @State private var systemWarningDismissed = false
+    /// A hard-limited call may remain usable, so the quality warning is
+    /// dismissable without changing or attenuating captured audio.
+    @State private var clippingWarningDismissed = false
     /// One-tap dismiss for the "capturing app directly" note.
     @State private var appTapNoteDismissed = false
 
@@ -48,6 +54,9 @@ struct RecordingView: View {
                 if controller.systemAudioMissing && !systemWarningDismissed {
                     systemAudioBanner
                 }
+                if controller.systemAudioClipping && !clippingWarningDismissed {
+                    systemAudioClippingBanner
+                }
                 if controller.systemCaptureHealth != .healthy {
                     systemCaptureHealthBanner
                 }
@@ -68,28 +77,45 @@ struct RecordingView: View {
                 LiveRecordingCaptionsView(controller: controller)
                     .frame(maxHeight: .infinity)
                     .padding(.horizontal, 20)
-                ScrollView {
-                    VStack(spacing: 10) {
-                        if let state = controller.catchUp.state {
-                            catchUpPanel(state)
-                        }
-                        if let state = controller.nextQuestion.state {
-                            RecordingNextQuestionCard(state: state) {
-                                controller.nextQuestion.dismiss()
+                ScrollViewReader { assistScroll in
+                    ScrollView {
+                        VStack(spacing: 10) {
+                            if let state = controller.catchUp.state {
+                                catchUpPanel(state)
+                            }
+                            if let state = controller.nextQuestion.state {
+                                RecordingNextQuestionCard(state: state) {
+                                    controller.nextQuestion.dismiss()
+                                }
+                            }
+                            if controller.interviewAssist.isEnabled {
+                                RecordingInterviewAssistView(controller: controller)
+                            }
+                            RecordingObjectivesPanel(controller: controller)
+                            if controller.proactiveAssist.isEnabled {
+                                RecordingProactiveAssistView(controller: controller)
+                            }
+                            companionCardsPanel
+                            notesPanel
+                            if let live = controller.liveSummary {
+                                liveSummaryPanel(live)
                             }
                         }
-                        RecordingObjectivesPanel(controller: controller)
-                        companionCardsPanel
-                        notesPanel
-                        if let live = controller.liveSummary {
-                            liveSummaryPanel(live)
-                        }
+                        .padding(.horizontal, 20)
+                        .frame(maxWidth: .infinity)
                     }
-                    .padding(.horizontal, 20)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxHeight: 260)
+                    .accessibilityIdentifier("recording-assist-scroll")
+                    .padding(.bottom, 16)
+                    .onChange(of: controller.objectives.objectives.map(\.id)) { previousIDs, currentIDs in
+                        guard currentIDs.count == previousIDs.count + 1,
+                              let addedObjectiveID = currentIDs.first(where: {
+                                  !previousIDs.contains($0)
+                              })
+                        else { return }
+                        assistScroll.scrollTo(addedObjectiveID, anchor: .center)
+                    }
                 }
-                .frame(maxHeight: 260)
-                .padding(.bottom, 16)
 
             case .processing(let step):
                 Spacer()
@@ -132,8 +158,25 @@ struct RecordingView: View {
         }
         .navigationTitle("Recording")
         .liveTranslation(controller)
-        .task { await controller.start(services: services, event: event) }
+        .task { await startRecording() }
         .onDisappear { hud.close() }
+    }
+
+    @MainActor
+    private func startRecording() async {
+        guard startsAutomatically else { return }
+        await controller.start(services: services, event: event)
+
+        // Deterministic real-app proof of the native Stop handoff. It is
+        // reachable only inside the disposable UI-test composition and fires
+        // after Start has returned, so the delegate must observe `.recording`
+        // rather than accidentally treating a cold launch as idle/preparing.
+        let arguments = ProcessInfo.processInfo.arguments
+        guard arguments.contains("-use-temp-store"),
+              arguments.contains("-simulate-stop-app-intent"),
+              controller.phase == .recording
+        else { return }
+        _ = PortavozAppIntentBridge.requestStopRecording()
     }
 
     private var recordingBar: some View {
@@ -248,7 +291,7 @@ private struct LiveRecordingCaptionsView: View {
 
     var body: some View {
         let projection = LiveCaptionParagraphProjector.project(
-            captions: Array(controller.captions.suffix(150)),
+            captions: controller.captions,
             liveSpeakerLabels: controller.liveSpeakerLabels,
             translations: controller.translations)
         GeometryReader { geo in
@@ -504,6 +547,27 @@ extension RecordingView {
         .padding(.horizontal, 20)
     }
 
+    /// Repeated ceiling hits mean the call source is likely already distorted.
+    /// Portavoz reports the quality risk but never changes the call graph or
+    /// rewrites the evidence that Refine will later review.
+    var systemAudioClippingBanner: some View {
+        HStack(spacing: 8) {
+            Label(
+                "The other participants' audio is clipping — transcript accuracy may be lower.",
+                systemImage: "waveform.badge.exclamationmark")
+                .font(.caption)
+                .foregroundStyle(.orange)
+            Button("Dismiss") { clippingWarningDismissed = true }
+                .buttonStyle(.plain)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("recording-system-audio-clipping-dismiss")
+        }
+        .padding(.horizontal, 20)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("recording-system-audio-clipping")
+    }
+
     /// Shown when a Bluetooth output made Portavoz tap the meeting app's
     /// process directly so the call stays isolated from unrelated app audio
     /// (and still works on AirPods, where HFP silences the global tap).
@@ -635,9 +699,14 @@ extension RecordingView {
     }
 
     private func companionCardTag(_ card: CompanionCard) -> String {
-        let base = card.kind == .context ? "from this meeting" : "knowledge · \(card.source)"
+        let base = card.kind == .context
+            ? L10n.text("from this meeting")
+            : L10n.format("knowledge · %@", card.source)
+        if card.answer.isEmpty {
+            return card.directed ? L10n.text("asked you") : L10n.text("question detected")
+        }
         if card.directed {
-            return card.answer.isEmpty ? "asked you" : "asked you · \(base)"
+            return "\(L10n.text("asked you")) · \(base)"
         }
         return base
     }
@@ -727,7 +796,7 @@ private extension RecordingView {
     private func liveSummaryPanel(_ markdown: String) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                Label("Live summary", systemImage: "sparkles")
+                Label(L10n.text("Live summary"), systemImage: "sparkles")
                     .font(.headline)
                 MarkdownText(text: markdown)
                     .font(.callout)
@@ -736,5 +805,6 @@ private extension RecordingView {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityIdentifier("recording-live-summary")
     }
 }

@@ -80,6 +80,16 @@
           }
         }
       }
+    },
+    "Portavoz creates a reminder only after you preview and confirm it. Nothing leaves your Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz crea un recordatorio solo después de que lo revises y confirmes. Nada sale de tu Mac."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

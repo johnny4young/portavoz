@@ -5,11 +5,14 @@ import PortavozCore
 /// OFF the device, so every entry point is an explicit, labeled action
 /// (D8); callers inject tokens from the platform secret adapter.
 public enum IssueExporterError: Error, LocalizedError {
+    case invalidRepository
     case requestFailed(status: Int, body: String)
     case malformedResponse
 
     public var errorDescription: String? {
         switch self {
+        case .invalidRepository:
+            return "invalid GitHub repository; use owner/name"
         case .requestFailed(let status, let body):
             return "the tracker responded \(status): \(body)"
         case .malformedResponse:
@@ -43,14 +46,38 @@ public struct GitHubIssuesExporter: Sendable {
         meetingTitle: String,
         ownerName: String? = nil
     ) async throws -> URL {
+        try await publish(
+            title: item.text,
+            body: Self.body(
+                item: item,
+                meetingTitle: meetingTitle,
+                ownerName: ownerName),
+            meetingID: meetingID)
+    }
+
+    /// Publishes the exact title and body the caller already presented. The
+    /// exporter never reconstructs reviewed material after confirmation.
+    public func publish(
+        title: String,
+        body: String,
+        meetingID: MeetingID
+    ) async throws -> URL {
+        guard let canonicalRepository = GitHubRepository(repository) else {
+            throw IssueExporterError.invalidRepository
+        }
         let request = try Self.request(
-            item: item, meetingTitle: meetingTitle, ownerName: ownerName,
-            repository: repository, token: token)
+            title: title,
+            body: body,
+            repository: canonicalRepository.rawValue,
+            token: token)
+        guard let destination = request.url else {
+            throw IssueExporterError.invalidRepository
+        }
         let response = try await gateway.perform(
             request,
             metadata: DataEgressRequest(
                 operation: .createGitHubIssue,
-                destination: DataEgressDestination(url: request.url!),
+                destination: DataEgressDestination(url: destination),
                 dataClassification: .meetingActionItem,
                 meetingID: meetingID,
                 consentSource: .explicitGitHubIssuePublish,
@@ -61,31 +88,78 @@ public struct GitHubIssuesExporter: Sendable {
                 status: response.statusCode,
                 body: String(data: response.data.prefix(200), encoding: .utf8) ?? "")
         }
-        return try Self.parseResponse(response.data)
+        return try Self.parseResponse(
+            response.data,
+            expectedRepository: canonicalRepository)
     }
 
     static func request(
         item: ActionItem, meetingTitle: String, ownerName: String?,
         repository: String, token: String
     ) throws -> URLRequest {
-        var request = URLRequest(
-            url: URL(string: "https://api.github.com/repos/\(repository)/issues")!)
+        try request(
+            title: item.text,
+            body: Self.body(
+                item: item,
+                meetingTitle: meetingTitle,
+                ownerName: ownerName),
+            repository: repository,
+            token: token)
+    }
+
+    static func request(
+        title: String,
+        body: String,
+        repository: String,
+        token: String
+    ) throws -> URLRequest {
+        guard let repository = GitHubRepository(repository) else {
+            throw IssueExporterError.invalidRepository
+        }
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "api.github.com"
+        components.path = "/repos/\(repository.owner)/\(repository.name)/issues"
+        guard let endpoint = components.url else {
+            throw IssueExporterError.invalidRepository
+        }
+        var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: [
-            "title": item.text,
-            "body": Self.body(item: item, meetingTitle: meetingTitle, ownerName: ownerName)
+            "title": title,
+            "body": body
         ])
         return request
     }
 
-    static func parseResponse(_ data: Data) throws -> URL {
+    static func parseResponse(
+        _ data: Data,
+        expectedRepository: GitHubRepository? = nil
+    ) throws -> URL {
         struct IssueResponse: Decodable { let html_url: String }
         guard
             let parsed = try? JSONDecoder().decode(IssueResponse.self, from: data),
-            let url = URL(string: parsed.html_url)
+            let url = URL(string: parsed.html_url),
+            let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+            components.scheme == "https",
+            components.host == "github.com",
+            components.port == nil,
+            components.user == nil,
+            components.password == nil,
+            components.query == nil,
+            components.fragment == nil,
+            url.pathComponents.count == 5,
+            url.pathComponents[3] == "issues",
+            UInt64(url.pathComponents[4]).map({ $0 > 0 }) == true
         else { throw IssueExporterError.malformedResponse }
+        if let expectedRepository {
+            guard url.pathComponents[1] == expectedRepository.owner,
+                  url.pathComponents[2] == expectedRepository.name
+            else { throw IssueExporterError.malformedResponse }
+        }
         return url
     }
 

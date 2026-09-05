@@ -9,33 +9,8 @@ import FoundationModels
 /// user clicks to regenerate; nothing restructures on its own. The gate is
 /// deterministic: only known non-general recipe ids survive, everything
 /// else (including model doubt) collapses to nil.
-@available(macOS 26.0, *)
+@available(macOS 26.0, iOS 26.0, *)
 public enum MeetingTypeDetector {
-    /// Pure so tests pin the shape. Few-shot on purpose: the 3B ignores
-    /// abstract rules without literal examples (Companion finding).
-    static let instructions = """
-        You classify a meeting transcript excerpt into exactly one type.
-        Types: standup (each person reports progress, blockers and plans), \
-        one-on-one (two people, personal check-in, feedback, career or work agreements), \
-        planning (scoping goals, risks and next steps for future work), \
-        interview (one side evaluates the other's background and skills), \
-        discovery (learning a user's or customer's problems, needs and context), \
-        postmortem (reconstructing an incident: timeline, causes, follow-ups), \
-        retro (a team reviews how a period went: went well, to improve, agreements), \
-        general (anything else: reviews, debugging sessions, broad discussions).
-        Examples:
-        - "yesterday I finished the migration, today I'll take the API, no blockers" → standup
-        - "how are you feeling about the workload? — honestly a bit stretched" → one-on-one
-        - "for Q3 the goal is the iOS launch; main risk is the review times" → planning
-        - "tell me about your experience with distributed systems" → interview
-        - "walk me through how your team handles invoices today" → discovery
-        - "the outage started at 9:14 when the deploy hit the primary region" → postmortem
-        - "this sprint the reviews went great but the handoffs kept slipping" → retro
-        - "the bug is in the retry loop, look at line 40" → general
-        \(PromptFactory.sourceMaterialGuard())
-        When unsure, answer general.
-        """
-
     /// The excerpt the classifier sees: speaker count (a 1:1 needs exactly
     /// two people) plus the first substantial lines, capped so the prompt
     /// never balloons on long meetings.
@@ -57,7 +32,8 @@ public enum MeetingTypeDetector {
     ) async -> Recipe? {
         guard segments.count >= 4 else { return nil }
         let prompt = excerpt(segments: segments, speakerCount: speakerCount)
-        let session = LanguageModelSession(instructions: instructions)
+        let session = LanguageModelSession(
+            instructions: PromptFactory.meetingTypeInstructions)
         let detected: DetectedMeetingType? = try? await IntelligenceScheduler.shared
             .run(.background) {
                 try await session.respond(
@@ -73,7 +49,7 @@ public enum MeetingTypeDetector {
     }
 }
 
-@available(macOS 26.0, *)
+@available(macOS 26.0, iOS 26.0, *)
 @Generable(description: "Meeting type classification")
 struct DetectedMeetingType {
     @Guide(description: "Exactly one of: standup, one-on-one, planning, interview, "

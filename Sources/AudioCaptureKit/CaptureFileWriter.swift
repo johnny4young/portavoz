@@ -12,12 +12,15 @@ import PortavozCore
 /// `@unchecked Sendable`: writes are serialized by the owning channel task.
 public final class CaptureFileWriter: @unchecked Sendable {
     public let url: URL
-    private let file: AVAudioFile
+    private var file: AVAudioFile?
     private let bufferFormat: AVAudioFormat
+    private let sampleRate: Double
+    private var reusableBuffer: AVAudioPCMBuffer?
     public private(set) var framesWritten: AVAudioFramePosition = 0
 
     public init(url: URL, sampleRate: Double) throws {
         self.url = url
+        self.sampleRate = sampleRate
         let settings: [String: Any] = [
             AVFormatIDKey: kAudioFormatLinearPCM,
             AVSampleRateKey: sampleRate,
@@ -46,13 +49,23 @@ public final class CaptureFileWriter: @unchecked Sendable {
 
     public func append(_ samples: [Float]) throws {
         guard !samples.isEmpty else { return }
-        guard let buffer = AVAudioPCMBuffer(
-            pcmFormat: bufferFormat,
-            frameCapacity: AVAudioFrameCount(samples.count)
-        ), let channelData = buffer.floatChannelData else {
+        guard let file else { throw AudioCaptureError.captureWriterClosed }
+        let requiredCapacity = AVAudioFrameCount(samples.count)
+        let buffer: AVAudioPCMBuffer
+        if let reusableBuffer, reusableBuffer.frameCapacity >= requiredCapacity {
+            buffer = reusableBuffer
+        } else {
+            guard let created = AVAudioPCMBuffer(
+                pcmFormat: bufferFormat,
+                frameCapacity: requiredCapacity
+            ) else { throw AudioCaptureError.unsupportedFormat }
+            reusableBuffer = created
+            buffer = created
+        }
+        guard let channelData = buffer.floatChannelData else {
             throw AudioCaptureError.unsupportedFormat
         }
-        buffer.frameLength = AVAudioFrameCount(samples.count)
+        buffer.frameLength = requiredCapacity
         samples.withUnsafeBufferPointer { pointer in
             channelData[0].update(from: pointer.baseAddress!, count: samples.count)
         }
@@ -61,6 +74,13 @@ public final class CaptureFileWriter: @unchecked Sendable {
     }
 
     public var secondsWritten: TimeInterval {
-        Double(framesWritten) / file.fileFormat.sampleRate
+        Double(framesWritten) / sampleRate
+    }
+
+    /// Ends the native file lifetime before validation/publication. Stop must
+    /// not depend on when a completed Swift Task releases its captured writer.
+    func close() {
+        reusableBuffer = nil
+        file = nil
     }
 }

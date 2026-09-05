@@ -1,0 +1,2006 @@
+{
+  "schemaVersion": 1,
+  "kind": "commitment-link-quality-fixture",
+  "generation": "public-synthetic-v1",
+  "contentSource": "public-synthetic-only",
+  "cases": [
+    {
+      "id": "case-001",
+      "language": "en",
+      "class": "continuation",
+      "candidate": {
+        "sourceMeetingID": "source-case-001",
+        "actionItemID": "action-case-001",
+        "language": "en",
+        "text": "Follow up on the rollout checklist",
+        "assignee": {
+          "kind": "person",
+          "id": "person-mara"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-001-a",
+          "title": "Follow up on the rollout checklist",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-mara"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-001-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-001-a",
+              "meetingID": "meeting-target-case-001-a",
+              "language": "en",
+              "text": "I will send the rollout checklist by Friday."
+            }
+          ]
+        },
+        {
+          "id": "target-case-001-b",
+          "title": "Prepare an unrelated office inventory",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-001-b"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-001-b",
+              "meetingID": "meeting-target-case-001-b",
+              "language": "en",
+              "text": "The facilities team will prepare an unrelated office inventory."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-001-a"
+        ],
+        "linkableCommitmentIDs": [
+          "target-case-001-a"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "case-002",
+      "language": "en",
+      "class": "continuation",
+      "candidate": {
+        "sourceMeetingID": "source-case-002",
+        "actionItemID": "action-case-002",
+        "language": "en",
+        "text": "Complete the security review",
+        "assignee": {
+          "kind": "person",
+          "id": "person-noah"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-002-a",
+          "title": "Complete the security review",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-002-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-002-a",
+              "meetingID": "meeting-target-case-002-a",
+              "language": "en",
+              "text": "I committed to complete the security review."
+            },
+            {
+              "id": "evidence-target-case-002-a-follow-up",
+              "meetingID": "meeting-target-case-002-a",
+              "language": "en",
+              "text": "The owner repeated the security review commitment in the follow-up."
+            }
+          ]
+        },
+        {
+          "id": "target-case-002-b",
+          "title": "Prepare an unrelated office inventory",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-priya"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-002-b"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-002-b",
+              "meetingID": "meeting-target-case-002-b",
+              "language": "en",
+              "text": "The facilities team will prepare an unrelated office inventory."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-002-a"
+        ],
+        "linkableCommitmentIDs": [
+          "target-case-002-a"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "case-003",
+      "language": "en",
+      "class": "continuation",
+      "candidate": {
+        "sourceMeetingID": "source-case-003",
+        "actionItemID": "action-case-003",
+        "language": "en",
+        "text": "Review the vendor contract",
+        "assignee": {
+          "kind": "person",
+          "id": "person-priya"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-003-a",
+          "title": "Review the vendor contract",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-priya"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-003-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-003-a",
+              "meetingID": "meeting-target-case-003-a",
+              "language": "en",
+              "text": "I will review the vendor contract on Monday."
+            }
+          ]
+        },
+        {
+          "id": "target-case-003-b",
+          "title": "Prepare an unrelated office inventory",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-mara"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-003-b"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-003-b",
+              "meetingID": "meeting-target-case-003-b",
+              "language": "en",
+              "text": "The facilities team will prepare an unrelated office inventory."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-003-a"
+        ],
+        "linkableCommitmentIDs": [
+          "target-case-003-a"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "case-004",
+      "language": "en",
+      "class": "continuation",
+      "candidate": {
+        "sourceMeetingID": "source-case-004",
+        "actionItemID": "action-case-004",
+        "language": "en",
+        "text": "Publish the migration notes",
+        "assignee": {
+          "kind": "person",
+          "id": "person-mara"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-004-a",
+          "title": "Publish the migration notes",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-mara"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-004-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-004-a",
+              "meetingID": "meeting-target-case-004-a",
+              "language": "en",
+              "text": "I will publish the migration notes tomorrow."
+            }
+          ]
+        },
+        {
+          "id": "target-case-004-b",
+          "title": "Prepare an unrelated office inventory",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-004-b"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-004-b",
+              "meetingID": "meeting-target-case-004-b",
+              "language": "en",
+              "text": "The facilities team will prepare an unrelated office inventory."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-004-a"
+        ],
+        "linkableCommitmentIDs": [
+          "target-case-004-a"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "case-005",
+      "language": "en",
+      "class": "ambiguous",
+      "candidate": {
+        "sourceMeetingID": "source-case-005",
+        "actionItemID": "action-case-005",
+        "language": "en",
+        "text": "Finish the release notes",
+        "assignee": {
+          "kind": "person",
+          "id": "person-noah"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-005-a",
+          "title": "Finish the release notes",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-005-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-005-a",
+              "meetingID": "meeting-target-case-005-a",
+              "language": "en",
+              "text": "I will finish the release notes before launch."
+            }
+          ]
+        },
+        {
+          "id": "target-case-005-b",
+          "title": "Finish the release notes (follow-up)",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-005-b"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-005-b",
+              "meetingID": "meeting-target-case-005-b",
+              "language": "en",
+              "text": "I will finish the release notes before launch during the follow-up."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-005-a",
+          "target-case-005-b"
+        ],
+        "linkableCommitmentIDs": [
+          "target-case-005-a",
+          "target-case-005-b"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "case-006",
+      "language": "en",
+      "class": "self-continuation",
+      "candidate": {
+        "sourceMeetingID": "source-case-006",
+        "actionItemID": "action-case-006",
+        "language": "en",
+        "text": "Send the customer follow-up",
+        "assignee": {
+          "kind": "me",
+          "id": null
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-006-a",
+          "title": "Send the customer follow-up",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "me",
+            "id": null
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-006-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-006-a",
+              "meetingID": "meeting-target-case-006-a",
+              "language": "en",
+              "text": "I will send the customer follow-up this week."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-006-a"
+        ],
+        "linkableCommitmentIDs": [
+          "target-case-006-a"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "case-007",
+      "language": "en",
+      "class": "wrong-person",
+      "candidate": {
+        "sourceMeetingID": "source-case-007",
+        "actionItemID": "action-case-007",
+        "language": "en",
+        "text": "Update the audit report",
+        "assignee": {
+          "kind": "person",
+          "id": "person-mara"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-007-a",
+          "title": "Update the audit report",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-007-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-007-a",
+              "meetingID": "meeting-target-case-007-a",
+              "language": "en",
+              "text": "I will update the audit report."
+            }
+          ]
+        },
+        {
+          "id": "target-case-007-b",
+          "title": "Prepare an unrelated office inventory",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-mara"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-007-b"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-007-b",
+              "meetingID": "meeting-target-case-007-b",
+              "language": "en",
+              "text": "The facilities team will prepare an unrelated office inventory."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-007-a"
+        ],
+        "linkableCommitmentIDs": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "case-008",
+      "language": "en",
+      "class": "no-overlap",
+      "candidate": {
+        "sourceMeetingID": "source-case-008",
+        "actionItemID": "action-case-008",
+        "language": "en",
+        "text": "Prepare the device inventory",
+        "assignee": {
+          "kind": "person",
+          "id": "person-noah"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-008-a",
+          "title": "Prepare the device inventory",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-008-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-008-a",
+              "meetingID": "meeting-target-case-008-a",
+              "language": "en",
+              "text": "The facilities team completed an unrelated office inventory."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [],
+        "linkableCommitmentIDs": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "case-009",
+      "language": "en",
+      "class": "same-meeting",
+      "candidate": {
+        "sourceMeetingID": "source-case-009",
+        "actionItemID": "action-case-009",
+        "language": "en",
+        "text": "Share the incident timeline",
+        "assignee": {
+          "kind": "person",
+          "id": "person-priya"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-009-a",
+          "title": "Share the incident timeline",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-priya"
+          },
+          "sourceMeetingIDs": [
+            "source-case-009"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-009-a",
+              "meetingID": "source-case-009",
+              "language": "en",
+              "text": "I will share the incident timeline."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-009-a"
+        ],
+        "linkableCommitmentIDs": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "case-010",
+      "language": "en",
+      "class": "inactive-target",
+      "candidate": {
+        "sourceMeetingID": "source-case-010",
+        "actionItemID": "action-case-010",
+        "language": "en",
+        "text": "Revise the deployment plan",
+        "assignee": {
+          "kind": "person",
+          "id": "person-mara"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-010-a",
+          "title": "Revise the deployment plan",
+          "status": "done",
+          "assignee": {
+            "kind": "person",
+            "id": "person-mara"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-010-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-010-a",
+              "meetingID": "meeting-target-case-010-a",
+              "language": "en",
+              "text": "I will revise the deployment plan."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-010-a"
+        ],
+        "linkableCommitmentIDs": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "case-011",
+      "language": "en",
+      "class": "unknown-owner",
+      "candidate": {
+        "sourceMeetingID": "source-case-011",
+        "actionItemID": "action-case-011",
+        "language": "en",
+        "text": "Complete the access review",
+        "assignee": {
+          "kind": "unassigned",
+          "id": null
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-011-a",
+          "title": "Complete the access review",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-011-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-011-a",
+              "meetingID": "meeting-target-case-011-a",
+              "language": "en",
+              "text": "I will complete the access review."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-011-a"
+        ],
+        "linkableCommitmentIDs": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "case-012",
+      "language": "en",
+      "class": "dismissed-target",
+      "candidate": {
+        "sourceMeetingID": "source-case-012",
+        "actionItemID": "action-case-012",
+        "language": "en",
+        "text": "Publish the test matrix",
+        "assignee": {
+          "kind": "person",
+          "id": "person-priya"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-012-a",
+          "title": "Publish the test matrix",
+          "status": "dismissed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-priya"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-012-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-012-a",
+              "meetingID": "meeting-target-case-012-a",
+              "language": "en",
+              "text": "I will publish the test matrix."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-012-a"
+        ],
+        "linkableCommitmentIDs": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "case-013",
+      "language": "es",
+      "class": "continuation",
+      "candidate": {
+        "sourceMeetingID": "source-case-013",
+        "actionItemID": "action-case-013",
+        "language": "es",
+        "text": "Dar seguimiento a la lista de lanzamiento",
+        "assignee": {
+          "kind": "person",
+          "id": "person-mara"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-013-a",
+          "title": "Dar seguimiento a la lista de lanzamiento",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-mara"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-013-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-013-a",
+              "meetingID": "meeting-target-case-013-a",
+              "language": "es",
+              "text": "Enviaré la lista de lanzamiento el viernes."
+            }
+          ]
+        },
+        {
+          "id": "target-case-013-b",
+          "title": "Preparar un inventario de oficina sin relación",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-013-b"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-013-b",
+              "meetingID": "meeting-target-case-013-b",
+              "language": "es",
+              "text": "El equipo de instalaciones preparará un inventario de oficina sin relación."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-013-a"
+        ],
+        "linkableCommitmentIDs": [
+          "target-case-013-a"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "case-014",
+      "language": "es",
+      "class": "continuation",
+      "candidate": {
+        "sourceMeetingID": "source-case-014",
+        "actionItemID": "action-case-014",
+        "language": "es",
+        "text": "Completar la revisión de seguridad",
+        "assignee": {
+          "kind": "person",
+          "id": "person-noah"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-014-a",
+          "title": "Completar la revisión de seguridad",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-014-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-014-a",
+              "meetingID": "meeting-target-case-014-a",
+              "language": "es",
+              "text": "Me comprometo a completar la revisión de seguridad."
+            },
+            {
+              "id": "evidence-target-case-014-a-follow-up",
+              "meetingID": "meeting-target-case-014-a",
+              "language": "es",
+              "text": "La persona repitió el compromiso sobre revisión de seguridad en el seguimiento."
+            }
+          ]
+        },
+        {
+          "id": "target-case-014-b",
+          "title": "Preparar un inventario de oficina sin relación",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-priya"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-014-b"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-014-b",
+              "meetingID": "meeting-target-case-014-b",
+              "language": "es",
+              "text": "El equipo de instalaciones preparará un inventario de oficina sin relación."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-014-a"
+        ],
+        "linkableCommitmentIDs": [
+          "target-case-014-a"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "case-015",
+      "language": "es",
+      "class": "continuation",
+      "candidate": {
+        "sourceMeetingID": "source-case-015",
+        "actionItemID": "action-case-015",
+        "language": "es",
+        "text": "Revisar el contrato del proveedor",
+        "assignee": {
+          "kind": "person",
+          "id": "person-priya"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-015-a",
+          "title": "Revisar el contrato del proveedor",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-priya"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-015-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-015-a",
+              "meetingID": "meeting-target-case-015-a",
+              "language": "es",
+              "text": "Revisaré el contrato del proveedor el lunes."
+            }
+          ]
+        },
+        {
+          "id": "target-case-015-b",
+          "title": "Preparar un inventario de oficina sin relación",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-mara"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-015-b"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-015-b",
+              "meetingID": "meeting-target-case-015-b",
+              "language": "es",
+              "text": "El equipo de instalaciones preparará un inventario de oficina sin relación."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-015-a"
+        ],
+        "linkableCommitmentIDs": [
+          "target-case-015-a"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "case-016",
+      "language": "es",
+      "class": "continuation",
+      "candidate": {
+        "sourceMeetingID": "source-case-016",
+        "actionItemID": "action-case-016",
+        "language": "es",
+        "text": "Publicar las notas de migración",
+        "assignee": {
+          "kind": "person",
+          "id": "person-mara"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-016-a",
+          "title": "Publicar las notas de migración",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-mara"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-016-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-016-a",
+              "meetingID": "meeting-target-case-016-a",
+              "language": "es",
+              "text": "Publicaré las notas de migración mañana."
+            }
+          ]
+        },
+        {
+          "id": "target-case-016-b",
+          "title": "Preparar un inventario de oficina sin relación",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-016-b"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-016-b",
+              "meetingID": "meeting-target-case-016-b",
+              "language": "es",
+              "text": "El equipo de instalaciones preparará un inventario de oficina sin relación."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-016-a"
+        ],
+        "linkableCommitmentIDs": [
+          "target-case-016-a"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "case-017",
+      "language": "es",
+      "class": "ambiguous",
+      "candidate": {
+        "sourceMeetingID": "source-case-017",
+        "actionItemID": "action-case-017",
+        "language": "es",
+        "text": "Terminar las notas de la versión",
+        "assignee": {
+          "kind": "person",
+          "id": "person-noah"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-017-a",
+          "title": "Terminar las notas de la versión",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-017-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-017-a",
+              "meetingID": "meeting-target-case-017-a",
+              "language": "es",
+              "text": "Terminaré las notas de la versión antes del lanzamiento."
+            }
+          ]
+        },
+        {
+          "id": "target-case-017-b",
+          "title": "Terminar las notas de la versión (seguimiento)",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-017-b"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-017-b",
+              "meetingID": "meeting-target-case-017-b",
+              "language": "es",
+              "text": "Terminaré las notas de la versión antes del lanzamiento durante el seguimiento."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-017-a",
+          "target-case-017-b"
+        ],
+        "linkableCommitmentIDs": [
+          "target-case-017-a",
+          "target-case-017-b"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "case-018",
+      "language": "es",
+      "class": "self-continuation",
+      "candidate": {
+        "sourceMeetingID": "source-case-018",
+        "actionItemID": "action-case-018",
+        "language": "es",
+        "text": "Enviar el seguimiento al cliente",
+        "assignee": {
+          "kind": "me",
+          "id": null
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-018-a",
+          "title": "Enviar el seguimiento al cliente",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "me",
+            "id": null
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-018-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-018-a",
+              "meetingID": "meeting-target-case-018-a",
+              "language": "es",
+              "text": "Enviaré el seguimiento al cliente esta semana."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-018-a"
+        ],
+        "linkableCommitmentIDs": [
+          "target-case-018-a"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "case-019",
+      "language": "es",
+      "class": "wrong-person",
+      "candidate": {
+        "sourceMeetingID": "source-case-019",
+        "actionItemID": "action-case-019",
+        "language": "es",
+        "text": "Actualizar el informe de auditoría",
+        "assignee": {
+          "kind": "person",
+          "id": "person-mara"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-019-a",
+          "title": "Actualizar el informe de auditoría",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-019-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-019-a",
+              "meetingID": "meeting-target-case-019-a",
+              "language": "es",
+              "text": "Actualizaré el informe de auditoría."
+            }
+          ]
+        },
+        {
+          "id": "target-case-019-b",
+          "title": "Preparar un inventario de oficina sin relación",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-mara"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-019-b"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-019-b",
+              "meetingID": "meeting-target-case-019-b",
+              "language": "es",
+              "text": "El equipo de instalaciones preparará un inventario de oficina sin relación."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-019-a"
+        ],
+        "linkableCommitmentIDs": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "case-020",
+      "language": "es",
+      "class": "no-overlap",
+      "candidate": {
+        "sourceMeetingID": "source-case-020",
+        "actionItemID": "action-case-020",
+        "language": "es",
+        "text": "Preparar el inventario de dispositivos",
+        "assignee": {
+          "kind": "person",
+          "id": "person-noah"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-020-a",
+          "title": "Preparar el inventario de dispositivos",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-020-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-020-a",
+              "meetingID": "meeting-target-case-020-a",
+              "language": "es",
+              "text": "El equipo de instalaciones completó un inventario de oficina sin relación."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [],
+        "linkableCommitmentIDs": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "case-021",
+      "language": "es",
+      "class": "same-meeting",
+      "candidate": {
+        "sourceMeetingID": "source-case-021",
+        "actionItemID": "action-case-021",
+        "language": "es",
+        "text": "Compartir la línea de tiempo del incidente",
+        "assignee": {
+          "kind": "person",
+          "id": "person-priya"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-021-a",
+          "title": "Compartir la línea de tiempo del incidente",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-priya"
+          },
+          "sourceMeetingIDs": [
+            "source-case-021"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-021-a",
+              "meetingID": "source-case-021",
+              "language": "es",
+              "text": "Compartiré la línea de tiempo del incidente."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-021-a"
+        ],
+        "linkableCommitmentIDs": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "case-022",
+      "language": "es",
+      "class": "inactive-target",
+      "candidate": {
+        "sourceMeetingID": "source-case-022",
+        "actionItemID": "action-case-022",
+        "language": "es",
+        "text": "Revisar el plan de despliegue",
+        "assignee": {
+          "kind": "person",
+          "id": "person-mara"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-022-a",
+          "title": "Revisar el plan de despliegue",
+          "status": "done",
+          "assignee": {
+            "kind": "person",
+            "id": "person-mara"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-022-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-022-a",
+              "meetingID": "meeting-target-case-022-a",
+              "language": "es",
+              "text": "Revisaré el plan de despliegue."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-022-a"
+        ],
+        "linkableCommitmentIDs": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "case-023",
+      "language": "es",
+      "class": "unknown-owner",
+      "candidate": {
+        "sourceMeetingID": "source-case-023",
+        "actionItemID": "action-case-023",
+        "language": "es",
+        "text": "Completar la revisión de acceso",
+        "assignee": {
+          "kind": "unassigned",
+          "id": null
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-023-a",
+          "title": "Completar la revisión de acceso",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-023-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-023-a",
+              "meetingID": "meeting-target-case-023-a",
+              "language": "es",
+              "text": "Completaré la revisión de acceso."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-023-a"
+        ],
+        "linkableCommitmentIDs": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "case-024",
+      "language": "es",
+      "class": "dismissed-target",
+      "candidate": {
+        "sourceMeetingID": "source-case-024",
+        "actionItemID": "action-case-024",
+        "language": "es",
+        "text": "Publicar la matriz de pruebas",
+        "assignee": {
+          "kind": "person",
+          "id": "person-priya"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-024-a",
+          "title": "Publicar la matriz de pruebas",
+          "status": "dismissed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-priya"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-024-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-024-a",
+              "meetingID": "meeting-target-case-024-a",
+              "language": "es",
+              "text": "Publicaré la matriz de pruebas."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-024-a"
+        ],
+        "linkableCommitmentIDs": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "case-025",
+      "language": "mixed",
+      "class": "continuation",
+      "candidate": {
+        "sourceMeetingID": "source-case-025",
+        "actionItemID": "action-case-025",
+        "language": "mixed",
+        "text": "Dar follow-up al rollout checklist",
+        "assignee": {
+          "kind": "person",
+          "id": "person-mara"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-025-a",
+          "title": "Dar follow-up al rollout checklist",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-mara"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-025-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-025-a",
+              "meetingID": "meeting-target-case-025-a",
+              "language": "mixed",
+              "text": "Voy a send the rollout checklist by Friday."
+            }
+          ]
+        },
+        {
+          "id": "target-case-025-b",
+          "title": "Preparar un unrelated office inventory",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-025-b"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-025-b",
+              "meetingID": "meeting-target-case-025-b",
+              "language": "mixed",
+              "text": "Facilities va a prepare un unrelated office inventory."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-025-a"
+        ],
+        "linkableCommitmentIDs": [
+          "target-case-025-a"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "case-026",
+      "language": "mixed",
+      "class": "continuation",
+      "candidate": {
+        "sourceMeetingID": "source-case-026",
+        "actionItemID": "action-case-026",
+        "language": "mixed",
+        "text": "Completar el security review",
+        "assignee": {
+          "kind": "person",
+          "id": "person-noah"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-026-a",
+          "title": "Completar el security review",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-026-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-026-a",
+              "meetingID": "meeting-target-case-026-a",
+              "language": "mixed",
+              "text": "Me comprometo to complete the security review."
+            },
+            {
+              "id": "evidence-target-case-026-a-follow-up",
+              "meetingID": "meeting-target-case-026-a",
+              "language": "mixed",
+              "text": "The owner repitió el commitment sobre security review en el follow-up."
+            }
+          ]
+        },
+        {
+          "id": "target-case-026-b",
+          "title": "Preparar un unrelated office inventory",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-priya"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-026-b"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-026-b",
+              "meetingID": "meeting-target-case-026-b",
+              "language": "mixed",
+              "text": "Facilities va a prepare un unrelated office inventory."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-026-a"
+        ],
+        "linkableCommitmentIDs": [
+          "target-case-026-a"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "case-027",
+      "language": "mixed",
+      "class": "continuation",
+      "candidate": {
+        "sourceMeetingID": "source-case-027",
+        "actionItemID": "action-case-027",
+        "language": "mixed",
+        "text": "Review el vendor contract",
+        "assignee": {
+          "kind": "person",
+          "id": "person-priya"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-027-a",
+          "title": "Review el vendor contract",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-priya"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-027-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-027-a",
+              "meetingID": "meeting-target-case-027-a",
+              "language": "mixed",
+              "text": "Voy a review el vendor contract on Monday."
+            }
+          ]
+        },
+        {
+          "id": "target-case-027-b",
+          "title": "Preparar un unrelated office inventory",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-mara"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-027-b"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-027-b",
+              "meetingID": "meeting-target-case-027-b",
+              "language": "mixed",
+              "text": "Facilities va a prepare un unrelated office inventory."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-027-a"
+        ],
+        "linkableCommitmentIDs": [
+          "target-case-027-a"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "case-028",
+      "language": "mixed",
+      "class": "continuation",
+      "candidate": {
+        "sourceMeetingID": "source-case-028",
+        "actionItemID": "action-case-028",
+        "language": "mixed",
+        "text": "Publicar las migration notes",
+        "assignee": {
+          "kind": "person",
+          "id": "person-mara"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-028-a",
+          "title": "Publicar las migration notes",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-mara"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-028-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-028-a",
+              "meetingID": "meeting-target-case-028-a",
+              "language": "mixed",
+              "text": "I will publicar las migration notes mañana."
+            }
+          ]
+        },
+        {
+          "id": "target-case-028-b",
+          "title": "Preparar un unrelated office inventory",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-028-b"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-028-b",
+              "meetingID": "meeting-target-case-028-b",
+              "language": "mixed",
+              "text": "Facilities va a prepare un unrelated office inventory."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-028-a"
+        ],
+        "linkableCommitmentIDs": [
+          "target-case-028-a"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "case-029",
+      "language": "mixed",
+      "class": "ambiguous",
+      "candidate": {
+        "sourceMeetingID": "source-case-029",
+        "actionItemID": "action-case-029",
+        "language": "mixed",
+        "text": "Terminar las release notes",
+        "assignee": {
+          "kind": "person",
+          "id": "person-noah"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-029-a",
+          "title": "Terminar las release notes",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-029-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-029-a",
+              "meetingID": "meeting-target-case-029-a",
+              "language": "mixed",
+              "text": "Voy a finish the release notes before launch."
+            }
+          ]
+        },
+        {
+          "id": "target-case-029-b",
+          "title": "Terminar las release notes (follow-up)",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-029-b"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-029-b",
+              "meetingID": "meeting-target-case-029-b",
+              "language": "mixed",
+              "text": "Voy a finish the release notes before launch during el follow-up."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-029-a",
+          "target-case-029-b"
+        ],
+        "linkableCommitmentIDs": [
+          "target-case-029-a",
+          "target-case-029-b"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "case-030",
+      "language": "mixed",
+      "class": "self-continuation",
+      "candidate": {
+        "sourceMeetingID": "source-case-030",
+        "actionItemID": "action-case-030",
+        "language": "mixed",
+        "text": "Enviar el customer follow-up",
+        "assignee": {
+          "kind": "me",
+          "id": null
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-030-a",
+          "title": "Enviar el customer follow-up",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "me",
+            "id": null
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-030-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-030-a",
+              "meetingID": "meeting-target-case-030-a",
+              "language": "mixed",
+              "text": "I will enviar el customer follow-up esta semana."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-030-a"
+        ],
+        "linkableCommitmentIDs": [
+          "target-case-030-a"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "case-031",
+      "language": "mixed",
+      "class": "wrong-person",
+      "candidate": {
+        "sourceMeetingID": "source-case-031",
+        "actionItemID": "action-case-031",
+        "language": "mixed",
+        "text": "Actualizar el audit report",
+        "assignee": {
+          "kind": "person",
+          "id": "person-mara"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-031-a",
+          "title": "Actualizar el audit report",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-031-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-031-a",
+              "meetingID": "meeting-target-case-031-a",
+              "language": "mixed",
+              "text": "Voy a update the audit report."
+            }
+          ]
+        },
+        {
+          "id": "target-case-031-b",
+          "title": "Preparar un unrelated office inventory",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-mara"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-031-b"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-031-b",
+              "meetingID": "meeting-target-case-031-b",
+              "language": "mixed",
+              "text": "Facilities va a prepare un unrelated office inventory."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-031-a"
+        ],
+        "linkableCommitmentIDs": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "case-032",
+      "language": "mixed",
+      "class": "no-overlap",
+      "candidate": {
+        "sourceMeetingID": "source-case-032",
+        "actionItemID": "action-case-032",
+        "language": "mixed",
+        "text": "Preparar el device inventory",
+        "assignee": {
+          "kind": "person",
+          "id": "person-noah"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-032-a",
+          "title": "Preparar el device inventory",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-032-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-032-a",
+              "meetingID": "meeting-target-case-032-a",
+              "language": "mixed",
+              "text": "Facilities completó un unrelated office inventory."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [],
+        "linkableCommitmentIDs": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "case-033",
+      "language": "mixed",
+      "class": "same-meeting",
+      "candidate": {
+        "sourceMeetingID": "source-case-033",
+        "actionItemID": "action-case-033",
+        "language": "mixed",
+        "text": "Compartir el incident timeline",
+        "assignee": {
+          "kind": "person",
+          "id": "person-priya"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-033-a",
+          "title": "Compartir el incident timeline",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-priya"
+          },
+          "sourceMeetingIDs": [
+            "source-case-033"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-033-a",
+              "meetingID": "source-case-033",
+              "language": "mixed",
+              "text": "Voy a share the incident timeline."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-033-a"
+        ],
+        "linkableCommitmentIDs": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "case-034",
+      "language": "mixed",
+      "class": "inactive-target",
+      "candidate": {
+        "sourceMeetingID": "source-case-034",
+        "actionItemID": "action-case-034",
+        "language": "mixed",
+        "text": "Revisar el deployment plan",
+        "assignee": {
+          "kind": "person",
+          "id": "person-mara"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-034-a",
+          "title": "Revisar el deployment plan",
+          "status": "done",
+          "assignee": {
+            "kind": "person",
+            "id": "person-mara"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-034-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-034-a",
+              "meetingID": "meeting-target-case-034-a",
+              "language": "mixed",
+              "text": "I will revisar el deployment plan."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-034-a"
+        ],
+        "linkableCommitmentIDs": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "case-035",
+      "language": "mixed",
+      "class": "unknown-owner",
+      "candidate": {
+        "sourceMeetingID": "source-case-035",
+        "actionItemID": "action-case-035",
+        "language": "mixed",
+        "text": "Completar el access review",
+        "assignee": {
+          "kind": "unassigned",
+          "id": null
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-035-a",
+          "title": "Completar el access review",
+          "status": "confirmed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-noah"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-035-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-035-a",
+              "meetingID": "meeting-target-case-035-a",
+              "language": "mixed",
+              "text": "Voy a complete the access review."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-035-a"
+        ],
+        "linkableCommitmentIDs": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "case-036",
+      "language": "mixed",
+      "class": "dismissed-target",
+      "candidate": {
+        "sourceMeetingID": "source-case-036",
+        "actionItemID": "action-case-036",
+        "language": "mixed",
+        "text": "Publicar el test matrix",
+        "assignee": {
+          "kind": "person",
+          "id": "person-priya"
+        }
+      },
+      "targets": [
+        {
+          "id": "target-case-036-a",
+          "title": "Publicar el test matrix",
+          "status": "dismissed",
+          "assignee": {
+            "kind": "person",
+            "id": "person-priya"
+          },
+          "sourceMeetingIDs": [
+            "meeting-target-case-036-a"
+          ],
+          "evidence": [
+            {
+              "id": "evidence-target-case-036-a",
+              "meetingID": "meeting-target-case-036-a",
+              "language": "mixed",
+              "text": "I will publicar el test matrix."
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "semanticRelevantCommitmentIDs": [
+          "target-case-036-a"
+        ],
+        "linkableCommitmentIDs": [],
+        "mustAbstain": true
+      }
+    }
+  ]
+}

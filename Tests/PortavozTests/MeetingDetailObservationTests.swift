@@ -1,10 +1,76 @@
 import Foundation
+import GRDB
 import PortavozCore
 import XCTest
 
 @testable import StorageKit
 
 final class MeetingDetailObservationTests: XCTestCase {
+    func testV49IndexesTheCanonicalLiveTranscriptOrder() throws {
+        let database = try DatabaseQueue()
+        let migrator = StorageSchema.migrator()
+        try migrator.migrate(database, upTo: "v48")
+
+        try migrator.migrate(database)
+
+        try database.read { database in
+            XCTAssertEqual(StorageSchema.version, 49)
+            XCTAssertEqual(
+                try String.fetchAll(
+                    database,
+                    sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid"
+                ).last,
+                "v49")
+            let indexSQL = try XCTUnwrap(String.fetchOne(
+                database,
+                sql: """
+                    SELECT sql FROM sqlite_master
+                    WHERE type = 'index' AND name = 'segment_on_live_meeting_order'
+                    """))
+            XCTAssertTrue(
+                indexSQL.contains("ON segment(meetingID, startTime, id)"),
+                indexSQL)
+            XCTAssertTrue(indexSQL.contains("WHERE deletedAt IS NULL"), indexSQL)
+
+            let plan = try Row.fetchAll(
+                database,
+                sql: """
+                    EXPLAIN QUERY PLAN
+                    SELECT * FROM segment
+                    WHERE meetingID = ? AND deletedAt IS NULL
+                    ORDER BY startTime, id
+                    """,
+                arguments: [UUID().uuidString]
+            ).map { $0["detail"] as String }
+            XCTAssertTrue(
+                plan.contains(where: {
+                    $0.contains("USING INDEX segment_on_live_meeting_order")
+                }),
+                "Meeting Detail must use the live-order index: \(plan)")
+            XCTAssertFalse(
+                plan.contains(where: { $0.contains("TEMP B-TREE") }),
+                "Meeting Detail must not sort the complete transcript: \(plan)")
+        }
+    }
+
+    func testObservedStreamReleasesGRDBIteratorWithItsConsumer() async throws {
+        let store = try MeetingStore.inMemory()
+        let cancelled = expectation(description: "GRDB observation cancelled")
+        var token: ObservationLifetimeToken? = ObservationLifetimeToken()
+        weak let releasedToken = token
+
+        try await consumeOneObservation(
+            from: store,
+            retaining: try XCTUnwrap(token),
+            onCancellation: { cancelled.fulfill() })
+        token = nil
+
+        await fulfillment(of: [cancelled], timeout: 1)
+        XCTAssertNil(
+            releasedToken,
+            "Dropping the consumer must release GRDB's observation iterator")
+    }
+
     func testProcessingObservationPublishesDurableRecoveryState() async throws {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(title: "Recovery", startedAt: Date())
@@ -97,6 +163,21 @@ final class MeetingDetailObservationTests: XCTestCase {
         let transcript = try await nextCore(&core) { $0?.segments.count == 1 }
         XCTAssertEqual(transcript?.speakers.first?.displayName, "Ana")
         XCTAssertEqual(transcript?.segments.first?.text, "Publicamos el viernes.")
+        XCTAssertFalse(transcript?.isRefinedTranscript ?? true)
+
+        let correction = TranscriptCorrectionEvent(
+            meetingID: meeting.id,
+            baseTranscriptRevision: meeting.transcriptRevision,
+            targetSegmentIDs: [segment.id],
+            kind: .replaceText(text: "Publicamos este viernes.", language: "es"),
+            sourceDeviceID: UUID(),
+            createdAt: Date())
+        _ = try await store.appendTranscriptCorrection(correction)
+        let correctedCore = try await nextCore(&core) {
+            $0?.corrections.map(\.id) == [correction.id]
+        }
+        XCTAssertEqual(correctedCore?.corrections.map(\.id), [correction.id])
+        XCTAssertEqual(correctedCore?.corrections.map(\.kind), [correction.kind])
 
         let action = ActionItem(text: "Publicar")
         _ = try await store.saveSummary(SummaryDraft(
@@ -211,6 +292,23 @@ final class MeetingDetailObservationTests: XCTestCase {
     }
 }
 
+private func consumeOneObservation(
+    from store: MeetingStore,
+    retaining token: ObservationLifetimeToken,
+    onCancellation: @escaping @Sendable () -> Void
+) async throws {
+    let observation = ValueObservation
+        .tracking { _ in token.marker }
+        .handleEvents(didCancel: onCancellation)
+    var iterator = store.observedStream(observation).makeAsyncIterator()
+    let observed = try await iterator.next()
+    XCTAssertEqual(observed, token.marker)
+}
+
+private final class ObservationLifetimeToken: @unchecked Sendable {
+    let marker = 7
+}
+
 private func nextCore(
     _ iterator: inout AsyncThrowingStream<MeetingStore.MeetingReviewCore?, Error>.Iterator,
     until predicate: (MeetingStore.MeetingReviewCore?) -> Bool = { _ in true }
@@ -235,9 +333,12 @@ private func nextProcessing(
 }
 
 private func nextSummary(
-    _ iterator: inout AsyncThrowingStream<(draft: SummaryDraft, version: Int)?, Error>.Iterator,
-    until predicate: ((draft: SummaryDraft, version: Int)?) -> Bool = { _ in true }
-) async throws -> (draft: SummaryDraft, version: Int)? {
+    _ iterator: inout AsyncThrowingStream<
+        MeetingStore.MeetingReviewSummarySnapshot?,
+        Error
+    >.Iterator,
+    until predicate: (MeetingStore.MeetingReviewSummarySnapshot?) -> Bool = { _ in true }
+) async throws -> MeetingStore.MeetingReviewSummarySnapshot? {
     for _ in 0..<12 {
         let value = try await iterator.next()
         if predicate(value ?? nil) { return value ?? nil }
@@ -246,12 +347,15 @@ private func nextSummary(
 }
 
 private func nextCompanion(
-    _ iterator: inout AsyncThrowingStream<[CompanionCard], Error>.Iterator,
+    _ iterator: inout AsyncThrowingStream<
+        MeetingStore.MeetingReviewCompanionSnapshot,
+        Error
+    >.Iterator,
     until predicate: ([CompanionCard]) -> Bool = { _ in true }
 ) async throws -> [CompanionCard] {
     for _ in 0..<12 {
         let candidate = try await iterator.next()
-        let value = try XCTUnwrap(candidate)
+        let value = try XCTUnwrap(candidate).cards
         if predicate(value) { return value }
     }
     throw MeetingDetailObservationTestError.expectedValue

@@ -111,34 +111,61 @@ final class EnglishSourceTests: XCTestCase {
     }
 
     private static func isAllowedSpanishFixture(_ relative: String, line: String) -> Bool {
-        if relative == "Sources/ApplicationKit/BilingualSearchQueryExpander.swift" {
-            // The explicit EN/ES search lexicon is runtime data, not public
-            // source prose. Its comments and API documentation remain English.
-            return line.contains("pair(")
+        isAllowedSpanishScriptFixture(relative, line: line)
+            || isAllowedSpanishAskMemoryFixture(relative, line: line)
+            || isAllowedSpanishAppFixture(relative, line: line)
+            || isAllowedSpanishBenchmarkFixture(relative, line: line)
+            || isAllowedSpanishDomainData(relative, line: line)
+    }
+
+    private static func isAllowedSpanishScriptFixture(
+        _ relative: String,
+        line: String
+    ) -> Bool {
+        if relative == "scripts/ask_quality.py" {
+            // The canonical public Ask benchmark generator carries literal
+            // Spanish fixture data. Comments and explanatory prose stay English.
+            return line.contains("f\"") || line.contains(".replace(\"")
+                || line.contains("owners = [")
         }
-        if relative == "Sources/IntelligenceKit/SummaryOutputAdmission.swift" {
-            // This exact line is a bilingual stop-word lexicon used as data by
-            // evidence admission; all explanatory source prose remains English.
-            return line.contains("acordo") && line.contains("reunión")
+        if relative == "scripts/retrieval_chunk_resource_fixture.py" {
+            // The canonical resource fixture generator carries literal
+            // Spanish fixture data. Comments and explanatory prose stay English.
+            return line.trimmingCharacters(in: .whitespaces).hasPrefix("f\"")
         }
-        if relative == "Sources/portavoz-app/SettingsView.swift", line.contains("Español") {
-            return true
+        if relative == "scripts/meeting_memory_graph_quality.py" {
+            // The canonical Meeting Memory Graph generator carries literal
+            // Spanish question/evidence fixture data. Explanatory prose stays English.
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            return line.contains("\"questionSpanish\":")
+                || trimmed.hasPrefix("f\"")
+                || trimmed.hasPrefix("\"")
+                || trimmed.hasPrefix("return f\"")
         }
-        if relative == "Sources/portavoz-app/SettingsView+Intelligence.swift",
-            line.contains("Español") {
-            // Native language name shown in the transcription-language pin.
-            return true
+        if relative == "scripts/generate-live-question-training.py" {
+            // The checked-in classifier corpus generator carries only quoted
+            // bilingual training examples; comments and policy stay English.
+            return line.trimmingCharacters(in: .whitespaces).hasPrefix("\"")
         }
-        if relative == "Sources/portavoz-app/MeetingDetailView.swift", line.contains("Español") {
-            return true
-        }
-        if relative == "Sources/ApplicationKit/MeetingRecap.swift" {
-            // The recap speaks the MEETING's language (D136), so its section
-            // labels are a bilingual content table rather than UI prose.
-            // Explanatory source prose in this file stays English.
-            return line.contains("reunión") || line.contains("transcripción")
-                || line.contains("título")
-        }
+        return false
+    }
+
+    private static func isAllowedSpanishAskMemoryFixture(
+        _ relative: String,
+        line: String
+    ) -> Bool {
+        // The exact blocker XCUITest deliberately verifies one Spanish
+        // decision in both UI locales; all explanatory prose stays English.
+        relative
+            == "Sources/portavoz-app/AppServices+AskCommitmentBlockerUITestFixture.swift"
+            && line.contains(
+                "La revisión de seguridad debe aprobarse antes del rollout")
+    }
+
+    private static func isAllowedSpanishAppFixture(
+        _ relative: String,
+        line: String
+    ) -> Bool {
         if relative == "Sources/portavoz-app/AppServices+Showcase.swift" {
             // The -seed-showcase library is deliberately Spanish fictional
             // prose: the bilingual transcript is what the screenshot shows.
@@ -168,12 +195,43 @@ final class EnglishSourceTests: XCTestCase {
             // data so both locales verify answer content without a model.
             return line.contains("El presupuesto se revisó")
         }
+        if relative == "Sources/portavoz-app/AppServices+InterviewAssist.swift" {
+            // The disposable interview adapter mirrors the canonical public
+            // Spanish source and answer without invoking a host model.
+            return line.contains("Avisaría a la responsable de base de datos")
+                || line.contains("Camila avisaría a la responsable de base de datos")
+                || line.contains("minutos y congelaría escrituras")
+        }
+        if relative == "Sources/portavoz-app/AppServices+StartRecording.swift" {
+            // The temp-store interview capture fixture mirrors the canonical
+            // public Spanish transcript. Production explanatory prose remains English.
+            return line.contains("Camila: Avisaría")
+                || line.contains("en cinco minutos y congelaría")
+                || line.contains("de reconstruir réplicas")
+                || line.contains("Camila: No desactivaría alertas")
+                || line.contains("¿Qué haría Camila primero")
+                || line.contains("¿Puedes explicar por qué el despliegue pasó al viernes?")
+        }
+        if relative
+            == "Sources/portavoz-app/ProductionSyncQualificationCorpus.swift" {
+            // The exact production-sync evidence corpus deliberately carries
+            // one public Spanish transcript segment; explanatory prose stays
+            // English and every other Spanish source line remains rejected.
+            return line.contains("Aprobamos el plan público de calificación.")
+        }
         if relative == "Sources/portavoz-app/BenchMode.swift" {
             // Synthetic Spanish meeting fed to the --mlx-smoke in-app check.
             return line.contains("Revisemos el presupuesto")
                 || line.contains("dólares")
                 || line.contains("migración")
         }
+        return false
+    }
+
+    private static func isAllowedSpanishBenchmarkFixture(
+        _ relative: String,
+        line: String
+    ) -> Bool {
         if relative == "Sources/portavoz-cli/CLIBenchFTS.swift" {
             // Synthetic Spanish corpus + queries for the T4 FTS benchmark.
             return line.contains("presupuesto") || line.contains("qué acordamos")
@@ -184,6 +242,61 @@ final class EnglishSourceTests: XCTestCase {
             // Synthetic bilingual corpus and queries for the Band 4 scale
             // matrix; this is data, not public explanatory prose.
             return true
+        }
+        if relative == "Sources/portavoz-cli/CLIBenchRetrievalChunkEvidence.swift" {
+            // Fixed public EN/ES warmup data verifies both language-specific
+            // semantic paths before resource sampling.
+            return line.contains("Preparación semántica pública")
+        }
+        if relative == "Sources/portavoz-cli/CLIAsk.swift", line.contains("qué") {
+            return true
+        }
+        return false
+    }
+
+    private static func isAllowedSpanishDomainData(
+        _ relative: String,
+        line: String
+    ) -> Bool {
+        if relative == "Sources/ApplicationKit/BilingualSearchQueryExpander.swift" {
+            // The explicit EN/ES search lexicon is runtime data, not public
+            // source prose. Its comments and API documentation remain English.
+            return line.contains("pair(")
+        }
+        if relative == "Sources/IntelligenceKit/SummaryOutputAdmission.swift" {
+            // This exact line is a bilingual stop-word lexicon used as data by
+            // evidence admission; all explanatory source prose remains English.
+            return line.contains("acordo") && line.contains("reunión")
+        }
+        if relative == "Sources/portavoz-app/SettingsView.swift", line.contains("Español") {
+            return true
+        }
+        if relative == "Sources/portavoz-app/SettingsView+Intelligence.swift",
+            line.contains("Español") {
+            // Native language name shown in the transcription-language pin.
+            return true
+        }
+        if [
+            "Sources/portavoz-app/MeetingDetailView.swift",
+            "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+            "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+        ].contains(relative), line.contains("Español") {
+            // Native language name shown in Meeting Detail generation menus.
+            return true
+        }
+        if relative == "Sources/ApplicationKit/MeetingRecap.swift" {
+            // The recap speaks the MEETING's language (D136), so its section
+            // labels are a bilingual content table rather than UI prose.
+            // Explanatory source prose in this file stays English.
+            return line.contains("reunión") || line.contains("transcripción")
+                || line.contains("título")
+        }
+        if relative == "Sources/ApplicationKit/GitHubIssueSkill.swift" {
+            // The reviewed issue scaffold follows the meeting-summary
+            // language, so these exact Spanish labels are shared content,
+            // not app UI or explanatory source prose.
+            return line.contains("Tarea de reunión de")
+                || line.contains("revisión explícita")
         }
         if relative == "Sources/IntelligenceKit/Companion.swift" {
             return line.contains("qué") || line.contains("cómo") || line.contains("¿")
@@ -196,29 +309,18 @@ final class EnglishSourceTests: XCTestCase {
             return line.contains("habitual") || line.contains("balance de habla")
                 || line.contains("pregunta")
         }
-        if relative == "Sources/IntelligenceKit/PromptFactory.swift", line.contains("Spanish (español)") {
-            return true
+        if relative == "Sources/IntelligenceKit/PromptFactory.swift" {
+            // Provider-neutral prompt data includes bilingual few-shot examples
+            // so chapter and meeting titles preserve the source language.
+            return line.contains("Spanish (español)")
+                || line.contains("repaso del presupuesto de transcripción")
+                || line.contains("resumen sobre el presupuesto de transcripción")
         }
         if relative == "Sources/IntelligenceKit/SummaryFingerprint.swift", line.contains("José") {
             return true
         }
         if relative == "Sources/TranscriptionKit/VocabularyPrompt.swift",
             line.contains("En esta reunión hablamos de ") {
-            return true
-        }
-        if relative == "Sources/IntelligenceKit/TitleSuggester.swift",
-            line.contains("resumen sobre el presupuesto") {
-            // Intentional Spanish few-shot example: titles must come out in
-            // the summary's language, so the prompt shows both languages.
-            return true
-        }
-        if relative == "Sources/IntelligenceKit/ChapterTitler.swift",
-            line.contains("presupuesto de transcripción") {
-            // Intentional Spanish few-shot: chapter titles must come out in
-            // the transcript's language, so the prompt shows both.
-            return true
-        }
-        if relative == "Sources/portavoz-cli/CLIAsk.swift", line.contains("qué") {
             return true
         }
         return false

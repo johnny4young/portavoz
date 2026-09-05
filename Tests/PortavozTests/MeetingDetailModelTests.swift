@@ -35,6 +35,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
             .processingJobs([]), .notes(MeetingReviewNotes()),
+            .commitmentReviewStates([]),
         ])
         let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
 
@@ -51,6 +52,7 @@ final class MeetingDetailModelTests: XCTestCase {
         let missingClient = MeetingDetailModelClientFake(updates: [
             .core(nil), .summary(nil), .companionCards([]), .privacyReceipt(nil),
             .processingJobs([]), .notes(MeetingReviewNotes()),
+            .commitmentReviewStates([]),
         ])
         let missing = MeetingDetailModel(
             meetingID: fixture.meeting.id,
@@ -91,7 +93,49 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertEqual(model.state.readModel?.summary?.version, 1)
         XCTAssertEqual(model.state.readModel?.segments.map(\.id), [fixture.segment.id])
         XCTAssertEqual(model.state.readModel?.companionCards.map(\.id), [fixture.card.id])
-        XCTAssertEqual(model.state.revision, 7)
+        XCTAssertEqual(model.state.revision, 8)
+    }
+
+    func testCorrectionRevisionMarksGeneratedSummaryAndCompanionTruthfullyStale() async throws {
+        let fixture = MeetingDetailModelFixture()
+        let correction = TranscriptCorrectionEvent(
+            meetingID: fixture.meeting.id,
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            targetSegmentIDs: [fixture.segment.id],
+            kind: .replaceText(text: "Este viernes.", language: "es"),
+            sourceDeviceID: UUID(),
+            createdAt: Date())
+        let revision = try TranscriptCorrectionRevision.current(
+            meetingID: fixture.meeting.id,
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            history: [correction])
+        let stale = MeetingReviewReadModel(
+            core: MeetingReviewCore(
+                meeting: fixture.meeting,
+                speakers: [fixture.speaker],
+                segments: [fixture.segment],
+                corrections: [correction]),
+            summary: fixture.summary,
+            companionCards: [fixture.card],
+            privacyReceipt: nil,
+            processingJobs: [])
+
+        XCTAssertEqual(stale.correctionRevision, revision)
+        XCTAssertEqual(stale.summaryFreshness, .stale)
+        XCTAssertEqual(stale.companionFreshness(fixture.card), .stale)
+
+        let current = MeetingReviewReadModel(
+            core: stale.core,
+            summary: MeetingReviewSummary(
+                draft: fixture.summary.draft,
+                version: fixture.summary.version,
+                correctionSource: .revision(revision)),
+            companionCards: [fixture.card],
+            companionCorrectionSources: [fixture.card.id: .revision(revision)],
+            privacyReceipt: nil,
+            processingJobs: [])
+        XCTAssertEqual(current.summaryFreshness, .current)
+        XCTAssertEqual(current.companionFreshness(fixture.card), .current)
     }
 
     func testMutationActionsOwnPersistenceEffectsAndSearchInvalidation() async {
@@ -155,6 +199,351 @@ final class MeetingDetailModelTests: XCTestCase {
         }
         XCTAssertEqual(id, fixture.meeting.id)
         XCTAssertNil(model.state.lastActionError)
+    }
+
+    /// The retraction gesture reaches the client with the exact link identity
+    /// and leaves no stale error behind.
+    func testRetractingADecisionTopicLinkCallsTheClientWithItsIdentity() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        let retraction = DecisionTopicLinkRetraction(linkID: DecisionTopicLinkID())
+
+        await model.send(.retractDecisionTopic(retraction))
+
+        XCTAssertEqual(client.calls, [.retractDecisionTopic(retraction.linkID)])
+        XCTAssertNil(model.state.lastActionError)
+    }
+
+    /// The skill gesture routes the exact offer and destination to the client
+    /// and reloads offers so the banner reflects the durable outcome.
+    func testSkillActionsRouteOfferIdentityAndReloadOffers() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        let offer = MeetingSkillOffer(
+            kind: .packageExport,
+            meetingID: fixture.meeting.id)
+        let preview = MeetingSkillPreview.packageExport(
+            meetingTitle: fixture.meeting.title,
+            destination: "/tmp/x.portavoz")
+        let proposalID = UUID()
+        let proposedAt = Date(timeIntervalSince1970: 100)
+
+        let effect = await model.send(
+            .performSkill(
+                offer,
+                proposalID: proposalID,
+                proposedAt: proposedAt,
+                preview: preview,
+                destination: "/tmp/x.portavoz"))
+        await model.send(.dismissSkillOffer(offer))
+
+        guard case .skillPerformed(let performed, let outputURL) = effect else {
+            return XCTFail("a successful run must report its effect")
+        }
+        XCTAssertEqual(performed.offerKey, offer.offerKey)
+        XCTAssertNil(outputURL)
+        XCTAssertTrue(client.calls.contains(
+            .performSkill(
+                offer.offerKey,
+                proposalID,
+                proposedAt,
+                preview,
+                "/tmp/x.portavoz")))
+        XCTAssertTrue(client.calls.contains(.dismissSkillOffer(offer.offerKey)))
+        XCTAssertNil(model.state.lastActionError)
+    }
+
+    func testSkillRetryRoutesTheOriginalProposalIdentity() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        client.skillFailuresRemaining = 1
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        let offer = MeetingSkillOffer(
+            kind: .recapDraft,
+            meetingID: fixture.meeting.id)
+        let preview = MeetingSkillPreview.recap(subject: "Recap", body: "Body")
+        let proposalID = UUID()
+        let proposedAt = Date(timeIntervalSince1970: 100)
+
+        let first = await model.send(.performSkill(
+            offer,
+            proposalID: proposalID,
+            proposedAt: proposedAt,
+            preview: preview,
+            destination: nil))
+        let retry = await model.send(.performSkill(
+            offer,
+            proposalID: proposalID,
+            proposedAt: proposedAt,
+            preview: preview,
+            destination: nil))
+
+        XCTAssertNil(first)
+        guard case .skillPerformed = retry else {
+            return XCTFail("the original proposal must remain retryable")
+        }
+        let attempts = client.calls.compactMap { call -> (UUID, Date)? in
+            guard case .performSkill(
+                _, let routedID, let routedDate, _, _
+            ) = call else {
+                return nil
+            }
+            return (routedID, routedDate)
+        }
+        XCTAssertEqual(attempts.map(\.0), [proposalID, proposalID])
+        XCTAssertEqual(attempts.map(\.1), [proposedAt, proposedAt])
+    }
+
+    func testAmbiguousGistResultClosesRetryPathAndPreservesKnownURL() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let outputURL = URL(string: "https://gist.github.com/example/result")
+        client.skillExecutionResult = .outcomeUnknown(
+            message: "Check GitHub",
+            outputURL: outputURL)
+        let model = MeetingDetailModel(
+            meetingID: fixture.meeting.id,
+            client: client)
+        let offer = MeetingSkillOffer(
+            kind: .secretGistPublish,
+            meetingID: fixture.meeting.id)
+        let preview = MeetingSkillPreview.secretGist(SecretGistDraft(
+            meetingID: fixture.meeting.id,
+            markdown: "# Approved",
+            filename: "approved.md",
+            description: "Approved"))
+
+        let effect = await model.send(.performSkill(
+            offer,
+            proposalID: UUID(),
+            proposedAt: Date(),
+            preview: preview,
+            destination: nil))
+
+        guard case .skillOutcomeUnknown(
+            let performed,
+            let message,
+            let preservedURL
+        ) = effect else {
+            return XCTFail("ambiguous remote work must not become retryable")
+        }
+        XCTAssertEqual(performed, offer)
+        XCTAssertEqual(message, "Check GitHub")
+        XCTAssertEqual(preservedURL, outputURL)
+        XCTAssertNil(model.state.lastActionError)
+    }
+
+    func testGitHubIssuePreparationAndExecutionPreserveExactReviewedMaterial() async throws {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let draft = GitHubIssueDraft(
+            meetingID: fixture.meeting.id,
+            actionItemID: fixture.actionItem.id,
+            repository: try XCTUnwrap(GitHubRepository("portavoz/demo")),
+            title: fixture.actionItem.text,
+            body: "Approved body",
+            citations: [GitHubIssueCitation(
+                segmentID: fixture.segment.id,
+                timestamp: fixture.segment.startTime,
+                speaker: "Ana",
+                excerpt: fixture.segment.text)])
+        client.gitHubIssueDraft = draft
+        client.gitHubIssueExecutionResult = .succeeded(
+            outputURL: URL(string: "https://github.com/portavoz/demo/issues/42"))
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        let request = PrepareGitHubIssueDraftRequest(
+            meetingID: fixture.meeting.id,
+            actionItemID: fixture.actionItem.id,
+            repository: "portavoz/demo")
+        let proposalID = UUID()
+        let proposedAt = Date(timeIntervalSince1970: 100)
+
+        let prepared = await model.send(.prepareGitHubIssue(request))
+        let performed = await model.send(.performGitHubIssue(
+            draft,
+            proposalID: proposalID,
+            proposedAt: proposedAt))
+
+        guard case .gitHubIssuePrepared(let preparedDraft) = prepared else {
+            return XCTFail("preparation must return the exact immutable draft")
+        }
+        XCTAssertEqual(preparedDraft, draft)
+        guard case .gitHubIssuePerformed(let outputURL) = performed else {
+            return XCTFail("successful confirmation must preserve the GitHub URL")
+        }
+        XCTAssertEqual(outputURL?.absoluteString, "https://github.com/portavoz/demo/issues/42")
+        XCTAssertTrue(client.calls.contains(.prepareGitHubIssue(request)))
+        XCTAssertTrue(client.calls.contains(
+            .performGitHubIssue(draft, proposalID, proposedAt)))
+        XCTAssertNil(model.state.lastActionError)
+    }
+
+    func testAmbiguousGitHubIssueResultIsTerminalAndPreservesKnownURL() async throws {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let outputURL = URL(string: "https://github.com/portavoz/demo/issues/42")
+        let draft = GitHubIssueDraft(
+            meetingID: fixture.meeting.id,
+            actionItemID: fixture.actionItem.id,
+            repository: try XCTUnwrap(GitHubRepository("portavoz/demo")),
+            title: fixture.actionItem.text,
+            body: "Approved body",
+            citations: [GitHubIssueCitation(
+                segmentID: fixture.segment.id,
+                timestamp: fixture.segment.startTime,
+                speaker: "Ana",
+                excerpt: fixture.segment.text)])
+        client.gitHubIssueExecutionResult = .outcomeUnknown(
+            message: "Check GitHub before taking another action.",
+            outputURL: outputURL)
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+
+        let effect = await model.send(.performGitHubIssue(
+            draft,
+            proposalID: UUID(),
+            proposedAt: Date()))
+
+        guard case .gitHubIssueOutcomeUnknown(let message, let preservedURL) = effect else {
+            return XCTFail("ambiguous remote work must not become retryable")
+        }
+        XCTAssertEqual(message, "Check GitHub before taking another action.")
+        XCTAssertEqual(preservedURL, outputURL)
+        XCTAssertNil(model.state.lastActionError)
+    }
+
+    func testCommitmentAdmissionAndReviewStayBehindTheFeatureOwner() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        let confirmation = ConfirmMeetingCommitmentRequest(
+            meetingID: fixture.meeting.id,
+            actionItemID: fixture.actionItem.id,
+            title: fixture.actionItem.text,
+            canonicalPersonID: fixture.person.id)
+        let review = ReviewMeetingCommitmentRequest.dismiss(
+            meetingID: fixture.meeting.id,
+            actionItemID: fixture.actionItem.id)
+
+        let confirmationEffect = await model.send(.confirmCommitment(confirmation))
+        let reviewEffect = await model.send(.reviewCommitment(review))
+
+        guard case .commitmentConfirmed(let commitment) = confirmationEffect else {
+            return XCTFail("explicit admission must return confirmed user truth")
+        }
+        XCTAssertEqual(commitment, client.confirmedCommitmentResult)
+        guard case .commitmentReviewSaved = reviewEffect else {
+            return XCTFail("review treatment must return a typed success effect")
+        }
+        XCTAssertEqual(client.calls, [
+            .confirmCommitment(confirmation),
+            .reviewCommitment(review),
+        ])
+        XCTAssertEqual(client.searchReindexRequests, 1)
+        XCTAssertEqual(client.memoryGraphReindexRequests, 1)
+        XCTAssertNil(model.state.lastActionError)
+
+        client.failures = [.confirmCommitment, .reviewCommitment]
+        let failedConfirmation = await model.send(.confirmCommitment(confirmation))
+        XCTAssertNil(failedConfirmation)
+        XCTAssertEqual(client.searchReindexRequests, 1)
+        XCTAssertEqual(client.memoryGraphReindexRequests, 1)
+        XCTAssertNotNil(model.state.lastActionError)
+        let failedReview = await model.send(.reviewCommitment(review))
+        XCTAssertNil(failedReview)
+        XCTAssertNotNil(model.state.lastActionError)
+    }
+
+    func testTranscriptCorrectionReturnsTypedEffectAndReindexesCorrectedSearch() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let correction = TranscriptCorrectionEvent(
+            meetingID: fixture.meeting.id,
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            targetSegmentIDs: [fixture.segment.id],
+            kind: .replaceText(text: "Este viernes.", language: "es"),
+            sourceDeviceID: UUID(),
+            createdAt: Date())
+        client.correctionResult = CorrectMeetingTranscriptResult(events: [correction])
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        let original = MeetingTranscriptContent.Row(
+            id: fixture.segment.id,
+            sourceSegmentIDs: [fixture.segment.id],
+            speakerID: fixture.segment.speakerID,
+            channel: fixture.segment.channel,
+            text: fixture.segment.text,
+            language: fixture.segment.language,
+            startTime: fixture.segment.startTime,
+            endTime: fixture.segment.endTime,
+            confidence: fixture.segment.confidence,
+            isFinal: fixture.segment.isFinal)
+        let request = CorrectMeetingTranscriptRequest(
+            meetingID: fixture.meeting.id,
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            original: original,
+            correctedText: "Este viernes.",
+            correctedSpeakerID: fixture.speaker.id)
+
+        let effect = await model.send(.correctTranscript(request))
+
+        guard case .transcriptCorrected(let result) = effect else {
+            return XCTFail("the model must preserve the typed correction result")
+        }
+        XCTAssertEqual(result.events, [correction])
+        XCTAssertEqual(client.calls, [.correctTranscript(request)])
+        XCTAssertEqual(client.searchReindexRequests, 1)
+        XCTAssertNil(model.state.lastActionError)
+
+        client.failures.insert(.correctTranscript)
+        let failed = await model.send(.correctTranscript(request))
+        guard case .operationFailed = failed else {
+            return XCTFail("persistence failures must stay visible to the editor")
+        }
+        XCTAssertEqual(client.searchReindexRequests, 1)
+        XCTAssertNotNil(model.state.lastActionError)
+    }
+
+    func testTranscriptRestructureReturnsTypedEffectAndReindexesCorrectedSearch() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let accepted = MeetingTranscriptContent.accepted(
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            segments: [fixture.segment],
+            chapterTitles: [:],
+            baseMaterial: .raw)
+        let correction = TranscriptCorrectionEvent(
+            meetingID: fixture.meeting.id,
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            targetSegmentIDs: [fixture.segment.id],
+            kind: .suppress,
+            sourceDeviceID: UUID(),
+            createdAt: Date())
+        client.restructureResult = RestructureMeetingTranscriptResult(event: correction)
+        let request = RestructureMeetingTranscriptRequest(
+            meetingID: fixture.meeting.id,
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            accepted: accepted,
+            operation: .suppress(sourceSegmentID: fixture.segment.id))
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+
+        let effect = await model.send(.restructureTranscript(request))
+
+        guard case .transcriptRestructured(let result) = effect else {
+            return XCTFail("the model must preserve the typed restructure result")
+        }
+        XCTAssertEqual(result.event, correction)
+        XCTAssertEqual(client.calls, [.restructureTranscript(request)])
+        XCTAssertEqual(client.searchReindexRequests, 1)
+        XCTAssertNil(model.state.lastActionError)
+
+        client.failures.insert(.restructureTranscript)
+        let failed = await model.send(.restructureTranscript(request))
+        guard case .operationFailed = failed else {
+            return XCTFail("structural persistence failures must remain visible")
+        }
+        XCTAssertEqual(client.searchReindexRequests, 1)
+        XCTAssertNotNil(model.state.lastActionError)
     }
 
     func testDocumentNameAndVoiceActionsStayBehindTheFeatureOwner() async {
@@ -315,6 +704,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
             .processingJobs([]), .notes(MeetingReviewNotes()),
+            .commitmentReviewStates([]),
         ])
         let model = MeetingDetailModel(meetingID: meeting.id, client: client)
         let destination = FileManager.default.temporaryDirectory
@@ -356,6 +746,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
             .processingJobs([]), .notes(MeetingReviewNotes()),
+            .commitmentReviewStates([]),
         ])
         client.playbackCancellationsRemaining = 1
         let model = MeetingDetailModel(meetingID: meeting.id, client: client)
@@ -602,6 +993,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
             .processingJobs([]), .notes(MeetingReviewNotes()),
+            .commitmentReviewStates([]),
         ]
     }
 
@@ -669,7 +1061,7 @@ private struct MeetingDetailModelFixture {
         [
             .core(core), .summary(summary), .companionCards([card]),
             .privacyReceipt(receipt), .processingJobs([]),
-            .notes(MeetingReviewNotes())
+            .notes(MeetingReviewNotes()), .commitmentReviewStates([])
         ]
     }
 
@@ -691,6 +1083,7 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     var calls: [MeetingDetailModelCall] = []
     var failures: Set<MeetingDetailModelFailure> = []
     var searchReindexRequests = 0
+    var memoryGraphReindexRequests = 0
     var canRememberVoiceResult = true
     var rememberVoiceResult: ManageMeetingVoiceMemoryResult = .remembered
     var metadataSuggestionsResult = MeetingReviewMetadataSuggestions()
@@ -698,6 +1091,22 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     var playbackCancellationsRemaining = 0
     var preparedPlaybackResult: PreparedMeetingPlayback?
     var compressionResult = MeetingAudioCompressionResult(bytesFreed: 1_024)
+    var skillFailuresRemaining = 0
+    var skillExecutionResult: MeetingDetailSkillExecutionResult?
+    var gitHubIssueDraft: GitHubIssueDraft?
+    var gitHubIssueExecutionResult: MeetingDetailSkillExecutionResult?
+    var confirmedCommitmentResult = Commitment(
+        title: "Prepare the rollout",
+        createdAt: Date(timeIntervalSince1970: 1_700_000_000))
+    var correctionResult = CorrectMeetingTranscriptResult(events: [])
+    var restructureResult = RestructureMeetingTranscriptResult(event:
+        TranscriptCorrectionEvent(
+            meetingID: MeetingID(),
+            baseTranscriptRevision: 0,
+            targetSegmentIDs: [UUID()],
+            kind: .suppress,
+            sourceDeviceID: UUID(),
+            createdAt: Date()))
     var prepareDocumentError: (any Error)?
     var publishGistError: (any Error)?
     var nameSuggestionsResult: [MeetingNameSuggestion] = [
@@ -739,6 +1148,22 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
         try fail(.renameSpeaker)
     }
 
+    func correctMeetingDetailTranscript(
+        _ request: CorrectMeetingTranscriptRequest
+    ) throws -> CorrectMeetingTranscriptResult {
+        calls.append(.correctTranscript(request))
+        try fail(.correctTranscript)
+        return correctionResult
+    }
+
+    func restructureMeetingDetailTranscript(
+        _ request: RestructureMeetingTranscriptRequest
+    ) async throws -> RestructureMeetingTranscriptResult {
+        calls.append(.restructureTranscript(request))
+        try fail(.restructureTranscript)
+        return restructureResult
+    }
+
     func findMeetingDetailPeople(matchingAlias alias: String) throws -> [Person] {
         calls.append(.findPeople(alias))
         try fail(.findPeople)
@@ -773,6 +1198,21 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
         try fail(.setActionItem)
     }
 
+    func confirmMeetingDetailCommitment(
+        _ request: ConfirmMeetingCommitmentRequest
+    ) throws -> Commitment {
+        calls.append(.confirmCommitment(request))
+        try fail(.confirmCommitment)
+        return confirmedCommitmentResult
+    }
+
+    func reviewMeetingDetailCommitment(
+        _ request: ReviewMeetingCommitmentRequest
+    ) throws {
+        calls.append(.reviewCommitment(request))
+        try fail(.reviewCommitment)
+    }
+
     func setMeetingDetailSummaryClaimFeedback(
         _ feedback: SummaryClaimFeedback?,
         for claimID: SummaryClaimID,
@@ -780,6 +1220,97 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     ) throws {
         calls.append(.setClaimFeedback(claimID, feedback, meetingID))
         try fail(.setClaimFeedback)
+    }
+
+    func confirmMeetingDetailDecision(
+        _ request: ConfirmDecisionAboutTopicRequest
+    ) throws -> DecisionAboutTopicOutcome {
+        DecisionAboutTopicOutcome(
+            observationID: request.observationID,
+            decisionID: DecisionID(),
+            topicLabel: nil)
+    }
+
+    func retractMeetingDetailDecisionTopic(
+        _ retraction: DecisionTopicLinkRetraction
+    ) throws {
+        calls.append(.retractDecisionTopic(retraction.linkID))
+    }
+
+    func meetingDetailSkillOffers(
+        meetingID: MeetingID,
+        hasSummary: Bool
+    ) throws -> [MeetingSkillOffer] {
+        calls.append(.loadSkillOffers(meetingID, hasSummary))
+        return hasSummary
+            ? [MeetingSkillOffer(kind: .recapDraft, meetingID: meetingID)]
+            : []
+    }
+
+    func meetingDetailSkillReceipts(
+        meetingID: MeetingID
+    ) throws -> [MeetingSkillReceipt] {
+        []
+    }
+
+    func meetingDetailSkillPreview(
+        _ offer: MeetingSkillOffer,
+        destination: String?
+    ) throws -> MeetingSkillPreview {
+        .recap(subject: "Recap", body: "Body")
+    }
+
+    func performMeetingDetailSkill(
+        _ offer: MeetingSkillOffer,
+        proposalID: UUID,
+        proposedAt: Date,
+        preview: MeetingSkillPreview,
+        destination: String?
+    ) throws -> MeetingDetailSkillExecutionResult {
+        calls.append(.performSkill(
+            offer.offerKey,
+            proposalID,
+            proposedAt,
+            preview,
+            destination))
+        if skillFailuresRemaining > 0 {
+            skillFailuresRemaining -= 1
+            return .retryableFailure("failed")
+        }
+        return skillExecutionResult ?? .succeeded(outputURL: nil)
+    }
+
+    func prepareMeetingDetailGitHubIssueDraft(
+        _ request: PrepareGitHubIssueDraftRequest
+    ) throws -> GitHubIssueDraft {
+        calls.append(.prepareGitHubIssue(request))
+        guard let gitHubIssueDraft else {
+            throw GitHubIssueSkillError.invalidDraft
+        }
+        return gitHubIssueDraft
+    }
+
+    func performMeetingDetailGitHubIssue(
+        _ draft: GitHubIssueDraft,
+        proposalID: UUID,
+        proposedAt: Date
+    ) throws -> MeetingDetailSkillExecutionResult {
+        calls.append(.performGitHubIssue(draft, proposalID, proposedAt))
+        return gitHubIssueExecutionResult ?? .succeeded(outputURL: nil)
+    }
+
+    func dismissMeetingDetailSkillOffer(_ offer: MeetingSkillOffer) throws {
+        calls.append(.dismissSkillOffer(offer.offerKey))
+    }
+
+    func meetingDetailDecisionConfirmations(
+        for observationIDs: [SummaryDecisionID]
+    ) throws -> [DecisionObservationConfirmationState] {
+        []
+    }
+
+    func meetingDetailLinkableTopics() throws -> [LinkableTopic] {
+        []
     }
 
     func deleteMeetingDetailCompanionCard(_ id: UUID) throws {
@@ -799,8 +1330,10 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
 
     func prepareMeetingDetailDocument(
         _ meetingID: MeetingID,
-        format: MeetingDocumentFormat
+        format: MeetingDocumentFormat,
+        options: MeetingDocumentOptions
     ) throws -> PreparedMeetingDocument {
+        _ = options
         calls.append(.prepareDocument(meetingID, format))
         if let prepareDocumentError { throw prepareDocumentError }
         try fail(.prepareDocument)
@@ -809,7 +1342,11 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
             filename: "planning.\(format == .markdown ? "md" : "pdf")")
     }
 
-    func publishMeetingDetailGist(_ meetingID: MeetingID) throws -> URL {
+    func publishMeetingDetailGist(
+        _ meetingID: MeetingID,
+        options: MeetingDocumentOptions
+    ) throws -> URL {
+        _ = options
         calls.append(.publishGist(meetingID))
         if let publishGistError { throw publishGistError }
         try fail(.publishGist)
@@ -895,6 +1432,10 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
         searchReindexRequests += 1
     }
 
+    func requestMeetingDetailMemoryGraphReindex() {
+        memoryGraphReindexRequests += 1
+    }
+
     private func fail(_ failure: MeetingDetailModelFailure) throws {
         if failures.contains(failure) { throw failure }
     }
@@ -903,9 +1444,13 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
 private enum MeetingDetailModelFailure: String, CaseIterable, Error, LocalizedError {
     case renameMeeting
     case renameSpeaker
+    case correctTranscript
+    case restructureTranscript
     case findPeople
     case linkPerson
     case setActionItem
+    case confirmCommitment
+    case reviewCommitment
     case setClaimFeedback
     case deleteCompanion
     case deleteMeeting
@@ -927,9 +1472,13 @@ private enum MeetingDetailModelCall: Equatable {
     case observe(MeetingID)
     case renameMeeting(String)
     case renameSpeaker(String?)
+    case correctTranscript(CorrectMeetingTranscriptRequest)
+    case restructureTranscript(RestructureMeetingTranscriptRequest)
     case findPeople(String)
     case linkPerson(SpeakerID, PersonID?)
     case setActionItem(UUID, Bool)
+    case confirmCommitment(ConfirmMeetingCommitmentRequest)
+    case reviewCommitment(ReviewMeetingCommitmentRequest)
     case setClaimFeedback(SummaryClaimID, SummaryClaimFeedback?, MeetingID)
     case deleteCompanion(UUID)
     case deleteMeeting(MeetingID)
@@ -947,4 +1496,10 @@ private enum MeetingDetailModelCall: Equatable {
     case exportAudioClip(String, ClosedRange<TimeInterval>, URL)
     case checkVoiceMemoryOffer(String)
     case rememberVoice(MeetingID, SpeakerID)
+    case retractDecisionTopic(DecisionTopicLinkID)
+    case loadSkillOffers(MeetingID, Bool)
+    case performSkill(String, UUID, Date, MeetingSkillPreview, String?)
+    case prepareGitHubIssue(PrepareGitHubIssueDraftRequest)
+    case performGitHubIssue(GitHubIssueDraft, UUID, Date)
+    case dismissSkillOffer(String)
 }

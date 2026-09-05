@@ -166,6 +166,13 @@ private struct CommandPaletteView: View {
                 }
                 .onSubmit { model.submit() }
                 .accessibilityIdentifier("palette-query-field")
+            Label("Library", systemImage: "books.vertical")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .help(L10n.text(
+                    "The command palette searches only your local meeting library."))
+                .accessibilityLabel(L10n.text("Answer source: Library"))
+                .accessibilityIdentifier("palette-source-library")
             if model.state.answer != nil {
                 Button {
                     controller.copyAnswer()
@@ -218,6 +225,16 @@ private struct CommandPaletteView: View {
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityIdentifier("palette-answer")
+            if let status = AskAnswerPresentation.statusText(
+                for: answer.generationOutcome,
+                hasCitations: !answer.citations.isEmpty
+            ) {
+                Label(status, systemImage: "cpu")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(
+                        "palette-generation-\(answer.generationOutcome.rawValue)")
+            }
             if !answer.citations.isEmpty {
                 FlowCitations(citations: answer.citations) { citation in
                     controller.navigate(to: citation)
