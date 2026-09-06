@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 105
+    "expectedCaseCount": 106
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -13,6 +13,14 @@
     "englishTestDurationSeconds": 2591.999,
     "spanishP95Seconds": 50.21,
     "spanishTestDurationSeconds": 2607.498
+  },
+  "qualifiedCandidate": {
+    "caseCount": 105,
+    "englishP95Seconds": 20.265,
+    "englishTestDurationSeconds": 1108.209,
+    "spanishP95Seconds": 20.678,
+    "spanishTestDurationSeconds": 1114.714,
+    "targetedRemediationCaseCountPerLocale": 4
   },
   "schemaVersion": 1,
   "testBudgetsSeconds": {
@@ -35,6 +43,7 @@
     "LibraryUITests/testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence()": 20.0,
     "LibraryUITests/testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence()": 20.0,
     "LibraryUITests/testAskConversationAnswersAndSeeksToExactCitation()": 25.105,
+    "LibraryUITests/testCaptureFailureSurvivesStopAndRelaunchWithPlayablePrefix()": 30.0,
     "LibraryUITests/testColdRecordingStartsLiveCaptionsWhenModelBecomesReady()": 20.0,
     "LibraryUITests/testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState()": 26.026,
     "LibraryUITests/testDatabaseLaunchFailureOffersSafeRecovery()": 20.0,
@@ -121,13 +130,5 @@
     "SkillsSettingsUITests/testSuggestedActionsExplainReviewFirstSafety()": 20.0,
     "SkillsSettingsUITests/testWaitingReceiptIgnoresUnavailablePolicyAndReviewsSourceWithoutRunning()": 24.924,
     "SkillsSettingsUITests/testWaitingSkillApprovalCanBeRevokedBeforeHandoff()": 24.508
-  },
-  "qualifiedCandidate": {
-    "caseCount": 105,
-    "englishP95Seconds": 20.265,
-    "englishTestDurationSeconds": 1108.209,
-    "spanishP95Seconds": 20.678,
-    "spanishTestDurationSeconds": 1114.714,
-    "targetedRemediationCaseCountPerLocale": 4
   }
 }

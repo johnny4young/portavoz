@@ -15,13 +15,13 @@ final class MeetingSyncStateTests: XCTestCase {
             startedAt: Date(timeIntervalSince1970: 1_784_282_400))
         let timestamp = Date(timeIntervalSince1970: 1_784_282_401)
         try database.write { db in
-            try MeetingRecord(meeting, createdAt: timestamp, updatedAt: timestamp).insert(db)
+            try MeetingRecord(meeting, createdAt: timestamp, updatedAt: timestamp).insertPreCaptureReportFixture(db)
         }
 
         try migrator.migrate(database)
 
         try database.write { db in
-            XCTAssertEqual(StorageSchema.version, 49)
+            XCTAssertEqual(StorageSchema.version, 50)
             XCTAssertEqual(
                 try Set(db.columns(in: "meetingSyncState").map(\.name)),
                 [

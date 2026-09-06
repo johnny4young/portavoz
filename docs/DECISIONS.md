@@ -18334,3 +18334,39 @@ CI policy, or thresholds to satisfy an invalid event-order assumption.
 normal queued cleanup is no longer mistaken for an immediate leak. This is a
 test synchronization correction, not proof of a new product memory defect or a
 replacement for longer resource/physical qualification.
+
+## D482 — Bound capture backlog without hiding incomplete audio (Sep 2026)
+
+**Context:** native PCM admission prevented invalid reads and arithmetic traps,
+but both producers still retained an unbounded stream and materialized whole
+clock gaps. Stop already measured writer frames and errors, but the application
+handoff discarded them; a healthy published prefix could look like a complete
+recording after derived processing succeeded.
+
+**Decision:** use one pull-driven, fixed-capacity packet ring per producer.
+Admit native/resampled allocations before copying; retain at most 1,048,576
+mono frames and 256 descriptors per channel, represent gaps as counts, and
+expand at most 4096 frames on demand. These are explicit initial engineering
+ceilings, not measured hardware certification. Overflow rejects the triggering
+callback, closes admission, reports failure immediately, and retires only its
+hardware graph off IO. Previously accepted packets still drain at Stop.
+No dropping-oldest/newest policy is allowed on the durable capture lane.
+
+Persist an additive, content-free `CaptureReport` on the Meeting root in schema
+v50, atomically with Stop. Accepted/padding/rejected-at-admission/written counts
+remain integers; unsupported producer evidence and ambiguous writer failures
+remain nil, never invented zero/success. Capture loss, inserted silence, and
+publication failure are independent of CAF health and processing lifecycle.
+The report survives bundle remapping and private-sync projection; legacy peers
+cannot erase an existing report, and contradictory reports reject replay.
+Microphone failures become visible in the recording view/HUD; Meeting Detail
+retains the warning across processing and relaunch without offering a false
+"recover missing audio" action.
+
+**Consequences:** queued PCM and descriptor growth are bounded, but the native
+platform, the current callback's admitted scratch arrays, and one in-flight
+pull are additional memory. A long symbolic gap still costs proportional disk
+space and drain time. Native write interruption may leave an unknown partial
+append; successful-append counts are not physical fsync guarantees. Real device
+routes, lowest-memory hardware, disk pressure, permissions, and multi-hour
+resource qualification remain explicit gates, not inferred from synthetic tests.

@@ -33,6 +33,8 @@ public struct Meeting: Codable, Sendable, Identifiable {
     public var transcriptRevision: Int
     /// Stable local error code for the last exhausted required processing step.
     public var lastProcessingError: String?
+    /// Immutable capture evidence; nil in legacy/imported meetings means unknown.
+    public var captureReport: CaptureReport?
 
     public init(
         id: MeetingID = MeetingID(),
@@ -45,7 +47,8 @@ public struct Meeting: Codable, Sendable, Identifiable {
         visibility: String = "private",
         lifecycleState: MeetingLifecycleState = .ready,
         transcriptRevision: Int = 0,
-        lastProcessingError: String? = nil
+        lastProcessingError: String? = nil,
+        captureReport: CaptureReport? = nil
     ) {
         self.id = id
         self.title = title
@@ -58,12 +61,13 @@ public struct Meeting: Codable, Sendable, Identifiable {
         self.lifecycleState = lifecycleState
         self.transcriptRevision = transcriptRevision
         self.lastProcessingError = lastProcessingError
+        self.captureReport = captureReport
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, title, startedAt, endedAt, language, audioDirectory
         case retention, visibility, lifecycleState, transcriptRevision
-        case lastProcessingError
+        case lastProcessingError, captureReport
     }
 
     /// Additive bundle compatibility: meetings exported before schema v6 do
@@ -84,6 +88,7 @@ public struct Meeting: Codable, Sendable, Identifiable {
             Int.self, forKey: .transcriptRevision) ?? 0
         lastProcessingError = try container.decodeIfPresent(
             String.self, forKey: .lastProcessingError)
+        captureReport = try container.decodeIfPresent(CaptureReport.self, forKey: .captureReport)
     }
 }
 

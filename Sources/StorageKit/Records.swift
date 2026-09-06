@@ -39,6 +39,7 @@ struct MeetingRecord: Codable, FetchableRecord, PersistableRecord {
     var lifecycleState: String
     var transcriptRevision: Int
     var lastProcessingError: String?
+    var captureReport: Data?
     var createdAt: Date
     var updatedAt: Date
     var deletedAt: Date?
@@ -55,6 +56,7 @@ struct MeetingRecord: Codable, FetchableRecord, PersistableRecord {
         self.lifecycleState = meeting.lifecycleState.rawValue
         self.transcriptRevision = meeting.transcriptRevision
         self.lastProcessingError = meeting.lastProcessingError
+        self.captureReport = try meeting.captureReport.map(Self.encodeCaptureReport)
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.deletedAt = deletedAt
@@ -80,9 +82,16 @@ struct MeetingRecord: Codable, FetchableRecord, PersistableRecord {
                 visibility: visibility,
                 lifecycleState: lifecycleState,
                 transcriptRevision: transcriptRevision,
-                lastProcessingError: lastProcessingError
+                lastProcessingError: lastProcessingError,
+                captureReport: try captureReport.map { try JSONDecoder().decode(CaptureReport.self, from: $0) }
             )
         }
+    }
+
+    static func encodeCaptureReport(_ report: CaptureReport) throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        return try encoder.encode(report)
     }
 
     static func encode(_ policy: AudioRetentionPolicy) throws -> String {

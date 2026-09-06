@@ -1306,7 +1306,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 47. It includes:
+The current schema version is 50. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
@@ -5897,3 +5897,19 @@ truth.
 All explanatory documentation under `docs/` is written in English. Literal
 localized UI copy and bilingual transcript fixtures may remain quoted as test
 evidence.
+
+### Capture conservation authority
+
+Native capture uses a single bounded pull buffer per channel, rather than an
+unbounded asynchronous stream. The fixed packet ring accounts for retained PCM
+and metadata separately, keeps route gaps symbolic, and expands bounded chunks
+only when the writer consumes them. Overflow closes producer admission and
+quiesces that graph off IO while preserving accepted packets for Stop.
+
+`CaptureReport` is an optional, validated Meeting-root value stored atomically
+in schema v50 and carried by existing bundle/sync codecs. It separates capture
+completeness from media-file health and derived processing success. Per-channel
+counts are exact where known and explicitly nullable otherwise; dependency
+error text is excluded. Recording presentation observes immediate microphone
+and system failures, while Meeting Detail reads the durable report. A legacy
+sync peer cannot erase existing capture evidence.

@@ -50,13 +50,16 @@ public struct StopRecordingCapture: Sendable {
     /// recover the complete transcript from finalized audio, even if another
     /// lane emitted a partial live transcript.
     public let transcriptRequiresRecovery: Bool
+    public let captureReport: CaptureReport?
 
     public init(
         publishedFiles: [AudioChannel: StopRecordingPublishedFile],
-        transcriptRequiresRecovery: Bool = false
+        transcriptRequiresRecovery: Bool = false,
+        captureReport: CaptureReport? = nil
     ) {
         self.publishedFiles = publishedFiles
         self.transcriptRequiresRecovery = transcriptRequiresRecovery
+        self.captureReport = captureReport
     }
 }
 
@@ -72,6 +75,7 @@ public protocol StopRecordingStore: Sendable {
         _ meetingID: MeetingID,
         errorCode: String,
         endedAt: Date,
+        captureReport: CaptureReport?,
         at timestamp: Date
     ) async throws -> Meeting
     func installStoppedSnapshot(
@@ -85,12 +89,14 @@ extension MeetingStore: StopRecordingStore {
         _ meetingID: MeetingID,
         errorCode: String,
         endedAt: Date,
+        captureReport: CaptureReport?,
         at timestamp: Date
     ) async throws -> Meeting {
         try await markMeetingNeedsAttention(
             meetingID,
             errorCode: errorCode,
             endedAt: endedAt,
+            captureReport: captureReport,
             at: timestamp)
     }
 
@@ -195,6 +201,7 @@ public enum StopRecordingFailure: Error, Equatable, CodedFailure, Sendable {
 public enum StopRecordingResult: Sendable {
     case completed(StopRecordingCommit)
     case audioRecoveryPreserved(StopRecordingCommit)
+    case failedCapturePreserved(StopRecordingCommit)
     case transcriptEmpty(StopRecordingCommit)
     case noAudioCaptured
     case localStateUnavailable(StopRecordingFailure)
@@ -300,6 +307,7 @@ public struct StopRecording: ApplicationUseCase {
             return .localStateUnavailable(.localStateUnavailable)
         }
 
+        meeting.captureReport = request.capture.captureReport
         guard !request.capture.publishedFiles.isEmpty else {
             return await reconcileEmptyCapture(
                 meeting: meeting,
@@ -309,6 +317,7 @@ public struct StopRecording: ApplicationUseCase {
         }
 
         meeting.endedAt = timestamp
+        meeting.captureReport = request.capture.captureReport
         meeting.lifecycleState = .captured
         meeting.lastProcessingError = nil
         let attribution = SpeakerAttributor.attribute(
@@ -488,15 +497,17 @@ private extension StopRecording {
         audioDirectory: String,
         timestamp: Date
     ) async -> StopRecordingResult {
-        if await hasReservedCaptureFile(assets, audioDirectory: audioDirectory) {
+        let hasFile = await hasReservedCaptureFile(assets, audioDirectory: audioDirectory)
+        if hasFile || meeting.captureReport?.requiresAttention == true {
             do {
                 let preserved = try await store.markStoppedMeetingNeedsAttention(
                     meeting.id,
-                    errorCode: "capture.publication.failed",
+                    errorCode: hasFile ? "capture.publication.failed" : "capture.no-audio",
                     endedAt: timestamp,
+                    captureReport: meeting.captureReport,
                     at: timestamp)
-                return .audioRecoveryPreserved(
-                    StopRecordingCommit(meeting: preserved, assets: assets))
+                let commit = StopRecordingCommit(meeting: preserved, assets: assets)
+                return hasFile ? .audioRecoveryPreserved(commit) : .failedCapturePreserved(commit)
             } catch {
                 return .processingFailed(failure: .recoveryPersistenceFailed, fallback: nil)
             }

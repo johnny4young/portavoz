@@ -26,6 +26,7 @@ public actor RecordingSession {
         public let rms: [AudioChannel: Float]
         /// Capture errors per channel; a failed channel doesn't kill the session.
         public let errors: [AudioChannel: String]
+        public let captureReport: CaptureReport?
 
         public init(
             files: [AudioChannel: URL],
@@ -34,7 +35,8 @@ public actor RecordingSession {
             peaks: [AudioChannel: Float] = [:],
             rms: [AudioChannel: Float] = [:],
             publishedFiles: [AudioChannel: PublishedCaptureFile] = [:],
-            errors: [AudioChannel: String] = [:]
+            errors: [AudioChannel: String] = [:],
+            captureReport: CaptureReport? = nil
         ) {
             self.files = files
             self.publishedFiles = publishedFiles
@@ -43,6 +45,7 @@ public actor RecordingSession {
             self.peaks = peaks
             self.rms = rms
             self.errors = errors
+            self.captureReport = captureReport
         }
 
         /// Absolute difference in written duration between mic and system —
@@ -68,6 +71,9 @@ public actor RecordingSession {
     private var peaks: [AudioChannel: Float] = [:]
     private var rms: [AudioChannel: Float] = [:]
     private var errors: [AudioChannel: String] = [:]
+    private var startedChannels: Set<AudioChannel> = []
+    private var reportingSources: [AudioChannel: any CaptureReportingSource] = [:]
+    private var failures: [AudioChannel: CaptureFailure] = [:]
     private let systemLiveness: SystemCaptureLivenessMonitor
     public private(set) var isRecording = false
 
@@ -110,7 +116,12 @@ public actor RecordingSession {
                 let channel = source.channel
                 let stagingURL = outputDirectory.appendingPathComponent(
                     AudioCapturePath.stagingFilename(for: channel))
+                if let reporting = source as? any CaptureReportingSource {
+                    reporting.setCaptureFailureHandler { onHealthEvent?(.streamFailed(channel: channel)) }
+                    reportingSources[channel] = reporting
+                }
                 let stream = try await source.start()
+                startedChannels.insert(channel)
                 let owned = OwnedSource(source: source)
                 sources[channel] = owned
                 consumers[channel] = makeConsumer(
@@ -146,8 +157,10 @@ public actor RecordingSession {
             var peak: Float = 0
             var sumSquares = 0.0
             var sampleCount: Int64 = 0
+            var writing = false
             do {
                 for try await chunk in stream {
+                    writing = true
                     if writer == nil {
                         let created = try CaptureFileWriter(
                             url: stagingURL, sampleRate: chunk.sampleRate)
@@ -155,6 +168,7 @@ public actor RecordingSession {
                         await self?.register(writer: created, for: channel)
                     }
                     try writer?.append(chunk.samples)
+                    writing = false
                     let signal = PersistedChunkSignal.measure(chunk.samples)
                     peak = max(peak, signal.peak)
                     sumSquares += signal.sumSquares
@@ -172,6 +186,7 @@ public actor RecordingSession {
                         timestamp: chunk.timestamp,
                         duration: chunk.duration))
                 }
+                try Task.checkCancellation()
                 await self?.report(
                     peak: peak,
                     rms: PersistedChunkSignal.rms(
@@ -187,13 +202,22 @@ public actor RecordingSession {
                         sumSquares: sumSquares, sampleCount: sampleCount),
                     error: String(describing: error),
                     for: channel)
-                onHealthEvent?(.streamFailed(channel: channel))
+                await self?.recordFailure(
+                    writing ? .writerFailed : (error as? CaptureDeliveryFailure)?.cause
+                        ?? (error is CancellationError ? .cancelled : .sourceFailed), for: channel)
+                if (source.source as? any CaptureReportingSource)?.captureReport.failure == nil {
+                    onHealthEvent?(.streamFailed(channel: channel))
+                }
                 // Retire the failed producer off its realtime callback. A
                 // completed consumer must not leave hardware/queued PCM alive
                 // until the user eventually stops an otherwise healthy peer.
                 await self?.retireFailedSource(channel: channel, ownerID: source.id)
             }
         }
+    }
+
+    private func recordFailure(_ failure: CaptureFailure, for channel: AudioChannel) {
+        failures[channel] = failure
     }
 
     private func retireFailedSource(channel: AudioChannel, ownerID: UUID) async {
@@ -246,6 +270,7 @@ public actor RecordingSession {
         for (channel, error) in publication.errors {
             errors[channel] = errors[channel].map { "\($0); \(error)" } ?? error
         }
+        let captureReport = captureReport(frames: frames, publicationErrors: Set(publication.errors.keys))
         let summary = Summary(
             files: publication.files,
             framesWritten: frames,
@@ -253,14 +278,38 @@ public actor RecordingSession {
             peaks: measuredPeaks,
             rms: measuredRMS,
             publishedFiles: publication.publishedFiles,
-            errors: errors)
+            errors: errors,
+            captureReport: captureReport)
 
         peaks.removeAll()
         rms.removeAll()
         errors.removeAll()
+        failures.removeAll()
+        startedChannels.removeAll()
+        reportingSources.removeAll()
         systemLiveness.reset()
 
         return summary
+    }
+
+    private func captureReport(
+        frames: [AudioChannel: Int64], publicationErrors: Set<AudioChannel>
+    ) -> CaptureReport? {
+        let channelReports = startedChannels.map { channel in
+            let producer = reportingSources[channel]?.captureReport
+            let failure = producer?.failure ?? failures[channel]
+            return CaptureChannelReport(
+                channel: channel, acceptedFrames: producer?.acceptedFrames,
+                paddingFrames: producer?.paddingFrames, rejectedFrames: producer?.rejectedFrames,
+                writtenFrames: failures[channel] == .writerFailed ? nil : frames[channel] ?? 0,
+                failure: failure, publicationFailed: publicationErrors.contains(channel))
+        }
+        // Reports are constructed from checked native counts, not dependency text.
+        do {
+            return channelReports.isEmpty ? nil : try CaptureReport(channels: channelReports)
+        } catch {
+            return CaptureReport.unverified(channels: startedChannels)
+        }
     }
 
     private func handleLiveness(

@@ -57,6 +57,12 @@ struct RecordingView: View {
                 if controller.systemAudioClipping && !clippingWarningDismissed {
                     systemAudioClippingBanner
                 }
+                if controller.microphoneCaptureFailed {
+                    Label(L10n.text("Microphone capture failed. Stop and start a new recording."),
+                          systemImage: "mic.slash.fill")
+                        .foregroundStyle(.orange)
+                        .accessibilityIdentifier("recording-microphone-capture-failure")
+                }
                 if controller.systemCaptureHealth != .healthy {
                     systemCaptureHealthBanner
                 }

@@ -191,6 +191,43 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testCaptureFailureSurvivesStopAndRelaunchWithPlayablePrefix() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let app = XCUIApplication.portavoz()
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DATABASE_PATH"] = directory.appendingPathComponent("library.sqlite").path
+        app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] = directory.appendingPathComponent("audio").path
+        app.launchArguments.append("-simulate-capture-prefix-failure")
+        app.launchPortavoz()
+        defer { app.terminate() }
+        let record = app.buttons["library-new-recording-button"]
+        XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
+        record.click()
+        XCTAssertTrue(app.control(withIdentifier: "recording-microphone-capture-failure")
+            .waitForExistenceFast(timeout: 10))
+        let stop = app.buttons["recording-stop"]
+        XCTAssertTrue(stop.waitForExistenceFast(timeout: 5))
+        stop.click()
+        XCTAssertTrue(app.control(withIdentifier: "detail-capture-failure-microphone")
+            .waitForExistenceFast(timeout: 15))
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "-simulate-capture-prefix-failure" }
+        app.launchPortavoz()
+        let meeting = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
+            .firstMatch
+        XCTAssertTrue(meeting.waitForExistenceFast(timeout: 15))
+        meeting.click()
+        XCTAssertTrue(app.control(withIdentifier: "detail-capture-report").waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(app.control(withIdentifier: "detail-capture-failure-microphone").exists)
+        XCTAssertFalse(app.control(withIdentifier: "detail-capture-failure-system").exists)
+        XCTAssertTrue(app.control(withIdentifier: "player-play-pause").waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(app.control(withIdentifier: "player-play-pause").isEnabled)
+        attachScreenshot(of: app, named: "capture-prefix-relaunch")
+    }
+
+    @MainActor
     func testRecordingWarnsWhenRemoteAudioCallbacksStop() {
         let app = XCUIApplication.portavoz(simulateSystemCaptureStall: true)
         app.launchPortavoz()

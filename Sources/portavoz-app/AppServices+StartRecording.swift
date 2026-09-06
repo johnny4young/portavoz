@@ -19,6 +19,9 @@ extension AppServices {
                 audioRoot: Self.audioRoot,
                 durationSeconds: (try? BenchRecordingResourcePolicy.duration(
                     arguments: ProcessInfo.processInfo.arguments)) ?? 0)
+        } else if ProcessInfo.processInfo.arguments.contains("-use-temp-store"),
+                  ProcessInfo.processInfo.arguments.contains("-simulate-capture-prefix-failure") {
+            runtime = UITestCaptureFailureRuntime(audioRoot: Self.audioRoot)
         } else if isRecordingFailureFixture {
             runtime = UITestStartRecordingFailureRuntime()
         } else if isSystemCaptureStallFixture {

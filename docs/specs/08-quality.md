@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,917 cases (15 environment-gated) + 105
+Status: the package inventory contains 3,008 cases (15 environment-gated) + 106
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -17,7 +17,7 @@ sequential destination compiles and cannot claim runtime/device behavior.
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
-Meeting Detail tests. The English and Spanish release gates each cover all 105
+Meeting Detail tests. The English and Spanish release gates each cover all 106
 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
@@ -7250,3 +7250,23 @@ list headers are borrowed and freed separately. Coherent empty/nil-data planes
 remain a valid empty result. Disabled data is recoverable unavailability; a
 following complete buffer must retain every original frame. Existing silence-file and recording-error tests
 continue to require channel preservation, not false successful silence.
+
+### Capture conservation regression contract (D482)
+
+The queue tests cover exact accepted-prefix drain, bounded symbolic two-hour
+gaps, metadata saturation, pre-copy/resample rejection, cancellation and fixed
+25-run ring-wrap stress. Native temporary CAF tests reconcile writer lengths
+and source counts while preserving a healthy peer. Persistence tests distinguish
+legacy unknown evidence, corruption, schema-v49 migration, bundle remapping,
+private-sync replay and processing/reopen survival. One real-app XCUITest
+journey exercises microphone failure, Stop and relaunch with playable prefixes.
+Its new case has a 30-second initial ceiling; existing per-test and full-suite
+budgets are unchanged. The catalog grows from 105 to 106. This is not physical
+route, lowest-memory hardware, permission, fsync or CloudKit field certification.
+
+Pre-v50 migration fixtures insert a frozen v6–v49 row shape rather than using
+current Codable persistence to write columns that did not exist. Current-schema
+assertions still require the exact version and complete ordered migration list.
+Unfolding-stream cancellation tests cover both pre-poll closure release and a
+parked consumer; the session checks cancellation after iteration because Swift
+allows a cancelled asynchronous stream to return nil rather than throw.

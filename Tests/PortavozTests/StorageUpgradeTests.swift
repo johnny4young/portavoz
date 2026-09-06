@@ -149,7 +149,7 @@ final class StorageUpgradeTests: XCTestCase {
                 meeting,
                 createdAt: timestamp,
                 updatedAt: timestamp
-            ).insert(database)
+            ).insertPreCaptureReportFixture(database)
             var record = SegmentRecord(
                 segment,
                 createdAt: timestamp,

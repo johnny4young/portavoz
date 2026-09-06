@@ -120,10 +120,11 @@ malformed views reject before sample access, and uninspectable external audio
 is not mislabeled silent (D479). This closes a
 source-level numeric-trap risk, not a reproduced hardware crash. Normal route-gap
 padding and accepted CAF frames are characterized without weakening conservation.
-Whole-gap silence arrays and unbounded source-stream buffering still need an
-explicit memory/backpressure design; splitting an array alone does not bound the
-queue. Physical route changes, long suspension, slow consumers, Sequoia/Tahoe
-hardware and the existing resource-variance admission remain open evidence gates.
+D482 replaces whole-gap allocations and the unbounded queue with bounded native
+admission, a fixed packet ring, and symbolic pull expansion. Typed per-channel
+evidence survives Stop independently of processing. Physical route changes,
+long suspension, slow native disks, Sequoia/Tahoe hardware and the existing
+resource-variance admission remain open evidence gates.
 
 ### Current Ask retrieval attribution boundary
 
@@ -459,3 +460,13 @@ work/evidence rather than being converted into a local PASS claim.
   were audited against their key sources; every one is unique by construction
   (a primary key, a `Set`, or `enumerated()`). The rule to keep is that a new
   site must state which of those three guarantees it relies on.
+
+## Capture conservation qualification after bounded delivery
+
+D482 bounds retained PCM/metadata and pull expansion and preserves typed capture
+failure evidence independently of processing. It does not certify native
+allocation/RSS, low-memory hardware, physical input/output route transitions,
+disk pressure/partial native writes, or multi-hour drain latency. Symbolic
+silence still costs proportional disk writes; rejected-frame evidence describes
+only admission, not all later missing time. Legacy captures/sources remain
+unknown. Keep Sequoia/Tahoe physical, accessibility and CloudKit field gates.

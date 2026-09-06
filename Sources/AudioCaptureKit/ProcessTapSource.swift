@@ -4,6 +4,7 @@ import AVFAudio
 import CoreAudio
 import Foundation
 import PortavozCore
+import os
 
 /// Captures the audio *output* of specific processes (or all of them) via a
 /// Core Audio process tap on a private aggregate device (macOS 14.4+).
@@ -24,7 +25,7 @@ import PortavozCore
 /// `@unchecked Sendable`: Core Audio object IDs are plain integers; mutable
 /// state is owned by `start()`/`stop()` and the serialized IO/rebuild queues.
 @available(macOS 14.4, *)
-public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked Sendable {
+public final class ProcessTapSource: RecoverableAudioCaptureSource, CaptureReportingSource, @unchecked Sendable {
     public let channel: AudioChannel = .system
 
     private let processIDs: [pid_t]
@@ -35,7 +36,24 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
     private var tapID = AudioObjectID(kAudioObjectUnknown)
     private var aggregateID = AudioObjectID(kAudioObjectUnknown)
     private var ioProcID: AudioDeviceIOProcID?
-    private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
+    private let delivery = CaptureDeliveryBuffer(channel: .system)
+    private var continuation: CaptureDeliveryBuffer?
+    private let failureHandler = OSAllocatedUnfairLock<(@Sendable () -> Void)?>(initialState: nil)
+
+    public var captureReport: CaptureChannelReport { delivery.report() }
+
+    public func setCaptureFailureHandler(_ handler: @escaping @Sendable () -> Void) {
+        failureHandler.withLock { $0 = handler }
+    }
+
+    private func observeDeliveryFailure() {
+        delivery.setFailureHandler { [weak self] in
+            guard let self else { return }
+            self.failureHandler.withLock { $0 }?()
+            // Never mutate the hardware graph from its realtime callback.
+            self.rebuildQueue.async { [weak self] in self?.stopOnRebuildQueue() }
+        }
+    }
     private var outputListener: AudioObjectPropertyListenerBlock?
     private var routeTransitions = AudioRouteTransitionGate()
     /// Rate of the first graph; the stream promises this rate for its whole
@@ -66,7 +84,12 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
 
     /// Owns every mutable Core Audio graph identifier on `rebuildQueue`.
     private func startOnRebuildQueue() throws -> AsyncThrowingStream<AudioChunk, Error> {
-        let (stream, continuation) = AsyncThrowingStream<AudioChunk, Error>.makeStream()
+        guard delivery.isAccepting, continuation == nil else {
+            throw CaptureDeliveryFailure(cause: .sourceFailed)
+        }
+        observeDeliveryFailure()
+        let stream = delivery.stream()
+        let continuation = delivery
         self.continuation = continuation
         routeTransitions.activate()
         do {
@@ -145,14 +168,16 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
         let status = AudioDeviceCreateIOProcIDWithBlock(
             &procID, aggregate, ioQueue
         ) { [weak self] _, inputData, inputTime, _, _ in
-            guard let self else { return }
+            guard let self, continuation.isAccepting else { return }
             var samples: [Float]
             let elapsed: TimeInterval
             // Pad the output-switch downtime with silence so the system file
             // stays aligned with wall-clock (and the mic channel).
             let plan: CapturePCMGeometry.Delivery
             do {
-                samples = try Downmix.mono(fromBufferList: inputData, format: format)
+                samples = try Downmix.mono(fromBufferList: inputData, format: format) { frames in
+                    try continuation.admitNativeFrames(frames, sourceRate: nativeRate, targetRate: targetRate)
+                }
                 guard !samples.isEmpty else { return }
                 elapsed = clock.elapsed(hostTime: inputTime.pointee.mHostTime)
                 if nativeRate != targetRate {
@@ -164,25 +189,16 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
             } catch Downmix.InputError.unavailable {
                 // Disabled native input keeps its stream/route recovery alive.
                 return
+            } catch let failure as CaptureDeliveryFailure {
+                continuation.finish(failure: failure.cause)
+                return
             } catch {
-                continuation.finish(throwing: AudioCaptureError.unsupportedFormat)
+                continuation.finish(failure: .invalidFormat)
                 return
             }
-            if plan.paddingFrameCount > 0 {
-                continuation.yield(AudioChunk(
-                    channel: .system,
-                    samples: [Float](repeating: 0, count: plan.paddingFrameCount),
-                    sampleRate: targetRate,
-                    timestamp: plan.paddingTimestamp
-                ))
+            if continuation.append(samples: samples, rate: targetRate, timestamp: elapsed, plan: plan) {
+                self.setDelivered(plan.deliveredFrameCount)
             }
-            continuation.yield(AudioChunk(
-                channel: .system,
-                samples: samples,
-                sampleRate: targetRate,
-                timestamp: elapsed
-            ))
-            self.setDelivered(plan.deliveredFrameCount)
         }
         try check(status, "AudioDeviceCreateIOProcIDWithBlock")
         ioProcID = procID
@@ -295,6 +311,7 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
         destroyGraph()
         continuation?.finish()
         continuation = nil
+        failureHandler.withLock { $0 = nil }
     }
 
     // MARK: - Core Audio plumbing

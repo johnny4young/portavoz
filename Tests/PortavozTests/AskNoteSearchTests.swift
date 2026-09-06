@@ -105,7 +105,7 @@ final class AskNoteSearchTests: XCTestCase {
                 meeting,
                 createdAt: insertedAt,
                 updatedAt: insertedAt
-            ).insert(database)
+            ).insertPreCaptureReportFixture(database)
             try ContextItemRecord(
                 note,
                 createdAt: insertedAt,
@@ -129,7 +129,7 @@ final class AskNoteSearchTests: XCTestCase {
                 try String.fetchOne(
                     database,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid DESC LIMIT 1"),
-                "v49")
+                "v50")
         }
     }
 

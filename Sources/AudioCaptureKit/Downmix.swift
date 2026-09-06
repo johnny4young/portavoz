@@ -15,8 +15,11 @@ enum Downmix {
         let planar: Bool
     }
 
-    static func mono(from buffer: AVAudioPCMBuffer) throws -> [Float] {
-        try mono(fromBufferList: buffer.audioBufferList, format: buffer.format.streamDescription.pointee)
+    static func mono(
+        from buffer: AVAudioPCMBuffer, admitFrames: ((Int) throws -> Void)? = nil
+    ) throws -> [Float] {
+        try mono(fromBufferList: buffer.audioBufferList, format: buffer.format.streamDescription.pointee,
+                 admitFrames: admitFrames)
     }
 
     static func layout(
@@ -59,11 +62,13 @@ enum Downmix {
     }
 
     static func mono(
-        fromBufferList list: UnsafePointer<AudioBufferList>, format: AudioStreamBasicDescription
+        fromBufferList list: UnsafePointer<AudioBufferList>, format: AudioStreamBasicDescription,
+        admitFrames: ((Int) throws -> Void)? = nil
     ) throws -> [Float] {
         let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: list))
         let layout = try layout(of: buffers, format: format)
         guard layout.frames > 0 else { return [] }
+        try admitFrames?(layout.frames)
         if layout.channels == 1 {
             return Array(UnsafeBufferPointer(
                 start: try samplePointer(buffers[0]), count: layout.frames))

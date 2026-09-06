@@ -3552,3 +3552,18 @@ or writes host Reminders or TCC. The bilingual real-app journey covers preview,
 explicit access, exact destination, confirmation, offer retirement, and both
 receipt surfaces. Physical Sequoia/Tahoe TCC prompt, default-list, and save
 behavior remain field evidence.
+
+### Persistent capture warnings (D482)
+
+The recording surface and compact HUD expose microphone failure separately
+from remote callback liveness. Stop does not automatically terminate the healthy
+peer before the user decides. Meeting Detail displays a durable per-channel
+capture warning above derived artifacts; processing success cannot dismiss it.
+Copy explicitly distinguishes reviewing available audio from recovering missing
+audio. The disposable real-session fixture drives a finite public PCM prefix
+through native CAF publication, Stop, SQLite, and app relaunch without hardware
+permissions, installed models, or private meetings.
+
+Zero-file failure preserves a `capture.no-audio` record and does not claim that
+an audio recovery file exists. Failure callbacks carry the recording generation,
+so delayed notifications cannot contaminate a later recording's health state.

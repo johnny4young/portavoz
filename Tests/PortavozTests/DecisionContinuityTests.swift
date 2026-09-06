@@ -21,18 +21,18 @@ final class DecisionContinuityTests: XCTestCase {
                 legacyMeeting,
                 createdAt: legacyMeeting.startedAt,
                 updatedAt: legacyMeeting.startedAt)
-                .insert(db)
+                .insertPreCaptureReportFixture(db)
         }
 
         try migrator.migrate(database)
 
         try database.read { db in
-            XCTAssertEqual(StorageSchema.version, 49)
+            XCTAssertEqual(StorageSchema.version, 50)
             XCTAssertEqual(
                 try String.fetchAll(
                     db,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid").last,
-                "v49")
+                "v50")
             XCTAssertEqual(
                 try Set(db.columns(in: "decisionContinuity").map(\.name)),
                 ["id", "statement", "status", "createdAt", "updatedAt", "deletedAt"])

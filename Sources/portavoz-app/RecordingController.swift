@@ -152,6 +152,8 @@ final class RecordingController {
     /// from finalized audio through the durable worker.
     private(set) var liveTranscriptState = LiveTranscriptState.idle
     private(set) var systemCaptureHealth = RecordingSystemCaptureHealth.healthy
+    private(set) var microphoneCaptureFailed = false
+    private var captureHealthGeneration = UUID()
     private var systemRecoveryNoticeTask: Task<Void, Never>?
 
     /// Live speaker hints (field ask jul 2026: two remote voices back to back
@@ -282,9 +284,7 @@ final class RecordingController {
                 }
             },
             level: { levelRelay.submit($0) },
-            health: { [weak self] event in
-                Task { @MainActor in self?.receiveCaptureHealth(event) }
-            },
+            health: captureHealthCallback(),
             liveTranscription: { [weak self] event in
                 Task { @MainActor in self?.receiveLiveTranscription(event) }
             })
@@ -339,6 +339,8 @@ final class RecordingController {
         systemAudioMissing = false
         systemAudioClipping = false
         systemCaptureHealth = .healthy
+        microphoneCaptureFailed = false
+        captureHealthGeneration = UUID()
         systemRecoveryNoticeTask?.cancel()
         systemRecoveryNoticeTask = nil
         liveTurns = []
@@ -635,14 +637,9 @@ extension RecordingController {
             adoptStopRecordingCommit(commit, services: services)
             // UI handoff never waits for derived diarization or summary work.
             phase = .done(commit.meeting.id)
-        case .audioRecoveryPreserved(let commit):
+        case .audioRecoveryPreserved(let commit), .failedCapturePreserved(let commit):
             adoptStopRecordingCommit(commit, services: services)
-            presentFailure(
-                L10n.text(
-                    "The audio could not be finalized, but its recovery file was preserved."),
-                code: "capture.publication.failed",
-                category: .critical,
-                recovery: .library)
+            presentCaptureRecoveryFailure(commit)
         case .transcriptEmpty(let commit):
             adoptStopRecordingCommit(commit, services: services)
             presentFailure(
@@ -797,12 +794,36 @@ private extension RecordingController {
         startLiveDiarization(consuming: stream, session: session)
     }
 
+    private func presentCaptureRecoveryFailure(_ commit: StopRecordingCommit) {
+        let noAudio = commit.meeting.lastProcessingError == "capture.no-audio"
+        let message = noAudio
+            ? "Capture failed before audio could be saved. The failure record remains in your library."
+            : "The audio could not be finalized, but its recovery file was preserved."
+        presentFailure(L10n.text(message),
+                       code: noAudio ? "capture.no-audio" : "capture.publication.failed",
+                       category: .critical, recovery: .library)
+    }
+
+    private func captureHealthCallback() -> @Sendable (RecordingCaptureHealthEvent) -> Void {
+        let generation = captureHealthGeneration
+        return { [weak self] event in
+            Task { @MainActor in
+                guard self?.captureHealthGeneration == generation else { return }
+                self?.receiveCaptureHealth(event)
+            }
+        }
+    }
+
     func receiveCaptureHealth(_ event: RecordingCaptureHealthEvent) {
         let channel: AudioChannel
         switch event {
         case .stalled(let value, _), .recoveryRequested(let value, _, _),
              .recovered(let value, _), .streamFailed(let value):
             channel = value
+        }
+        if channel == .microphone, case .streamFailed = event {
+            microphoneCaptureFailed = true
+            return
         }
         guard channel == .system else { return }
         systemRecoveryNoticeTask?.cancel()

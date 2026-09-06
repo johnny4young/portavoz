@@ -35,7 +35,8 @@ extension StopRecordingCapture {
                     peakDBFS: $0.peakDBFS,
                     rmsDBFS: $0.rmsDBFS)
             },
-            transcriptRequiresRecovery: transcriptRequiresRecovery)
+            transcriptRequiresRecovery: transcriptRequiresRecovery,
+            captureReport: summary.captureReport)
     }
 }
 

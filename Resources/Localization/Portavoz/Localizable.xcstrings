@@ -16750,6 +16750,76 @@
           }
         }
       }
+    },
+    "Microphone capture failed. Stop and start a new recording.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falló la captura del micrófono. Detén e inicia una nueva grabación."
+          }
+        }
+      }
+    },
+    "Recording interrupted": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grabación interrumpida"
+          }
+        }
+      }
+    },
+    "Review the available audio. Retranscribing cannot restore missing audio.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa el audio disponible. Volver a transcribir no recupera el audio perdido."
+          }
+        }
+      }
+    },
+    "Microphone audio is incomplete.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El audio del micrófono está incompleto."
+          }
+        }
+      }
+    },
+    "Remote audio is incomplete.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El audio remoto está incompleto."
+          }
+        }
+      }
+    },
+    "Room audio is incomplete.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El audio de la sala está incompleto."
+          }
+        }
+      }
+    },
+    "Capture failed before audio could be saved. The failure record remains in your library.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La captura falló antes de guardar audio. El registro del fallo permanece en tu biblioteca."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

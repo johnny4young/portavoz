@@ -22,3 +22,10 @@ public protocol RecoverableAudioCaptureSource: AudioCaptureSource {
 /// Moved to PortavozCore in M5 so StorageKit can persist it per meeting;
 /// the alias keeps existing `import AudioCaptureKit` call sites compiling.
 public typealias AudioRetentionPolicy = PortavozCore.AudioRetentionPolicy
+
+/// Optional producer-side authority. Legacy/external sources remain valid but
+/// cannot claim known accepted/rejected counts. Notifications carry no PCM.
+public protocol CaptureReportingSource: AudioCaptureSource {
+    var captureReport: CaptureChannelReport { get }
+    func setCaptureFailureHandler(_ handler: @escaping @Sendable () -> Void)
+}

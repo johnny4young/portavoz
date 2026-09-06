@@ -121,6 +121,12 @@ struct RecordingHUDView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
                 hudMeter
+                if controller.microphoneCaptureFailed {
+                    Label(L10n.text("Microphone capture failed. Stop and start a new recording."),
+                          systemImage: "mic.slash.fill")
+                        .foregroundStyle(.orange)
+                        .accessibilityIdentifier("recording-hud-microphone-capture-failure")
+                }
                 if controller.systemCaptureHealth != .healthy {
                     Label {
                         Text(hudCaptureHealthMessage)

@@ -75,10 +75,8 @@ that fails during teardown is not stopped twice. The healthy peer continues;
 accepted staging audio remains available for the existing Stop/publication path.
 This owner fence does not authorize overlapping application recording lifecycles.
 
-Numeric representability is not a physical-memory budget. Route gaps still
-materialize whole silence arrays, and the source stream remains unbounded. A
-future conservation/backpressure change must bound both allocation and queued
-PCM without silently dropping recorded frames. Hardware route recovery and
+Numeric representability is not a physical-memory budget. D482 adds separate
+physical allocation/backlog admission below. Hardware route recovery and
 physical Sequoia/Tahoe validation remain separate from arithmetic tests.
 
 ### Native PCM views and interleaved channels (D479)
@@ -104,8 +102,9 @@ path. External-file silence inspection
 keeps the channel when downmix admission fails, matching its unreadable-file
 policy rather than declaring uninspected audio silent.
 
-This closes native-view safety and channel-mixing defects, not unbounded capture
-backlog or long-gap allocation. Their separate memory/conservation gate remains.
+This closes native-view safety and channel-mixing defects. D482 separately
+bounds capture backlog and long-gap allocation; full resource qualification
+remains distinct from those structural guarantees.
 
 ### Persisted level evidence (D168)
 
@@ -323,3 +322,39 @@ Other planned work: room channel; −23 LUFS normalization in the capture
 pipeline (today only peak-normalize before Whisper, spec 02).
 Playback/waveform/clips, skip silence, AAC transcode, and import are already
 implemented in M11 (spec 06 + AudioPlaybackKit).
+
+### Bounded pull delivery and independent failure evidence (D482)
+
+`CaptureDeliveryBuffer` retains at most 1,048,576 mono Float frames (4 MiB) and
+256 fixed ring slots per producer. Descriptor capacity is independent so tiny
+callbacks cannot create unbounded metadata. Both downmix input and resampling
+output counts are admitted before allocation. This is a starting engineering
+budget: it allows roughly 21.8 seconds at 48 kHz with 4096-frame callbacks, not
+an SLA for slow disks. Native buffers, callback scratch arrays and one in-flight
+pull are outside the retained-queue count and must be included in process-level
+resource measurements.
+
+Packets carry padding counts/timestamps instead of silence arrays. One
+`AsyncThrowingStream(unfolding:)` pulls chunks of at most 4096 frames; it has no
+second push queue. Stop closes admission and drains accepted packets, including
+padding. Overflow rejects the triggering callback, publishes a one-shot
+content-free health notification and dispatches graph teardown off IO before
+waiting for drain. Accepted/rejected-at-admission counts do not estimate future
+uncaptured time. Cancellation wakes a parked consumer; concurrent consumer
+misuse fails rather than replacing its continuation. The producer is single-use,
+as are its existing clock and delivered-frame timeline.
+
+`CaptureReportingSource` is optional: third-party/test sources remain valid,
+with unknown producer counts. The session combines source evidence, successful
+writer counts and publication failures in `CaptureReport`; a writer failure
+makes its write count unknown because native partial writes cannot be proven.
+The existing summary successful-append counter is retained for diagnostics.
+A structurally inconsistent report degrades to explicit failure, not legacy
+nil evidence. Long gaps are memory bounded but still require proportional CAF
+writes and Stop time. Real disk pressure, hardware routes, and multi-hour
+resource evidence remain open.
+
+The unfolding closure owns a consumer lifetime token. Swift may discard that
+closure on cancellation before its first invocation, so token release also
+retires producer admission. RecordingSession checks cancellation after its loop
+rather than treating a cancellation-induced nil as successful completion.

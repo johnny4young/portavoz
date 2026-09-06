@@ -6,6 +6,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 5, 2026
 
+- **🎙️ Honest recording recovery** — Audio backlogs stay bounded, saved prefixes drain safely, and capture interruptions remain visible even after transcription succeeds.
+
 - **⏱️ Answers respect their deadline** — Expired AI responses can no longer slip into Ask while a busy Mac is processing the timeout.
 
 - **🎧 Accurate stereo capture** — Stereo input keeps the right channel balance, while malformed audio buffers fail safely instead of being mixed incorrectly.

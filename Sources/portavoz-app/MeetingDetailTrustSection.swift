@@ -275,6 +275,8 @@ struct MeetingDetailTrustSection: View {
                 // One-line UI explanation.
                 // swiftlint:disable:next line_length
                 "Your audio is safe. The automatic pass found no reliable speech. Refine re-transcribes the saved audio with Whisper and lets you review the result before replacing anything.")
+        case "capture.no-audio":
+            L10n.text("Capture failed before audio could be saved. The failure record remains in your library.")
         case "capture.publication.failed":
             L10n.text("Portavoz preserved recovery evidence but could not finalize the recording.")
         default:

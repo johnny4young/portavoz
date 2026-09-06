@@ -75,6 +75,9 @@ private extension MeetingDetailView {
             accepted: accepted)
         return VStack(alignment: .leading, spacing: 12) {
             headerSection(detail)
+            if let report = detail.meeting.captureReport, report.requiresAttention {
+                CaptureReportNotice(report: report)
+            }
             MeetingDetailOperationStatus(
                 progress: refine.status ?? flow.applyingStatus,
                 error: refine.error ?? flow.operationError ?? model.state.lastActionError)

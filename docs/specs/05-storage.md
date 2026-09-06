@@ -1874,3 +1874,15 @@ D204 versions only tracked synthetic fixtures and publishes a private
 content-free comparison receipt. Historical fixture verification, scorecard
 comparison, and receipt publication do not create a database schema, migration,
 derived corpus row, or product maintenance operation.
+
+### Capture report (schema v50, D482)
+
+A nullable `meeting.captureReport` blob stores the validated Codable root
+value using sorted JSON keys so repeat-safe writes compare canonical bytes. Existing rows remain NULL/unknown; no migration fabricates conservation
+evidence. Reports have one to three unique channel records, nonnegative
+integer counts, closed failure codes, and no PCM, paths, or provider text.
+Stop installs the report in the captured aggregate transaction; a failed
+zero-file capture retains a needs-attention shell instead of being discarded.
+Successful derived jobs clear only their own processing errors. Bundle and
+sync root projection retain the report; replay preserves existing evidence
+when a legacy peer omits it and rejects conflicting authority atomically.

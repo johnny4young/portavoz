@@ -7,6 +7,51 @@ import XCTest
 @testable import StorageKit
 
 final class MeetingSyncAggregateTests: XCTestCase {
+    func testCaptureAuthoritySurvivesSyncAndLegacyPeerCannotEraseIt() async throws {
+        let source = try MeetingStore.inMemory()
+        var meeting = Meeting(title: "Synthetic capture", startedAt: Date(timeIntervalSince1970: 100))
+        meeting.captureReport = try CaptureReport(channels: [CaptureChannelReport(
+            channel: .microphone, acceptedFrames: 10, paddingFrames: 0,
+            rejectedFrames: 1, writtenFrames: 10, failure: .overloaded)])
+        try await source.save(meeting)
+        let envelope = try await latestEnvelope(in: source)
+        let destination = try MeetingStore.inMemory()
+        _ = try await destination.applyRemoteMeetingSyncEnvelope(
+            MeetingSyncEnvelopeCodec.decode(MeetingSyncEnvelopeCodec.encode(envelope)))
+        let first = try await destination.detail(meeting.id)
+        XCTAssertEqual(first?.meeting.captureReport, meeting.captureReport)
+        let report = meeting.captureReport
+        meeting.captureReport = nil
+        meeting.title = "Legacy peer renamed this meeting"
+        try await source.save(meeting)
+        let legacy = try await latestEnvelope(in: source)
+        _ = try await destination.applyRemoteMeetingSyncEnvelope(legacy)
+        let updated = try await destination.detail(meeting.id)
+        XCTAssertEqual(updated?.meeting.captureReport, report)
+        XCTAssertEqual(updated?.meeting.title, meeting.title)
+    }
+
+
+    func testConflictingCaptureAuthorityRollsBackTheRemoteAggregate() async throws {
+        let source = try MeetingStore.inMemory()
+        var meeting = Meeting(title: "Original", startedAt: Date(timeIntervalSince1970: 100))
+        meeting.captureReport = try CaptureReport(channels: [CaptureChannelReport(channel: .microphone, failure: .overloaded)])
+        try await source.save(meeting)
+        let destination = try MeetingStore.inMemory()
+        _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
+        let originalReport = meeting.captureReport
+        meeting.title = "Must roll back"
+        meeting.captureReport = try CaptureReport(channels: [CaptureChannelReport(channel: .microphone, failure: .sourceFailed)])
+        try await source.save(meeting)
+        do {
+            _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
+            XCTFail("conflicting immutable evidence must reject replay")
+        } catch {}
+        let stored = try await destination.detail(meeting.id)
+        XCTAssertEqual(stored?.meeting.title, "Original")
+        XCTAssertEqual(stored?.meeting.captureReport, originalReport)
+    }
+
     func testEnvelopeRequiresNewestGenerationAndStripsDeviceLocalState() async throws {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(

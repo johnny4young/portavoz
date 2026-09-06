@@ -4,6 +4,7 @@ import PortavozCore
 
 struct MeetingSyncLocalState {
     let audioDirectory: String?
+    let captureReport: CaptureReport?
     let peopleBySpeakerID: [String: String]
     let segmentsByID: [String: SegmentRecord]
     let summariesByID: [String: SummaryRecord]
@@ -221,8 +222,10 @@ extension MeetingStore {
             .compactMap { record in
                 record.personID.map { (record.id, $0) }
             }
+        let localMeeting = try MeetingRecord.fetchOne(db, key: meetingKey)
         return try MeetingSyncLocalState(
-            audioDirectory: MeetingRecord.fetchOne(db, key: meetingKey)?.audioDirectory,
+            audioDirectory: localMeeting?.audioDirectory,
+            captureReport: localMeeting?.meeting.captureReport,
             peopleBySpeakerID: Dictionary(uniqueKeysWithValues: people),
             segmentsByID: dictionary(
                 of: SegmentRecord.self,
@@ -287,6 +290,13 @@ extension MeetingStore {
     ) throws {
         var meeting = synced.value
         meeting.audioDirectory = local.audioDirectory
+        if let previous = local.captureReport {
+            guard meeting.captureReport == nil || meeting.captureReport == previous else {
+                throw StorageError.invalidSyncState("immutable capture evidence conflicts")
+            }
+            // A legacy peer cannot erase the originating capture authority.
+            meeting.captureReport = previous
+        }
         try MeetingRecord(
             meeting,
             createdAt: synced.createdAt,

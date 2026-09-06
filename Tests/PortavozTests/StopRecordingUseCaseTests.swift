@@ -7,6 +7,34 @@ import XCTest
 @testable import StorageKit
 
 final class StopRecordingUseCaseTests: XCTestCase {
+    func testCaptureFailureSurvivesPublishedHandoffAndProcessingProjection() async throws {
+        let fixture = StopRecordingFixture()
+        let dependencies = StopRecordingDependencies(shell: fixture.shell)
+        let report = try CaptureReport(channels: [CaptureChannelReport(
+            channel: .microphone, acceptedFrames: 8, paddingFrames: 0,
+            rejectedFrames: 1, writtenFrames: 8, failure: .overloaded)])
+        let capture = StopRecordingCapture(
+            publishedFiles: [.system: fixture.publishedFile()], captureReport: report)
+        let result = await fixture.useCase(dependencies).execute(fixture.request(capture: capture))
+        guard case .completed(let commit) = result else { return XCTFail("accepted peer must survive") }
+        XCTAssertEqual(commit.meeting.captureReport, report)
+        let state = await dependencies.state()
+        XCTAssertEqual(state.installs.first?.snapshot.meeting.captureReport, report)
+    }
+
+    func testFailedCaptureWithoutAnyFilePreservesAnHonestDurableWarning() async throws {
+        let fixture = StopRecordingFixture()
+        let dependencies = StopRecordingDependencies(shell: fixture.shell)
+        let report = try CaptureReport(channels: [CaptureChannelReport(channel: .microphone, failure: .sourceFailed)])
+        let capture = StopRecordingCapture(publishedFiles: [:], captureReport: report)
+        let result = await fixture.useCase(dependencies).execute(fixture.request(capture: capture))
+        guard case .failedCapturePreserved(let commit) = result else { return XCTFail("failure must not be deleted") }
+        XCTAssertEqual(commit.meeting.lastProcessingError, "capture.no-audio")
+        XCTAssertEqual(commit.meeting.captureReport, report)
+        XCTAssertEqual(commit.meeting.lifecycleState, .needsAttention)
+    }
+
+
     func testPublishedCaptureInstallsExactJobAndKicksAfterCommit() async throws {
         let fixture = StopRecordingFixture()
         let dependencies = StopRecordingDependencies(shell: fixture.shell)
@@ -763,6 +791,7 @@ private actor StopRecordingDependencies:
         _ meetingID: MeetingID,
         errorCode: String,
         endedAt: Date,
+        captureReport: CaptureReport?,
         at timestamp: Date
     ) async throws -> Meeting {
         if let markError { throw markError }
@@ -772,6 +801,7 @@ private actor StopRecordingDependencies:
         marked.endedAt = endedAt
         marked.lifecycleState = .needsAttention
         marked.lastProcessingError = errorCode
+        marked.captureReport = captureReport
         return marked
     }
 
