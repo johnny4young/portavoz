@@ -814,6 +814,10 @@ active, waiting, retrying, or needs attention and deep-links to that pane.
 
 Protected recording keeps semantic and memory-graph maintenance in an explicit
 waiting state; capture-stop reconciliation resumes their durable cursors.
+The recording controller also owns one main-actor process activity from startup
+through Stop persistence. It classifies that lifetime as user-initiated even
+when no window is visible, allows idle system sleep, and ends on every terminal
+state or owner deallocation. Idle maintenance inherits no recording activity.
 This visibility layer is available on Sequoia and Tahoe without Foundation
 Models. Its deterministic UI fixture requires both disposable storage and the
 background-work seed, so a production launch cannot replace live owner state.

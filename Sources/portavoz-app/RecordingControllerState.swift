@@ -1,6 +1,7 @@
 import Foundation
 import IntelligenceKit
 import PortavozCore
+import TranscriptionKit
 
 enum RecordingFailureRecovery: Equatable {
     case retry
@@ -27,6 +28,11 @@ enum RecordingPhase: Equatable {
 /// state types to keep the controller file inside its size budget. Both
 /// delegate to concern models that own their own lifecycle.
 extension RecordingController {
+    /// User-defined terms shared by live assistance and transcription hints.
+    var vocabulary: [String] {
+        VocabularyPrompt.parse(UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
+    }
+
     var canReturnToLiveSession: Bool {
         switch phase {
         case .preparing, .recording, .processing:

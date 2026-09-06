@@ -4250,6 +4250,11 @@ final class ArchitectureDependencyTests: XCTestCase {
             "let resourceCaptureState = AppResourceCaptureState()"))
         XCTAssertTrue(recording.contains(
             "services?.recordingPhaseDidChange(phase)"))
+        XCTAssertTrue(recording.contains(
+            "@ObservationIgnored private let processActivity = RecordingProcessActivity()"))
+        XCTAssertTrue(recording.contains(
+            "didSet {\n            processActivity.update(for: phase)"),
+            "Every recording phase transition must update the owned process activity")
         XCTAssertEqual(
             whisper.components(
                 separatedBy: "admitModelRuntimeLoad(.qualitySpeech)"

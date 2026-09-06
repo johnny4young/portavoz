@@ -3779,6 +3779,10 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   adapter check avoids a host-dependent free-space or timing assertion.
   Historical important-usage measurements remain attributed to their original
   source; they cannot be silently rewritten as the new free-space metric.
+  Recording benchmarks use the controller's ordinary user-initiated process
+  activity from preparation through Stop (D489); they do not acquire a stronger
+  benchmark-only activity or disable system sleep. Its lifecycle tests do not
+  establish App Nap attribution or turn unstable measurements into passes.
   Behavioral unit tests inject an immediate
   readiness gate so host thermal pressure cannot delay or invalidate their
   scenario assertions; production benchmark processes retain the real gate.

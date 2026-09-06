@@ -1199,6 +1199,27 @@ its journal and stage are gone; a later maintenance signal cannot start a fresh
 backup from the remembered destination. No launch path adds a timer, polling
 task, PID heuristic, or meeting content to recovery state.
 
+### Explicit recording process activity (D489)
+
+`RecordingController` owns one `RecordingProcessActivity` on the main actor.
+Every phase transition updates it before notifying the resource governor.
+Preparing, recording and Stop processing share one Foundation activity token;
+idle, done and failed release it exactly once. Retry acquires a fresh token,
+and isolated deinitialization releases any remaining token without transferring
+non-Sendable Foundation state between executors.
+
+The activity uses `userInitiatedAllowingIdleSystemSleep` and a fixed,
+content-free reason. It tells macOS that recording and final persistence are
+user-requested work rather than relying on window visibility or audio-device
+heuristics to avoid App Nap. It does not prevent display or idle system sleep,
+request latency-critical scheduling, change model compute units, or keep idle
+maintenance artificially active. Normal and isolated benchmark composition use
+the same controller; there is no benchmark-only activity override.
+
+Behavioral tests cover all phases, repeated sessions, failure/retry, exact token
+identity, native adapter use and deallocation. They verify lifecycle ownership,
+not OS scheduling, physical sleep/wake safety or a promised latency improvement.
+
 ### Bounded recording-level relay (D168)
 
 The StartRecording callback contract carries compact

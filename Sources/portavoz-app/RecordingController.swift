@@ -22,9 +22,11 @@ import TranscriptionKit
 final class RecordingController {
     private(set) var phase: RecordingPhase = .idle {
         didSet {
+            processActivity.update(for: phase)
             services?.recordingPhaseDidChange(phase)
         }
     }
+    @ObservationIgnored private let processActivity = RecordingProcessActivity()
     private(set) var failureContext: RecordingFailureContext?
     private(set) var captions: [TranscriptSegment] = []
     private(set) var startedAt = Date()
@@ -213,12 +215,6 @@ final class RecordingController {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         companionEnabled = defaults.bool(forKey: "companionEnabled")
-    }
-
-    /// User-defined domain terms reused by the optional rolling summary.
-    /// StartRecording samples the same setting for transcription hints.
-    var vocabulary: [String] {
-        VocabularyPrompt.parse(UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
     }
 
     /// Returns the shared session to `.idle` once a finished recording has

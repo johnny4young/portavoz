@@ -18520,3 +18520,27 @@ conservative, not proof of a product CPU improvement or the cause of all prior
 variance. Original receipts remain source-bound. Fresh comparable resource and
 candidate evidence is required; three samples, scenario workloads, timing
 stability rules and physical/post-release boundaries remain unchanged.
+
+## D489 — Own user-initiated process activity for recording (Sep 2026)
+
+**Context:** recording is lengthy user-requested work, but the app had no
+explicit Foundation process activity. Window visibility and active audio-device
+heuristics are not a lifecycle contract, especially for a menu-bar workflow or
+the isolated synthetic capture path. Apple's energy-efficiency guidance
+explicitly identifies recording as work that should be classified.
+
+**Decision:** let the main-actor recording controller own one narrow activity
+adapter. Begin with `userInitiatedAllowingIdleSystemSleep` on preparation, retain
+the same token through capture and Stop persistence, and release on idle, done,
+failure or isolated deinitialization. Use a fixed content-free reason. Test
+phase transitions, exact token pairing, retry, repeated sessions and teardown.
+
+**Consequences:** background recording no longer relies solely on UI/audio
+heuristics to avoid App Nap. This is not a claim that App Nap caused an observed
+resource outlier: scheduling was not directly observed. Display, idle and
+explicit system sleep remain available; no global power setting, latency-critical
+option, model executor or other process changes. Benchmark and normal recording
+share the same owner. Fresh measurements retain all existing stability rules;
+physical sleep/wake and multi-hardware behavior remain separate field evidence.
+
+Reference: [Apple's app-level work classification guidance](https://developer.apple.com/library/archive/documentation/Performance/Conceptual/power_efficiency_guidelines_osx/PrioritizeWorkAtTheAppLevel.html).

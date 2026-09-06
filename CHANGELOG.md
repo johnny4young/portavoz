@@ -6,6 +6,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 6, 2026
 
+- **🎙️ Background recording stays intentional** — Recording and saving now explicitly remain user-requested work when the meeting window is out of view, without overriding your Mac's sleep settings.
+
 - **✨ A calmer workspace** — Clearer navigation, useful first actions, native selection, and accurate local-AI guidance make your meeting workspace easier to use.
 
 ## September 5, 2026
