@@ -2517,6 +2517,14 @@ Tahoe-family evidence. Because the repaired symptom existed only under a
 launch-agent-owned hosted runner, exact-head hosted XCUITest remains required
 before the repair is considered cross-host qualified.
 
+Observation lifetime assertions distinguish cancellation notification from actual
+payload release (D481). Pinned GRDB invokes `didCancel` before enqueuing database
+observer removal, so an immediate weak-nil assertion after that event races
+normal asynchronous cleanup. The existing lifetime regression now awaits both
+cancellation and the retained token's deinitializer under the same one-second
+deadline, then retains the weak-nil assertion. It neither sleeps/retries nor
+relaxes the leak check; retained payloads still fail the release expectation.
+
 The first hosted CI attempt for that exact local-network repair passed lint,
 repository hygiene, and the complete current-SDK build/test lane. Its Sequoia
 build also passed, but the Swift 6.2 process later exited with signal 11 after

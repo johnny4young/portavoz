@@ -1475,7 +1475,10 @@ insert or delete. An architecture ratchet refuses a whole-table `segment`
 region in that file. Each source uses newest-value buffering and
 pulls directly from GRDB's async iterator. The shared adapter adds no forwarding
 task or continuation teardown cycle: its consumer owns the only upstream
-iterator, so ending that consumer releases GRDB's cancellable. A short lock
+iterator, so ending that consumer releases GRDB's cancellable. GRDB's
+`didCancel` event closes notifications before asynchronously removing its
+transaction observer; it is not a barrier for releasing all captured payloads.
+Lifetime tests independently await actual payload deinitialization. A short lock
 serializes iterator ownership without crossing an `await`; invalid concurrent
 iteration fails with a typed error instead of racing or trapping. The three
 persistent sidebar sources fail independently, so corrupt meeting projection

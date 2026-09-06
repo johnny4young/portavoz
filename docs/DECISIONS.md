@@ -18316,3 +18316,21 @@ expiry is excluded even when the wake-up cannot run. This does not forcibly stop
 arbitrary provider or receiver code, erase already-admitted snapshots, or certify
 engine/hardware latency. Real-app scoped UI and compatible-platform CI remain
 required; a failing first attempt is preserved rather than retried into green.
+
+## D481 — Observe payload release separately from cancellation notification (Sep 2026)
+
+**Context:** a first-attempt Sequoia run reported that a Meeting Detail
+observation's token was still alive immediately after `didCancel`. Pinned GRDB
+invokes that callback before asynchronously removing its database observer; the
+notification is not a captured-payload deallocation barrier.
+
+**Decision:** synchronize the lifetime regression on both cancellation and the
+retained payload's deinitializer, preserving the existing one-second timeout
+and final weak-nil assertion. Use an immutable Sendable token rather than an
+unchecked conformance. Do not modify the product adapter, GRDB, scheduling,
+CI policy, or thresholds to satisfy an invalid event-order assumption.
+
+**Consequences:** genuine retention still fails the release expectation, while
+normal queued cleanup is no longer mistaken for an immediate leak. This is a
+test synchronization correction, not proof of a new product memory defect or a
+replacement for longer resource/physical qualification.

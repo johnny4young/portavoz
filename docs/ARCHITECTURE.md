@@ -5152,8 +5152,9 @@ thermal or battery behavior, physical devices, or two-device convergence.
 - StorageKit adapts GRDB observations as pull-through structured streams. The
   outer consumer owns the only upstream iterator and therefore the GRDB
   cancellable; dropping that consumer releases both without an unstructured
-  forwarding task. A lock protects iterator ownership only and is never held
-  across suspension.
+  forwarding task. GRDB notifies cancellation before queued observer cleanup;
+  cancellation notification alone does not establish payload deallocation.
+  A lock protects iterator ownership only and is never held across suspension.
 - Optional derivation cannot roll back required captured/imported data.
 - One failed scoped observation preserves healthy sections.
 - Model availability is sampled by app-owned adapters and never silently

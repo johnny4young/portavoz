@@ -56,7 +56,9 @@ final class MeetingDetailObservationTests: XCTestCase {
     func testObservedStreamReleasesGRDBIteratorWithItsConsumer() async throws {
         let store = try MeetingStore.inMemory()
         let cancelled = expectation(description: "GRDB observation cancelled")
-        var token: ObservationLifetimeToken? = ObservationLifetimeToken()
+        let released = expectation(description: "GRDB observation payload released")
+        var token: ObservationLifetimeToken? = ObservationLifetimeToken(
+            onRelease: { released.fulfill() })
         weak let releasedToken = token
 
         try await consumeOneObservation(
@@ -65,7 +67,10 @@ final class MeetingDetailObservationTests: XCTestCase {
             onCancellation: { cancelled.fulfill() })
         token = nil
 
-        await fulfillment(of: [cancelled], timeout: 1)
+        // GRDB notifies didCancel before asynchronously removing its database
+        // observer. Cancellation is not an ARC-release barrier. Observe actual
+        // deinitialization as well, without increasing the existing deadline.
+        await fulfillment(of: [cancelled, released], timeout: 1)
         XCTAssertNil(
             releasedToken,
             "Dropping the consumer must release GRDB's observation iterator")
@@ -305,8 +310,15 @@ private func consumeOneObservation(
     XCTAssertEqual(observed, token.marker)
 }
 
-private final class ObservationLifetimeToken: @unchecked Sendable {
+private final class ObservationLifetimeToken: Sendable {
     let marker = 7
+    private let onRelease: @Sendable () -> Void
+
+    init(onRelease: @escaping @Sendable () -> Void) {
+        self.onRelease = onRelease
+    }
+
+    deinit { onRelease() }
 }
 
 private func nextCore(
