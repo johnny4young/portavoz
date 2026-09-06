@@ -18370,3 +18370,27 @@ space and drain time. Native write interruption may leave an unknown partial
 append; successful-append counts are not physical fsync guarantees. Real device
 routes, lowest-memory hardware, disk pressure, permissions, and multi-hour
 resource qualification remain explicit gates, not inferred from synthetic tests.
+
+## D483 — Admit bounded opt-in bundle answers without replacing source evidence (Sep 2026)
+
+**Context:** the independent graph-synthesis API bypassed the monotonic Ask
+deadline, accepted unbounded or whitespace-only output, and collapsed every
+ordinary generation failure into an untyped nil. Released transcript-only
+Ask and exact graph explorers do not invoke this API.
+
+**Decision:** reuse the value-scoped monotonic clock and structured timeout
+helper, starting after evidence retrieval and before selection. Recheck output
+admission after child teardown and bounded text validation. Use the existing
+8,000-character/64,000-byte ceilings; reject rather than repair invalid prose.
+Return an additive, source-compatible typed generation outcome while preserving
+the full original two-lane bundle, not just the selected generation prefixes.
+Caller cancellation always propagates, including during child teardown. No
+source authority, provider fallback, released UI routing or telemetry payload
+is added.
+
+**Consequences:** clients can distinguish abstention, unavailable generation,
+failure and timeout without losing exact sources or mistaking partial evidence
+for completeness. This is admission control rather than hard pre-emption,
+an eight-second end-to-end guarantee or demonstrated semantic answer quality.
+Deterministic adversarial tests and released-consumer UI regression remain
+separate from real-provider, hardware and release qualification.

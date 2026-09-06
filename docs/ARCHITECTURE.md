@@ -822,8 +822,9 @@ The Ask workflow, not a model provider or SwiftUI, owns progressive admission.
 It accepts only one exact final fused citation set, coalesces cumulative answer
 snapshots under finite count/text limits, closes publication on cancellation or
 timeout, and preserves citations when optional generation is unavailable or
-fails. Progressive transcript, Web, note and interview generation share one monotonic deadline
-created after evidence retrieval, before provider/timer scheduling. The timer
+fails. Progressive transcript, Web, note, interview and opt-in evidence-bundle
+generation share one monotonic deadline created after evidence retrieval,
+before provider/timer scheduling. The timer
 sleeps until that fixed instant; snapshot gates and final admission independently
 reject expired work, including when the timer or parent executor is delayed.
 This is admission control, not hard pre-emption of opaque provider code. The per-window model retains at most 20 completed exchanges, weakly
@@ -2464,8 +2465,19 @@ popularity. A fact carries its exact source passages, page completeness is
 disclosed in the prompt, and generated claims may cite only transcript/source-
 segment markers, never a fact marker alone. The answer result returns the
 unchanged evidence bundle when the opt-in provider is absent or ordinary
-generation fails; cancellation still cancels the operation. No CLI, MCP,
-command-palette, meeting-brief, or free-form answer surface invokes the
+generation fails. It carries an additive `AskGenerationOutcome`: empty requests
+are not requested, unready source lanes are insufficient evidence, a missing
+provider or nil output is unavailable, invalid output/provider errors fail, and
+expired output times out. `AskBundleGeneration` owns the finite optional-
+generation admission policy. Generation uses the same injected monotonic
+deadline and structured teardown as transcript Ask; cancellation still cancels the
+operation. Final output must contain non-whitespace content and fit 8,000
+characters and 64,000 UTF-8 bytes. Inspection is prefix-bounded and rechecks the
+deadline after validation; rejected text is never truncated into accepted prose.
+The full evidence bundle remains unchanged, including page omissions and
+unselected sources. The initializer's optional outcome preserves source
+compatibility; the application use case always assigns an explicit outcome.
+No CLI, MCP, command-palette, meeting-brief, or free-form answer surface invokes the
 graph-aware bundle. The explicit person-commitment explorer instead shows the
 validated typed facts directly, including their exact source navigation, so it
 works without Foundation Models on Sequoia as well as Tahoe.

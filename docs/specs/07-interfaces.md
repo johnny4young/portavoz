@@ -145,6 +145,14 @@ interface change with its own consent and compatibility review.
 D387 does not widen CLI or MCP. Direct Web authority is macOS-only and bound to
 its per-request consent surface; terminal callers cannot reuse it implicitly.
 
+The independent application API `AskMeetings.answerBundle` is not a CLI/MCP
+route. Its additive `generationOutcome` distinguishes insufficient evidence,
+unavailable generation, rejected output, timeout and success while preserving
+the original transcript/graph bundle. Existing initializer calls remain source
+compatible; application results always supply an explicit outcome. This API's
+bounded generation admission does not widen terminal source policy or enable
+fact-aware prose in any released consumer.
+
 `bench-ask-attribution` is deliberately separate from product `ask` and the
 canonical `bench-ask-quality` observation contract. It accepts the same
 fixture/output/build/commit/retrieval-unit identity but rejects asset downloads.

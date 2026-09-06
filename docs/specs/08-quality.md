@@ -1513,6 +1513,19 @@ Web also proves evidence callbacks do not consume the generation budget. Real
 app Ask and interview journeys complement these deterministic application tests,
 not certify timing, provider readiness or physical platform behavior.
 
+`AskBundleAdmissionTests` extends that contract to the opt-in graph bundle:
+source-compatible initialization, missing-provider evidence retention, explicit
+empty-request state, valid/empty/whitespace/character-oversized/UTF-8-oversized
+outputs, exact-boundary late values and errors while the timer cannot wake,
+configured timeout, timer-driven provider teardown, caller cancellation during
+successful and throwing teardown, and expiry during teardown. Its public-
+synthetic bilingual sources retain page incompleteness and omission counts;
+no test needs a model or private meeting. Existing use-case characterization
+also asserts explicit outcomes for invalid graph provenance, empty transcript,
+graph abstention, bounded-prefix selection and ordinary provider failure.
+Scoped real-app Ask/graph/citation journeys are regression evidence for the
+released consumers, not proof that the uncomposed bundle API ran in the UI.
+
 Presentation tests submit a second question while the first provider remains
 suspended, reject the old evidence/answer/completion, retain only 20 exchanges,
 and release a closed window even when its provider ignores cancellation. The

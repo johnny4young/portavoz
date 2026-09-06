@@ -391,14 +391,18 @@ public struct AskEvidenceBundleAnswer: Equatable, Sendable {
     public let question: String
     public let generatedText: String?
     public let evidence: AskEvidenceBundle
+    public let generationOutcome: AskGenerationOutcome
 
     public init(
         question: String,
         generatedText: String?,
-        evidence: AskEvidenceBundle
+        evidence: AskEvidenceBundle,
+        generationOutcome: AskGenerationOutcome? = nil
     ) {
         self.question = question
         self.generatedText = generatedText
         self.evidence = evidence
+        self.generationOutcome = generationOutcome
+            ?? (generatedText == nil ? .unavailable : .generated)
     }
 }

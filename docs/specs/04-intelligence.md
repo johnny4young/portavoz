@@ -579,8 +579,17 @@ both lanes, and returns the unchanged evidence bundle beside optional generated
 text. Fact-aware generation requires non-empty, uniquely identified exact
 transcript citations plus a valid source-backed graph page. A graph fact cannot
 replace an empty transcript result, and failed transcript retrieval still fails
-the complete bundle. Generation failure preserves all evidence, and
-cancellation remains cancellation.
+the complete bundle. Generation returns explicit `AskGenerationOutcome`
+alongside all original evidence: `.notRequested` for an empty request, `.insufficientEvidence` for
+unready source lanes, `.unavailable` for no provider or nil output, `.failed`
+for provider errors or invalid text, `.timedOut` for deadline expiry, and
+`.generated` only for admitted text. Empty/whitespace-only text or output beyond
+8,000 characters / 64,000 UTF-8 bytes is rejected, never trimmed or truncated
+into accepted claims. Prefix-bounded inspection checks bytes before characters;
+final admission rechecks the same deadline after validation. The generation
+budget starts after retrieval and before selection/provider scheduling, and
+structured child teardown completes before return. Cancellation remains
+cancellation, even when an opaque provider returns or throws during teardown.
 
 `RAGAnswerContext` gives IntelligenceKit transcript passages and `RAGFact`
 relationships independently. Facts are not RRF candidates. The typed fact page
@@ -1212,8 +1221,8 @@ internal clock seam is value-scoped and does not change public initialization,
 the eight-second default, source boundaries, or cancellation priority. Both
 successful and throwing task-group exits recheck caller cancellation after child
 teardown, so an earlier provider error cannot hide a later cancellation. This
-contract covers transcript-only `answer`, not the independent opt-in
-`answerBundle` graph-synthesis API.
+contract also covers the independent opt-in `answerBundle` graph-synthesis
+API, without routing any released consumer through that API.
 
 Caller cancellation remains an error and is checked before and after retrieval,
 query expansion, semantic traversal, storage reads, generation, and external

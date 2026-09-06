@@ -218,7 +218,8 @@ public struct AskMeetings: ApplicationUseCase {
                 generatedText: nil,
                 evidence: AskEvidenceBundle(
                     transcriptCitations: [],
-                    graphFacts: .notRequested))
+                    graphFacts: .notRequested),
+                generationOutcome: .notRequested)
         }
         return try await telemetry.measure(.answer) { trace in
             let bundle = try await retrieveEvidenceBundle(
@@ -229,18 +230,22 @@ public struct AskMeetings: ApplicationUseCase {
                 graphFilter: graphFilter,
                 trace: trace)
             try Task.checkCancellation()
+            let deadline = AskAnswerDeadline(after: answerTimeout, clock: answerClock)
             let input = bundle.synthesisInput.selecting()
-            let generatedText = try await generateBundleAnswer(
+            let generation = try await AskBundleGeneration.generate(
                 question: question,
-                evidence: input)
+                answering: bundleAnswering,
+                evidence: input,
+                deadline: deadline)
             try Task.checkCancellation()
-            if generatedText?.contains(where: { !$0.isWhitespace }) == true {
+            if generation.outcome == .generated {
                 trace.reach(.firstToken)
             }
             return AskEvidenceBundleAnswer(
                 question: question,
-                generatedText: generatedText,
-                evidence: bundle)
+                generatedText: generation.text,
+                evidence: bundle,
+                generationOutcome: generation.outcome)
         }
     }
 
@@ -388,24 +393,6 @@ public struct AskMeetings: ApplicationUseCase {
             return AskGenerationResult(text: nil, outcome: .timedOut)
         } catch {
             return AskGenerationResult(text: nil, outcome: .failed)
-        }
-    }
-
-    private func generateBundleAnswer(
-        question: String,
-        evidence: AskSynthesisInput
-    ) async throws -> String? {
-        guard evidence.isFactAwareGenerationReady,
-              let bundleAnswering
-        else { return nil }
-        do {
-            return try await bundleAnswering.answer(
-                question: question,
-                evidence: evidence)
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            return nil
         }
     }
 

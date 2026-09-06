@@ -3382,6 +3382,8 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testAskSynthesisKeepsTypedFactsAndExactSourcesSeparate() throws {
         let graphLane = try Self.contents(
             of: "Sources/ApplicationKit/AskGraphFacts.swift")
+        let generation = try Self.contents(
+            of: "Sources/ApplicationKit/AskBundleGeneration.swift")
         let workflow = try Self.contents(
             of: "Sources/ApplicationKit/AskMeetings.swift")
         let answerer = try Self.contents(
@@ -3412,7 +3414,12 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Set(fact.evidence.map(\\.segmentID)).count"))
         XCTAssertTrue(workflow.contains("func answerBundle("))
         XCTAssertTrue(workflow.contains("protocol AskEvidenceBundleAnswering"))
-        XCTAssertTrue(workflow.contains("generateBundleAnswer("))
+        XCTAssertTrue(workflow.contains("AskBundleGeneration.generate("))
+        XCTAssertTrue(generation.contains("guard evidence.isFactAwareGenerationReady"))
+        XCTAssertTrue(generation.contains("withAskTimeout("))
+        XCTAssertTrue(generation.contains("try deadline.check()"))
+        XCTAssertTrue(generation.contains("AskRequestLimits.maximumAnswerCharacters"))
+        XCTAssertTrue(generation.contains("AskRequestLimits.maximumAnswerUTF8Bytes"))
         XCTAssertTrue(workflow.contains("isFactAwareGenerationReady"))
         XCTAssertTrue(workflow.contains("citations: [AskCitation]"))
         XCTAssertTrue(workflow.contains("RAGAnswerContext("))

@@ -474,6 +474,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
             graphQuery: .personCommitments(PersonCommitmentsQuery(
                 personID: PersonID())))
 
+        XCTAssertEqual(result.generationOutcome, .generated)
         XCTAssertEqual(result.generatedText, "El viernes.")
         XCTAssertEqual(result.evidence.transcriptCitations, fixture.citations)
         XCTAssertEqual(result.evidence.graphFacts, .result(.facts(page)))
@@ -538,6 +539,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
             graphQuery: .personCommitments(PersonCommitmentsQuery(
                 personID: PersonID())))
 
+        XCTAssertEqual(result.generationOutcome, .generated)
         XCTAssertEqual(result.generatedText, "Bounded.")
         XCTAssertEqual(result.evidence.transcriptCitations, citations)
         XCTAssertEqual(result.evidence.graphFacts, .result(.facts(page)))
@@ -586,6 +588,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
             graphQuery: .topicFirstDiscussion(TopicFirstDiscussionQuery(
                 topicID: TopicID())))
 
+        XCTAssertEqual(result.generationOutcome, .insufficientEvidence)
         XCTAssertNil(result.generatedText)
         XCTAssertEqual(result.evidence.synthesisInput.graphFacts, .invalidEvidence)
         let callCount = await bundleAnswering.callCount
@@ -612,6 +615,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
             graphQuery: .personCommitments(PersonCommitmentsQuery(
                 personID: PersonID())))
 
+        XCTAssertEqual(result.generationOutcome, .insufficientEvidence)
         XCTAssertNil(result.generatedText)
         XCTAssertFalse(result.evidence.synthesisInput.isFactAwareGenerationReady)
         let callCount = await bundleAnswering.callCount
@@ -637,6 +641,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
             graphQuery: .topicFirstDiscussion(TopicFirstDiscussionQuery(
                 topicID: TopicID())))
 
+        XCTAssertEqual(result.generationOutcome, .insufficientEvidence)
         XCTAssertNil(result.generatedText)
         XCTAssertEqual(
             result.evidence.synthesisInput.graphFacts,
@@ -665,6 +670,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
             graphQuery: .personCommitments(PersonCommitmentsQuery(
                 personID: PersonID())))
 
+        XCTAssertEqual(result.generationOutcome, .failed)
         XCTAssertNil(result.generatedText)
         XCTAssertEqual(result.evidence.transcriptCitations, fixture.citations)
         XCTAssertEqual(result.evidence.graphFacts, .result(.facts(page)))

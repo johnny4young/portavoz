@@ -57,9 +57,11 @@ late. It does not provide hard interruption of a non-cooperative local model or
 external receiver, nor certify an eight-second end-to-end request: evidence
 retrieval has its own lifecycle and structured generation waits for child
 teardown. The independent opt-in `AskMeetings.answerBundle` graph-synthesis API
-still bypasses this deadline and has no typed generation outcome; it needs its
-own bounded, evidence-preserving admission contract. Physical/model latency and
-cancellation field evidence remain open.
+now uses the same deadline with typed generation outcomes and bounded final-output
+admission, preserving full evidence on failure. It still is not composed by any
+released answer surface; its deterministic tests do not establish real-provider
+latency, semantic answer quality, or a hard interruption of opaque generation.
+Physical/model latency and cancellation field evidence remain open.
 
 ## Technical gaps (debt and risk)
 
