@@ -1768,6 +1768,8 @@ class CandidateAutomationTests(unittest.TestCase):
             }
             for run in range(1, 4)
         }
+        for sample in ask_runs.values():
+            sample["preparation"] = copy.deepcopy(sample)
         return {
             "build": {
                 "version": self.version,

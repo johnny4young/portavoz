@@ -559,6 +559,23 @@ def validate_ask_timing(raw, path):
 
 
 def validate_ask_pipeline_sample(raw, path):
+    pair = object_shape(raw, path, ("schemaVersion", "preparation", "measurement"))
+    if integer(pair["schemaVersion"], f"{path}.schemaVersion") != 3:
+        raise ResourceBaselineError(f"{path}.schemaVersion must be 3")
+    preparation_run, preparation = validate_ask_pipeline_trace(
+        pair["preparation"], f"{path}.preparation"
+    )
+    run, measurement = validate_ask_pipeline_trace(
+        pair["measurement"], f"{path}.measurement"
+    )
+    if preparation_run != run or any(
+        preparation[key] != measurement[key] for key in ("corpus", "citations")
+    ):
+        raise ResourceBaselineError(f"{path} preparation must match measurement")
+    return run, {**measurement, "preparation": preparation}
+
+
+def validate_ask_pipeline_trace(raw, path):
     sample = object_shape(
         raw,
         path,
@@ -1059,6 +1076,11 @@ def summarize_ask_pipeline(runs):
         "total": summarize_ask_timings(
             [sample["total"] for sample in samples]
         ),
+        # Retain first-use timing without mixing it into the steady-workload
+        # stability verdict. No cold-start latency SLO is invented here.
+        "preparation": summarize_ask_timings(
+            [sample["preparation"]["total"] for sample in samples]
+        ),
         "firstEvidence": summarize_ask_timings(
             [sample["firstEvidence"] for sample in samples]
         ),
@@ -1498,15 +1520,16 @@ def render_markdown(scorecard):
         "",
         "Time to first evidence is reported separately from the subsequent "
         "answer-generation interval. Every value is p50/p95 wall time with "
-        "process CPU in parentheses.",
+        "process CPU in parentheses. Preparation is the retained first-use answer; "
+        "steady total measures a fresh answer after exactly one preparation.",
         "",
-        "| Profile | State | Samples | Total | First evidence | Generation | Corpus | Citations |",
-        "| --- | --- | ---: | ---: | ---: | ---: | --- | --- |",
+        "| Profile | State | Samples | Preparation | Steady total | First evidence | Generation | Corpus | Citations |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |",
     ]
     for row in scorecard["askPipelineMeasurements"]:
         metrics = row["metrics"]
         if metrics is None:
-            total = evidence = generation = corpus = citations = "—"
+            preparation = total = evidence = generation = corpus = citations = "—"
         else:
             def render_timing(timing):
                 wall = timing["wallDurationMilliseconds"]
@@ -1516,6 +1539,7 @@ def render_markdown(scorecard):
                     f"({cpu['p50']:.0f}/{cpu['p95']:.0f} CPU ms)"
                 )
 
+            preparation = render_timing(metrics["preparation"])
             total = render_timing(metrics["total"])
             evidence = render_timing(metrics["firstEvidence"])
             generation = render_timing(metrics["generation"])
@@ -1529,7 +1553,7 @@ def render_markdown(scorecard):
             )
         lines.append(
             f"| `{row['profile']}` | **{row['state']}** | "
-            f"{row['sampleCount']} | {total} | {evidence} | {generation} | "
+            f"{row['sampleCount']} | {preparation} | {total} | {evidence} | {generation} | "
             f"{corpus} | {citations} |"
         )
     lines += [

@@ -12,7 +12,7 @@ The Settings journey also checks that localized provider help retains Sequoia
 and Tahoe support plus the selected local engine, rather than stale Apple-only
 live-summary wording.
 
-Status: the package inventory contains 3,028 cases (15 environment-gated) + 106
+Status: the package inventory contains 3,029 cases (15 environment-gated) + 106
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -2889,6 +2889,20 @@ minimum-safe English real-app Skills receipt focus/accessibility journey passed
 1/1 in an 18.004-second test interval. This automation validates the stable
 accessibility contract only; it does not fill any physical VoiceOver or Voice
 Control cell.
+
+**Exact Ask preparation and measurement (D486).** Resource Ask retains one
+first-use generated answer and one fresh steady generated answer per process.
+Both use the same released workflow, public corpus and existing deadline. The
+first observer detaches before the measured resource window opens. Its completed
+schema-2 trace is saved as an owner-only `ask-preparation-N.json` even if later
+measurement fails; the authoritative `ask-pipeline-N.json` is a schema-3 pair
+containing both complete traces. Collection rejects absent preparation, legacy
+unpaired input, failed/incomplete stages, content-bearing keys, or mismatched
+run/corpus/citations. The scorecard shows first-use p50/p95 separately from the
+steady answer; unchanged 1.25 ratio plus 100 ms stability limits apply to the
+latter. Preparation has the same hard deadline and no retries; this does not
+assert a new cold-start latency SLO. Leak repetitions retain their original
+measured iteration count after the one explicitly observed preparation.
 
 **Candidate automation owner (D392–D401).**
 `docs/evidence/candidate-automation.json` is the finite executable contract for

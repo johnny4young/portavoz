@@ -335,7 +335,7 @@ class ResourceBaselineTests(unittest.TestCase):
             root = Path(directory)
             receipt = self.write_receipt(root, "memory-8gb")
             document = json.loads(receipt.read_text())
-            document["askPipeline"]["samples"][0]["citations"][
+            document["askPipeline"]["samples"][0]["measurement"]["citations"][
                 "valid"
             ] = False
             receipt.write_text(json.dumps(document))
@@ -355,9 +355,10 @@ class ResourceBaselineTests(unittest.TestCase):
             root = Path(directory)
             receipt = self.write_receipt(root, "memory-8gb")
             document = json.loads(receipt.read_text())
-            document["askPipeline"]["samples"][1]["citations"][
-                "digest"
-            ] = "e" * 64
+            for phase in ("preparation", "measurement"):
+                document["askPipeline"]["samples"][1][phase]["citations"][
+                    "digest"
+                ] = "e" * 64
             receipt.write_text(json.dumps(document))
 
             with self.assertRaisesRegex(
@@ -395,7 +396,7 @@ class ResourceBaselineTests(unittest.TestCase):
             root = Path(directory)
             receipt = self.write_receipt(root, "memory-8gb")
             document = json.loads(receipt.read_text())
-            corpus = document["askPipeline"]["samples"][0]["corpus"]
+            corpus = document["askPipeline"]["samples"][0]["measurement"]["corpus"]
             corpus["pendingBefore"] = 1
             corpus["readyBefore"] = False
             receipt.write_text(json.dumps(document))
@@ -409,6 +410,42 @@ class ResourceBaselineTests(unittest.TestCase):
                         self.evaluate_args([receipt], root / "scorecard")
                     )
                 )
+
+    def test_ask_requires_complete_matching_preparation(self):
+        for field, value in (("run", 2), ("outcome", "failed"),
+                             ("citations", {"count": 1, "digest": "e" * 64, "valid": True})):
+            with self.subTest(field=field):
+                sample = self.ask_pipeline_sample(1)
+                sample["preparation"][field] = value
+                with self.assertRaises(baseline.ResourceBaselineError):
+                    baseline.validate_ask_pipeline_sample(sample, "sample")
+        sample = self.ask_pipeline_sample(1)
+        del sample["preparation"]
+        with self.assertRaises(baseline.ResourceBaselineError):
+            baseline.validate_ask_pipeline_sample(sample, "sample")
+        with self.assertRaises(baseline.ResourceBaselineError):
+            baseline.validate_ask_pipeline_sample(self.ask_pipeline_sample(1)["measurement"], "sample")
+
+    def test_ask_preparation_retains_first_use_without_replacing_steady_metrics(self):
+        runs = {}
+        for run in range(1, 4):
+            sample = self.ask_pipeline_sample(run)
+            sample["preparation"]["total"]["wallDurationMilliseconds"] = 10_000 * run
+            key, value = baseline.validate_ask_pipeline_sample(sample, "sample")
+            runs[key] = value
+        row = baseline.ask_pipeline_row("reference", {"runs": runs, "state": "pass"}, 3, 1.25, 100)
+        self.assertEqual(row["state"], "pass")
+        self.assertEqual(row["metrics"]["preparation"]["wallDurationMilliseconds"]["p95"], 30_000)
+        self.assertEqual(row["metrics"]["total"]["wallDurationMilliseconds"]["p95"], 1030)
+        runs[3]["total"]["wallDurationMilliseconds"] = 5000
+        row = baseline.ask_pipeline_row("reference", {"runs": runs, "state": "pass"}, 3, 1.25, 100)
+        self.assertEqual(row["state"], "unstable")
+
+    def test_ask_preparation_rejects_private_content(self):
+        sample = self.ask_pipeline_sample(1)
+        sample["preparation"]["answer"] = "private content"
+        with self.assertRaises(baseline.ResourceBaselineError):
+            baseline.validate_ask_pipeline_sample(sample, "sample")
 
     def test_duplicate_run_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -701,7 +738,7 @@ class ResourceBaselineTests(unittest.TestCase):
                 "public-synthetic-dual-channel-v2",
             )
             self.assertEqual(
-                receipt["askPipeline"]["samples"][0]["run"], 1
+                receipt["askPipeline"]["samples"][0]["measurement"]["run"], 1
             )
             self.assertEqual(
                 receipt["preparations"],
@@ -1323,7 +1360,7 @@ class ResourceBaselineTests(unittest.TestCase):
 
     @staticmethod
     def ask_pipeline_sample(run):
-        return {
+        trace = {
             "schemaVersion": 2,
             "run": run,
             "operation": "answer",
@@ -1365,6 +1402,12 @@ class ResourceBaselineTests(unittest.TestCase):
                 "digest": "d" * 64,
                 "valid": True,
             },
+        }
+
+        return {
+            "schemaVersion": 3,
+            "preparation": json.loads(json.dumps(trace)),
+            "measurement": trace,
         }
 
     @staticmethod

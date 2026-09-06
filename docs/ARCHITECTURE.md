@@ -3942,6 +3942,19 @@ identity, evidence, and display output after generation.
 
 ## Search, playback, and derived indexes
 
+### Observed Ask resource preparation
+
+The disposable resource composition observes one complete generated Ask answer
+before measuring its steady workload. Both operations enter the same released
+ApplicationKit use case with the same read-only preindexed public corpus;
+neither substitutes cached answer text. A separate observer owns each complete
+pipeline trace. Schema-3 paired evidence retains the first-use trace and the
+measured trace, and requires identical run, corpus readiness and exact citation
+evidence. Preparation errors or cancellation prevent measured work. The existing
+resource stability policy applies to the fresh steady answer; first-use timing
+is separately visible, not a claim about cold-start latency. This benchmark-only
+boundary adds no product task, service, scheduler, or background prewarming.
+
 ### Non-serving Ask stage attribution
 
 `bench-ask-attribution` is a CLI diagnostic, not another search adapter.

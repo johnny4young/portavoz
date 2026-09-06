@@ -541,7 +541,9 @@ for ((run = 1; run <= RUNS; run++)); do
 
     ask_sample="$fragments/ask-$run.json"
     ask_pipeline_sample="$fragments/ask-pipeline-$run.json"
-    if [[ ! -f "$ask_sample" || ! -f "$ask_pipeline_sample" ]]; then
+    ask_preparation_sample="$fragments/ask-preparation-$run.json"
+    if [[ ! -f "$ask_sample" || ! -f "$ask_pipeline_sample" \
+        || ! -f "$ask_preparation_sample" ]]; then
         [[ -f "$ask_log" ]] && cat "$ask_log" >&2
         fail "run $run did not produce both exact-shaped Ask samples"
     fi

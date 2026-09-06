@@ -46,6 +46,13 @@ struct AskPipelineBenchmarkSample: Codable, Equatable, Sendable {
     let citations: AskPipelineCitationEvidence
 }
 
+/// Both exact operations are retained; preparation is never a discarded retry.
+struct PreparedAskPipelineBenchmarkSample: Codable, Equatable, Sendable {
+    let schemaVersion: Int
+    let preparation: AskPipelineBenchmarkSample
+    let measurement: AskPipelineBenchmarkSample
+}
+
 enum AskPipelineRunProbeError: Error, Equatable, LocalizedError {
     case duplicateMilestone(AskPipelineMilestone)
     case duplicateStage(AskPipelineStage)
@@ -58,6 +65,7 @@ enum AskPipelineRunProbeError: Error, Equatable, LocalizedError {
     case invalidDigest
     case invalidMilestoneOrder
     case invalidRun
+    case mismatchedPreparation
     case missingMilestone(AskPipelineMilestone)
     case missingStage(AskPipelineStage)
     case outputAlreadyExists
@@ -91,6 +99,8 @@ enum AskPipelineRunProbeError: Error, Equatable, LocalizedError {
             "Ask benchmark first-token milestone preceded first evidence"
         case .invalidRun:
             "Ask benchmark run must be greater than zero"
+        case .mismatchedPreparation:
+            "Ask benchmark preparation must match the measured workload"
         case .missingMilestone(let milestone):
             "Ask benchmark did not reach milestone \(milestone.rawValue)"
         case .missingStage(let stage):
@@ -388,6 +398,28 @@ final class AskPipelineRunProbe: @unchecked Sendable {
         citations: AskPipelineCitationEvidence
     ) throws {
         let sample = try makeSample(corpus: corpus, citations: citations)
+        try write(sample, to: output)
+    }
+
+    func writePreparedSample(
+        to output: URL,
+        preparation: AskPipelineBenchmarkSample,
+        corpus: AskPipelineCorpusEvidence,
+        citations: AskPipelineCitationEvidence
+    ) throws {
+        let measurement = try makeSample(corpus: corpus, citations: citations)
+        guard preparation.schemaVersion == measurement.schemaVersion,
+              preparation.run == measurement.run,
+              preparation.operation == measurement.operation,
+              preparation.outcome == measurement.outcome,
+              preparation.corpus == measurement.corpus,
+              preparation.citations == measurement.citations
+        else { throw AskPipelineRunProbeError.mismatchedPreparation }
+        try write(PreparedAskPipelineBenchmarkSample(
+            schemaVersion: 3, preparation: preparation, measurement: measurement), to: output)
+    }
+
+    private func write(_ sample: some Encodable, to output: URL) throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(sample) + Data("\n".utf8)

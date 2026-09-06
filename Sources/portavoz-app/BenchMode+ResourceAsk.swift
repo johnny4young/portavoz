@@ -18,8 +18,9 @@ private struct AskResourceBenchmark {
 extension BenchMode {
     /// `portavoz-app --bench-resource-ask` measures the released deep Ask
     /// workflow over a disposable fixed transcript. Corpus preparation occurs
-    /// before measurement; the sample includes query expansion, read-only
-    /// hybrid retrieval, and generated answer.
+    /// before measurement. One exact preparation answer is observed separately;
+    /// the steady sample still performs query expansion, read-only hybrid
+    /// retrieval, and a fresh generated answer through the released workflow.
     @MainActor
     static func runAskResourceBenchIfRequested(services: AppServices) {
         let arguments = ProcessInfo.processInfo.arguments
@@ -68,6 +69,10 @@ extension BenchMode {
         probe: BenchResourceScenarioProbe
     ) async throws {
         let benchmark = try await makeAskBenchmark(services: services)
+        let preparation = try await prepareAskResourceBenchmark(
+            services: services, benchmark: benchmark, configuration: configuration,
+            run: probe.runIdentifier, output: probe.outputURL(named: "ask-preparation"))
+        try Task.checkCancellation()
         let pipelineProbe = try AskPipelineRunProbe(run: probe.runIdentifier)
         var observer: UUID? = AppAskPipelineTelemetry.shared.addObserver(
             pipelineProbe.receive)
@@ -113,19 +118,53 @@ extension BenchMode {
         }
         let pendingAfter = try await services.store.segmentsNeedingEmbeddings(
             limit: benchmark.segments.count + 1).count
-        try pipelineProbe.writeSample(
+        try pipelineProbe.writePreparedSample(
             to: probe.outputURL(named: "ask-pipeline"),
-            corpus: AskPipelineCorpusEvidence(
-                generation: "ask-resource-v2",
-                checksum: benchmark.corpusChecksum,
-                fixtureSegmentCount: benchmark.segments.count,
-                pendingAtSeed: benchmark.pendingAtSeed,
-                pendingBefore: benchmark.pendingBefore,
-                pendingAfter: pendingAfter,
-                readyBefore: benchmark.pendingBefore == 0,
-                readyAfter: pendingAfter == 0,
-                warmup: "preindexed"),
+            preparation: preparation,
+            corpus: askCorpusEvidence(benchmark, pendingAfter: pendingAfter),
             citations: citations)
+    }
+
+    @MainActor
+    private static func prepareAskResourceBenchmark(
+        services: AppServices,
+        benchmark: AskResourceBenchmark,
+        configuration: BenchAskResourceConfiguration,
+        run: Int,
+        output: URL
+    ) async throws -> AskPipelineBenchmarkSample {
+        try Task.checkCancellation()
+        let pipeline = try AskPipelineRunProbe(run: run)
+        let observer = AppAskPipelineTelemetry.shared.addObserver(pipeline.receive)
+        defer { AppAskPipelineTelemetry.shared.removeObserver(observer) }
+        let answer = try await runAskBenchmark(
+            useCase: benchmark.useCase, question: benchmark.question,
+            timeoutSeconds: configuration.timeoutSeconds)
+        guard let generated = answer.generatedText,
+              !generated.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { throw BenchAskResourceError.noGeneratedAnswer }
+        let citations = try askCitationEvidence(answer.citations, benchmark: benchmark)
+        let pendingAfter = try await services.store.segmentsNeedingEmbeddings(
+            limit: benchmark.segments.count + 1).count
+        let corpus = askCorpusEvidence(benchmark, pendingAfter: pendingAfter)
+        try pipeline.writeSample(to: output, corpus: corpus, citations: citations)
+        return try pipeline.makeSample(
+            corpus: corpus, citations: citations)
+    }
+
+    private static func askCorpusEvidence(
+        _ benchmark: AskResourceBenchmark, pendingAfter: Int
+    ) -> AskPipelineCorpusEvidence {
+        AskPipelineCorpusEvidence(
+            generation: "ask-resource-v2",
+            checksum: benchmark.corpusChecksum,
+            fixtureSegmentCount: benchmark.segments.count,
+            pendingAtSeed: benchmark.pendingAtSeed,
+            pendingBefore: benchmark.pendingBefore,
+            pendingAfter: pendingAfter,
+            readyBefore: benchmark.pendingBefore == 0,
+            readyAfter: pendingAfter == 0,
+            warmup: "preindexed")
     }
 
     @MainActor

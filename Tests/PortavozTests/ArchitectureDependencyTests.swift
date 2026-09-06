@@ -2666,7 +2666,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 3,028 cases "
+            "package inventory contains 3,029 cases "
                 + "(15 environment-gated) + 106"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -5259,6 +5259,14 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(askBench.contains(
             "allowAssetDownload: false"))
         XCTAssertTrue(askBench.contains("pendingAtSeed"))
+        let preparation = try XCTUnwrap(askBench.range(
+            of: "let preparation = try await prepareAskResourceBenchmark("))
+        let measuredWindow = try XCTUnwrap(askBench.range(
+            of: "let citations = try await probe.measure(scenario:"))
+        XCTAssertLessThan(preparation.lowerBound, measuredWindow.lowerBound)
+        XCTAssertTrue(askBench.contains("try pipeline.writeSample(to: output"))
+        XCTAssertTrue(askBench.contains("try pipelineProbe.writePreparedSample("))
+
         XCTAssertTrue(askBench.contains(
             "source: .library"))
         XCTAssertTrue(indexingBench.contains(

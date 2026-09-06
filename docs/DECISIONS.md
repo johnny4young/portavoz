@@ -18440,3 +18440,33 @@ EN/ES labels and real app-window captures check the professional presentation.
 System selection owns active/inactive and accessibility contrast rather than a
 second painted gradient. Physical assistive interaction remains a separate,
 unverified follow-up rather than an inferred result of this UI work.
+
+
+## D486 — Retain first-use Ask separately from steady resource evidence (Sep 2026)
+
+**Context:** a candidate's three Ask samples took 1,010, 725 and 755 ms while
+retrieval stayed near 10 ms with the same six valid citations. A fixed paired
+contrast reproduced variability in the previously qualified control, so this
+was not evidence of a new product slowdown. A subsequent predeclared three-
+process experiment used the existing two-iteration Ask workload without source
+changes: first calls took 910, 756 and 854 ms; the remaining window was 477,
+471 and 493 ms. That difference includes validation overhead, but consistently
+separates first-use work from the next exact answer. The benchmark previously
+preindexed the corpus without exercising the generation path.
+
+**Decision:** observe exactly one complete preparation answer before the steady
+resource window, with the same released workflow, public corpus, six-source
+limit and deadline. Do not reuse answer text or sessions. Save the complete
+content-free preparation trace independently and embed it alongside the fresh
+measured trace in a strict schema-3 pair. Require both traces to succeed and
+match run, corpus and citation evidence. Detach the first observer before the
+resource probe and second observer; failed or cancelled preparation never opens
+the measured window. Keep preparation timing visible in the scorecard.
+
+**Consequences:** this is a declared benchmark lifecycle boundary, not product
+prewarming, a performance improvement claim, a retry or a threshold increase.
+The same three fresh processes and 1.25 ratio plus 100 ms steady stability rule
+remain mandatory. First-use timing is retained without inventing a cold-start
+SLO. Adverse candidates remain failed; new source needs ordinary preflight,
+mandatory XCUITest and fresh source-bound evidence. Shared-host interference
+cannot be relabeled as product success or fixed by stopping unrelated tasks.

@@ -194,9 +194,50 @@ final class AskPipelineRunProbeTests: XCTestCase {
         }
     }
 
-    private func makeCompletedProbe(run: Int) throws -> AskPipelineRunProbe {
+    func testPreparedSampleRetainsBothTracesAndRejectsMismatchedWork() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("PreparedAsk-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let output = directory.appendingPathComponent("sample.json")
+        let preparation = try makeCompletedProbe(run: 2).makeSample(
+            corpus: Self.corpus, citations: Self.citations)
+        let measurement = try makeCompletedProbe(run: 2, uptimeStep: 5_000_000)
+        try measurement.writePreparedSample(
+            to: output, preparation: preparation,
+            corpus: Self.corpus, citations: Self.citations)
+        let pair = try JSONDecoder().decode(
+            PreparedAskPipelineBenchmarkSample.self, from: Data(contentsOf: output))
+        XCTAssertEqual(pair.schemaVersion, 3)
+        XCTAssertEqual(pair.preparation, preparation)
+        XCTAssertEqual(pair.preparation.total.wallDurationMilliseconds, 170, accuracy: 0.001)
+        XCTAssertEqual(pair.measurement.total.wallDurationMilliseconds, 85, accuracy: 0.001)
+        XCTAssertEqual(pair.preparation.citations, pair.measurement.citations)
+        XCTAssertThrowsError(try measurement.writePreparedSample(
+            to: output, preparation: preparation,
+            corpus: Self.corpus, citations: Self.citations)) {
+            XCTAssertEqual($0 as? AskPipelineRunProbeError, .outputAlreadyExists)
+        }
+        let mismatch = directory.appendingPathComponent("mismatch.json")
+        XCTAssertThrowsError(try makeCompletedProbe(run: 3).writePreparedSample(
+            to: mismatch, preparation: preparation,
+            corpus: Self.corpus, citations: Self.citations)) {
+            XCTAssertEqual($0 as? AskPipelineRunProbeError, .mismatchedPreparation)
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: mismatch.path))
+        XCTAssertThrowsError(try measurement.writePreparedSample(
+            to: mismatch, preparation: preparation, corpus: Self.corpus,
+            citations: AskPipelineCitationEvidence(
+                count: 1, digest: String(repeating: "e", count: 64), valid: true))) {
+            XCTAssertEqual($0 as? AskPipelineRunProbeError, .mismatchedPreparation)
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: mismatch.path))
+    }
+
+    private func makeCompletedProbe(
+        run: Int, uptimeStep: UInt64 = 10_000_000
+    ) throws -> AskPipelineRunProbe {
         let cpu = LockedUInt64Sequence(step: 1_000_000)
-        let uptime = LockedUInt64Sequence(step: 10_000_000)
+        let uptime = LockedUInt64Sequence(step: uptimeStep)
         let probe = try AskPipelineRunProbe(
             run: run,
             cpuProvider: cpu.next,
