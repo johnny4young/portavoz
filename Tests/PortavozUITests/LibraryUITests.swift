@@ -640,6 +640,11 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(search.waitForExistenceFast(timeout: 5))
         search.click()
         search.typeText("viernes")
+        XCTAssertTrue(search.waitForValue("viernes", timeout: 5))
+        // Commit native editing without accepting an AutoFill suggestion over
+        // the real FTS hit; retain the exact query and destination assertions.
+        search.typeKey(.tab, modifierFlags: [])
+        XCTAssertTrue(search.waitForValue("viernes", timeout: 5))
         let hit = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-search-hit-'"))
             .firstMatch
@@ -649,6 +654,7 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(
             hit.label.contains("Test meeting · 00:03"),
             "the search result must expose the meeting and exact hit timestamp")
+        XCTAssertTrue(hit.waitForHittable(timeout: 5))
         hit.click()
         let currentTime = app.staticTexts["player-current-time"]
         XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))

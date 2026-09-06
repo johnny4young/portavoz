@@ -7368,3 +7368,9 @@ retry a failed assertion. Existing Skills missing-policy/retry and Library
 search/palette journeys retain their full assertions. The source-level owner
 pins click/Tab/value-check ordering and both settings branches; only a complete
 bilingual real-app run can qualify the shared harness.
+
+The Library recency/FTS journey additionally ends its deliberate query edit
+before selecting the result. It checks the exact literal query both before and
+after Tab, requires the real hit to be hittable, and still verifies the exact
+meeting, source timestamp and playback seek. Cold-start focus setup alone does
+not cover a later user-initiated editing session.

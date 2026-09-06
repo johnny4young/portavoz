@@ -10305,6 +10305,20 @@ final class ArchitectureDependencyTests: XCTestCase {
             XCTAssertTrue(correctedSearch.contains(owner), owner)
         }
         XCTAssertTrue(library.contains("testSeededMeetingsGroupByRecency"))
+        let recencyJourneyStart = try XCTUnwrap(library.range(
+            of: "func testSeededMeetingsGroupByRecency()"))
+        let recencyJourneyEnd = try XCTUnwrap(library.range(
+            of: "func testAskConversationAnswersAndSeeksToExactCitation()",
+            range: recencyJourneyStart.upperBound..<library.endIndex))
+        let recencyJourney = library[
+            recencyJourneyStart.lowerBound..<recencyJourneyEnd.lowerBound]
+        XCTAssertEqual(recencyJourney.components(separatedBy:
+            "search.waitForValue(\"viernes\", timeout: 5)").count - 1, 2)
+        let endSearchEdit = try XCTUnwrap(recencyJourney.range(
+            of: "search.typeKey(.tab, modifierFlags: [])"))
+        let selectSearchHit = try XCTUnwrap(recencyJourney.range(of: "hit.click()"))
+        XCTAssertLessThan(endSearchEdit.lowerBound, selectSearchHit.lowerBound)
+        XCTAssertTrue(recencyJourney.contains("hit.waitForHittable(timeout: 5)"))
         XCTAssertTrue(library.contains("library-search-hit-"))
 
         XCTAssertTrue(meeting.contains("skill-receipt-email-recap-draft"))

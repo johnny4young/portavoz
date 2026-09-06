@@ -18493,3 +18493,9 @@ retry, timeout increase or relaxed functional assertion. The value-preservation
 check fails if traversal changes the query. Existing bilingual Library, Settings
 and Skills journeys remain behavioral owners; the shared-harness change requires
 the complete bilingual gate. Original failed receipts remain adverse evidence.
+
+The existing Library FTS journey applies the same boundary after entering its
+real query, not only during cold seed setup: require the literal query before
+and after Tab, require the identified hit to be hittable, then retain the exact
+meeting/timestamp and playback-seek assertions. A full-run video exposed that
+separate active-editing boundary; initial readiness cannot stand in for it.
