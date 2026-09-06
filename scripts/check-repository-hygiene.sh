@@ -139,6 +139,7 @@ python3 -m unittest Tests.Tooling.test_commitment_link_policy_review
 python3 scripts/commitment_link_quality.py validate \
   --fixture Fixtures/CommitmentLinkQuality/public-synthetic-v1.json
 python3 -m unittest Tests.Tooling.test_resource_baseline
+python3 -m unittest Tests.Tooling.test_resource_host_observation
 python3 -m unittest Tests.Tooling.test_exact_path_matrix
 python3 -m unittest Tests.Tooling.test_exact_path_mutation_matrix
 python3 -m unittest Tests.Tooling.test_exact_path_mutation_cross_host

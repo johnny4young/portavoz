@@ -18394,3 +18394,27 @@ for completeness. This is admission control rather than hard pre-emption,
 an eight-second end-to-end guarantee or demonstrated semantic answer quality.
 Deterministic adversarial tests and released-consumer UI regression remain
 separate from real-provider, hardware and release qualification.
+
+## D484 — Observe live adapter work before attributing resource variance (Sep 2026)
+
+**Context:** equal live-owner span counts did not establish equal work during
+variable recording CPU and Stop duration. The pinned backend hides prediction
+attempts, failed windows and input queue depth; its public updates expose only
+successful payloads. Repeating a full candidate without better attribution
+would not distinguish changed workload from host effects.
+
+**Decision:** add explicit, synthetic-only, fixed-size public-adapter counters
+and monotonic phase timings in a separate owner-only sidecar. Attach after
+warmup, seal once, require complete two-channel input conservation, and retain
+cancellation/failure honestly. Incomplete runs retain their bounded samples in
+a distinct adverse sidecar, never the complete filename; publication still
+throws and cannot repair or overwrite that run. Keep the normal engine observer
+nil. Collect host CPU classes in an independently bounded, content-free observation window,
+not through raw process inventories or transcript-bearing backend logs.
+
+**Consequences:** resource experiments can compare admitted frames, observed
+updates and finish/drain costs without storing content. Neither equal payload
+counts nor coincident host load proves equal internal work or causation. The
+resource schema, 1.25 ratio plus 100 ms stability rule, release authority and
+physical gates are unchanged. The next experiment must retain these diagnostics
+and the exact clean build; the prior failed receipt is not superseded by tests.

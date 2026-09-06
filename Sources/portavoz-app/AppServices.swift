@@ -197,6 +197,7 @@ final class AppServices {
     }
     var modelsState: ModelsState = .unknown
     var transcriber: ParakeetEngine?
+    @ObservationIgnored var benchLiveWorkObserver: (@Sendable (ParakeetLiveWorkSample) -> Void)?
     @ObservationIgnored var liveSpeechRuntimeLoad: LiveSpeechRuntimeLoad?
     var diarizationRuntime: PyannoteDiarizationRuntime?
     @ObservationIgnored var diarizationRuntimeLoad: DiarizationRuntimeLoad?

@@ -20,6 +20,7 @@ import PortavozCore
 public final class ParakeetEngine: TranscriptionEngine, Sendable {
     public let descriptor: EngineDescriptor
     private let models: AsrModels
+    private let liveWorkObserver: (@Sendable (ParakeetLiveWorkSample) -> Void)?
 
     /// Loads the engine from a directory the `ModelStore` has verified.
     /// Never point this at an unverified download — model files are code.
@@ -40,8 +41,20 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
         return try await load(fromVerifiedDirectory: directory)
     }
 
-    init(models: AsrModels) {
+    /// Shares verified immutable model weights while observing only public
+    /// live-adapter counts. Batch jobs and the normal engine are unchanged.
+    public func observingLiveWork(
+        _ observer: @escaping @Sendable (ParakeetLiveWorkSample) -> Void
+    ) -> ParakeetEngine {
+        ParakeetEngine(models: models, liveWorkObserver: observer)
+    }
+
+    init(
+        models: AsrModels,
+        liveWorkObserver: (@Sendable (ParakeetLiveWorkSample) -> Void)? = nil
+    ) {
         self.models = models
+        self.liveWorkObserver = liveWorkObserver
         self.descriptor = EngineDescriptor(
             id: "parakeet-tdt-0.6b-v3",
             displayName: "Parakeet TDT 0.6B v3",
@@ -75,12 +88,15 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
         hints: TranscriptionHints
     ) -> AsyncThrowingStream<TranscriptSegment, Error> {
         let models = self.models
+        let observer = liveWorkObserver
         return AsyncThrowingStream { continuation in
             let job = Task {
+                let probe = observer.map { _ in ParakeetLiveWorkProbe() }
                 let manager = SlidingWindowAsrManager(config: Self.liveWindowConfig)
                 do {
                     try await manager.loadModels(models)
                     try await manager.startStreaming(source: .microphone)
+                    probe?.begin(.feed)
 
                     let meetingID = hints.meetingID ?? MeetingID()
                     let channelHolder = ChannelHolder()
@@ -89,6 +105,9 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
                     let consumer = Task {
                         var lastEndTime: TimeInterval = 0
                         for await update in updates {
+                            probe?.update(tokens: update.tokenIds.count,
+                                          timings: update.tokenTimings.count,
+                                          confirmed: update.isConfirmed)
                             let segment = ParakeetSegmentMapper.segment(
                                 text: update.text,
                                 isConfirmed: update.isConfirmed,
@@ -106,28 +125,52 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
                         }
                     }
 
-                    for await chunk in audio {
-                        try Task.checkCancellation()
-                        await channelHolder.set(chunk.channel)
-                        if let buffer = chunk.pcmBuffer() {
-                            await manager.streamAudio(buffer)
-                        }
-                    }
+                    try await Self.feed(audio, manager: manager, channelHolder: channelHolder, probe: probe)
 
                     // Drain: finish() processes the remaining audio (yielding
                     // its updates), cancel() closes the update stream so the
                     // consumer ends after the buffered updates are delivered.
+                    probe?.begin(.finish)
                     _ = try await manager.finish()
+                    probe?.begin(.updateDrain)
                     await manager.cancel()
                     await consumer.value
+                    probe?.begin(.cleanup)
                     await manager.cleanup()
+                    if let sample = probe?.finish(outcome: Task.isCancelled ? .cancelled : .completed) {
+                        observer?(sample)
+                    }
                     continuation.finish()
                 } catch {
+                    probe?.begin(.cleanup)
                     await manager.cleanup()
+                    let outcome: ParakeetLiveWorkSample.Outcome =
+                        error is CancellationError || Task.isCancelled ? .cancelled : .failed
+                    if let sample = probe?.finish(outcome: outcome) { observer?(sample) }
                     continuation.finish(throwing: error)
                 }
             }
             continuation.onTermination = { _ in job.cancel() }
+        }
+    }
+
+    private static func feed(
+        _ audio: AsyncStream<AudioChunk>,
+        manager: SlidingWindowAsrManager,
+        channelHolder: ChannelHolder,
+        probe: ParakeetLiveWorkProbe?
+    ) async throws {
+        for await chunk in audio {
+            try Task.checkCancellation()
+            await channelHolder.set(chunk.channel)
+            if let buffer = chunk.pcmBuffer() {
+                probe?.input(frames: chunk.samples.count, sampleRate: chunk.sampleRate,
+                             channel: chunk.channel, accepted: true)
+                await manager.streamAudio(buffer)
+            } else {
+                probe?.input(frames: chunk.samples.count, sampleRate: chunk.sampleRate,
+                             channel: chunk.channel, accepted: false)
+            }
         }
     }
 

@@ -7287,3 +7287,41 @@ assertions still require the exact version and complete ordered migration list.
 Unfolding-stream cancellation tests cover both pre-poll closure release and a
 parked consumer; the session checks cancellation after iteration because Swift
 allows a cancelled asynchronous stream to return nil rather than throw.
+
+### Live-work and host-window diagnostics (D484)
+
+The resource collector opts in with `--bench-resource-live-work` for its three
+synthetic recording families. The flag requires the disposable store, unique
+synthetic/output/run flags, matching 30–600-second duration, absolute output,
+and run 1–100. The observer is attached after live/concurrent warmup and cleared
+when the runner exits. A fixed two-sample collector requires exactly microphone
+and system, complete lifecycle, 16 kHz, the expected frame total and no rejected
+buffer. Missing, duplicate, overflowed, failed or cancelled observations retain
+bounded counts in a distinctly named `*.adverse.json` fragment, report incomplete,
+throw and omit the canonical complete filename. Owner failure also retains only
+adverse evidence, even if both stream samples were healthy. An adverse run cannot later be
+repaired or overwritten under the same identity. Invalid command admission
+creates no artifact. Separate `*-live-work-<run>.json` fragments use mode 0600
+and never replace prior evidence. The authoritative resource receipt shape and stability
+policy remain unchanged; new diagnostic overhead belongs to the measured build.
+
+`scripts/resource_host_observation.py --duration 600 --output /absolute/scratch/host.json`
+is a separate, explicitly owned observation window. It samples at most once
+every two seconds for 2–900 seconds, detects parent loss, handles interruption,
+and bounds each read-only `ps` call to two seconds. Only total/recognized CPU,
+closed contributor classes, app counts, elapsed times and closed outcomes are
+retained. Sample failures are counted without raw subprocess messages. Exclusive
+atomic publication uses mode 0600. It never signals another process. CPU values
+are process-reported averages, not instantaneous counters or exact phase costs.
+The window may include warmup/idle/teardown; phase attribution and qualification
+authority are explicitly false. Coordinate its lifetime and retain the exact
+resource run identity separately; do not infer causation from coincident load.
+
+Deterministic tests cover phase accounting, checked arithmetic, concurrency,
+terminal sealing, request admission, channel/frame conservation, partial refusal,
+permissions/non-overwrite and privacy shape. The existing installed-model live
+integration additionally validates actual terminal counts, without downloading
+assets or enabling transcript-bearing DEBUG diagnostics. Host-observer tests use
+injected clocks/process output and exercise the actual CLI's invalid admission.
+Real clean-build repetitions, adverse evidence and physical hardware remain
+necessary; passing these tests is not closure of the observed resource variance.

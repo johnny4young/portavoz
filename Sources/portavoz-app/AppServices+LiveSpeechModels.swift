@@ -77,7 +77,8 @@ extension AppServices {
     func liveTranscriptionRuntime(
         _ runtime: LiveSpeechRuntimeLease
     ) -> LiveTranscriptionRuntime {
-        LiveTranscriptionRuntime(engine: runtime.engine) { [weak self] in
+        let engine = benchLiveWorkObserver.map(runtime.engine.observingLiveWork) ?? runtime.engine
+        return LiveTranscriptionRuntime(engine: engine) { [weak self] in
             guard let self else { return }
             _ = self.finishLiveSpeechRuntime(runtime)
             self.scheduleRecordingEnginesRelease()

@@ -376,6 +376,7 @@ for ((run = 1; run <= RUNS; run++)); do
             -use-temp-store \
             --bench-record "$DURATION" \
             --bench-resource-synthetic-capture \
+            --bench-resource-live-work \
             --bench-resource-output "$fragments" \
             --bench-resource-run "$run" \
             --bench-resource-idle-duration "$IDLE_DURATION" \
@@ -392,6 +393,8 @@ for ((run = 1; run <= RUNS; run++)); do
         [[ -f "$recording_log" ]] && cat "$recording_log" >&2
         fail "run $run did not produce all three exact-shaped samples"
     fi
+    [[ -f "$fragments/recording-live-work-$run.json" ]] ||
+        fail "run $run did not produce live-work diagnostics"
     sample_arguments+=(--sample "idle=$idle_sample")
     sample_arguments+=(--sample "recording=$recording_sample")
     sample_arguments+=(--sample "stop=$stop_sample")
@@ -408,6 +411,7 @@ for ((run = 1; run <= RUNS; run++)); do
             -use-temp-store \
             --bench-record "$DURATION" \
             --bench-resource-synthetic-capture \
+            --bench-resource-live-work \
             --bench-resource-recording-indexing \
             --bench-resource-output "$fragments" \
             --bench-resource-run "$run" \
@@ -425,6 +429,8 @@ for ((run = 1; run <= RUNS; run++)); do
             cat "$recording_indexing_log" >&2
         fail "run $run did not produce the recording plus indexing sample"
     fi
+    [[ -f "$fragments/recording-plus-indexing-live-work-$run.json" ]] ||
+        fail "recording plus indexing run $run did not produce live-work diagnostics"
     sample_arguments+=(
         --sample "recording-indexing=$recording_indexing_sample"
     )
@@ -441,6 +447,7 @@ for ((run = 1; run <= RUNS; run++)); do
             -use-temp-store \
             --bench-record "$DURATION" \
             --bench-resource-synthetic-capture \
+            --bench-resource-live-work \
             --bench-resource-recording-batch "$fixture_audio" \
             --bench-resource-output "$fragments" \
             --bench-resource-run "$run" \
@@ -458,6 +465,8 @@ for ((run = 1; run <= RUNS; run++)); do
             cat "$recording_batch_log" >&2
         fail "run $run did not produce the recording plus batch sample"
     fi
+    [[ -f "$fragments/recording-plus-batch-live-work-$run.json" ]] ||
+        fail "recording plus batch run $run did not produce live-work diagnostics"
     sample_arguments+=(
         --sample "recording-batch=$recording_batch_sample"
     )

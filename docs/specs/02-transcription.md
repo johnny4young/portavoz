@@ -184,6 +184,28 @@ this composer and corrected text remains intentionally unmaterialized.
 - First load compiles for ANE (~14 s for the encoder on M4 Max); CoreML caches it afterward (~1 s).
 - Licenses: Parakeet v3 model CC-BY-4.0, FluidAudio Apache-2.0, WhisperKit MIT — all MIT-compatible with attribution.
 
+### Opt-in public live-work observations (D484)
+
+`ParakeetEngine.observingLiveWork` shares the already verified immutable model
+weights in a separate engine wrapper; it does not load models or change batch
+routing. With no observer, no probe is allocated. One fixed-size lock-protected
+probe counts accepted chunks/frames, rejected PCM conversions, successful public
+update payloads, token/timing array lengths, confirmation flags, and updates
+consumed after `finish()` begins. Cumulative payload lengths are not unique token
+counts, and updates consumed during drain may have been emitted earlier.
+
+Monotonic phase durations distinguish model-manager preparation, audio feed,
+backend finish, update-consumer drain and cleanup. Input changes, negative or
+overflowing counts, backward phases/clocks and incomplete successful lifecycle
+mark the observation invalid. The terminal value seals once; late updates cannot
+mutate it. Cancellation is reported as cancellation even if stream iteration
+ends without throwing. No audio, text, token IDs or timing arrays are retained.
+
+The pinned backend does not expose its internal prediction attempts, failed
+windows or queue depth; the sidecar explicitly says those counts are unavailable.
+Existing exception-path cleanup semantics are unchanged. This instrumentation
+does not demonstrate backend backpressure or cancellation drain correctness.
+
 ## Research-only live challenger: Nemotron Latin 1120 ms (D355)
 
 - `ModelCatalog.nemotronLatin1120` pins the exact upstream revision and all ten

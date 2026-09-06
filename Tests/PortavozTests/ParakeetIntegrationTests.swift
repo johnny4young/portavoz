@@ -1,5 +1,6 @@
 import AVFoundation
 import Foundation
+import os
 import PortavozCore
 import XCTest
 
@@ -37,7 +38,10 @@ final class ParakeetIntegrationTests: XCTestCase {
         guard let wavPath = ProcessInfo.processInfo.environment["PORTAVOZ_TEST_WAV"] else {
             throw XCTSkip("set PORTAVOZ_TEST_WAV to a spoken wav file")
         }
-        let engine = try await loadedEngine()
+        let terminal = OSAllocatedUnfairLock<ParakeetLiveWorkSample?>(initialState: nil)
+        let engine = try await loadedEngine().observingLiveWork { sample in
+            terminal.withLock { $0 = sample }
+        }
 
         let file = try AVAudioFile(forReading: URL(fileURLWithPath: wavPath))
         let format = file.processingFormat
@@ -97,6 +101,14 @@ final class ParakeetIntegrationTests: XCTestCase {
         }
         await producer.value
 
+        let observation = try XCTUnwrap(terminal.withLock { $0 })
+        XCTAssertTrue(observation.valid)
+        XCTAssertEqual(observation.outcome, .completed)
+        XCTAssertEqual(observation.inputFrames, samples.count)
+        XCTAssertEqual(observation.channel, .microphone)
+        XCTAssertEqual(observation.finishCalls, 1)
+        XCTAssertEqual(observation.rejectedBuffers, 0)
+        XCTAssertGreaterThan(observation.backendUpdates, 0)
         XCTAssertFalse(segments.isEmpty, "expected live segments from spoken audio")
         let fullText = segments.map(\.text).joined(separator: " ").lowercased()
         let lexicalCharacterCount = fullText.unicodeScalars.reduce(into: 0) { count, scalar in

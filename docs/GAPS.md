@@ -472,3 +472,17 @@ disk pressure/partial native writes, or multi-hour drain latency. Symbolic
 silence still costs proportional disk writes; rejected-frame evidence describes
 only admission, not all later missing time. Legacy captures/sources remain
 unknown. Keep Sequoia/Tahoe physical, accessibility and CloudKit field gates.
+
+## Live decoder work and resource attribution
+
+D484 supplies opt-in public-adapter counts and phase durations plus a separate
+content-free host window. The previously observed recording CPU/Stop variance
+remains unresolved until clean-build repeated measurements are inspected.
+Public update counts are not internal prediction/failed-window counts; the
+pinned backend keeps those and its input queue depth private. Equal input or
+update counts alone cannot establish equal decoder work. Host CPU classes are
+observational context, not exact phase attribution or a causal exemption.
+Backend queue backpressure and exception-path cancellation draining remain
+unverified risks, not newly reproduced product defects. Preserve the failed
+receipt and unchanged stability thresholds; do not replace this gap with a
+retry-until-green candidate or a synthetic unit-test claim.

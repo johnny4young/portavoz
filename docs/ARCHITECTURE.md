@@ -3356,6 +3356,19 @@ mismatched-build, wrong-memory-tier, non-finite, or payload-bearing evidence
 fails validation. A complete matrix proves measurement coverage only: it does
 not define budgets or authorize governor policy.
 
+Opt-in live-work diagnostics remain outside that resource schema. A
+per-stream `ParakeetLiveWorkProbe` observes admitted input geometry, public
+update/token-array counts, and load/feed/finish/update-consumer-drain/cleanup
+wall time. The regular engine has no observer. Only the explicitly requested
+synthetic benchmark attaches a fixed two-channel collector after warmup; it
+publishes an owner-only, non-overwriting sidecar after Stop. Partial, cancelled,
+invalid or duplicate channel observations retain a distinct adverse fragment,
+never the complete filename, and cannot masquerade as a complete pair or be
+repaired under that run identity. These are adapter observations, not backend prediction/failed-window counts,
+unique token counts, or proof of identical decoder work. A separate bounded
+host-window observer retains closed CPU classes without names/PIDs/arguments;
+it neither controls other processes nor changes readiness or resource gates.
+
 Accelerated long-capture conservation is a separate contract, not a tenth
 resource-matrix scenario. `make long-capture-baseline` requires a clean commit,
 refuses to replace an existing receipt, builds the CLI in Release, and

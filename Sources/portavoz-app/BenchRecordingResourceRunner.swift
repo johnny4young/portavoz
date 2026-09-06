@@ -10,6 +10,7 @@ enum BenchRecordingResourceRunner {
     private struct Configuration {
         let seconds: Int
         let usesSyntheticCapture: Bool
+        let liveWorkProbe: BenchLiveTranscriptionWorkProbe?
         let baselineProbes: BenchRecordResourceProbes?
         let concurrentProbe: BenchConcurrentRecordingResourceProbe?
         let batchConfiguration: BenchBatchResourceConfiguration?
@@ -47,6 +48,8 @@ enum BenchRecordingResourceRunner {
             configuration = Configuration(
                 seconds: seconds,
                 usesSyntheticCapture: usesSyntheticCapture,
+                liveWorkProbe: try BenchLiveTranscriptionWorkProbe.requested(
+                    arguments: arguments, durationSeconds: seconds),
                 baselineProbes: baselineProbes,
                 concurrentProbe: concurrentProbe,
                 batchConfiguration: batchConfiguration)
@@ -74,6 +77,9 @@ enum BenchRecordingResourceRunner {
                         services: services,
                         timeout: .seconds(30))
                 }
+                // Never turn a failed owner into an admitted complete filename.
+                // If an adverse fragment already exists, preserve it unchanged.
+                try? configuration.liveWorkProbe?.write(ownerCompleted: false)
                 emit("bench-record: FAILED: \(error.localizedDescription)")
                 exit(1)
             }
@@ -86,6 +92,7 @@ enum BenchRecordingResourceRunner {
         recording: RecordingController,
         configuration: Configuration
     ) async throws {
+        defer { services.benchLiveWorkObserver = nil }
         if configuration.usesSyntheticCapture {
             emit(
                 "bench-record: capture input "
@@ -103,7 +110,8 @@ enum BenchRecordingResourceRunner {
             recording: recording,
             baselineProbes: configuration.baselineProbes,
             concurrentProbe: configuration.concurrentProbe,
-            concurrentWorkload: concurrentWorkload)
+            concurrentWorkload: concurrentWorkload,
+            liveWorkProbe: configuration.liveWorkProbe)
 
         let concurrentTask = concurrentWorkload.map { workload in
             Task { @MainActor in
@@ -131,6 +139,7 @@ enum BenchRecordingResourceRunner {
             recording: recording,
             baselineProbes: configuration.baselineProbes,
             concurrentProbe: configuration.concurrentProbe)
+        try configuration.liveWorkProbe?.write()
     }
 
     @MainActor
@@ -160,7 +169,8 @@ enum BenchRecordingResourceRunner {
         recording: RecordingController,
         baselineProbes: BenchRecordResourceProbes?,
         concurrentProbe: BenchConcurrentRecordingResourceProbe?,
-        concurrentWorkload: BenchConcurrentRecordingWorkload?
+        concurrentWorkload: BenchConcurrentRecordingWorkload?,
+        liveWorkProbe: BenchLiveTranscriptionWorkProbe?
     ) async throws {
         emit(String(
             format: "bench-record: baseline (no models) %.0f MB",
@@ -183,6 +193,11 @@ enum BenchRecordingResourceRunner {
                 timeoutSeconds: concurrentProbe.timeoutSeconds)
         }
         try await ResourceProbeHostReadiness.waitUntilNominal()
+        if let liveWorkProbe {
+            services.benchLiveWorkObserver = { @Sendable sample in liveWorkProbe.receive(sample) }
+        } else {
+            services.benchLiveWorkObserver = nil
+        }
         try baselineProbes?.beginRecording()
         try concurrentProbe?.begin()
         emit(String(
