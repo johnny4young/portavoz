@@ -18470,3 +18470,26 @@ remain mandatory. First-use timing is retained without inventing a cold-start
 SLO. Adverse candidates remain failed; new source needs ordinary preflight,
 mandatory XCUITest and fresh source-bound evidence. Shared-host interference
 cannot be relabeled as product success or fixed by stopping unrelated tasks.
+
+## D487 — End native search editing before UI navigation assertions (Sep 2026)
+
+**Context:** a complete Spanish run retained one failed Skills recovery journey.
+The missing-policy state and absence of unauthorized controls were correct, but
+an app-owned native autocomplete window overlapped Retry. The exact event-time
+video showed the empty Settings search still editing after category navigation.
+A prior seeded Library failure showed the same obstruction near its search.
+
+**Decision:** apply the established D468 keyboard-focus boundary to search setup.
+After opening Settings, click the identified search field, traverse with Tab,
+and require its original value to remain unchanged before navigating categories.
+When a seeded Library row remains obstructed after seed readiness and existing
+query cleanup, end that search edit the same way before the unchanged hittability
+assertion. Keep the already-hittable Library fast path.
+
+**Consequences:** this is a test-interaction lifecycle correction, not a change
+to Skills policy or product search. It adds no suggestion selection, private
+window query, system preference mutation, interruption monitor, failed-click
+retry, timeout increase or relaxed functional assertion. The value-preservation
+check fails if traversal changes the query. Existing bilingual Library, Settings
+and Skills journeys remain behavioral owners; the shared-harness change requires
+the complete bilingual gate. Original failed receipts remain adverse evidence.

@@ -332,7 +332,8 @@ extension XCUIApplication {
             guard prepareForInteraction(timeout: timeout) else { return false }
             return general.waitForStableFrame(
                 timeout: timeout,
-                stableFor: 0.1)
+                stableFor: 0.1) && finishSearchEditing(
+                    identifier: "settings-search-field", timeout: timeout)
         }
 
         for attempt in 0..<2 {
@@ -342,10 +343,29 @@ extension XCUIApplication {
                 timeout: attempt == 0 ? 2 : timeout,
                 stableFor: 0.1
             ) {
-                return true
+                return finishSearchEditing(
+                    identifier: "settings-search-field", timeout: timeout)
             }
         }
         return false
+    }
+
+    /// End the native field-editor session through ordinary keyboard traversal.
+    /// A cold search can own an AutoFill popover even when its query is empty;
+    /// clicking a plain navigation button does not necessarily end that edit.
+    /// Never choose a suggestion, change system preferences, or dismiss prompts.
+    @MainActor
+    private func finishSearchEditing(
+        identifier: String,
+        timeout: TimeInterval
+    ) -> Bool {
+        let search = textFields[identifier]
+        guard search.waitForHittable(timeout: timeout),
+              let originalValue = search.value as? String
+        else { return false }
+        search.click()
+        search.typeKey(.tab, modifierFlags: [])
+        return search.waitForValue(originalValue, timeout: timeout)
     }
 
     /// Selects a Settings category and proves its exact destination appeared.
@@ -438,6 +458,11 @@ extension XCUIApplication {
                 .click()
         }
 
+        if search.exists {
+            guard finishSearchEditing(
+                identifier: "library-search-field", timeout: timeout)
+            else { return false }
+        }
         return meeting.waitForHittable(timeout: timeout)
     }
 

@@ -10149,6 +10149,22 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(settingsWindowBody.contains(
             "general.waitForStableFrame("))
         XCTAssertTrue(settingsWindowBody.contains("stableFor: 0.1"))
+        XCTAssertEqual(settingsWindowBody.components(separatedBy:
+            "identifier: \"settings-search-field\", timeout: timeout)").count - 1, 2)
+        let searchEditingStart = try XCTUnwrap(settingsWindowBody.range(
+            of: "private func finishSearchEditing("))
+        let searchEditingBody = settingsWindowBody[searchEditingStart.lowerBound...]
+        let searchClick = try XCTUnwrap(searchEditingBody.range(of: "search.click()"))
+        let searchTab = try XCTUnwrap(searchEditingBody.range(
+            of: "search.typeKey(.tab, modifierFlags: [])"))
+        let preservedSearchValue = try XCTUnwrap(searchEditingBody.range(
+            of: "search.waitForValue(originalValue, timeout: timeout)"))
+        XCTAssertLessThan(searchClick.lowerBound, searchTab.lowerBound)
+        XCTAssertLessThan(searchTab.lowerBound, preservedSearchValue.lowerBound)
+        XCTAssertFalse(searchEditingBody.contains(".typeText("))
+        XCTAssertFalse(searchEditingBody.contains(".escape"))
+        XCTAssertFalse(searchEditingBody.contains("UserDefaults"))
+        XCTAssertFalse(searchEditingBody.contains("SafariPlatformSupport"))
 
         let seededSettleStart = try XCTUnwrap(support.range(
             of: "func waitForSeededLibraryToSettle("))
@@ -10164,6 +10180,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             seededSettleStart.lowerBound..<seededReadyStart.lowerBound]
         XCTAssertTrue(seededSettleBody.contains(
             "return meeting.waitForHittable(timeout: timeout)"))
+        XCTAssertTrue(seededSettleBody.contains(
+            "identifier: \"library-search-field\", timeout: timeout)"))
         XCTAssertFalse(seededSettleBody.contains(
             "meeting.waitForExistenceFast"))
 

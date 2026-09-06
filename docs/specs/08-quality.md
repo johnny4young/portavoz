@@ -7351,3 +7351,20 @@ assets or enabling transcript-bearing DEBUG diagnostics. Host-observer tests use
 injected clocks/process output and exercise the actual CLI's invalid admission.
 Real clean-build repetitions, adverse evidence and physical hardware remain
 necessary; passing these tests is not closure of the observed resource variance.
+
+### Native search-editing boundary in UI setup
+
+The shared XCUITest setup ends native search editing with an ordinary click and
+Tab traversal, then checks that the field value is unchanged. Both existing and
+newly opened Settings windows use that boundary before category navigation.
+Seeded Library setup applies it only when its meeting row is not already
+hittable, after the existing foreign-keystroke query cleanup if needed. The
+normal fast path and final meeting hittability requirement remain intact.
+
+This prevents a still-active native field editor from leaving an autocomplete
+popover over a subsequent control. It does not dismiss a named system window,
+choose a suggestion, mutate AutoFill preferences, install a prompt handler or
+retry a failed assertion. Existing Skills missing-policy/retry and Library
+search/palette journeys retain their full assertions. The source-level owner
+pins click/Tab/value-check ordering and both settings branches; only a complete
+bilingual real-app run can qualify the shared harness.
