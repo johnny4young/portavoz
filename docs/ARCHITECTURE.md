@@ -822,7 +822,11 @@ The Ask workflow, not a model provider or SwiftUI, owns progressive admission.
 It accepts only one exact final fused citation set, coalesces cumulative answer
 snapshots under finite count/text limits, closes publication on cancellation or
 timeout, and preserves citations when optional generation is unavailable or
-fails. The per-window model retains at most 20 completed exchanges, weakly
+fails. Progressive transcript, Web, note and interview generation share one monotonic deadline
+created after evidence retrieval, before provider/timer scheduling. The timer
+sleeps until that fixed instant; snapshot gates and final admission independently
+reject expired work, including when the timer or parent executor is delayed.
+This is admission control, not hard pre-emption of opaque provider code. The per-window model retains at most 20 completed exchanges, weakly
 bridges its task so a non-cooperative provider cannot retain a closed window,
 and lets a new submitted draft cancel and replace pending work. Manual Ask
 samples the explicitly selected local summary engine for every request. On

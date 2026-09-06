@@ -91,46 +91,6 @@ private struct AskCitationIdentity: Hashable {
     let transcriptRevision: Int
 }
 
-struct AskTimeoutError: Error {}
-
-private enum AskTimedOperationResult<Value: Sendable>: Sendable {
-    case value(Value)
-    case timedOut
-}
-
-func withAskTimeout<Value: Sendable>(
-    _ duration: Duration,
-    onTimeout: @escaping @Sendable () async -> Void,
-    operation: @escaping @Sendable () async throws -> Value
-) async throws -> Value {
-    try await withThrowingTaskGroup(
-        of: AskTimedOperationResult<Value>.self
-    ) { group in
-        group.addTask {
-            .value(try await operation())
-        }
-        group.addTask {
-            try await Task.sleep(for: duration)
-            return .timedOut
-        }
-        defer { group.cancelAll() }
-        guard let first = try await group.next() else {
-            throw CancellationError()
-        }
-        switch first {
-        case .value(let value):
-            return value
-        case .timedOut:
-            // The timeout must win the race before it closes publication.
-            // Otherwise an operation completing at the same instant could be
-            // returned while the gate was already stopped and be mislabeled
-            // as an ordinary provider failure.
-            await onTimeout()
-            throw AskTimeoutError()
-        }
-    }
-}
-
 actor AskFirstEvidenceMilestone {
     private var didReach = false
 
@@ -222,8 +182,13 @@ actor AskProgressiveUpdateGate {
             AskEvidenceUpdate(phase: .fused, citations: citations))
     }
 
-    func admitAnswer(_ update: AskAnswerUpdate) -> AskAnswerUpdate? {
-        guard !isClosed, !answerProtocolFailed else { return nil }
+    func admitAnswer(
+        _ update: AskAnswerUpdate,
+        deadline: AskAnswerDeadline
+    ) -> AskAnswerUpdate? {
+        guard !isClosed, !answerProtocolFailed,
+              !Task.isCancelled, !deadline.isExpired
+        else { return nil }
         answerSnapshotCount += 1
         guard answerSnapshotCount <= AskRequestLimits.maximumAnswerSnapshots,
               let text = validatedAnswer(update.text),
@@ -236,14 +201,16 @@ actor AskProgressiveUpdateGate {
         }
         guard text != latestAnswerText else { return nil }
         latestAnswerText = text
-        guard shouldPublish(text) else { return nil }
+        guard shouldPublish(text), !deadline.isExpired else { return nil }
         lastPublishedAnswerText = text
         return AskAnswerUpdate(text: text)
     }
 
     func finalizeAnswer(
-        _ returned: String?
-    ) -> (text: String?, update: AskAnswerUpdate?) {
+        _ returned: String?,
+        deadline: AskAnswerDeadline
+    ) throws -> (text: String?, update: AskAnswerUpdate?) {
+        try deadline.check()
         guard !isClosed, !answerProtocolFailed else { return (nil, nil) }
         guard let returned else {
             guard latestAnswerText == nil else {
@@ -258,6 +225,7 @@ actor AskProgressiveUpdateGate {
             answerProtocolFailed = true
             return (nil, nil)
         }
+        try deadline.check()
         latestAnswerText = text
         guard text != lastPublishedAnswerText else { return (text, nil) }
         lastPublishedAnswerText = text

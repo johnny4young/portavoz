@@ -244,6 +244,7 @@ private enum InterviewAnswerValidation {
 public struct AssistInterviewQuestion: ApplicationUseCase {
     private let answering: any InterviewQuestionAnswering
     private let timeout: Duration
+    var answerClock: AskAnswerClock = .continuous
 
     public init(
         answering: any InterviewQuestionAnswering,
@@ -260,8 +261,9 @@ public struct AssistInterviewQuestion: ApplicationUseCase {
         guard Self.isValid(context) else { return .insufficientEvidence }
         let passages = context.evidence.map(Self.passage)
         do {
+            let deadline = AskAnswerDeadline(after: timeout, clock: answerClock)
             let raw = try await withAskTimeout(
-                timeout,
+                deadline,
                 onTimeout: {},
                 operation: {
                     try await answering.answer(
@@ -274,6 +276,7 @@ public struct AssistInterviewQuestion: ApplicationUseCase {
                 raw,
                 evidence: context.evidence)
             else { return .insufficientEvidence }
+            try deadline.check()
             return .answered(answer)
         } catch is CancellationError {
             throw CancellationError()

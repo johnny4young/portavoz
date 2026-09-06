@@ -1,4 +1,4 @@
-import ApplicationKit
+@testable import ApplicationKit
 import Foundation
 import PortavozCore
 import XCTest
@@ -94,10 +94,12 @@ final class AskNotesTests: XCTestCase {
         let failed = AskNotes(
             retrieval: AskNoteRetrievalFake(citations: fixture.citations),
             answering: AskNoteAnsweringFake(error: AskNoteTestError.provider))
-        let timedOut = AskNotes(
+        let clock = AskManualClock()
+        var timedOut = AskNotes(
             retrieval: AskNoteRetrievalFake(citations: fixture.citations),
-            answering: SleepingAskNoteAnswerer(),
-            answerTimeout: .milliseconds(10))
+            answering: ExpiringAskNoteAnswerer(clock: clock),
+            answerTimeout: .seconds(8))
+        timedOut.answerClock = clock.clock
 
         let unavailableAnswer = try await unavailable.answer("budget")
         let failedAnswer = try await failed.answer("budget")
@@ -431,12 +433,14 @@ private actor AskNoteEvidenceRecorder {
     }
 }
 
-private struct SleepingAskNoteAnswerer: AskNoteAnswering {
+private struct ExpiringAskNoteAnswerer: AskNoteAnswering {
+    let clock: AskManualClock
+
     func answer(
         question _: String,
         citations _: [AskNoteCitation]
     ) async throws -> String? {
-        try await Task.sleep(for: .seconds(1))
+        clock.advance(by: .seconds(8))
         return "late [1]."
     }
 }

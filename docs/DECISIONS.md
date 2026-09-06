@@ -18295,3 +18295,24 @@ crash. These checks cannot establish arbitrary pointer allocation validity or
 physical driver recovery. Long-gap arrays and unbounded producer queues remain
 a separate conservation-aware memory design; native-view admission is not a
 substitute for that work or for resource/field qualification.
+
+## D480 — Enforce answer deadlines independently of timer scheduling (Sep 2026)
+
+**Context:** a hosted Sequoia test returned a typed Web timeout but observed a
+late provider snapshot. Racing a relative sleep against generation only closes
+publication after the parent processes the winning timeout; executor delay can
+admit already-expired output in that interval.
+
+**Decision:** create one monotonic answer deadline after evidence retrieval and
+before task-group children start. Sleep until the same instant, independently
+check provider results and snapshot/final admission, and close publication before
+cancelling timed-out work. Share the helper across meeting, Web, raw-note and
+interview generation. Keep the existing default, typed evidence-preserving
+outcomes, caller-cancellation priority, structured teardown and public API.
+Use value-scoped clock injection to exercise starvation without wall-clock races.
+
+**Consequences:** timer scheduling is no longer publication authority; exact
+expiry is excluded even when the wake-up cannot run. This does not forcibly stop
+arbitrary provider or receiver code, erase already-admitted snapshots, or certify
+engine/hardware latency. Real-app scoped UI and compatible-platform CI remain
+required; a failing first attempt is preserved rather than retried into green.

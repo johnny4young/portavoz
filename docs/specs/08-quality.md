@@ -1497,6 +1497,18 @@ tests prove Foundation Models query-expansion cancellation cannot become an
 ordinary empty fallback, and scheduler tests prove a cancelled opaque inference
 cannot return its late value or retain stale cancellation bookkeeping.
 
+Deadline regression tests use an isolated manual monotonic clock and a timer
+parked until cancellation (D480). Providers advance time before returning or
+publishing; no sleep ordering is needed to reproduce timer/parent starvation.
+The matrix covers on-time success, exact-boundary rejection, late values and
+errors, expired-before-start requests, cancellation priority, one fixed timer
+instant, close-before-cancel teardown, cancellation during both successful and
+throwing child teardown, and progressive finalization. The meeting,
+Web, note and interview use cases each retain typed timeout/evidence behavior;
+Web also proves evidence callbacks do not consume the generation budget. Real
+app Ask and interview journeys complement these deterministic application tests,
+not certify timing, provider readiness or physical platform behavior.
+
 Presentation tests submit a second question while the first provider remains
 suspended, reject the old evidence/answer/completion, retain only 20 exchanges,
 and release a closed window even when its provider ignores cancellation. The

@@ -49,6 +49,18 @@ distribution cell.
 | **Commercial launch blocker, not an OSS candidate blocker** | Purchase, activation, and restore are still missing. | Implement and qualify licensing only before selling 1.0 as a paid PRO launch; a free/open-source 1.0 candidate must not imply that commerce exists. |
 | **Post-1.0 backlog** | Quick Look, broader user-authored actions, visual graph, broader graph CLI/MCP/sync/export, and alternate retrieval/ASR authorities remain unstarted. **Mobile foundation implemented (D438):** the shared Core/Storage/Application/Integrations targets compile for iOS 17, compatible commitment histories have a deterministic merge, and heavy Mac work has a content-free lease/CAS contract. There is still no iOS/iPadOS/watchOS app target, mobile capture owner, signed CloudKit adapter, transport/persistence composition, mobile UI/XCUITest host, model/resource evidence, PiP/Watch feature, or physical field proof. | Follow `docs/IOS.md` after 1.0.0 qualification: read-only text continuity → in-person mic capture → notes/review/corrections/commitments → explicit heavy-work handoff → bounded iPad/Watch feasibility. Require the autonomous and physical matrices there; never promote package compilation into a shipping claim. |
 
+## Answer timeout boundary
+
+The monotonic admission correction (D480) prevents expired generated snapshots
+and final values from winning merely because a timer or parent was scheduled
+late. It does not provide hard interruption of a non-cooperative local model or
+external receiver, nor certify an eight-second end-to-end request: evidence
+retrieval has its own lifecycle and structured generation waits for child
+teardown. The independent opt-in `AskMeetings.answerBundle` graph-synthesis API
+still bypasses this deadline and has no typed generation outcome; it needs its
+own bounded, evidence-preserving admission contract. Physical/model latency and
+cancellation field evidence remain open.
+
 ## Technical gaps (debt and risk)
 
 | # | Gap | Risk | Plan |

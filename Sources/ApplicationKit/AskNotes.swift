@@ -129,6 +129,7 @@ public struct AskNotes: ApplicationUseCase {
     private let answering: any AskNoteAnswering
     private let telemetry: AskPipelineTelemetry
     private let answerTimeout: Duration
+    var answerClock: AskAnswerClock = .continuous
 
     public init(
         retrieval: any AskNoteRetrieving,
@@ -218,8 +219,9 @@ public struct AskNotes: ApplicationUseCase {
         trace: AskPipelineTrace
     ) async throws -> AskNoteAnswer {
         do {
+            let deadline = AskAnswerDeadline(after: answerTimeout, clock: answerClock)
             let raw = try await withAskTimeout(
-                answerTimeout,
+                deadline,
                 onTimeout: {},
                 operation: {
                     try await answering.answer(
@@ -239,6 +241,7 @@ public struct AskNotes: ApplicationUseCase {
                     citations: citations,
                     outcome: .insufficientEvidence)
             }
+            try deadline.check()
             trace.reach(.firstToken)
             return AskNoteAnswer(
                 question: question,

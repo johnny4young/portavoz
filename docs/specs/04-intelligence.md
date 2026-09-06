@@ -1201,6 +1201,20 @@ the first snapshot, punctuation, or meaningful growth. An eight-second
 cooperative timeout closes the answer lane before cancelling the provider and
 returns the typed `timedOut` outcome with citations intact. `notRequested`,
 `generated`, `unavailable`, `failed`, and `timedOut` carry no user content.
+The budget is a request-scoped `ContinuousClock` deadline, created after evidence
+retrieval/publication and before either task-group child starts (D480). The
+wake-up task sleeps until that same instant rather than starting a new relative
+budget when scheduled. Provider completion, progressive snapshot admission and
+final answer admission independently reject work at or beyond the deadline;
+Web, raw-note and interview generation use the same helper. A delayed timer or
+parent can no longer admit an already-expired snapshot or final value. The
+internal clock seam is value-scoped and does not change public initialization,
+the eight-second default, source boundaries, or cancellation priority. Both
+successful and throwing task-group exits recheck caller cancellation after child
+teardown, so an earlier provider error cannot hide a later cancellation. This
+contract covers transcript-only `answer`, not the independent opt-in
+`answerBundle` graph-synthesis API.
+
 Caller cancellation remains an error and is checked before and after retrieval,
 query expansion, semantic traversal, storage reads, generation, and external
 callbacks. `IntelligenceScheduler` also checks after an opaque operation returns,

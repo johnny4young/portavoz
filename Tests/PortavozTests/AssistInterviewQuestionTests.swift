@@ -1,4 +1,4 @@
-import ApplicationKit
+@testable import ApplicationKit
 import Foundation
 import IntelligenceKit
 import PortavozCore
@@ -249,10 +249,12 @@ final class AssistInterviewQuestionTests: XCTestCase {
         XCTAssertEqual(
             failed,
             .failed)
-        let timedOut = try await AssistInterviewQuestion(
-            answering: FixedInterviewAnswerer(result: .delayedAnswer),
-            timeout: .milliseconds(20))
-            .execute(context)
+        let clock = AskManualClock()
+        var timedUseCase = AssistInterviewQuestion(
+            answering: ExpiringInterviewAnswerer(clock: clock),
+            timeout: .seconds(8))
+        timedUseCase.answerClock = clock.clock
+        let timedOut = try await timedUseCase.execute(context)
         XCTAssertEqual(
             timedOut,
             .timedOut)
@@ -436,5 +438,17 @@ private actor InterviewAnswerProbe: InterviewQuestionAnswering {
     ) async throws -> String? {
         requestCount += 1
         return "Answer [1]."
+    }
+}
+
+private struct ExpiringInterviewAnswerer: InterviewQuestionAnswering {
+    let clock: AskManualClock
+
+    func answer(
+        question _: String,
+        passages _: [RAGPassage]
+    ) async throws -> String? {
+        clock.advance(by: .seconds(8))
+        return "The owner was paged immediately [1]."
     }
 }

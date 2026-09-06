@@ -116,6 +116,7 @@ public struct AskWeb: Sendable {
     private let retrieval: any AskWebSourceRetrieving
     private let answering: any AskWebAnswering
     private let answerTimeout: Duration
+    var answerClock: AskAnswerClock = .continuous
 
     public init(
         retrieval: any AskWebSourceRetrieving,
@@ -148,27 +149,47 @@ public struct AskWeb: Sendable {
                 generationOutcome: .notRequested)
         }
 
+        let generation = try await generate(
+            question: question, citations: evidence.citations, onAnswer: onAnswer)
+        try Task.checkCancellation()
+        return AskWebAnswer(
+            question: question,
+            generatedText: generation.text,
+            citations: evidence.citations,
+            sourceFailures: evidence.sourceFailures,
+            generationOutcome: generation.outcome)
+    }
+
+    private func generate(
+        question: String,
+        citations: [AskWebCitation],
+        onAnswer: @escaping AskAnswerReceiver
+    ) async throws -> AskGenerationResult {
+        let deadline = AskAnswerDeadline(after: answerTimeout, clock: answerClock)
         let gate = AskWebAnswerUpdateGate(
-            citationCount: evidence.citations.count)
+            citationCount: citations.count, deadline: deadline)
         let generation: AskGenerationResult
         do {
             let text = try await withAskTimeout(
-                answerTimeout,
+                deadline,
                 onTimeout: { await gate.close() },
                 operation: { [answering] in
                     try await answering.answer(
                         question: question,
-                        citations: evidence.citations,
+                        citations: citations,
                         onAnswer: { update in
-                            if let admitted = await gate.admit(update) {
+                            if let admitted = await gate.admit(update),
+                               !Task.isCancelled, !deadline.isExpired {
                                 await onAnswer(admitted)
                             }
                         })
                 })
-            let final = await gate.finalize(text)
+            let final = try await gate.finalize(text)
             if let update = final.update {
+                try deadline.check()
                 await onAnswer(update)
             }
+            try deadline.check()
             generation = AskGenerationResult(
                 text: final.text,
                 outcome: final.text == nil ? .failed : .generated)
@@ -181,14 +202,9 @@ public struct AskWeb: Sendable {
             await gate.close()
             generation = AskGenerationResult(text: nil, outcome: .failed)
         }
-        try Task.checkCancellation()
         await gate.close()
-        return AskWebAnswer(
-            question: question,
-            generatedText: generation.text,
-            citations: evidence.citations,
-            sourceFailures: evidence.sourceFailures,
-            generationOutcome: generation.outcome)
+        try Task.checkCancellation()
+        return generation
     }
 
     private func retrieve(
@@ -310,18 +326,21 @@ private enum AskWebIndexedResult: Sendable {
 
 private actor AskWebAnswerUpdateGate {
     private let citationCount: Int
+    private let deadline: AskAnswerDeadline
     private var latestText: String?
     private var lastPublishedText: String?
     private var snapshotCount = 0
     private var isClosed = false
     private var isInvalid = false
 
-    init(citationCount: Int) {
+    init(citationCount: Int, deadline: AskAnswerDeadline) {
         self.citationCount = citationCount
+        self.deadline = deadline
     }
 
     func admit(_ update: AskAnswerUpdate) -> AskAnswerUpdate? {
-        guard !isClosed, !isInvalid else { return nil }
+        guard !isClosed, !isInvalid, !Task.isCancelled, !deadline.isExpired
+        else { return nil }
         snapshotCount += 1
         guard snapshotCount <= AskRequestLimits.maximumAnswerSnapshots,
               let text = validated(update.text),
@@ -334,7 +353,7 @@ private actor AskWebAnswerUpdateGate {
         guard WebAnswerCitationPolicy.isValid(
             text,
             citationCount: citationCount),
-              text != lastPublishedText
+              text != lastPublishedText, !deadline.isExpired
         else { return nil }
         lastPublishedText = text
         return AskAnswerUpdate(text: text)
@@ -342,7 +361,8 @@ private actor AskWebAnswerUpdateGate {
 
     func finalize(
         _ returned: String?
-    ) -> (text: String?, update: AskAnswerUpdate?) {
+    ) throws -> (text: String?, update: AskAnswerUpdate?) {
+        try deadline.check()
         guard !isClosed, !isInvalid, let returned,
               let text = validated(returned),
               latestText.map(text.hasPrefix) ?? true,
@@ -350,6 +370,7 @@ private actor AskWebAnswerUpdateGate {
                   text,
                   citationCount: citationCount)
         else { return (nil, nil) }
+        try deadline.check()
         latestText = text
         guard text != lastPublishedText else { return (text, nil) }
         lastPublishedText = text

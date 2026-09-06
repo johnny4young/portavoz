@@ -60,6 +60,7 @@ public struct AskMeetings: ApplicationUseCase {
     private let graphFilterResolver: (any AskGraphFactFilterResolving)?
     private let telemetry: AskPipelineTelemetry
     private let answerTimeout: Duration
+    var answerClock: AskAnswerClock = .continuous
 
     public init(
         retrieval: any AskMeetingRetrieving,
@@ -361,6 +362,7 @@ public struct AskMeetings: ApplicationUseCase {
     private func generateTranscriptAnswer(
         question: String,
         citations: [AskCitation],
+        deadline: AskAnswerDeadline,
         onAnswer: @escaping AskAnswerReceiver,
         onTimeout: @escaping @Sendable () async -> Void
     ) async throws -> AskGenerationResult {
@@ -369,7 +371,7 @@ public struct AskMeetings: ApplicationUseCase {
         }
         do {
             let text = try await withAskTimeout(
-                answerTimeout,
+                deadline,
                 onTimeout: onTimeout
             ) { [answering] in
                 try await answering.answer(
@@ -582,6 +584,12 @@ private struct AskProgressiveEvidenceContext {
     let receiver: AskEvidenceReceiver
 }
 
+private struct AskAnswerPublication {
+    let deadline: AskAnswerDeadline
+    let milestone: AskFirstAnswerMilestone
+    let receiver: AskAnswerReceiver
+}
+
 private extension AskMeetings {
     func answerProgressively(
         question: String,
@@ -613,15 +621,18 @@ private extension AskMeetings {
                     citations: [],
                     generationOutcome: .notRequested)
             }
+            let deadline = AskAnswerDeadline(after: answerTimeout, clock: answerClock)
             let generation = try await generateTranscriptAnswer(
                 question: question,
                 citations: citations,
+                deadline: deadline,
                 onAnswer: { update in
                     guard !Task.isCancelled,
-                          let update = await updates.admitAnswer(update),
+                          let update = await updates.admitAnswer(update, deadline: deadline),
                           !Task.isCancelled
                     else { return }
                     await answerMilestone.reachIfNeeded()
+                    guard !Task.isCancelled, !deadline.isExpired else { return }
                     await onAnswer(update)
                 },
                 onTimeout: { await updates.stopAnswering() })
@@ -630,8 +641,8 @@ private extension AskMeetings {
                 citations: citations,
                 generation: generation,
                 updates: updates,
-                milestone: answerMilestone,
-                receiver: onAnswer)
+                publication: AskAnswerPublication(
+                    deadline: deadline, milestone: answerMilestone, receiver: onAnswer))
         } catch {
             await updates.close()
             throw error
@@ -680,15 +691,25 @@ private extension AskMeetings {
         citations: [AskCitation],
         generation: AskGenerationResult,
         updates: AskProgressiveUpdateGate,
-        milestone: AskFirstAnswerMilestone,
-        receiver: @escaping AskAnswerReceiver
+        publication: AskAnswerPublication
     ) async throws -> AskMeetingAnswer {
         try Task.checkCancellation()
-        let finalAnswer = await updates.finalizeAnswer(generation.text)
-        if let update = finalAnswer.update {
+        let finalAnswer: (text: String?, update: AskAnswerUpdate?)
+        do {
+            finalAnswer = try await updates.finalizeAnswer(
+                generation.text, deadline: publication.deadline)
+            if let update = finalAnswer.update {
+                await publication.milestone.reachIfNeeded()
+                try publication.deadline.check()
+                await publication.receiver(update)
+            }
+            try publication.deadline.check()
+        } catch is AskTimeoutError {
+            await updates.close()
             try Task.checkCancellation()
-            await milestone.reachIfNeeded()
-            await receiver(update)
+            return AskMeetingAnswer(
+                question: question, generatedText: nil, citations: citations,
+                generationOutcome: .timedOut)
         }
         try Task.checkCancellation()
         await updates.close()

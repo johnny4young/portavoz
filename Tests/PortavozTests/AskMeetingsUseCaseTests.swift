@@ -1,4 +1,4 @@
-import ApplicationKit
+@testable import ApplicationKit
 import Foundation
 import PortavozCore
 import XCTest
@@ -287,12 +287,14 @@ final class AskMeetingsUseCaseTests: XCTestCase {
     func testGenerationTimeoutPreservesEvidenceAndRejectsLateSnapshots() async throws {
         let fixture = AskWorkflowFixture()
         let updates = AskAnswerUpdateRecorder()
-        let useCase = AskMeetings(
+        let clock = AskManualClock()
+        var useCase = AskMeetings(
             retrieval: AskMeetingRetrievalFake(
                 searches: fixture.searches,
                 citations: fixture.citations),
-            answering: CancellationIgnoringAskAnswerer(),
-            answerTimeout: .milliseconds(20))
+            answering: ExpiringAskAnswerer(clock: clock),
+            answerTimeout: .seconds(8))
+        useCase.answerClock = clock.clock
 
         let result = try await useCase.answer(
             "rollout",
@@ -1192,7 +1194,9 @@ private struct CharacterStreamingAskAnswerer: AskMeetingAnswering {
     }
 }
 
-private struct CancellationIgnoringAskAnswerer: AskMeetingAnswering {
+private struct ExpiringAskAnswerer: AskMeetingAnswering {
+    let clock: AskManualClock
+
     func answer(
         question _: String,
         citations _: [AskCitation]
@@ -1206,12 +1210,9 @@ private struct CancellationIgnoringAskAnswerer: AskMeetingAnswering {
         onAnswer: @escaping AskAnswerReceiver
     ) async -> String? {
         await onAnswer(AskAnswerUpdate(text: "El presupuesto"))
-        do {
-            try await Task.sleep(for: .seconds(1))
-        } catch {
-            await onAnswer(AskAnswerUpdate(text: "late cancelled output"))
-        }
-        return "late cancelled output"
+        clock.advance(by: .seconds(8))
+        await onAnswer(AskAnswerUpdate(text: "El presupuesto tardío."))
+        return "El presupuesto tardío."
     }
 }
 

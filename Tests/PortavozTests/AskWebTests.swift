@@ -1,4 +1,4 @@
-import ApplicationKit
+@testable import ApplicationKit
 import PortavozCore
 import XCTest
 
@@ -195,16 +195,34 @@ final class AskWebTests: XCTestCase {
         }
     }
 
-    func testTimeoutClosesLateAnswerPublication() async throws {
+    func testEvidenceTimeDoesNotConsumeGenerationBudget() async throws {
         let url = try XCTUnwrap(URL(string: "https://example.com/source"))
-        let recorder = WebAnswerRecorder()
-        let result = try await AskWeb(
+        let clock = AskManualClock()
+        var useCase = AskWeb(
             retrieval: WebRetrievalStub(results: [
                 url: .success(citation(url, text: "Exact source")),
             ]),
-            answering: SlowIgnoringCancellationWebAnswering(),
-            answerTimeout: .milliseconds(10)
-        ).answer(AskWebRequest(
+            answering: WebAnsweringStub(snapshots: ["On time [1]."], result: "On time [1]."))
+        useCase.answerClock = clock.clock
+        let result = try await useCase.answer(AskWebRequest(
+            question: "What?", sourceURLs: [url], consent: .approvedForSingleRequest
+        ), onEvidence: { _ in clock.advance(by: .seconds(60)) })
+        XCTAssertEqual(result.generatedText, "On time [1].")
+        XCTAssertEqual(result.generationOutcome, .generated)
+    }
+
+    func testTimeoutClosesLateAnswerPublication() async throws {
+        let url = try XCTUnwrap(URL(string: "https://example.com/source"))
+        let recorder = WebAnswerRecorder()
+        let clock = AskManualClock()
+        var useCase = AskWeb(
+            retrieval: WebRetrievalStub(results: [
+                url: .success(citation(url, text: "Exact source")),
+            ]),
+            answering: ExpiringWebAnswering(clock: clock),
+            answerTimeout: .seconds(8))
+        useCase.answerClock = clock.clock
+        let result = try await useCase.answer(AskWebRequest(
             question: "What?",
             sourceURLs: [url],
             consent: .approvedForSingleRequest
@@ -342,7 +360,9 @@ private struct WebAnsweringStub: AskWebAnswering {
     }
 }
 
-private struct SlowIgnoringCancellationWebAnswering: AskWebAnswering {
+private struct ExpiringWebAnswering: AskWebAnswering {
+    let clock: AskManualClock
+
     func answer(
         question _: String,
         citations _: [AskWebCitation]
@@ -355,7 +375,7 @@ private struct SlowIgnoringCancellationWebAnswering: AskWebAnswering {
         citations _: [AskWebCitation],
         onAnswer: @escaping AskAnswerReceiver
     ) async throws -> String? {
-        try? await Task.sleep(for: .milliseconds(100))
+        clock.advance(by: .seconds(8))
         await onAnswer(AskAnswerUpdate(text: "Late [1]."))
         return "Late [1]."
     }
