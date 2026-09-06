@@ -1269,9 +1269,13 @@ and player behavior. The RAG term-fusion fixture builds its high-cardinality
 segment sets with explicit typed loops so Sequoia exercises the same ranking
 evidence without exceeding its type-checking budget.
 
-Current-SDK diagnostic closure uses `swift build -Xswiftc
--warnings-as-errors` locally and one matching test invocation on the explicit
-`macos-26`/Xcode 26.6 CI lane. The `macos-15`/Xcode 26.3 lane remains the
+Current-SDK diagnostic closure uses `scripts/run-swift-tests.sh -Xswiftc
+-warnings-as-errors` both locally before committing and on the explicit
+`macos-26`/Xcode 26.6 CI lane. A strict `swift build` alone does not compile
+the test targets; a subsequent non-strict `swift test` can therefore miss a
+test-only diagnostic that fails CI. Non-reassigned weak lifetime probes use
+`weak let`, preserving zeroing-weak semantics without artificial mutations or
+warning suppression. The `macos-15`/Xcode 26.3 lane remains the
 oldest supported runtime/toolchain compatibility proof. An
 architecture characterization preserves the built-in
 vertical scroll coordinate space, supported MLX memory API, narrow

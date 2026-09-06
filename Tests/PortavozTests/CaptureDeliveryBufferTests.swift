@@ -150,7 +150,7 @@ final class CaptureDeliveryBufferTests: XCTestCase {
 
     func testFinishedStreamDoesNotRetainItsBuffer() async throws {
         var owner: CaptureDeliveryBuffer? = buffer()
-        weak var weakOwner = owner
+        weak let weakOwner = owner
         var stream: AsyncThrowingStream<AudioChunk, Error>? = owner?.stream()
         owner?.finish()
         if let sequence = stream { for try await _ in sequence {} }

@@ -5868,7 +5868,7 @@ Run the standard gates with:
 ```sh
 swift build
 swift build -Xswiftc -warnings-as-errors
-swift test
+scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors # include test-target diagnostics, matching CI
 make test-recording-stress
 swiftlint lint --strict --no-cache
 scripts/check-repository-hygiene.sh

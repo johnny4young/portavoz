@@ -22,8 +22,9 @@ All explanatory tracked documentation under `docs/` is written in **English**. L
 
 ```sh
 swift build
-swift build -Xswiftc -warnings-as-errors # current-SDK first-party diagnostics
+swift build -Xswiftc -warnings-as-errors # production-target diagnostics only
 swift test    # if it fails with "no such module": DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
+scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors # required before commit; same test-target diagnostics as current-SDK CI
 make test-recording-stress               # 25 repeated recording/recovery runs
 make test-ui-changed UI_BASE=origin/main  # feature-level XCUITest selected from the diff
 make test-ui-bilingual                    # explicit full EN + ES release gate
@@ -57,7 +58,7 @@ library) and asserts against `accessibilityIdentifier`s.
 
 - Respect the engineering rules in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): local-first privacy, MIT/no-GPL, strict Swift 6, live scheduler != batch scheduler, sha256-pinned models.
 - Preserve every released feature through refactor work. Use incremental Strangler slices with characterization tests; a commit that introduces a feature-parity gap is not complete.
-- Keep `swift test` green before closing any task.
+- Keep `scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors` green before closing any code change. A strict `swift build` does not compile the test targets and cannot replace this gate.
 - **After any UI change, reinstall the dev app with `make install`** — it installs to `/Applications/Portavoz Dev.app`. **NEVER touch `/Applications/Portavoz.app`**: that is the user's notarized release copy (it updates only via Sparkle/Homebrew). Need real recordings or the real DB for a test? COPY them to a scratch location — never operate on the release app's live data.
 - **Every user-visible feature or fix adds one entry to [CHANGELOG.md](CHANGELOG.md)** — English, short and catchy for end users (**emoji + feature name** — what it gives you), newest first under today's date. Internal plumbing (refactors, CI, docs) gets NO entry.
 - Use Conventional Commits.
