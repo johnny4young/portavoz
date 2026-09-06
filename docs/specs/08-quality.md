@@ -3767,7 +3767,19 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   The probes sample process
   CPU, physical footprint, energy, disk I/O/free capacity,
   thermal, low-power, and invariant power-source state while aggregating the
-  closed workload descriptors. Behavioral unit tests inject an immediate
+  closed workload descriptors. Free capacity uses a fresh
+  `volumeAvailableCapacityKey` read at every existing 100 ms sample, not
+  `volumeAvailableCapacityForImportantUsageKey`: the latter can perform
+  expensive purgeable-space accounting inside the very CPU window being
+  measured. Free bytes are conservative and do not promise space after system
+  reclamation. Missing/negative values or read failures reject, zero is retained,
+  and no cached capacity, fallback, retry or raised disk/timing limit is used.
+  Injected-reader regressions verify the requested key, fresh decreasing/zero
+  samples, representable extremes and unchanged error propagation; a native
+  adapter check avoids a host-dependent free-space or timing assertion.
+  Historical important-usage measurements remain attributed to their original
+  source; they cannot be silently rewritten as the new free-space metric.
+  Behavioral unit tests inject an immediate
   readiness gate so host thermal pressure cannot delay or invalidate their
   scenario assertions; production benchmark processes retain the real gate.
   Ad-hoc candidate collection uses a dedicated scratch-only entitlement for

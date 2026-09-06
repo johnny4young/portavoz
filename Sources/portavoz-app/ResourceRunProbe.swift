@@ -135,20 +135,14 @@ struct ResourceProbeUsage: Equatable, Sendable {
         guard result == 0 else {
             throw ResourceRunProbeError.processUsageUnavailable
         }
-        let diskValues = try URL(fileURLWithPath: "/").resourceValues(
-            forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-        guard let availableDisk = diskValues.volumeAvailableCapacityForImportantUsage,
-              availableDisk >= 0
-        else {
-            throw ResourceRunProbeError.diskCapacityUnavailable
-        }
+        let availableDisk = try ResourceProbeDiskCapacity.availableBytes()
         return ResourceProbeUsage(
             cpuAbsoluteTime: usage.ri_user_time + usage.ri_system_time,
             physicalFootprintBytes: usage.ri_phys_footprint,
             energyNanojoules: usage.ri_energy_nj,
             diskReadBytes: usage.ri_diskio_bytesread,
             diskWrittenBytes: usage.ri_diskio_byteswritten,
-            availableDiskBytes: UInt64(availableDisk),
+            availableDiskBytes: availableDisk,
             thermalState: ProcessInfo.processInfo.resourceProbeThermalState,
             powerSource: resourceProbePowerSource(),
             lowPowerModeEnabled: ProcessInfo.processInfo.isLowPowerModeEnabled)

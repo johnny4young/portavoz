@@ -5767,6 +5767,10 @@ behind aspirational diagrams:
   speech/transcript fixtures; it publishes only exact content-free fragments to
   the tooling evaluator. Production launches and schedulers never read these
   fragments or the resulting receipt.
+  The 10 Hz observer reads fresh free-volume capacity, not the expensive
+  important-usage/purgeable-space estimate. Missing or negative capacity still
+  fails closed; zero remains a real disk-pressure observation. This makes
+  disk admission conservative without changing sampling or timing budgets.
 - Meeting Detail Markdown/PDF/SRT/WebVTT preparation and secret-Gist
   publication enter ApplicationKit. The SwiftUI view does not construct the
   canonical renderer, publisher, or network gateway and does not read the

@@ -18499,3 +18499,24 @@ real query, not only during cold seed setup: require the literal query before
 and after Tab, require the identified hit to be hittable, then retain the exact
 meeting/timestamp and playback-seek assertions. A full-run video exposed that
 separate active-editing boundary; initial readiness cannot stand in for it.
+
+## D488 — Keep disk accounting out of the resource observer's workload (Sep 2026)
+
+**Context:** isolated 100-call diagnostics measured roughly 1–1.5 seconds of
+process CPU in the important-usage disk-capacity query, versus roughly 2 ms in
+Foundation's free-capacity query. The resource probe called the former ten times
+per second, so its own purgeable-space estimation substantially perturbed idle
+and operation CPU. An independent `getrusage` comparison confirmed the existing
+Mach CPU conversion; changing time units would not fix this observer cost.
+
+**Decision:** read fresh `volumeAvailableCapacityKey` through a narrow tested
+adapter at the unchanged 100 ms cadence. The reported minimum is now actual
+free-volume capacity, without assuming that macOS will reclaim purgeable bytes.
+Keep zero, reject unavailable/negative values, propagate read failure, and never
+cache, retry, subtract estimated probe cost or relax admission thresholds.
+
+**Consequences:** the measurement becomes less intrusive and disk admission more
+conservative, not proof of a product CPU improvement or the cause of all prior
+variance. Original receipts remain source-bound. Fresh comparable resource and
+candidate evidence is required; three samples, scenario workloads, timing
+stability rules and physical/post-release boundaries remain unchanged.
