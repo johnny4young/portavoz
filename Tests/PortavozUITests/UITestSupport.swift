@@ -262,10 +262,12 @@ extension XCUIApplication {
             waitForPortavozProcessExit(),
             "the preceding Portavoz process must leave the running-app inventory")
         launch()
+        // Request our own activation before observing foreground readiness.
+        // Another app may legitimately have raised its window during launch.
+        activate()
         XCTAssertTrue(
             wait(for: .runningForeground, timeout: 15),
             "Portavoz must remain in the foreground after launch")
-        activate()
         let mainWindow = windows["main-AppWindow-1"]
         XCTAssertTrue(
             mainWindow.waitForHittable(timeout: 15),

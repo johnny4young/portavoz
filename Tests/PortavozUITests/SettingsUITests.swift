@@ -95,6 +95,15 @@ final class SettingsUITests: PortavozUITestCase {
             "settings-category-intelligence",
             revealing: "settings-summary-engine-picker",
             in: app)
+        XCTAssertTrue(app.textFields["settings-search-field"].exists)
+        XCTAssertTrue(app.buttons["settings-category-intelligence"].isSelected)
+        XCTAssertFalse(app.buttons["settings-category-general"].isSelected)
+        let providerHelp = app.staticTexts["settings-summary-provider-help"]
+        XCTAssertTrue(providerHelp.exists)
+        let providerCopy = (providerHelp.value as? String) ?? providerHelp.label
+        let spanish = UITestLocale.environmentLocale == "es"
+        XCTAssertTrue(providerCopy.contains(spanish ? "Sequoia y Tahoe" : "Sequoia and Tahoe"))
+        XCTAssertTrue(providerCopy.contains(spanish ? "motor local seleccionado" : "selected local engine"))
         XCTAssertTrue(app.control(withIdentifier: "settings-category-data").exists)
         XCTAssertTrue(app.control(withIdentifier: "settings-category-sync").exists)
 

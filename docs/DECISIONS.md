@@ -18418,3 +18418,25 @@ counts nor coincident host load proves equal internal work or causation. The
 resource schema, 1.25 ratio plus 100 ms stability rule, release authority and
 physical gates are unchanged. The next experiment must retain these diagnostics
 and the exact clean build; the prior failed receipt is not superseded by tests.
+
+## D485 — Keep Library polish presentation-only (Sep 2026)
+
+**Decision:** separate persistent Library navigation and the no-selection
+workspace into small SwiftUI views that accept route-owned callbacks. Use
+readable full-width destination labels and semantic selected state, preserve
+native meeting selection and voice-mix evidence, and disable only Import while
+an import is working. Keep all existing identifiers and shortcuts. Settings
+category buttons use the same restrained tint and semantic selection, with
+readable captions and stable search identity. The first workspace exposes
+explicit Record/Return and Ask actions with adaptive layout
+and accurate opt-in transfer disclosure instead of an absolute local-processing
+claim. No new service, task, store or implicit effect is introduced.
+Summary-engine guidance reflects the existing provider-neutral live checkpoint
+and optional selected-engine refinement; Apple readiness does not promise a
+particular compute unit or bypass of system model preparation.
+
+**Consequences:** existing Library/recording journeys cover both entry paths;
+EN/ES labels and real app-window captures check the professional presentation.
+System selection owns active/inactive and accessibility contrast rather than a
+second painted gradient. Physical assistive interaction remains a separate,
+unverified follow-up rather than an inferred result of this UI work.

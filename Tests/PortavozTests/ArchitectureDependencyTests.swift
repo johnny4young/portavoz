@@ -2666,7 +2666,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 3,008 cases "
+            "package inventory contains 3,028 cases "
                 + "(15 environment-gated) + 106"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -8302,6 +8302,15 @@ final class ArchitectureDependencyTests: XCTestCase {
         let observation = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+LibraryObservation.swift")
 
+        for filename in ["LibraryNavigationControls.swift", "LibraryWelcomeView.swift"] {
+            let presentation = try Self.contents(of: "Sources/portavoz-app/\(filename)")
+            for capability in ["AppServices", "MeetingStore", "Task {", ".task", "@State"] {
+                XCTAssertFalse(presentation.contains(capability), "\(filename): \(capability)")
+            }
+        }
+        XCTAssertTrue(content.contains("LibraryWelcomeView("))
+        XCTAssertTrue(view.contains("LibraryNavigationControls("))
+
         XCTAssertTrue(model.contains("@MainActor\n@Observable\nfinal class LibraryModel"))
         XCTAssertTrue(model.contains("struct State"))
         XCTAssertTrue(model.contains("enum Action"))
@@ -9876,14 +9885,18 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testXCUITestInteractionPreparationReassertsFrontmostOwnership() throws {
         let support = try Self.contents(
             of: "Tests/PortavozUITests/UITestSupport.swift")
+        let launchAction = try XCTUnwrap(support.range(of: "        launch()"))
         let launchForeground = try XCTUnwrap(support.range(
             of: "wait(for: .runningForeground, timeout: 15)"))
         let launchWindow = try XCTUnwrap(support.range(
             of: "let mainWindow = windows[\"main-AppWindow-1\"]"))
-        let launchTail = support[launchForeground.upperBound..<launchWindow.lowerBound]
-        XCTAssertTrue(
-            launchTail.contains("activate()"),
-            "macOS foreground state does not prove frontmost key-window ownership")
+        let launchReadiness = support[launchAction.upperBound..<launchWindow.lowerBound]
+        let launchActivation = try XCTUnwrap(launchReadiness.range(of: "        activate()"))
+        XCTAssertLessThan(
+            launchActivation.lowerBound, launchForeground.lowerBound,
+            "request frontmost ownership before observing foreground; process state alone is insufficient")
+        XCTAssertEqual(launchReadiness.components(separatedBy: "        activate()").count - 1, 1)
+        XCTAssertFalse(launchReadiness.contains("if state == .runningForeground"))
 
         let prepare = try XCTUnwrap(support.range(
             of: "func prepareForInteraction(timeout: TimeInterval = 10)"))

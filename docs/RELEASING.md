@@ -6,6 +6,17 @@ from the real flow (v0.1.0 → v0.7.0, eight releases). Follow it top to bottom.
 
 Distribution is direct-download only (no App Store) — decision D10/D20.
 
+## Code-ready candidate versus public distribution
+
+A code-ready 1.0.0 milestone is distinct from executing this public-distribution
+recipe. Its automated tests, bilingual UI, code review and resource evidence
+must be real and source-bound. Human/account/hardware-dependent observations
+may remain in the explicit follow-up backlog in [GAPS.md](GAPS.md); do not mark
+them passed or call the complete certification scorecard green. This milestone
+does not grant permission to merge, notarize, tag or publish. Public artifacts
+still require actual signing, capability and distribution verification; a local
+Dev signature or a code-ready summary is not a substitute.
+
 ## 0. One-time machine setup (already done on the author's Mac)
 
 These must exist before a release; verify them (§2) rather than re-creating:

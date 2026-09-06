@@ -20,8 +20,7 @@ extension LocalSummaryProviderRecommendation {
             case .appleOnDeviceAvailable:
                 // One localization key; splitting it would create false catalog fragments.
                 L10n.text(
-                    // swiftlint:disable:next line_length
-                    "Your Mac has Apple Intelligence — the summary runs on the Neural Engine without downloading anything.")
+                    "Apple Intelligence is ready on this Mac — summaries use its on-device model.")
             case .ollamaAvailable:
                 L10n.text(
                     "Apple Intelligence is unavailable, but Ollama is running — local summaries with no cloud.")

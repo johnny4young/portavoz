@@ -695,10 +695,11 @@ extension SettingsView {
             Text(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "Apple uses Foundation Models (macOS 26 + Apple Intelligence). Ollama runs a 100% local model on your Mac. Built-in runs an embedded 4B model (one 3 GB verified download) with zero installs. Either way, nothing leaves the device. (The LIVE summary during recording always uses Apple.)"
+                "Apple requires macOS 26 and Apple Intelligence. Ollama and the built-in model run locally after setup. Live summaries keep a transcript-based checkpoint on Sequoia and Tahoe; your selected local engine can refine it when ready."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
+            .accessibilityIdentifier("settings-summary-provider-help")
 
             Divider()
             Text("Refine model (Whisper large-v3)")

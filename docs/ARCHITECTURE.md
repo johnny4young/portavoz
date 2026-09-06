@@ -888,7 +888,11 @@ fences the request. Answers remain ephemeral and cannot start capture, speak,
 persist as a user note, request Web material, or invoke an external effect.
 
 Library combines independently observed meeting rows, open commitments, trash,
-and active FTS results. Insights combines chronology, participants,
+and active FTS results. Its navigation and first-action workspace are small,
+presentation-only views: callbacks remain owned by the existing route and
+Library model, importing disables only its own action, and native sidebar
+selection supplies active/inactive contrast. These views add no store, task,
+model generation, or network capability. Insights combines chronology, participants,
 commitments, talk balance, and bounded finding evidence. Meeting Detail merges
 transcript/cast, newest summary, Apuntador, privacy receipt, and durable
 processing streams. A failed stream degrades only its section and preserves

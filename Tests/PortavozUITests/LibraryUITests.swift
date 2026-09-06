@@ -139,23 +139,43 @@ final class LibraryUITests: PortavozUITestCase {
     @MainActor
     func testLibraryRendersRecordButtonAndActionChips() {
         let app = XCUIApplication.portavoz()
+        app.launchArguments += ["-AppleInterfaceStyle", "Light"]
         app.launchPortavoz()
         defer { app.terminate() }
 
         let record = app.buttons["library-new-recording-button"]
-        XCTAssertTrue(
-            record.waitForExistenceFast(timeout: 15),
-            "the library window must render its primary action on launch")
-
+        XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
+        XCTAssertTrue(app.windows.firstMatch.frame.contains(record.frame),
+                      "welcome content must not inflate the split view beyond the window")
         if let locale = UITestLocale.environmentLocale {
             XCTAssertEqual(record.label, locale == "es" ? "Nueva grabación" : "New recording")
         }
+        let title = app.staticTexts["library-welcome-title"]
+        XCTAssertTrue(title.waitForExistenceFast(timeout: 5))
+        if let locale = UITestLocale.environmentLocale {
+            XCTAssertEqual(renderedText(of: title), locale == "es"
+                ? "Tus reuniones, con claridad" : "Your meetings, in focus")
+        }
+        XCTAssertTrue(app.buttons["library-welcome-record"].isHittable)
+        XCTAssertTrue(app.buttons["library-welcome-ask"].isHittable)
+        let navigation = [
+            "library-import-audio-button", "library-ask-button",
+            "library-insights-button", "library-commitment-radar-button"
+        ].map { app.buttons[$0] }
+        for button in navigation {
+            XCTAssertTrue(button.isHittable)
+            XCTAssertGreaterThan(button.frame.width, 180, "navigation must retain full-width labels")
+        }
+        for (previous, next) in zip(navigation, navigation.dropFirst()) {
+            XCTAssertLessThanOrEqual(previous.frame.maxY, next.frame.minY,
+                                     "navigation targets must not overlap")
+        }
+        attachScreenshot(of: app, named: "library-welcome-light")
 
-        // The design-system action chips replace the old full-width buttons.
-        XCTAssertTrue(app.buttons["library-import-audio-button"].exists)
-        XCTAssertTrue(app.buttons["library-ask-button"].exists)
-        XCTAssertTrue(app.buttons["library-insights-button"].exists)
-        XCTAssertTrue(app.buttons["library-commitment-radar-button"].exists)
+        app.buttons["library-welcome-ask"].click()
+        XCTAssertTrue(app.control(withIdentifier: "ask-question-field").waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(app.buttons["library-ask-button"].isSelected)
+        XCTAssertFalse(app.buttons["library-insights-button"].isSelected)
     }
 
     @MainActor
@@ -565,7 +585,9 @@ final class LibraryUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        app.buttons["library-new-recording-button"].click()
+        let welcomeRecord = app.buttons["library-welcome-record"]
+        XCTAssertTrue(welcomeRecord.waitForStableFrame(timeout: 5))
+        welcomeRecord.click()
         XCTAssertTrue(
             app.control(withIdentifier: "recording-live-transcript")
                 .waitForExistenceFast(timeout: 8))

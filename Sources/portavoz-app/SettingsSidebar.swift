@@ -1,14 +1,10 @@
 import SwiftUI
 
-/// The Settings navigation, styled to the design system (2a): a deep-glass
-/// column of two-line items (icon + title + one-line preview), an indigo→
-/// violet gradient on the selected row, a search field on top, and the
-/// "all local" seal pinned at the bottom — one click from its receipts.
+/// Readable, semantically selected destinations and one route to privacy receipts.
 struct SettingsSidebar: View {
     @Binding var category: SettingsCategory?
     @Binding var query: String
     @Environment(AppServices.self) private var services
-    @Environment(\.colorScheme) private var colorScheme
 
     private var filtered: [SettingsCategory] {
         SettingsCategory.allCases.filter { $0.matches(query) }
@@ -41,6 +37,7 @@ struct SettingsSidebar: View {
             TextField("Search settings", text: $query)
                 .textFieldStyle(.plain)
                 .font(.callout)
+                .accessibilityIdentifier("settings-search-field")
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 7)
@@ -57,33 +54,32 @@ struct SettingsSidebar: View {
             HStack(spacing: 8) {
                 Image(systemName: item.icon)
                     .font(.system(size: 13))
-                    .foregroundStyle(on ? Color.white : .secondary)
-                    .frame(width: 17)
+                    .foregroundStyle(on ? PVDesign.accent : .secondary)
+                    .frame(width: 20)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(item.title)
-                        .font(.system(size: 13, weight: on ? .medium : .regular))
+                        .font(.body.weight(on ? .semibold : .regular))
                     Text(item.subtitle)
-                        .font(.system(size: 9.5))
-                        .foregroundStyle(on ? Color.white.opacity(0.65) : .secondary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
             }
-            .foregroundStyle(on ? Color.white : .primary)
+            .foregroundStyle(.primary)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .background {
-                if on {
-                    RoundedRectangle(cornerRadius: 7)
-                        .fill(LinearGradient(
-                            colors: [PVDesign.accent, PVDesign.brandViolet],
-                            startPoint: .topLeading, endPoint: .bottomTrailing))
-                }
-            }
+            .background(
+                on ? PVDesign.accent.opacity(PVDesign.chipTint) : .clear,
+                in: RoundedRectangle(cornerRadius: PVDesign.radiusSmall))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(Text(item.title))
+        .accessibilityHint(Text(item.subtitle))
+        .accessibilityAddTraits(on ? .isSelected : [])
         .accessibilityIdentifier("settings-category-\(item.rawValue)")
     }
 

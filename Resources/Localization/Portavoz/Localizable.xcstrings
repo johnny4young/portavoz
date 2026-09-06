@@ -16820,6 +16820,46 @@
           }
         }
       }
+    },
+    "Your meetings, in focus": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus reuniones, con claridad"
+          }
+        }
+      }
+    },
+    "Record a conversation, revisit its sources, or ask your library a question.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Graba una conversación, revisa sus fuentes o hazle una pregunta a tu biblioteca."
+          }
+        }
+      }
+    },
+    "Apple requires macOS 26 and Apple Intelligence. Ollama and the built-in model run locally after setup. Live summaries keep a transcript-based checkpoint on Sequoia and Tahoe; your selected local engine can refine it when ready.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple requiere macOS 26 y Apple Intelligence. Ollama y el modelo integrado se ejecutan localmente tras configurarlos. El resumen en vivo conserva una base del texto transcrito en Sequoia y Tahoe; tu motor local seleccionado puede mejorarla cuando esté listo."
+          }
+        }
+      }
+    },
+    "Apple Intelligence is ready on this Mac — summaries use its on-device model.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Intelligence está listo en este Mac: los resúmenes usan su modelo en el dispositivo."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

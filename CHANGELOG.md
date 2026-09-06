@@ -4,6 +4,10 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## September 6, 2026
+
+- **✨ A calmer workspace** — Clearer navigation, useful first actions, native selection, and accurate local-AI guidance make your meeting workspace easier to use.
+
 ## September 5, 2026
 
 - **🎙️ Honest recording recovery** — Audio backlogs stay bounded, saved prefixes drain safely, and capture interruptions remain visible even after transcription succeeds.

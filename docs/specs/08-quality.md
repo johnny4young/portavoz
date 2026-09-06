@@ -1,6 +1,18 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 3,008 cases (15 environment-gated) + 106
+Library presentation coverage retains the existing catalogue: the entry journey
+asserts full-width, non-overlapping labeled destinations and selected-state
+semantics, captures the light workspace, and enters Ask through its first-action
+button. The live-recording journey enters through the workspace and returns
+through the persistent sidebar. Seeded recency/search evidence retains app-window
+captures of the Library and its real search results. Launch requests activation
+of the disposable app before asserting foreground readiness; it never dismisses
+unrelated windows. These assertions do not claim physical assistive validation.
+The Settings journey also checks that localized provider help retains Sequoia
+and Tahoe support plus the selected local engine, rather than stale Apple-only
+live-summary wording.
+
+Status: the package inventory contains 3,028 cases (15 environment-gated) + 106
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -6528,8 +6540,8 @@ attribute 710.945 seconds to 1,922 find plus 1,659 existence activities.
 Main-window readiness contributes 110 existence and 440 find operations
 because each of 110 launches pays a separate existence poll plus two
 actionable geometry samples. The window itself is not clicked. Launch now
-retains the foreground wait and explicit activation, then uses one bounded
-hittability predicate for that static shell; every interactive product control
+requests its own explicit activation before the unchanged foreground wait, then
+uses one bounded hittability predicate for that static shell; every interactive product control
 continues to own its stable or contained precondition.
 
 The seeded meeting's hittability proof subsumes its preceding existence poll.

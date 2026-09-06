@@ -119,13 +119,10 @@ struct ContentView: View {
                             route = .meeting(meetingID)
                         })
                 case .library, nil:
-                    ContentUnavailableView(
-                        "Portavoz",
-                        systemImage: "waveform.badge.mic",
-                        // One-line UI copy.
-                        // swiftlint:disable:next line_length
-                        description: Text("Record a meeting or choose one from the library. Everything is processed on your Mac.")
-                    )
+                    LibraryWelcomeView(
+                        recordingActive: services.recording.canReturnToLiveSession,
+                        onRecord: { route = .recording(nil) },
+                        onAsk: { route = .ask })
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

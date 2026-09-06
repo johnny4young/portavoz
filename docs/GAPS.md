@@ -4,6 +4,18 @@ What Portavoz lacks compared with the state of the art measured in the two round
 
 Resolved gaps are kept as one-line entries so the ledger stays complete; their full rationale lives in [DECISIONS.md](DECISIONS.md) and the as-built [specs/](specs/README.md). Open and partial gaps state their remaining scope in full. **Pending field verification** below is the list that needs a real meeting rather than code.
 
+## Code delivery and deferred external verification
+
+The 1.0.0 code-ready delivery keeps automated functionality, compatibility,
+architecture, performance, memory/recovery and bilingual XCUITest validation in
+scope. User-dependent approvals, permissions, external accounts, physical
+Sequoia/Tahoe hardware, assistive interaction, real-field evidence and production
+CloudKit verification are follow-up work rather than blockers of this code
+milestone. They remain unverified, not waived into a passing claim. The physical
+protocols and full-certification scorecard preserve those missing results.
+Code readiness does not authorize publication or establish notarization,
+production sync reliability, universal hardware support or real-world quality.
+
 ## Product gaps (users feel them)
 
 | # | Gap | Today | Missing | Plan |
