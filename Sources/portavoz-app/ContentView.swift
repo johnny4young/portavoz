@@ -155,7 +155,11 @@ struct ContentView: View {
             await services.routeAutomationEntityIfRequested()
         }
         .task { await services.seedScaleBenchmarkIfRequested() }
-        .task { positionUITestWindowIfNeeded() }
+        .background {
+            if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
+                UITestMainWindowCapture()
+            }
+        }
         .task { await services.purgeExpiredTrash() }
         .task { await services.seedShowcaseIfRequested() }
         .onOpenURL { url in
@@ -207,18 +211,4 @@ struct ContentView: View {
         }
     }
 
-    /// Keep the throwaway XCUITest window clear of persistent desktop
-    /// overlays (for example, an agent progress panel) and on AppKit's zero
-    /// screen. This is deliberately scoped to `-use-temp-store`: production
-    /// window placement remains owned by SwiftUI and the user's saved macOS
-    /// window state.
-    @MainActor
-    private func positionUITestWindowIfNeeded() {
-        guard ProcessInfo.processInfo.arguments.contains("-use-temp-store"),
-              let window = NSApp.windows.first(where: {
-                  !($0 is NSPanel) && $0.canBecomeMain
-              })
-        else { return }
-        UITestWindowPlacement.positionMainWindow(window)
-    }
 }

@@ -5518,11 +5518,20 @@ It neither identifies an owner nor changes keyboard protection. A local operator
 may explicitly set `PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS=true` to
 ignore only Notification Center for one run; SecurityAgent and active automation
 remain fail-closed, and CI never sets the override. When
-that exact local decision is present, the XCUITest harness forwards it only to
-the `-use-temp-store` app process. The shared disposable-window boundary keeps
+that exact local decision is present, the shell forwards it through Xcode's
+`TEST_RUNNER_` environment boundary and the XCUITest harness passes it only to
+the `-use-temp-store` app process. Missing or false canonical input clears a
+stale prefixed opt-in, and malformed input fails before Xcode. Each main view
+resolves its own AppKit window on attachment rather than selecting a process-wide
+first window; detachment clears the weak owner and reattachment follows the new
+window. The shared disposable-window boundary keeps
 the main and Settings windows at AppKit's standard `statusBar` level, above the
 accepted Notification Center modal, so it cannot occlude test hit targets. No
-production window is elevated. It never reads a window title, dismisses a
+production window is elevated. The palette, recording HUD, dictation and reminder
+panels retain the same elevated level only for that explicit disposable launch,
+so the main window cannot cover their input targets; ordinary launches retain
+`floating` even if they inherit a stale override without the test argument.
+It never reads a window title, dismisses a
 prompt, kills the host-wide test service, or terminates another process. The
 preflight compiles this probe once into a
 private disposable workspace under a bounded 60-second cold-toolchain budget,

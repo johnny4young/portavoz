@@ -23,7 +23,7 @@ final class RecordingHUDController {
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false)
-        panel.level = .floating
+        panel.level = UITestWindowPlacement.floatingPanelLevel()
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.isMovableByWindowBackground = true
         panel.backgroundColor = .clear

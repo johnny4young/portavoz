@@ -18544,3 +18544,57 @@ share the same owner. Fresh measurements retain all existing stability rules;
 physical sleep/wake and multi-hardware behavior remain separate field evidence.
 
 Reference: [Apple's app-level work classification guidance](https://developer.apple.com/library/archive/documentation/Performance/Conceptual/power_efficiency_guidelines_osx/PrioritizeWorkAtTheAppLevel.html).
+
+## D490 — Cover method-level isolation in the Sequoia XCTest ratchet (Sep 2026)
+
+**Context:** the Sequoia lane aborted when an existing synchronous,
+method-isolated XCTest released a recording controller containing an isolated
+lifetime owner. The new async activity tests passed on that same runner. The
+known Swift XCTest teardown defect was already documented, but the local
+ratchet scanned only class-level actor annotations and missed seven existing
+method-level declarations.
+
+**Decision:** preserve production isolated cleanup and every behavioral
+assertion. Make those seven XCTest methods async. Extend the existing ratchet
+to method-level and inline annotations and share multiline-signature inspection
+with the class-level path. Add parser fixtures for positive and negative cases,
+including duplicate annotations and intervening attributes.
+
+**Consequences:** the affected runner uses XCTest's async execution convention;
+future method-isolation regressions fail the repository test before relying on
+Sequoia to abort. There is no skipped test, product deinitializer workaround,
+runner-version change, assertion relaxation or retry-to-green policy. Exact-head
+Sequoia and Tahoe checks remain required.
+
+## D491 — Bind disposable window isolation across both process boundaries (Sep 2026)
+
+**Context:** accepted Notification Center overlays still obscured Stop in the
+external-recording journey. The shell did not forward the override through
+Xcode's runner environment, and main-window placement selected the first
+process-wide window instead of the window containing that view. A separate
+URL probe exposed the old welcome window above routed recording content; a
+native-intent launch with one window retained its controls.
+
+**Decision:** forward only canonical `true` through `TEST_RUNNER_`, clear stale
+prefixed opt-ins for false/absent input, and reject malformed values before
+Xcode. Reuse the existing shell test double to verify that boundary. Resolve
+each disposable main window through a narrow `NSViewRepresentable` attachment,
+weakly remember its current window, and reposition only when ownership changes.
+Test hidden-window identity and reparenting, and retain the real external-route
+assertions and complete bilingual UI gate.
+
+**Consequences:** the explicit local exception reaches the intended app and
+window rather than relying on environment inheritance or global window order.
+Production windows, alert contents, notification state, privacy prompts,
+functional assertions and runtime budgets are unchanged. Clear-host evidence
+does not become live-overlay evidence. Failed attempts remain failed; adding
+the forwarding variable alone was not sufficient to close the window issue.
+
+The full catalogue exposed a second-order stacking requirement once the override
+actually reached the app: the elevated main window covered the normal floating
+palette, and its input click dismissed the panel. Palette, recording HUD,
+dictation and reminder panels now share the accepted disposable level through
+one policy; production/default launches retain `floating`. Test the exact
+argument-plus-environment opt-in and retain the real palette input/citation
+journey with an additional hittability assertion. This is test isolation, not
+a production window-level redesign.

@@ -82,7 +82,7 @@ private final class CommandPalettePanelController {
             styleMask: [.borderless],
             backing: .buffered,
             defer: false)
-        panel.level = .floating
+        panel.level = UITestWindowPlacement.floatingPanelLevel()
         panel.identifier = NSUserInterfaceItemIdentifier("command-palette-window")
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.backgroundColor = .clear

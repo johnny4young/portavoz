@@ -155,7 +155,7 @@ final class UITestDefaultsTests: XCTestCase {
     }
 
     @MainActor
-    func testRecordingControllerReadsInstalledVolatileOverride() throws {
+    func testRecordingControllerReadsInstalledVolatileOverride() async throws {
         let suiteName = "UITestDefaultsTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer {

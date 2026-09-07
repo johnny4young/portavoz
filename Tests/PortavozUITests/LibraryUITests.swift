@@ -1282,6 +1282,7 @@ final class LibraryUITests: PortavozUITestCase {
             ? "Fuente de la respuesta: Biblioteca"
             : "Answer source: Library"
         XCTAssertTrue(source.waitForLabelOrValue(expectedSource, timeout: 5))
+        XCTAssertTrue(field.isHittable, "the palette must stay above the main window")
         field.click()
         field.typeText("viernes")
         XCTAssertTrue(

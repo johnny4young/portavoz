@@ -1,4 +1,36 @@
 import AppKit
+import SwiftUI
+
+/// Resolve the window containing this exact disposable view, not whichever
+/// main-capable window happens to come first after an external URL opens one.
+struct UITestMainWindowCapture: NSViewRepresentable {
+    func makeNSView(context: Context) -> UITestMainWindowCaptureView {
+        UITestMainWindowCaptureView()
+    }
+
+    func updateNSView(_ nsView: UITestMainWindowCaptureView, context: Context) {}
+}
+
+@MainActor
+final class UITestMainWindowCaptureView: NSView {
+    private let position: @MainActor (NSWindow) -> Void
+    private weak var positionedWindow: NSWindow?
+
+    init(position: @escaping @MainActor (NSWindow) -> Void = UITestWindowPlacement.positionMainWindow) {
+        self.position = position
+        super.init(frame: .zero)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { nil }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard window !== positionedWindow else { return }
+        positionedWindow = window
+        if let window { position(window) }
+    }
+}
 
 /// Keeps disposable UI-test windows on AppKit's zero screen so XCTest never
 /// has to synthesize a hit point in a negative-coordinate display.
@@ -9,6 +41,19 @@ import AppKit
 enum UITestWindowPlacement {
     private static let notificationCenterAlertOverride =
         "PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS"
+
+    /// Keep utility panels above the elevated disposable main window. Normal
+    /// app launches retain their original floating level, even if a stale test
+    /// environment value is inherited without the disposable-store argument.
+    static func floatingPanelLevel(
+        arguments: [String] = ProcessInfo.processInfo.arguments,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> NSWindow.Level {
+        guard arguments.contains("-use-temp-store"),
+              environment[notificationCenterAlertOverride] == "true"
+        else { return .floating }
+        return .statusBar
+    }
 
     static func positionMainWindow(_ window: NSWindow) {
         guard let visibleFrame = zeroScreenVisibleFrame else { return }

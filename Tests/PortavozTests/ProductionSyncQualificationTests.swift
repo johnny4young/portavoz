@@ -90,7 +90,7 @@ final class ProductionSyncQualificationTests: XCTestCase {
     }
 
     @MainActor
-    func testQualificationLaunchDoesNotConstructOrdinaryAppServices() {
+    func testQualificationLaunchDoesNotConstructOrdinaryAppServices() async {
         var constructedServices = false
 
         let model = AppLaunchModel(

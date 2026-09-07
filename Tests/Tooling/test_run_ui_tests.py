@@ -24,6 +24,8 @@ class RunUITestsTests(unittest.TestCase):
         phase: str = "build-and-test",
         prepared_build_duration: int | None = None,
         preseed_stale_receipts: bool = False,
+        notification_override: str | None = None,
+        inherited_notification_override: str | None = None,
     ) -> tuple[subprocess.CompletedProcess[str], list[str]]:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -34,11 +36,14 @@ class RunUITestsTests(unittest.TestCase):
             fake.write_text(
                 "#!/bin/sh\n"
                 "printf 'DEVELOPER_DIR=%s | %s | WEB_FIXTURE_PAYLOAD_LENGTH=%s "
-                "| TEST_RUNNER_WEB_FIXTURE_PAYLOAD_LENGTH=%s | PORTAVOZ_UI_TEST_LOCALE=%s "
-                "| TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE=%s\\n' "
+                "| TEST_RUNNER_WEB_FIXTURE_PAYLOAD_LENGTH=%s "
+                "| NOTIFICATION_OVERRIDE=%s | RUNNER_NOTIFICATION_OVERRIDE=%s "
+                "| PORTAVOZ_UI_TEST_LOCALE=%s | TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE=%s\\n' "
                 "\"${DEVELOPER_DIR:-unset}\" \"$*\" "
                 "\"${#PORTAVOZ_UI_WEB_FIXTURE_PAYLOAD}\" "
                 "\"${#TEST_RUNNER_PORTAVOZ_UI_WEB_FIXTURE_PAYLOAD}\" "
+                "\"${PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS:-unset}\" "
+                "\"${TEST_RUNNER_PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS:-unset}\" "
                 "\"${PORTAVOZ_UI_TEST_LOCALE:-unset}\" "
                 "\"${TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE:-unset}\" "
                 ">> \"$XCODEBUILD_LOG\"\n"
@@ -121,6 +126,13 @@ class RunUITestsTests(unittest.TestCase):
             environment.pop("DEVELOPER_DIR", None)
             environment.pop("PORTAVOZ_UI_TEST_LOCALE", None)
             environment.pop("TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE", None)
+            notification_key = "PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS"
+            environment.pop(notification_key, None)
+            environment.pop("TEST_RUNNER_" + notification_key, None)
+            if notification_override is not None:
+                environment[notification_key] = notification_override
+            if inherited_notification_override is not None:
+                environment["TEST_RUNNER_" + notification_key] = inherited_notification_override
             environment.pop("PORTAVOZ_UI_WEB_FIXTURE_PAYLOAD", None)
             environment.pop(
                 "TEST_RUNNER_PORTAVOZ_UI_WEB_FIXTURE_PAYLOAD", None
@@ -195,6 +207,43 @@ class RunUITestsTests(unittest.TestCase):
         self.assertIn("test-without-building", calls[1])
         self.assertNotIn("-only-testing:", calls[1])
         self.assertIn("Running all tests in locale: en", result.stdout)
+
+    def test_explicit_notification_override_reaches_xcode_runner(self):
+        result, calls = self.run_runner(
+            "", phase="build-only", notification_override="true",
+            inherited_notification_override="false",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(calls), 1)
+        self.assertIn("| NOTIFICATION_OVERRIDE=true | RUNNER_NOTIFICATION_OVERRIDE=true", calls[0])
+
+    def test_false_notification_override_clears_stale_prefixed_opt_in(self):
+        result, calls = self.run_runner(
+            "", phase="build-only", notification_override="false",
+            inherited_notification_override="true",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(calls), 1)
+        self.assertIn("| NOTIFICATION_OVERRIDE=false | RUNNER_NOTIFICATION_OVERRIDE=unset", calls[0])
+
+    def test_absent_notification_override_cannot_inherit_opt_in(self):
+        result, calls = self.run_runner(
+            "", phase="build-only", inherited_notification_override="true",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(calls), 1)
+        self.assertIn("| NOTIFICATION_OVERRIDE=unset | RUNNER_NOTIFICATION_OVERRIDE=unset", calls[0])
+
+    def test_invalid_notification_override_fails_before_xcode(self):
+        for value in ("", "1", "TRUE", "yes", " true"):
+            with self.subTest(value=value):
+                result, calls = self.run_runner(
+                    "", phase="build-only", notification_override=value,
+                    inherited_notification_override="true",
+                )
+                self.assertEqual(result.returncode, 2)
+                self.assertEqual(calls, [])
+                self.assertIn("must be exactly true or false", result.stderr)
 
     def test_explicit_selector_is_forwarded(self):
         selector = "PortavozUITests/LibraryUITests/testSeededMeetingsGroupByRecency"

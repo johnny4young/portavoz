@@ -2357,7 +2357,10 @@ Font: `docs/design/ds/` (authored in Claude Design, pine project). (1) `PVDesign
 `CommandPaletteController` is process-scoped in `AppServices` and works with
 the main window closed. Its borderless 620 pt `NSPanel` remains a real key
 window for text input, closes on key loss, and has a stable window identifier
-for app-only visual evidence. ⌘K is registered through `CommandGroup`, so it
+for app-only visual evidence. Only an explicitly accepted disposable-window
+isolation run raises the palette and other floating utility panels to the
+same level as the isolated main window; normal launch levels are unchanged.
+⌘K is registered through `CommandGroup`, so it
 also works without a main window. `CommandPaletteModel` owns query, instant
 results, answer state, search/answer tasks, and a generation fence; every close
 or new query cancels old work, so a result from a prior panel cannot publish

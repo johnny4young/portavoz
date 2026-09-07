@@ -2666,7 +2666,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 3,029 cases "
+            "package inventory contains 3,046 cases "
                 + "(15 environment-gated) + 106"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -9093,6 +9093,59 @@ final class ArchitectureDependencyTests: XCTestCase {
                 + "Sequoia carries swiftlang/swift#87316")
     }
 
+    func testMainActorXCTestRatchetFindsMethodAndClassIsolation() {
+        let source = [
+            "final class MethodTests: XCTestCase {",
+            "    @MainActor",
+            "    func testSyncMethod() throws {}",
+            "    @MainActor",
+            "    @available(macOS 14, *)",
+            "    func testMultilineMethod()",
+            "        throws {}",
+            "    @MainActor",
+            "    func testAsyncMethod() async throws {}",
+            "    @MainActor func testInlineMethod() {}",
+            "    func testOrdinaryMethod() {}",
+            "}",
+            "@MainActor",
+            "final class ClassTests: XCTestCase {",
+            "    func testSyncClassMethod() {}",
+            "    @MainActor",
+            "    func testBothAnnotations() {}",
+            "    func testAsyncClassMethod() async {}",
+            "}",
+        ].joined(separator: "\n")
+
+        XCTAssertEqual(Self.synchronousMainActorXCTestMethods(
+            in: source, file: "Fixture.swift"), [
+                "Fixture.swift:testSyncMethod",
+                "Fixture.swift:testMultilineMethod",
+                "Fixture.swift:testInlineMethod",
+                "Fixture.swift:testSyncClassMethod",
+                "Fixture.swift:testBothAnnotations",
+            ])
+    }
+
+    func testMainActorXCTestRatchetIgnoresHelpersAndAsyncDeclarations() {
+        let source = [
+            "final class MixedTests: XCTestCase {",
+            "    @MainActor",
+            "    func helper() {}",
+            "    func testUnisolated() {}",
+            "    @MainActor",
+            "    func testAsync()",
+            "        async throws {}",
+            "}",
+            "// @MainActor",
+            "final class OrdinaryTests: XCTestCase {",
+            "    func testOrdinary() {}",
+            "}",
+        ].joined(separator: "\n")
+
+        XCTAssertEqual(Self.synchronousMainActorXCTestMethods(
+            in: source, file: "Fixture.swift"), [])
+    }
+
     func testScheduledPresentationTestsControlSuspensionWithoutWallClockSleeps() throws {
         let relay = try Self.contents(
             of: "Sources/portavoz-app/RecordingLevelRelay.swift")
@@ -12157,8 +12210,17 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(placement.contains("NSScreen.main"))
         XCTAssertFalse(placement.contains("window.screen"))
         XCTAssertTrue(placement.contains("window.constrainFrameRect(frame, to: screen)"))
-        XCTAssertTrue(content.contains(
-            "UITestWindowPlacement.positionMainWindow(window)"))
+        XCTAssertTrue(content.contains("UITestMainWindowCapture()"))
+        XCTAssertFalse(content.contains("NSApp.windows.first"))
+        XCTAssertTrue(placement.contains("override func viewDidMoveToWindow()"))
+        XCTAssertTrue(placement.contains("private weak var positionedWindow: NSWindow?"))
+        XCTAssertTrue(placement.contains("if let window { position(window) }"))
+        for file in ["CommandPalette.swift", "RecordingHUD.swift",
+                     "DictationPanel.swift", "MeetingReminder.swift"] {
+            let panel = try Self.contents(of: "Sources/portavoz-app/\(file)")
+            XCTAssertTrue(panel.contains(
+                "panel.level = UITestWindowPlacement.floatingPanelLevel()"), file)
+        }
         XCTAssertTrue(settingsCapture.contains(
             "UITestWindowPlacement.positionSettingsWindow(window)"))
         XCTAssertTrue(uiTestSupport.contains(
@@ -13250,7 +13312,11 @@ private extension ArchitectureDependencyTests {
         in source: String,
         file: String
     ) -> [String] {
-        let lines = source.split(
+        let declarations = source.replacingOccurrences(
+            of: #"(?m)^([\t ]*)@MainActor[\t ]+(?=(?:final[\t ]+)?(?:class|func)\b)"#,
+            with: "$1@MainActor\n$1",
+            options: .regularExpression)
+        let lines = declarations.split(
             separator: "\n",
             omittingEmptySubsequences: false).map(String.init)
         var violations: [String] = []
@@ -13274,6 +13340,16 @@ private extension ArchitectureDependencyTests {
                 }
                 break
             }
+            if classIndex < lines.count,
+               lines[classIndex].trimmingCharacters(in: .whitespaces)
+                .hasPrefix("func test") {
+                if let name = synchronousXCTestMethodName(
+                    at: classIndex, in: lines, before: lines.count) {
+                    violations.append("\(file):\(name)")
+                }
+                lineIndex = classIndex + 1
+                continue
+            }
             guard classIndex < lines.count,
                   lines[classIndex].contains("class "),
                   lines[classIndex].contains(": XCTestCase"),
@@ -13293,17 +13369,8 @@ private extension ArchitectureDependencyTests {
                     continue
                 }
 
-                var declaration = line
-                while !declaration.contains("{") && methodIndex + 1 < classEnd {
-                    methodIndex += 1
-                    declaration += "\n" + lines[methodIndex]
-                }
-                if declaration.range(
-                    of: #"\basync\b"#,
-                    options: .regularExpression) == nil {
-                    let name = declaration
-                        .dropFirst("    func ".count)
-                        .prefix { $0 != "(" }
+                if let name = synchronousXCTestMethodName(
+                    at: methodIndex, in: lines, before: classEnd) {
                     violations.append("\(file):\(name)")
                 }
                 methodIndex += 1
@@ -13311,6 +13378,23 @@ private extension ArchitectureDependencyTests {
             lineIndex = classEnd + 1
         }
         return violations
+    }
+
+    static func synchronousXCTestMethodName(
+        at start: Int,
+        in lines: [String],
+        before end: Int
+    ) -> String? {
+        var index = start
+        var declaration = lines[index].trimmingCharacters(in: .whitespaces)
+        while !declaration.contains("{") && index + 1 < end {
+            index += 1
+            declaration += "\n" + lines[index]
+        }
+        guard declaration.range(
+            of: #"\basync\b"#,
+            options: .regularExpression) == nil else { return nil }
+        return String(declaration.dropFirst("func ".count).prefix { $0 != "(" })
     }
 }
 

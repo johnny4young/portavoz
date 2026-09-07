@@ -12,7 +12,7 @@ The Settings journey also checks that localized provider help retains Sequoia
 and Tahoe support plus the selected local engine, rather than stale Apple-only
 live-summary wording.
 
-Status: the package inventory contains 3,029 cases (15 environment-gated) + 106
+Status: the package inventory contains 3,046 cases (15 environment-gated) + 106
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -2523,10 +2523,17 @@ Sequoia's Xcode 26.3 image carries Swift 6.2.4, whose XCTest synchronous-test
 teardown can abort while releasing a `@MainActor` value with `isolated deinit`
 ([swiftlang/swift#87316](https://github.com/swiftlang/swift/issues/87316)).
 Every method in an `@MainActor XCTestCase` therefore uses XCTest's async method
-convention even when its assertions are synchronous. This preserves production
+convention even when its assertions are synchronous. The same requirement
+applies to a method-level `@MainActor` inside an otherwise unisolated test class.
+This preserves production
 cancellation deinitializers rather than weakening them for a test-runner defect;
-a repository-wide architecture ratchet rejects new synchronous methods in those
-test classes while Sequoia remains on the affected runtime.
+a repository-wide architecture ratchet rejects both declaration forms while
+Sequoia remains on the affected runtime. Its fixtures exercise class and method
+isolation, inline attributes, intervening attributes, multiline signatures,
+double annotation without duplicate findings, ordinary methods and async
+methods. A controller-defaults test exposed the former method-level blind spot;
+all seven existing method-isolated synchronous cases now use async without
+changing their assertions, production lifetime owners or CI retry policy.
 
 Tests for delayed recording-level delivery and post-sheet focus restoration do
 not sleep past a guessed host deadline. Their production owners inject a
@@ -4597,7 +4604,26 @@ CI never enables the Notification Center override, and the UI bundle still
 installs no interruption monitor. Its receipt distinguishes an accepted live
 overlay, reported through the two content-free Notification Center counts,
 from a clear-host run where the override relaxed nothing; the latter is not
-live-overlay evidence. The preflight cannot identify every generic
+live-overlay evidence.
+
+The shell-to-runner bridge explicitly exports the canonical `true` value through
+Xcode's `TEST_RUNNER_` prefix. False or absent canonical input removes a stale
+prefixed value, and malformed input rejects before Xcode. The existing shell
+test double verifies all four cases without an app launch. Main-window
+placement uses a view-owned AppKit attachment, not `NSApp.windows.first`:
+external URL delivery may introduce another main-capable window, and raising
+the old one can obscure the actual routed controls. Native tests verify exact
+window identity, no unattached lookup, no repeated placement for an unchanged
+owner, and detachment/reparenting. These changes preserve the original
+functional assertions and neither dismiss alerts nor change production window
+placement. Utility panels share the accepted elevated level; otherwise a
+correctly forwarded override can put the main window above the palette and
+cause a click to dismiss it. Behavioral tests cover the exact two-part opt-in
+and production/default/malformed-value preservation, while the existing palette
+journey additionally requires a hittable query field. The accepted overlay
+remains a declared local test condition.
+
+The preflight cannot identify every generic
 accessibility client or reserve the host after
 its final sample. Run the UITests without concurrent automation clients and
 classify any later invalidation from the result bundle.

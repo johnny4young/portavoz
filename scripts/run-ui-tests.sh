@@ -79,6 +79,15 @@ if [[ -n "${PORTAVOZ_TEST_AUDIO_ROOT:-}" ]]; then
   export TEST_RUNNER_PORTAVOZ_TEST_AUDIO_ROOT="$PORTAVOZ_TEST_AUDIO_ROOT"
 fi
 
+# Preflight and the disposable app must see the same explicit local decision.
+# Xcode forwards only TEST_RUNNER_-prefixed values into the XCTest process.
+# A stale prefixed value alone must never enable this exception.
+case "${PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS-false}" in
+  true) export TEST_RUNNER_PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS=true ;;
+  false) unset TEST_RUNNER_PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS ;;
+  *) echo "PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS must be exactly true or false" >&2; exit 2 ;;
+esac
+
 build_duration=""
 if [[ "$phase" != test-only ]]; then
   # Compile the app and UI bundle once. English and Spanish then reuse the same

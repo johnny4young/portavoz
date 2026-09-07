@@ -37,7 +37,7 @@ final class PortavozAppIntentBridgeTests: XCTestCase {
     }
 
     @MainActor
-    func testLatestBufferedEntityNavigationWinsAndIsConsumedOnce() {
+    func testLatestBufferedEntityNavigationWinsAndIsConsumedOnce() async {
         _ = PortavozAppIntentBridge.consumeNavigationRequest()
         PortavozAppIntentBridge.requestNavigation(.meeting(UUID().uuidString))
         PortavozAppIntentBridge.requestNavigation(.commitments)
@@ -49,7 +49,7 @@ final class PortavozAppIntentBridgeTests: XCTestCase {
     }
 
     @MainActor
-    func testEntityNavigationRejectsMalformedTypedIdentifiersToRecoveryRoutes() {
+    func testEntityNavigationRejectsMalformedTypedIdentifiersToRecoveryRoutes() async {
         XCTAssertEqual(
             PortavozAppDelegate.route(for: .meeting("invalid")),
             .library)
@@ -146,7 +146,7 @@ final class PortavozAppIntentBridgeTests: XCTestCase {
     }
 
     @MainActor
-    func testPendingRequestCanBeRepublishedAfterServicesBecomeReady() {
+    func testPendingRequestCanBeRepublishedAfterServicesBecomeReady() async {
         _ = PortavozAppIntentBridge.consumeStartRecordingRequest()
         var deliveries = 0
         let observer = NotificationCenter.default.addObserver(
@@ -183,7 +183,7 @@ final class PortavozAppIntentBridgeTests: XCTestCase {
     }
 
     @MainActor
-    func testPendingStopRequestCanBeRepublishedAfterServicesBecomeReady() {
+    func testPendingStopRequestCanBeRepublishedAfterServicesBecomeReady() async {
         _ = PortavozAppIntentBridge.consumeStopRecordingRequest(as: .queued)
         var deliveries = 0
         let observer = NotificationCenter.default.addObserver(
@@ -235,7 +235,7 @@ final class PortavozAppIntentBridgeTests: XCTestCase {
     }
 
     @MainActor
-    func testStopRecordingDispositionNamesEveryLifecycleRecovery() {
+    func testStopRecordingDispositionNamesEveryLifecycleRecovery() async {
         XCTAssertEqual(
             PortavozAppDelegate.stopRecordingIntentDisposition(
                 for: .idle,
