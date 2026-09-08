@@ -91,8 +91,10 @@ public struct RecordingsLocation: Sendable {
     /// something still holds their files open. The cross-volume branch below
     /// copies and then deletes the source, so migrating a directory whose
     /// writers are live unlinks it underneath them and silently truncates the
-    /// recording. Callers pass the live meetings; this is the last line of
-    /// defence behind `ManageRecordingStorage`'s activity gate.
+    /// recording. `ManageRecordingStorage` refuses a move while capture is
+    /// busy, but that phase is sampled once; the app samples the live
+    /// directory again immediately before the first rename and passes it here,
+    /// so a capture that starts between those two points is still left alone.
     public func migrateAudio(
         from origin: URL,
         to destination: URL,

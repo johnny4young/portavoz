@@ -32,13 +32,17 @@ public struct AutomationEntityLookup<ID: Hashable & Sendable>: Sendable {
            identifiers.count > Self.maximumResultCount {
             throw AutomationEntityLookupError.tooManyIdentifiers
         }
+        // Bound the raw value first: `normalizedQuery` rebuilds the whole
+        // string, so an oversized query must be refused before that work, not
+        // after. Collapsing whitespace never lengthens a value.
+        if let matching,
+           matching.prefix(Self.maximumQueryCharacterCount + 1).count
+               > Self.maximumQueryCharacterCount {
+            throw AutomationEntityLookupError.queryTooLong
+        }
         let matching = matching.map(Self.normalizedQuery)
         if identifiers != nil, matching?.isEmpty == false {
             throw AutomationEntityLookupError.conflictingSelectors
-        }
-        if let matching,
-           matching.count > Self.maximumQueryCharacterCount {
-            throw AutomationEntityLookupError.queryTooLong
         }
         self.identifiers = identifiers.map(Self.uniqueIdentifiers)
         self.matching = matching?.isEmpty == false ? matching : nil

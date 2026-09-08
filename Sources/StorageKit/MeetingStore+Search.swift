@@ -82,16 +82,33 @@ extension MeetingStore {
         _ persisted: String?,
         resultID: String?
     ) throws -> [UUID] {
-        let sourceValues = persisted?.split(separator: ",").map(String.init) ?? []
-        guard !sourceValues.isEmpty else {
+        // Each element is "<ordinal>:<segmentID>"; the concatenation order is
+        // not guaranteed, so the ordinal is what restores merge provenance.
+        let ordered = try (persisted?.split(separator: ",") ?? []).map { value -> (Int, String) in
+            let parts = value.split(separator: ":", maxSplits: 1)
+            guard parts.count == 2, let ordinal = Int(parts[0]) else {
+                throw StorageError.invalidPersistedValue(
+                    table: "transcriptStructuralSearchSource",
+                    column: "ordinal",
+                    value: String(value))
+            }
+            return (ordinal, String(parts[1]))
+        }
+        guard !ordered.isEmpty else {
             throw StorageError.invalidPersistedValue(
                 table: "transcriptStructuralSearchSource",
                 column: "segmentID",
                 value: resultID ?? "missing")
         }
-        let sources = try sourceValues.map {
+        guard Set(ordered.map(\.0)).count == ordered.count else {
+            throw StorageError.invalidPersistedValue(
+                table: "transcriptStructuralSearchSource",
+                column: "ordinal",
+                value: persisted ?? "missing")
+        }
+        let sources = try ordered.sorted { $0.0 < $1.0 }.map {
             try PersistedIdentity.required(
-                $0,
+                $0.1,
                 table: "transcriptStructuralSearchSource",
                 column: "segmentID")
         }
@@ -151,7 +168,9 @@ private enum CorrectionAwareSearchSQL {
                    segment.text AS text,
                    meeting.title AS title,
                    meeting.transcriptRevision AS transcriptRevision,
-                   segment.id AS sourceSegmentIDs,
+                   -- One ordinal-prefixed element, so every lane decodes
+                   -- through the same provenance shape.
+                   '0:' || segment.id AS sourceSegmentIDs,
                    snippet(segmentSearch, 0, '[', ']', '…', 12) AS snippet,
                    rank AS searchRank
             FROM segmentSearch
@@ -179,7 +198,9 @@ private enum CorrectionAwareSearchSQL {
                    corrected.text AS text,
                    meeting.title AS title,
                    meeting.transcriptRevision AS transcriptRevision,
-                   segment.id AS sourceSegmentIDs,
+                   -- One ordinal-prefixed element, so every lane decodes
+                   -- through the same provenance shape.
+                   '0:' || segment.id AS sourceSegmentIDs,
                    snippet(segmentCorrectedSearch, 0, '[', ']', '…', 12) AS snippet,
                    rank AS searchRank
             FROM segmentCorrectedSearch
@@ -208,13 +229,14 @@ private enum CorrectionAwareSearchSQL {
                    meeting.title AS title,
                    meeting.transcriptRevision AS transcriptRevision,
                    (
-                       SELECT GROUP_CONCAT(orderedSource.segmentID, ',')
-                       FROM (
-                           SELECT source.segmentID
-                           FROM transcriptStructuralSearchSource AS source
-                           WHERE source.resultID = structural.resultID
-                           ORDER BY source.ordinal
-                       ) AS orderedSource
+                       -- SQLite does not promise GROUP_CONCAT follows a
+                       -- subquery's ORDER BY, and the deployment floor
+                       -- predates ORDER BY inside aggregates. Carry the
+                       -- ordinal and let the decoder restore the order.
+                       SELECT GROUP_CONCAT(
+                           source.ordinal || ':' || source.segmentID, ',')
+                       FROM transcriptStructuralSearchSource AS source
+                       WHERE source.resultID = structural.resultID
                    ) AS sourceSegmentIDs,
                    snippet(
                        transcriptStructuralSearch, 0, '[', ']', '…', 12

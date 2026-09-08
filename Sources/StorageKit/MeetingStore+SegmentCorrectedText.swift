@@ -162,6 +162,16 @@ extension MeetingStore {
         existingEmbeddings: [UUID: PreservedStructuralEmbedding],
         in database: Database
     ) throws {
+        // Only `.split` and `.merge` project structural rows; every other kind
+        // yields none. Stale rows were already cleared, so a history without
+        // either kind has nothing to insert and must not pay for the whole
+        // transcript on an ordinary text or speaker edit.
+        guard history.contains(where: { correction in
+            switch correction.kind {
+            case .split, .merge: true
+            case .replaceText, .changeSpeaker, .suppress, .restore: false
+            }
+        }) else { return }
         let segmentRecords = try SegmentRecord.fetchAll(
             database,
             sql: """

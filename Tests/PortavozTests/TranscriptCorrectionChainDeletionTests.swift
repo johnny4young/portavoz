@@ -99,3 +99,39 @@ final class TranscriptCorrectionChainDeletionTests: XCTestCase {
         return meeting
     }
 }
+
+/// Merge provenance is decoded positionally, so its order is load-bearing.
+/// SQLite does not promise `GROUP_CONCAT` follows a subquery's `ORDER BY`, and
+/// the deployment floor predates `ORDER BY` inside aggregates, so each element
+/// carries its ordinal and the decoder restores the order.
+final class StructuralSearchProvenanceOrderTests: XCTestCase {
+    func testProvenanceOrderComesFromTheOrdinalNotTheConcatenationOrder() throws {
+        let first = "11111111-1111-4111-8111-111111111111"
+        let second = "22222222-2222-4222-8222-222222222222"
+        let third = "33333333-3333-4333-8333-333333333333"
+
+        let inOrder = try MeetingStore.sourceSegmentIDs(
+            "0:\(first),1:\(second),2:\(third)",
+            resultID: first)
+        let shuffled = try MeetingStore.sourceSegmentIDs(
+            "2:\(third),0:\(first),1:\(second)",
+            resultID: first)
+
+        XCTAssertEqual(inOrder.map { $0.uuidString.lowercased() }, [first, second, third])
+        XCTAssertEqual(shuffled, inOrder, "the ordinal decides, not the concatenation")
+    }
+
+    func testMalformedOrDuplicatedProvenanceFailsClosed() {
+        let value = "11111111-1111-4111-8111-111111111111"
+        for persisted in [
+            "\(value)",                       // missing ordinal
+            "x:\(value)",                     // non-numeric ordinal
+            "0:\(value),0:\(value)",          // duplicated ordinal
+            ""                                // empty
+        ] {
+            XCTAssertThrowsError(
+                try MeetingStore.sourceSegmentIDs(persisted, resultID: value),
+                "must reject \(persisted)")
+        }
+    }
+}

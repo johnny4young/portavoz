@@ -23,11 +23,17 @@ public struct ConfirmedTopicCatalogLookup: Equatable, Sendable {
         guard (1...Self.maximumResultCount).contains(limit) else {
             throw ConfirmedTopicCatalogLookupError.invalidLimit
         }
-        let matching = matching.flatMap(TopicAliasNormalizer.displayLabel)
-        guard (matching?.count ?? 0) <= Self.maximumQueryCharacterCount else {
+        // Bound the raw value before normalizing it. `displayLabel` walks and
+        // rebuilds the whole string, so checking the limit afterwards would let
+        // an automation caller make this bounded lookup do unbounded work. The
+        // prefix keeps the check itself bounded, and collapsing whitespace can
+        // only shorten a value, so a raw query within the limit stays within it.
+        if let matching,
+           matching.prefix(Self.maximumQueryCharacterCount + 1).count
+               > Self.maximumQueryCharacterCount {
             throw ConfirmedTopicCatalogLookupError.queryTooLong
         }
-        self.matching = matching
+        self.matching = matching.flatMap(TopicAliasNormalizer.displayLabel)
         self.limit = limit
     }
 }

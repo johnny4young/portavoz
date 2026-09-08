@@ -6,6 +6,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 8, 2026
 
+- **🔔 An honest Reminders prompt** — the permission text now says the reminder is saved to the Reminders list you choose and may sync through that account, instead of promising it never leaves your Mac.
+
 - **🗑️ Emptying the trash always works** — permanently deleting a meeting whose transcript you corrected more than once no longer fails partway; the meeting and its correction history go together.
 
 - **🗓️ Today, at a glance** — Portavoz now opens on your day: the agenda with a brief and a linked recording per event, the to-dos still open, the meetings to pick back up, and one-click questions for Ask. Nothing to scroll, nothing to type.

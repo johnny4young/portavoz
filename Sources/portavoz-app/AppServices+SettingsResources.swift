@@ -28,11 +28,15 @@ extension AppServices {
         progress: @escaping @MainActor (RecordingStorageProgress) -> Void
     ) async throws -> (location: RecordingStorageLocation, recordingCount: Int) {
         let result = try await ManageRecordingStorage(
-            storage: AppRecordingStorageManager(),
             // Settings is a separate scene with no recording-phase gate, so
             // the move is reachable mid-capture. Moving a live meeting's
             // directory across volumes copies and then unlinks it underneath
-            // the open writers.
+            // the open writers, so the phase gate below is backed by an
+            // explicit reservation sampled just before the first rename.
+            storage: AppRecordingStorageManager(
+                reservedDirectoryNames: { [recording] in
+                    await MainActor.run { recording.reservedAudioDirectoryNames }
+                }),
             activity: AppRecordingStorageActivity(recording: recording)
         ).execute(ManageRecordingStorageRequest(
             action: .move(to: destination),
@@ -111,6 +115,19 @@ private struct AppRecordingStorageActivity: RecordingStorageActivity {
 private struct AppRecordingStorageManager: RecordingStorageManaging {
     private let location = RecordingsLocation.shared
 
+    /// Directory names that must stay where they are because their writers are
+    /// live. `ManageRecordingStorage` samples the recording phase once before
+    /// the move; sampling again here, immediately before the first rename,
+    /// narrows the window in which a capture started after that check could
+    /// have its directory moved out from under it.
+    private let reservedDirectoryNames: @Sendable () async -> Set<String>
+
+    init(
+        reservedDirectoryNames: @escaping @Sendable () async -> Set<String> = { [] }
+    ) {
+        self.reservedDirectoryNames = reservedDirectoryNames
+    }
+
     func recordingStorageLocation() async -> RecordingStorageLocation {
         RecordingStorageLocation(
             currentRoot: location.currentRoot(),
@@ -124,6 +141,7 @@ private struct AppRecordingStorageManager: RecordingStorageManaging {
     ) async throws -> Int {
         let origin = location.currentRoot()
         let resolvedDestination = destination ?? location.defaultRoot
+        let reserved = await reservedDirectoryNames()
         let (updates, continuation) = AsyncStream<RecordingStorageProgress>.makeStream()
         let progressTask = Task {
             for await update in updates {
@@ -132,7 +150,11 @@ private struct AppRecordingStorageManager: RecordingStorageManaging {
         }
         do {
             let moved = try await Task.detached(priority: .userInitiated) {
-                try location.migrateAudio(from: origin, to: resolvedDestination) { completed, total in
+                try location.migrateAudio(
+                    from: origin,
+                    to: resolvedDestination,
+                    skipping: reserved
+                ) { completed, total in
                     continuation.yield(RecordingStorageProgress(
                         completed: completed,
                         total: total))

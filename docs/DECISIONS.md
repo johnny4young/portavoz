@@ -18783,3 +18783,56 @@ was confirmed to fail without the pragma and pass with it. Reviewing this branch
 surfaced further storage findings that need their own evidence; they are
 recorded in GAPS as R12-R18 rather than changed without a failing case.
 
+## D499 — Close the deferred storage and bounded-input findings (Sep 2026)
+
+**Context:** the integration review left R12-R18 in GAPS because each would
+change accepted semantics without a failing case, and a later Copilot pass
+raised two more: an unbounded normalization before a bounded limit, and a
+Reminders permission prompt whose privacy promise the implementation cannot
+keep.
+
+**Decision:** each finding was verified against the real code before changing
+anything, and one was rejected on that evidence.
+
+- **Bounded catalog input.** `ConfirmedTopicCatalogLookup` and
+  `AutomationEntityLookup` normalized the caller's whole string before checking
+  the 120-character limit, so an automation caller could make a bounded lookup
+  do unbounded work. Both now refuse an oversized query with a bounded prefix
+  check before normalizing. Collapsing whitespace never lengthens a value, so a
+  query within the limit is unaffected.
+- **Reminders privacy copy.** The confirmed reminder is written to
+  `defaultCalendarForNewReminders()`, which is commonly an iCloud list, so
+  "Nothing leaves your Mac" was false. The prompt now says the reminder is
+  saved to the Reminders list you choose and may sync through that account.
+  The Calendar prompt is unchanged: it only reads.
+- **R13.** `ManageRecordingStorage` refuses a move while capture is busy, but
+  samples that phase once. The app now samples the live capture's audio
+  directory again immediately before the first rename and passes it as
+  `skipping:`, which is what the parameter's doc always claimed.
+- **R14.** Only `.split` and `.merge` project structural search rows, and stale
+  rows are cleared before the refresh, so a history without either kind returns
+  before loading the whole transcript.
+- **R16.** SQLite does not promise `GROUP_CONCAT` follows a subquery's
+  `ORDER BY`, and `ORDER BY` inside an aggregate needs 3.44 while the
+  deployment floor is older. Every lane now concatenates `ordinal:segmentID`
+  and the decoder sorts by ordinal, rejecting a missing, non-numeric or
+  duplicated one.
+- **R17.** One `acceptedSemanticScanBranchSQL` is interpolated into both scans.
+- **R18.** The three migration backfills skip a meeting whose correction
+  history the current policy rejects. That projection is disposable and is
+  rebuilt on the meeting's next correction write, so one unparseable meeting
+  can no longer leave the database unopenable.
+
+**Rejected: R12.** Reporting a `StorageError` from the correction merge as
+`.correctionConflict` looked like a fix, but
+`testPendingRemoteCorrectionStorageFailureIsNotReportedAsUserConflict` pins the
+opposite on purpose: an invalid remote correction fails loudly, leaves local
+history untouched, and preserves the pending change instead of appearing as a
+convergence conflict the user is expected to resolve. The change was reverted
+and the mapping now states that contract in place. The residual — no quarantine
+for an envelope that keeps failing — stays in GAPS.
+
+**Consequences:** R15 remains open. Its repeated reads live inside the
+correction validator, the most correctness-critical code in the store, and R14
+already removed the largest repeated read.
+

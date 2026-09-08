@@ -147,10 +147,10 @@ final class LocalizationTests: XCTestCase {
             "Portavoz graba tu micrófono para transcribir tus intervenciones en la reunión. El audio nunca sale de tu Mac.")
         XCTAssertEqual(
             englishInfo["NSRemindersFullAccessUsageDescription"],
-            "Portavoz creates a reminder only after you preview and confirm it. Nothing leaves your Mac.")
+            "Portavoz creates a reminder only after you preview and confirm it. It is saved to the Reminders list you choose, which may sync through that account.")
         XCTAssertEqual(
             spanishInfo["NSRemindersFullAccessUsageDescription"],
-            "Portavoz crea un recordatorio solo después de que lo revises y confirmes. Nada sale de tu Mac.")
+            "Portavoz crea un recordatorio solo después de que lo revises y confirmes. Se guarda en la lista de Recordatorios que elijas, que puede sincronizarse mediante esa cuenta.")
         XCTAssertEqual(spanishInfo["CFBundleDisplayName"], "Portavoz")
         XCTAssertNil(
             spanishInfo["Portavoz records your microphone to transcribe your side of the meeting. Audio never leaves your Mac."],

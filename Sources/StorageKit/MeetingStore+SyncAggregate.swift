@@ -443,6 +443,13 @@ extension MeetingStore {
         } catch is TranscriptCorrectionValidationError {
             throw PendingTranscriptCorrectionConflict(localGeneration: localGeneration)
         }
+        // A `StorageError` from here is deliberately not caught. It means our
+        // own merge produced a history we cannot read back, the meeting
+        // vanished mid-write, or the remote event targets accepted rows this
+        // replica does not have. None of those is peer disagreement the user
+        // can resolve, so they stay loud instead of being filed as a
+        // convergence conflict — see
+        // `testPendingRemoteCorrectionStorageFailureIsNotReportedAsUserConflict`.
     }
 
     private static func hasCompatibleCorrectionBase(

@@ -27,7 +27,10 @@ extension StorageSchema {
                 sql: "SELECT DISTINCT meetingID FROM transcriptCorrection")
             for key in meetingKeys {
                 guard let identifier = UUID(uuidString: key) else { continue }
-                try MeetingStore.refreshTranscriptCorrectionSearchProjection(
+                // Disposable projection: a meeting the current policy rejects
+                // degrades to no lineage fence rather than blocking the
+                // migration and leaving the database unopenable.
+                try? MeetingStore.refreshTranscriptCorrectionSearchProjection(
                     meetingID: MeetingID(rawValue: identifier),
                     in: database)
             }

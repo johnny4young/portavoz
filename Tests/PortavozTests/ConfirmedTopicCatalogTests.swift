@@ -24,6 +24,20 @@ final class ConfirmedTopicCatalogTests: XCTestCase {
                         error as? ConfirmedTopicCatalogLookupError,
                         .queryTooLong)
                 }
+        // The limit is enforced on the value the caller supplied, before it is
+        // normalized, so padding cannot buy unbounded normalization work.
+        XCTAssertThrowsError(
+            try ConfirmedTopicCatalogLookup(
+                matching: "a" + String(repeating: " ", count: 200) + "b")) { error in
+                    XCTAssertEqual(
+                        error as? ConfirmedTopicCatalogLookupError,
+                        .queryTooLong)
+                }
+        XCTAssertEqual(
+            try ConfirmedTopicCatalogLookup(
+                matching: String(repeating: "a", count: 120)).matching,
+            String(repeating: "a", count: 120),
+            "a query exactly at the limit still resolves")
     }
 
     func testCatalogSearchIsBoundedAliasAwareAndReturnsExactLiveRoots() async throws {

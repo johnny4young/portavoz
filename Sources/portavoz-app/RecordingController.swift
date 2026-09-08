@@ -193,7 +193,8 @@ final class RecordingController {
     // Internal (not private) so the companion-detection extension file
     // can read it; still write-protected by convention.
     private(set) weak var services: AppServices?
-    private var audioRelative = ""
+    fileprivate var audioRelative = ""
+
     /// Durable aggregate created before capture starts. It remains the source
     /// of lifecycle truth while the existing controller is incrementally
     /// strangled behind ApplicationKit use cases (Band 1 before Band 2).
@@ -1041,5 +1042,20 @@ extension RecordingController {
     func removeContextItem(_ id: UUID) {
         contextItems.removeAll { $0.id == id }
         requestLiveSummaryRefresh()
+    }
+}
+
+extension RecordingController {
+    /// The `Audio/` subdirectory a live capture still holds open, if any.
+    /// A storage move must leave it in place: the cross-volume path copies and
+    /// then unlinks the source, which would truncate the open writers.
+    var reservedAudioDirectoryNames: Set<String> {
+        switch phase {
+        case .preparing, .recording, .processing:
+            let name = URL(fileURLWithPath: audioRelative).lastPathComponent
+            return name.isEmpty ? [] : [name]
+        case .idle, .done, .failed:
+            return []
+        }
     }
 }

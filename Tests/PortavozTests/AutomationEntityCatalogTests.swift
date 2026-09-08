@@ -21,6 +21,11 @@ final class AutomationEntityCatalogTests: XCTestCase {
             matching: String(repeating: "a", count: 121))) {
             XCTAssertEqual($0 as? AutomationEntityLookupError, .queryTooLong)
         }
+        // Refused before normalization, so padding cannot buy unbounded work.
+        XCTAssertThrowsError(try AutomationEntityLookup<MeetingID>(
+            matching: "a" + String(repeating: " ", count: 200) + "b")) {
+            XCTAssertEqual($0 as? AutomationEntityLookupError, .queryTooLong)
+        }
         XCTAssertThrowsError(try AutomationEntityLookup<MeetingID>(
             identifiers: [MeetingID()],
             matching: "ambiguous")) {

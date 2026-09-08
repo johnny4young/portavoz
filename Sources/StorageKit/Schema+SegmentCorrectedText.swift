@@ -46,7 +46,11 @@ extension StorageSchema {
                 sql: "SELECT DISTINCT meetingID FROM transcriptCorrection")
             for key in meetingKeys {
                 guard let uuid = UUID(uuidString: key) else { continue }
-                try MeetingStore.refreshTranscriptCorrectionSearchProjection(
+                // The projection is disposable and is rebuilt on the meeting's
+                // next correction write. One meeting whose history the current
+                // policy rejects must degrade to an empty projection, never
+                // leave the whole database unopenable.
+                try? MeetingStore.refreshTranscriptCorrectionSearchProjection(
                     meetingID: MeetingID(rawValue: uuid),
                     in: database)
             }
@@ -120,7 +124,11 @@ extension StorageSchema {
                 sql: "SELECT DISTINCT meetingID FROM transcriptCorrection")
             for key in meetingKeys {
                 guard let uuid = UUID(uuidString: key) else { continue }
-                try MeetingStore.refreshTranscriptCorrectionSearchProjection(
+                // The projection is disposable and is rebuilt on the meeting's
+                // next correction write. One meeting whose history the current
+                // policy rejects must degrade to an empty projection, never
+                // leave the whole database unopenable.
+                try? MeetingStore.refreshTranscriptCorrectionSearchProjection(
                     meetingID: MeetingID(rawValue: uuid),
                     in: database)
             }

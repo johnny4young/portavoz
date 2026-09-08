@@ -5,7 +5,9 @@ import PortavozCore
 
 // Exact local semantic retrieval and authoritative result projection.
 extension MeetingStore {
-    private static let acceptedSemanticScanSQL = """
+    /// The accepted-segment lane, shared by the accepted-only scan and the
+    /// first branch of the corrected scan.
+    private static let acceptedSemanticScanBranchSQL = """
         SELECT segment.embedding AS embedding,
                segment.rowid AS rowID,
                0 AS sourceKind,
@@ -18,22 +20,17 @@ extension MeetingStore {
               SELECT meeting.id FROM meeting WHERE meeting.deletedAt IS NOT NULL
           )
           AND \(acceptedSegmentHasNoActiveTextCorrectionSQL)
+        """
+
+    private static let acceptedSemanticScanSQL = """
+        \(acceptedSemanticScanBranchSQL)
         ORDER BY segment.rowid ASC
         """
 
+    // The accepted lane is the same predicate in both scans; interpolating it
+    // keeps one definition so the two cannot drift apart.
     private static let correctedSemanticScanSQL = """
-        SELECT segment.embedding AS embedding,
-               segment.rowid AS rowID,
-               0 AS sourceKind,
-               NULL AS correctionID
-        FROM segment
-        WHERE segment.embedding IS NOT NULL
-          AND segment.embeddingFingerprint = ?
-          AND segment.deletedAt IS NULL
-          AND segment.meetingID NOT IN (
-              SELECT meeting.id FROM meeting WHERE meeting.deletedAt IS NOT NULL
-          )
-          AND \(acceptedSegmentHasNoActiveTextCorrectionSQL)
+        \(acceptedSemanticScanBranchSQL)
         UNION ALL
         SELECT corrected.embedding AS embedding,
                segment.rowid AS rowID,
@@ -664,13 +661,14 @@ private enum SemanticSearchSQL {
                meeting.title AS title,
                meeting.transcriptRevision AS transcriptRevision,
                (
-                   SELECT GROUP_CONCAT(orderedSource.segmentID, ',')
-                   FROM (
-                       SELECT source.segmentID
-                       FROM transcriptStructuralSearchSource AS source
-                       WHERE source.resultID = structural.resultID
-                       ORDER BY source.ordinal
-                   ) AS orderedSource
+                   -- SQLite does not promise GROUP_CONCAT follows a
+                   -- subquery's ORDER BY, and the deployment floor predates
+                   -- ORDER BY inside aggregates. Carry the ordinal in the
+                   -- value and let the decoder restore the order.
+                   SELECT GROUP_CONCAT(
+                       source.ordinal || ':' || source.segmentID, ',')
+                   FROM transcriptStructuralSearchSource AS source
+                   WHERE source.resultID = structural.resultID
                ) AS sourceSegmentIDs
         FROM transcriptStructuralSearchRow AS structural
         JOIN meeting ON meeting.id = structural.meetingID
