@@ -12,7 +12,10 @@ runtime_budget="${UI_TEST_RUNTIME_BUDGET:-$ROOT/docs/evidence/ui-test-runtime-bu
 require_runtime_receipt="${UI_TEST_REQUIRE_RUNTIME_RECEIPT:-true}"
 enforce_runtime_budget="${UI_TEST_ENFORCE_RUNTIME_BUDGET:-true}"
 phase="${UI_TEST_PHASE:-build-and-test}"
-build_duration_receipt="$results_root/build-duration-seconds.txt"
+build_duration_receipt="${UI_TEST_BUILD_RECEIPT:-$results_root/build-duration-seconds.txt}"
+# An explicit xctestproducts bundle lets one build travel to several hosts:
+# the build phase writes it and a test-only phase runs it without the project.
+products_path="${UI_TEST_PRODUCTS_PATH:-}"
 arch="$(uname -m)"
 
 case "$phase" in
@@ -93,9 +96,15 @@ if [[ "$phase" != test-only ]]; then
   # Compile the app and UI bundle once. English and Spanish then reuse the same
   # products through test-without-building instead of paying the build cost twice.
   rm -f "$build_duration_receipt"
+  build_args=("${common[@]}")
+  if [[ -n "$products_path" ]]; then
+    rm -rf "$products_path"
+    build_args+=(-testProductsPath "$products_path")
+  fi
   build_started=$SECONDS
-  xcodebuild build-for-testing "${common[@]}"
+  xcodebuild build-for-testing "${build_args[@]}"
   build_duration=$((SECONDS - build_started))
+  mkdir -p "$(dirname "$build_duration_receipt")"
   temporary_receipt="$build_duration_receipt.tmp.$$"
   printf '%s\n' "$build_duration" > "$temporary_receipt"
   mv "$temporary_receipt" "$build_duration_receipt"
@@ -162,8 +171,23 @@ if [[ "$needs_web_fixture" == true ]]; then
   export TEST_RUNNER_PORTAVOZ_UI_WEB_FIXTURE_PAYLOAD="$web_fixture_payload"
 fi
 
+if [[ "$phase" == test-only && -n "$products_path" && ! -d "$products_path" ]]; then
+  echo "Missing UI-test products bundle: $products_path" >&2
+  exit 2
+fi
+
 for locale in $locales; do
-  test_args=("${common[@]}")
+  if [[ -n "$products_path" ]]; then
+    # The exact products carry their own xctestrun; the project is not needed.
+    test_args=(
+      -testProductsPath "$products_path"
+      -destination "platform=macOS,arch=$arch"
+      -skipPackagePluginValidation
+      -skipMacroValidation
+    )
+  else
+    test_args=("${common[@]}")
+  fi
   case "$locale" in
     default)
       unset PORTAVOZ_UI_TEST_LOCALE TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE

@@ -677,7 +677,7 @@ extension MeetingStore {
                 ORDER BY meetings DESC, LOWER(TRIM(speaker.displayName)) ASC
                 LIMIT ?
                 """,
-            arguments: [topLimit])
+            arguments: [max(0, topLimit)])
         // Same latest-snapshot rule as `openActionItems`: superseded summary
         // versions must not double-count their items.
         let counts = try Row.fetchOne(

@@ -7,7 +7,6 @@ public enum CloudMeetingTransportError: Error, Equatable, Sendable {
     case accountUnavailable
     case staleGeneration
     case generationCollision
-    case unknownAttempt
     case payloadMissing
     case payloadCorrupted
 }

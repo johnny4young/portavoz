@@ -17,7 +17,6 @@ extension MeetingStore {
         let activeKeys = Set(offers.map(\.offerKey))
         guard candidateOfferKeys.count <= Self.maximumSkillOfferReconciliationCount,
               candidateSet.count == candidateOfferKeys.count,
-              offers.count <= candidateOfferKeys.count,
               activeKeys.count == offers.count,
               activeKeys.isSubset(of: candidateSet),
               candidateOfferKeys.allSatisfy(Self.isValidSkillOfferKey),

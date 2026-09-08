@@ -71,18 +71,6 @@ public final class NemotronLatin1120Engine: TranscriptionEngine, Sendable {
         return NemotronLatin1120Engine(models: models)
     }
 
-    /// Explicit research entry point. It is intentionally not used by any app
-    /// composition root or by `ModelCatalog.recommended(for:)`.
-    public static func loadResearchCandidate(
-        store: ModelStore,
-        progress: (@Sendable (ModelStore.DownloadProgress) -> Void)? = nil
-    ) async throws -> NemotronLatin1120Engine {
-        let directory = try await store.ensureAvailable(
-            ModelCatalog.nemotronLatin1120,
-            progress: progress)
-        return try await load(fromVerifiedDirectory: directory)
-    }
-
     public func transcribe(
         _ audio: AsyncStream<AudioChunk>,
         hints: TranscriptionHints
@@ -321,7 +309,9 @@ enum NemotronModelLayout {
                 includingPropertiesForKeys: [
                     .isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey
                 ],
-                options: [])
+                // Finder metadata and ModelStore's dot-prefixed staging files
+                // are not model artifacts; only visible unlisted entries fence.
+                options: [.skipsHiddenFiles])
             for entry in entries {
                 let relativePath = try relativePath(of: entry, under: directory)
                 let values = try entry.resourceValues(forKeys: [

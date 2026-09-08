@@ -247,7 +247,10 @@ public struct SpeechAnalyzerEngine: Sendable {
         guard !Task.isCancelled else { return false }
         do {
             try await analyzer.finalizeAndFinishThroughEndOfInput()
-            return !Task.isCancelled
+            // The results stream and this finalize resume from the same
+            // analyzer finish; the consumer may cancel the group before this
+            // task is read. Input that reached end-of-input is complete.
+            return true
         } catch {
             return false
         }

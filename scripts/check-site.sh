@@ -15,7 +15,7 @@ fail() {
 [ -f site/styles.css ] || fail "site/styles.css is missing"
 [ -f site/assets/portavoz-mark.svg ] || fail "site/assets/portavoz-mark.svg is missing"
 [ -f site/assets/og.png ] || fail "site/assets/og.png is missing (social/OG card)"
-for screenshot in meeting-detail recording-live-translation insights; do
+for screenshot in today meeting-detail recording-live-translation insights; do
 	[ -f "site/assets/screenshots/$screenshot.png" ] \
 		|| fail "site screenshot is missing: $screenshot.png"
 done

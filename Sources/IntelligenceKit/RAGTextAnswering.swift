@@ -287,7 +287,9 @@ public enum RAGWebAnswerPrompt {
     }
 
     private static func iso8601(_ date: Date) -> String {
-        ISO8601DateFormatter().string(from: date)
+        // Called once per prompt passage; a fresh formatter per call allocated
+        // and configured ICU state inside the loop.
+        date.formatted(.iso8601)
     }
 }
 
@@ -360,7 +362,9 @@ public enum RAGNoteAnswerPrompt {
     }
 
     private static func iso8601(_ date: Date) -> String {
-        ISO8601DateFormatter().string(from: date)
+        // Called once per prompt passage; a fresh formatter per call allocated
+        // and configured ICU state inside the loop.
+        date.formatted(.iso8601)
     }
 
     private static func clock(_ seconds: TimeInterval) -> String {

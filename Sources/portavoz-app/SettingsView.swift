@@ -419,10 +419,10 @@ extension SettingsView {
     /// insertable chips stay in sync from one source.
     private var titleTokens: [(token: String, example: String, hint: String)] {
         [
-            ("{date}", "2026-07-07", "ISO date (sorts the library automatically)"),
-            ("{time}", "10.47", "Start time"),
-            ("{seq}", "01", "Daily sequence (01, 02…)"),
-            ("{weekday}", "martes", "Weekday")
+            ("{date}", "2026-07-07", L10n.text("ISO date (sorts the library automatically)")),
+            ("{time}", "10.47", L10n.text("Start time")),
+            ("{seq}", "01", L10n.text("Daily sequence (01, 02…)")),
+            ("{weekday}", "martes", L10n.text("Weekday"))
         ]
     }
 

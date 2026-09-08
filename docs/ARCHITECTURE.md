@@ -775,6 +775,7 @@ owners. Adopted read surfaces do not observe a global invalidation counter.
 | Surface | State owner | Lifetime |
 |---|---|---|
 | Library | `LibraryModel` | one main window |
+| Today (home) | `LibraryModel` snapshot rendered by `HomeView` | one main window |
 | Insights | `InsightsModel` | one main window |
 | Commitment Radar | `CommitmentRadarModel` + `ReminderDraftModel` | one main window |
 | Meeting Detail | `MeetingDetailScene` + `MeetingDetailModel` | one selected meeting route |
@@ -5266,8 +5267,14 @@ runner starts, and truncation cannot reduce selected evidence.
 An empty selector explicitly means every test; optional selector and locale
 arguments are assembled without empty-array expansion on the system Bash
 runtime. One `build-for-testing` result is reused across selected locales.
-Locales run sequentially because macOS XCUITest shares host services and a
-parallel pass would measure contention rather than product behavior. Every real
+On one Mac, locales run sequentially because macOS XCUITest shares host
+services and a parallel pass would measure contention rather than product
+behavior. The hosted workflow keeps that rule per host while removing the
+serial wall clock: one `build-ui-products` job writes the exact products as an
+`xctestproducts` bundle (`UI_TEST_PRODUCTS_PATH`), one matrix lane per selected
+locale restores that bundle and runs `test-without-building` without the
+project or a rebuild, and one Linux classifier reads every lane's receipts and
+recorded step outcome before the gate and the verification anchor. Every real
 run retains an xcresult plus content-free runtime and execution receipts. The
 first contains only test identity, result, duration distribution, build/wall
 duration, and budget verdict. The second binds locale, selector count,

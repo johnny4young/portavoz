@@ -47,40 +47,35 @@ extension AppServices {
             telemetry: workloadTelemetry)
     }
 
-    private var isRecordingFailureFixture: Bool {
+    /// Fixtures exist only for the disposable test store; a stray flag on a
+    /// real library never changes recording behavior.
+    private func fixtureRequested(_ flag: String) -> Bool {
         let arguments = ProcessInfo.processInfo.arguments
-        return arguments.contains("-use-temp-store")
-            && arguments.contains("-simulate-recording-start-failure")
+        return arguments.contains("-use-temp-store") && arguments.contains(flag)
+    }
+
+    private var isRecordingFailureFixture: Bool {
+        fixtureRequested("-simulate-recording-start-failure")
     }
 
     private var isSystemCaptureStallFixture: Bool {
-        let arguments = ProcessInfo.processInfo.arguments
-        return arguments.contains("-use-temp-store")
-            && arguments.contains("-simulate-system-capture-stall")
+        fixtureRequested("-simulate-system-capture-stall")
     }
 
     private var isSystemAudioClippingFixture: Bool {
-        let arguments = ProcessInfo.processInfo.arguments
-        return arguments.contains("-use-temp-store")
-            && arguments.contains("-simulate-system-audio-clipping")
+        fixtureRequested("-simulate-system-audio-clipping")
     }
 
     private var isLiveTranscriptionAttachFixture: Bool {
-        let arguments = ProcessInfo.processInfo.arguments
-        return arguments.contains("-use-temp-store")
-            && arguments.contains("-simulate-live-transcription-attach")
+        fixtureRequested("-simulate-live-transcription-attach")
     }
 
     private var isLiveTranscriptBrowsingFixture: Bool {
-        let arguments = ProcessInfo.processInfo.arguments
-        return arguments.contains("-use-temp-store")
-            && arguments.contains("-simulate-live-transcript-browsing")
+        fixtureRequested("-simulate-live-transcript-browsing")
     }
 
     private var isInterviewAssistFixture: Bool {
-        let arguments = ProcessInfo.processInfo.arguments
-        return arguments.contains("-use-temp-store")
-            && arguments.contains("-simulate-interview-assist")
+        fixtureRequested("-simulate-interview-assist")
     }
 }
 

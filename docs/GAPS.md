@@ -191,6 +191,28 @@ encoding-role contract plus pinned tokenizer, pooling, truncation and
 normalization semantics; swapping weights alone is not equivalent retrieval.
 No new model has been downloaded, integrated or qualified by this diagnostic.
 
+## Deferred findings from the 1.0 integration review (Sep 2026)
+
+An independent multi-module review of the integration PR produced findings in
+five areas. The confirmed defects were fixed under D497; the entries below were
+verified as real but deliberately left for their own reviewed slice, because
+each changes accepted behavior, published receipts, or a hot read path that the
+current evidence does not cover.
+
+| # | Finding | Why deferred | Plan |
+|---|---|---|---|
+| R1 | A superseded **diarization or transcription** job is cancelled with no replacement (`ProcessPostCaptureJobs.supersededPostCaptureReplacements` only builds one for the summary lane), so a voiceprint enrolled mid-job can leave a meeting `ready` without diarization | Needs a typed `.inputSuperseded(replacement:)` on both lanes plus recovery-path tests; the summary lane's contract is released and must not change shape | Own slice with characterization tests for both lanes |
+| R2 | `StopRecording.installPublishedCapture` drops `transcriptRequiresRecovery` when no transcribable capture exists, so partial live captions become the final transcript | The correct outcome is a new needs-attention failure code; D127's degradation ladder is released and covered by UI evidence | Extend the ladder with a reviewed code and a UI journey |
+| R3 | CloudKit account switch keeps `.serverConflict`-blocked attempts without their blocking replay, and a newer non-blocking replay does not reopen a fenced attempt; both make `persistSnapshot` throw on every later cycle | Production CloudKit qualification is an explicit release blocker; changing fence semantics without that lane would be unverified | Fix inside the production-sync qualification slice |
+| R4 | Every sync commit re-reads and SHA-256s every staged payload and re-decodes the engine state (`validate` on each `persistSnapshot`) | Shape-only commit validation is the right fix but weakens an integrity check that has no dedicated test today | Split validation into launch (full) and commit (shape) with tests |
+| R5 | Seven Meeting Memory Graph read paths load the whole live `topic` table and four recompute the family with per-topic `topicRoot`, although the recursive-CTE twins already exist | Pure performance; the graph query receipt budget currently passes | Replace with `topicFamilyRootID`/`topicFamilyMemberIDs` and re-measure the receipt |
+| R6 | Graph and person-commitment queries hydrate up to 800 candidates before returning `itemLimit` facts; `commitmentEnvelope` and the decision loaders are N+1 | Same as R5: correctness is unaffected and the abstention counts would become lower bounds | Bounded hydration plus batched evidence reads, with the receipt re-measured |
+| R7 | `MeetingStore+Exports` degrades summary, notes and Companion cards with `try?`, so an I/O error silently exports less | The released export contract treats missing derived content as degradable; distinguishing decode from I/O failure changes user-visible outcomes | Typed degradation with export tests |
+| R8 | Meeting passages enter the RAG prompt with bare `[N]` markers while web and note passages are XML-fenced and escaped | Meeting text is the user's own transcript, so the boundary is weaker than the web one; still worth the same fence | Fence and neutralize markers with an injection test per source |
+| R9 | Live speaker relabeling is O(turns² × captions) on the main actor and republishes the whole caption array per turn | Real growth with meeting length; needs an incremental window plus a no-change publish guard, both with live-path tests | Incremental relabel slice |
+| R10 | `ArchitectureDependencyTests` is a 13.5k-line source/doc grep (4,399 `contains` assertions, 208 decision-number pins, 51 reads of other test files) | Deleting ~200 assertions is a large, separate reviewed change; the 11 structural tests are worth keeping | Move policy checks to `scripts/`, keep the structural tests |
+| R11 | `CapturePCMGeometry` resamples each buffer with no fractional phase carry, so a rate-mismatched replacement device drifts until a 0.5 s silence pad is injected | Requires a device-change capture fixture to prove the drift and the fix | Phase accumulator (or `AVAudioConverter`) with a drift test |
+
 ## Positioning gaps (against the competitive map)
 
 - **OSS growth after publication**: distribution is solved; discoverability,

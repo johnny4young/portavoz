@@ -279,7 +279,9 @@ final class AppServices {
     /// one) — the mirror compares "% you spoke" against this. Nil when there
     /// isn't enough history. Reuses the aggregate voice-mix query.
     func averageMyShare(excluding meetingID: MeetingID, recent: Int = 10) async -> Double? {
-        guard let meetings = try? await store.meetings() else { return nil }
+        // One more than `recent` so excluding this meeting still leaves a full
+        // window; the store already orders newest first.
+        guard let meetings = try? await store.meetings(limit: recent + 1) else { return nil }
         let recentIDs = meetings.filter { $0.id != meetingID }.prefix(recent).map(\.id)
         guard !recentIDs.isEmpty,
             let mixes = try? await store.voiceMixes(for: Array(recentIDs))

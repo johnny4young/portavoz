@@ -98,14 +98,6 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    private func renderedText(of element: XCUIElement) -> String {
-        guard let value = element.value as? String, !value.isEmpty else {
-            return element.label
-        }
-        return value
-    }
-
-    @MainActor
     func testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment() {
         let app = XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
         app.launchPortavoz()
@@ -150,16 +142,15 @@ final class LibraryUITests: PortavozUITestCase {
         if let locale = UITestLocale.environmentLocale {
             XCTAssertEqual(record.label, locale == "es" ? "Nueva grabación" : "New recording")
         }
-        let title = app.staticTexts["library-welcome-title"]
+        let title = app.staticTexts["home-title"]
         XCTAssertTrue(title.waitForExistenceFast(timeout: 5))
         if let locale = UITestLocale.environmentLocale {
-            XCTAssertEqual(renderedText(of: title), locale == "es"
-                ? "Tus reuniones, con claridad" : "Your meetings, in focus")
+            XCTAssertEqual(renderedText(of: title), locale == "es" ? "Hoy" : "Today")
         }
-        XCTAssertTrue(app.buttons["library-welcome-record"].isHittable)
-        XCTAssertTrue(app.buttons["library-welcome-ask"].isHittable)
+        XCTAssertTrue(app.buttons["home-record"].isHittable)
+        XCTAssertTrue(app.buttons["home-ask"].isHittable)
         let navigation = [
-            "library-import-audio-button", "library-ask-button",
+            "library-import-audio-button", "library-home-button", "library-ask-button",
             "library-insights-button", "library-commitment-radar-button"
         ].map { app.buttons[$0] }
         for button in navigation {
@@ -170,9 +161,9 @@ final class LibraryUITests: PortavozUITestCase {
             XCTAssertLessThanOrEqual(previous.frame.maxY, next.frame.minY,
                                      "navigation targets must not overlap")
         }
-        attachScreenshot(of: app, named: "library-welcome-light")
+        attachScreenshot(of: app, named: "home-today-light")
 
-        app.buttons["library-welcome-ask"].click()
+        app.buttons["home-ask"].click()
         XCTAssertTrue(app.control(withIdentifier: "ask-question-field").waitForExistenceFast(timeout: 5))
         XCTAssertTrue(app.buttons["library-ask-button"].isSelected)
         XCTAssertFalse(app.buttons["library-insights-button"].isSelected)
@@ -585,9 +576,9 @@ final class LibraryUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        let welcomeRecord = app.buttons["library-welcome-record"]
-        XCTAssertTrue(welcomeRecord.waitForStableFrame(timeout: 5))
-        welcomeRecord.click()
+        let homeRecord = app.buttons["home-record"]
+        XCTAssertTrue(homeRecord.waitForStableFrame(timeout: 5))
+        homeRecord.click()
         XCTAssertTrue(
             app.control(withIdentifier: "recording-live-transcript")
                 .waitForExistenceFast(timeout: 8))

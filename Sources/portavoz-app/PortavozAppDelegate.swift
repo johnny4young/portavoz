@@ -262,13 +262,11 @@ final class PortavozAppDelegate:
         ) -> Void
     ) {
         _ = center
-        guard let record = reminderRecord(from: notification) else {
-            completionHandler([.banner, .sound])
-            return
-        }
         completionHandler([.banner, .sound])
-        Task { @MainActor in
-            await Self.services?.commitmentReminders.recordPresentation(record)
+        if let record = reminderRecord(from: notification) {
+            Task { @MainActor in
+                await Self.services?.commitmentReminders.recordPresentation(record)
+            }
         }
     }
 

@@ -57,7 +57,7 @@ final class SettingsUITests: PortavozUITestCase {
             revealing: "settings-ledger-meetings",
             in: app)
 
-        let localFirstSeal = Locale.current.identifier.hasPrefix("es")
+        let localFirstSeal = UITestLocale.environmentLocale == "es"
             ? "Local primero"
             : "Local-first"
         let privacySeal = app.buttons["settings-privacy-seal"]
@@ -77,7 +77,7 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertEqual(voices.value as? String, "0")
         let network = app.control(withIdentifier: "settings-ledger-network-policy")
         XCTAssertTrue(network.exists)
-        let expectedPolicy = Locale.current.identifier.hasPrefix("es")
+        let expectedPolicy = UITestLocale.environmentLocale == "es"
             ? "Con activación"
             : "Opt-in"
         XCTAssertEqual(network.value as? String, expectedPolicy)
@@ -276,7 +276,7 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             status.waitForExistenceFast(timeout: 15),
             "the backup must finish with a visible result")
-        let expectedStatus = Locale.current.identifier.hasPrefix("es")
+        let expectedStatus = UITestLocale.environmentLocale == "es"
             ? "1 reunión exportada."
             : "1 meeting exported."
         XCTAssertTrue(

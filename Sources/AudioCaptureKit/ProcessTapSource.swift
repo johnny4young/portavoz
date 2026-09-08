@@ -121,7 +121,7 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, CaptureRepor
         // may have exited, or never produced audio); tap the rest as a
         // mixdown. If none resolve, fall back to the global tap rather than
         // failing the recording.
-        let objects = processIDs.compactMap { try? Self.processObject(for: $0) }
+        let objects = processIDs.compactMap(Self.processObject(for:))
         let description: CATapDescription
         if objects.isEmpty {
             description = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
@@ -335,7 +335,7 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, CaptureRepor
     }
 
     /// Translates a POSIX PID into the Core Audio process object that taps target.
-    private static func processObject(for pid: pid_t) throws -> AudioObjectID {
+    private static func processObject(for pid: pid_t) -> AudioObjectID? {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyTranslatePIDToProcessObject,
             mScope: kAudioObjectPropertyScopeGlobal,
@@ -355,7 +355,7 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, CaptureRepor
             )
         }
         guard status == noErr, object != AudioObjectID(kAudioObjectUnknown) else {
-            throw AudioCaptureError.processNotFound(pid)
+            return nil
         }
         return object
     }

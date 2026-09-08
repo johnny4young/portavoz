@@ -29,6 +29,7 @@ struct StandingSkillRulesSection: View {
     @State private var dailyLimit =
         StandingSkillRuleTemplate.defaultMaximumDailyExecutions
     @State private var isLoading = false
+    @State private var activeLoadID: UUID?
     @State private var isMutating = false
     @State private var loadFailed = false
     @State private var mutationFailed = false
@@ -279,9 +280,9 @@ private extension StandingSkillRulesSection {
             HStack(alignment: .firstTextBaseline) {
                 Label(
                     historyStatus(receipt),
-                    systemImage: historyIcon(receipt.record.state))
+                    systemImage: SkillReceiptPresentation.icon(for: receipt.record.state))
                     .font(.caption.weight(.medium))
-                    .foregroundStyle(historyTint(receipt.record.state))
+                    .foregroundStyle(SkillReceiptPresentation.tint(for: receipt.record.state))
                 Spacer()
                 Text(receipt.record.updatedAt, format: .dateTime
                     .month(.abbreviated).day().hour().minute())
@@ -398,35 +399,25 @@ private extension StandingSkillRulesSection {
         }
     }
 
-    private func historyIcon(_ state: SkillExecutionState) -> String {
-        switch state {
-        case .succeeded: "checkmark.circle.fill"
-        case .failed, .executing: "exclamationmark.triangle.fill"
-        case .dismissed: "xmark.circle"
-        case .confirmed, .proposed, .previewed: "clock"
-        }
-    }
-
-    private func historyTint(_ state: SkillExecutionState) -> Color {
-        switch state {
-        case .succeeded: .green
-        case .failed, .executing: .orange
-        case .dismissed, .confirmed, .proposed, .previewed: .secondary
-        }
-    }
-
     @MainActor
     private func load() async {
         guard !isMutating else { return }
+        // Loads overlap (policy revision, Refresh, Show more); only the newest
+        // request may publish, so a slower earlier load cannot shrink the
+        // history the user just expanded.
+        let loadID = UUID()
+        activeLoadID = loadID
         isLoading = true
-        defer { isLoading = false }
+        defer { if activeLoadID == loadID { isLoading = false } }
         do {
-            snapshot = try await services.loadStandingSkillAutomationCenter(
+            let loaded = try await services.loadStandingSkillAutomationCenter(
                 historyLimit: historyLimit)
+            guard activeLoadID == loadID else { return }
+            snapshot = loaded
             loadFailed = false
             mutationFailed = false
         } catch {
-            guard !Task.isCancelled else { return }
+            guard activeLoadID == loadID, !Task.isCancelled else { return }
             snapshot = nil
             loadFailed = true
         }
@@ -457,8 +448,6 @@ private extension StandingSkillRulesSection {
                     "Disposable standing mutation failed: \(String(reflecting: error), privacy: .public)")
             }
             mutationFailed = true
-            isMutating = false
-            externalMutationInFlight = false
         }
     }
 

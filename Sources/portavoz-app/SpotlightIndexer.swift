@@ -258,14 +258,6 @@ actor SpotlightIndexer {
     }
 }
 
-private extension Duration {
-    var timeInterval: TimeInterval {
-        let value = self.components
-        return TimeInterval(value.seconds)
-            + TimeInterval(value.attoseconds) / 1_000_000_000_000_000_000
-    }
-}
-
 protocol SpotlightIndexBackend: Sendable {
     var mode: SpotlightIndexer.IndexMode { get }
     func lastClientState() async throws -> Data?

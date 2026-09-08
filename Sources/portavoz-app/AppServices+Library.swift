@@ -105,7 +105,8 @@ extension AppServices: LibraryModelClient {
     }
 
     func libraryAgenda() -> LibraryModel.Agenda? {
-        if ProcessInfo.processInfo.arguments.contains("-seed-brief") {
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-seed-brief") {
             return LibraryModel.Agenda(
                 offerCalendar: false,
                 today: [UpcomingEvent(
@@ -114,6 +115,9 @@ extension AppServices: LibraryModelClient {
                     startDate: Date().addingTimeInterval(15 * 60),
                     attendees: ["Ana"])],
                 tomorrow: [])
+        }
+        if arguments.contains("-seed-showcase") {
+            return Self.showcaseAgenda()
         }
         guard !ProcessInfo.processInfo.arguments.contains("-use-temp-store") else {
             return nil

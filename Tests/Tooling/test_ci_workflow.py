@@ -117,6 +117,35 @@ class CIWorkflowTests(unittest.TestCase):
             scoped_job,
         )
 
+    def test_locale_lanes_share_one_build_and_one_classifier(self):
+        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
+            encoding="utf-8"
+        )
+        runner = (ROOT / "scripts/run-ui-tests.sh").read_text(encoding="utf-8")
+        build_job = workflow.split("  build-ui-products:\n", 1)[1].split(
+            "\n  scoped-ui-tests:\n", 1
+        )[0]
+        scoped_job = workflow.split("  scoped-ui-tests:\n", 1)[1].split(
+            "\n  ui-test-gate:\n", 1
+        )[0]
+        gate_job = workflow.split("  ui-test-gate:\n", 1)[1].split(
+            "\n  verification-anchor:\n", 1
+        )[0]
+
+        # Exactly one build owns the products; every lane restores them.
+        self.assertEqual(workflow.count("run: make test-ui-build"), 1)
+        self.assertIn("-testProductsPath", runner)
+        self.assertIn("UI_TEST_PRODUCTS_PATH", build_job)
+        self.assertIn("fail-fast: false", scoped_job)
+        self.assertIn("locale: ${{ fromJSON(needs.scope.outputs.matrix) }}", scoped_job)
+        self.assertEqual(scoped_job.count("run: make test-ui-run"), 1)
+        self.assertNotIn("xcodegen", scoped_job.lower())
+        # One Linux classifier reads every lane's receipts and outcome.
+        self.assertEqual(workflow.count("scripts/ui_test_ci_gate.py"), 1)
+        self.assertIn("scripts/ui_test_ci_gate.py", gate_job)
+        self.assertIn("merge-multiple: true", gate_job)
+        self.assertIn("needs.ui-test-gate.outputs.verified == 'true'", workflow)
+
     def test_repository_contracts_have_one_linux_owner_before_macos(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")

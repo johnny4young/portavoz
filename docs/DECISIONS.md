@@ -18677,3 +18677,84 @@ normal provider behavior and all existing time budgets stay unchanged.
 relying on runner speed. Existing cancellation, timeout and signal-path policy
 remain authoritative. Preserve the earlier failed result; it is not turned into
 a green run by retrying unchanged source.
+
+## D495 — Today is the default destination (Sep 2026)
+
+**Context:** the main window opened on a welcome card with two buttons. Someone
+who lives in calls then scrolled the sidebar for the agenda, opened Radar for
+open work, and typed the same Ask questions every day. Every one of those
+values was already in the Library snapshot the sidebar observes.
+
+**Decision:** replace the welcome card with a Today screen (`HomeView`) that
+renders that snapshot: the day's agenda with a brief and an event-linked
+recording per event, the open to-dos with the sidebar's own checkbox action,
+the newest meetings with duration, open count and lifecycle, a this-week strip,
+and one-click Ask chips that submit catalogued questions through the existing
+Ask model. The view owns no store, task, or state; the sidebar gains a `Today`
+destination for the nil and `.library` routes. The showcase seed carries a
+fictional agenda and two clock-relative meetings for the public screenshot.
+
+**Consequences:** the first screen answers "what is next, what is open, where
+was I" without scrolling or typing. Two HomeUITests plus the showcase journey
+join the catalogue (109 cases); the welcome identifiers are retired.
+
+## D496 — One hosted UI build, one lane per locale (Sep 2026)
+
+**Context:** the hosted Scoped UI job built once and then ran English and
+Spanish back to back on the same Mac, so a full bilingual head spent one build
+plus the sum of both locales inside a single 90-minute ceiling (D463).
+
+**Decision:** split the job. `build-ui-products` performs the only
+`build-for-testing` and publishes the exact products as an `xctestproducts`
+bundle plus the build-duration receipt. A `scoped-ui-tests` matrix lane per
+selected locale restores that bundle and runs `test-without-building` with
+`-testProductsPath`, never the project or XcodeGen. Each lane records its step
+outcome beside its receipts; the Linux `ui-test-gate` downloads every lane's
+evidence and runs the unchanged classifier once, and the verification anchor
+reads the gate's outputs. `scripts/run-ui-tests.sh` gains
+`UI_TEST_PRODUCTS_PATH` and `UI_TEST_BUILD_RECEIPT`; local runs are unchanged
+and still sequential per host, because one Mac shares its UI services.
+
+A run that reuses prebuilt products does not give the XCTest process the app's
+language, so journeys now read the requested locale from
+`UITestLocale.environmentLocale` — the value the runner forwards explicitly —
+instead of the ambient `Locale.current`. Six bilingual expectations moved to
+that contract; the app itself still receives `-testLanguage`/`-AppleLanguages`
+exactly as before.
+
+**Consequences:** hosted wall clock becomes one build plus the slowest locale.
+No retry, first-attempt, receipt, or budget rule changes; a lane that fails to
+restore products fails closed with a missing-bundle error. Locale expectations
+now depend on the run's declared locale rather than on how the products were
+produced.
+
+## D497 — Review-driven fixes from the 1.0 integration PR (Sep 2026)
+
+**Context:** an independent review of the integrated branch reported
+localization bypasses, a silent-EOF gap in silence detection, a
+character-versus-byte skill identifier bound, several concurrency and
+cancellation gaps, dead APIs, and twelve copies of the same clock formatter.
+
+**Decision:** fix each confirmed finding at its owner. `AudioSilence` treats a
+zero-frame read short of the declared length as an incomplete inspection.
+Schema v51 rebuilds `skillDisablement` with a UTF-8 byte CHECK and storage
+validates skill identifiers in bytes. Meeting Detail counts, alternate-engine
+labels, title-template hints and the preparing state read the catalog. The
+sync journal observer restarts after its stream ends; MLX and CloudKit report
+cancellation as cancellation; backup export rethrows cancellation instead of
+journaling it; post-capture and semantic heartbeats survive transient store
+errors; a restored structural correction no longer blocks text and speaker
+edits; a standing brief claim retires the one-shot offer for its event; the
+Nemotron layout fence skips hidden files;
+`TranscriptFormatter` tolerates duplicate speaker identities; standing-rule
+loads carry a request identity. `ClockFormat.mmss` replaces every private
+`m:ss` copy, `SkillReceiptPresentation` owns receipt icons and tints,
+`Duration.timeInterval` replaces two conversions, and unreferenced APIs
+(`SemanticCorpusMaintenanceFingerprint`, `SummaryClaimEvidenceStatus`,
+`outstandingRecordIDs`, `unknownAttempt`, `loadResearchCandidate`,
+`processNotFound`, `utilityDetached`, two private helpers) are removed.
+
+**Consequences:** behavior changes are covered by extended unit tests; findings
+that would change accepted semantics without a failing case (superseded
+diarization jobs, partial-transcript recovery, whole-table topic family walks,
+export `try?` degradation) stay recorded in GAPS for their own slices.

@@ -37,7 +37,9 @@ public enum AudioSilence {
     /// channel than to silently drop one we failed to inspect.
     ///
     /// "Can't be read" covers a failure *part way through*, not only a failure
-    /// to open, and only reaching the end intact can conclude silence.
+    /// to open, and only reaching the declared end intact can conclude
+    /// silence — a read that throws and a read that returns zero frames
+    /// short of `file.length` are both incomplete inspections.
     ///
     /// Not for capture files: `CaptureFileWriter` uses CAF precisely so a
     /// killed recording stays fully readable, its data chunk sized to EOF, so
@@ -63,7 +65,11 @@ public enum AudioSilence {
                 // channel, exactly as an unopenable file does.
                 return false
             }
-            guard buffer.frameLength > 0 else { break }
+            // A zero-frame read before the declared length is a premature
+            // EOF that AVAudioFile reports without throwing (a compressed or
+            // imported file whose packets end early). Treat it exactly like a
+            // failed read: the inspection is incomplete, so keep the channel.
+            guard buffer.frameLength > 0 else { return false }
             guard let samples = try? Downmix.mono(from: buffer) else { return false }
             if peak(of: samples) >= threshold { return false }
         }

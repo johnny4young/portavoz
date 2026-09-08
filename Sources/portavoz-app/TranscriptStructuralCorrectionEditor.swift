@@ -154,9 +154,9 @@ struct TranscriptStructuralCorrectionControls: View {
                     in: splitRange(source),
                     step: 0.05)
                     .accessibilityLabel("Split time")
-                    .accessibilityValue(clock(splitTime))
+                    .accessibilityValue(ClockFormat.mmss(splitTime))
                     .accessibilityIdentifier("transcript-structure-split-time")
-                Text(L10n.format("Boundary at %@", clock(splitTime)))
+                Text(L10n.format("Boundary at %@", ClockFormat.mmss(splitTime)))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
@@ -276,11 +276,6 @@ struct TranscriptStructuralCorrectionControls: View {
         case .suppress: "eye.slash"
         case .replaceText, .changeSpeaker, .restore: "pencil"
         }
-    }
-
-    private func clock(_ seconds: TimeInterval) -> String {
-        let total = max(0, Int(seconds.rounded()))
-        return String(format: "%02d:%02d", total / 60, total % 60)
     }
 
     private static func defaultSplit(_ text: String) -> (String, String) {

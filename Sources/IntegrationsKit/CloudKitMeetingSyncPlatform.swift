@@ -165,6 +165,8 @@ public actor CloudKitMeetingSyncDriver: CloudMeetingSyncEngineDriving {
             try await engine.fetchChanges()
             _ = try await delegate.preparePendingChanges(in: engine)
             try await engine.sendChanges()
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             throw CloudMeetingSyncPlatformError.synchronizationFailed
         }

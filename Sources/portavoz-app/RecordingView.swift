@@ -244,7 +244,7 @@ struct RecordingView: View {
                         ForEach(controller.contextItems.reversed()) { item in
                             HStack(alignment: .firstTextBaseline, spacing: 6) {
                                 Text("▸").foregroundStyle(.tint)
-                                Text(stamp(item.timestamp))
+                                Text(ClockFormat.mmss(item.timestamp))
                                     .font(.caption2.monospacedDigit())
                                     .foregroundStyle(.tertiary)
                                 Text(item.content)
@@ -279,11 +279,6 @@ struct RecordingView: View {
         guard !text.isEmpty else { return }
         controller.addContextNote(text)
         noteDraft = ""
-    }
-
-    private func stamp(_ seconds: TimeInterval) -> String {
-        let total = max(0, Int(seconds))
-        return String(format: "%02d:%02d", total / 60, total % 60)
     }
 
 }
@@ -750,7 +745,7 @@ private extension RecordingView {
         if case .downloading(let status) = services.modelsState {
             return status
         }
-        return "Preparing…"
+        return L10n.text("Preparing…")
     }
 
 }

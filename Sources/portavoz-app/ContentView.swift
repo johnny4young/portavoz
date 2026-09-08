@@ -119,10 +119,18 @@ struct ContentView: View {
                             route = .meeting(meetingID)
                         })
                 case .library, nil:
-                    LibraryWelcomeView(
+                    HomeView(
+                        model: libraryModel,
+                        route: $route,
                         recordingActive: services.recording.canReturnToLiveSession,
                         onRecord: { route = .recording(nil) },
-                        onAsk: { route = .ask })
+                        onAsk: { question in
+                            if let question {
+                                askModel.updateDraft(question)
+                                askModel.submit()
+                            }
+                            route = .ask
+                        })
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

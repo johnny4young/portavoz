@@ -140,7 +140,7 @@ struct RecordingInterviewAssistView: View {
             ForEach(answer.citations) { citation in
                 let source = citation.evidence
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("[\(citation.number)] \(speakerLabel(source.channel)) · \(timestamp(source.timestamp))")
+                    Text("[\(citation.number)] \(speakerLabel(source.channel)) · \(ClockFormat.mmss(source.timestamp))")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(PVDesign.accent)
                     Text(source.text)
@@ -170,8 +170,4 @@ struct RecordingInterviewAssistView: View {
         channel == .microphone ? L10n.text("You") : L10n.text("Others")
     }
 
-    private func timestamp(_ seconds: TimeInterval) -> String {
-        let value = max(0, Int(seconds.rounded()))
-        return String(format: "%02d:%02d", value / 60, value % 60)
-    }
 }

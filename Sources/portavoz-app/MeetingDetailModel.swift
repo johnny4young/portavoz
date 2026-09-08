@@ -599,7 +599,7 @@ private extension MeetingDetailModel {
             state.lastActionError = nil
             return .nameSuggestionsLoaded
         } catch {
-            return .operationFailed(L10n.text(error.localizedDescription))
+            return .operationFailed(error.localizedDescription)
         }
     }
 

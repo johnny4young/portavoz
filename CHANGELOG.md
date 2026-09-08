@@ -4,6 +4,20 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## September 8, 2026
+
+- **🗓️ Today, at a glance** — Portavoz now opens on your day: the agenda with a brief and a linked recording per event, the to-dos still open, the meetings to pick back up, and one-click questions for Ask. Nothing to scroll, nothing to type.
+
+- **🌐 Spanish everywhere in Meeting Detail** — segment and minute counts, the alternate summary engine menu, the preparing state, and title-template hints now follow your app language.
+
+- **🔇 Silence detection keeps incomplete files** — an imported file that ends early is never mistaken for a silent channel and dropped.
+
+- **🧩 Suggested actions stay consistent** — a skill switched off with a multibyte name is stored exactly as the Skill domain expects, and a standing pre-meeting brief retires the one-shot offer for the same event.
+
+- **☁️ Sync and backups report honestly** — the private-sync journal keeps watching after a stream ends, and a cancelled sync or backup is reported as cancelled instead of as a failure.
+
+- **✏️ Edit after restoring** — a transcript line whose split, merge or hide was undone accepts text and speaker corrections again.
+
 ## September 6, 2026
 
 - **🎙️ Background recording stays intentional** — Recording and saving now explicitly remain user-requested work when the meeting window is out of view, without overriding your Mac's sleep settings.

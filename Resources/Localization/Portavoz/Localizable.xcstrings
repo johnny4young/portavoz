@@ -16860,6 +16860,266 @@
           }
         }
       }
+    },
+    "%d min": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d min"
+          }
+        }
+      }
+    },
+    "1 segment": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 segmento"
+          }
+        }
+      }
+    },
+    "%d segments": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d segmentos"
+          }
+        }
+      }
+    },
+    "%@ min": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ min"
+          }
+        }
+      }
+    },
+    "Today's agenda, open to-dos, recent meetings and one-click questions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La agenda de hoy, pendientes abiertos, reuniones recientes y preguntas de un clic"
+          }
+        }
+      }
+    },
+    "meetings this week": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "reuniones esta semana"
+          }
+        }
+      }
+    },
+    "recorded this week": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "grabado esta semana"
+          }
+        }
+      }
+    },
+    "open to-dos": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pendientes abiertos"
+          }
+        }
+      }
+    },
+    "Up next": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A continuación"
+          }
+        }
+      }
+    },
+    "Nothing scheduled — record when the call starts.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada programado: graba cuando empiece la llamada."
+          }
+        }
+      }
+    },
+    "Nothing else scheduled today.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada más programado para hoy."
+          }
+        }
+      }
+    },
+    "Brief": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brief"
+          }
+        }
+      }
+    },
+    "Open to-dos": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pendientes abiertos"
+          }
+        }
+      }
+    },
+    "%d more in Radar": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d más en Radar"
+          }
+        }
+      }
+    },
+    "All caught up — nothing open.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todo al día: nada pendiente."
+          }
+        }
+      }
+    },
+    "Open the meeting this to-do came from": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre la reunión de la que salió este pendiente"
+          }
+        }
+      }
+    },
+    "Pick up where you left off": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retoma donde lo dejaste"
+          }
+        }
+      }
+    },
+    "%d open": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d abiertos"
+          }
+        }
+      }
+    },
+    "Processing": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Procesando"
+          }
+        }
+      }
+    },
+    "What did I commit to this week?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿A qué me comprometí esta semana?"
+          }
+        }
+      }
+    },
+    "Which decisions were made this week?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué decisiones se tomaron esta semana?"
+          }
+        }
+      }
+    },
+    "What is still open?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué sigue pendiente?"
+          }
+        }
+      }
+    },
+    "Who did I talk with recently?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Con quién hablé recientemente?"
+          }
+        }
+      }
+    },
+    "%@ h": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ h"
+          }
+        }
+      }
+    },
+    "Regenerate with Ollama · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regenerar con Ollama · %@"
+          }
+        }
+      }
+    },
+    "Regenerate with Apple (on-device)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regenerar con Apple (on-device)"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

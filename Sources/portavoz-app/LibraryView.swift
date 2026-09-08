@@ -93,7 +93,7 @@ struct LibraryView: View {
                             } label: {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(hit.snippet).lineLimit(2)
-                                    Text("\(hit.meetingTitle) · \(timestamp(hit.startTime))")
+                                    Text("\(hit.meetingTitle) · \(ClockFormat.mmss(hit.startTime))")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -288,11 +288,6 @@ struct LibraryView: View {
     private func importAudio(from url: URL) {
         guard state.importStatus == nil else { return }
         perform(.importFile(url))
-    }
-
-    private func timestamp(_ seconds: TimeInterval) -> String {
-        let total = max(0, Int(seconds.rounded()))
-        return String(format: "%02d:%02d", total / 60, total % 60)
     }
 
     private func perform(_ action: LibraryModel.Action) {

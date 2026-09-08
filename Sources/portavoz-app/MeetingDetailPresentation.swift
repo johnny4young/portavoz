@@ -3,7 +3,9 @@ import Foundation
 /// Pure, locale-explicit formatting for Meeting Detail.
 ///
 /// The route composes one value and views render its strings. No store,
-/// capability, clock, or application service can enter this boundary.
+/// capability, clock, or application service can enter this boundary; the
+/// only lookup is the app's string catalog, so every user-visible count
+/// follows the selected app language like the rest of the surface.
 struct MeetingDetailPresentation {
     let locale: Locale
     let timeZone: TimeZone
@@ -19,25 +21,22 @@ struct MeetingDetailPresentation {
     func meetingDuration(startedAt: Date, endedAt: Date?) -> String? {
         guard let endedAt else { return nil }
         let minutes = max(0, Int(endedAt.timeIntervalSince(startedAt) / 60))
-        return "\(minutes) min"
+        return L10n.format("%d min", minutes)
     }
 
     func segmentCount(_ count: Int) -> String {
-        "\(max(0, count)) segments"
+        let count = max(0, count)
+        return count == 1
+            ? L10n.text("1 segment")
+            : L10n.format("%d segments", count)
     }
 
     func clock(_ seconds: TimeInterval, paddedMinutes: Bool = false) -> String {
-        let total = max(0, Int(seconds.rounded()))
-        let format = paddedMinutes ? "%02d:%02d" : "%d:%02d"
-        return String(
-            format: format,
-            locale: locale,
-            total / 60,
-            total % 60)
+        ClockFormat.mmss(seconds, paddedMinutes: paddedMinutes, locale: locale)
     }
 
     func refinedDuration(_ seconds: TimeInterval) -> String {
-        "\(clock(seconds)) min"
+        L10n.format("%@ min", clock(seconds))
     }
 
     var languageIdentifier: String {

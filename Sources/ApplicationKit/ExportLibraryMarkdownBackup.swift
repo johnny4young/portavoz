@@ -272,6 +272,8 @@ private extension ExportLibraryMarkdownBackup {
             } else {
                 try await run.source.checkpoint()
             }
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             run.pendingTermination = .sourceFailure
             return try await finishTermination(run: &run)
@@ -303,6 +305,8 @@ private extension ExportLibraryMarkdownBackup {
             run.pending = .document(
                 content,
                 try await documents.markdownDocument(for: content))
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             run.pending = .documentFailure(content)
             try await recordDocumentFailure(
@@ -332,6 +336,8 @@ private extension ExportLibraryMarkdownBackup {
                     named: reservation.fileName,
                     in: directory
                 )
+            } catch is CancellationError {
+                throw CancellationError()
             } catch {
                 run.pending = .publicationFailure(content)
                 try await recordPublicationFailure(

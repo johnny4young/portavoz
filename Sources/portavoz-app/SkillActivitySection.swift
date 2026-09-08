@@ -340,8 +340,8 @@ struct SkillActivitySection: View {
             inspectReceipt(receipt)
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: receiptIcon(receipt.state))
-                    .foregroundStyle(receiptTint(receipt.state))
+                Image(systemName: SkillReceiptPresentation.icon(for: receipt.state))
+                    .foregroundStyle(SkillReceiptPresentation.tint(for: receipt.state))
                     .frame(width: 18)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
@@ -391,23 +391,6 @@ struct SkillActivitySection: View {
         _ receipt: SkillControlCenterReceipt
     ) -> String {
         "\(skillTitle(receipt.skillID)). \(receiptStatus(receipt))"
-    }
-
-    private func receiptIcon(_ state: SkillExecutionState) -> String {
-        switch state {
-        case .succeeded: "checkmark.circle.fill"
-        case .failed, .executing: "exclamationmark.triangle.fill"
-        case .dismissed: "xmark.circle"
-        case .proposed, .previewed, .confirmed: "clock"
-        }
-    }
-
-    private func receiptTint(_ state: SkillExecutionState) -> Color {
-        switch state {
-        case .succeeded: .green
-        case .failed, .executing: .orange
-        case .dismissed, .proposed, .previewed, .confirmed: .secondary
-        }
     }
 }
 

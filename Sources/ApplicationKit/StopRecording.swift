@@ -208,6 +208,20 @@ public enum StopRecordingResult: Sendable {
     case processingFailed(failure: StopRecordingFailure, fallback: StopRecordingCommit?)
 }
 
+extension StopRecordingResult {
+    /// The recording-critical span must carry the real outcome; recording a
+    /// failed Stop as `.completed` hides it from every resource ledger.
+    var workloadOutcome: ResourceWorkloadOutcome {
+        switch self {
+        case .completed, .audioRecoveryPreserved, .failedCapturePreserved,
+             .transcriptEmpty:
+            .completed
+        case .noAudioCaptured, .localStateUnavailable, .processingFailed:
+            .failed
+        }
+    }
+}
+
 public enum StopRecordingJobError: Error, Equatable, LocalizedError, Sendable {
     case emptyTranscript
     case inputNotReady
@@ -292,7 +306,7 @@ public struct StopRecording: ApplicationUseCase {
             operation: .execute))
         let result = await install(request, timestamp: now())
         await lifecycle.scheduleRecordingEngineRelease()
-        telemetry.finish(span, outcome: .completed)
+        telemetry.finish(span, outcome: result.workloadOutcome)
         return result
     }
 
@@ -317,7 +331,6 @@ public struct StopRecording: ApplicationUseCase {
         }
 
         meeting.endedAt = timestamp
-        meeting.captureReport = request.capture.captureReport
         meeting.lifecycleState = .captured
         meeting.lastProcessingError = nil
         let attribution = SpeakerAttributor.attribute(

@@ -12,8 +12,10 @@ final class PublicShowcaseUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        // The hero meeting is the newest row and carries a fixed identity, so
+        // the screenshot journey never depends on which row happens to be first.
         let meeting = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
+            .matching(identifier: "library-meeting-5E0C0A5E-0000-4000-8000-000000000001")
             .firstMatch
         XCTAssertTrue(meeting.waitForStableFrame(timeout: 10))
         meeting.click()
@@ -70,6 +72,25 @@ final class PublicShowcaseUITests: PortavozUITestCase {
             translation.waitForExistenceFast(timeout: 10),
             "the translated rail must exist after the final caption")
         attachScreenshot(of: app, named: "public-live-translation")
+    }
+
+    @MainActor
+    func testTodayShowcase() {
+        let app = XCUIApplication.portavoz(seedShowcase: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        XCTAssertTrue(app.staticTexts["home-title"].waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(
+            app.control(withIdentifier: "home-upcoming-showcase-sync-qvtl")
+                .waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Review the Aurora Suite English docs draft"].exists)
+        XCTAssertTrue(
+            app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier BEGINSWITH 'home-recent-'"))
+                .firstMatch.waitForExistenceFast(timeout: 10))
+        attachScreenshot(of: app, named: "public-today")
     }
 
     @MainActor

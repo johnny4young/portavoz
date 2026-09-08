@@ -2406,6 +2406,29 @@ Capture timing starts when the microphone stream actually opens, not when model 
 
 **Two-tier dictionary, filler filter, and constrained language (Jul 2026)**: `DictationTextRules` (TranscriptionKit, pure, 10 tests) is the deterministic tier — one non-cascading pass of user-defined whole-word, case-insensitive replacements applied longest-trigger-first with punctuation-aware lookaround boundaries (regex-metacharacter triggers like "c++" match literally; replacement strings including `$` and `\` stay literal). Matching is computed against the original text, so a preferred spelling can never become input to a later rule. The codec trims triggers, drops empty rules, and keeps the newest case-insensitive duplicate before the Settings list or matcher consumes it. A conservative bilingual hesitation-filler pass (only tokens meaningless in BOTH languages: um/uh/er/hmm/eh/ehm…, on by default via `dictationFillerFilter`) runs first and repairs seams (collapsed spaces, no space stranded before closing punctuation). The other tier remains the existing vocabulary prompt, which biases the model DURING transcription. Rules persist as one JSON string (`dictationReplacements`, codec in the same type) edited by `DictationDictionaryEditor` in Settings (quick-add row `settings-dictation-dict-add`; re-adding a trigger updates it instead of stacking an unreachable duplicate). Both passes run in `deliver` on the final dictation text only — meeting transcripts stay verbatim records. `dictationLanguage` constrains dictation to {es, en}: any stored value outside the pair means auto-detect (`settings-dictation-language`); the engine-level candidate-set restriction the strategy imagined does not exist in the Parakeet API, so "Automatic" delegates to the engine's multilingual detection.
 
+## Today (home) — the default destination (D495, Sep 2026)
+
+`Route.library` and the empty route render `HomeView`, the screen a daily
+caller lands on: the header date with `New recording`/`Return to recording` and
+`Ask`; a this-week strip (`HomeWeekFacts`: meetings, recorded time, open
+to-dos) computed from the Library snapshot; **Up next** (today's and up to three
+of tomorrow's calendar events, each with `Brief` and an event-linked `Record`,
+or the calendar offer); **Open to-dos** (the first six open action items with
+the same checkbox action as the sidebar and a link to the source meeting, plus
+"N more in Radar"); **Pick up where you left off** (the four newest meetings
+with voice mix, duration, open count and lifecycle badge); and **Ask your
+meetings** chips that submit a catalogued question through `AskModel` before
+routing to Ask, so the common daily questions cost one click. The view owns no
+store, observation, `.task`, or `@State`: it renders `LibraryModel.State` and
+sends the sidebar's own actions, and `ContentView` supplies the Ask and record
+closures. The sidebar gains a `Today` destination (`library-home-button`)
+selected for both the nil and `.library` routes. Identifiers:
+`home-title`, `home-record`, `home-ask`, `home-stat-*`, `home-upcoming-<id>`
+(+`-brief-`/`-record-`), `home-todo-<uuid>`/`home-todo-toggle-<uuid>`,
+`home-recent-<uuid>`, `home-ask-chip-<n>`, `home-calendar-offer`. The showcase
+seed adds a fictional agenda and two clock-relative meetings so the public
+Today screenshot reads lived-in without touching the operator's calendar.
+
 ## Views and flows
 
 **LibraryView + LibraryModel**: `New recording` (⌘N), FTS search with snippets, **"To-dos" section** (open action items from ALL meetings; click navigates to the meeting), recency-grouped meetings with `Rename`/`Delete`, Recently Deleted restore/permanent purge, import progress/errors, and calendar briefs. The per-window model owns data, debounce, mutations, and effects through its narrow client; the SwiftUI views own rendering, native presentation, AppStorage disclosure state, file picking/drop acceptance, and route binding. Library and Meeting Detail deletion plus Recently Deleted restore/permanent purge still enter through ApplicationKit use cases; launch cleanup uses the same purge boundary for tombstones strictly older than 30 days. Existing controls, navigation, and degradable filesystem behavior remain while scoped observations update only their owning sections. `library-search-field` provides a stable automation boundary for the real FTS/model wiring. The query adapter expands a deterministic local English/Spanish meeting lexicon and StorageKit ORs complete language variants while keeping terms inside each variant conjunctive; `unicode61` folds Latin accents. Exact rows publish first. When Apple Latin embedding assets are already installed and capture is inactive, a shared ApplicationKit search actor appends bounded semantic paraphrase/cross-language hits from already-published vectors without downloading assets, writing the corpus, or replacing exact rank (D145/D197). Ask and Library share one typed readiness resolver; launch, searchable mutations, and capture completion wake the sole no-poll product writer, which uses the process coordinator and installed assets (D176/D178/D197). Search rows publish their exact timestamp through the shared one-shot seek channel before routing. While capture is preparing, recording, or processing, the main action becomes identified `Return to recording`; browsing history cannot hide the live timer and Stop control or create a second session. UITests use `firstMatch` for to-dos because a meeting title also appears as the row caption.

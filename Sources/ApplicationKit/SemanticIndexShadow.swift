@@ -100,12 +100,6 @@ public struct SemanticIndexShadowExecutor: Sendable {
         self.submit = submit
     }
 
-    public static let utilityDetached = Self { operation, _ in
-        _ = Task.detached(priority: .utility) {
-            await operation()
-        }
-    }
-
     func execute(
         _ operation: @escaping @Sendable () async -> Void,
         skipped: @escaping @Sendable (SemanticIndexShadowSkipReason) -> Void

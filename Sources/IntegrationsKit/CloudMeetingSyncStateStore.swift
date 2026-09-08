@@ -232,13 +232,6 @@ public actor CloudMeetingSyncStateStore {
         snapshot.attempts.contains { $0.meetingID == meetingID }
     }
 
-    /// Reconstructs CKSyncEngine pending state after a restart or a local
-    /// persistence failure, including attempts whose journal generation was
-    /// already acknowledged by a successful server save.
-    public func outstandingRecordIDs() -> [CKRecord.ID] {
-        snapshot.attempts.map { CloudMeetingRecordCodec.recordID(for: $0.meetingID) }
-    }
-
     public func encodedRecord(
         for recordID: CKRecord.ID,
         at date: Date

@@ -31,6 +31,19 @@ func waitForUITestCondition(
     return false
 }
 
+/// The text a static element renders: SwiftUI exposes some labels only
+/// through `value`, others only through `label`.
+@MainActor
+func renderedText(of element: XCUIElement) -> String {
+    guard let value = element.value as? String, !value.isEmpty else {
+        return element.label
+    }
+    return value
+}
+
+/// The locale a run explicitly requested. Journeys assert against this rather
+/// than `Locale.current`, which describes the XCTest process and does not
+/// follow the app when a run reuses prebuilt products instead of the project.
 enum UITestLocale {
     static var environmentLocale: String? {
         let value = ProcessInfo.processInfo.environment["PORTAVOZ_UI_TEST_LOCALE"]

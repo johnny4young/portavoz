@@ -169,16 +169,16 @@ private extension CommitmentRadarView {
             identifier: "commitment-radar-owner-filter"
         ) {
             filterButton("All", identifier: "commitment-radar-owner-all") {
-                ownerBinding.wrappedValue = .all
+                select(.ownerChanged(.all))
             }
             filterButton("Mine", identifier: "commitment-radar-owner-mine") {
-                ownerBinding.wrappedValue = .mine
+                select(.ownerChanged(.mine))
             }
             filterButton("Others", identifier: "commitment-radar-owner-others") {
-                ownerBinding.wrappedValue = .others
+                select(.ownerChanged(.others))
             }
             filterButton("Unassigned", identifier: "commitment-radar-owner-unassigned") {
-                ownerBinding.wrappedValue = .unassigned
+                select(.ownerChanged(.unassigned))
             }
         }
     }
@@ -190,16 +190,16 @@ private extension CommitmentRadarView {
             identifier: "commitment-radar-due-filter"
         ) {
             filterButton("Any date", identifier: "commitment-radar-due-all") {
-                dueBinding.wrappedValue = .all
+                select(.dueChanged(.all))
             }
             filterButton("Due soon", identifier: "commitment-radar-due-soon") {
-                dueBinding.wrappedValue = .dueSoon
+                select(.dueChanged(.dueSoon))
             }
             filterButton("Overdue", identifier: "commitment-radar-due-overdue") {
-                dueBinding.wrappedValue = .overdue
+                select(.dueChanged(.overdue))
             }
             filterButton("No date", identifier: "commitment-radar-due-none") {
-                dueBinding.wrappedValue = .noDate
+                select(.dueChanged(.noDate))
             }
         }
     }
@@ -211,19 +211,19 @@ private extension CommitmentRadarView {
             identifier: "commitment-radar-activity-filter"
         ) {
             filterButton("Any activity", identifier: "commitment-radar-activity-all") {
-                activityBinding.wrappedValue = .all
+                select(.activityChanged(.all))
             }
             filterButton("New", identifier: "commitment-radar-activity-new") {
-                activityBinding.wrappedValue = .new
+                select(.activityChanged(.new))
             }
             filterButton("Unchanged", identifier: "commitment-radar-activity-unchanged") {
-                activityBinding.wrappedValue = .unchanged
+                select(.activityChanged(.unchanged))
             }
             filterButton("Completed", identifier: "commitment-radar-activity-completed") {
-                activityBinding.wrappedValue = .completed
+                select(.activityChanged(.completed))
             }
             filterButton("Reopened", identifier: "commitment-radar-activity-reopened") {
-                activityBinding.wrappedValue = .reopened
+                select(.activityChanged(.reopened))
             }
         }
     }
@@ -595,37 +595,13 @@ private extension CommitmentRadarView {
         }
     }
 
-    var ownerBinding: Binding<CommitmentRadarModel.OwnerSelection> {
-        Binding(
-            get: { state.owner },
-            set: { owner in
-                Task {
-                    await model.send(.ownerChanged(owner))
-                    onClearFocus()
-                }
-            })
-    }
-
-    var dueBinding: Binding<CommitmentRadarModel.DueSelection> {
-        Binding(
-            get: { state.due },
-            set: { due in
-                Task {
-                    await model.send(.dueChanged(due))
-                    onClearFocus()
-                }
-            })
-    }
-
-    var activityBinding: Binding<CommitmentRadarModel.ActivitySelection> {
-        Binding(
-            get: { state.activity },
-            set: { activity in
-                Task {
-                    await model.send(.activityChanged(activity))
-                    onClearFocus()
-                }
-            })
+    /// Filter menus only ever write a selection; routing the action through
+    /// the model and clearing the route focus is the whole job.
+    func select(_ action: CommitmentRadarModel.Action) {
+        Task {
+            await model.send(action)
+            onClearFocus()
+        }
     }
 
     var groupingBinding: Binding<CommitmentRadarModel.Grouping> {

@@ -518,8 +518,15 @@ private extension ProcessPostCaptureJobs {
                         progress: 0.25,
                         leaseDuration: leaseDuration,
                         at: now())
-                } catch {
+                } catch is CancellationError {
                     return
+                } catch let error as StorageError where error.isPostCaptureLeaseLoss {
+                    return
+                } catch {
+                    // A transient store failure (a busy database) must not end
+                    // the heartbeat under a still-running job; the lease would
+                    // expire and a second claim would redo the work.
+                    continue
                 }
             }
         }

@@ -128,7 +128,7 @@ final class StandingSkillExecutionTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 50)
+            XCTAssertEqual(StorageSchema.version, 51)
             XCTAssertEqual(
                 try String.fetchOne(
                     database,
@@ -136,7 +136,7 @@ final class StandingSkillExecutionTests: XCTestCase {
                         SELECT identifier FROM grdb_migrations
                         ORDER BY rowid DESC LIMIT 1
                         """),
-                "v50")
+                "v51")
             let row = try XCTUnwrap(Row.fetchOne(
                 database,
                 sql: """
@@ -243,6 +243,29 @@ final class StandingSkillExecutionTests: XCTestCase {
                 event: event(id: "event-4", offset: 1_800),
                 proposalID: UUID()))
         XCTAssertEqual(paused, .refused(.allSkillsPaused))
+    }
+
+    func testClaimRetiresTheOneShotOfferForTheSameEvent() async throws {
+        let store = try MeetingStore.inMemory()
+        let rule = try await createRule(in: store, dailyBudget: 2)
+        let event = event(id: "event-shared", offset: 900)
+        let offer = try XCTUnwrap(PreMeetingBriefOffer(event: event))
+        try await store.reconcileSkillOffers(
+            candidateOfferKeys: [offer.offerKey],
+            active: [offer.registration(at: now)])
+        let proposed = try await store.proposedSkillOffers(limit: 10, at: now)
+        XCTAssertEqual(proposed.map(\.skillID), [PreMeetingBriefSkill.id])
+
+        let admission = try await store.claimStandingSkillExecution(
+            claim(rule: rule, event: event))
+        guard case .admitted = admission else {
+            return XCTFail("expected an admitted claim, got \(admission)")
+        }
+
+        let remaining = try await store.proposedSkillOffers(limit: 10, at: now)
+        XCTAssertTrue(
+            remaining.isEmpty,
+            "the standing owner must retire the one-shot offer for its event")
     }
 
     func testClaimHonorsManualOwnerDismissalDisablementAndRuleDeletion() async throws {

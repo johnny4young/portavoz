@@ -50,7 +50,7 @@ struct RecordingToolbar: View {
                         .frame(width: 10, height: 10)
                         .opacity(elapsed.isMultiple(of: 2) ? 1 : 0.35)
                         .animation(.easeInOut(duration: 0.6), value: elapsed)
-                    Text(String(format: "%02d:%02d", max(0, elapsed) / 60, max(0, elapsed) % 60))
+                    Text(ClockFormat.mmss(TimeInterval(elapsed)))
                         .font(.system(size: 24, weight: .medium).monospacedDigit())
                         .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)

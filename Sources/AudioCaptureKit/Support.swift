@@ -4,7 +4,6 @@ import Foundation
 public enum AudioCaptureError: Error, Sendable {
     case noInputDevice
     case coreAudioError(operation: String, status: Int32)
-    case processNotFound(Int32)
     case unsupportedFormat
     case invalidCaptureFile(String)
     case captureDestinationExists(String)

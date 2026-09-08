@@ -234,8 +234,14 @@ private extension MeetingSyncModel {
                         await self.requestSynchronization()
                     }
                 }
+                // The stream ended: release the slot so reconciliation can
+                // start a fresh observer instead of finding this finished one.
+                guard !Task.isCancelled, let self else { return }
+                self.journalTask = nil
+                self.reconcileObservers()
             } catch {
                 guard !Task.isCancelled, let self else { return }
+                self.journalTask = nil
                 self.status = await client.currentStatus()
                 self.reconcileObservers()
             }

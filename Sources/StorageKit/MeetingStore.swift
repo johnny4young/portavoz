@@ -344,6 +344,18 @@ public final class MeetingStore: Sendable {
         }
     }
 
+    /// Live meetings that started inside one half-open range. Used by the
+    /// daily title sequence, which needs the count and never the rows.
+    public func liveMeetingCount(startedIn range: Range<Date>) async throws -> Int {
+        try await database.read { db in
+            try MeetingRecord
+                .filter(Column("deletedAt") == nil)
+                .filter(Column("startedAt") >= range.lowerBound)
+                .filter(Column("startedAt") < range.upperBound)
+                .fetchCount(db)
+        }
+    }
+
     /// Content-free aggregate used by launch eligibility and local receipts.
     /// Avoids materializing an entire library when only its cardinality matters.
     public func liveMeetingCount() async throws -> Int {

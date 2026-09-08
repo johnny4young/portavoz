@@ -153,14 +153,14 @@ extension MeetingDetailCoordinator {
             if let model = sceneValues.ollamaModel {
                 return MeetingGeneratedDocumentAlternateEngine(
                     engine: .ollama,
-                    label: "Regenerar con Ollama · \(model)")
+                    label: L10n.format("Regenerate with Ollama · %@", model))
             }
             return nil
         case .ollama, .mlx:
             if sceneValues.appleSummaryAvailable {
                 return MeetingGeneratedDocumentAlternateEngine(
                     engine: .appleOnDevice,
-                    label: "Regenerar con Apple (on-device)")
+                    label: L10n.text("Regenerate with Apple (on-device)"))
             }
             return nil
         }

@@ -11,6 +11,8 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 ![Platform](https://img.shields.io/badge/platform-macOS%2014.4%2B-lightgrey)
 ![Swift](https://img.shields.io/badge/Swift-6-orange)
 
+![Today: this week's numbers, the agenda with a brief and a linked recording per event, open to-dos, the meetings to pick back up, and one-click questions for Ask](assets/screenshots/today.png)
+
 ![A current Portavoz meeting: dismissible AI suggestions, colored speaker pills, a tabbed summary, transcript, clear playback, privacy receipt, meeting health, chapters, and Apuntador](assets/screenshots/meeting-detail.png)
 
 <table>
@@ -24,7 +26,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 </tr>
 </table>
 
-<sub>Fictional data, English UI. These app-window screenshots are regenerated from a disposable XCUITest showcase with <code>make public-screenshots</code>; no user library or desktop content is captured.</sub>
+<sub>Fictional data, English UI. These four app-window screenshots are regenerated from a disposable XCUITest showcase with <code>make public-screenshots</code>; no user library or desktop content is captured.</sub>
 
 > *Portavoz* (Spanish): the one who carries the voice — a spokesperson.
 
@@ -82,6 +84,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 - **Synced player** — the transcript scrolls like song lyrics, per-channel colored waveform, **Clear playback** to suppress delayed loudspeaker bleed while preserving the original mix, **"only my voice"** to replay just your turns, skip-silence, and any span exported as an audio clip or compressed to AAC in one click. Compression verifies every channel before removing raw audio and never replaces an existing AAC file.
 
 **Reflect & review**
+- **Today** — the screen you land on: this week's numbers, the day's agenda with a **Brief** and a linked **Record** per event, the to-dos still open (check them off right there), the meetings to pick back up, and one-click questions for Ask. Everything above the fold, nothing to type.
 - **Insights** — scope your meeting life to this week/month/year, see **who you talk with and how much** (amber = you, violet = them), your talk balance, a 12-week rhythm heatmap, and open commitments — all local.
 - **🪞 Post-meeting mirror** (opt-in) — a private card at the end of a real meeting: your numbers next to your usual average, measured, never judged.
 - **Actionable recovery** — Meeting Detail tells you when local processing is active or exhausted, preserves the audio/transcript already saved, and offers one safe retry. Settings can save a redacted diagnostics JSON locally; Portavoz never uploads it.

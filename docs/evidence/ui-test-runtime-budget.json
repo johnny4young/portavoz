@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 106
+    "expectedCaseCount": 109
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -33,6 +33,8 @@
     "CommitmentRadarUITests/testReminderAlertOpensCommitmentRadar()": 20.0,
     "CommitmentRadarUITests/testReminderDraftRequiresExplicitAccessAndLeavesDurableReceipt()": 20.0,
     "CommitmentRadarUITests/testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence()": 20.0,
+    "HomeUITests/testTodayAsksAndRecordsWithoutTyping()": 25.0,
+    "HomeUITests/testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold()": 25.0,
     "InsightsUITests/testInsightsShowsCompleteLocalDashboard()": 20.0,
     "InterviewAssistUITests/testInterviewAssistGroundsTheCurrentQuestionInExactEvidence()": 20.0,
     "LibraryUITests/testActiveRecordingRemainsReachableAfterBrowsingTheLibrary()": 20.0,
@@ -93,6 +95,7 @@
     "PublicShowcaseUITests/testInsightsShowcase()": 20.0,
     "PublicShowcaseUITests/testLiveTranslationShowcase()": 20.0,
     "PublicShowcaseUITests/testMeetingDetailShowcase()": 20.0,
+    "PublicShowcaseUITests/testTodayShowcase()": 20.0,
     "SettingsUITests/testAudioPaneOffersCaptureSourceControls()": 20.0,
     "SettingsUITests/testCategoryNavigationRevealsEachPane()": 24.352,
     "SettingsUITests/testDataPaneExportsAReadableWholeLibraryMarkdownBackup()": 20.0,

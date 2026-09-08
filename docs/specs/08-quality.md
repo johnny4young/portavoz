@@ -26,8 +26,14 @@ test invocation, so compilation and tests use the same flags instead of a
 build/test pair that can compile twice. The iOS portability lane owns only its
 sequential destination compiles and cannot claim runtime/device behavior.
 `.github/workflows/ui-tests.yml` computes feature-level selectors from
-the PR diff and allocates a macOS UI runner only when product presentation is
-affected. The recording-toolbar mapping selects its external-route geometry
+the PR diff and allocates macOS UI runners only when product presentation is
+affected: one job builds the exact products once into an `xctestproducts`
+bundle, one matrix lane per selected locale restores it and runs
+`test-without-building`, and one Linux classifier gates on every lane's
+receipts (D496). Because a prebuilt-products run does not hand the XCTest
+process the app's language, bilingual expectations read
+`UITestLocale.environmentLocale` — the locale the run declared — rather than
+the ambient `Locale.current`. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
 Meeting Detail tests. The English and Spanish release gates each cover all 106
 cases and retain app-only
@@ -4538,8 +4544,9 @@ preserved English receipt and missing Spanish receipt distinguish orchestration
 exhaustion from a product assertion, skip, malformed receipt, or green retry.
 
 The `scoped-ui-tests` job now has a 90-minute global orchestration ceiling. It
-is sized for one build plus both complete sequential locales with bounded
-hosted variance and cleanup/upload/classification headroom. It is not a product
+was sized for one build plus both complete sequential locales with bounded
+hosted variance and cleanup/upload/classification headroom; since D496 each
+locale lane owns that ceiling alone while the build runs in its own job. It is not a product
 or per-test runtime budget: selectors, assertions, test waits, the controlled-
 host per-journey/catalogue/p95 budgets, locale order, artifact preservation,
 first-attempt requirement, no-retry rule, and fail-closed classifier remain

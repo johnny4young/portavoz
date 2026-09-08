@@ -16,6 +16,10 @@ struct LibraryNavigationControls: View {
                 .disabled(importing)
             Divider().padding(.vertical, 4)
             navigationButton(
+                "Today", symbol: "sun.max", id: "library-home-button",
+                help: "Today's agenda, open to-dos, recent meetings and one-click questions",
+                selected: isHome) { onNavigate(.library) }
+            navigationButton(
                 "Ask", symbol: "bubble.left.and.text.bubble.right", id: "library-ask-button",
                 help: "Natural-language questions over every meeting, answered on your Mac",
                 selected: route == .ask) { onNavigate(.ask) }
@@ -28,6 +32,11 @@ struct LibraryNavigationControls: View {
                 help: "Confirmed commitments, deadlines, sources and changes — kept on your Mac",
                 selected: route?.isCommitmentRadar == true) { onNavigate(.commitments(nil)) }
         }
+    }
+
+    /// Home owns the empty route as well as the explicit `.library` route.
+    private var isHome: Bool {
+        route == nil || route == .library
     }
 
     private func navigationButton(

@@ -48,15 +48,21 @@ extension MeetingStore {
         }
     }
 
+    /// The persisted skill identity contract: exact catalogue key, bounded in
+    /// UTF-8 bytes like `SkillDefinition.maximumIDByteCount` and the v51
+    /// CHECK constraints, never a character count.
+    static func isPersistableSkillID(_ skillID: String) -> Bool {
+        !skillID.isEmpty
+            && skillID == skillID.trimmingCharacters(in: .whitespacesAndNewlines)
+            && skillID.utf8.count <= SkillDefinition.maximumIDByteCount
+    }
+
     public func setSkill(
         _ skillID: String,
         isEnabled: Bool,
         at timestamp: Date = Date()
     ) async throws {
-        guard skillID == skillID.trimmingCharacters(in: .whitespacesAndNewlines),
-              !skillID.isEmpty,
-              skillID.count <= 80
-        else {
+        guard Self.isPersistableSkillID(skillID) else {
             throw StorageError.invalidPersistedValue(
                 table: "skillDisablement",
                 column: "skillID",
@@ -107,11 +113,7 @@ extension MeetingStore {
         guard (1...Self.maximumRecentSkillExecutionCount).contains(limit)
         else { return [] }
         if let skillID {
-            guard skillID == skillID.trimmingCharacters(
-                in: .whitespacesAndNewlines),
-                !skillID.isEmpty,
-                skillID.count <= 80
-            else { return [] }
+            guard Self.isPersistableSkillID(skillID) else { return [] }
         }
         if let updatedAfter,
            !updatedAfter.timeIntervalSinceReferenceDate.isFinite {

@@ -44,19 +44,7 @@ extension MeetingStore {
                 suggestedOwnerToken: material.suggestedOwnerToken?.uuidString,
                 suggestedDueAt: nil,
                 firstPresentedAt: timestamp)
-            do {
-                try record.insert(database)
-            } catch {
-                if let existing = try CommitmentFieldPresentationRecord
-                    .filter(Column("actionItemID") == actionItemID.uuidString)
-                    .fetchOne(database) {
-                    return try PersistedIdentity.required(
-                        existing.id,
-                        table: CommitmentFieldPresentationRecord.databaseTableName,
-                        column: "id")
-                }
-                throw error
-            }
+            try record.insert(database)
             return observationID
         }
     }

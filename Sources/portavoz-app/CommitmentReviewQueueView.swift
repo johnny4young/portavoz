@@ -247,7 +247,6 @@ private extension CommitmentReviewQueueView {
 
     @MainActor
     func clock(_ seconds: TimeInterval) -> String {
-        let total = max(0, Int(seconds.rounded()))
-        return String(format: "%d:%02d", total / 60, total % 60)
+        ClockFormat.mmss(seconds, paddedMinutes: false)
     }
 }

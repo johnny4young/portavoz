@@ -17,12 +17,12 @@ final class SkillsControlCenterTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 50)
+            XCTAssertEqual(StorageSchema.version, 51)
             XCTAssertEqual(
                 try String.fetchAll(
                     database,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid").last,
-                "v50")
+                "v51")
             XCTAssertEqual(
                 try Set(database.columns(in: "skillControl").map(\.name)),
                 ["id", "isPaused", "updatedAt"])
@@ -178,7 +178,12 @@ final class SkillsControlCenterTests: XCTestCase {
         XCTAssertTrue(zero.isEmpty)
         XCTAssertTrue(oversized.isEmpty)
 
-        for skillID in ["", " recap-draft ", String(repeating: "s", count: 81)] {
+        // 41 two-byte characters pass a character count and fail the 80-byte
+        // contract shared with `SkillDefinition` and the v51 CHECK constraints.
+        let multibyteID = String(repeating: "é", count: 41)
+        XCTAssertEqual(multibyteID.count, 41)
+        XCTAssertEqual(multibyteID.utf8.count, 82)
+        for skillID in ["", " recap-draft ", String(repeating: "s", count: 81), multibyteID] {
             let malformed = try await store.skillExecutions(
                 scope: .recent,
                 skillID: skillID,
@@ -193,15 +198,42 @@ final class SkillsControlCenterTests: XCTestCase {
             limit: 20)
         XCTAssertTrue(invalidDate.isEmpty)
 
-        do {
-            try await store.setSkill(" recap-draft ", isEnabled: false)
-            XCTFail("policy identities must be exact catalogue keys")
-        } catch let error as StorageError {
-            guard case .invalidPersistedValue(
-                table: "skillDisablement",
-                column: "skillID",
-                value: " recap-draft ") = error
-            else { return XCTFail("unexpected error: \(error)") }
+        for skillID in [" recap-draft ", multibyteID] {
+            do {
+                try await store.setSkill(skillID, isEnabled: false)
+                XCTFail("policy identities must be exact catalogue keys: \(skillID)")
+            } catch let error as StorageError {
+                guard case .invalidPersistedValue(
+                    table: "skillDisablement",
+                    column: "skillID",
+                    value: skillID) = error
+                else { return XCTFail("unexpected error: \(error)") }
+            }
+        }
+        // An 80-byte identifier remains valid in both the API and the schema.
+        let boundaryID = String(repeating: "é", count: 40)
+        XCTAssertEqual(boundaryID.utf8.count, 80)
+        try await store.setSkill(boundaryID, isEnabled: false)
+        try await store.setSkill(boundaryID, isEnabled: true)
+    }
+
+    func testSchemaRejectsMultibyteSkillIdentifiersBeyondTheByteBound() async throws {
+        let store = try MeetingStore.inMemory()
+        let multibyteID = String(repeating: "é", count: 41)
+        for (table, sql) in [
+            ("skillDisablement",
+             "INSERT INTO skillDisablement (skillID, disabledAt) VALUES (?, ?)"),
+            ("skillOfferDismissal",
+             "INSERT INTO skillOfferDismissal (offerKey, skillID, dismissedAt) VALUES ('offer', ?, ?)")
+        ] {
+            do {
+                try await store.database.write { database in
+                    try database.execute(sql: sql, arguments: [multibyteID, Date()])
+                }
+                XCTFail("\(table) must bound skillID in UTF-8 bytes")
+            } catch let error as DatabaseError {
+                XCTAssertEqual(error.resultCode, .SQLITE_CONSTRAINT, table)
+            }
         }
     }
 

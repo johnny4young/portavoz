@@ -35,6 +35,7 @@ final class MeetingDetailPresentationTests: XCTestCase {
                 endedAt: start.addingTimeInterval(-10)),
             "0 min")
         XCTAssertEqual(presentation.segmentCount(-1), "0 segments")
+        XCTAssertEqual(presentation.segmentCount(1), "1 segment")
         XCTAssertEqual(presentation.segmentCount(42), "42 segments")
     }
 

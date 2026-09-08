@@ -164,9 +164,12 @@ public protocol StartRecordingStore: Sendable {
 
 extension MeetingStore: StartRecordingStore {
     public func startedMeetingCount(on date: Date, calendar: Calendar) async -> Int {
-        ((try? await meetings()) ?? [])
-            .filter { calendar.isDate($0.startedAt, inSameDayAs: date) }
-            .count
+        // The daily title sequence only needs a count. Materializing every
+        // meeting to filter one day grew with the library on every Start.
+        let dayStart = calendar.startOfDay(for: date)
+        guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart)
+        else { return 0 }
+        return (try? await liveMeetingCount(startedIn: dayStart..<dayEnd)) ?? 0
     }
 
     public func reserveRecording(_ meeting: Meeting, assets: [AudioAsset]) async throws {
@@ -290,6 +293,17 @@ public enum StartRecordingResult: Sendable {
     )
 }
 
+extension StartRecordingResult {
+    /// A failed Start is a failed recording-critical workload, not a completed
+    /// one; the ledger must be able to tell them apart.
+    var workloadOutcome: ResourceWorkloadOutcome {
+        switch self {
+        case .started: .completed
+        case .preparationFailed, .captureFailed: .failed
+        }
+    }
+}
+
 /// Prepares the platform runtime, reserves the discoverable aggregate before
 /// any source starts, and reconciles a failed source start against filesystem
 /// evidence. Live UI policy remains in the controller.
@@ -332,7 +346,7 @@ public struct StartRecording: ApplicationUseCase {
         let result: StartRecordingResult
         switch await prepareRuntime(sampledPreferences) {
         case .failed(let result):
-            self.telemetry.finish(span, outcome: .completed)
+            self.telemetry.finish(span, outcome: result.workloadOutcome)
             return result
         case .ready(let prepared):
             result = await reserveAndStart(
@@ -340,7 +354,7 @@ public struct StartRecording: ApplicationUseCase {
                 preferences: sampledPreferences,
                 prepared: prepared)
         }
-        telemetry.finish(span, outcome: .completed)
+        telemetry.finish(span, outcome: result.workloadOutcome)
         return result
     }
 

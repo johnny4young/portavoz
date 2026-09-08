@@ -37,7 +37,7 @@ extension MeetingStore {
             let pattern = Self.automationEntityPattern(matchingTitle)
             let predicate = pattern == nil
                 ? ""
-                : "AND title LIKE :pattern ESCAPE '\\' COLLATE NOCASE"
+                : "AND title LIKE :pattern ESCAPE '\\'"
             return try MeetingRecord.fetchAll(
                 database,
                 sql: """
@@ -86,7 +86,7 @@ extension MeetingStore {
             let pattern = Self.automationEntityPattern(matchingName)
             let predicate = pattern == nil
                 ? ""
-                : "AND preferredName LIKE :pattern ESCAPE '\\' COLLATE NOCASE"
+                : "AND preferredName LIKE :pattern ESCAPE '\\'"
             return try PersonRecord.fetchAll(
                 database,
                 sql: """
@@ -137,7 +137,7 @@ extension MeetingStore {
             let pattern = Self.automationEntityPattern(matchingTitle)
             let predicate = pattern == nil
                 ? ""
-                : "AND title LIKE :pattern ESCAPE '\\' COLLATE NOCASE"
+                : "AND title LIKE :pattern ESCAPE '\\'"
             return try CommitmentRecord.fetchAll(
                 database,
                 sql: """

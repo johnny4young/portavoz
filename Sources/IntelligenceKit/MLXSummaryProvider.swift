@@ -142,6 +142,9 @@ public actor MLXSummaryRuntime: MLXSummaryRuntimeClient {
             for await item in stream {
                 if case .chunk(let chunk) = item { text += chunk }
             }
+            // The stream ends early on cancellation; a partial JSON or answer
+            // must surface as cancellation, never parse as a finished result.
+            try Task.checkCancellation()
             return text
         }
     }

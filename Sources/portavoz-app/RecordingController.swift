@@ -793,9 +793,9 @@ private extension RecordingController {
     private func presentCaptureRecoveryFailure(_ commit: StopRecordingCommit) {
         let noAudio = commit.meeting.lastProcessingError == "capture.no-audio"
         let message = noAudio
-            ? "Capture failed before audio could be saved. The failure record remains in your library."
-            : "The audio could not be finalized, but its recovery file was preserved."
-        presentFailure(L10n.text(message),
+            ? L10n.text("Capture failed before audio could be saved. The failure record remains in your library.")
+            : L10n.text("The audio could not be finalized, but its recovery file was preserved.")
+        presentFailure(message,
                        code: noAudio ? "capture.no-audio" : "capture.publication.failed",
                        category: .critical, recovery: .library)
     }

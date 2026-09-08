@@ -196,7 +196,9 @@ public struct CorrectMeetingTranscript: ApplicationUseCase {
             in: history,
             target: sourceSegmentID,
             revision: request.baseTranscriptRevision)
-        if terminals[.structure] != nil {
+        // A restored structural correction leaves the row exactly as accepted;
+        // only a live split/merge/suppress owns the row and blocks lane edits.
+        if let structural = terminals[.structure], structural.kind != .restore {
             throw CorrectMeetingTranscriptError.incompatibleStructuralCorrection
         }
 

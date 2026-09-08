@@ -122,7 +122,7 @@ private struct AppLocalVoiceSampleCapture: LocalVoiceSampleCapturing {
                 try Task.checkCancellation()
                 samples.append(contentsOf: chunk.samples)
                 sampleRate = chunk.sampleRate
-                let elapsed = Self.seconds(in: startedAt.duration(to: clock.now))
+                let elapsed = startedAt.duration(to: clock.now).timeInterval
                 let remaining = max(0, seconds - Int(elapsed))
                 if remaining != lastRemaining {
                     lastRemaining = remaining
@@ -136,11 +136,5 @@ private struct AppLocalVoiceSampleCapture: LocalVoiceSampleCapturing {
             await microphone.stop()
             throw error
         }
-    }
-
-    private static func seconds(in duration: Duration) -> TimeInterval {
-        let components = duration.components
-        return Double(components.seconds)
-            + Double(components.attoseconds) / 1_000_000_000_000_000_000
     }
 }

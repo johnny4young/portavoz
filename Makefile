@@ -848,7 +848,7 @@ test-ui-preflight:
 	@# rebuilding the database is a system-wide action with its own side effects.
 	@-scripts/check-url-scheme-handlers.sh
 
-## Regenerate the three public README/website screenshots from a fictional,
+## Regenerate the four public README/website screenshots from a fictional,
 ## disposable XCUITest library. The exporter captures only the Portavoz window.
 public-screenshots:
 	scripts/update-public-screenshots.sh

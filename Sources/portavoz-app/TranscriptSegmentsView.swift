@@ -179,7 +179,7 @@ private struct MeetingTranscriptRowView: View {
             Button {
                 onSeek(row.startTime)
             } label: {
-                Text(clock(row.startTime))
+                Text(ClockFormat.mmss(row.startTime))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(
                         isActive ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
@@ -208,8 +208,4 @@ private struct MeetingTranscriptRowView: View {
         .accessibilityAddTraits(isActive ? .isSelected : [])
     }
 
-    private func clock(_ seconds: TimeInterval) -> String {
-        let total = max(0, Int(seconds.rounded()))
-        return String(format: "%02d:%02d", total / 60, total % 60)
-    }
 }

@@ -1,5 +1,6 @@
 import ApplicationKit
 import PortavozCore
+import SwiftUI
 
 enum SkillReceiptPresentation {
     static func skillTitle(_ skillID: String) -> String {
@@ -105,6 +106,24 @@ enum SkillReceiptPresentation {
             L10n.text("Issue outcome unknown — check GitHub")
         default:
             nil
+        }
+    }
+
+    /// SF symbol for a receipt state, shared by every receipt list.
+    static func icon(for state: SkillExecutionState) -> String {
+        switch state {
+        case .succeeded: "checkmark.circle.fill"
+        case .failed, .executing: "exclamationmark.triangle.fill"
+        case .dismissed: "xmark.circle"
+        case .confirmed, .proposed, .previewed: "clock"
+        }
+    }
+
+    static func tint(for state: SkillExecutionState) -> Color {
+        switch state {
+        case .succeeded: .green
+        case .failed, .executing: .orange
+        case .dismissed, .confirmed, .proposed, .previewed: .secondary
         }
     }
 }

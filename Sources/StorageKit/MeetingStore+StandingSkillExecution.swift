@@ -444,6 +444,12 @@ private extension MeetingStore {
             throw StorageError.invalidStandingSkillExecution(
                 "claim did not create one execution owner")
         }
+        // The standing owner now covers this event: the one-shot offer for the
+        // same event retires, so a later manual confirmation cannot run the
+        // brief a second time under its own idempotency key.
+        try database.execute(
+            sql: "DELETE FROM skillOfferProposal WHERE offerKey = ?",
+            arguments: [claim.oneShotOfferKey])
         try database.execute(
             sql: """
                 INSERT INTO standingSkillExecutionAuthority (

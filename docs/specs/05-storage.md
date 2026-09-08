@@ -200,7 +200,7 @@ hidden stage. A main-file or WAL size/modification change across the private
 copy also fails closed rather than publishing a mixed point in time. The source is never opened through `MeetingStore`, so no
 migration/configuration write can occur, and it is never renamed or deleted.
 
-### Schema (`v1`–`v49` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v51` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -1886,3 +1886,15 @@ zero-file capture retains a needs-attention shell instead of being discarded.
 Successful derived jobs clear only their own processing errors. Bundle and
 sync root projection retain the report; replay preserves existing evidence
 when a legacy peer omits it and rejects conflicting authority atomically.
+
+### Skill identifier byte bound (schema v51, D497)
+
+`SkillDefinition.maximumIDByteCount` is a UTF-8 byte limit and the v40 offer
+tables already check `length(CAST(skillID AS BLOB))`. The v35 `skillDisablement`
+table still checked `length(skillID)`, which SQLite counts in characters, so a
+multibyte identifier could be persisted as disabled while being invalid
+everywhere else in the Skill domain. v51 rebuilds that table with the byte
+CHECK and copies its rows; existing rows already satisfy the tighter bound
+because every writer validated bytes first. `MeetingStore.isPersistableSkillID`
+is the single Swift validator for both the disablement write and the receipt
+filter.

@@ -57,6 +57,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "testRecordingAutomationRoutesStartAndStopThroughVisibleApp",
         ),
     ),
+    "home": (
+        test_id("HomeUITests", "testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold"),
+        test_id("HomeUITests", "testTodayAsksAndRecordsWithoutTyping"),
+    ),
     "library": (
         test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
         test_id("LibraryUITests", "testSeededMeetingsGroupByRecency"),
@@ -419,6 +423,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("PublicShowcaseUITests", "testMeetingDetailShowcase"),
         test_id("PublicShowcaseUITests", "testLiveTranslationShowcase"),
         test_id("PublicShowcaseUITests", "testInsightsShowcase"),
+        test_id("PublicShowcaseUITests", "testTodayShowcase"),
     ),
 }
 
@@ -498,6 +503,7 @@ FEATURE_SOURCE_SENTINELS: dict[str, str] = {
     "launch-recovery": "Sources/portavoz-app/AppLaunchRecoveryView.swift",
     "background-work": "Sources/portavoz-app/BackgroundWorkCenterView.swift",
     "automation-entry": "Sources/portavoz-app/PortavozAppIntents.swift",
+    "home": "Sources/portavoz-app/HomeView.swift",
     "library": "Sources/portavoz-app/LibraryView.swift",
     "meeting-brief": "Sources/portavoz-app/MeetingBriefView.swift",
     "menu-bar-brief": "Sources/portavoz-app/MenuBarView.swift",
@@ -617,6 +623,12 @@ def app_features(filename: str) -> set[str]:
         # deterministic canary per route is sufficient; do not rerun all
         # feature permutations merely because a route was added or wired.
         return {"background-work", "main-shell"}
+    if lowered == "homeview.swift":
+        # Today composes the Library snapshot; its own journeys plus the
+        # sidebar canary cover navigation from and back to it.
+        return {"home", "library"}
+    if lowered == "librarynavigationcontrols.swift":
+        return {"home", "library"}
     if lowered in {
         "postcaptureprocessingcoordinator.swift",
         "recordingrecoverycoordinator.swift",
@@ -1272,11 +1284,14 @@ def render(selection: Selection, output_format: str) -> str:
     locales = " ".join(selection.locales)
     summary = bounded_summary(selection.reasons)
     if output_format == "github":
+        # `matrix` feeds one hosted lane per selected locale; an unselected
+        # run still needs valid JSON so the workflow expression can parse it.
         return "\n".join(
             (
                 f"required={'true' if selection.required else 'false'}",
                 f"tests={tests}",
                 f"locales={locales}",
+                f"matrix={json.dumps(list(selection.locales))}",
                 f"summary={summary}",
             )
         )

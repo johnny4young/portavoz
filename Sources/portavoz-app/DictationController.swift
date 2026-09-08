@@ -488,9 +488,4 @@ final class DictationController {
         }
     }
 
-    private struct IntelligenceUnavailable: Error, LocalizedError {
-        var errorDescription: String? {
-            L10n.text("The transcription model is not available.")
-        }
-    }
 }

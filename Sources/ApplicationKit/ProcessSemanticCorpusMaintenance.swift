@@ -237,8 +237,12 @@ public struct ProcessSemanticCorpusMaintenance: Sendable {
                         owner: owner,
                         leaseDuration: leaseDuration,
                         at: now())
-                } catch {
+                } catch is CancellationError {
                     return
+                } catch {
+                    // Keep the lease alive through a transient store failure;
+                    // the owner cancels this task when the job settles.
+                    continue
                 }
             }
         }

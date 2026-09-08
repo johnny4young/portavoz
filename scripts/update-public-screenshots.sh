@@ -4,7 +4,7 @@ set -euo pipefail
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 cd "$repo_root"
 
-selectors='PortavozUITests/PublicShowcaseUITests/testMeetingDetailShowcase PortavozUITests/PublicShowcaseUITests/testLiveTranslationShowcase PortavozUITests/PublicShowcaseUITests/testInsightsShowcase'
+selectors='PortavozUITests/PublicShowcaseUITests/testTodayShowcase PortavozUITests/PublicShowcaseUITests/testMeetingDetailShowcase PortavozUITests/PublicShowcaseUITests/testLiveTranslationShowcase PortavozUITests/PublicShowcaseUITests/testInsightsShowcase'
 
 make --no-print-directory test-ui-scoped \
 	UI_TESTS="$selectors" \
@@ -33,6 +33,7 @@ import sys
 export_dir = pathlib.Path(sys.argv[1])
 manifest = json.loads((export_dir / "manifest.json").read_text())
 expected = {
+    "public-today": "today.png",
     "public-meeting-detail": "meeting-detail.png",
     "public-live-translation": "recording-live-translation.png",
     "public-insights": "insights.png",

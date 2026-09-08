@@ -31,11 +31,11 @@ struct MeetingPlayerBar: View {
                 .help(player.isPlaying ? "Pause" : "Play")
                 .accessibilityIdentifier("player-play-pause")
 
-                Text(clock(player.currentTime))
+                Text(ClockFormat.mmss(player.currentTime, paddedMinutes: false))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("player-current-time")
-                    .accessibilityValue(clock(player.currentTime))
+                    .accessibilityValue(ClockFormat.mmss(player.currentTime, paddedMinutes: false))
                 Spacer()
                 Toggle(isOn: Binding(get: { player.skipSilence }, set: { player.skipSilence = $0 })) {
                     Label("Skip silence", systemImage: "forward.fill")
@@ -65,7 +65,7 @@ struct MeetingPlayerBar: View {
                         "Reduce loudspeaker echo by lowering the microphone outside your turns")
                     .accessibilityIdentifier("player-clear-playback")
                 }
-                Text(clock(player.duration))
+                Text(ClockFormat.mmss(player.duration, paddedMinutes: false))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
@@ -116,7 +116,7 @@ struct MeetingPlayerBar: View {
             .accessibilityIdentifier("clip-mark-end")
 
             if let range = player.clipRange {
-                Text("Clip \(clock(range.upperBound - range.lowerBound))")
+                Text("Clip \(ClockFormat.mmss(range.upperBound - range.lowerBound, paddedMinutes: false))")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
                 Button {
@@ -168,10 +168,6 @@ struct MeetingPlayerBar: View {
         }
     }
 
-    private func clock(_ seconds: TimeInterval) -> String {
-        let total = max(0, Int(seconds.rounded()))
-        return String(format: "%d:%02d", total / 60, total % 60)
-    }
 }
 
 /// The scrubber waveform (M11): peak-amplitude columns tinted by who was

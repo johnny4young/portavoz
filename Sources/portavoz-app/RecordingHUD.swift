@@ -105,7 +105,7 @@ struct RecordingHUDView: View {
                         .fill(.red)
                         .frame(width: 8, height: 8)
                         .opacity(elapsed.isMultiple(of: 2) ? 1 : 0.35)
-                    Text(String(format: "%02d:%02d", max(0, elapsed) / 60, max(0, elapsed) % 60))
+                    Text(ClockFormat.mmss(TimeInterval(elapsed)))
                         .font(.callout.monospacedDigit().weight(.medium))
                 }
             }

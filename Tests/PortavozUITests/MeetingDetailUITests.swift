@@ -621,7 +621,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "settings-summary-apple-unavailable").exists,
             "the selected Apple engine must explain that it cannot run on Sequoia")
-        if Locale.current.identifier.hasPrefix("es") {
+        if UITestLocale.environmentLocale == "es" {
             let localizedRecommendations = [
                 "Apple Intelligence: resúmenes en el dispositivo, gratis y rápidos.",
                 "Ollama local: resúmenes 100 % en tu Mac, sin Apple Intelligence.",
@@ -703,7 +703,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             syncDisclosure.exists,
             "the receipt must disclose the acknowledged private iCloud copy")
-        let expectedSyncDescription = Locale.current.identifier.hasPrefix("es")
+        let expectedSyncDescription = UITestLocale.environmentLocale == "es"
             ? "El texto de esta reunión se guardó en campos cifrados de tu base de datos privada de iCloud."
             : "This meeting's text was stored in encrypted fields in your private iCloud database."
         XCTAssertTrue(
@@ -1570,7 +1570,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "a confirmed meeting-local name must offer explicit person memory")
         remember.click()
 
-        let expectedValue = Locale.current.identifier.hasPrefix("es")
+        let expectedValue = UITestLocale.environmentLocale == "es"
             ? "Vinculado a una persona recordada"
             : "Linked to a remembered person"
         XCTAssertTrue(speaker.waitForValue(expectedValue, timeout: 5))

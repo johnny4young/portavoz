@@ -34,7 +34,10 @@ struct BackupFileNameAllocator {
             .trimmingCharacters(in: .whitespacesAndNewlines)
         cleaned = cleaned.trimmingCharacters(in: CharacterSet(charactersIn: "."))
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        cleaned = String(cleaned.prefix(120))
+        // APFS bounds a file name in UTF-8 bytes, not Characters: 120 CJK or
+        // emoji characters exceed the limit once the suffix and extension are
+        // appended, and the move would fail as an opaque publication error.
+        cleaned = boundedBytes(cleaned, maximum: 200)
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "."))
         guard !cleaned.isEmpty else { return "meeting" }
@@ -45,6 +48,20 @@ struct BackupFileNameAllocator {
             return "meeting-\(cleaned)"
         }
         return cleaned
+    }
+
+    /// Truncates on scalar boundaries so the result stays valid UTF-8.
+    private static func boundedBytes(_ value: String, maximum: Int) -> String {
+        guard value.utf8.count > maximum else { return value }
+        var bounded = ""
+        var byteCount = 0
+        for scalar in value.unicodeScalars {
+            let scalarByteCount = scalar.utf8.count
+            guard byteCount + scalarByteCount <= maximum else { break }
+            bounded.unicodeScalars.append(scalar)
+            byteCount += scalarByteCount
+        }
+        return bounded
     }
 
     private static func collisionKey(_ value: String) -> String {

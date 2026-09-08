@@ -397,7 +397,6 @@ public struct TranscriptEvidenceResolution: Sendable {
 
 /// Backward-compatible summary vocabulary for the shared transcript-evidence
 /// resolver. Companion cards use the neutral names directly.
-public typealias SummaryClaimEvidenceStatus = TranscriptEvidenceStatus
 public typealias SummaryClaimEvidenceResolution = TranscriptEvidenceResolution
 
 extension SummaryClaim {

@@ -285,13 +285,6 @@ struct OnboardingView: View {
         .background(.bar)
     }
 
-    private func bullet(_ icon: String, _ text: LocalizedStringKey) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: icon).foregroundStyle(PVDesign.accent).frame(width: 22)
-            Text(text)
-        }
-    }
-
     private func permissionRow(
         icon: String, title: String, detail: String,
         done: Bool, action: (() -> Void)?, actionLabel: String

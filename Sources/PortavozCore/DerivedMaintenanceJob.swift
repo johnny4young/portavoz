@@ -60,7 +60,7 @@ public struct DerivedMaintenanceJob: Sendable {
         createdAt: Date = Date(),
         startedAt: Date? = nil,
         finishedAt: Date? = nil,
-        updatedAt: Date = Date()
+        updatedAt: Date? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -77,23 +77,7 @@ public struct DerivedMaintenanceJob: Sendable {
         self.createdAt = createdAt
         self.startedAt = startedAt
         self.finishedAt = finishedAt
-        self.updatedAt = updatedAt
-    }
-}
-
-public enum SemanticCorpusMaintenanceFingerprint {
-    public static func compute(
-        targetFingerprint: String,
-        sourceGeneration: Int
-    ) -> String? {
-        guard sourceGeneration >= 0,
-              targetFingerprint.count == 64,
-              targetFingerprint.allSatisfy({ $0.isHexDigit })
-        else { return nil }
-        return DerivedMaintenanceFingerprint.compute(
-            kind: .semanticCorpus,
-            targetFingerprint: targetFingerprint,
-            sourceGeneration: sourceGeneration)
+        self.updatedAt = updatedAt ?? createdAt
     }
 }
 

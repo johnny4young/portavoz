@@ -244,7 +244,7 @@ struct RecordingProactiveAssistView: View {
 
     private func source(for suggestion: ProactiveAssistSuggestion) -> String {
         let evidence = suggestion.evidence
-        let range = "\(timestamp(evidence.startTime))–\(timestamp(evidence.endTime))"
+        let range = "\(ClockFormat.mmss(evidence.startTime))–\(ClockFormat.mmss(evidence.endTime))"
         if suggestion.objective != nil {
             return L10n.format(
                 "Source: your open objective + %d closed turns · %@",
@@ -257,10 +257,6 @@ struct RecordingProactiveAssistView: View {
             range)
     }
 
-    private func timestamp(_ seconds: TimeInterval) -> String {
-        let value = max(0, Int(seconds))
-        return String(format: "%02d:%02d", value / 60, value % 60)
-    }
 }
 
 /// The next-question sibling of the catch-up card: same lifecycle, same

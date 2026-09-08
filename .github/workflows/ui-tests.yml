@@ -20,6 +20,7 @@ jobs:
       required: ${{ steps.select.outputs.required }}
       tests: ${{ steps.select.outputs.tests }}
       locales: ${{ steps.select.outputs.locales }}
+      matrix: ${{ steps.select.outputs.matrix }}
       summary: ${{ steps.select.outputs.summary }}
       base: ${{ steps.verified_base.outputs.base }}
     steps:
@@ -77,20 +78,13 @@ jobs:
           echo "Locales: ${LOCALES:-none}"
           echo "Selectors: ${TESTS:-none}"
 
-  scoped-ui-tests:
+  build-ui-products:
     needs: scope
     if: needs.scope.outputs.required == 'true'
     runs-on: macos-26
-    # Localization/shared-harness and manual integration runs legitimately
-    # select all 105 tests in both locales. One build feeds independent locale
-    # attempts; both receipts are preserved before the deterministic gate. This
-    # 90-minute job-orchestration ceiling is not a per-test/runtime budget.
-    timeout-minutes: 90
+    timeout-minutes: 30
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
-    outputs:
-      verified: ${{ steps.classify.outputs.verified }}
-      state: ${{ steps.classify.outputs.state }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -100,83 +94,159 @@ jobs:
       - name: Install checksum-pinned XcodeGen 2.46.0
         run: scripts/install-ci-xcodegen.sh "$RUNNER_TEMP/portavoz-xcodegen"
 
+      # One build feeds every locale lane. The exact products travel as one
+      # xctestproducts bundle so no lane recompiles this head on its own.
       - name: Build selected UI products once
         env:
           UI_TESTS: ${{ needs.scope.outputs.tests }}
+          UI_TEST_PRODUCTS_PATH: ${{ runner.temp }}/ui-products/portavoz-ui.xctestproducts
+          UI_TEST_BUILD_RECEIPT: ${{ runner.temp }}/ui-products/build-duration-seconds.txt
         run: make test-ui-build
 
-      - name: Run English functional UI evidence
-        id: ui_en
-        if: contains(needs.scope.outputs.locales, 'en')
+      # GitHub artifacts do not preserve the executable bit or symlinks, and
+      # the bundle contains a real .app. tar carries both across the hop.
+      - name: Archive the exact products with their bundle permissions
+        run: tar -czf "$RUNNER_TEMP/ui-products.tar.gz" -C "$RUNNER_TEMP/ui-products" .
+
+      - name: Publish the exact UI products for the locale lanes
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ui-products-${{ github.run_id }}
+          path: ${{ runner.temp }}/ui-products.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+
+  scoped-ui-tests:
+    needs: [scope, build-ui-products]
+    if: needs.scope.outputs.required == 'true'
+    runs-on: macos-26
+    # Each selected locale runs on its own hosted Mac against the same
+    # products, so the wall clock is one build plus the slowest locale rather
+    # than the sum of both. Localization/shared-harness and manual integration
+    # runs legitimately select all catalog tests per lane.
+    # This 90-minute job-orchestration ceiling is not a per-test/runtime budget.
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        locale: ${{ fromJSON(needs.scope.outputs.matrix) }}
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify fixed Tahoe toolchain
+        run: scripts/verify-ci-toolchain.sh 26 26.6
+
+      - name: Restore the exact UI products
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: ui-products-${{ github.run_id }}
+          path: ${{ runner.temp }}/ui-archive
+
+      - name: Unpack the products with their bundle permissions
+        run: |
+          mkdir -p "$RUNNER_TEMP/ui-products"
+          tar -xzf "$RUNNER_TEMP/ui-archive/ui-products.tar.gz" \
+            -C "$RUNNER_TEMP/ui-products"
+
+      - name: Run ${{ matrix.locale }} functional UI evidence
+        id: ui
         continue-on-error: true
         env:
           UI_TESTS: ${{ needs.scope.outputs.tests }}
-          UI_TEST_LOCALES: en
+          UI_TEST_LOCALES: ${{ matrix.locale }}
+          UI_TEST_PRODUCTS_PATH: ${{ runner.temp }}/ui-products/portavoz-ui.xctestproducts
+          UI_TEST_BUILD_RECEIPT: ${{ runner.temp }}/ui-products/build-duration-seconds.txt
           # GitHub-hosted macOS wall-clock variance is reported in the receipt,
           # not promoted to performance authority. Local/stable-Mac integration
           # keeps the same unchanged budgets blocking by default.
           UI_TEST_ENFORCE_RUNTIME_BUDGET: "false"
         run: make test-ui-run
 
-      - name: Run Spanish functional UI evidence
-        id: ui_es
-        if: contains(needs.scope.outputs.locales, 'es')
-        continue-on-error: true
+      - name: Record the lane outcome beside its receipts
+        if: always()
         env:
-          UI_TESTS: ${{ needs.scope.outputs.tests }}
-          UI_TEST_LOCALES: es
-          UI_TEST_ENFORCE_RUNTIME_BUDGET: "false"
-        run: make test-ui-run
+          LOCALE: ${{ matrix.locale }}
+          OUTCOME: ${{ steps.ui.outcome }}
+        run: |
+          mkdir -p dist/ui-test-results
+          printf '%s\n' "$OUTCOME" > "dist/ui-test-results/$LOCALE-outcome.txt"
 
-      - name: Preserve scoped UI evidence
+      - name: Preserve ${{ matrix.locale }} UI evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: scoped-ui-${{ github.run_id }}
+          name: scoped-ui-${{ matrix.locale }}-${{ github.run_id }}
           path: dist/ui-test-results
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Classify functional evidence and hosted runtime drift
-        id: classify
-        if: always()
-        env:
-          UI_TEST_LOCALES: ${{ needs.scope.outputs.locales }}
-          ENGLISH_OUTCOME: ${{ steps.ui_en.outcome }}
-          SPANISH_OUTCOME: ${{ steps.ui_es.outcome }}
-        run: |
-          python3 scripts/ui_test_ci_gate.py \
-            --results dist/ui-test-results \
-            --locales "$UI_TEST_LOCALES" \
-            --english-outcome "$ENGLISH_OUTCOME" \
-            --spanish-outcome "$SPANISH_OUTCOME" \
-            --github-output "$GITHUB_OUTPUT"
-
   ui-test-gate:
-    needs: [scope, scoped-ui-tests]
+    needs: [scope, build-ui-products, scoped-ui-tests]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    outputs:
+      verified: ${{ steps.classify.outputs.verified }}
+      state: ${{ steps.classify.outputs.state }}
     steps:
-      - name: Require selected evidence and allow an honest no-UI skip
+      - name: Refuse to manufacture evidence on a rerun
         env:
-          SCOPE_RESULT: ${{ needs.scope.result }}
-          UI_REQUIRED: ${{ needs.scope.outputs.required }}
-          UI_RESULT: ${{ needs.scoped-ui-tests.result }}
-          UI_VERIFIED: ${{ needs.scoped-ui-tests.outputs.verified }}
-          UI_STATE: ${{ needs.scoped-ui-tests.outputs.state }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           if [[ "$RUN_ATTEMPT" != "1" ]]; then
             echo "A rerun may diagnose CI, but cannot manufacture qualifying UI evidence." >&2
             exit 1
           fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.scope.outputs.required == 'true'
+
+      - name: Collect every locale lane's evidence
+        if: needs.scope.outputs.required == 'true'
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          pattern: scoped-ui-*-${{ github.run_id }}
+          path: dist/ui-test-results
+          merge-multiple: true
+
+      - name: Classify functional evidence and hosted runtime drift
+        id: classify
+        if: needs.scope.outputs.required == 'true'
+        env:
+          UI_TEST_LOCALES: ${{ needs.scope.outputs.locales }}
+        run: |
+          outcome() {
+            local file="dist/ui-test-results/$1-outcome.txt"
+            if [[ -f "$file" ]]; then cat "$file"; else echo skipped; fi
+          }
+          python3 scripts/ui_test_ci_gate.py \
+            --results dist/ui-test-results \
+            --locales "$UI_TEST_LOCALES" \
+            --english-outcome "$(outcome en)" \
+            --spanish-outcome "$(outcome es)" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Require selected evidence and allow an honest no-UI skip
+        env:
+          SCOPE_RESULT: ${{ needs.scope.result }}
+          UI_REQUIRED: ${{ needs.scope.outputs.required }}
+          BUILD_RESULT: ${{ needs.build-ui-products.result }}
+          UI_RESULT: ${{ needs.scoped-ui-tests.result }}
+          UI_VERIFIED: ${{ steps.classify.outputs.verified }}
+          UI_STATE: ${{ steps.classify.outputs.state }}
+        run: |
           if [[ "$SCOPE_RESULT" != "success" ]]; then
             echo "UI scope selection failed: $SCOPE_RESULT" >&2
             exit 1
           fi
+          if [[ "$UI_REQUIRED" == "true" && "$BUILD_RESULT" != "success" ]]; then
+            echo "The shared UI products did not build: $BUILD_RESULT" >&2
+            exit 1
+          fi
           if [[ "$UI_REQUIRED" == "true" && "$UI_RESULT" != "success" ]]; then
-            echo "Selected UI tests did not pass: $UI_RESULT" >&2
+            echo "Selected UI lanes did not complete: $UI_RESULT" >&2
             exit 1
           fi
           if [[ "$UI_REQUIRED" == "true" ]]; then
@@ -196,13 +266,13 @@ jobs:
           echo "Scoped UI gate passed (required=$UI_REQUIRED, result=$UI_RESULT, verified=${UI_VERIFIED:-not-required})."
 
   verification-anchor:
-    needs: [scope, scoped-ui-tests, ui-test-gate]
+    needs: [scope, ui-test-gate]
     if: >-
       always() &&
       github.run_attempt == 1 &&
       needs.ui-test-gate.result == 'success' &&
       (needs.scope.outputs.required != 'true' ||
-       needs.scoped-ui-tests.outputs.verified == 'true')
+       needs.ui-test-gate.outputs.verified == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

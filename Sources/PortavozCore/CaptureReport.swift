@@ -57,7 +57,7 @@ public struct CaptureReport: Codable, Equatable, Sendable {
     public let channels: [CaptureChannelReport]
 
     public init(channels: [CaptureChannelReport]) throws {
-        guard !channels.isEmpty, channels.count <= AudioChannel.allCases.count,
+        guard !channels.isEmpty,
               Set(channels.map(\.channel)).count == channels.count,
               channels.allSatisfy(\.hasValidCounts)
         else { throw InvalidReport.invalidChannels }
