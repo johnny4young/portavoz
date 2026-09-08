@@ -275,6 +275,10 @@ extension MeetingStore {
         ]
         if includingTranscriptCorrections {
             tables.insert("transcriptCorrection", at: 0)
+            // A superseded correction is deleted in the same statement as its
+            // successor, and the self-referencing RESTRICT is checked per row.
+            // Defer to commit so replay can replace a corrected meeting.
+            try db.execute(sql: "PRAGMA defer_foreign_keys = ON")
         }
         for table in tables {
             try db.execute(

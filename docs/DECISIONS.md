@@ -18758,3 +18758,28 @@ loads carry a request identity. `ClockFormat.mmss` replaces every private
 that would change accepted semantics without a failing case (superseded
 diarization jobs, partial-transcript recovery, whole-table topic family walks,
 export `try?` degradation) stay recorded in GAPS for their own slices.
+
+## D498 — Whole-meeting deletes must unwind a correction chain (Sep 2026)
+
+**Context:** `transcriptCorrection.supersedesCorrectionID` is a self-referencing
+foreign key declared `ON DELETE RESTRICT`, while `meetingID` cascades. Editing
+one transcript line twice produces exactly such a chain. SQLite checks RESTRICT
+per row as the statement runs, so the meeting cascade deleted the superseded
+parent before its successor and aborted. Reproduced against the real store:
+emptying the Trash for a twice-corrected meeting threw `SQLite error 19` and
+removed nothing, and the same failure aborted a sync replay that replaces
+corrections. Neither path had a test that built a supersession chain.
+
+**Decision:** both whole-meeting delete paths — `MeetingStore.purge` and
+`deletePortableMeetingChildren` when it includes corrections — execute
+`PRAGMA defer_foreign_keys = ON` as the first statement of their write. The
+constraint is still enforced, once, at commit, by which point the whole cascade
+has unwound. The pragma is transaction-scoped and resets on commit, so it never
+weakens any other write. The schema is unchanged: RESTRICT still refuses to
+orphan a live successor.
+
+**Consequences:** `TranscriptCorrectionChainDeletionTests` covers both paths and
+was confirmed to fail without the pragma and pass with it. Reviewing this branch
+surfaced further storage findings that need their own evidence; they are
+recorded in GAPS as R12-R18 rather than changed without a failing case.
+

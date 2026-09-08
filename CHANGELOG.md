@@ -6,6 +6,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 8, 2026
 
+- **🗑️ Emptying the trash always works** — permanently deleting a meeting whose transcript you corrected more than once no longer fails partway; the meeting and its correction history go together.
+
 - **🗓️ Today, at a glance** — Portavoz now opens on your day: the agenda with a brief and a linked recording per event, the to-dos still open, the meetings to pick back up, and one-click questions for Ask. Nothing to scroll, nothing to type.
 
 - **🌐 Spanish everywhere in Meeting Detail** — segment and minute counts, the alternate summary engine menu, the preparing state, and title-template hints now follow your app language.

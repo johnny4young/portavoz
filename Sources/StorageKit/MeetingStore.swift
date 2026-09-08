@@ -493,6 +493,13 @@ public final class MeetingStore: Sendable {
                 let record = try MeetingRecord.fetchOne(db, key: key),
                 record.deletedAt != nil
             else { return }
+            // `transcriptCorrection.supersedesCorrectionID` is a self-reference
+            // with RESTRICT, which SQLite checks per row. Editing one line twice
+            // builds such a chain, and the meeting cascade would then delete the
+            // superseded parent before its successor within the same statement.
+            // Deferring to commit lets the whole cascade unwind first; the
+            // constraint is still enforced, just once the statement is done.
+            try db.execute(sql: "PRAGMA defer_foreign_keys = ON")
             let tables = ["actionItem", "summary", "contextItem", "companionCard", "segment", "speaker"]
             for table in tables {
                 try db.execute(
