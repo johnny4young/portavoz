@@ -12,7 +12,7 @@ The Settings journey also checks that localized provider help retains Sequoia
 and Tahoe support plus the selected local engine, rather than stale Apple-only
 live-summary wording.
 
-Status: the package inventory contains 3,046 cases (15 environment-gated) + 106
+Status: the package inventory contains 3,052 cases (15 environment-gated) + 106
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -2986,7 +2986,7 @@ admitted only with the disposable store and resource-output boundary, and run
 it at real time through the production recording session, writers, live-model
 feeds, Stop, indexing, and batch concurrency. Resource receipt schema 4 records
 the exact 16 kHz/1,600-frame input contract and the completed
-`refine-runtime-preparation-v1` prerequisite. No physical capture source, TCC
+`refine-runtime-preparation-v2` prerequisite. No physical capture source, TCC
 prompt, or user audio participates, so physical capture and permissions remain
 external evidence. Generation v2 derives one exact per-channel frame target
 from the bounded recording duration; after the real-time producer is cancelled,
@@ -3703,18 +3703,22 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   recording-plus-batch runs.
   The original `make resource-recording-baseline` target is a compatibility
   alias. After a five-second launch-settling interval, the benchmark measures
-  idle before loading models. Before the repeated Refine samples, one bounded
-  unmeasured scratch-app process verifies installed artifacts, loads and
-  releases the production Whisper runtime, then loads and releases the
-  production diarization runtime. It must publish the exact owner-only
-  mode-0600 `refine-runtime-preparation-v1` marker. Refine runs separately
+  idle before loading models. Immediately before repeated Refine samples, one
+  bounded unmeasured scratch-app process verifies installed artifacts and
+  executes the real Refine draft over the identical public audio, rather than
+  stopping after model loading. Only nonempty completed inference permits the
+  bounded caller to publish the owner-only mode-0600
+  `refine-runtime-preparation-v2` marker; load-only v1 markers are rejected.
+  Behavioral tests prove publication ordering and no marker on empty, failed,
+  timed-out, or late inference. Preparation no longer precedes unrelated heavy
+  families that could change platform first-use state. Refine runs separately
   against a fixed non-silent English AIFF synthesized from public text; it
   verifies the installed Whisper, tokenizer, and diarization artifacts again
   before every sample and never downloads models. Each measured sample remains
-  an independent app process without a resident runtime. This excludes one-time
-  host/Core ML compilation from the repeated-sample stability calculation; it
-  does not measure or certify first-ever Refine activation latency, disk cost,
-  or UX. Summary runs in another cold
+  an independent app process without a resident runtime. This exercises initial
+  prediction outside repeated sampling without proving a specific cache or
+  compiler cause. It does not certify first-ever Refine activation latency,
+  disk cost, or UX. Summary runs in another cold
   process, verifies the pinned Qwen3.5 MLX model, creates a fixed public English
   meeting/cast/transcript only in the disposable database, and measures the
   real ApplicationKit regeneration transaction. Ask runs in another cold
@@ -3847,7 +3851,7 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   fragments into one schema-4 host receipt whose required recording-input
   provenance is `public-synthetic-dual-channel-v2` at 16 kHz with 1,600-frame
   chunks and whose required runtime preparation is
-  `refine-runtime-preparation-v1`. The assembler requires one regular,
+  `refine-runtime-preparation-v2`. The assembler requires one regular,
   non-symlinked, current-owner, exact-mode-0600 marker with fixed content,
   validates exact-shaped Release
   receipts against `docs/evidence/resource-baseline-matrix.json` and always
@@ -7431,3 +7435,27 @@ before selecting the result. It checks the exact literal query both before and
 after Tab, requires the real hit to be hittable, and still verifies the exact
 meeting, source timestamp and playback seek. Cold-start focus setup alone does
 not cover a later user-initiated editing session.
+
+## Inference preparation evidence
+
+Resource collection also requires `summary-runtime-preparation-v1`. Immediately
+before the three Summary samples, one additional disposable process executes
+the identical public Summary workflow and must complete with persistence. It
+writes its cold first-use resource observation into a separate preparation
+folder and only then publishes its fixed mode-0600 marker. That observation is
+retained but is not one of the three independently measured steady samples.
+Missing, duplicate, relative, failed, unchanged, or non-persisted preparation
+cannot qualify. All ordinary Summary launches omit the marker option and retain
+their existing behavior. The two inference-preparation prerequisites do not
+relax measured workloads, sample counts, timing budgets, or cold-start claims.
+
+### Deterministic Notes evidence inspection
+
+The disposable Notes answer fixture participates in the existing finite Ask
+ready/continue handshake instead of sleeping for 700 milliseconds. The real-app
+journey waits for Notes generation readiness, verifies the pending citation's
+localized author and exact timestamp while completion is held, explicitly
+releases generation, then verifies the final answer and persisted citation.
+This changes only temporary-store fixture composition, not production latency.
+The handshake uses the launch-owned temporary directory and retains cancellation,
+cleanup and the original deadlines. No assertion or runtime budget is removed.

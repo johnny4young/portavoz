@@ -2666,7 +2666,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 3,046 cases "
+            "package inventory contains 3,052 cases "
                 + "(15 environment-gated) + 106"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -5008,14 +5008,20 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertEqual(recordingInput["chunkFrames"] as? Int, 1_600)
         let preparations = try XCTUnwrap(
             contract["preparations"] as? [[String: Any]])
-        XCTAssertEqual(preparations.count, 1)
+        XCTAssertEqual(preparations.count, 2)
         XCTAssertEqual(preparations[0]["id"] as? String, "refine-runtime")
+        XCTAssertEqual(preparations[1]["id"] as? String, "summary-runtime")
+        XCTAssertEqual(
+            preparations[1]["generation"] as? String, "summary-runtime-preparation-v1")
+        XCTAssertEqual(
+            preparations[1]["marker"] as? String,
+            "portavoz-resource-summary-runtime-prepared-v1\n")
         XCTAssertEqual(
             preparations[0]["generation"] as? String,
-            "refine-runtime-preparation-v1")
+            "refine-runtime-preparation-v2")
         XCTAssertEqual(
             preparations[0]["marker"] as? String,
-            "portavoz-resource-refine-runtime-prepared-v1\n")
+            "portavoz-resource-refine-runtime-prepared-v2\n")
         XCTAssertEqual(
             contract["maximumTimingP95ToP50Ratio"] as? Double,
             1.25)
@@ -5209,24 +5215,12 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(refinePreparationMode.contains(
             "runRefineResourcePreparationIfRequested"))
         XCTAssertTrue(refinePreparationMode.contains(
-            "services.acquireWhisperRuntime"))
-        XCTAssertTrue(refinePreparationMode.contains(
-            ".acquireDiarizationRuntime"))
-        let acquireWhisper = try XCTUnwrap(refinePreparationMode.range(
-            of: "services.acquireWhisperRuntime"))
-        let finishWhisper = try XCTUnwrap(refinePreparationMode.range(
-            of: "services.finishWhisperRuntime"))
-        let acquireDiarization = try XCTUnwrap(refinePreparationMode.range(
-            of: ".acquireDiarizationRuntime"))
-        let finishDiarization = try XCTUnwrap(refinePreparationMode.range(
-            of: "services.finishDiarizationRuntime"))
-        XCTAssertLessThan(acquireWhisper.lowerBound, finishWhisper.lowerBound)
-        XCTAssertLessThan(finishWhisper.lowerBound, acquireDiarization.lowerBound)
-        XCTAssertLessThan(
-            acquireDiarization.lowerBound,
-            finishDiarization.lowerBound)
+            "services.refineMeeting.draft"))
+        XCTAssertTrue(refinePreparationMode.contains(".execute(request)"))
+        XCTAssertTrue(refinePreparationMode.contains("draft.segments.count"))
+        XCTAssertTrue(refinePreparationMode.contains("BenchRefineRuntimePreparation.run"))
         XCTAssertTrue(launchProbe.contains(
-            "portavoz-resource-refine-runtime-prepared-v1"))
+            "portavoz-resource-refine-runtime-prepared-v2"))
         XCTAssertTrue(app.contains(
             "runRefineResourcePreparationIfRequested"))
         XCTAssertTrue(runner.contains(
@@ -5235,11 +5229,13 @@ final class ArchitectureDependencyTests: XCTestCase {
             "--preparation \"refine-runtime=$refine_runtime_marker\""))
         let refinePreparation = try XCTUnwrap(runner.range(
             of: "Preparing Refine runtime before repeated measurement"))
-        let repeatedResourceRuns = try XCTUnwrap(runner.range(
-            of: "for ((run = 1; run <= RUNS; run++))"))
-        XCTAssertLessThan(
-            refinePreparation.lowerBound,
-            repeatedResourceRuns.lowerBound)
+        let batchRuns = try XCTUnwrap(runner.range(
+            of: "Collecting recording plus batch resource sample"))
+        let refineRuns = try XCTUnwrap(runner.range(
+            of: "Collecting Refine resource sample"))
+        XCTAssertLessThan(batchRuns.lowerBound, refinePreparation.lowerBound)
+        XCTAssertLessThan(refinePreparation.lowerBound, refineRuns.lowerBound)
+        XCTAssertTrue(runner.contains("--bench-resource-preparation-audio"))
         XCTAssertEqual(
             runner.components(
                 separatedBy: "for ((run = 1; run <= RUNS; run++)); do"
@@ -5363,7 +5359,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "com.apple.security.cs.disable-library-validation"))
         XCTAssertEqual(
             runner.components(separatedBy: "run_benchmark_app").count - 1,
-            10)
+            11)
         XCTAssertFalse(runner.contains(
             #"open -W -n "$APP/Contents/MacOS/portavoz-app""#))
         XCTAssertTrue(runner.contains(
@@ -9937,8 +9933,14 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(
             askUITest.components(
                 separatedBy: "continueFeatureUITestHandshake(").count - 1,
-            2,
-            "Ask must explicitly release evidence and partial-answer phases")
+            3,
+            "Ask must explicitly release Notes, evidence, and partial-answer phases")
+        XCTAssertFalse(askServices.contains("Task.sleep(for: .milliseconds(700))"))
+        for key in ["PORTAVOZ_UI_TEST_ASK_NOTES_READY_PATH",
+                    "PORTAVOZ_UI_TEST_ASK_NOTES_CONTINUE_PATH"] {
+            XCTAssertTrue(askServices.contains(key))
+            XCTAssertTrue(askUITest.contains(key))
+        }
         XCTAssertTrue(askUITest.contains(
             "waitForFeatureUITestHandshakeRelease("))
         XCTAssertTrue(decisions.contains("## D409"))

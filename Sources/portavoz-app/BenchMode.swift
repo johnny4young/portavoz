@@ -288,7 +288,7 @@ extension BenchMode {
         }
     }
 
-    private static func makeRefineBenchmarkRequest(
+    static func makeRefineBenchmarkRequest(
         fixtureURL: URL
     ) throws -> RefineMeetingRequest {
         guard fixtureURL.isFileURL,
@@ -388,6 +388,8 @@ extension BenchMode {
                     throw BenchSummaryResourceError.unexpectedResult(
                         summaryBenchmarkResultName(result))
                 }
+                try BenchSummaryRuntimePreparation.publish(
+                    result: result, to: configuration.preparationOutputURL)
                 emit("bench-summary: resource sample complete")
                 exit(0)
             } catch {

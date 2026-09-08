@@ -9,9 +9,14 @@
   },
   "preparations": [
     {
-      "generation": "refine-runtime-preparation-v1",
+      "generation": "refine-runtime-preparation-v2",
       "id": "refine-runtime",
-      "marker": "portavoz-resource-refine-runtime-prepared-v1\n"
+      "marker": "portavoz-resource-refine-runtime-prepared-v2\n"
+    },
+    {
+      "id": "summary-runtime",
+      "generation": "summary-runtime-preparation-v1",
+      "marker": "portavoz-resource-summary-runtime-prepared-v1\n"
     }
   ],
   "profiles": [

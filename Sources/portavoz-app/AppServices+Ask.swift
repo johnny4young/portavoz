@@ -569,7 +569,12 @@ private struct UITestAskNoteAnswering: AskNoteAnswering {
         question _: String,
         citations _: [AskNoteCitation]
     ) async throws -> String? {
-        try await Task.sleep(for: .milliseconds(700))
+        try await UITestFeatureHandshake.pauseIfRequested(
+            argument: "-simulate-ask-progressive-handshake",
+            readyEnvironmentKey:
+                "PORTAVOZ_UI_TEST_ASK_NOTES_READY_PATH",
+            continueEnvironmentKey:
+                "PORTAVOZ_UI_TEST_ASK_NOTES_CONTINUE_PATH")
         return "Debes revisar el budget Q3 [1]."
     }
 }

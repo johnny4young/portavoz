@@ -58,7 +58,10 @@ class ResourceBaselineTests(unittest.TestCase):
                 scorecard["preparations"],
                 [{
                     "id": "refine-runtime",
-                    "generation": "refine-runtime-preparation-v1",
+                    "generation": "refine-runtime-preparation-v2",
+                }, {
+                    "id": "summary-runtime",
+                    "generation": "summary-runtime-preparation-v1",
                 }],
             )
             self.assertEqual(len(scorecard["measurements"]), 27)
@@ -705,6 +708,8 @@ class ResourceBaselineTests(unittest.TestCase):
                     "memory-8gb",
                     "--preparation",
                     f"refine-runtime={preparation}",
+                    "--preparation",
+                    f"summary-runtime={root / 'summary-marker'}",
                     "--sample",
                     f"idle={idle}",
                     "--sample",
@@ -744,7 +749,11 @@ class ResourceBaselineTests(unittest.TestCase):
                 receipt["preparations"],
                 [{
                     "id": "refine-runtime",
-                    "generation": "refine-runtime-preparation-v1",
+                    "generation": "refine-runtime-preparation-v2",
+                    "state": "completed",
+                }, {
+                    "id": "summary-runtime",
+                    "generation": "summary-runtime-preparation-v1",
                     "state": "completed",
                 }],
             )
@@ -797,6 +806,8 @@ class ResourceBaselineTests(unittest.TestCase):
                         "memory-8gb",
                         "--preparation",
                         f"refine-runtime={preparation}",
+                        "--preparation",
+                        f"summary-runtime={root / 'summary-marker'}",
                         "--sample",
                         f"recording={first}",
                         "--sample",
@@ -809,10 +820,13 @@ class ResourceBaselineTests(unittest.TestCase):
     def test_assemble_requires_exact_owner_only_runtime_preparation(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            self.write_preparation_marker(root)
             idle = root / "idle.json"
             idle.write_text(json.dumps(self.sample(1, [])))
             base = [
                 "assemble",
+                "--preparation",
+                f"summary-runtime={root / 'summary-marker'}",
                 "--version",
                 self.version,
                 "--build",
@@ -835,7 +849,7 @@ class ResourceBaselineTests(unittest.TestCase):
                 )
 
             marker = root / "bad-marker"
-            marker.write_text("unexpected\n", encoding="utf-8")
+            marker.write_text("portavoz-resource-refine-runtime-prepared-v1\n", encoding="utf-8")
             marker.chmod(0o600)
             with self.assertRaisesRegex(
                 baseline.ResourceBaselineError,
@@ -900,6 +914,8 @@ class ResourceBaselineTests(unittest.TestCase):
                         "memory-8gb",
                         "--preparation",
                         f"refine-runtime={preparation}",
+                        "--preparation",
+                        f"summary-runtime={root / 'summary-marker'}",
                         "--sample",
                         f"recording={sample}",
                         "--output",
@@ -1010,7 +1026,7 @@ class ResourceBaselineTests(unittest.TestCase):
         self.assertIn('stat -f %Lp "$launch_probe"', runner)
         self.assertIn("--bench-resource-prepare-refine", runner)
         self.assertIn(
-            "portavoz-resource-refine-runtime-prepared-v1",
+            "portavoz-resource-refine-runtime-prepared-v2",
             runner,
         )
         self.assertIn(
@@ -1018,8 +1034,23 @@ class ResourceBaselineTests(unittest.TestCase):
             runner,
         )
         self.assertLess(
+            runner.index("Collecting recording plus batch resource sample"),
             runner.index("Preparing Refine runtime before repeated measurement"),
-            runner.index("for ((run = 1; run <= RUNS; run++))"),
+        )
+        self.assertLess(
+            runner.index("Preparing Refine runtime before repeated measurement"),
+            runner.index("Collecting Refine resource sample"),
+        )
+        self.assertIn('--bench-resource-preparation-audio "$fixture_audio"', runner)
+        self.assertIn('--preparation "summary-runtime=$summary_runtime_marker"', runner)
+        self.assertIn('summary_preparation="$COLLECTION/summary-preparation"', runner)
+        self.assertLess(
+            runner.index("Collecting Refine resource sample"),
+            runner.index("Preparing Summary inference before repeated measurement"),
+        )
+        self.assertLess(
+            runner.index("Preparing Summary inference before repeated measurement"),
+            runner.index("Collecting Summary resource sample"),
         )
         loop_marker = "for ((run = 1; run <= RUNS; run++)); do"
         scenario_loops = runner.split(loop_marker)[1:]
@@ -1156,9 +1187,9 @@ class ResourceBaselineTests(unittest.TestCase):
         self.assertIn("(( MODEL_TIMEOUT <= 3600 ))", runner)
         self.assertIn('if [[ "$OUTPUT" != /* ]]; then', runner)
         self.assertIn('OUTPUT="$ROOT/$OUTPUT"', runner)
-        # One launch preflight, one Refine-runtime preparation, and one
+        # One launch preflight, Refine and Summary preparations, and one
         # measured app invocation declaration per grouped scenario family.
-        self.assertEqual(runner.count("run_benchmark_app"), 10)
+        self.assertEqual(runner.count("run_benchmark_app"), 11)
         self.assertNotIn(
             'open -W -n "$APP/Contents/MacOS/portavoz-app"',
             runner,
@@ -1289,7 +1320,11 @@ class ResourceBaselineTests(unittest.TestCase):
             },
             "preparations": [{
                 "id": "refine-runtime",
-                "generation": "refine-runtime-preparation-v1",
+                "generation": "refine-runtime-preparation-v2",
+                "state": "completed",
+            }, {
+                "id": "summary-runtime",
+                "generation": "summary-runtime-preparation-v1",
                 "state": "completed",
             }],
             "scenarios": [
@@ -1309,6 +1344,10 @@ class ResourceBaselineTests(unittest.TestCase):
 
     @staticmethod
     def write_preparation_marker(root):
+        summary = root / "summary-marker"
+        summary.write_text(
+            baseline.REQUIRED_PREPARATIONS["summary-runtime"]["marker"], encoding="utf-8")
+        summary.chmod(0o600)
         path = root / "refine-runtime-prepared"
         path.write_text(
             baseline.REQUIRED_PREPARATIONS["refine-runtime"]["marker"],

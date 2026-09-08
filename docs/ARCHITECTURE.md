@@ -3446,15 +3446,17 @@ participant-identity root. It never reads or writes the host Keychain,
 voiceprint, or participant-voice gallery. Production composition continues to
 use the Keychain and its durable identity root. Resource scenarios reuse the
 normal SHA-256-verified model cache only when their measured operation requires
-it. Before the three Refine samples, one bounded, unmeasured scratch-app process
-verifies the installed artifacts, acquires and finishes the production Whisper
-runtime, then acquires and finishes the production diarization runtime. It
-publishes one fixed owner-only mode-0600 marker. Receipt schema 4 binds this
-exact `refine-runtime-preparation-v1` prerequisite plus the recording-input
-contract. Missing, malformed, symlinked, or incorrectly permissioned evidence
-fails closed. Every measured Refine sample still runs in its own app process
-without an app-resident runtime; the preparation removes one-time host/Core ML
-compilation from the repeated-sample stability calculation but does not claim
+it. Immediately before the three Refine samples, one bounded, unmeasured
+scratch-app process verifies installed artifacts and executes the real Refine
+draft over the same fixed public audio. Loading alone does not exercise first
+prediction. Only a nonempty completed draft permits the bounded caller to
+publish the owner-only mode-0600 marker; failure, cancellation, timeout, or a
+late result cannot publish it. Receipt schema 4 binds this exact
+`refine-runtime-preparation-v2` prerequisite plus the recording-input contract;
+load-only v1 markers are not equivalent evidence. Missing, malformed, symlinked,
+or incorrectly permissioned evidence fails closed. Every measured Refine sample still runs in its own app process
+without an app-resident runtime. Preparation exercises first-use work outside
+repeated sampling; it does not prove a specific platform-cache cause or claim
 first-ever activation latency, disk cost, or UX. The three recording scenarios
 first fault the stateless live-manager path with one unmeasured, bounded
 two-second public stream after all recording engines load and before the
@@ -5976,3 +5978,27 @@ counts are exact where known and explicitly nullable otherwise; dependency
 error text is excluded. Recording presentation observes immediate microphone
 and system failures, while Meeting Detail reads the durable report. A legacy
 sync peer cannot erase existing capture evidence.
+
+## Inference preparation evidence
+
+Resource collection also requires `summary-runtime-preparation-v1`. Immediately
+before the three Summary samples, one additional disposable process executes
+the identical public Summary workflow and must complete with persistence. It
+writes its cold first-use resource observation into a separate preparation
+folder and only then publishes its fixed mode-0600 marker. That observation is
+retained but is not one of the three independently measured steady samples.
+Missing, duplicate, relative, failed, unchanged, or non-persisted preparation
+cannot qualify. All ordinary Summary launches omit the marker option and retain
+their existing behavior. The two inference-preparation prerequisites do not
+relax measured workloads, sample counts, timing budgets, or cold-start claims.
+
+### Deterministic Notes evidence inspection
+
+The disposable Notes answer fixture participates in the existing finite Ask
+ready/continue handshake instead of sleeping for 700 milliseconds. The real-app
+journey waits for Notes generation readiness, verifies the pending citation's
+localized author and exact timestamp while completion is held, explicitly
+releases generation, then verifies the final answer and persisted citation.
+This changes only temporary-store fixture composition, not production latency.
+The handshake uses the launch-owned temporary directory and retains cancellation,
+cleanup and the original deadlines. No assertion or runtime budget is removed.

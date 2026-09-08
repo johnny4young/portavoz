@@ -12,7 +12,9 @@ enum BenchResourceLaunchProbe {
     enum Marker: String {
         case launchReady = "portavoz-resource-benchmark-ready-v1\n"
         case refineRuntimePrepared =
-            "portavoz-resource-refine-runtime-prepared-v1\n"
+            "portavoz-resource-refine-runtime-prepared-v2\n"
+        case summaryRuntimePrepared =
+            "portavoz-resource-summary-runtime-prepared-v1\n"
     }
 
     static let marker = Marker.launchReady.rawValue

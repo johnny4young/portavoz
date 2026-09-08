@@ -353,10 +353,28 @@ final class ResourceRunProbeTests: XCTestCase {
             BenchRefinePreparationConfiguration.requested(arguments: [
                 "Portavoz", "-use-temp-store",
                 "--bench-resource-prepare-refine", "/tmp/refine-ready",
+                "--bench-resource-preparation-audio", "/tmp/refine.aiff",
                 "--bench-resource-timeout", "1200",
             ]))
+        XCTAssertEqual(preparation.fixtureURL.path, "/tmp/refine.aiff")
         XCTAssertEqual(preparation.outputURL.path, "/tmp/refine-ready")
         XCTAssertEqual(preparation.timeoutSeconds, 1_200)
+        for fixtureArguments in [
+            [],
+            ["--bench-resource-preparation-audio", "relative.aiff"],
+            ["--bench-resource-preparation-audio"],
+            ["--bench-resource-preparation-audio", "/tmp/refine.aiff",
+             "--bench-resource-preparation-audio", "/tmp/another.aiff"],
+        ] {
+            XCTAssertThrowsError(
+                try BenchRefinePreparationConfiguration.requested(arguments: [
+                    "Portavoz", "-use-temp-store",
+                    "--bench-resource-prepare-refine", "/tmp/refine-ready",
+                ] + fixtureArguments)) {
+                    XCTAssertEqual(
+                        $0 as? BenchRefineResourcePreparationError, .missingFixture)
+                }
+        }
         XCTAssertThrowsError(
             try BenchRefinePreparationConfiguration.requested(arguments: [
                 "Portavoz", "-use-temp-store",

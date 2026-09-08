@@ -1432,15 +1432,17 @@ model timeout and the longest idle-plus-recording phase by 420 seconds, then
 adds a 30-second outer LaunchServices grace guard. Expiry terminates only the
 disposable scratch process/wait and leaves no passing sample or receipt.
 A five-second launch-settling interval precedes the model-free idle window.
-Before repeated Refine measurement, one bounded unmeasured scratch-app process
-verifies the selected Whisper model, tokenizer, and diarization artifacts,
-acquires and finishes the real Whisper runtime, and only then acquires and
-finishes the real diarization runtime. It publishes one exact owner-only
-mode-0600 marker that the schema-4 receipt binds as
-`refine-runtime-preparation-v1`. The three measured Refine processes remain
-independent and start without an app-resident runtime. This isolates one-time
-host/Core ML compilation from the repeated-sample stability rule without
-claiming first-ever activation latency, disk cost, or UX. Refine then runs as a
+Immediately before repeated Refine measurement, one bounded unmeasured
+scratch-app process verifies the selected Whisper model, tokenizer, and
+diarization artifacts, then executes the real Refine draft over the identical
+public AIFF. Only a nonempty completed draft permits the bounded caller to
+publish the exact owner-only mode-0600 `refine-runtime-preparation-v2` marker;
+load-only v1 evidence is rejected. Missing/duplicate/relative preparation-audio
+arguments, failure, cancellation, timeout, and late results cannot qualify.
+The three measured Refine processes remain independent and start without an
+app-resident runtime. First inference is explicitly exercised outside sampling,
+without claiming a specific cache cause, first-ever latency, disk cost, or UX.
+Refine then runs as a
 draft-only operation in a separate process against one host-generated,
 non-silent English AIFF containing only fixed public text. The runner verifies
 the models again before sampling and bounds execution to 60–3,600 seconds;
@@ -3606,3 +3608,27 @@ permissions, installed models, or private meetings.
 Zero-file failure preserves a `capture.no-audio` record and does not claim that
 an audio recovery file exists. Failure callbacks carry the recording generation,
 so delayed notifications cannot contaminate a later recording's health state.
+
+## Inference preparation evidence
+
+Resource collection also requires `summary-runtime-preparation-v1`. Immediately
+before the three Summary samples, one additional disposable process executes
+the identical public Summary workflow and must complete with persistence. It
+writes its cold first-use resource observation into a separate preparation
+folder and only then publishes its fixed mode-0600 marker. That observation is
+retained but is not one of the three independently measured steady samples.
+Missing, duplicate, relative, failed, unchanged, or non-persisted preparation
+cannot qualify. All ordinary Summary launches omit the marker option and retain
+their existing behavior. The two inference-preparation prerequisites do not
+relax measured workloads, sample counts, timing budgets, or cold-start claims.
+
+### Deterministic Notes evidence inspection
+
+The disposable Notes answer fixture participates in the existing finite Ask
+ready/continue handshake instead of sleeping for 700 milliseconds. The real-app
+journey waits for Notes generation readiness, verifies the pending citation's
+localized author and exact timestamp while completion is held, explicitly
+releases generation, then verifies the final answer and persisted citation.
+This changes only temporary-store fixture composition, not production latency.
+The handshake uses the launch-owned temporary directory and retains cancellation,
+cleanup and the original deadlines. No assertion or runtime budget is removed.

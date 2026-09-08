@@ -32,6 +32,7 @@ struct BenchRefineResourceConfiguration: Equatable {
 }
 
 struct BenchRefinePreparationConfiguration: Equatable {
+    let fixtureURL: URL
     let outputURL: URL
     let timeoutSeconds: Int
 
@@ -63,13 +64,27 @@ struct BenchRefinePreparationConfiguration: Equatable {
             defaultValue: 900,
             allowed: 60...3_600,
             error: BenchRefineResourcePreparationError.invalidTimeout)
+        let fixtureOption = "--bench-resource-preparation-audio"
+        let fixtureIndices = arguments.indices.filter {
+            arguments[$0] == fixtureOption
+        }
+        guard fixtureIndices.count == 1,
+              let fixtureIndex = fixtureIndices.first,
+              arguments.indices.contains(fixtureIndex + 1),
+              arguments[fixtureIndex + 1].hasPrefix("/")
+        else {
+            throw BenchRefineResourcePreparationError.missingFixture
+        }
         return BenchRefinePreparationConfiguration(
+            fixtureURL: URL(fileURLWithPath: arguments[fixtureIndex + 1])
+                .standardizedFileURL,
             outputURL: URL(fileURLWithPath: path).standardizedFileURL,
             timeoutSeconds: timeout)
     }
 }
 
 struct BenchSummaryResourceConfiguration: Equatable {
+    let preparationOutputURL: URL?
     let timeoutSeconds: Int
 
     static func requested(
@@ -78,7 +93,13 @@ struct BenchSummaryResourceConfiguration: Equatable {
         guard arguments.contains("--bench-resource-summary") else {
             return nil
         }
-        return BenchSummaryResourceConfiguration(timeoutSeconds:
+        let preparationOutput = try BenchResourceArguments.absoluteOutput(
+            "--bench-resource-preparation-marker",
+            arguments: arguments,
+            error: BenchSummaryResourceError.invalidPreparationOutput)
+        return BenchSummaryResourceConfiguration(
+            preparationOutputURL: preparationOutput,
+            timeoutSeconds:
             try BenchResourceArguments.integer(
                 "--bench-resource-timeout",
                 arguments: arguments,
@@ -141,6 +162,20 @@ struct BenchIndexingResourceConfiguration: Equatable {
 }
 
 enum BenchResourceArguments {
+    static func absoluteOutput<Failure: Error>(
+        _ option: String,
+        arguments: [String],
+        error: Failure
+    ) throws(Failure) -> URL? {
+        let indices = arguments.indices.filter { arguments[$0] == option }
+        guard !indices.isEmpty else { return nil }
+        guard indices.count == 1, let index = indices.first,
+              arguments.indices.contains(index + 1),
+              arguments[index + 1].hasPrefix("/")
+        else { throw error }
+        return URL(fileURLWithPath: arguments[index + 1]).standardizedFileURL
+    }
+
     static func integer<Failure: Error>(
         _ option: String,
         arguments: [String],
@@ -333,6 +368,7 @@ enum BenchResourceScenarioProbeError: Error, Equatable, LocalizedError {
 }
 
 enum BenchSummaryResourceError: Error, Equatable, LocalizedError {
+    case invalidPreparationOutput
     case invalidTimeout
     case modelsNotReady
     case operationFailed(String)
@@ -341,6 +377,8 @@ enum BenchSummaryResourceError: Error, Equatable, LocalizedError {
 
     var errorDescription: String? {
         switch self {
+        case .invalidPreparationOutput:
+            "Summary preparation requires one absolute marker output path"
         case .invalidTimeout:
             "--bench-resource-timeout must be between 60 and 3600 seconds"
         case .modelsNotReady:
@@ -444,6 +482,8 @@ enum BenchRefineResourceError: Error, Equatable, LocalizedError {
 
 enum BenchRefineResourcePreparationError: Error, Equatable, LocalizedError {
     case absoluteOutputRequired
+    case emptyDraft
+    case missingFixture
     case duplicateOption
     case invalidTimeout
     case missingOutput
@@ -456,6 +496,10 @@ enum BenchRefineResourcePreparationError: Error, Equatable, LocalizedError {
         switch self {
         case .absoluteOutputRequired:
             "Refine runtime preparation requires an absolute output path"
+        case .emptyDraft:
+            "Refine runtime preparation produced no transcript segments"
+        case .missingFixture:
+            "Refine runtime preparation requires one absolute public audio path"
         case .duplicateOption:
             "--bench-resource-prepare-refine must appear exactly once"
         case .invalidTimeout:

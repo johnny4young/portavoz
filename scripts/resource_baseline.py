@@ -63,8 +63,12 @@ REQUIRED_SCENARIOS = {
 }
 REQUIRED_PREPARATIONS = {
     "refine-runtime": {
-        "generation": "refine-runtime-preparation-v1",
-        "marker": "portavoz-resource-refine-runtime-prepared-v1\n",
+        "generation": "refine-runtime-preparation-v2",
+        "marker": "portavoz-resource-refine-runtime-prepared-v2\n",
+    },
+    "summary-runtime": {
+        "generation": "summary-runtime-preparation-v1",
+        "marker": "portavoz-resource-summary-runtime-prepared-v1\n",
     },
 }
 VERSION_PATTERN = re.compile(r"^[A-Za-z0-9._+\-]{1,40}$")

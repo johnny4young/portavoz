@@ -684,6 +684,12 @@ final class LibraryUITests: PortavozUITestCase {
                 "PORTAVOZ_UI_TEST_ASK_EVIDENCE_CONTINUE_PATH")
         app.configureFeatureUITestHandshake(
             argument: "-simulate-ask-progressive-handshake",
+            name: "ask-notes",
+            readyEnvironmentKey: "PORTAVOZ_UI_TEST_ASK_NOTES_READY_PATH",
+            continueEnvironmentKey:
+                "PORTAVOZ_UI_TEST_ASK_NOTES_CONTINUE_PATH")
+        app.configureFeatureUITestHandshake(
+            argument: "-simulate-ask-progressive-handshake",
             name: "ask-answer",
             readyEnvironmentKey: "PORTAVOZ_UI_TEST_ASK_ANSWER_READY_PATH",
             continueEnvironmentKey:
@@ -775,6 +781,11 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.descendants(matching: .any)["ask-pending-source-notes"]
                 .waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(
+            app.waitForFeatureUITestHandshakeReady(
+                readyEnvironmentKey:
+                    "PORTAVOZ_UI_TEST_ASK_NOTES_READY_PATH"),
+            "Notes generation must remain pending until its evidence is inspected")
         let pendingNote = app.buttons.matching(
             NSPredicate(
                 format: "identifier BEGINSWITH 'ask-pending-note-citation-'"))
@@ -783,8 +794,17 @@ final class LibraryUITests: PortavozUITestCase {
             pendingNote.waitForExistenceFast(timeout: 10),
             "the exact raw note must appear before local generation finishes")
         let expectedAuthor = UITestLocale.environmentLocale == "es" ? "Tú" : "You"
-        XCTAssertTrue(pendingNote.label.contains(expectedAuthor), pendingNote.label)
-        XCTAssertTrue(pendingNote.label.contains("Test meeting · 00:12"), pendingNote.label)
+        let pendingNoteLabel = pendingNote.label
+        XCTAssertTrue(pendingNoteLabel.contains(expectedAuthor), pendingNoteLabel)
+        XCTAssertTrue(pendingNoteLabel.contains("Test meeting · 00:12"), pendingNoteLabel)
+        XCTAssertFalse(app.staticTexts["Debes revisar el budget Q3."].exists)
+        XCTAssertTrue(
+            app.continueFeatureUITestHandshake(
+                readyEnvironmentKey:
+                    "PORTAVOZ_UI_TEST_ASK_NOTES_READY_PATH",
+                continueEnvironmentKey:
+                    "PORTAVOZ_UI_TEST_ASK_NOTES_CONTINUE_PATH"),
+            "the Notes fixture must release generation only after evidence assertions")
         XCTAssertTrue(
             app.staticTexts["Debes revisar el budget Q3."]
                 .waitForExistenceFast(timeout: 10),

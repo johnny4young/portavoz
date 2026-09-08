@@ -334,28 +334,6 @@ require_unsigned_integer "$fixture_audio_bytes" "Refine fixture audio bytes"
 (( fixture_audio_bytes > 0 )) ||
     fail "the generated Refine fixture contains no audio bytes"
 
-refine_runtime_marker="$RUN_ROOT/refine-runtime-prepared"
-refine_runtime_log="$RUN_ROOT/refine-runtime-preparation.log"
-echo "Preparing Refine runtime before repeated measurement…"
-if ! run_benchmark_app \
-        -ApplePersistenceIgnoreState YES \
-        -use-temp-store \
-        --bench-resource-prepare-refine "$refine_runtime_marker" \
-        --bench-resource-timeout "$MODEL_TIMEOUT" \
-        --bench-log "$refine_runtime_log"
-then
-    [[ -f "$refine_runtime_log" ]] && cat "$refine_runtime_log" >&2
-    fail "Refine runtime preparation failed"
-fi
-if [[ ! -f "$refine_runtime_marker" \
-    || "$(cat "$refine_runtime_marker")" \
-        != "portavoz-resource-refine-runtime-prepared-v1" \
-    || "$(stat -f %Lp "$refine_runtime_marker")" != "600" ]]
-then
-    [[ -f "$refine_runtime_log" ]] && cat "$refine_runtime_log" >&2
-    fail "Refine runtime preparation did not publish its exact marker"
-fi
-
 fragments="$COLLECTION/fragments"
 sample_arguments=()
 ask_pipeline_arguments=()
@@ -472,6 +450,29 @@ for ((run = 1; run <= RUNS; run++)); do
     )
 done
 
+refine_runtime_marker="$RUN_ROOT/refine-runtime-prepared"
+refine_runtime_log="$RUN_ROOT/refine-runtime-preparation.log"
+echo "Preparing Refine runtime before repeated measurement…"
+if ! run_benchmark_app \
+        -ApplePersistenceIgnoreState YES \
+        -use-temp-store \
+        --bench-resource-prepare-refine "$refine_runtime_marker" \
+        --bench-resource-preparation-audio "$fixture_audio" \
+        --bench-resource-timeout "$MODEL_TIMEOUT" \
+        --bench-log "$refine_runtime_log"
+then
+    [[ -f "$refine_runtime_log" ]] && cat "$refine_runtime_log" >&2
+    fail "Refine runtime preparation failed"
+fi
+if [[ ! -f "$refine_runtime_marker" \
+    || "$(cat "$refine_runtime_marker")" \
+        != "portavoz-resource-refine-runtime-prepared-v2" \
+    || "$(stat -f %Lp "$refine_runtime_marker")" != "600" ]]
+then
+    [[ -f "$refine_runtime_log" ]] && cat "$refine_runtime_log" >&2
+    fail "Refine runtime preparation did not publish its exact marker"
+fi
+
 for ((run = 1; run <= RUNS; run++)); do
     refine_log="$RUN_ROOT/refine-$run.log"
     export PORTAVOZ_AUDIO_ROOT="$RUN_ROOT/audio-recording-batch-$run"
@@ -496,6 +497,33 @@ for ((run = 1; run <= RUNS; run++)); do
     fi
     sample_arguments+=(--sample "refine=$refine_sample")
 done
+
+# Preserve the first-use observation separately; it is not one of the three
+# fresh-process steady samples and cannot replace a failing measured sample.
+summary_runtime_marker="$RUN_ROOT/summary-runtime-prepared"
+summary_preparation="$COLLECTION/summary-preparation"
+mkdir -p "$summary_preparation"
+echo "Preparing Summary inference before repeated measurement…"
+if ! run_benchmark_app \
+        -ApplePersistenceIgnoreState YES \
+        -use-temp-store \
+        --bench-resource-summary \
+        --bench-resource-preparation-marker "$summary_runtime_marker" \
+        --bench-resource-output "$summary_preparation" \
+        --bench-resource-run 1 \
+        --bench-resource-timeout "$MODEL_TIMEOUT" \
+        --bench-log "$RUN_ROOT/summary-runtime-preparation.log"
+then
+    fail "Summary inference preparation failed"
+fi
+if [[ ! -f "$summary_runtime_marker" \
+    || "$(cat "$summary_runtime_marker")" \
+        != "portavoz-resource-summary-runtime-prepared-v1" \
+    || "$(stat -f %Lp "$summary_runtime_marker")" != "600" \
+    || ! -f "$summary_preparation/summary-1.json" ]]
+then
+    fail "Summary inference preparation did not publish its exact evidence"
+fi
 
 for ((run = 1; run <= RUNS; run++)); do
     summary_log="$RUN_ROOT/summary-$run.log"
@@ -584,6 +612,7 @@ python3 scripts/resource_baseline.py assemble \
     --commit "$COMMIT" \
     --profile "$PROFILE" \
     --preparation "refine-runtime=$refine_runtime_marker" \
+    --preparation "summary-runtime=$summary_runtime_marker" \
     "${sample_arguments[@]}" \
     "${ask_pipeline_arguments[@]}" \
     --output "$COLLECTION/receipt.json"

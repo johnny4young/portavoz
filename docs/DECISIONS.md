@@ -18619,3 +18619,61 @@ and failed tests do not orphan their own workload. Loopback-only policy, route
 content/checksum, product network behavior, assertions, normal timeout budgets,
 and candidate admission criteria remain unchanged. No unrelated process is
 signalled. Retain the original failed evidence instead of rerunning it green.
+
+## D493 — Exercise initial inference before repeated resource measurement (Sep 2026)
+
+**Context:** a complete resource collection produced three successful Refine
+drafts with fourteen segments each, nominal thermal state, and similar CPU
+costs, but wall times of 7.060, 4.691, and 4.509 seconds violated the unchanged
+stability rule. The speaker-diarization execution span was 2.174 seconds in the
+first sample versus 0.334/0.333 seconds thereafter, while its model-load spans
+remained near 80 milliseconds. Existing preparation only loaded model objects
+and preceded unrelated resource families. It did not exercise first prediction.
+The phase evidence suggests first-use effects; it does not prove a particular
+Core ML compilation, cache eviction, or external process as the cause.
+
+**Decision:** immediately before the three fresh-process Refine samples, execute
+one bounded real Refine draft over the identical public synthetic AIFF in an
+unmeasured disposable process. Reuse the production draft and model-verification
+owners rather than a separate inference implementation. Require nonempty
+segments before the bounded caller publishes its exact marker. Version that
+prerequisite to `refine-runtime-preparation-v2`; a load-only v1 marker cannot
+claim it. Behavioral regressions cover publication ordering, empty/failing
+inference, and timeout with late completion. Preparation paths must be explicit
+and absolute, with no download or private-library access.
+
+**Consequences:** the measured workload, independent-process ownership, all
+three observations, 1.25 ratio/100-millisecond stability limits, and evidence
+privacy shape remain unchanged. No failed sample is removed or subtracted.
+First-ever activation remains outside this steady-workload authority, not
+silently certified. The earlier candidate remains failed; changed source needs
+fresh preflight, strict tests, mandatory XCUITest, and complete qualification.
+
+The full row audit also found Summary first-use wall times of 5.588/3.946/3.950
+seconds with similar CPU cost. Its normal real Summary benchmark therefore runs
+once in a separate preparation process immediately before its three samples.
+Only successful persistence permits `summary-runtime-preparation-v1`; the first
+resource observation is retained separately, never subtracted or substituted.
+Both markers are mandatory. Additional tests reject absent/invalid output
+arguments and every non-persisted result, while ordinary Summary behavior stays
+unchanged when the explicit marker option is absent.
+
+## D494 — Hold provisional Notes evidence until UI inspection completes (Sep 2026)
+
+**Context:** real-app XCUITest observed the pending Notes citation, then its
+700-millisecond fixture delay expired between accessibility queries. A later
+label lookup failed because the completed exchange had correctly replaced the
+provisional row. The trace establishes a fixture/test race, not a missing final
+citation or an operating-system overlay.
+
+**Decision:** replace that fixed delay with the existing bounded, launch-owned
+Ask ready/continue handshake. Before releasing generation, the journey requires
+its readiness marker, localized author, exact meeting/timestamp and absence of
+the final answer. It then explicitly releases the fixture and retains every
+final-answer and citation assertion. Composition remains temporary-store-only;
+normal provider behavior and all existing time budgets stay unchanged.
+
+**Consequences:** the test observes a controlled intermediate state rather than
+relying on runner speed. Existing cancellation, timeout and signal-path policy
+remain authoritative. Preserve the earlier failed result; it is not turned into
+a green run by retrying unchanged source.
