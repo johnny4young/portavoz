@@ -74,6 +74,21 @@ class ApuntadorWebFixtureTests(unittest.TestCase):
                         self.assertIn("/authority/release-policy-", body)
                         self.assertTrue(response.headers["ETag"].startswith('"'))
 
+    def test_loopback_startup_and_requests_do_not_resolve_hostnames(self):
+        with mock.patch.object(
+            socket, "getfqdn", side_effect=AssertionError("unexpected reverse DNS")
+        ) as resolve_name:
+            with web_fixture.running_server(self.fixture) as (server, base_url):
+                self.assertEqual(server.server_name, "127.0.0.1")
+                self.assertEqual(server.server_port, server.server_address[1])
+                self.assertGreater(server.server_port, 0)
+                with urllib.request.urlopen(
+                    base_url + "/source/fresh-en", timeout=2
+                ) as response:
+                    self.assertEqual(response.status, 200)
+                    self.assertIn(b"Harbor launches", response.read())
+            resolve_name.assert_not_called()
+
     def test_redirect_and_missing_date_are_explicit(self):
         opener = urllib.request.build_opener(NoRedirect)
         with web_fixture.running_server(self.fixture) as (_, base_url):

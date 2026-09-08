@@ -18,6 +18,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from socketserver import TCPServer
 from typing import Any, Iterable, Iterator
 
 
@@ -327,6 +328,12 @@ class FixtureHTTPServer(ThreadingHTTPServer):
     def __init__(self, fixture: dict[str, Any], port: int = 0):
         self.fixture = fixture
         super().__init__((fixture["bindHost"], port), FixtureRequestHandler)
+
+    def server_bind(self) -> None:
+        # HTTPServer adds reverse DNS after binding. This fixture deliberately
+        # uses a numeric loopback endpoint and must start without a resolver.
+        TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address
 
 
 class FixtureRequestHandler(BaseHTTPRequestHandler):

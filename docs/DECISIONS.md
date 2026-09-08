@@ -18598,3 +18598,24 @@ one policy; production/default launches retain `floating`. Test the exact
 argument-plus-environment opt-in and retain the real palette input/citation
 journey with an additional hittability assertion. This is test isolation, not
 a production window-level redesign.
+
+## D492 — Remove DNS from fixture startup and own failing test processes (Sep 2026)
+
+**Context:** the supposedly local HTTP fixture stalled before writing its
+ready descriptor. A captured Python stack located the wait in
+`HTTPServer.server_bind` calling `socket.getfqdn`. The fixture already binds a
+numeric loopback address, so reverse DNS supplies unnecessary metadata rather
+than product behavior. A readiness assertion also exposed missing cleanup in
+the shell-runner test helper, leaving its subprocess and pipes open.
+
+**Decision:** bind through `TCPServer.server_bind` and initialize HTTP server
+name/port from the numeric bound address. Prove actual HTTP service while a
+throwing resolver forbids DNS. Give every runner-test invocation its own
+process session, with unconditional bounded group cleanup and pipe closure;
+exercise readiness-assertion and outer-timeout failures with real subprocesses.
+
+**Consequences:** fixture availability no longer depends on the host resolver,
+and failed tests do not orphan their own workload. Loopback-only policy, route
+content/checksum, product network behavior, assertions, normal timeout budgets,
+and candidate admission criteria remain unchanged. No unrelated process is
+signalled. Retain the original failed evidence instead of rerunning it green.

@@ -1709,6 +1709,21 @@ disconnect, and slow cancellation. Every attempt—including failures and
 cancellation—leaves only content-free host/policy receipt evidence. It needs no
 Internet, provider account, user meeting, or private transcript.
 
+The fixture binds numeric IPv4 loopback through `TCPServer.server_bind` and
+sets its HTTP name/port metadata from the bound address. It does not invoke
+`HTTPServer`'s reverse-DNS lookup: a stalled host resolver must not prevent the
+ready descriptor from being published. A regression replaces `socket.getfqdn`
+with a throwing resolver and still requires a real HTTP response, correct
+numeric metadata and zero resolver calls. The test fails before this fix
+without relying on a real DNS timeout.
+
+The shell-runner tests own a separate process session and clean it in `finally`,
+including descendants and pipes when readiness assertions or outer timeouts
+fail. Real subprocess regressions exercise both failure paths, while existing
+success, child failure, interruption and scratch cleanup assertions remain.
+Their normal readiness/completion budgets are unchanged; failure is not turned
+into success by cleanup or by an automatic rerun.
+
 The existing Ask XCUITest journey is extended rather than duplicated. Only
 when the selected scope contains that Web journey, the shell runner validates
 the canonical public fixture after its shared build and forwards its exact

@@ -8,6 +8,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -23,6 +24,8 @@ class RunSwiftTestsTests(unittest.TestCase):
         arguments: tuple[str, ...] = (),
         startup_attempts: int = 1500,
         interrupt_after_start: bool = False,
+        readiness_timeout: float = 10,
+        completion_timeout: float = 20,
     ) -> tuple[subprocess.CompletedProcess[str], dict[str, object] | None, Path]:
         root = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, root, True)
@@ -88,38 +91,36 @@ class RunSwiftTestsTests(unittest.TestCase):
             }
         )
         command = [str(RUNNER), *arguments]
-        if interrupt_after_start:
-            process = subprocess.Popen(
-                command,
-                cwd=ROOT,
-                env=environment,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-            deadline = time.monotonic() + 10
-            while time.monotonic() < deadline and not swift_log.exists():
-                if process.poll() is not None:
-                    break
-                time.sleep(0.02)
-            self.assertTrue(swift_log.exists(), "Swift child did not start")
-            process.send_signal(signal.SIGTERM)
-            stdout, stderr = process.communicate(timeout=10)
+        with subprocess.Popen(
+            command,
+            cwd=ROOT,
+            env=environment,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            start_new_session=True,
+        ) as process:
+            try:
+                if interrupt_after_start:
+                    deadline = time.monotonic() + readiness_timeout
+                    while time.monotonic() < deadline and not swift_log.exists():
+                        if process.poll() is not None:
+                            break
+                        time.sleep(0.02)
+                    self.assertTrue(swift_log.exists(), "Swift child did not start")
+                    process.send_signal(signal.SIGTERM)
+                stdout, stderr = process.communicate(
+                    timeout=10 if interrupt_after_start else completion_timeout
+                )
+            finally:
+                # Only this helper's new session: a failed assertion or outer
+                # timeout must not orphan its shell, fixture or open pipes.
+                self.stop_owned_process_group(process)
             result = subprocess.CompletedProcess(
                 command,
                 process.returncode,
                 stdout,
                 stderr,
-            )
-        else:
-            result = subprocess.run(
-                command,
-                cwd=ROOT,
-                env=environment,
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=20,
             )
         record = (
             json.loads(swift_log.read_text(encoding="utf-8"))
@@ -127,6 +128,41 @@ class RunSwiftTestsTests(unittest.TestCase):
             else None
         )
         return result, record, root
+
+    @staticmethod
+    def stop_owned_process_group(process: subprocess.Popen[str]) -> None:
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        try:
+            process.communicate(timeout=3)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            process.communicate(timeout=3)
+
+    def assert_runner_failure_releases_processes(self, error_type, **arguments):
+        processes = []
+        start_process = subprocess.Popen
+
+        def capture_process(*args, **kwargs):
+            process = start_process(*args, **kwargs)
+            processes.append(process)
+            return process
+
+        with mock.patch.object(subprocess, "Popen", side_effect=capture_process):
+            with self.assertRaises(error_type):
+                self.run_runner(**arguments)
+        self.assertEqual(len(processes), 1)
+        process = processes[0]
+        self.assertIsNotNone(process.returncode)
+        self.assertTrue(process.stdout.closed)
+        self.assertTrue(process.stderr.closed)
+        with self.assertRaises(ProcessLookupError):
+            os.killpg(process.pid, 0)
 
     def assert_fixture_was_cleaned(self, record: dict[str, object], root: Path):
         descriptor = record["descriptor"]
@@ -207,6 +243,21 @@ class RunSwiftTestsTests(unittest.TestCase):
         self.assertIsNone(record)
         self.assertIn("must be within 1...1500", result.stderr)
         self.assertEqual(list(root.glob("portavoz-swift-tests.*")), [])
+
+    def test_failed_readiness_assertion_releases_processes_and_pipes(self):
+        self.assert_runner_failure_releases_processes(
+            AssertionError,
+            fixture_mode="hang",
+            interrupt_after_start=True,
+            readiness_timeout=0.1,
+        )
+
+    def test_outer_timeout_releases_processes_and_pipes(self):
+        self.assert_runner_failure_releases_processes(
+            subprocess.TimeoutExpired,
+            fixture_mode="hang",
+            completion_timeout=0.1,
+        )
 
 
 if __name__ == "__main__":

@@ -5483,7 +5483,9 @@ truncated, unavailable, disconnected, and offline transport; and English/
 Spanish prompt-injection content that is always marked untrusted. Unknown
 paths return a fixed non-reflecting 404, responses are no-store, hostile trust
 and freshness are explicit headers, and the server never opens an Internet
-listener. The product composes this fixture only under the disposable
+listener. Binding uses the numeric endpoint directly and initializes HTTP
+server metadata without reverse DNS, so fixture startup is independent of the
+host's resolver. The product composes this fixture only under the disposable
 temporary-store UI-test identity. Production uses the public-HTTPS URL policy,
 while both paths cross the real receipt-backed gateway and direct-page parser.
 The fixture does not qualify Internet availability, DNS behavior, a search
@@ -5492,7 +5494,9 @@ direct-source product path. GitHub-hosted package lanes own the Python server
 outside XCTest and pass only a bounded, canonical, content-free loopback
 descriptor; direct local package tests retain a validated process-owning
 fallback. Shell traps terminate that external server and remove its descriptor
-on success, failure, and interruption. The real-app XCUITest lane instead
+on success, failure, and interruption. Tests of that shell owner place it in
+their own process session and guarantee group cleanup and pipe closure even
+when readiness assertions or outer timeouts fail. The real-app XCUITest lane instead
 validates and forwards the exact canonical public payload after its shared
 build. Only the Web journey forwards it into temporary-store composition,
 which installs one `URLProtocol`. It opens no listener and makes no Local
