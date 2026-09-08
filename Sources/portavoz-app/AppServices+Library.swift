@@ -116,7 +116,9 @@ extension AppServices: LibraryModelClient {
                     attendees: ["Ana"])],
                 tomorrow: [])
         }
-        if arguments.contains("-seed-showcase") {
+        // Opt-in, because agenda rows lengthen the sidebar and the other
+        // showcase journeys assert on a meeting row being reachable there.
+        if arguments.contains("-seed-showcase-agenda") {
             return Self.showcaseAgenda()
         }
         guard !ProcessInfo.processInfo.arguments.contains("-use-temp-store") else {

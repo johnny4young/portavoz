@@ -77,11 +77,15 @@ final class PublicShowcaseUITests: PortavozUITestCase {
     @MainActor
     func testTodayShowcase() {
         let app = XCUIApplication.portavoz(seedShowcase: true)
+        app.launchArguments.append("-seed-showcase-agenda")
         app.launchPortavoz()
         defer { app.terminate() }
 
-        XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        XCTAssertTrue(app.staticTexts["home-title"].waitForExistenceFast(timeout: 10))
+        // Today renders in the detail pane, so this journey waits on its own
+        // surface rather than on a sidebar row the agenda may push down.
+        XCTAssertTrue(app.waitForSeedFixtureReady())
+        XCTAssertTrue(app.prepareForInteraction())
+        XCTAssertTrue(app.staticTexts["home-title"].waitForExistenceFast(timeout: 20))
         XCTAssertTrue(
             app.control(withIdentifier: "home-upcoming-showcase-sync-qvtl")
                 .waitForExistenceFast(timeout: 10))
