@@ -33,7 +33,12 @@ bundle, one matrix lane per selected locale restores it and runs
 receipts (D496). Because a prebuilt-products run does not hand the XCTest
 process the app's language, bilingual expectations read
 `UITestLocale.environmentLocale` — the locale the run declared — rather than
-the ambient `Locale.current`. The recording-toolbar mapping selects its external-route geometry
+the ambient `Locale.current`; `scripts/check-repository-hygiene.sh` rejects the
+ambient read before any macOS runner is allocated (D500). The shared
+`waitForSeededLibraryToSettle` helper scrolls a sidebar row into view before
+waiting on it and names the cause when it gives up, so a fixture that lengthens
+the sidebar cannot silently exhaust the timeout of unrelated journeys on a
+hosted window that is shorter than a local display. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
 Meeting Detail tests. The English and Spanish release gates each cover all 106
 cases and retain app-only

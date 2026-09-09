@@ -51,6 +51,20 @@ if [[ -n "$mutable_actions" ]]; then
   failures=1
 fi
 
+# A UI run started from prebuilt products does not give the XCTest process the
+# app's language: `-testLanguage` reaches the app, `Locale.current` in the test
+# does not follow. Bilingual expectations must read the locale the run declared
+# (`UITestLocale.environmentLocale`), which the runner forwards explicitly.
+ambient_locale_reads="$(
+  grep -rn 'Locale\.current' Tests/PortavozUITests \
+    | grep -v 'UITestSupport.swift:.*///' || true
+)"
+if [[ -n "$ambient_locale_reads" ]]; then
+  echo "UI tests must read UITestLocale.environmentLocale, not Locale.current:" >&2
+  echo "$ambient_locale_reads" >&2
+  failures=1
+fi
+
 ignore_probes=(
   .agents/session.md
   .codex/plan.md

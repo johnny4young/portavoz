@@ -442,9 +442,21 @@ extension XCUIApplication {
     /// Waiting for the row to become hittable keeps a later toolbar click from
     /// resolving against the pre-seed accessibility snapshot.
     @MainActor
-    func waitForSeededLibraryToSettle(timeout: TimeInterval = 45) -> Bool {
-        guard waitForSeedFixtureReady(timeout: timeout) else { return false }
-        guard prepareForInteraction(timeout: timeout) else { return false }
+    func waitForSeededLibraryToSettle(
+        timeout: TimeInterval = 45,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Bool {
+        guard waitForSeedFixtureReady(timeout: timeout) else {
+            XCTFail(
+                "the seed fixture never signalled ready within \(timeout)s",
+                file: file, line: line)
+            return false
+        }
+        guard prepareForInteraction(timeout: timeout) else {
+            XCTFail("Portavoz never reached the foreground", file: file, line: line)
+            return false
+        }
 
         // The disposable app legitimately owns keyboard focus while XCUITest
         // launches it. A keystroke from another local process can therefore
@@ -474,9 +486,60 @@ extension XCUIApplication {
         if search.exists {
             guard finishSearchEditing(
                 identifier: "library-search-field", timeout: timeout)
-            else { return false }
+            else {
+                XCTFail("the search field never finished editing", file: file, line: line)
+                return false
+            }
         }
-        return meeting.waitForHittable(timeout: timeout)
+        // A hosted runner's window is shorter than a local display, so a
+        // fixture that lengthens the sidebar can leave the first meeting below
+        // the fold. There it exists but is never hittable, and the wait below
+        // would burn its whole timeout for a reason the failure never states.
+        scrollSidebarRowIntoView(meeting)
+        if meeting.waitForHittable(timeout: timeout) { return true }
+        XCTFail(
+            meeting.exists
+                ? "a seeded meeting row exists but never became hittable within "
+                    + "\(timeout)s. The sidebar is probably taller than this "
+                    + "window: check whether a fixture added agenda, to-do, or "
+                    + "meeting rows above it."
+                : "no seeded meeting row ever appeared within \(timeout)s",
+            file: file, line: line)
+        return false
+    }
+
+    /// Brings a sidebar row into the viewport when it renders below the fold.
+    /// Purely additive: when no enclosing scroll view is found, or the row is
+    /// already reachable, this leaves the UI exactly as it was.
+    @MainActor
+    private func scrollSidebarRowIntoView(_ row: XCUIElement) {
+        guard row.exists, !row.isHittable else { return }
+        let window = windows["main-AppWindow-1"]
+        guard window.exists else { return }
+        let containers = window.scrollViews
+        for index in 0..<containers.count {
+            let container = containers.element(boundBy: index)
+            guard container.exists else { continue }
+            let viewport = container.frame
+            let frame = row.frame
+            guard !frame.isEmpty,
+                  viewport.minX <= frame.midX,
+                  frame.midX <= viewport.maxX
+            else { continue }
+            for _ in 0..<6 {
+                if row.isHittable { return }
+                let current = row.frame
+                guard !current.isEmpty else { return }
+                let distance = current.maxY > viewport.maxY
+                    ? current.maxY - viewport.maxY + 24
+                    : viewport.minY - current.minY + 24
+                let direction: CGFloat = current.maxY > viewport.maxY ? -1 : 1
+                container.scroll(
+                    byDeltaX: 0,
+                    deltaY: direction * min(max(distance, 120), 600))
+            }
+            return
+        }
     }
 
     /// Waits only for the disposable seed transaction. Menu-bar UI tests mount

@@ -18836,3 +18836,37 @@ for an envelope that keeps failing — stays in GAPS.
 correction validator, the most correctness-critical code in the store, and R14
 already removed the largest repeated read.
 
+## D500 — Make hosted-only UI failures impossible to reintroduce (Sep 2026)
+
+**Context:** two defects in this review passed every local gate and failed only
+on a GitHub-hosted runner. A run started from prebuilt products does not give
+the XCTest process the app's language, so six bilingual expectations that read
+`Locale.current` compared Spanish UI against English strings. Separately, the
+showcase agenda lengthened the sidebar, and the hosted window is shorter than a
+local display, so the first meeting row fell below the fold; the shared settle
+helper waits for that row to be *hittable* and burned its whole 45-second
+timeout in four journeys. The failure it reported was a bare
+`XCTAssertTrue failed`, which cost about an hour to trace.
+
+Both were fixed at the instance — six assertions rewritten, the fixture put
+behind its own launch argument — and neither fix prevented the next occurrence.
+
+**Decision:** close both classes.
+
+- `scripts/check-repository-hygiene.sh` rejects `Locale.current` anywhere in
+  `Tests/PortavozUITests`. It runs on Linux before any macOS runner is
+  allocated, so a reintroduction fails in seconds rather than after a full
+  bilingual lane. Verified by reintroducing the pattern and watching the gate
+  refuse it.
+- `waitForSeededLibraryToSettle` now scrolls a sidebar row into view before
+  waiting on it, and states why it gave up: whether the seed fixture never
+  signalled, the app never reached the foreground, no row appeared, or a row
+  exists but never became hittable — naming a taller-than-window sidebar as the
+  likely cause. The scroll is purely additive: a row that is already reachable
+  takes exactly the path it took before.
+
+**Consequences:** a fixture that lengthens the sidebar no longer breaks
+unrelated journeys, and when a settle does fail the message names the cause.
+The locale contract is enforced by the cheapest gate in the pipeline instead of
+by review attention.
+

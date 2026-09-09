@@ -10244,12 +10244,18 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(categoryBody.contains("category.waitForStableFrame"))
         let seededSettleBody = support[
             seededSettleStart.lowerBound..<seededReadyStart.lowerBound]
+        // Settling still means hittable, never merely present. D500 adds the
+        // scroll that reaches a row below the fold on a shorter hosted window,
+        // and the explanation the helper gives when it gives up.
         XCTAssertTrue(seededSettleBody.contains(
-            "return meeting.waitForHittable(timeout: timeout)"))
+            "meeting.waitForHittable(timeout: timeout)"))
         XCTAssertTrue(seededSettleBody.contains(
             "identifier: \"library-search-field\", timeout: timeout)"))
         XCTAssertFalse(seededSettleBody.contains(
             "meeting.waitForExistenceFast"))
+        XCTAssertTrue(seededSettleBody.contains(
+            "scrollSidebarRowIntoView(meeting)"))
+        XCTAssertTrue(seededSettleBody.contains("XCTFail("))
 
         let containedFrameStart = try XCTUnwrap(support.range(
             of: "private func waitForStableContainedFrame("))
