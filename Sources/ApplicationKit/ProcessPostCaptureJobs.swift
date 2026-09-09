@@ -197,7 +197,12 @@ private extension ProcessPostCaptureJobs {
             assets: assets)
         else { throw PostCaptureProcessingError.inputNotReady }
         guard fingerprint == job.inputFingerprint else {
-            throw PostCaptureProcessingError.inputSuperseded
+            // Same contract as the summary lane: the enqueued fingerprint was
+            // predicted from the producing stage's in-memory material, this one
+            // is read from the durable assets the transcript will be built
+            // from. Bind the replacement to what is durably true.
+            throw PostCaptureProcessingError.inputSuperseded(
+                replacement: Self.transcriptionJobRequest(fingerprint: fingerprint))
         }
 
         let segments = try await transcriptionSegments(
@@ -287,7 +292,11 @@ private extension ProcessPostCaptureJobs {
             voiceprint: voiceprint)
         else { throw PostCaptureProcessingError.inputNotReady }
         guard fingerprint == job.inputFingerprint else {
-            throw PostCaptureProcessingError.inputSuperseded
+            // A voiceprint enrolled between the enqueue and this run changes
+            // the fingerprint. Re-admit the work against durable truth instead
+            // of leaving the meeting to reach `ready` undiarized.
+            throw PostCaptureProcessingError.inputSuperseded(
+                replacement: Self.diarizationJobRequest(fingerprint: fingerprint))
         }
 
         let turns: [SpeakerTurn]
@@ -360,7 +369,7 @@ private extension ProcessPostCaptureJobs {
             // summary will actually be built from. A mismatch means the
             // prediction drifted, not that the meeting stopped deserving a
             // summary — so the replacement is bound to what is durably true.
-            throw PostCaptureProcessingError.summaryInputSuperseded(
+            throw PostCaptureProcessingError.inputSuperseded(
                 replacement: Self.summaryJobRequest(fingerprint: fingerprint))
         }
 
@@ -425,6 +434,26 @@ private extension ProcessPostCaptureJobs {
             kind: .summary,
             inputFingerprint: fingerprint,
             priority: 10,
+            maxAttempts: 3)
+    }
+
+    /// Priorities match the enqueue factories these replacements stand in for
+    /// (`InitialTranscriptionOperationFingerprint.request`,
+    /// `DiarizationOperationFingerprint.request`), so a re-admitted attempt
+    /// drains in the same order the original would have.
+    static func transcriptionJobRequest(fingerprint: String) -> ProcessingJobRequest {
+        ProcessingJobRequest(
+            kind: .transcription,
+            inputFingerprint: fingerprint,
+            priority: 30,
+            maxAttempts: 3)
+    }
+
+    static func diarizationJobRequest(fingerprint: String) -> ProcessingJobRequest {
+        ProcessingJobRequest(
+            kind: .diarization,
+            inputFingerprint: fingerprint,
+            priority: 20,
             maxAttempts: 3)
     }
 
@@ -579,7 +608,7 @@ private extension Error {
     var isSupersededPostCaptureInput: Bool {
         if let worker = self as? PostCaptureProcessingError {
             switch worker {
-            case .inputSuperseded, .summaryInputSuperseded: return true
+            case .inputSuperseded: return true
             default: break
             }
         }
@@ -592,8 +621,8 @@ private extension Error {
 
     var supersededPostCaptureReplacements: [ProcessingJobRequest] {
         if let worker = self as? PostCaptureProcessingError,
-           case .summaryInputSuperseded(let replacement) = worker {
-            return [replacement]
+           case .inputSuperseded(let replacement) = worker {
+            return [replacement].compactMap { $0 }
         }
         return []
     }

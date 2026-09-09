@@ -368,6 +368,22 @@ public struct StopRecording: ApplicationUseCase {
                 attribution: attribution,
                 initialRequest: transcription)
         }
+        if request.capture.transcriptRequiresRecovery {
+            // The live lane failed, so these captions are partial by
+            // definition, and the finalized audio cannot admit a recovery
+            // transcription. Publishing the partial speech as the meeting's
+            // transcript would present a fragment as the whole conversation.
+            // Preserve everything captured and say the recovery is unavailable.
+            let preserved = await preserveNeedsAttention(
+                request,
+                meeting: meeting,
+                assets: assets,
+                attribution: attribution,
+                errorCode: "transcription.recovery.unavailable",
+                retryExactSnapshot: true)
+            return .processingFailed(
+                failure: .processingInputInvalid, fallback: preserved)
+        }
         guard !request.captions.isEmpty else {
             return await installEmptyTranscript(
                 request,
@@ -668,64 +684,6 @@ private extension StopRecording {
         } catch {
             return nil
         }
-    }
-
-    private func capturedSnapshot(
-        _ request: StopRecordingRequest,
-        meeting: Meeting,
-        assets: [AudioAsset],
-        attribution: SpeakerAttributor.Attribution
-    ) -> CapturedMeetingSnapshot {
-        let generatedCardIDs = Set(request.companionArtifacts.map(\.card.id))
-        return CapturedMeetingSnapshot(
-            meeting: meeting,
-            assets: assets,
-            speakers: attribution.speakers,
-            segments: attribution.segments,
-            contextItems: request.contextItems,
-            companionCards: request.companionCards.filter {
-                !generatedCardIDs.contains($0.id)
-            },
-            companionArtifacts: request.companionArtifacts,
-            companionTerminalRuns: request.companionTerminalRuns)
-    }
-
-    /// Keeps the user's live transcript, notes, and non-generated Companion
-    /// cards while removing generated payloads that can fail their provenance
-    /// fence. A generated card is never silently downgraded to provenance-free.
-    private func capturedCoreSnapshot(
-        _ request: StopRecordingRequest,
-        meeting: Meeting,
-        assets: [AudioAsset],
-        attribution: SpeakerAttributor.Attribution
-    ) -> CapturedMeetingSnapshot {
-        let generatedCardIDs = Set(request.companionArtifacts.map(\.card.id))
-        return CapturedMeetingSnapshot(
-            meeting: meeting,
-            assets: assets,
-            speakers: attribution.speakers,
-            segments: attribution.segments,
-            contextItems: request.contextItems,
-            companionCards: request.companionCards.filter {
-                !generatedCardIDs.contains($0.id)
-            })
-    }
-
-    /// Last resumable projection: validated audio plus optional user notes.
-    /// The durable transcription job rebuilds every spoken row from the CAFs.
-    private func capturedAudioSnapshot(
-        _ request: StopRecordingRequest,
-        meeting: Meeting,
-        assets: [AudioAsset],
-        includeContext: Bool
-    ) -> CapturedMeetingSnapshot {
-        CapturedMeetingSnapshot(
-            meeting: meeting,
-            assets: assets,
-            speakers: [],
-            segments: [],
-            contextItems: includeContext ? request.contextItems : [],
-            companionCards: [])
     }
 
     private func reconciledAssets(

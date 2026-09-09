@@ -127,6 +127,32 @@ extension CloudMeetingSyncStateStore {
         }
     }
 
+    /// Releases a conflict fence whose blocking replay no longer exists. The
+    /// staged payload is untouched: only the send fence is lifted, exactly as
+    /// `releaseDeferredReplayBlock` does once StorageKit proves compatibility.
+    func unblockOutgoingAttempt(for meetingID: MeetingID, at date: Date) {
+        guard let index = snapshot.attempts.firstIndex(where: {
+            $0.meetingID == meetingID
+                && $0.phase == .blocked
+                && $0.lastFailure == .serverConflict
+        }) else { return }
+        snapshot.attempts[index] = snapshot.attempts[index].reopened(at: date)
+    }
+
+    /// Every conflict fence is justified by a blocking replay. When those
+    /// replays are cleared wholesale — an account switch — the attempts they
+    /// fenced are reopened so the snapshot stays valid and the user's unsent
+    /// work is preserved rather than dropped.
+    func reopenAttemptsFencedByClearedReplays(at date: Date) {
+        for index in snapshot.attempts.indices where
+            snapshot.attempts[index].phase == .blocked
+                && snapshot.attempts[index].lastFailure == .serverConflict
+                && !hasBlockingDeferredReplay(
+                    for: snapshot.attempts[index].meetingID) {
+            snapshot.attempts[index] = snapshot.attempts[index].reopened(at: date)
+        }
+    }
+
     func blockOutgoingAttempt(for meetingID: MeetingID) {
         guard let index = snapshot.attempts.firstIndex(where: {
             $0.meetingID == meetingID
@@ -137,6 +163,19 @@ extension CloudMeetingSyncStateStore {
             snapshot.attempts[index].attemptCount)
         snapshot.attempts[index].nextRetryAt = nil
         snapshot.attempts[index].lastFailure = .serverConflict
+    }
+}
+
+private extension CloudSyncAttempt {
+    /// The exact shape `validateAttempts` accepts for a ready attempt: no
+    /// failure, no accumulated count, and an explicit eligibility date.
+    func reopened(at date: Date) -> Self {
+        var reopened = self
+        reopened.phase = .ready
+        reopened.attemptCount = 0
+        reopened.nextRetryAt = date
+        reopened.lastFailure = nil
+        return reopened
     }
 }
 

@@ -128,6 +128,36 @@ final class StopRecordingUseCaseTests: XCTestCase {
         XCTAssertEqual(state.kickCount, 1)
     }
 
+    /// The live lane failed, so the captions in hand are partial by
+    /// definition, and the saved audio cannot admit a recovery transcription.
+    /// Publishing those captions as the final transcript would present partial
+    /// speech as the whole meeting. The meeting must stay needs-attention.
+    func testUnrecoverableTranscriptNeverPublishesPartialCaptionsAsFinal() async {
+        let fixture = StopRecordingFixture()
+        let dependencies = StopRecordingDependencies(shell: fixture.shell)
+        let capture = StopRecordingCapture(
+            publishedFiles: [.system: fixture.publishedFile(healthStatus: .silent)],
+            transcriptRequiresRecovery: true)
+
+        let result = await fixture.useCase(dependencies).execute(
+            fixture.request(captions: [fixture.captions[0]], capture: capture))
+
+        guard case .processingFailed(let failure, let fallback) = result else {
+            return XCTFail(
+                "an unrecoverable transcript must not complete as if it were whole")
+        }
+        XCTAssertEqual(failure, .processingInputInvalid)
+        let commit = try? XCTUnwrap(fallback)
+        XCTAssertEqual(commit?.meeting.lifecycleState, .needsAttention)
+        XCTAssertEqual(
+            commit?.meeting.lastProcessingError,
+            "transcription.recovery.unavailable")
+        let state = await dependencies.state()
+        XCTAssertTrue(
+            state.installs.allSatisfy { $0.requests.isEmpty },
+            "no processing work can be admitted against unusable audio")
+    }
+
     func testSilentAudioStillPreservesExplicitEmptyTranscriptGuidance() async {
         let fixture = StopRecordingFixture()
         let dependencies = StopRecordingDependencies(shell: fixture.shell)

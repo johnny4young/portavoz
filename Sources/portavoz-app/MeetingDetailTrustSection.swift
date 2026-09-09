@@ -275,6 +275,11 @@ struct MeetingDetailTrustSection: View {
                 // One-line UI explanation.
                 // swiftlint:disable:next line_length
                 "Your audio is safe. The automatic pass found no reliable speech. Refine re-transcribes the saved audio with Whisper and lets you review the result before replacing anything.")
+        case "transcription.recovery.unavailable":
+            L10n.text(
+                // One-line UI explanation.
+                // swiftlint:disable:next line_length
+                "Live captions stopped early and the saved audio carries no usable speech, so only the partial lines were kept. Your audio and notes are safe in this meeting.")
         case "capture.no-audio":
             L10n.text("Capture failed before audio could be saved. The failure record remains in your library.")
         case "capture.publication.failed":

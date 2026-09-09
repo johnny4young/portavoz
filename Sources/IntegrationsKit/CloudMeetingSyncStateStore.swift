@@ -67,6 +67,12 @@ public actor CloudMeetingSyncStateStore {
                 snapshot.recordMetadata = []
                 snapshot.replayCursors = []
                 snapshot.deferredReplays = []
+                // Local unsent work survives an account switch, but a fence
+                // held by a replay that was just cleared cannot. Leaving it
+                // would make the snapshot fail its own validator on this and
+                // every later commit; the conflict belonged to the old
+                // account's remote state, so the attempt is simply reopened.
+                reopenAttemptsFencedByClearedReplays(at: Date())
                 snapshot.consentedAccountFingerprint = nil
                 snapshot.consentGrantedAt = nil
                 snapshot.initialSeedRequestedAt = nil
@@ -442,6 +448,9 @@ extension CloudMeetingSyncStateStore {
         try CloudSyncProtectedFile.write(payload, to: fileURL)
         do {
             try commitSnapshot {
+                let wasBlocking = snapshot.deferredReplays.contains {
+                    $0.meetingID == envelope.meetingID && $0.blocksOutgoing
+                }
                 snapshot.deferredReplays.removeAll {
                     $0.meetingID == envelope.meetingID
                 }
@@ -456,6 +465,12 @@ extension CloudMeetingSyncStateStore {
                     blocksOutgoing: blocksOutgoing))
                 if blocksOutgoing {
                     blockOutgoingAttempt(for: envelope.meetingID)
+                } else if wasBlocking {
+                    // Eligible from this envelope's own instant.
+                    // The newer generation no longer fences the local send, so
+                    // the attempt it fenced must be released with its blocker.
+                    // Keeping it blocked leaves no replay to justify the fence.
+                    unblockOutgoingAttempt(for: envelope.meetingID, at: envelope.changedAt)
                 }
                 try storeRecordMetadata(record, meetingID: envelope.meetingID)
             }

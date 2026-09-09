@@ -287,6 +287,82 @@ final class ProcessPostCaptureJobsUseCaseTests: XCTestCase {
         XCTAssertTrue(actions.isEmpty)
     }
 
+    /// Enrolling a voiceprint between the enqueue and the run changes the
+    /// diarization fingerprint. The stale attempt must be replaced by one bound
+    /// to durable truth: cancelling it with no replacement leaves StorageKit
+    /// with a job list that has no failure, which flips the meeting to `ready`
+    /// without ever diarizing it.
+    func testSupersededDiarizationReplacesTheAttemptWithTheDurableFingerprint() async throws {
+        let fixture = Fixture(now: now)
+        let systemAsset = fixture.asset(channel: .system, sha256: "system-sha")
+        let segment = fixture.segment(
+            channel: .system, text: "Habla el sistema.", language: "es", start: 0)
+        let enrolled = Voiceprint(
+            embedding: [0.1, 0.2, 0.3],
+            createdAt: now.addingTimeInterval(-60))
+        let job = fixture.job(kind: .diarization, fingerprint: "stale-diarization-fingerprint")
+        let store = WorkflowStoreFake(
+            jobs: [job],
+            details: [fixture.meeting.id: fixture.detail(segments: [segment])],
+            assets: [fixture.meeting.id: [systemAsset]])
+        let capabilities = WorkflowCapabilitiesFake(voiceprint: enrolled)
+        let workflow = ProcessPostCaptureJobs(
+            store: store,
+            capabilities: capabilities,
+            heartbeatInterval: .seconds(3_600),
+            now: { processPostCaptureNow })
+        let durableFingerprint = try XCTUnwrap(DiarizationOperationFingerprint.compute(
+            meetingID: fixture.meeting.id,
+            transcriptRevision: fixture.meeting.transcriptRevision,
+            segments: [segment],
+            systemAsset: systemAsset,
+            voiceprint: enrolled))
+
+        _ = await workflow.execute(.init(owner: "test-owner"))
+
+        let cancellations = await store.cancellationRecords()
+        XCTAssertEqual(cancellations.first?.reason.code, "processing.input.superseded")
+        XCTAssertEqual(cancellations.first?.replacements.map(\.kind), [.diarization])
+        XCTAssertEqual(
+            cancellations.first?.replacements.map(\.inputFingerprint),
+            [durableFingerprint])
+    }
+
+    /// The same contract on the transcription lane. A recovery transcription
+    /// whose assets changed must be re-admitted, not silently dropped: without
+    /// a replacement the meeting reaches `ready` carrying only whatever
+    /// provisional live captions it had.
+    func testSupersededTranscriptionReplacesTheAttemptWithTheDurableFingerprint() async throws {
+        let fixture = Fixture(now: now)
+        let systemAsset = fixture.asset(channel: .system, sha256: "published-system-sha")
+        let job = fixture.job(
+            kind: .transcription,
+            fingerprint: "stale-transcription-fingerprint")
+        let store = WorkflowStoreFake(
+            jobs: [job],
+            details: [fixture.meeting.id: fixture.detail(segments: [])],
+            assets: [fixture.meeting.id: [systemAsset]])
+        let workflow = ProcessPostCaptureJobs(
+            store: store,
+            capabilities: WorkflowCapabilitiesFake(),
+            heartbeatInterval: .seconds(3_600),
+            now: { processPostCaptureNow })
+        let durableFingerprint = try XCTUnwrap(
+            InitialTranscriptionOperationFingerprint.compute(
+                meetingID: fixture.meeting.id,
+                transcriptRevision: fixture.meeting.transcriptRevision,
+                assets: [systemAsset]))
+
+        _ = await workflow.execute(.init(owner: "test-owner"))
+
+        let cancellations = await store.cancellationRecords()
+        XCTAssertEqual(cancellations.first?.reason.code, "processing.input.superseded")
+        XCTAssertEqual(cancellations.first?.replacements.map(\.kind), [.transcription])
+        XCTAssertEqual(
+            cancellations.first?.replacements.map(\.inputFingerprint),
+            [durableFingerprint])
+    }
+
     func testSummaryPublicationLeaseLossRecordsCancelledAttemptWithoutFalseStateChange() async throws {
         let fixture = Fixture(now: now)
         let segment = fixture.segment(

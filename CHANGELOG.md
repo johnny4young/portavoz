@@ -6,6 +6,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 8, 2026
 
+- **🎙️ Every meeting keeps the work it was promised** — if a voice is enrolled while a meeting is still processing, its speaker separation is redone instead of quietly skipped, and a recording whose live captions failed is never presented as complete when only part of it was captured.
+
+- **☁️ Switching iCloud accounts no longer wedges sync** — unsent changes survive the switch and keep syncing to the new account.
+
 - **🔔 An honest Reminders prompt** — the permission text now says the reminder is saved to the Reminders list you choose and may sync through that account, instead of promising it never leaves your Mac.
 
 - **🗑️ Emptying the trash always works** — permanently deleting a meeting whose transcript you corrected more than once no longer fails partway; the meeting and its correction history go together.

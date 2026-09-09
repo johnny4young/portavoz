@@ -18870,3 +18870,46 @@ unrelated journeys, and when a settle does fail the message names the cause.
 The locale contract is enforced by the cheapest gate in the pipeline instead of
 by review attention.
 
+## D501 — Close the three findings that could lose user work (Sep 2026)
+
+**Context:** of the twelve findings left open by the integration review, three
+could cost a user real content rather than time. Each was reproduced with a
+test that fails without its fix before anything changed.
+
+**R1 — a superseded job vanished instead of being re-admitted.** Only the
+summary lane carried a replacement when its predicted fingerprint drifted from
+durable truth. Transcription and diarization threw a bare `.inputSuperseded`,
+so the attempt was cancelled with nothing enqueued; StorageKit then saw a job
+list with no failure and flipped the meeting to `ready`. Enrolling a voiceprint
+while a meeting processed was enough to leave it permanently undiarized.
+`PostCaptureProcessingError.inputSuperseded` now carries
+`replacement: ProcessingJobRequest?` for every lane, and the separate
+`.summaryInputSuperseded` case is gone: one contract that a new lane cannot
+silently forget. A `nil` remains possible but is now an explicit claim that
+durable rows admit no request.
+
+**R2 — partial captions could become the whole transcript.** When the live lane
+failed, `transcriptRequiresRecovery` asked Stop to re-transcribe the finalized
+audio. If that audio admitted no transcription request — silent, too short, no
+transcribable channel — the flag was dropped and the partial captions in hand
+were installed as the meeting's transcript. The degradation ladder gains the
+missing rung: the meeting is preserved as needs-attention with
+`transcription.recovery.unavailable`, and Meeting Detail explains that captions
+stopped early, the saved audio carries no usable speech, and only the partial
+lines were kept.
+
+**R3 — an account switch could wedge sync permanently.** Every conflict fence
+on an outgoing attempt is justified by a blocking deferred replay, and
+`validateAttempts` enforces that pairing on every commit. Two paths broke it:
+switching iCloud accounts cleared all replays while leaving the attempts they
+fenced, and a newer non-blocking replay replaced a blocking one without
+releasing the fence it inherited. Either left a snapshot its own validator
+rejects, so every later commit — including the next account check — threw.
+Both paths now reopen the attempt whose blocker is gone, in the exact shape
+`validateAttempts` accepts. The staged payload is untouched: the user's unsent
+work survives the switch instead of being dropped.
+
+**Consequences:** `StopRecording.swift` crossed the 700-line file limit, so the
+snapshot builders moved to `StopRecording+Snapshots.swift` — a cohesive split,
+not a suppression. Nine findings remain in GAPS; none of them can lose content.
+

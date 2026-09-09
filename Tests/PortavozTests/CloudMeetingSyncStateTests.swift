@@ -403,6 +403,115 @@ final class CloudMeetingSyncStateTests: XCTestCase {
         XCTAssertEqual(payloadNames, snapshot.attempts.map(\.payloadFileName))
     }
 
+    /// A conflict-blocked attempt is fenced by its blocking replay. Switching
+    /// accounts clears every replay, so leaving the attempt fenced leaves the
+    /// snapshot in a state its own validator rejects — and every later commit,
+    /// including the next account check, throws.
+    func testAccountSwitchReopensAttemptsWhoseBlockingReplayItClears() async throws {
+        let root = temporaryDirectory()
+        let assetRoot = temporaryDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: root)
+            try? FileManager.default.removeItem(at: assetRoot)
+        }
+        try FileManager.default.createDirectory(
+            at: assetRoot, withIntermediateDirectories: true)
+        let store = try await readyStore(at: root)
+        let now = Date(timeIntervalSince1970: 1_784_320_000)
+        let outgoing = makeEnvelope(generation: 1, meetingOffset: 1)
+        _ = try await store.stage(outgoing, at: now)
+
+        // The remote copy of the same meeting arrives and fences the local send.
+        let remoteDevice = UUID(uuidString: "30000000-0000-0000-0000-000000000099")!
+        let blocking = makeEnvelope(
+            generation: 2,
+            meetingOffset: 1,
+            sourceDeviceID: remoteDevice,
+            title: "Blocking remote")
+        let blockingRecord = try CloudMeetingRecordCodec().encode(
+            blocking,
+            assetDirectory: assetRoot).record
+        try await store.stageDeferredReplay(
+            blocking,
+            from: blockingRecord,
+            blocksOutgoing: true)
+        var snapshot = await store.currentSnapshot()
+        XCTAssertEqual(snapshot.attempts.first?.phase, .blocked)
+
+        let secondAccount = fingerprint("icloud-user-b")
+        try await store.updateAccount(status: .available, fingerprint: secondAccount)
+
+        snapshot = await store.currentSnapshot()
+        XCTAssertTrue(snapshot.deferredReplays.isEmpty)
+        XCTAssertEqual(
+            snapshot.attempts.map(\.meetingID),
+            [outgoing.meetingID],
+            "local unsent work survives an account switch")
+        XCTAssertEqual(
+            snapshot.attempts.first?.phase,
+            .ready,
+            "the fence died with the replay that held it")
+        XCTAssertNil(snapshot.attempts.first?.lastFailure)
+
+        // The proof that the snapshot is valid: a later commit must succeed.
+        try await store.updateAccount(status: .available, fingerprint: secondAccount)
+    }
+
+    /// A newer remote generation that no longer blocks replaces the blocking
+    /// replay. The attempt it fenced must be reopened with it, or the snapshot
+    /// keeps a blocked attempt whose blocker no longer exists.
+    func testNonBlockingReplacementReopensTheAttemptItUnfences() async throws {
+        let root = temporaryDirectory()
+        let assetRoot = temporaryDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: root)
+            try? FileManager.default.removeItem(at: assetRoot)
+        }
+        try FileManager.default.createDirectory(
+            at: assetRoot, withIntermediateDirectories: true)
+        let store = try await readyStore(at: root)
+        let now = Date(timeIntervalSince1970: 1_784_320_000)
+        let outgoing = makeEnvelope(generation: 1, meetingOffset: 1)
+        _ = try await store.stage(outgoing, at: now)
+
+        let remoteDevice = UUID(uuidString: "30000000-0000-0000-0000-000000000099")!
+        let blocking = makeEnvelope(
+            generation: 2,
+            meetingOffset: 1,
+            sourceDeviceID: remoteDevice,
+            title: "Blocking remote")
+        let codec = CloudMeetingRecordCodec()
+        try await store.stageDeferredReplay(
+            blocking,
+            from: try codec.encode(blocking, assetDirectory: assetRoot).record,
+            blocksOutgoing: true)
+        var snapshot = await store.currentSnapshot()
+        XCTAssertEqual(snapshot.attempts.first?.phase, .blocked)
+
+        let newer = makeEnvelope(
+            generation: 3,
+            meetingOffset: 1,
+            sourceDeviceID: remoteDevice,
+            title: "Newer compatible remote")
+        try await store.stageDeferredReplay(
+            newer,
+            from: try codec.encode(newer, assetDirectory: assetRoot).record,
+            blocksOutgoing: false)
+
+        snapshot = await store.currentSnapshot()
+        XCTAssertEqual(snapshot.deferredReplays.map(\.generation), [3])
+        XCTAssertFalse(snapshot.deferredReplays.allSatisfy(\.blocksOutgoing))
+        XCTAssertEqual(
+            snapshot.attempts.first?.phase,
+            .ready,
+            "no blocking replay remains, so nothing may keep the attempt fenced")
+        XCTAssertNil(snapshot.attempts.first?.lastFailure)
+
+        try await store.updateAccount(
+            status: .available,
+            fingerprint: fingerprint("icloud-user-a"))
+    }
+
     func testProtectedPayloadCorruptionFailsClosedOnRestart() async throws {
         let root = temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
