@@ -65,6 +65,20 @@ if [[ -n "$ambient_locale_reads" ]]; then
   failures=1
 fi
 
+# SwiftLint only covers `Sources`, so a test file has no size ceiling of its own.
+# The architecture ratchets grew to a single 13.5k-line class before they were
+# split by family; this keeps any test file from becoming that again.
+oversized_tests="$(
+  find Tests -name '*.swift' -print0 \
+    | xargs -0 wc -l \
+    | awk '$2 != "total" && $1 > 2400 { print $1 " " $2 }' || true
+)"
+if [[ -n "$oversized_tests" ]]; then
+  echo "Test files must stay under 2400 lines; split them by family:" >&2
+  echo "$oversized_tests" >&2
+  failures=1
+fi
+
 ignore_probes=(
   .agents/session.md
   .codex/plan.md

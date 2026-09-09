@@ -39,6 +39,7 @@ public enum SpeakerAttributor {
             return created
         }
 
+        let index = TurnIndex(turns)
         var attributed: [TranscriptSegment] = []
         for segment in segments {
             if segment.channel == .microphone {
@@ -48,7 +49,7 @@ public enum SpeakerAttributor {
                 continue
             }
 
-            let pieces = slice(segment, across: turns)
+            let pieces = slice(segment, across: index.window(for: segment))
             if pieces.count <= 1 {
                 var copy = segment
                 copy.speakerID = pieces.first?.voiceLabel.map {
@@ -155,5 +156,63 @@ public enum SpeakerAttributor {
 
     static func overlap(_ turn: SpeakerTurn, _ segment: TranscriptSegment) -> TimeInterval {
         max(0, min(turn.endTime, segment.endTime) - max(turn.startTime, segment.startTime))
+    }
+}
+
+/// Turn lookup for attribution.
+///
+/// `slice` filters every turn for every segment, which made live relabeling
+/// O(segments x turns) per new turn and O(turns^2 x segments) over a meeting.
+/// Turns sorted by start, plus their running maximum end, give each segment a
+/// window that provably contains every overlapping turn, so `slice` sees the
+/// same set it always did.
+private struct TurnIndex {
+    private let ordered: [SpeakerTurn]
+    private let maximumEnd: [TimeInterval]
+
+    init(_ turns: [SpeakerTurn]) {
+        let ordered = turns.sorted { $0.startTime < $1.startTime }
+        var maximumEnd: [TimeInterval] = []
+        maximumEnd.reserveCapacity(ordered.count)
+        var running = -Double.infinity
+        for turn in ordered {
+            running = max(running, turn.endTime)
+            maximumEnd.append(running)
+        }
+        self.ordered = ordered
+        self.maximumEnd = maximumEnd
+    }
+
+    /// A turn before the first index whose running maximum end passes the
+    /// segment's start ends at or before it, and a turn whose start reaches the
+    /// segment's end begins after it; neither can overlap.
+    func window(for segment: TranscriptSegment) -> [SpeakerTurn] {
+        guard !ordered.isEmpty else { return [] }
+        let lower = Self.lowerBound(in: maximumEnd.indices) {
+            maximumEnd[$0] > segment.startTime
+        }
+        let upper = Self.lowerBound(in: ordered.indices) {
+            ordered[$0].startTime >= segment.endTime
+        }
+        guard lower < upper else { return [] }
+        return Array(ordered[lower..<upper])
+    }
+
+    /// First index in `range` satisfying a predicate that is false then true.
+    private static func lowerBound(
+        in range: Range<Int>,
+        where predicate: (Int) -> Bool
+    ) -> Int {
+        var low = range.lowerBound
+        var high = range.upperBound
+        while low < high {
+            let middle = low + (high - low) / 2
+            if predicate(middle) {
+                high = middle
+            } else {
+                low = middle + 1
+            }
+        }
+        return low
     }
 }

@@ -67,6 +67,9 @@ this migration.
   identity without conflating the new pieces. No turn → unattributed (honest,
   editable in the UI).
 - Turns labeled "Me" (voiceprint on the system channel) are merged with the user's identity.
+- Segments resolve against a `TurnIndex` — the turns sorted once with a running
+  maximum-end prefix — so each segment inspects only the turns that can
+  overlap it (two binary searches) instead of the whole meeting (D503).
 
 Standalone terminal diarization enters `ApplicationKit.DiarizeAudioFile`.
 ApplicationKit owns file admission, threshold forwarding, elapsed-time policy,

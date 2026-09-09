@@ -144,6 +144,7 @@ private extension MeetingStore {
         in database: Database
     ) throws -> [TranscriptCorrectionEvent] {
         var histories: [MeetingID: [TranscriptCorrectionEvent]] = [:]
+        var acceptedTranscripts: [MeetingID: [SegmentRecord]] = [:]
         var originalProjections: [MeetingID: TranscriptCorrectionRevision] = [:]
         var persistedEvents: [TranscriptCorrectionEvent] = []
         for event in events {
@@ -175,7 +176,18 @@ private extension MeetingStore {
                 throw StorageError.invalidTranscriptCorrection(
                     "event does not extend the correction history: \(error)")
             }
-            try validateCorrectionAgainstAcceptedTranscript(event, in: database)
+            // One accepted-transcript read per meeting, not per event: a
+            // batch on a 20k-segment meeting loaded the whole transcript for
+            // every event, and corrections never write to `segment`.
+            let accepted = try acceptedTranscripts[event.meetingID]
+                ?? acceptedTranscriptRecords(
+                    meetingID: event.meetingID,
+                    in: database)
+            acceptedTranscripts[event.meetingID] = accepted
+            try validateCorrectionAgainstAcceptedTranscript(
+                event,
+                accepted: accepted,
+                in: database)
             try insertTranscriptCorrection(event, in: database)
             guard let persisted = try fetchTranscriptCorrection(
                 id: event.id,
@@ -332,17 +344,37 @@ private extension MeetingStore {
         }
     }
 
-    static func validateCorrectionAgainstAcceptedTranscript(
-        _ event: TranscriptCorrectionEvent,
+    /// The accepted transcript a correction is validated against. Corrections
+    /// never write to `segment`, so one read serves every event in a batch.
+    static func acceptedTranscriptRecords(
+        meetingID: MeetingID,
         in database: Database
-    ) throws {
-        let meetingKey = event.meetingID.rawValue.uuidString
-        let acceptedRecords = try SegmentRecord
-            .filter(Column("meetingID") == meetingKey)
+    ) throws -> [SegmentRecord] {
+        try SegmentRecord
+            .filter(Column("meetingID") == meetingID.rawValue.uuidString)
             .filter(Column("deletedAt") == nil)
             .filter(Column("isFinal") == true)
             .order(Column("startTime"), Column("endTime"), Column("id"))
             .fetchAll(database)
+    }
+
+    static func validateCorrectionAgainstAcceptedTranscript(
+        _ event: TranscriptCorrectionEvent,
+        in database: Database
+    ) throws {
+        try validateCorrectionAgainstAcceptedTranscript(
+            event,
+            accepted: try acceptedTranscriptRecords(
+                meetingID: event.meetingID,
+                in: database),
+            in: database)
+    }
+
+    static func validateCorrectionAgainstAcceptedTranscript(
+        _ event: TranscriptCorrectionEvent,
+        accepted acceptedRecords: [SegmentRecord],
+        in database: Database
+    ) throws {
         let acceptedByID = Dictionary(uniqueKeysWithValues:
             acceptedRecords.map { ($0.id, $0) })
         let targetKeys = event.targetSegmentIDs.map(\.uuidString)

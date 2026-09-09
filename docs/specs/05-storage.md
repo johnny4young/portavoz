@@ -807,6 +807,11 @@ ordered targets and parts, decodes every typed payload, and reconstructs
 portable events before complete-history validation. Malformed persisted state
 fails closed through privacy-safe storage errors.
 
+Corrections never write `segment`, so the batch reads the meeting's accepted
+transcript once and passes that snapshot to the validator instead of
+re-reading it per event; the single-event replica-merge path keeps its own
+read (D503).
+
 D233 derives one effective correction revision from immutable history inside the
 same database snapshot. Append, tombstone, and format-2 sync replay compare the
 before/after revision; an idempotent retry or history rewrite with the same

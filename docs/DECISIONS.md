@@ -18952,3 +18952,46 @@ numbers neutralized, and a test feeds a hostile passage to prove it.
 
 **Consequences:** four findings remain in GAPS (R9-R11, R15).
 
+
+## D503 — Close the last four review findings (Sep 2026)
+
+**R9 — live relabeling walks a window, not the whole meeting.** Every speaker
+turn rescanned every caption, so relabeling cost grew with the square of a
+meeting's length on the main actor, and the full caption array was republished
+even when nothing changed. `SpeakerAttributor` now builds a `TurnIndex` — turns
+sorted once with a running maximum-end prefix — and resolves each segment
+through two binary searches instead of a linear scan. `RecordingController`
+publishes only when `LiveSpeakerHints.changed(from:to:)` sees a real difference
+in labels or in a caption's identity, text or bounds.
+
+**R10 — the architecture ratchets are split by family, with a ceiling.** The
+checks were one 13 519-line class. They are now eleven
+`ArchitectureDependencyTests+*.swift` extensions grouped by what they protect,
+over a shared root that owns `repoRoot` and the file helpers. Every one of the
+228 tests and every assertion moved unchanged; nothing was deleted. SwiftLint
+covers only `Sources`, so a test file had no size ceiling of its own — repository
+hygiene now fails any test file over 2 400 lines, which is what let this one
+grow. The policy assertions stay in XCTest rather than moving to `scripts/`:
+they are the enforcement, they run in 14 s, and rewriting 4 500 hand-written
+assertions into a script is the way to lose guarantees silently. The checks that
+read other test files are deliberate — they pin that a named UI journey still
+exists, which a script would have to do the same way.
+
+**R11 — a rate-mismatched device no longer drifts.** Each callback resampled
+from position zero and dropped the fractional remainder, so a 44.1 kHz device
+feeding a 48 kHz graph lost about a quarter of a frame per buffer — 46 frames
+over 200 callbacks in the test, and unbounded over a meeting, until a silence
+pad papered over it. `LinearResampler` carries the fractional phase and the last
+sample across buffers; `MicrophoneSource` and `ProcessTapSource` each own one
+under their existing delivery lock. `Resample.linear` stays for the single-shot
+callers whose per-buffer frame counts `CapturePCMGeometryTests` characterizes.
+
+**R15 — one accepted transcript per meeting, not per edit.** A correction batch
+loaded every accepted segment of the meeting once per event inside the write
+transaction. Corrections never write `segment`, so the read is hoisted out of
+the loop and passed to the validator, which is otherwise unchanged — it is the
+most correctness-critical validator in the store. The single-event replica-merge
+path keeps its own read. The correction suites are the gate.
+
+**Consequences:** every review finding R1-R18 is closed. What remains before 1.0
+is external verification, not code; `docs/GAPS.md` owns that list.

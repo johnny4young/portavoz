@@ -32,7 +32,14 @@ Two SEPARATE streams, never mixed before diarization:
   exception that terminates the process. Capture waits for an in-flight warm-up
   before installing its tap, and every warm-up, start, stop, and device-restart
   graph mutation is serialized on one queue.
-- **Device-change resilience (D163)**: observes `AVAudioEngineConfigurationChange` (connecting headphones silently stops and uninitializes the engine). The callback only submits a delayed request and returns from AVFAudio's internal queue. A pure generation gate coalesces burst notifications and invalidates pending work at Stop. The admitted handoff retires the old graph and creates a fresh `AVAudioEngine`, where exactly one noncoercing tap (`format: nil`) follows the settled hardware. It derives the source rate from each delivered buffer, retries every 0.5 s while no usable input exists, resamples the new device to the stream's original rate (`Resample.linear`, tested), and **fills the gap with silence** so the timeline remains aligned with the system channel (gap = samples expected by clock − delivered; 0.5 s threshold). This prevents both stale-format failures and the field-observed process-terminating duplicate-tap exception during a built-in-mic/AirPods transition.
+- **Device-change resilience (D163)**: observes `AVAudioEngineConfigurationChange` (connecting headphones silently stops and uninitializes the engine). The callback only submits a delayed request and returns from AVFAudio's internal queue. A pure generation gate coalesces burst notifications and invalidates pending work at Stop. The admitted handoff retires the old graph and creates a fresh `AVAudioEngine`, where exactly one noncoercing tap (`format: nil`) follows the settled hardware. It derives the source rate from each delivered buffer, retries every 0.5 s while no usable input exists, resamples the new device to the stream's original rate and **fills the gap with silence** so the timeline remains aligned with the system channel (gap = samples expected by clock − delivered; 0.5 s threshold). This prevents both stale-format failures and the field-observed process-terminating duplicate-tap exception during a built-in-mic/AirPods transition.
+- **Rate conversion carries its phase (D503)**: each source owns one
+  `LinearResampler` under its delivery lock. It keeps the fractional read
+  position and the last sample between callbacks, so a device running at a
+  different rate than the stream cannot lose the per-buffer remainder and
+  drift away from the system channel. `Resample.linear` remains for
+  single-shot callers, whose per-buffer frame counts `CapturePCMGeometryTests`
+  characterizes.
 - Device selection by UID/name (`--mic` in CLI) through `kAudioOutputUnitProperty_CurrentDevice`; on restart, if the pinned device has disappeared, it falls back to the default. The app preserves the preferred UID, marks it unavailable in Ajustes, and uses the default input only for that recording.
 - **Local mute**: `setMuted` replaces every mic-channel buffer with exactly the same number of zero samples. The call is untouched and the dual timeline remains aligned.
 

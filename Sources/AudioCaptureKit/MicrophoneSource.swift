@@ -88,6 +88,9 @@ public final class MicrophoneSource: CaptureReportingSource, @unchecked Sendable
     /// change. Touched from the render thread and the restart queue.
     private let deliveredLock = NSLock()
     private var samplesDelivered = 0
+    /// Phase carries across callbacks so a rate-mismatched device does not
+    /// drift into a half-second silence pad. Guarded by `deliveredLock`.
+    private var resampler = LinearResampler()
     /// When muted, the tap yields silence instead of the captured samples —
     /// so Portavoz stops recording/transcribing YOUR voice while the meeting
     /// app keeps its own mic (this mutes the app, not the system input). The
@@ -274,7 +277,9 @@ public final class MicrophoneSource: CaptureReportingSource, @unchecked Sendable
                 elapsed = clock.elapsed(hostTime: when.hostTime)
                 // Local mute preserves the raw file's timeline, not the call's input.
                 if self.isMuted { samples = [Float](repeating: 0, count: samples.count) }
-                if native != target { samples = try Resample.linear(samples, from: native, to: target) }
+                if native != target {
+                    samples = try self.resampled(samples, from: native, to: target)
+                }
                 plan = try CapturePCMGeometry.delivery(
                     elapsed: elapsed, sampleRate: target,
                     delivered: self.deliveredSnapshot(), incoming: samples.count)
@@ -385,6 +390,16 @@ public final class MicrophoneSource: CaptureReportingSource, @unchecked Sendable
             return
         }
         #endif
+    }
+
+    private func resampled(
+        _ samples: [Float],
+        from source: Double,
+        to target: Double
+    ) throws -> [Float] {
+        deliveredLock.lock()
+        defer { deliveredLock.unlock() }
+        return try resampler.resample(samples, from: source, to: target)
     }
 
     private func deliveredSnapshot() -> Int {

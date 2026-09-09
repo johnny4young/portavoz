@@ -75,6 +75,11 @@ enum Resample {
     /// plenty for speech and it keeps the capture path dependency-free; it
     /// only runs when a replacement input device (mid-recording headphone
     /// switch) uses a different rate than the one the recording started with.
+    /// Single-shot resampling of one isolated buffer. Live capture uses
+    /// `LinearResampler` instead: this form restarts its position at zero and
+    /// clamps its tail, which is correct for a whole recording handed over at
+    /// once and wrong for a stream of callbacks. The rate matrix in
+    /// `CapturePCMGeometryTests` pins this exact shape.
     static func linear(_ samples: [Float], from source: Double, to target: Double) throws -> [Float] {
         let plan = try CapturePCMGeometry.resampling(inputCount: samples.count, source: source, target: target)
         guard source != target, !samples.isEmpty else { return samples }
@@ -91,5 +96,67 @@ enum Resample {
             out[index] = a + (b - a) * fraction
         }
         return out
+    }
+}
+
+/// Linear resampling that keeps its fractional position across buffers.
+///
+/// Flooring each callback's output count independently drops the remainder
+/// every time: 4096 frames at 44.1 kHz into 48 kHz should yield 4458.5 and
+/// yields 4458, so the stream loses about five frames a second. The delivery
+/// accounting eventually notices and injects a half-second silence pad. This
+/// carries the phase — and the previous buffer's last sample, so interpolation
+/// spans the boundary — which keeps the output aligned with the host clock.
+///
+/// Not thread-safe: each capture source owns one behind its own lock.
+struct LinearResampler {
+    /// Where the next output sample falls, relative to the next buffer's
+    /// index 0. Negative means it interpolates from `carried`.
+    private var nextPosition = 0.0
+    private var carried: Float?
+
+    mutating func reset() {
+        nextPosition = 0
+        carried = nil
+    }
+
+    mutating func resample(
+        _ samples: [Float],
+        from source: Double,
+        to target: Double
+    ) throws -> [Float] {
+        // Validates the rates and the native capacity exactly as the
+        // single-shot form does, and rejects the same inputs.
+        _ = try CapturePCMGeometry.resampling(
+            inputCount: samples.count, source: source, target: target)
+        guard source != target else {
+            carried = samples.last ?? carried
+            return samples
+        }
+        guard !samples.isEmpty else { return [] }
+        let ratio = source / target
+        let last = Double(samples.count - 1)
+
+        func sample(at index: Int) -> Float {
+            if index < 0 { return carried ?? samples[0] }
+            return samples[min(index, samples.count - 1)]
+        }
+
+        var output: [Float] = []
+        output.reserveCapacity(Int(((last - nextPosition) / ratio).rounded(.up)) + 1)
+        var position = nextPosition
+        while position <= last {
+            let base = Int(position.rounded(.down))
+            let fraction = Float(position - Double(base))
+            let start = sample(at: base)
+            let end = sample(at: base + 1)
+            output.append(start + (end - start) * fraction)
+            position += ratio
+        }
+        // Rebase onto the next buffer, which starts where this one ended.
+        nextPosition = position - Double(samples.count)
+        carried = samples[samples.count - 1]
+        _ = try CapturePCMGeometry.nativeFrameCount(output.count)
+        return output
     }
 }

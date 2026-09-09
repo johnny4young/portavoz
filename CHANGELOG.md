@@ -4,6 +4,14 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## September 9, 2026
+
+- **🎧 Switch your mic mid-meeting and stay in sync** — a replacement device running at a different sample rate no longer drifts a little further out with every second of audio.
+
+- **⚡ Live captions stay smooth in long meetings** — speaker labels are resolved over just the turns that can match, and the caption list is only redrawn when something actually changed.
+
+- **✍️ Fixing the transcript is fast on long meetings** — a batch of corrections reads the meeting once instead of once per edit.
+
 ## September 8, 2026
 
 - **🎙️ Every meeting keeps the work it was promised** — if a voice is enrolled while a meeting is still processing, its speaker separation is redone instead of quietly skipped, and a recording whose live captions failed is never presented as complete when only part of it was captured.

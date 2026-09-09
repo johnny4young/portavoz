@@ -522,18 +522,6 @@ final class RecordingController {
         }
     }
 
-    /// Re-labels (and splits, when a closed row spans two voices) the closed
-    /// caption rows against everything the live diarizer has seen so far.
-    private func applyLiveSpeakerHints() {
-        guard phase == .recording, !liveTurns.isEmpty else { return }
-        let result = LiveSpeakerLabeler.relabel(
-            captions: captions, turns: liveTurns, meetingID: meetingID)
-        captions = result.captions
-        liveSpeakerLabels = result.labels
-        requestLiveSummaryRefresh()
-        liveTranslationWakeHub.signal()
-    }
-
     // MARK: - Companion (D26)
 
     /// Card state stays private to this file; the detection extension hands
@@ -1057,5 +1045,45 @@ extension RecordingController {
         case .idle, .done, .failed:
             return []
         }
+    }
+}
+
+/// Whether a live relabel pass actually changed what the reader sees.
+enum LiveSpeakerHints {
+    static func changed(
+        from current: (captions: [TranscriptSegment], labels: [UUID: String]),
+        to updated: (captions: [TranscriptSegment], labels: [UUID: String])
+    ) -> Bool {
+        if updated.labels != current.labels { return true }
+        guard updated.captions.count == current.captions.count else { return true }
+        return !zip(updated.captions, current.captions).allSatisfy { new, old in
+            new.id == old.id
+                && new.speakerID == old.speakerID
+                && new.text == old.text
+                && new.startTime == old.startTime
+                && new.endTime == old.endTime
+        }
+    }
+}
+
+extension RecordingController {
+    /// Re-labels (and splits, when a closed row spans two voices) the closed
+    /// caption rows against everything the live diarizer has seen so far.
+    func applyLiveSpeakerHints() {
+        guard phase == .recording, !liveTurns.isEmpty else { return }
+        let result = LiveSpeakerLabeler.relabel(
+            captions: captions, turns: liveTurns, meetingID: meetingID)
+        // A turn that changes nothing must not republish the whole observable
+        // caption array: that re-projects the transcript view and wakes the
+        // summary and translation relays for a result identical to the one
+        // already on screen.
+        guard LiveSpeakerHints.changed(
+            from: (captions, liveSpeakerLabels),
+            to: (result.captions, result.labels))
+        else { return }
+        captions = result.captions
+        liveSpeakerLabels = result.labels
+        requestLiveSummaryRefresh()
+        liveTranslationWakeHub.signal()
     }
 }

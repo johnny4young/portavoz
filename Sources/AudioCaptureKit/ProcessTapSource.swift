@@ -63,6 +63,9 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, CaptureRepor
     /// Touched from the IO thread and the rebuild queue.
     private let deliveredLock = NSLock()
     private var samplesDelivered = 0
+    /// Phase carries across callbacks so a rate-mismatched device does not
+    /// drift into a half-second silence pad. Guarded by `deliveredLock`.
+    private var resampler = LinearResampler()
 
     /// - Parameter processIDs: PIDs whose output to capture. Empty captures
     ///   every process (global tap) — prefer per-app taps in product code.
@@ -181,7 +184,8 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, CaptureRepor
                 guard !samples.isEmpty else { return }
                 elapsed = clock.elapsed(hostTime: inputTime.pointee.mHostTime)
                 if nativeRate != targetRate {
-                    samples = try Resample.linear(samples, from: nativeRate, to: targetRate)
+                    samples = try self.resampled(
+                        samples, from: nativeRate, to: targetRate)
                 }
                 plan = try CapturePCMGeometry.delivery(
                     elapsed: elapsed, sampleRate: targetRate,
@@ -320,6 +324,16 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, CaptureRepor
         guard status == noErr else {
             throw AudioCaptureError.coreAudioError(operation: operation, status: status)
         }
+    }
+
+    private func resampled(
+        _ samples: [Float],
+        from source: Double,
+        to target: Double
+    ) throws -> [Float] {
+        deliveredLock.lock()
+        defer { deliveredLock.unlock() }
+        return try resampler.resample(samples, from: source, to: target)
     }
 
     private func deliveredSnapshot() -> Int {
