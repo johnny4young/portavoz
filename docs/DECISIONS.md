@@ -18913,3 +18913,42 @@ work survives the switch instead of being dropped.
 snapshot builders moved to `StopRecording+Snapshots.swift` — a cohesive split,
 not a suppression. Nine findings remain in GAPS; none of them can lose content.
 
+## D502 — Close the graph, sync, export and prompt findings (Sep 2026)
+
+**R4 — validation is layered by where corruption is detectable.** Every commit
+re-read and SHA-256d every staged payload and re-decoded the engine-state blob,
+so each `.stateUpdate` cost O(total staged bytes). A commit changes in-memory
+fields; it now proves shape and field invariants with no filesystem access. The
+full proof — payload bytes, record system fields, engine state — runs when the
+snapshot is loaded from disk, which is the moment corruption can be found. The
+existing restart-corruption test still fails closed.
+
+**R5 — the graph stops re-walking the whole topic table.** Four read paths
+loaded every live topic and recomputed each family with a per-topic walk, the
+superlinear driver GRAPH-6 measured and that `MeetingMemoryGraphTopics` already
+replaced. They now call the existing recursive-CTE twins `topicFamilyRootID`
+and `topicFamilyMemberIDs`, and the two byte-identical `…FamilyIDs` helpers are
+deleted. Where a query still needs the root's label it loads that one row.
+
+**R6 — hydration stops one fact past the page.** Both the blocker and
+person-commitment queries hydrated up to the full candidate budget — several
+queries each — to build facts the caller then discarded. They now break as soon
+as one fact past `itemLimit` exists, which is all `hasMore` needs. The omitted
+stale/unavailable counts describe what the page inspected; the user-facing copy
+names no number and `hasMore` already says more remains.
+
+**R7 — an export degrades a decode failure, not a disk failure.** The released
+contract degrades an undecodable summary, note, or Companion card to empty.
+`try?` also swallowed `DatabaseError`, so an unreadable database produced a
+silently incomplete export. Only `StorageError` degrades now.
+
+**R8 — meeting passages are fenced like every other source.** Web and note
+passages were XML-fenced and escaped while meeting passages were interpolated
+with bare `[N]` markers. Transcript text is the user's own, but it still reaches
+the model as material: a line containing a bracketed number, or a newline plus
+one, could forge a passage boundary or a citation the answer parser resolves to
+a real segment. Each passage is now `<passage id="N">`, escaped with bracketed
+numbers neutralized, and a test feeds a hostile passage to prove it.
+
+**Consequences:** four findings remain in GAPS (R9-R11, R15).
+

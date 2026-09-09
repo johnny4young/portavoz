@@ -189,6 +189,11 @@ extension MeetingStore {
     ) throws -> PersonCommitmentHydration where S.Element == String {
         var hydration = PersonCommitmentHydration()
         for key in commitmentKeys {
+            // One fact past the page is all `hasMore` needs. Hydrating every
+            // admitted candidate cost several queries each to build facts the
+            // caller then discarded. The omitted counts describe what this page
+            // inspected; `hasMore` already tells the reader more remains.
+            if hydration.facts.count > query.itemLimit { break }
             let commitmentID = CommitmentID(
                 rawValue: try requiredTimelineUUID(key))
             let continuity = try loadCommitmentContinuity(

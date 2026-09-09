@@ -143,6 +143,11 @@ extension MeetingStore {
     ) throws -> BlockerFactHydration where S.Element == String {
         var hydration = BlockerFactHydration()
         for blockerKey in blockerKeys {
+            // One fact past the page is all `hasMore` needs. Hydrating every
+            // admitted candidate cost several queries each to build facts the
+            // caller then discarded. The omitted counts describe what this page
+            // inspected; `hasMore` already tells the reader more remains.
+            if hydration.facts.count > query.itemLimit { break }
             let blockerID = DecisionCommitmentBlockerID(
                 rawValue: try requiredTimelineUUID(blockerKey))
             let continuity = try loadDecisionCommitmentBlockerContinuity(

@@ -78,15 +78,11 @@ extension MeetingStore {
         if let status = filter.status, status != .confirmed {
             return .abstained(.noMatchingFacts)
         }
-        let topics = try liveTopicRecords(in: database)
         let queryKey = topicID.rawValue.uuidString
-        guard topics[queryKey] != nil else {
+        guard let rootKey = try topicFamilyRootID(queryKey, in: database) else {
             return .abstained(.topicUnavailable)
         }
-        let root = try topicRoot(queryKey, among: topics)
-        let familyIDs = try decisionRelationshipFamilyIDs(
-            rootID: root.id,
-            among: topics)
+        let familyIDs = try topicFamilyMemberIDs(rootID: rootKey, in: database)
 
         let linkedDecisionIDs = try decisionRelationshipLinkedDecisionIDs(
             familyIDs: familyIDs,
@@ -96,7 +92,7 @@ extension MeetingStore {
         }
         guard try decisionRelationshipProjectionIsConsistent(
             decisionIDs: linkedDecisionIDs,
-            rootTopicID: root.id,
+            rootTopicID: rootKey,
             in: database)
         else {
             return .abstained(.projectionInconsistent)
@@ -117,17 +113,6 @@ extension MeetingStore {
             itemLimit: itemLimit,
             emptyReason: anchor == nil ? .unsupportedConflict : .noMatchingFacts,
             in: database)
-    }
-
-    private static func decisionRelationshipFamilyIDs(
-        rootID: String,
-        among topics: [String: TopicRecord]
-    ) throws -> [String] {
-        try topics.values.compactMap { record -> String? in
-            try topicRoot(record.id, among: topics).id == rootID
-                ? record.id
-                : nil
-        }
     }
 
     private static func decisionRelationshipLinkedDecisionIDs(

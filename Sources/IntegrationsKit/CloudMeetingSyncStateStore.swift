@@ -664,7 +664,7 @@ extension CloudMeetingSyncStateStore {
 
     func persistSnapshot() throws {
         sortSnapshotCollections()
-        try Self.validate(snapshot, payloadDirectory: payloadDirectory)
+        try Self.validateForCommit(snapshot)
         try CloudSyncProtectedFile.write(Self.encoder().encode(snapshot), to: stateFileURL)
     }
 

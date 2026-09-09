@@ -78,16 +78,13 @@ extension MeetingStore {
         for topicID: TopicID,
         in database: Database
     ) throws -> [TopicMeetingEvidenceRecord] {
-        let topics = try liveTopicRecords(in: database)
-        guard topics[topicID.rawValue.uuidString] != nil else {
+        guard let rootKey = try topicFamilyRootID(
+            topicID.rawValue.uuidString,
+            in: database)
+        else {
             throw StorageError.invalidTopicContinuity("topic is unavailable")
         }
-        let root = try topicRoot(topicID.rawValue.uuidString, among: topics)
-        let familyIDs = try topics.values.compactMap { record -> String? in
-            try topicRoot(record.id, among: topics).id == root.id
-                ? record.id
-                : nil
-        }
+        let familyIDs = try topicFamilyMemberIDs(rootID: rootKey, in: database)
         return try TopicMeetingEvidenceRecord
             .filter(familyIDs.contains(Column("topicID")))
             .fetchAll(database)

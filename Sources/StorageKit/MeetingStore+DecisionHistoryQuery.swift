@@ -27,15 +27,16 @@ extension MeetingStore {
         if let status = query.filter.status, status != .confirmed {
             return .abstained(.noMatchingFacts)
         }
-        let topics = try liveTopicRecords(in: database)
         let queryKey = query.topicID.rawValue.uuidString
-        guard topics[queryKey] != nil else {
+        guard let rootKey = try topicFamilyRootID(queryKey, in: database) else {
             return .abstained(.topicUnavailable)
         }
-        let root = try topicRoot(queryKey, among: topics)
-        let familyIDs = try decisionHistoryFamilyIDs(
-            rootID: root.id,
-            among: topics)
+        let familyIDs = try topicFamilyMemberIDs(rootID: rootKey, in: database)
+        guard let root = try TopicRecord
+            .filter(Column("id") == rootKey)
+            .filter(Column("deletedAt") == nil)
+            .fetchOne(database)
+        else { return .abstained(.topicUnavailable) }
 
         // Only links whose decision is still the current confirmed truth. A
         // superseded decision keeps its link — decisionConflicts serves it —
@@ -48,7 +49,7 @@ extension MeetingStore {
         }
         guard try decisionHistoryProjectionIsConsistent(
             links: links,
-            rootTopicID: root.id,
+            rootTopicID: rootKey,
             in: database)
         else {
             return .abstained(.projectionInconsistent)
@@ -59,17 +60,6 @@ extension MeetingStore {
             topic: root.topic,
             links: links,
             in: database)
-    }
-
-    private static func decisionHistoryFamilyIDs(
-        rootID: String,
-        among topics: [String: TopicRecord]
-    ) throws -> [String] {
-        try topics.values.compactMap { record -> String? in
-            try topicRoot(record.id, among: topics).id == rootID
-                ? record.id
-                : nil
-        }
     }
 
     private static func decisionHistoryLinks(

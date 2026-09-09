@@ -201,17 +201,19 @@ extension MeetingStore {
                 key: person.id,
                 topicFamilyIDs: [])
         case .topic(let topicID):
-            let topics = try liveTopicRecords(in: database)
-            guard topics[topicID.rawValue.uuidString] != nil else { return nil }
-            let root = try topicRoot(topicID.rawValue.uuidString, among: topics)
-            let rootID = TopicID(rawValue: try requiredTimelineUUID(root.id))
-            let familyIDs = try topics.values
-                .filter { try topicRoot($0.id, among: topics).id == root.id }
-                .map(\.id)
-                .sorted()
+            // Two recursive CTEs walk only this family. The former in-memory
+            // pass loaded every live topic and re-walked each one's chain.
+            guard let rootKey = try topicFamilyRootID(
+                topicID.rawValue.uuidString,
+                in: database)
+            else { return nil }
+            let rootID = TopicID(rawValue: try requiredTimelineUUID(rootKey))
+            let familyIDs = try topicFamilyMemberIDs(
+                rootID: rootKey,
+                in: database)
             return TimelineResolvedSubject(
                 subject: .topic(rootID),
-                key: root.id,
+                key: rootKey,
                 topicFamilyIDs: familyIDs)
         }
     }
