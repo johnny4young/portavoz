@@ -261,12 +261,19 @@ public final class MicrophoneSource: CaptureReportingSource, @unchecked Sendable
             return
         }
 
-        let clock = clock
         input.installTap(
             onBus: 0,
             bufferSize: 4096,
-            format: AudioInputTapPolicy.requestedFormat
-        ) { [weak self] buffer, when in
+            format: AudioInputTapPolicy.requestedFormat,
+            block: makeInputTap(target: target, continuation: continuation))
+        tapInstalled = true
+    }
+
+    /// The exact native callback, independent of graph installation so format
+    /// transitions can be exercised with real PCM buffers without microphone access.
+    func makeInputTap(target: Double, continuation: CaptureDeliveryBuffer) -> AVAudioNodeTapBlock {
+        let clock = clock
+        return { [weak self] buffer, when in
             guard let self, continuation.isAccepting else { return }
             guard let native = AudioInputTapPolicy.sourceSampleRate(
                 for: buffer.format
@@ -283,10 +290,9 @@ public final class MicrophoneSource: CaptureReportingSource, @unchecked Sendable
                 guard !samples.isEmpty else { return }
                 elapsed = clock.elapsed(hostTime: when.hostTime)
                 // Local mute preserves the raw file's timeline, not the call's input.
-                if self.isMuted { samples = [Float](repeating: 0, count: samples.count) }
-                if native != target {
-                    samples = try self.resampled(samples, from: native, to: target)
-                }
+                let muted = self.isMuted
+                if muted { samples = [Float](repeating: 0, count: samples.count) }
+                samples = try self.resampled(samples, from: native, to: target, muted: muted)
                 plan = try CapturePCMGeometry.delivery(
                     elapsed: elapsed, sampleRate: target,
                     delivered: self.deliveredSnapshot(), incoming: samples.count)
@@ -304,7 +310,6 @@ public final class MicrophoneSource: CaptureReportingSource, @unchecked Sendable
                 self.setDelivered(plan.deliveredFrameCount)
             }
         }
-        tapInstalled = true
     }
 
     /// A configuration change means the engine stopped (device switched or
@@ -402,10 +407,12 @@ public final class MicrophoneSource: CaptureReportingSource, @unchecked Sendable
     private func resampled(
         _ samples: [Float],
         from source: Double,
-        to target: Double
+        to target: Double,
+        muted: Bool
     ) throws -> [Float] {
         deliveredLock.lock()
         defer { deliveredLock.unlock() }
+        if muted { resampler.discardCarriedSample() }
         return try resampler.resample(samples, from: source, to: target)
     }
 

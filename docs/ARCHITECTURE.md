@@ -1783,6 +1783,13 @@ awaits its explicit warm-up task before entering that owner. An unavailable
 route crosses the existing typed recording-start boundary instead of escaping
 as an Objective-C exception.
 
+The streaming converter resets its fractional position and carried sample when
+the actual nonempty PCM rate pair changes, including transitions through
+passthrough. Local mute discards carried voice while preserving that fractional
+position. Synthetic native buffers exercise the exact microphone callback without
+installing a tap; physical device continuity remains a separate verification
+requirement.
+
 Audio-route recovery is a graph handoff, not an in-place mutation. An
 `AVAudioEngineConfigurationChange` callback only requests delayed work and
 returns from AVFAudio's internal queue. A generation gate admits only the

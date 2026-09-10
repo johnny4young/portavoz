@@ -37,11 +37,20 @@ Two SEPARATE streams, never mixed before diarization:
   `LinearResampler` under its delivery lock. It keeps the fractional read
   position and the last sample between callbacks, so a device running at a
   different rate than the stream cannot lose the per-buffer remainder and
-  drift away from the system channel. `Resample.linear` remains for
-  single-shot callers, whose per-buffer frame counts `CapturePCMGeometryTests`
-  characterizes.
+  drift away from the system channel. The unused single-shot `Resample.linear`
+  and its duplicate characterization tests were removed; capture uses only the
+  streaming converter.
+- **PCM discontinuities are not notification-dependent (D510)**: the converter
+  remembers the validated source/target rate pair of nonempty PCM and retires
+  its phase and carry when either changes. Both sources send same-rate buffers
+  through that path too: passthrough must end an earlier conversion interval.
+  Empty or rejected buffers do not replace an active pair. Explicit graph
+  resets still handle two different devices reporting the same rate.
+  `MicrophoneSource.makeInputTap` builds the exact native callback independently
+  of graph installation; synthetic native-buffer tests exercise profile flips,
+  passthrough intervals, one-frame chunks and delivery without starting hardware.
 - Device selection by UID/name (`--mic` in CLI) through `kAudioOutputUnitProperty_CurrentDevice`; on restart, if the pinned device has disappeared, it falls back to the default. The app preserves the preferred UID, marks it unavailable in Ajustes, and uses the default input only for that recording.
-- **Local mute**: `setMuted` replaces every mic-channel buffer with exactly the same number of zero samples. The call is untouched and the dual timeline remains aligned.
+- **Local mute**: `setMuted` replaces every mic-channel buffer with exactly the same number of zero samples. It also discards the resampler's previous voice sample, without resetting its phase or output count. Otherwise the first muted interpolation still contains prior voice. The call is untouched and the dual timeline remains aligned; unmute cannot recover input captured while muted.
 
 ## ProcessTapSource — `Sources/AudioCaptureKit/ProcessTapSource.swift`
 

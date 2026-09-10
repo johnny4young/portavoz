@@ -14,23 +14,15 @@ final class LinearResamplerTests: XCTestCase {
         let buffer = [Float](repeating: 0.25, count: callbackFrames)
 
         var produced = 0
-        var singleShot = 0
         for _ in 0..<callbacks {
             produced += try resampler.resample(buffer, from: 44_100, to: 48_000).count
-            singleShot += try Resample.linear(buffer, from: 44_100, to: 48_000).count
         }
 
         let exact = Double(callbackFrames * callbacks) * 48_000 / 44_100
         XCTAssertLessThanOrEqual(
             abs(Double(produced) - exact), 1,
             "the carried phase must keep the stream within one frame of exact")
-        // The single-shot form is what the sources used to call per callback.
-        // At 4096 frames it floors 4458.23 to 4458, losing ~0.23 frames each
-        // time — about 46 frames over these 200 callbacks, and unbounded over
-        // a meeting.
-        XCTAssertGreaterThan(
-            exact - Double(singleShot), 20,
-            "the per-buffer floor really did lose frames at this rate")
+
     }
 
     func testSameRateAndEmptyInputStayPassthrough() throws {
@@ -68,6 +60,54 @@ final class LinearResamplerTests: XCTestCase {
         resampler.reset()
         let afterReset = try resampler.resample([0, 1, 0, 1], from: 44_100, to: 48_000)
         XCTAssertEqual(first, afterReset)
+    }
+
+    func testEmptyOrInvalidBuffersDoNotRetireAnActiveConversion() throws {
+        var resampler = LinearResampler()
+        _ = try resampler.resample([0, 1], from: 24_000, to: 48_000)
+        XCTAssertTrue(try resampler.resample([], from: 48_000, to: 48_000).isEmpty)
+        XCTAssertThrowsError(try resampler.resample([9], from: .nan, to: 48_000))
+        XCTAssertEqual(try resampler.resample([2, 3], from: 24_000, to: 48_000), [1.5, 2, 2.5, 3])
+    }
+
+    func testTargetRateChangeAlsoRetiresTheOldPhase() throws {
+        var resampler = LinearResampler()
+        _ = try resampler.resample([0, 1], from: 24_000, to: 48_000)
+        XCTAssertEqual(try resampler.resample([10, 11], from: 24_000, to: 96_000),
+                       [10, 10.25, 10.5, 10.75, 11])
+    }
+
+    func testUnevenFragmentMatrixPreservesTheSignalAndBoundsInterpolationTail() throws {
+        let rates: [Double] = [8_000, 16_000, 24_000, 44_100, 48_000, 96_000]
+        for source in rates {
+            for target in rates {
+                var resampler = LinearResampler()
+                var inputCount = 0
+                var output: [Float] = []
+                for count in Array(repeating: [1, 2, 3, 17, 64], count: 20).flatMap({ $0 }) {
+                    let input = (inputCount..<(inputCount + count)).map(Float.init)
+                    let actual = try resampler.resample(input, from: source, to: target)
+                    let reserved = try CapturePCMGeometry.resampling(
+                        inputCount: count, source: source, target: target).frameCount
+                        + CaptureDeliveryBuffer.streamingCarryFrames
+                    XCTAssertLessThanOrEqual(actual.count, reserved)
+                    output += actual
+                    inputCount += count
+                }
+                // A linear ramp has an independent interpolation oracle. Only
+                // the not-yet-arrived next source sample may delay the tail.
+                for (index, actual) in output.enumerated() {
+                    XCTAssertEqual(actual, Float(Double(index) * source / target), accuracy: 0.001)
+                }
+                let exact = Double(inputCount) * target / source
+                XCTAssertLessThanOrEqual(abs(Double(output.count) - exact), max(1, target / source))
+                var constant = LinearResampler()
+                let constantOutput = try constant.resample(
+                    Array(repeating: Float(0.7), count: 17), from: source, to: target)
+                XCTAssertFalse(constantOutput.isEmpty)
+                for value in constantOutput { XCTAssertEqual(value, 0.7, accuracy: 0.0001) }
+            }
+        }
     }
 }
 

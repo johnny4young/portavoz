@@ -6,8 +6,7 @@ import XCTest
 final class CapturePCMGeometryTests: XCTestCase {
     private let rates: [Double] = [8_000, 16_000, 22_050, 24_000, 44_100, 48_000, 96_000, 192_000, 384_000]
 
-    func testNormalRateMatrixPreservesReleasedFrameCountsAndInterpolation() throws {
-        let samples = (0..<17).map { Float($0 - 8) / 10 }
+    func testNormalRateMatrixBoundsAllocationAdmission() throws {
         for source in rates {
             for target in rates {
                 for inputCount in [0, 1, 2, 441, 4096] {
@@ -15,8 +14,6 @@ final class CapturePCMGeometryTests: XCTestCase {
                     let expected = inputCount == 0 ? 0 : max(1, Int((Double(inputCount) / (source / target)).rounded(.down)))
                     XCTAssertEqual(plan.frameCount, expected)
                 }
-                XCTAssertEqual(try Resample.linear(samples, from: source, to: target),
-                               legacyValidResample(samples, source: source, target: target))
             }
         }
     }
@@ -25,9 +22,10 @@ final class CapturePCMGeometryTests: XCTestCase {
         for rate in [Double.nan, .infinity, -.infinity, 0, -1] {
             XCTAssertFalse(CapturePCMGeometry.isUsable(sampleRate: rate))
             for samples: [Float] in [[], [0, 1]] {
-                XCTAssertThrowsError(try Resample.linear(samples, from: rate, to: 48_000))
-                XCTAssertThrowsError(try Resample.linear(samples, from: 48_000, to: rate))
-                XCTAssertThrowsError(try Resample.linear(samples, from: rate, to: rate))
+                var resampler = LinearResampler()
+                XCTAssertThrowsError(try resampler.resample(samples, from: rate, to: 48_000))
+                XCTAssertThrowsError(try resampler.resample(samples, from: 48_000, to: rate))
+                XCTAssertThrowsError(try resampler.resample(samples, from: rate, to: rate))
             }
         }
     }
@@ -114,16 +112,4 @@ final class CapturePCMGeometryTests: XCTestCase {
 
     /// Exact released algorithm, exercised only over the finite normal matrix.
     /// Invalid conversions are never executed to crash the shared UI host.
-    private func legacyValidResample(_ samples: [Float], source: Double, target: Double) -> [Float] {
-        guard source != target, !samples.isEmpty else { return samples }
-        let ratio = source / target
-        let count = max(1, Int((Double(samples.count) / ratio).rounded(.down)))
-        let last = samples.count - 1
-        return (0..<count).map { index in
-            let position = Double(index) * ratio
-            let base = min(Int(position), last)
-            let fraction = Float(position - Double(base))
-            return samples[base] + (samples[min(base + 1, last)] - samples[base]) * fraction
-        }
-    }
 }

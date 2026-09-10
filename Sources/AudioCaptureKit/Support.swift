@@ -70,41 +70,12 @@ final class HostClock: @unchecked Sendable {
     }
 }
 
-enum Resample {
-    /// Linear-interpolation resampler for mono Float samples. Quality is
-    /// plenty for speech and it keeps the capture path dependency-free; it
-    /// only runs when a replacement input device (mid-recording headphone
-    /// switch) uses a different rate than the one the recording started with.
-    /// Single-shot resampling of one isolated buffer. Live capture uses
-    /// `LinearResampler` instead: this form restarts its position at zero and
-    /// clamps its tail, which is correct for a whole recording handed over at
-    /// once and wrong for a stream of callbacks. The rate matrix in
-    /// `CapturePCMGeometryTests` pins this exact shape.
-    static func linear(_ samples: [Float], from source: Double, to target: Double) throws -> [Float] {
-        let plan = try CapturePCMGeometry.resampling(inputCount: samples.count, source: source, target: target)
-        guard source != target, !samples.isEmpty else { return samples }
-        let ratio = plan.ratio
-        let count = plan.frameCount
-        var out = [Float](repeating: 0, count: count)
-        let last = samples.count - 1
-        for index in 0..<count {
-            let position = Double(index) * ratio
-            let base = min(Int(position), last)
-            let fraction = Float(position - Double(base))
-            let a = samples[base]
-            let b = samples[min(base + 1, last)]
-            out[index] = a + (b - a) * fraction
-        }
-        return out
-    }
-}
-
 /// Linear resampling that keeps its fractional position across buffers.
 ///
 /// Flooring each callback's output count independently drops the remainder
-/// every time: 4096 frames at 44.1 kHz into 48 kHz should yield 4458.5 and
-/// yields 4458, so the stream loses about five frames a second. The delivery
-/// accounting eventually notices and injects a half-second silence pad. This
+/// every time: 4096 frames at 44.1 kHz into 48 kHz should yield about 4458.23 and
+/// yields 4458, accumulating drift. Delivery accounting eventually injects
+/// a half-second silence pad to catch up. This
 /// carries the phase — and the previous buffer's last sample, so interpolation
 /// spans the boundary — which keeps the output aligned with the host clock.
 ///
@@ -114,9 +85,18 @@ struct LinearResampler {
     /// index 0. Negative means it interpolates from `carried`.
     private var nextPosition = 0.0
     private var carried: Float?
+    private var sourceRate: Double?
+    private var targetRate: Double?
 
     mutating func reset() {
         nextPosition = 0
+        carried = nil
+        sourceRate = nil
+        targetRate = nil
+    }
+
+    /// Mute must discard prior voice without changing the timeline's phase.
+    mutating func discardCarriedSample() {
         carried = nil
     }
 
@@ -125,16 +105,21 @@ struct LinearResampler {
         from source: Double,
         to target: Double
     ) throws -> [Float] {
-        // Validates the rates and the native capacity exactly as the
-        // single-shot form does, and rejects the same inputs.
-        _ = try CapturePCMGeometry.resampling(
+        let geometry = try CapturePCMGeometry.resampling(
             inputCount: samples.count, source: source, target: target)
+        guard !samples.isEmpty else { return [] }
+        // A callback can report a new Bluetooth profile before the engine
+        // sends a configuration notification. Its phase has different units.
+        if sourceRate != source || targetRate != target {
+            reset()
+            sourceRate = source
+            targetRate = target
+        }
         guard source != target else {
-            carried = samples.last ?? carried
+            carried = samples.last
             return samples
         }
-        guard !samples.isEmpty else { return [] }
-        let ratio = source / target
+        let ratio = geometry.ratio
         let last = Double(samples.count - 1)
 
         func sample(at index: Int) -> Float {

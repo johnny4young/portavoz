@@ -188,10 +188,8 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, CaptureRepor
                 }
                 guard !samples.isEmpty else { return }
                 elapsed = clock.elapsed(hostTime: inputTime.pointee.mHostTime)
-                if nativeRate != targetRate {
-                    samples = try self.resampled(
-                        samples, from: nativeRate, to: targetRate)
-                }
+                samples = try self.resampled(
+                    samples, from: nativeRate, to: targetRate)
                 plan = try CapturePCMGeometry.delivery(
                     elapsed: elapsed, sampleRate: targetRate,
                     delivered: self.deliveredSnapshot(), incoming: samples.count)

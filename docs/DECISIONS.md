@@ -19329,3 +19329,34 @@ replaying v51 or adding a migration solely to rewrite that equivalent constraint
 would add no behavior. Both schema histories are explicitly tested through the
 real `MeetingStore` initializer, including reopen, content preservation, direct
 SQL INSERT/UPDATE rejection, byte-boundary writes, and integrity checks.
+
+## D510 — Resampler history belongs to the current PCM rate pair
+
+Graph notifications are not the authority for a buffer's source format. A
+microphone profile can change rate without a graph rebuild, and an interval at
+the stream's own rate previously bypassed the resampler entirely. Both paths
+left its fractional position in the old source's units. Synthetic native
+buffers through the exact `AVAudioNodeTapBlock` reproduced mixed-device samples
+and a dropped one-frame input; these tests did not reproduce a process crash.
+
+`LinearResampler` now remembers the validated source/target pair for nonempty
+PCM, resetting its position and carry whenever that pair changes. Both capture
+sources route passthrough through it. Empty and rejected input leave the active
+pair alone; explicit graph resets still separate devices with equal rates.
+The microphone's callback factory is independent of installing the hardware
+tap, so tests reach downmix, rate selection, mute, resampling and bounded delivery
+rather than assuming the private policy is called correctly.
+
+Mute exposed a second history boundary: zeroing the incoming buffer alone
+still interpolated one nonzero sample from the previous unmuted buffer. Discard
+that carried sample while preserving the fractional position. Resetting the
+whole converter on every mute would change frame counts instead of preserving
+the recording's timeline. Muted input is still zeroed before conversion, so
+unmute cannot recover private input from the muted interval.
+
+The unused `Resample.linear` and tests of its obsolete single-shot behavior are
+removed. The production converter retains passthrough, interpolation, invalid
+geometry and carry-admission coverage, plus an uneven-fragment rate matrix with
+independent ramp/constant signal oracles. Its interpolation tail is bounded by
+the next source sample, not universally one output frame under upsampling.
+Physical Bluetooth continuity and microphone authorization remain field gates.

@@ -6,6 +6,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 10, 2026
 
+- **🔇 Mute stays silent across audio buffers** — a sample from before mute can no longer leak into the next recorded buffer.
+
+- **🎧 Seamless microphone profile changes** — sample-rate changes are handled even when macOS does not send a device-change notification.
+
 - **🗃️ Upgrade without losing access to your library** — older saved skill preferences stay intact, even when their identifiers contain multibyte characters.
 
 - **🎙️ A busy disk no longer ends your recording** — when writing falls behind, an audio packet that arrives a frame larger than expected is handled instead of stopping the capture mid-meeting.
