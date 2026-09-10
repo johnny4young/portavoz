@@ -31,7 +31,8 @@ public enum QuestionHeuristic {
     }
 
     /// The "asked you" gate (D26): whole-word, case- and
-    /// diacritic-insensitive match of the owner's first name or full name.
+    /// diacritic-insensitive match of the owner's first name. A full name
+    /// already contains that token; no second scan can add a match.
     /// Token equality on purpose — "John" must not fire inside "Johnny".
     public static func mentions(_ name: String, in text: String) -> Bool {
         func fold(_ value: String) -> String {
@@ -45,12 +46,7 @@ public enum QuestionHeuristic {
         let nameTokens = tokens(name)
         guard let first = nameTokens.first else { return false }
         let textTokens = tokens(text)
-        if textTokens.contains(first) { return true }
-        // Full name as a consecutive token run ("ana maría" in "…ana maría, ¿…?").
-        guard nameTokens.count > 1, textTokens.count >= nameTokens.count else { return false }
-        return (0...(textTokens.count - nameTokens.count)).contains { start in
-            Array(textTokens[start..<(start + nameTokens.count)]) == nameTokens
-        }
+        return textTokens.contains(first)
     }
 }
 

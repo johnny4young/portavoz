@@ -2200,7 +2200,12 @@ Admission fails closed on a missing label, a non-finite/out-of-range
 probability, or probabilities whose sum drifts by more than 0.02. An explicit
 abstention remains closed when it is the strongest class at 0.42 or above. A
 question is admitted independently at 0.82, or at 0.58 when deterministic
-question syntax or an exact owner mention is present. Material shorter than 12
+question syntax or an exact owner mention is present. Owner mention is a
+case- and diacritic-insensitive first-name token match; a full-name occurrence
+already contains that token. It does not accept a surname-only mention or a
+substring such as John inside Johnny. The admission call-site tests include
+punctuation-free English/Spanish, accents, a typographic apostrophe in the
+owner name, and empty input. Material shorter than 12
 characters abstains. The original normalized caption remains the displayed and
 evidenced question; the classifier cannot rewrite source speech. Conservative
 routing sends meeting-specific language to context, recognizes a bounded

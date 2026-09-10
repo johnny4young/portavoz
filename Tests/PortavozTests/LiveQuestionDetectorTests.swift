@@ -5,6 +5,24 @@ import PortavozCore
 import XCTest
 
 final class LiveQuestionAdmissionPolicyTests: XCTestCase {
+    func testOwnerMentionReachesAdmissionWithoutQuestionPunctuation() throws {
+        let cases: [(String, String, Bool)] = [
+            ("Zoë O’Connor", "well zoe take this next", true),
+            ("Ana María López", "ana maria comparte los detalles", true),
+            ("José Pérez", "jose explica el cambio", true),
+            ("John Smith", "johnny will take the notes", false),
+            ("Ana María López", "maria comparte los detalles", false),
+            ("", "ana comparte los detalles", false),
+            ("   ", "", false)
+        ]
+        for (owner, candidate, admitted) in cases {
+            let result = try LiveQuestionAdmissionPolicy.decide(
+                candidate: candidate, ownerName: owner,
+                prediction: LiveQuestionModelPrediction(question: 0.6, nonQuestion: 0.3, abstain: 0.1))
+            XCTAssertEqual(result.decision == .question, admitted, candidate)
+        }
+    }
+
     func testAdmitsStrongNoisyASRWithoutLexicalSurface() throws {
         let result = try LiveQuestionAdmissionPolicy.decide(
             candidate: "wher shud we put the signed recipt",
