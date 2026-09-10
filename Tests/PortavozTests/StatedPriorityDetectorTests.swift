@@ -94,6 +94,159 @@ final class StatedPriorityDetectorTests: XCTestCase {
         XCTAssertNil(detect("We shipped the billing migration to staging this morning."))
     }
 
+    // MARK: - Demotion (the inversion this detector shipped with)
+
+    func testAQualifierThatDemotesTheAnchorInvertsTheSpeaker() {
+        XCTAssertNil(
+            detect("The dashboard is a low priority."),
+            "naming what does NOT take precedence must never become a priority")
+        XCTAssertNil(detect("That migration is a lower priority than the release."))
+        XCTAssertNil(detect("El dashboard es una prioridad baja."))
+        XCTAssertNil(detect("Esa tarea es la ultima prioridad."))
+        XCTAssertNil(
+            detect("The priority is low."),
+            "a bare qualifier names nothing to prioritize")
+    }
+
+    func testAPromotingQualifierStillReads() {
+        XCTAssertEqual(
+            detect("The dashboard is a high priority.")?.subject, "The dashboard")
+        XCTAssertEqual(
+            detect("Shipping the release notes is our top priority.")?.subject,
+            "Shipping the release notes")
+    }
+
+    // MARK: - Wider vocabulary, same grammar
+
+    func testOtherExplicitDeclarationsOfPrecedence() {
+        XCTAssertEqual(
+            detect("Lo mas importante es cerrar el reporte.")?.subject,
+            "cerrar el reporte")
+        XCTAssertEqual(
+            detect("The most important thing is the billing migration.")?.subject,
+            "the billing migration")
+        XCTAssertEqual(
+            detect("The focus is the checkout redesign.")?.subject,
+            "the checkout redesign")
+        XCTAssertEqual(
+            detect("El foco es la migracion de datos.")?.subject,
+            "la migracion de datos")
+    }
+
+    func testPrecedenceAssertedByAVerb() {
+        XCTAssertEqual(
+            detect("The security patch takes precedence.")?.subject,
+            "The security patch")
+        XCTAssertEqual(
+            detect("The release notes come first.")?.subject, "The release notes")
+        XCTAssertEqual(
+            detect("El reporte va primero.")?.subject, "El reporte")
+    }
+
+    func testPrecedenceVerbsKeepTheirAbstentions() {
+        XCTAssertNil(detect("If the security patch takes precedence we replan."))
+        XCTAssertNil(detect("Which one comes first?"))
+    }
+
+    // MARK: - Sentences that span captions
+
+    func testOneSentenceSplitAcrossCaptionsIsStillRead() throws {
+        let captions = [
+            caption("So the priority.", at: 10),
+            caption("Yeah.", at: 12),
+            caption("It is the billing migration.", at: 14)
+        ]
+
+        let priority = try XCTUnwrap(StatedPriorityDetector.detect(inRecent: captions))
+
+        XCTAssertEqual(priority.subject, "the billing migration")
+        XCTAssertEqual(
+            priority.sourceRowID, captions[0].id,
+            "the row carrying the declaration is the evidence anchor")
+        XCTAssertEqual(priority.statedAt, 10, accuracy: 0.001)
+        XCTAssertTrue(priority.statement.contains("So the priority"))
+    }
+
+    func testASentenceIsNeverAssembledOutOfTwoPeoplesWords() {
+        let captions = [
+            caption("So the priority.", at: 10, speaker: "S1"),
+            caption("It is the billing migration.", at: 12, speaker: "S2")
+        ]
+
+        XCTAssertNil(StatedPriorityDetector.detect(inRecent: captions))
+    }
+
+    func testCaptionsTooFarApartAreNotJoined() {
+        let gap = StatedPriorityDetector.maximumJoinSeconds + 5
+        let captions = [
+            caption("So the priority.", at: 10),
+            caption("It is the billing migration.", at: 10 + gap)
+        ]
+
+        XCTAssertNil(StatedPriorityDetector.detect(inRecent: captions))
+    }
+
+    func testASingleCaptionStillWinsBeforeAnyJoining() throws {
+        let captions = [
+            caption("Nothing to see here.", at: 4),
+            caption("Priority is the billing migration.", at: 6)
+        ]
+
+        let priority = try XCTUnwrap(StatedPriorityDetector.detect(inRecent: captions))
+
+        XCTAssertEqual(priority.subject, "the billing migration")
+        XCTAssertEqual(priority.sourceRowID, captions[1].id)
+    }
+
+    func testAccentsAreFoldedExceptWhereTheyChangeTheWord() {
+        // Spanish recognizer output drops accents constantly.
+        XCTAssertEqual(
+            detect("La prioridad numero uno es el cierre contable.")?.subject,
+            "el cierre contable")
+        XCTAssertEqual(
+            detect("Lo m\u{00E1}s importante es cerrar el reporte.")?.subject,
+            "cerrar el reporte")
+        // "si" is the conditional and abstains; the accented one is agreement.
+        XCTAssertNil(detect("Si la prioridad es el reporte, movemos todo."))
+        XCTAssertEqual(
+            detect("S\u{00ED}, la prioridad es el reporte.")?.subject,
+            "el reporte")
+    }
+
+    // MARK: - Regressions found by measuring against real transcripts
+
+    func testADemonstrativeSubjectNamesNothing() {
+        XCTAssertNil(
+            detect("Y ahorita la prioridad es esta."),
+            "a bare demonstrative points at something the detector cannot see")
+        XCTAssertNil(detect("The priority is this."))
+    }
+
+    func testJoiningNeverExtendsAClauseThatAlreadyHasItsCopula() {
+        // Measured failure: the first caption is a complete declaration whose
+        // subject is correctly rejected as vacuous. Joining it to the next row
+        // manufactured a long subject out of the neighbour's unrelated words.
+        let captions = [
+            caption("Y ahorita la prioridad es esta.", at: 20),
+            caption("El reporte de ayer no es lo mismo, hoy toca otra cosa.", at: 22)
+        ]
+
+        XCTAssertNil(StatedPriorityDetector.detect(inRecent: captions))
+    }
+
+    private func caption(
+        _ text: String,
+        at startTime: TimeInterval,
+        speaker: String? = "S1"
+    ) -> PriorityScanCaption {
+        PriorityScanCaption(
+            id: UUID(),
+            text: text,
+            startTime: startTime,
+            channel: "system",
+            speaker: speaker)
+    }
+
     private func detect(_ text: String) -> StatedPriority? {
         StatedPriorityDetector.detect(in: text, rowID: row, statedAt: 107)
     }

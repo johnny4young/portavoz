@@ -19104,3 +19104,65 @@ side to be wrong on. `StatedPriorityUITests` proves the detector, the offer and
 the accept path end to end with only the caption text seeded. What is still
 missing is durability without acceptance: an unaccepted offer is lost at Stop
 and Ask cannot answer "what was the priority?", which GAPS #13 keeps open.
+
+## D506 — The priority detector stays deterministic, and now says why (Sep 2026)
+
+D505 shipped a deterministic detector and left the model lane open as future
+work. A spike closed that question, and measuring the detector against real
+transcripts found two defects in what D505 shipped.
+
+**The spike: an on-device model over the transcript does not work here.** Apple's
+~3B model, behind `@Generable` guided generation with greedy sampling, was given
+30-caption windows of two real meetings and asked for explicitly declared
+priorities, with the `BriefSynthesizer` grounding gate on its output. On the
+meeting that declares one: 15 proposals, 14 grounded, roughly one correct. On a
+control meeting whose transcript never contains the word: **26 proposals, 19
+grounded, none correct** — "company emails", "Account for that", and a line of
+garbled ASR among them. Reframing the task as a yes/no judgment per window did
+not help: 7 of 19 control windows answered yes, one citing "Um", and on the
+positive meeting one answered yes citing "It's not a priority."
+
+Two things this establishes, both cheap to state and expensive to learn later:
+guided generation constrains the *shape* of an answer, not its truth; and
+`SummaryEvidenceAdmission` verifies *provenance*, not whether the cited line
+declares anything. It is the right gate for summary claims and the wrong gate
+for this, which is why it dropped only 1 of 15.
+
+**The inversion.** "The dashboard is a low priority" reported `The dashboard` as
+the meeting's priority, as did "una prioridad baja" and "la última prioridad".
+The sentence names what does **not** take precedence. `PriorityVocabulary.demoting`
+now abstains, inspecting both sides of the anchor because English puts the
+qualifier before it and Spanish usually after.
+
+**Wider vocabulary, same grammar.** Anchors are token sequences now, so
+`the most important thing is X`, `the focus is X`, `lo mas importante es X`,
+`el foco es X` and `numero uno es X` read like `the priority is X` — every one
+an outright declaration of precedence. Precedence asserted by a verb joins
+them: `X takes precedence`, `X comes first`, `X va primero`. `lo primero es X`
+stays out: it is usually sequence, not precedence. Matching folds diacritics, so
+one spelling covers both and recognizer output that drops an accent reads the
+same; the conditional list is the exception, because Spanish `si` (if) and the
+accented `si` (yes) are different words.
+
+**Joining fragments, restricted by measurement.** Live speech splits a sentence
+across rows ("So the priority." / "Yeah." / "It is the share link."), so the
+scanner may join a caption with its immediate predecessors from the same speaker
+and channel, trimming the seam punctuation the recognizer inserted. Measured
+against real transcripts, the first version of this was net-negative: it found no
+new priority in 3 754 captions and manufactured four, by extending a complete but
+vacuous clause into its neighbour's words. Joining may now only supply a missing
+copula or a missing subject, never extend a clause that already has both.
+
+**Measurement.** Five real meetings, 3 754 finalized captions, including two
+whose transcripts never contain the word: **one detection, the correct one, no
+false positives.** The two defects above were both found this way, and both are
+now regression tests with neutral fixtures; the transcripts stay out of the
+repository.
+
+**Consequences:** the model lane is not dead, but it cannot be an extractor
+turned loose on a transcript. Its only defensible shape is stage three of a
+cascade — a classifier decides whether a sentence declares a priority, and a
+model extracts the subject only from sentences already admitted. That needs a
+labeled bilingual corpus, which is now the gating work rather than the code.
+GAPS #13 keeps the rest: persistence, retroactive detection over stored
+transcripts, and an Ask lane.

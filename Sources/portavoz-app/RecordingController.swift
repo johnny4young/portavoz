@@ -1115,8 +1115,29 @@ extension RecordingController {
     /// a caption the app already holds, sends nothing anywhere, and acts on
     /// nothing by itself.
     func offerStatedPriority(in row: TranscriptSegment) {
-        offerStatedPriority(
-            text: row.text, rowID: row.id, statedAt: row.startTime)
+        guard phase == .recording else { return }
+        // Live speech splits one sentence across rows, so the scanner sees the
+        // closed row together with its immediate predecessors and joins them
+        // only when the earlier rows are genuine fragments.
+        let window = captions
+            .suffix(StatedPriorityDetector.maximumJoinedCaptions)
+            .map { caption in
+                PriorityScanCaption(
+                    id: caption.id,
+                    text: caption.text,
+                    startTime: caption.startTime,
+                    channel: caption.channel.rawValue,
+                    speaker: caption.speakerID?.rawValue.uuidString)
+            }
+        guard window.last?.id == row.id else {
+            offerStatedPriority(
+                text: row.text, rowID: row.id, statedAt: row.startTime)
+            return
+        }
+        guard let priority = StatedPriorityDetector.detect(inRecent: window),
+              !handledPriorityKeys.contains(priority.subjectKey)
+        else { return }
+        priorityOffer = priority
     }
 
     /// Split out so a UI fixture can seed the caption text and still go through

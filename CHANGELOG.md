@@ -4,6 +4,12 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## September 10, 2026
+
+- **🚩 "That's a low priority" no longer becomes the priority** — a sentence that plays something down is never read as the meeting's focus, in English or Spanish.
+
+- **🎯 More ways of saying what matters get caught** — "the most important thing is…", "el foco es…", "that takes precedence" and "eso va primero" now surface the same way an explicit priority does, and a sentence split across a pause is read as one.
+
 ## September 9, 2026
 
 - **🚩 When someone says what the priority is, Portavoz catches it** — the stated priority comes up during the call with the exact words it came from, and one click tracks it as an objective so it reaches your summary instead of getting lost in the transcript.

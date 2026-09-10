@@ -2577,6 +2577,31 @@ is rejected rather than truncated. "Focus on X", "X first" and "everything else
 on hold" are deliberately excluded as ordinary emphasis. Measured over one real
 meeting's 305 finalized segments: one detection, no false positives.
 
+D506 widened the shapes and closed two defects found by measurement. Anchors are
+token sequences, so "lo más importante es X", "the most important thing is X",
+"the focus is X" and "número uno es X" read like "the priority is X"; precedence
+asserted by a verb ("X takes precedence", "X va primero") joins them.
+`PriorityVocabulary.demoting` abstains when the anchor is played down — "a low
+priority", "una prioridad baja" — which the first version reported as the
+priority itself, inverting the speaker; both sides of the anchor are inspected
+because Spanish postposes the qualifier. A bare demonstrative subject ("la
+prioridad es esta") names nothing and is rejected. The scanner may join a
+caption with its immediate predecessors from the same speaker and channel,
+trimming the recognizer's seam punctuation, but only to supply a missing copula
+or subject — never to extend a clause that already has both, which measurement
+showed manufacturing subjects out of a neighbour's words.
+
+The model lane was spiked and rejected in this shape: Apple's ~3B model behind
+guided generation, with the `BriefSynthesizer` grounding gate, proposed 26
+priorities for a control meeting whose transcript never contains the word, none
+correct. Guided generation constrains an answer's shape, not its truth, and
+`SummaryEvidenceAdmission` verifies provenance, not whether the cited line
+declares anything. A model lane remains defensible only as stage three of a
+cascade, behind a classifier, and needs a labeled bilingual corpus first.
+
+Measured over five real meetings and 3 754 finalized captions, two of which never
+contain the word: one detection, correct, no false positives.
+
 `RecordingController.offerStatedPriority` runs it on each finalized caption,
 outside the Apuntador opt-in because it calls no model and sends nothing. The
 offer is inert in the D504 focus slot — bounded subject, the exact caption, its
