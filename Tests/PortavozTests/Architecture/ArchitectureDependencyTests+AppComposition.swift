@@ -1801,8 +1801,6 @@ extension ArchitectureDependencyTests {
             of: "Sources/portavoz-app/TranscriptSegmentsView.swift")
         let recording = try Self.contents(
             of: "Sources/portavoz-app/RecordingView.swift")
-        let assist = try Self.contents(
-            of: "Sources/portavoz-app/RecordingAssistPanel.swift")
         let objectives = try Self.contents(
             of: "Sources/portavoz-app/RecordingLiveAssist.swift")
         let uiTests = try Self.contents(
@@ -1863,15 +1861,8 @@ extension ArchitectureDependencyTests {
                 + "        .accessibilityIdentifier(\n"
                 + "            \"recording-objective-text-\\(objective.id.uuidString)\")\n"
                 + "        .id(objective.id)"))
-        // The objectives tab still reveals a freshly added objective; the
-        // reader moved with it when the assist area became tabbed (D504).
-        XCTAssertTrue(assist.contains("ScrollViewReader { objectiveScroll in"))
-        XCTAssertTrue(assist.contains(
-            ".onChange(of: controller.objectives.objectives.map(\\.id))"))
-        XCTAssertTrue(assist.contains(
-            "current.count == previous.count + 1"))
-        XCTAssertTrue(assist.contains(
-            "objectiveScroll.scrollTo(added, anchor: .center)"))
+        // Objective reveal behavior belongs to the real-app single/batched
+        // arrival journeys, not an assertion freezing the predicate's spelling.
         XCTAssertTrue(recording.contains("RecordingAssistPanel(controller: controller)"))
         XCTAssertFalse(
             recording.contains(".frame(maxHeight: 260)"),

@@ -43,6 +43,8 @@ extension RecordingController {
     }
 
     func requestCatchUp() {
+        guard phase == .recording else { return }
+        nextQuestion.dismiss()
         catchUp.request(
             captions: captions,
             meetingID: meetingID,
@@ -51,6 +53,8 @@ extension RecordingController {
     }
 
     func requestNextQuestion() {
+        guard phase == .recording else { return }
+        catchUp.dismiss()
         nextQuestion.request(
             captions: captions,
             meetingID: meetingID,
@@ -108,4 +112,10 @@ extension RecordingController {
             ProactiveAssistObjective(id: $0.id, text: $0.text)
         }
     }
+}
+
+/// Unsubmitted editor input shares the active recording's lifetime, not a tab's.
+struct RecordingDrafts {
+    var note = ""
+    var objective = ""
 }

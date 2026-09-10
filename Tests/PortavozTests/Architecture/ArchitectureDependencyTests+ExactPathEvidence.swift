@@ -996,8 +996,6 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(scenarioProbe.contains(
             "probe.writeSample"))
         XCTAssertTrue(services.contains(
-            "usesTemporaryMeetingStore && !reusesVerifiedModels"))
-        XCTAssertTrue(services.contains(
             "AppInitialModelReadinessPolicy.schedulesRefresh("))
         XCTAssertTrue(services.contains(
             "!BenchMode.runsIsolatedBenchmark(arguments: arguments)"))

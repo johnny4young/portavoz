@@ -176,6 +176,10 @@ final class EnglishSourceTests: XCTestCase {
             // large-detail fixture and its UI screenshot.
             return true
         }
+        if relative == "Sources/portavoz-app/AppServices+LiveAssistUITestFixture.swift" {
+            // Only the exact synthetic objective is bilingual, not its surrounding prose.
+            return line.contains("Revisar la evidencia con el equipo y registrar los riesgos pendientes")
+        }
         if relative == "Sources/portavoz-app/AppServices+UITestFixtures.swift" {
             // The deterministic Meeting Detail fixture deliberately carries
             // Spanish transcript, summary, and Companion evidence.

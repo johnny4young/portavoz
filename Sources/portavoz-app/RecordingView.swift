@@ -139,16 +139,7 @@ struct RecordingView: View {
         guard startsAutomatically else { return }
         await controller.start(services: services, event: event)
 
-        // Deterministic real-app proof of the native Stop handoff. It is
-        // reachable only inside the disposable UI-test composition and fires
-        // after Start has returned, so the delegate must observe `.recording`
-        // rather than accidentally treating a cold launch as idle/preparing.
-        let arguments = ProcessInfo.processInfo.arguments
-        guard arguments.contains("-use-temp-store"),
-              arguments.contains("-simulate-stop-app-intent"),
-              controller.phase == .recording
-        else { return }
-        _ = PortavozAppIntentBridge.requestStopRecording()
+        services.simulateStopIntentIfRequested()
     }
 
     /// Captions and the assist area split the flexible height and the user

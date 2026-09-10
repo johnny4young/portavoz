@@ -6,6 +6,20 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 10, 2026
 
+- **📝 Keep unfinished live notes and objectives** — switching tabs or browsing the library no longer discards what you are typing.
+
+- **♿ Clear live-note actions** — note entry, Add and Remove now have individually addressable accessibility controls.
+
+- **🎯 New objectives stay in view** — when several arrive together, the panel reveals the latest one instead of leaving it below the fold.
+
+- **♿ Dismiss catch-up with accessibility controls** — the recap keeps its close action individually reachable.
+
+- **💡 Your latest request takes the spotlight** — switching between catch-up and a suggested question cancels the previous request instead of hiding the new one.
+
+- **🔔 Only new Companion cards count as unread** — returning to the panel no longer marks the cards you are viewing as unseen.
+
+- **♿ Companion actions stay attached to their cards** — dismissing another answer no longer changes which card an accessibility action targets.
+
 - **🔇 Mute stays silent across audio buffers** — a sample from before mute can no longer leak into the next recorded buffer.
 
 - **🎧 Seamless microphone profile changes** — sample-rate changes are handled even when macOS does not send a device-change notification.

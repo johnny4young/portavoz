@@ -70,10 +70,4 @@ enum CompanionCardWindow {
     static func focusCard(_ cards: [CompanionCard]) -> CompanionCard? {
         cards.last { $0.directed }
     }
-
-    /// Cards waiting in the Companion tab that arrived since it was last open.
-    /// Dismissals shrink the list, so this never reports a negative backlog.
-    static func unseen(liveCount: Int, seenCount: Int) -> Int {
-        max(0, liveCount - seenCount)
-    }
 }

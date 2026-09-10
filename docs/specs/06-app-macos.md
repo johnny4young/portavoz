@@ -2352,7 +2352,58 @@ Font: `docs/design/ds/` (authored in Claude Design, pine project). (1) `PVDesign
 
 **Live assist area (Sep 2026, D504)**: `RecordingView` no longer stacks eight panels inside a pinned 260 pt scroll. `RecordingAssistLayout.split(total:fraction:)` divides the flexible height between the captions and the assist area, both with floors, and a drag handle persists the fraction in `recording.assist.fraction` — a taller window now grows both zones. `RecordingAssistPanel` shows exactly one panel: `RecordingAssistTab` publishes companion/objectives/notes always and interview/suggestions/summary only once they can show something, and a selection whose tab disappears falls back rather than leaving an empty panel. Above the tabs, `RecordingFocusSlot` holds the one thing that cannot wait — catch-up first (the user just pressed it), then the newest card addressed to them by name, then the suggested next question — and it survives a tab switch. In the Companion tab, `CompanionCardWindow` keeps the newest three cards open with the answer clamped to four lines plus an explicit "Show all"; older cards fold to their question on one line and reopen on click, and a hand-opened card claims the window so reaching back folds the oldest recency-open card instead of growing the panel. The focused card is excluded from the list so it is never rendered twice. Live cards remain unlimited and persisted for the meeting detail; only the live panel is bounded.
 
-**Live assist corrections (Sep 2026, D507)**: `RecordingAssistLayout.split` shrinks both floors together when the window is too short for either — paying one in full drove the captions to zero height, and with several banners stacked on a small window the meeting had no words on screen. `RecordingFocusSlot.resolve` ranks catch-up and the suggested next question — which have this slot as their only home — above a directed card, which is also reachable in the Companion tab: the previous order let one undismissed directed card swallow every later press of "Suggest a question" for the rest of the meeting, and ranking anything above an item with no other home only moves the loss (D508). The note draft lives on `RecordingAssistPanel`, not on the notes panel, because that panel is a branch of a `@ViewBuilder switch` and loses its own state on every tab change. `LiveSpeakerHints.changed` no longer compares `speakerID`: `SpeakerAttributor` mints a fresh one per pass, so the comparison reported a change every time and the guard suppressed nothing. The divider commits its fraction to `@AppStorage` once on release rather than on every frame, and sets the resize cursor rather than pushing it onto a stack that a teardown would never pop.
+**Accepted live-input durability — open code blocker**: pressing Add accepts a
+note into the controller's in-memory `contextItems`; objectives remain in their
+live model. Neither is journaled before Stop installs the captured snapshot.
+Interrupted-recording recovery cannot restore these unspoken inputs. Navigation
+preservation below is not crash durability; GAPS records the required ordered
+writer/Stop/recovery work and its failure-mode coverage.
+
+**Live assist corrections (Sep 2026, D507)**: `RecordingAssistLayout.split` shrinks both floors together when the window is too short for either — paying one in full drove the captions to zero height, and with several banners stacked on a small window the meeting had no words on screen. `RecordingFocusSlot.resolve` ranks catch-up and the suggested next question — which have this slot as their only home — above a directed card, which is also reachable in the Companion tab: the previous order let one undismissed directed card swallow every later press of "Suggest a question" for the rest of the meeting, and ranking anything above an item with no other home only moves the loss (D508). The initial note-draft fix moved state above the tab switch; D513 moves both editor drafts to the recording controller because library navigation also reconstructs that parent panel. `LiveSpeakerHints.changed` no longer compares `speakerID`: `SpeakerAttributor` mints a fresh one per pass, so the comparison reported a change every time and the guard suppressed nothing. The divider commits its fraction to `@AppStorage` once on release rather than on every frame, and sets the resize cursor rather than pushing it onto a stack that a teardown would never pop.
+
+**Live editor lifetime (Sep 2026, D513)**: one controller-owned `RecordingDrafts`
+value holds unsubmitted note and objective input for the active session. Both
+editors bind directly to it, so tab changes and Library browsing cannot discard
+typed text. Explicit Add clears only the submitted editor; recording reset clears
+both. Drafts are not automatic summary input, and this is not a disk-persistence
+or crash-recovery guarantee. Real-app UI coverage types both drafts, reconstructs
+the panels, then submits and removes the retained note through individually
+identified controls.
+
+**Live assist identity and request ownership (Sep 2026)**: card and action
+accessibility identifiers use the card UUID, not its position in the reversed
+list. One body evaluation builds the row projection once; the eager stack still
+exposes folded rows to accessibility. The panel observes live card identities on
+initial appearance as well as subsequent changes, marks all current identities
+seen while Companion is selected, and drops retired identities and presentation
+overrides. Unread state is set difference, not subtraction of two collection
+counts. The controller retires and cancels the other pull-only model before
+requesting catch-up or a next question, so the latest explicit request owns the
+single focus slot and dismissal cannot resurrect its predecessor. Recording
+must still be active. Real-app XCUITest covers dismissal identity, reentry,
+folding across tab switches, and both request directions without supplying model
+answers or releasing the empty-caption fixture. These tests do not certify
+physical VoiceOver focus behavior.
+
+The catch-up card explicitly contains its accessibility children so its container
+identifier cannot shadow Dismiss. Objective scrolling follows the last newly
+added identity, including several additions coalesced into one observation;
+removal-only changes do not move the reader. A real-app fixture releases two
+normal objective actions in one caption callback and replaces a Companion card
+through normal admission while its tab is inactive. The journey requires the
+last objective visible without test-owned scrolling and exactly one unread card
+even though the card count is unchanged.
+
+`AppServices` owns the optional `LiveAssistUITestFixture`, admitted from the
+selected temporary-store policy rather than independently interpreted launch
+flags in controllers or views. It owns synthetic cards, translation, objective
+arrivals, the accelerated summary interval, and native Stop-intent simulation.
+Production composition never creates it; a summary fixture flag alone cannot
+reduce the live interval from 40 seconds to 50 milliseconds. Synthetic card
+outcomes cross `recordCompanionOutcome`, retaining the production append/replace
+and provenance paths instead of assigning the private card array. This is
+composition isolation, not a security sandbox for arbitrary environment paths.
+
 
 **Aurora shell (Jul 2026)**: `Aurora.swift` — the `--aurora-*` doses of tokens, ONLY in dark appearance (icon world is dark; light stays native). `AuroraDetailBackground` (detail pane, wired in ContentView): 140° gradient #1C1A2E→#262626 + elliptical radial violet with center OUTSIDE screen (x=20%, y=-104pt, 1400×520) — only glow tail touches content; GeometryReader with `ignoresSafeArea` to bleed under toolbar and `.clipped()` to not spill over sidebar. `AuroraSidebarBackground`: brandSlate 0.6 over native vibrancy (deep glass, desktop breathes). Detail views are ScrollView with quaternary translucent fills — gradient breathes through cards without touching them. `--aurora-selection` NOT adopted: macOS draws sidebar selection natively and repainting fights platform.
 

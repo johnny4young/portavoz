@@ -868,8 +868,6 @@ extension ArchitectureDependencyTests {
         let telemetryInstall = try XCTUnwrap(services.range(
             of: "IntelligenceScheduler.installSharedTelemetry"))
         XCTAssertLessThan(storeOpen.lowerBound, telemetryInstall.lowerBound)
-        XCTAssertTrue(services.contains(
-            "simulatesDatabaseOpenFailure = usesTemporaryMeetingStore"))
 
         XCTAssertTrue(launch.contains("case databaseUnavailable"))
         XCTAssertTrue(launch.contains("private var activatedServices = false"))

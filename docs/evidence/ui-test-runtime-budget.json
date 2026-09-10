@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 110
+    "expectedCaseCount": 114
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -97,6 +97,10 @@
     "PublicShowcaseUITests/testMeetingDetailShowcase()": 20.0,
     "PublicShowcaseUITests/testTodayShowcase()": 20.0,
     "RecordingAssistUITests/testLiveAssistKeepsOnePanelOpenAndABoundedCardList()": 25.0,
+    "RecordingAssistUITests/testCompanionActionsKeepIdentityAndSeenStateAfterReentry()": 25.0,
+    "RecordingAssistUITests/testLatestManualAssistRequestOwnsTheFocusSlot()": 25.0,
+    "RecordingAssistUITests/testBatchedObjectivesRevealLastArrivalAndReplacementCountsAsUnread()": 25.0,
+    "RecordingAssistUITests/testUnsubmittedNotesAndObjectivesSurviveTabsAndLibraryBrowsing()": 25.0,
     "SettingsUITests/testAudioPaneOffersCaptureSourceControls()": 20.0,
     "SettingsUITests/testCategoryNavigationRevealsEachPane()": 24.352,
     "SettingsUITests/testDataPaneExportsAReadableWholeLibraryMarkdownBackup()": 20.0,

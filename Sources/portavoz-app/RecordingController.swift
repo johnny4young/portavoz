@@ -54,15 +54,12 @@ final class RecordingController {
     /// source-closed, inert, throttled, and independently pausable.
     let proactiveAssist = RecordingProactiveAssistModel()
     /// The user's notes during the meeting (D28): intent for the summary.
-    /// The future notes panel calls `addContextNote`; everything downstream
-    /// (rolling summary, final summary, persistence) is already wired.
+    /// Explicitly submitted notes enter summary input; Stop persists them.
     private(set) var contextItems: [ContextItem] = []
+    /// Editor input outlives view reconstruction but is not submitted context.
+    var drafts = RecordingDrafts()
     /// Companion answer cards (D26), newest last. Opt-in per recording.
     private(set) var companionCards: [CompanionCard] = []
-    /// XCUITest fixtures seed once per recording. `companionCards.isEmpty` was
-    /// not enough: dismissing every seeded card restored the precondition and
-    /// the next caption seeded a fresh set.
-    private var seededUIFixtures: Set<String> = []
     private var companionArtifactsByCardID: [UUID: CompanionGenerationArtifact] = [:]
     private var companionTerminalRuns: [GenerationRun] = []
     let liveTranslationWakeHub = LiveTranslationWakeHub()
@@ -240,11 +237,11 @@ final class RecordingController {
         hasUnsupportedTranslationRows = false
         liveSummary = nil
         companionCards = []
-        seededUIFixtures = []
         companionArtifactsByCardID = [:]
         companionTerminalRuns = []
         proactiveAssist.reset()
         contextItems = []
+        drafts = RecordingDrafts()
         liveSummaryCheckpoint = nil
         cancelLiveSummaryWork()
         cancelCompanionGeneration()
@@ -327,10 +324,10 @@ final class RecordingController {
         liveSummarySourceRevision = 0
         summarizedCaptionIDs = []
         companionCards = []
-        seededUIFixtures = []
         companionArtifactsByCardID = [:]
         companionTerminalRuns = []
         contextItems = []
+        drafts = RecordingDrafts()
         cancelCompanionGeneration()
         lastOpenRowID = nil
         turnEndpointTask?.cancel()
@@ -368,8 +365,7 @@ final class RecordingController {
                 confidence: segment.confidence) { return }
         coalescer.apply(segment, to: &captions)
         interviewAssist.observe(captions: captions)
-        seedLiveTranslationUIIfRequested()
-        seedLiveCompanionUIIfRequested()
+        services?.liveAssistUITestFixture?.receiveCaption(in: self)
         detectClosedRow()
         armTurnEndpointDeadline()
         liveTranslationWakeHub.signal()
@@ -830,8 +826,7 @@ private extension RecordingController {
         if let liveSummaryWorkCoordinator {
             return liveSummaryWorkCoordinator
         }
-        let interval: Duration = ProcessInfo.processInfo.arguments.contains(
-            "-seed-live-summary-ui") ? .milliseconds(50) : .seconds(40)
+        let interval = services?.liveAssistUITestFixture?.summaryInterval ?? .seconds(40)
         let coordinator = LiveSummaryWorkCoordinator(
             interval: interval,
             operation: { [weak self] in
@@ -1081,59 +1076,5 @@ extension RecordingController {
         liveSpeakerLabels = result.labels
         requestLiveSummaryRefresh()
         liveTranslationWakeHub.signal()
-    }
-}
-
-private extension RecordingController {
-    /// Visual-only XCUITest fixture for the live assist panel. The recency
-    /// window, the folded rows and the focus slot are pure policy covered by
-    /// `CompanionCardWindowTests`; this branch proves the rendered panel
-    /// without a model producing cards on a runner (D504). It lives in an
-    /// extension because the class body is at its length cap, and in this file
-    /// because `companionCards` keeps a file-private setter.
-    func seedLiveCompanionUIIfRequested() {
-        let arguments = ProcessInfo.processInfo.arguments
-        guard arguments.contains("-use-temp-store"),
-            arguments.contains("-seed-live-companion-ui"),
-            !seededUIFixtures.contains("companion"),
-            let row = captions.last
-        else { return }
-        seededUIFixtures.insert("companion")
-        companionCards = (0..<6).map { index in
-            CompanionCard(
-                question: "Seeded live question \(index + 1)?",
-                answer: String(
-                    repeating: "Seeded live answer \(index + 1). ",
-                    count: 12),
-                kind: .context,
-                source: "on-device",
-                directed: false,
-                askedAt: row.startTime + Double(index))
-        }
-        companionCards.append(CompanionCard(
-            question: "Ana, can you take the budget?",
-            answer: "",
-            kind: .context,
-            source: "on-device",
-            directed: true,
-            askedAt: row.startTime + 7))
-    }
-}
-
-private extension RecordingController {
-    /// Visual-only XCUITest fixture. Routing and stale-lane semantics stay
-    /// covered by unit tests; this branch proves the rendered language rail
-    /// without requiring a runner to own Apple's downloadable language pack.
-    func seedLiveTranslationUIIfRequested() {
-        let arguments = ProcessInfo.processInfo.arguments
-        guard arguments.contains("-use-temp-store"),
-            arguments.contains("-seed-live-translation-ui"),
-            let row = captions.last
-        else { return }
-        if translationTarget == nil { translationTarget = "en" }
-        translations[row.id] = arguments.contains("-seed-showcase")
-            ? PublicShowcaseFixture.translation(for: row.text)
-            : "Clearly separated test translation."
-        translatedSourceTexts[row.id] = row.text
     }
 }

@@ -19,44 +19,6 @@ struct MeetingSeekRequest: Equatable {
     let timestamp: TimeInterval
 }
 
-/// Storage isolation is selected once at process composition. UI automation
-/// gets an empty model root as well as a disposable meeting database. The
-/// hidden benchmarks that need Portavoz-managed models keep only the database
-/// disposable and reuse the normal verified model cache so repeated Release
-/// samples do not include a fresh model installation. OS-model-only Ask and
-/// standalone indexing keep both Portavoz stores disposable.
-struct AppStorageIsolationPolicy: Equatable {
-    let usesTemporaryMeetingStore: Bool
-    let usesTemporaryModelStore: Bool
-    let usesTemporarySensitiveStore: Bool
-    let meetingStoreURL: URL
-    let simulatesDatabaseOpenFailure: Bool
-
-    init(
-        arguments: [String],
-        environment: [String: String] = ProcessInfo.processInfo.environment
-    ) {
-        usesTemporaryMeetingStore = arguments.contains("-use-temp-store")
-        usesTemporarySensitiveStore = usesTemporaryMeetingStore
-        let reusesVerifiedModels = arguments.contains("--bench-record")
-            || arguments.contains("--bench-resource-prepare-refine")
-            || arguments.contains("--bench-resource-refine")
-            || arguments.contains("--bench-resource-summary")
-        usesTemporaryModelStore =
-            usesTemporaryMeetingStore && !reusesVerifiedModels
-        if usesTemporaryMeetingStore {
-            meetingStoreURL = environment["PORTAVOZ_UI_TEST_DATABASE_PATH"]
-                .flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
-                ?? FileManager.default.temporaryDirectory.appendingPathComponent(
-                    "portavoz-uitest-\(UUID().uuidString).sqlite")
-        } else {
-            meetingStoreURL = MeetingStore.defaultDatabaseURL
-        }
-        simulatesDatabaseOpenFailure = usesTemporaryMeetingStore
-            && arguments.contains("-simulate-database-open-failure")
-    }
-}
-
 enum AppInitialModelReadinessPolicy {
     static func schedulesRefresh(arguments: [String]) -> Bool {
         !BenchMode.runsIsolatedBenchmark(arguments: arguments)
@@ -185,6 +147,7 @@ final class AppServices {
     /// Retained only as a composition decision. Disposable automation must
     /// never resolve a real GitHub credential or transport.
     @ObservationIgnored let usesTemporaryMeetingStore: Bool
+    @ObservationIgnored let liveAssistUITestFixture: LiveAssistUITestFixture?
     /// Whole-library export state outlives Settings windows so closing a pane
     /// cannot cancel publication or start a competing backup.
     let libraryMarkdownBackup: LibraryMarkdownBackupModel
@@ -305,6 +268,8 @@ final class AppServices {
         recording = RecordingController(defaults: defaults)
         let usesTemporaryStore = storagePolicy.usesTemporaryMeetingStore
         usesTemporaryMeetingStore = usesTemporaryStore
+        liveAssistUITestFixture = LiveAssistUITestFixture(
+            arguments: arguments, usesTemporaryStore: usesTemporaryStore)
         let resourceCaptureState = AppResourceCaptureState()
         self.resourceCaptureState = resourceCaptureState
         // Open the authority before constructing process runtimes or installing
@@ -401,23 +366,6 @@ final class AppServices {
     ) -> TranscriptionScheduler {
         IntelligenceScheduler.installSharedTelemetry(telemetry)
         return TranscriptionScheduler(telemetry: telemetry)
-    }
-
-    private static func prepareStoragePolicy(
-        arguments: [String],
-        environment: [String: String],
-        override: AppStorageIsolationPolicy?,
-        defaults: UserDefaults
-    ) -> AppStorageIsolationPolicy {
-        // The UI-test host has its own bundle identity, but volatile
-        // per-launch preferences must land before any service reads defaults.
-        UITestDefaults.installIfNeeded(
-            arguments: arguments,
-            environment: environment,
-            defaults: defaults)
-        return override ?? AppStorageIsolationPolicy(
-            arguments: arguments,
-            environment: environment)
     }
 
     private func scheduleInitialReadinessRefresh(arguments: [String]) {
@@ -624,5 +572,4 @@ final class AppServices {
         try await modelLifecycle.remove(ModelCatalog.mlxQwen35)
         mlxDownloaded = false
     }
-
 }

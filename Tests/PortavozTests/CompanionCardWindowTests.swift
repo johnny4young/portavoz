@@ -90,11 +90,6 @@ final class CompanionCardWindowTests: XCTestCase {
         XCTAssertFalse(opened.canOpenFully, "an open card offers to close, not to open")
     }
 
-    func testTheTabBadgeNeverGoesNegativeWhenCardsAreDismissed() {
-        XCTAssertEqual(CompanionCardWindow.unseen(liveCount: 7, seenCount: 4), 3)
-        XCTAssertEqual(CompanionCardWindow.unseen(liveCount: 2, seenCount: 6), 0)
-    }
-
     private func card(
         at askedAt: TimeInterval,
         directed: Bool,

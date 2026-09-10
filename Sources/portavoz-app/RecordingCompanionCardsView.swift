@@ -21,6 +21,7 @@ struct RecordingCompanionCardsView: View {
     }
 
     var body: some View {
+        let rows = rows
         if rows.isEmpty {
             RecordingAssistEmptyState(
                 symbol: "questionmark.bubble",
@@ -32,8 +33,8 @@ struct RecordingCompanionCardsView: View {
                 // never builds what sits below the fold — which puts the folded
                 // rows out of reach of VoiceOver until the user scrolls to them.
                 VStack(spacing: 8) {
-                    ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
-                        card(row, ordinal: index)
+                    ForEach(rows) { row in
+                        card(row, identity: row.id.uuidString)
                     }
                 }
                 .padding(.vertical, 2)
@@ -44,11 +45,11 @@ struct RecordingCompanionCardsView: View {
     }
 
     @ViewBuilder
-    private func card(_ row: CompanionCardWindow.Row, ordinal: Int) -> some View {
+    private func card(_ row: CompanionCardWindow.Row, identity: String) -> some View {
         if row.presentation == .collapsed {
-            collapsedRow(row, ordinal: ordinal)
+            collapsedRow(row, identity: identity)
         } else {
-            openCard(row, ordinal: ordinal)
+            openCard(row, identity: identity)
         }
     }
 
@@ -56,7 +57,7 @@ struct RecordingCompanionCardsView: View {
     /// recency window folds down to this instead of leaving the panel.
     private func collapsedRow(
         _ row: CompanionCardWindow.Row,
-        ordinal: Int
+        identity: String
     ) -> some View {
         Button {
             presentations[row.card.id] = .clamped
@@ -80,21 +81,21 @@ struct RecordingCompanionCardsView: View {
         .padding(.vertical, 5)
         .padding(.horizontal, 10)
         .background(.quaternary.opacity(0.18), in: RoundedRectangle(cornerRadius: 8))
-        .accessibilityIdentifier("recording-companion-folded-\(ordinal)")
+        .accessibilityIdentifier("recording-companion-folded-\(identity)")
     }
 
     private func openCard(
         _ row: CompanionCardWindow.Row,
-        ordinal: Int
+        identity: String
     ) -> some View {
         let card = row.card
         let tint: Color = card.directed ? .orange : PVDesign.accent
         return VStack(alignment: .leading, spacing: 6) {
-            header(row, ordinal: ordinal)
+            header(row, identity: identity)
             if !card.answer.isEmpty {
                 answer(row)
             }
-            footer(row, tint: tint, ordinal: ordinal)
+            footer(row, tint: tint, identity: identity)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -104,10 +105,10 @@ struct RecordingCompanionCardsView: View {
                 .strokeBorder(tint.opacity(0.25), lineWidth: 1)
         )
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("recording-companion-card-\(ordinal)")
+        .accessibilityIdentifier("recording-companion-card-\(identity)")
     }
 
-    private func header(_ row: CompanionCardWindow.Row, ordinal: Int) -> some View {
+    private func header(_ row: CompanionCardWindow.Row, identity: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Label(row.card.question, systemImage: "questionmark.bubble.fill")
                 .font(.callout.weight(.semibold))
@@ -121,7 +122,7 @@ struct RecordingCompanionCardsView: View {
             .buttonStyle(.plain)
             .foregroundStyle(.tertiary)
             .help(L10n.text("Fold this card"))
-            .accessibilityIdentifier("recording-companion-fold-\(ordinal)")
+            .accessibilityIdentifier("recording-companion-fold-\(identity)")
             Button {
                 controller.dismissCompanionCard(row.card.id)
                 presentations[row.card.id] = nil
@@ -130,7 +131,7 @@ struct RecordingCompanionCardsView: View {
             }
             .buttonStyle(.plain)
             .help(L10n.text("Dismiss this card"))
-            .accessibilityIdentifier("recording-companion-dismiss-\(ordinal)")
+            .accessibilityIdentifier("recording-companion-dismiss-\(identity)")
         }
     }
 
@@ -151,7 +152,7 @@ struct RecordingCompanionCardsView: View {
     private func footer(
         _ row: CompanionCardWindow.Row,
         tint: Color,
-        ordinal: Int
+        identity: String
     ) -> some View {
         HStack(spacing: 8) {
             Text(RecordingCompanionCardsView.tag(row.card))
@@ -164,7 +165,7 @@ struct RecordingCompanionCardsView: View {
                 .buttonStyle(.plain)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.tint)
-                .accessibilityIdentifier("recording-companion-show-all-\(ordinal)")
+                .accessibilityIdentifier("recording-companion-show-all-\(identity)")
             } else if row.presentation == .full {
                 Button(L10n.text("Show less")) {
                     presentations[row.card.id] = .clamped
@@ -172,7 +173,7 @@ struct RecordingCompanionCardsView: View {
                 .buttonStyle(.plain)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.tint)
-                .accessibilityIdentifier("recording-companion-show-less-\(ordinal)")
+                .accessibilityIdentifier("recording-companion-show-less-\(identity)")
             }
             Spacer()
             if !row.card.answer.isEmpty {
@@ -185,6 +186,8 @@ struct RecordingCompanionCardsView: View {
                 .buttonStyle(.plain)
                 .controlSize(.small)
                 .help(L10n.text("Copy response"))
+                .accessibilityLabel(L10n.text("Copy response"))
+                .accessibilityIdentifier("recording-companion-copy-\(identity)")
             }
         }
     }

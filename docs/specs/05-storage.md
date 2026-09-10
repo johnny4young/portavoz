@@ -1078,6 +1078,13 @@ precision; shell `startedAt` and asset `createdAt` therefore match by their
 exact canonical database values. Raw submillisecond `Date` equality is never
 used as a stronger, non-durable identity constraint.
 
+This is currently the first durable boundary for live notes and manual
+objectives: Add updates the recording controller's memory, not `contextItem`.
+Interrupted-recording recovery builds a snapshot with empty context items and
+cannot recover those unspoken inputs before Stop. The missing pre-Stop row is
+reproduced in the real app; durable live-input journaling and its interaction
+with the no-preexisting-children invariant remain a code blocker in GAPS.
+
 D43 extends this boundary with `installCapturedSnapshot(_:enqueue:at:)`.
 Normal Stop supplies the exact initial diarization request when live captions
 are complete, or D70's exact initial transcription request when captions are

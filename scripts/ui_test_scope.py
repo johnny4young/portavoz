@@ -97,6 +97,22 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "testLiveAssistKeepsOnePanelOpenAndABoundedCardList",
         ),
         test_id(
+            "RecordingAssistUITests",
+            "testCompanionActionsKeepIdentityAndSeenStateAfterReentry",
+        ),
+        test_id(
+            "RecordingAssistUITests",
+            "testLatestManualAssistRequestOwnsTheFocusSlot",
+        ),
+        test_id(
+            "RecordingAssistUITests",
+            "testBatchedObjectivesRevealLastArrivalAndReplacementCountsAsUnread",
+        ),
+        test_id(
+            "RecordingAssistUITests",
+            "testUnsubmittedNotesAndObjectivesSurviveTabsAndLibraryBrowsing",
+        ),
+        test_id(
             "MeetingDetailUITests",
             "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador",
         ),
@@ -1083,6 +1099,8 @@ def select_paths(paths: Iterable[str]) -> Selection:
             file_name = Path(path).name
             if file_name in {
                 "AppServices+UITestFixtures.swift",
+                "AppServices+LiveAssistUITestFixture.swift",
+                "AppServices+StorageComposition.swift",
                 "AppServices+AskTopicMemoryUITestFixture.swift",
                 "UITestDefaults.swift",
             }:

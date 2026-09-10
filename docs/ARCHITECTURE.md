@@ -769,6 +769,21 @@ CLI and diagnostic fallback rather than user-facing copy.
 
 ## Presentation and state ownership
 
+Unsubmitted live-editor input is a controller-owned `RecordingDrafts` value.
+Tabs and Library navigation can reconstruct views without destroying it;
+recording reset clears it. Only explicit submission creates context for
+summary generation or persistence.
+
+Disposable recording fixtures are owned by one optional app-composition object,
+constructed only when the selected storage policy uses a temporary meeting
+store. Recording views and controllers do not interpret live fixture flags.
+Synthetic cards and objective arrivals cross normal controller actions; the
+fixture does not acquire production persistence authority or model ownership.
+Storage-isolation policy and pre-service preference installation live together
+in `AppServices+StorageComposition.swift`. Model state keeps its private setter;
+fixture extraction does not broaden its mutation authority.
+
+
 SwiftUI renders immutable snapshots and sends explicit actions through feature
 owners. Adopted read surfaces do not observe a global invalidation counter.
 

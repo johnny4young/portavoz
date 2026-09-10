@@ -9,30 +9,25 @@ import SwiftUI
 /// the field stays put and the notes take whatever height the tab has (D504).
 struct RecordingNotesPanel: View {
     @Bindable var controller: RecordingController
-    /// Owned by the panel above, not here: this view is a branch of a
-    /// `@ViewBuilder switch`, so SwiftUI destroys its own `@State` on every tab
-    /// change and a half-typed note would go with it.
-    @Binding var draft: String
-
-    private var trimmed: String {
-        draft.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
     var body: some View {
+        let isDraftEmpty = controller.drafts.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .bottom, spacing: 6) {
-                TextField("Add a note…", text: $draft, axis: .vertical)
+                TextField("Add a note…", text: $controller.drafts.note, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(1...3)
                     .onSubmit(add)
+                    .accessibilityIdentifier("recording-note-field")
                 Button(action: add) {
                     Image(systemName: "arrow.up.circle.fill").imageScale(.large)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(
-                    trimmed.isEmpty ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.tint))
-                .disabled(trimmed.isEmpty)
+                    isDraftEmpty ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.tint))
+                .disabled(isDraftEmpty)
                 .help(L10n.text("Add note (⏎)"))
+                .accessibilityLabel(L10n.text("Add note (⏎)"))
+                .accessibilityIdentifier("recording-note-add")
             }
             if controller.contextItems.isEmpty {
                 RecordingAssistEmptyState(
@@ -72,12 +67,17 @@ struct RecordingNotesPanel: View {
             }
             .buttonStyle(.plain)
             .help(L10n.text("Remove note"))
+            .accessibilityLabel(L10n.text("Remove note"))
+            .accessibilityIdentifier("recording-note-remove-\(item.id.uuidString)")
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("recording-note-\(item.id.uuidString)")
     }
 
     private func add() {
-        guard !trimmed.isEmpty else { return }
-        controller.addContextNote(trimmed)
-        draft = ""
+        let note = controller.drafts.note.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !note.isEmpty else { return }
+        controller.addContextNote(note)
+        controller.drafts.note = ""
     }
 }

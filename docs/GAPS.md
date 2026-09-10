@@ -16,6 +16,50 @@ protocols and full-certification scorecard preserve those missing results.
 Code readiness does not authorize publication or establish notarization,
 production sync reliability, universal hardware support or real-world quality.
 
+### Accepted live input is not durable before Stop — code blocker
+
+During recording, `RecordingController.addContextNote` appends only to in-memory
+`contextItems`; manually entered objectives also remain in the live model. They
+reach durable StorageKit rows through the captured snapshot at Stop, not when
+the UI accepts Add. A real-app check with a synthetic note confirmed the visible
+accepted row while a successful read-only SQLite query still returned no matching
+`contextItem`. The interrupted-recording recovery snapshot supplies empty context
+items. A termination before Stop therefore has no journal from which to restore
+these unspoken inputs. The missing row was reproduced; forced-crash/relaunch
+preservation has not been demonstrated.
+
+This is a user-work-loss defect, **not deferred physical verification**, and the
+code-ready milestone cannot be considered closed while it remains. Keeping
+unsubmitted editor drafts across tabs and library navigation does not fix it.
+A complete repair needs an application-owned durable live-input writer, stable
+add/remove identities, ordered Stop/drain and recovery semantics, explicit write
+failure handling that retains user input, and crash/relaunch, disk-failure and
+Stop-race coverage. The captured-snapshot invariant currently rejects preexisting
+children, so adding a fire-and-forget note write would break that boundary rather
+than repair it. This coordinated change is left open instead of partially applied.
+
+### Source-size and lexical reuse boundaries
+
+The 2,400-line test-file check is a file readability limit, not a limit on an
+extension-split test class and not evidence of independent behavior coverage.
+The architecture suite still contains many source-spelling assertions across
+multiple files. Import-direction and composition-authority checks remain useful;
+behavioral spelling ratchets should migrate to reachable integration/UI tests
+when their behavior is changed, rather than an arbitrary aggregate class cap.
+The objective count-delta ratchet has been replaced by a real coalesced-arrival
+journey; this does not claim the rest of the suite has been migrated.
+
+`CompanionCardAdmission.tokens(in:)` in PortavozCore and
+`SummaryEvidenceAdmission.normalizedTokens(in:)` in IntelligenceKit still repeat
+the same case/diacritic folding and alphanumeric split. Both are private to
+separate admission concerns. There is no public equivalent to call without
+changing that boundary: `PersonAliasNormalizer.normalize` also validates a
+bounded person label and performs width folding, so it is not interchangeable
+with transcript tokenization. A shared lexical primitive must preserve both
+callers' behavior; their different stop-word lists and minimum-token rules
+must remain separate policies. This review did not consolidate those policies
+or claim a tokenization benchmark improvement.
+
 ### Routine graph tests still mix correctness and wall-clock qualification
 
 The always-on small-corpus graph test enforces a 250 ms wall-clock p95 over five

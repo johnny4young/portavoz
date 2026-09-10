@@ -14,10 +14,7 @@ struct RecordingAssistPanel: View {
     @State private var selection: RecordingAssistTab = .companion
     /// Owned here so switching tabs does not reset what the user opened.
     @State private var presentations: [UUID: CompanionCardPresentation] = [:]
-    @State private var seenCompanionCount = 0
-    /// Held here for the same reason as `presentations`: the notes panel is a
-    /// branch of `activePanel` and loses its own state when the tab changes.
-    @State private var noteDraft = ""
+    @State private var seenCompanionIDs: Set<UUID> = []
 
     private var tabs: [RecordingAssistTab] {
         RecordingAssistTab.available(
@@ -28,6 +25,10 @@ struct RecordingAssistPanel: View {
 
     private var tab: RecordingAssistTab {
         RecordingAssistTab.resolve(selection, in: tabs)
+    }
+
+    private var companionIDs: Set<UUID> {
+        Set(controller.companionCards.map(\.id))
     }
 
     private var focusCard: CompanionCard? {
@@ -48,14 +49,14 @@ struct RecordingAssistPanel: View {
             activePanel
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .onChange(of: controller.companionCards.count) { _, count in
-            seenCompanionCount = tab == .companion
-                ? count
-                : min(seenCompanionCount, count)
+        .onChange(of: companionIDs, initial: true) { _, ids in
+            seenCompanionIDs = tab == .companion
+                ? ids : seenCompanionIDs.intersection(ids)
+            presentations = presentations.filter { ids.contains($0.key) }
         }
         .onChange(of: tab) { _, current in
             guard current == .companion else { return }
-            seenCompanionCount = controller.companionCards.count
+            seenCompanionIDs = companionIDs
         }
         // Without this the container identifier propagates onto every leaf
         // and shadows the inner ones, so the focus card becomes unaddressable.
@@ -157,9 +158,7 @@ private extension RecordingAssistPanel {
     func tabButton(_ candidate: RecordingAssistTab) -> some View {
         let isActive = candidate == tab
         let badge = candidate == .companion
-            ? CompanionCardWindow.unseen(
-                liveCount: controller.companionCards.count,
-                seenCount: seenCompanionCount)
+            ? companionIDs.subtracting(seenCompanionIDs).count
             : 0
         return Button {
             selection = candidate
@@ -205,7 +204,7 @@ private extension RecordingAssistPanel {
         case .objectives:
             objectivesTab
         case .notes:
-            RecordingNotesPanel(controller: controller, draft: $noteDraft)
+            RecordingNotesPanel(controller: controller)
         case .interview:
             ScrollView { RecordingInterviewAssistView(controller: controller) }
         case .proactive:
@@ -221,9 +220,8 @@ private extension RecordingAssistPanel {
                 RecordingObjectivesPanel(controller: controller)
             }
             .onChange(of: controller.objectives.objectives.map(\.id)) { previous, current in
-                guard current.count == previous.count + 1,
-                      let added = current.first(where: { !previous.contains($0) })
-                else { return }
+                let previousIDs = Set(previous)
+                guard let added = current.last(where: { !previousIDs.contains($0) }) else { return }
                 objectiveScroll.scrollTo(added, anchor: .center)
             }
         }
@@ -272,6 +270,7 @@ struct RecordingCatchUpCard: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("recording-catch-up-panel")
     }
 

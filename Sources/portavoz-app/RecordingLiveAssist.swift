@@ -11,9 +11,9 @@ import SwiftUI
 /// conversation (opt-in, never unchecks).
 struct RecordingObjectivesPanel: View {
     @Bindable var controller: RecordingController
-    @State private var draft = ""
 
     var body: some View {
+        let isDraftEmpty = controller.drafts.objective.trimmingCharacters(in: .whitespaces).isEmpty
         VStack(alignment: .leading, spacing: 8) {
             Label(
                 L10n.text(controller.interviewAssist.isEnabled
@@ -22,7 +22,7 @@ struct RecordingObjectivesPanel: View {
                 .font(.headline)
                 .accessibilityIdentifier("recording-objectives-panel")
             HStack(alignment: .bottom, spacing: 6) {
-                TextField("Add an objective…", text: $draft)
+                TextField("Add an objective…", text: $controller.drafts.objective)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit(add)
                     .accessibilityIdentifier("recording-objective-field")
@@ -31,9 +31,9 @@ struct RecordingObjectivesPanel: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(
-                    draft.trimmingCharacters(in: .whitespaces).isEmpty
+                    isDraftEmpty
                         ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.tint))
-                .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
+                .disabled(isDraftEmpty)
                 .accessibilityLabel(L10n.text("Add objective (⏎)"))
                 .accessibilityIdentifier("recording-objective-add")
                 .help(L10n.text("Add objective (⏎)"))
@@ -114,9 +114,9 @@ struct RecordingObjectivesPanel: View {
     }
 
     private func add() {
-        controller.addObjective(draft)
+        controller.addObjective(controller.drafts.objective)
         if controller.objectives.admissionIssue == nil {
-            draft = ""
+            controller.drafts.objective = ""
         }
     }
 

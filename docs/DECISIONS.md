@@ -19360,3 +19360,78 @@ geometry and carry-admission coverage, plus an uneven-fragment rate matrix with
 independent ramp/constant signal oracles. Its interpolation tail is bounded by
 the next source sample, not universally one output frame under upsampling.
 Physical Bluetooth continuity and microphone authorization remain field gates.
+
+
+## D511 — Bind live assist actions to identity and explicit request ownership
+
+**Date:** 2026-09-10
+
+**Context.** Real-app regressions reproduced two failures in one Companion
+journey: removing a newer card changed the accessibility target of a surviving
+card, and revisiting an already selected tab showed its existing cards as unread.
+A separate empty-caption journey also disproved the remaining focus-slot claim:
+catch-up's unavailable state hid the next explicit question request indefinitely.
+Ranking the two models differently would only reverse which request gets lost.
+
+**Decision.** Accessibility uses each card UUID. Seen state tracks live identities
+and reconciles on initial appearance, not just a count change. Retired identities
+and card presentation overrides are pruned. Each controller request cancels and
+clears its peer before asking its own model; no new queue or priority constant is
+introduced. The latest manual request owns the single transient slot. The eager
+card stack remains intentional for accessibility, but its projection is computed
+only once per body evaluation.
+
+**Evidence boundary.** The regression journeys exercise the rendered app and
+controller actions. Synthetic empty captions produce a truthful unavailable
+state on compatible operating systems without model inference. Physical screen
+reader focus and installed-model latency remain separate verification work.
+
+
+## D512 — Exercise coalesced arrivals through disposable recording composition
+
+**Date:** 2026-09-10
+
+**Context.** The objective-scroll source ratchet required exactly one additional
+ID and therefore froze a bug: two ordinary additions in the same callback left
+the latest objective below the fold. A real-app, externally released caption
+fixture reproduced that failure. It also confirmed identity-based unread tracking
+across a production-admitted card replacement with no change in collection size.
+The catch-up journey uncovered a second issue after request ownership was fixed:
+the recap container's identifier shadowed its Dismiss control.
+
+**Decision.** Reveal the last identity absent from the previous set, without a
+count delta assumption. Keep removal-only observations inert. Delete the source
+predicate ratchet; require actual visibility without test-owned scrolling in the
+UI journey. Declare explicit accessibility containment on catch-up.
+
+Move live card/translation seeding and Stop-intent simulation out of recording
+controllers and views into a single temporary-composition fixture owner. The
+selected storage policy gates its construction, including the accelerated
+summary interval, which previously honored a launch flag without that gate.
+Synthetic outcomes now use normal card admission/provenance and objective APIs.
+The existing caption-frontier handshake admits the adversarial two-at-once shape
+without sleeps or a test-only interactive control.
+
+**Boundary.** Temporary composition is not a sandbox against an intentionally
+misconfigured database-path override. These fixtures do not prove actual model
+output, hardware behavior, or the safety of arbitrary local launch environments.
+
+## D513 — Keep unsubmitted editor input with the recording session
+
+**Date:** 2026-09-10
+
+**Context.** Keeping note input above the tab switch fixed only one view lifetime.
+Library navigation destroys that parent as well. Objective input still belonged
+to its conditional tab and disappeared even sooner. A real-app journey types both
+fields before navigating, then asserts the exact input again rather than merely
+checking that another empty editor appears.
+
+**Decision.** The controller owns one `RecordingDrafts` value for both editors.
+Views bind to it directly. Submission clears only that editor, while recording
+reset clears the value. This follows the active recording's lifetime instead of
+moving state to yet another view. Note entry, submission and removal have stable
+accessibility identities and matching real-app assertions.
+
+**Boundary.** Preserving unsubmitted input during navigation is not an automatic
+submission policy or a durable journal. Drafts do not become model context by
+being typed, and neither this value nor the UI journey certifies crash recovery.

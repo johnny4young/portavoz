@@ -716,6 +716,8 @@ class UITestScopeTests(unittest.TestCase):
     def test_seed_fixtures_expand_to_the_complete_bilingual_catalog(self):
         for path in (
             "Sources/portavoz-app/AppServices+UITestFixtures.swift",
+            "Sources/portavoz-app/AppServices+LiveAssistUITestFixture.swift",
+            "Sources/portavoz-app/AppServices+StorageComposition.swift",
             "Sources/portavoz-app/AppServices+AskTopicMemoryUITestFixture.swift",
             "Sources/portavoz-app/UITestDefaults.swift",
         ):
@@ -809,9 +811,9 @@ class UITestScopeTests(unittest.TestCase):
             + FEATURE_TESTS["live-assist"]
         )
         expected = tuple(test for test in ALL_TESTS if test in expected_set)
-        # 13 since D504 added the bounded live-assist panel journey; D508
-        # removed the stated-priority one with its feature.
-        self.assertEqual(len(expected), 13)
+        # Includes five distinct assist journeys: layout, identity/reentry,
+        # manual requests, coalesced arrivals and unsubmitted drafts.
+        self.assertEqual(len(expected), 17)
         self.assertTrue(ui_scope.APUNTADOR_LEAK_EVIDENCE_FILES.isdisjoint(
             ui_scope.FULL_BILINGUAL_HARNESS_FILES
         ))
