@@ -14,6 +14,63 @@ import XCTest
 final class TranscriptCorrectionChainDeletionTests: XCTestCase {
     private let device = UUID(uuidString: "9E0D0000-0000-4000-8000-000000000001")!
 
+    func testFileBackedReplayAndPurgeKeepOtherChainsAndForeignKeysIntact() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appendingPathComponent("library.sqlite")
+        let destination = try MeetingStore(databaseURL: url)
+        let unrelated = try await seedCorrectionChain(in: destination)
+        let source = try MeetingStore.inMemory()
+        let meeting = try await seedCorrectionChain(in: source)
+        let changes = try await source.pendingMeetingSyncChanges()
+        let change = try XCTUnwrap(changes.first)
+        let envelope = try await source.meetingSyncEnvelope(for: change, sourceDeviceID: device)
+        let first = try await destination.applyRemoteMeetingSyncEnvelope(envelope)
+        XCTAssertEqual(first, .applied)
+
+        let history = try await source.transcriptCorrectionHistory(for: meeting.id)
+        let previous = try XCTUnwrap(history.last)
+        let third = TranscriptCorrectionEvent(
+            id: UUID(), meetingID: meeting.id, baseTranscriptRevision: meeting.transcriptRevision,
+            targetSegmentIDs: previous.targetSegmentIDs,
+            kind: .replaceText(text: "Tercera corrección — it’s final.", language: "es"),
+            sourceDeviceID: device, createdAt: previous.createdAt.addingTimeInterval(1),
+            supersedesCorrectionID: previous.id)
+        _ = try await source.appendTranscriptCorrection(third)
+        let nextChanges = try await source.pendingMeetingSyncChanges()
+        let nextChange = try XCTUnwrap(nextChanges.first)
+        let nextEnvelope = try await source.meetingSyncEnvelope(for: nextChange, sourceDeviceID: device)
+        let replayed = try await destination.applyRemoteMeetingSyncEnvelope(nextEnvelope)
+        XCTAssertEqual(replayed, .applied)
+        let replayedHistory = try await destination.transcriptCorrectionHistory(for: meeting.id)
+        XCTAssertEqual(replayedHistory, history + [third])
+
+        // A transaction after replay may not inherit weakened FK enforcement.
+        let unrelatedHistory = try await destination.transcriptCorrectionHistory(for: unrelated.id)
+        let parent = try XCTUnwrap(unrelatedHistory.first)
+        do {
+            try await destination.database.write { database in
+                try database.execute(
+                    sql: "DELETE FROM transcriptCorrection WHERE id = ?", arguments: [parent.id.uuidString])
+            }
+            XCTFail("Deleting only a superseded parent must still fail")
+        } catch let error as DatabaseError {
+            XCTAssertEqual(error.resultCode, .SQLITE_CONSTRAINT)
+        }
+        try await destination.delete(meeting.id)
+        try await destination.purge(meeting.id)
+        let reopened = try MeetingStore(databaseURL: url)
+        let survivors = try await reopened.meetings(includeDeleted: true)
+        XCTAssertEqual(survivors.map(\.id), [unrelated.id])
+        let survivingHistory = try await reopened.transcriptCorrectionHistory(for: unrelated.id)
+        XCTAssertEqual(survivingHistory, unrelatedHistory)
+        try await reopened.database.read { database in
+            XCTAssertTrue(try Row.fetchAll(database, sql: "PRAGMA foreign_key_check").isEmpty)
+            XCTAssertEqual(try String.fetchOne(database, sql: "PRAGMA integrity_check"), "ok")
+        }
+    }
+
     func testPurgingATwiceCorrectedMeetingRemovesItAndItsHistory() async throws {
         let store = try MeetingStore.inMemory()
         let meeting = try await seedCorrectionChain(in: store)

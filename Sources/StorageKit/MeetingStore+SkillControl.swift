@@ -50,7 +50,7 @@ extension MeetingStore {
 
     /// The persisted skill identity contract: exact catalogue key, bounded in
     /// UTF-8 bytes like `SkillDefinition.maximumIDByteCount` and the v51
-    /// CHECK constraints, never a character count.
+    /// database write constraints, never a character count.
     static func isPersistableSkillID(_ skillID: String) -> Bool {
         !skillID.isEmpty
             && skillID == skillID.trimmingCharacters(in: .whitespacesAndNewlines)

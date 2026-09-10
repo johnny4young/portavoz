@@ -19308,3 +19308,24 @@ test called the pure function with the shape the author had in mind. A
 deterministic policy over natural language needs an adversarial corpus, not more
 constants — and until it has one, it should not be allowed to write into the
 user's record.
+
+## D509 — Preserve legacy denials while tightening new skill identities
+
+A populated v50 fixture disproves D497's premise that every disablement writer
+already validated bytes: the old API admitted 80 Swift characters. Forty-one
+accented characters therefore fit its contract but fail the v51 table-copy
+CHECK, preventing `MeetingStore` from opening the entire library.
+
+Do not repair this by dropping or normalizing deny keys. The corrected v51
+migration preserves the existing table and adds INSERT and identifier-UPDATE
+triggers that abort oversized new UTF-8 identities. Historical keys and their
+timestamps survive unchanged and remain denied. The existing character/trim
+CHECK remains in force. This uses SQLite's ordinary constraint mechanism, not
+`ignore_check_constraints`, disabled foreign keys, or a privileged writer.
+
+An already successful pre-repair v51 database has no oversized legacy rows and
+its byte CHECK already enforces the same new-write contract. It opens unchanged;
+replaying v51 or adding a migration solely to rewrite that equivalent constraint
+would add no behavior. Both schema histories are explicitly tested through the
+real `MeetingStore` initializer, including reopen, content preservation, direct
+SQL INSERT/UPDATE rejection, byte-boundary writes, and integrity checks.

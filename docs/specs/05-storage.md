@@ -1892,14 +1892,24 @@ Successful derived jobs clear only their own processing errors. Bundle and
 sync root projection retain the report; replay preserves existing evidence
 when a legacy peer omits it and rejects conflicting authority atomically.
 
-### Skill identifier byte bound (schema v51, D497)
+### Skill identifier byte bound (schema v51, D497/D509)
 
 `SkillDefinition.maximumIDByteCount` is a UTF-8 byte limit and the v40 offer
 tables already check `length(CAST(skillID AS BLOB))`. The v35 `skillDisablement`
 table still checked `length(skillID)`, which SQLite counts in characters, so a
 multibyte identifier could be persisted as disabled while being invalid
-everywhere else in the Skill domain. v51 rebuilds that table with the byte
-CHECK and copies its rows; existing rows already satisfy the tighter bound
-because every writer validated bytes first. `MeetingStore.isPersistableSkillID`
-is the single Swift validator for both the disablement write and the receipt
-filter.
+everywhere else in the Skill domain. The old writer also counted characters:
+rebuilding the table under a tighter CHECK prevented populated libraries from
+opening. v51 now preserves every denial and timestamp in place and adds byte
+constraints on INSERT and UPDATE OF skillID. Existing oversized identities stay
+disabled; they are never discarded or renamed. Timestamp-only updates and
+deletion do not introduce a new identity. `MeetingStore.isPersistableSkillID`
+remains the shared Swift validator for writes and receipt filters.
+
+Databases that already completed the earlier v51 table rebuild retain its byte
+CHECK, which enforces the same new-write contract; no migration replays and no
+version bump is needed. File-backed tests open populated v50 through
+`MeetingStore`, preserve ASCII, accented, decomposed and emoji deny keys plus a
+meeting, check integrity and foreign keys, reject new oversized insert/update
+operations, and reopen. A separate fixture proves successful earlier v51
+databases remain compatible. This does not certify private-library upgrades.

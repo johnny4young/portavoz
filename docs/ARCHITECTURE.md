@@ -1316,7 +1316,9 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 50. It includes:
+The current schema version is 51. Its skill-identity write constraints preserve
+historical denials rather than rejecting a populated library during upgrade.
+It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;

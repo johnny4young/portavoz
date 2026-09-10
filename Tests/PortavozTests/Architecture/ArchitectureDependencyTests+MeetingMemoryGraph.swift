@@ -414,7 +414,6 @@ extension ArchitectureDependencyTests {
         let quality = try Self.contents(of: "docs/specs/08-quality.md")
         let gaps = try Self.contents(of: "docs/GAPS.md")
 
-        XCTAssertTrue(architecture.contains("current schema version is 50"))
         XCTAssertTrue(architecture.contains(
             "delegates to all six source-backed"))
         XCTAssertTrue(architecture.contains(
@@ -425,9 +424,6 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(quality.contains(
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
-        XCTAssertTrue(quality.contains(
-            "package inventory contains 3,052 cases "
-                + "(15 environment-gated) + 106"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
         XCTAssertTrue(gaps.contains(

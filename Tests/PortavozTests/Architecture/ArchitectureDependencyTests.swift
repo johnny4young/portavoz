@@ -1,5 +1,6 @@
 import ApplicationKit
 import Foundation
+import StorageKit
 import XCTest
 
 /// Shared root and helpers for the architecture ratchets. Each family of
@@ -10,6 +11,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         .deletingLastPathComponent()   // PortavozTests
         .deletingLastPathComponent()   // Tests
         .deletingLastPathComponent()   // repository root
+
+    func testArchitectureDocumentsCurrentStorageSchema() throws {
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        XCTAssertTrue(architecture.contains("current schema version is \(StorageSchema.version)."))
+    }
 }
 
 extension ArchitectureDependencyTests {

@@ -12,8 +12,9 @@ The Settings journey also checks that localized provider help retains Sequoia
 and Tahoe support plus the selected local engine, rather than stale Apple-only
 live-summary wording.
 
-Status: the package inventory contains 3,052 cases (15 environment-gated) + 106
-XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
+The native and XCUITest inventories are discovered from the current source;
+each run records its executed cases and explicit environment-gated omissions.
+Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
 on GitHub Actions
@@ -37,15 +38,22 @@ the ambient `Locale.current`; `scripts/check-repository-hygiene.sh` rejects the
 ambient read before any macOS runner is allocated (D500). That script also
 fails any test file over 2 400 lines: SwiftLint covers only `Sources`, so a
 test file has no size ceiling of its own, which is how the architecture
-ratchets reached a single 13 519-line class before D503 split them by family.
+ratchets reached a single 13 519-line file before D503 split them by family.
+This is a per-file readability limit, not a bound on the combined class or proof
+of behavioral coverage. One architecture test compares the documented schema
+version with `StorageSchema.version`; domain tests must not pin a stale literal
+version or historical test totals independently. Populated file-backed `SkillDisablementUpgradeTests`
+exercise actual library-open migration and new-write constraints, while
+`TranscriptCorrectionChainDeletionTests` covers public sync replay, purge,
+reopen and subsequent foreign-key enforcement across distinct meeting chains.
 The shared
 `waitForSeededLibraryToSettle` helper scrolls a sidebar row into view before
 waiting on it and names the cause when it gives up, so a fixture that lengthens
 the sidebar cannot silently exhaust the timeout of unrelated journeys on a
 hosted window that is shorter than a local display. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
-Meeting Detail tests. The English and Spanish release gates each cover all 106
-cases and retain app-only
+Meeting Detail tests. The English and Spanish release gates each cover the full
+discovered catalog and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
 revision-fenced Meeting Detail metadata and explicit name suggestions, claim

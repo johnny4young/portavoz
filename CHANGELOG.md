@@ -6,6 +6,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 10, 2026
 
+- **🗃️ Upgrade without losing access to your library** — older saved skill preferences stay intact, even when their identifiers contain multibyte characters.
+
 - **🎙️ A busy disk no longer ends your recording** — when writing falls behind, an audio packet that arrives a frame larger than expected is handled instead of stopping the capture mid-meeting.
 
 - **🎧 Swapping headphones mid-meeting sounds clean** — the audio for the new device starts fresh instead of blending one sample of the old one across the gap.
