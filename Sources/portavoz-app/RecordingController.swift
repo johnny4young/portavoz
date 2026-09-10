@@ -59,19 +59,10 @@ final class RecordingController {
     private(set) var contextItems: [ContextItem] = []
     /// Companion answer cards (D26), newest last. Opt-in per recording.
     private(set) var companionCards: [CompanionCard] = []
-    /// The one priority somebody stated out loud, waiting for the user to
-    /// accept it as an objective or wave it away. Inert either way (D505).
-    private(set) var priorityOffer: StatedPriority?
-    /// True when the last acceptance was refused because the objectives list is
-    /// full; the card stays up and says so instead of vanishing.
-    private(set) var priorityAcceptanceRefused = false
     /// XCUITest fixtures seed once per recording. `companionCards.isEmpty` was
     /// not enough: dismissing every seeded card restored the precondition and
     /// the next caption seeded a fresh set.
     private var seededUIFixtures: Set<String> = []
-    /// Subjects already accepted or dismissed, so restating a priority does
-    /// not re-offer it for the rest of the meeting.
-    private var handledPriorityKeys: Set<String> = []
     private var companionArtifactsByCardID: [UUID: CompanionGenerationArtifact] = [:]
     private var companionTerminalRuns: [GenerationRun] = []
     let liveTranslationWakeHub = LiveTranslationWakeHub()
@@ -249,10 +240,7 @@ final class RecordingController {
         hasUnsupportedTranslationRows = false
         liveSummary = nil
         companionCards = []
-        priorityOffer = nil
-        priorityAcceptanceRefused = false
         seededUIFixtures = []
-        handledPriorityKeys = []
         companionArtifactsByCardID = [:]
         companionTerminalRuns = []
         proactiveAssist.reset()
@@ -339,10 +327,7 @@ final class RecordingController {
         liveSummarySourceRevision = 0
         summarizedCaptionIDs = []
         companionCards = []
-        priorityOffer = nil
-        priorityAcceptanceRefused = false
         seededUIFixtures = []
-        handledPriorityKeys = []
         companionArtifactsByCardID = [:]
         companionTerminalRuns = []
         contextItems = []
@@ -385,7 +370,6 @@ final class RecordingController {
         interviewAssist.observe(captions: captions)
         seedLiveTranslationUIIfRequested()
         seedLiveCompanionUIIfRequested()
-        seedStatedPriorityUIIfRequested()
         detectClosedRow()
         armTurnEndpointDeadline()
         liveTranslationWakeHub.signal()
@@ -1100,97 +1084,6 @@ extension RecordingController {
     }
 }
 
-// MARK: - Stated priority (D505)
-
-// Internal, and in this file: the offer state keeps a file-private setter.
-extension RecordingController {
-    /// A priority somebody declared out loud has nowhere to live — it is not a
-    /// decision, an action item, a commitment or a topic. The detector is
-    /// deterministic and abstains unless the caption states one explicitly, and
-    /// the offer is inert: only the user turns it into an objective, which is
-    /// what carries it into the summary.
-    ///
-    /// Not gated by the Apuntador opt-in. That gate exists because Apuntador
-    /// runs a model over the conversation; this runs a bounded string scan over
-    /// a caption the app already holds, sends nothing anywhere, and acts on
-    /// nothing by itself.
-    func offerStatedPriority(in row: TranscriptSegment) {
-        guard phase == .recording else { return }
-        // An offer already on screen owns the slot until the user answers it.
-        // Replacing it swaps the subject and the meaning of both buttons under
-        // the cursor, and loses the first subject without recording it as
-        // handled.
-        guard priorityOffer == nil else { return }
-        // Live speech splits one sentence across rows, so the scanner sees the
-        // closed row together with its immediate predecessors and joins them
-        // only when the earlier rows are genuine fragments.
-        // `detectClosedRow` hands over the row that just stopped being last, so
-        // the window has to end there. Taking the tail of `captions` instead
-        // made the guard below unsatisfiable and the join path dead.
-        guard let closedIndex = captions.lastIndex(where: { $0.id == row.id })
-        else {
-            offerStatedPriority(
-                text: row.text, rowID: row.id, statedAt: row.startTime)
-            return
-        }
-        let window = captions[...closedIndex]
-            .suffix(StatedPriorityDetector.maximumJoinedCaptions)
-            .map { caption in
-                PriorityScanCaption(
-                    id: caption.id,
-                    text: caption.text,
-                    startTime: caption.startTime,
-                    channel: caption.channel.rawValue,
-                    speaker: caption.speakerID?.rawValue.uuidString)
-            }
-        guard let priority = StatedPriorityDetector.detect(inRecent: window),
-              !handledPriorityKeys.contains(priority.subjectKey)
-        else { return }
-        priorityOffer = priority
-    }
-
-    /// Split out so a UI fixture can seed the caption text and still go through
-    /// the real detector, dedupe and phase gate.
-    func offerStatedPriority(text: String, rowID: UUID, statedAt: TimeInterval) {
-        guard phase == .recording else { return }
-        guard let priority = StatedPriorityDetector.detect(
-            in: text,
-            rowID: rowID,
-            statedAt: statedAt)
-        else { return }
-        guard !handledPriorityKeys.contains(priority.subjectKey) else { return }
-        priorityOffer = priority
-    }
-
-    /// Accepting adds the subject to the objectives checklist, which already
-    /// persists as a context item at Stop and already shapes the summary.
-    func acceptPriorityOffer() {
-        guard let offer = priorityOffer else { return }
-        let before = objectives.objectives.count
-        objectives.add(offer.subject)
-        guard objectives.objectives.count > before else {
-            // `RecordingObjectivesModel.add` refuses silently at the objective
-            // limit. Clearing the card and remembering the subject there would
-            // lose the acceptance for the rest of the meeting, and the only
-            // feedback lives on a tab the user is not looking at.
-            priorityAcceptanceRefused = true
-            return
-        }
-        priorityAcceptanceRefused = false
-        handledPriorityKeys.insert(offer.subjectKey)
-        priorityOffer = nil
-    }
-
-    /// Dismissing remembers the subject too, so the rest of the meeting does
-    /// not re-offer something the user already waved away.
-    func dismissPriorityOffer() {
-        guard let offer = priorityOffer else { return }
-        priorityAcceptanceRefused = false
-        handledPriorityKeys.insert(offer.subjectKey)
-        priorityOffer = nil
-    }
-}
-
 private extension RecordingController {
     /// Visual-only XCUITest fixture for the live assist panel. The recency
     /// window, the folded rows and the focus slot are pure policy covered by
@@ -1224,22 +1117,6 @@ private extension RecordingController {
             source: "on-device",
             directed: true,
             askedAt: row.startTime + 7))
-    }
-    /// Visual-only XCUITest fixture: seeds the caption text and lets the real
-    /// `StatedPriorityDetector` decide, so the journey proves the detector,
-    /// the offer and the accept path rather than a hand-built card (D505).
-    func seedStatedPriorityUIIfRequested() {
-        let arguments = ProcessInfo.processInfo.arguments
-        guard arguments.contains("-use-temp-store"),
-            arguments.contains("-seed-stated-priority-ui"),
-            !seededUIFixtures.contains("priority"),
-            let row = captions.last
-        else { return }
-        seededUIFixtures.insert("priority")
-        offerStatedPriority(
-            text: "Priority is the billing migration, whatever is in progress",
-            rowID: row.id,
-            statedAt: row.startTime)
     }
 }
 

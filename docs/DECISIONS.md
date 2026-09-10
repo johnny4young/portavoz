@@ -19242,3 +19242,69 @@ finalized captions, one detection, no false positives. The lesson is narrower
 than "write more tests": each of these passed because the test called the pure
 function directly. A policy is only as good as the call site that reaches it,
 and none of the call sites were covered.
+
+## D508 — The stated-priority detector is withdrawn (Sep 2026)
+
+A second max-effort review, ten angles with the strongest findings reproduced by
+executing the shipped code, found that D507's fixes closed fifteen defects and
+opened nine more — several worse than what they replaced. Three rounds of
+hand-maintained vocabulary and token windows, each defeated by the next
+phrasing:
+
+- `"La prioridad es baja."` — the plainest Spanish demotion there is — returned
+  `baja` as the meeting's priority. The copula break D507 added to satisfy
+  `"the priority is to lower the latency"` stops the scan exactly where the
+  predicative qualifier begins.
+- The contraction spellings D507 added use the ASCII apostrophe while the
+  tokenizer deliberately admits U+2019, so `"The dashboard doesn’t come first."`
+  offered `The dashboard doesn’t` — the headline defect, surviving for the
+  apostrophe Apple's dictation actually emits.
+- `"What is the priority? The priority is the dashboard."` returned nothing,
+  because only the earliest anchor in a caption is ever tried. That is the
+  commonest way a priority gets stated out loud, and whether it works depends
+  on where the recognizer put a caption boundary.
+- One recognizer comma (`"Cerrar el reporte, es la prioridad."`) deleted a valid
+  declaration, because `es` and `son` had to join the interrogative vocabulary
+  to catch inversion.
+- Every subject carrying a relative clause was dropped, because that same
+  vocabulary was reused as a whole-subject rejection list.
+
+**The field measurement was not evidence.** Five real meetings and 3 754
+finalized captions produced one detection and no false positives at every
+revision, including the ones above. The corpus simply contains none of these
+shapes, and a lost detection leaves no trace to count.
+
+**Withdrawn rather than patched again.** The detector wrote its subject into the
+objectives checklist and from there into the meeting summary, so a wrong reading
+is not a missing card — it is a false line in the user's record of the meeting.
+Nothing in three revisions was ever measured safe; the version that looked
+safest was safest only against a corpus that could not see its failures. The
+code, its tests, its UI journey and its focus-slot case are removed, and GAPS
+#13 returns to open with everything learned.
+
+**What a fourth attempt should be built on.** Both reviews' altitude angles
+reached the same conclusion independently, and the second verified it on this
+machine: `NLTagger(.lexicalClass, .lemma)` separates `lower`/adverb from
+`lower`/verb and lemmatizes `baja` to `bajo`; it splits `doesn’t` into `does` +
+`n’t` with lemma `not`, covering both apostrophes and any spelling a recognizer
+invents; and `NLTokenizer(unit: .sentence)` segments the sentence the anchor
+belongs to. Together those delete `PriorityVocabulary`'s three hand-kept lists,
+`clauseRange`, `Token.opensQuestion`, the adjacency walks, the anchor gap, and
+the demote windows — the entire surface that failed. NaturalLanguage is already
+used in this target, so it is not a new dependency.
+
+**Kept from the same commit**, because none of it depends on the detector: the
+capture gate reserving the streaming resampler's carry frame, the resampler
+reset on a device change, the focus-slot order that stops one unbidden card
+swallowing a suggestion the user asked for, the note draft owned by the panel
+that survives a tab switch, the split that no longer squeezes the captions to
+zero, and the accessibility identifiers. The focus slot's ranking is now safe by
+construction: a directed card is also reachable in the Companion tab, while
+catch-up and the suggested question have the slot as their only home.
+
+**Consequences:** the lesson generalizes past this feature. Three times a green
+suite and green CI accompanied a claim the code did not support, because each
+test called the pure function with the shape the author had in mind. A
+deterministic policy over natural language needs an adversarial corpus, not more
+constants — and until it has one, it should not be allowed to write into the
+user's record.

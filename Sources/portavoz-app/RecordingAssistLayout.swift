@@ -30,21 +30,22 @@ enum RecordingAssistLayout {
         return min(max(fraction, minimumFraction), maximumFraction)
     }
 
-    /// Divides the height left after the recording bar and its banners. When
-    /// the window is too short to honor both floors the assist area takes its
-    /// floor and the captions keep the rest, because a caption strip degrades
-    /// gracefully and a truncated assist panel does not.
+    /// Divides the height left after the recording bar and its banners.
+    ///
+    /// When the window is too short to honor both floors, both shrink in
+    /// proportion. Paying one floor in full drove the other to zero — with
+    /// several banners stacked on a small window the captions disappeared and
+    /// the meeting had no words on screen (D507). Rounding down and clamping
+    /// keeps the arithmetic from handing SwiftUI a negative frame in the last
+    /// couple of points before the split is degenerate anyway (D508).
     static func split(total: CGFloat, fraction: Double) -> Split {
         guard total.isFinite else { return Split(captions: 0, assist: 0) }
         let usable = max(total - dividerHeight, 0)
         guard usable > 0 else { return Split(captions: 0, assist: 0) }
         guard usable >= minimumCaptionsHeight + minimumAssistHeight else {
-            // Paying one floor in full drove the other to zero: with several
-            // banners stacked on a small window the captions disappeared
-            // entirely and the meeting had no words on screen. Both floors
-            // shrink together instead, so neither zone can vanish.
-            let assist = (usable * minimumAssistHeight
-                / (minimumCaptionsHeight + minimumAssistHeight)).rounded()
+            let proportional = (usable * minimumAssistHeight
+                / (minimumCaptionsHeight + minimumAssistHeight)).rounded(.down)
+            let assist = min(max(proportional, 0), usable)
             return Split(captions: usable - assist, assist: assist)
         }
         let requested = (usable * clamp(fraction)).rounded()
@@ -130,29 +131,25 @@ enum RecordingFocusSlot: Equatable, Sendable {
     case none
     case catchUp
     case directedCard(UUID)
-    case statedPriority(UUID)
     case nextQuestion
 
     /// What the user just asked for comes first, then what arrived on its own.
     ///
-    /// Catch-up and the suggested next question are transient and are only
-    /// there because the user pressed a button seconds ago; a directed card and
-    /// a stated priority arrive unbidden and persist until answered. Ranking
-    /// the persistent ones higher meant one undismissed directed card silently
-    /// swallowed every later press of "Suggest a question" for the rest of the
-    /// meeting — the button did nothing, not even show its spinner. The
-    /// unbidden pair still cannot be lost: neither expires, so both return to
-    /// the slot as soon as the transient one is dismissed.
+    /// Catch-up and the suggested next question are there because the user
+    /// pressed a button seconds ago; a directed card arrives unbidden. Ranking
+    /// the directed card higher meant one undismissed card silently swallowed
+    /// every later press of "Suggest a question" for the rest of the meeting —
+    /// the button did nothing, not even show its spinner. Nothing is lost by
+    /// the order: a directed card is also reachable in the Companion tab,
+    /// while the other two have this slot as their only home (D508).
     static func resolve(
         hasCatchUp: Bool,
         directedCardID: UUID?,
-        statedPriorityID: UUID?,
         hasNextQuestion: Bool
     ) -> RecordingFocusSlot {
         if hasCatchUp { return .catchUp }
         if hasNextQuestion { return .nextQuestion }
         if let directedCardID { return .directedCard(directedCardID) }
-        if let statedPriorityID { return .statedPriority(statedPriorityID) }
         return .none
     }
 }

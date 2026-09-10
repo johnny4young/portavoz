@@ -2560,68 +2560,20 @@ See spec 03 (SpeakerNamer + NamingExcerpt + never-trust-verify filter).
 
 BYOK summaries from the app (the Keychain plumbing already exists; the provider selector in the detail is missing — M12).
 
-## Stated priority — `StatedPriorityDetector` (Sep 2026, D505)
+## Stated priority — withdrawn (Sep 2026, D505–D508)
 
-A meeting-level priority somebody declares out loud is not a decision, an action
-item, a commitment or a topic, so before D505 it had no typed home: a real
-standup's priority survived verbatim in the transcript and reached the summary
-only as a per-person status line.
+A deterministic detector for a priority somebody declares out loud shipped in
+D505, was widened in D506 and corrected in D507. A second max-effort review
+found that each round closed defects and opened others, several worse: the
+plainest Spanish demotion was read as a priority, the negation guard missed the
+apostrophe Apple's dictation emits, a question and its answer in one caption
+resolved to nothing, and one recognizer comma deleted a valid declaration. Since
+an accepted offer wrote into the objectives checklist and from there into the
+summary, a wrong reading became a false line in the user's record.
 
-The detector is deterministic, like the D138 endpointer and the D26 "asked you"
-gate. It admits one explicit copular shape in English and Spanish —
-`<priority-noun> [qualifier] is <SUBJECT>` and `<SUBJECT> is [the top]
-<priority-noun>` — and abstains on everything else: questions, negation,
-conditionals and modals, past tense, a subject made only of function words, and
-a clause that runs past `maximumSubjectWords`/`maximumSubjectCharacters`, which
-is rejected rather than truncated. "Focus on X", "X first" and "everything else
-on hold" are deliberately excluded as ordinary emphasis. Measured over one real
-meeting's 305 finalized segments: one detection, no false positives.
-
-D506 widened the shapes and closed two defects found by measurement. Anchors are
-token sequences, so "lo más importante es X", "the most important thing is X",
-"the focus is X" and "número uno es X" read like "the priority is X"; precedence
-asserted by a verb ("X takes precedence", "X va primero") joins them.
-`PriorityVocabulary.demoting` abstains when the anchor is played down — "a low
-priority", "una prioridad baja" — which the first version reported as the
-priority itself, inverting the speaker; both sides of the anchor are inspected
-because Spanish postposes the qualifier. A bare demonstrative subject ("la
-prioridad es esta") names nothing and is rejected. The scanner may join a
-caption with its immediate predecessors from the same speaker and channel,
-trimming the recognizer's seam punctuation, but only to supply a missing copula
-or subject — never to extend a clause that already has both, which measurement
-showed manufacturing subjects out of a neighbour's words.
-
-The model lane was spiked and rejected in this shape: Apple's ~3B model behind
-guided generation, with the `BriefSynthesizer` grounding gate, proposed 26
-priorities for a control meeting whose transcript never contains the word, none
-correct. Guided generation constrains an answer's shape, not its truth, and
-`SummaryEvidenceAdmission` verifies provenance, not whether the cited line
-declares anything. A model lane remains defensible only as stage three of a
-cascade, behind a classifier, and needs a labeled bilingual corpus first.
-
-D507 closed what a max-effort review found, all of it reproduced by running the
-shipped code: the precedence-verb branch had neither the negation guard nor the
-demote check the copular branch already had, so "The dashboard does not come
-first" reported `The dashboard does not`; the fixed demote window let
-"una prioridad realmente muy baja" through and let a previous sentence's `low`
-suppress a valid declaration, so the scan now follows the adjective run to the
-clause boundary or the copula; a subject the speaker corrects away from in the
-next clause is no longer claimed; and the detector owns a small interrogative
-vocabulary scoped to the anchor's own clause instead of deferring to
-`QuestionHeuristic`, which is calibrated to over-admit for a classifier that
-prunes after it and was dropping "Por ahora la prioridad es X" on its leading
-`por`. The join is also reachable now: it was wired to a window ending at the
-newest caption while `detectClosedRow` hands over the row that just stopped
-being newest.
-
-Measured over five real meetings and 3 754 finalized captions, two of which never
-contain the word: one detection, correct, no false positives — unchanged by
-those corrections.
-
-`RecordingController.offerStatedPriority` runs it on each finalized caption,
-outside the Apuntador opt-in because it calls no model and sends nothing. The
-offer is inert in the D504 focus slot — bounded subject, the exact caption, its
-timestamp — and acceptance adds the subject to the objectives checklist, which
-already persists as a context item at Stop and already shapes the summary.
-Dismissal and acceptance both remember the subject key so a restatement is not
-re-offered.
+The detector is withdrawn (D508). GAPS #13 is open again, and a fourth attempt
+should be built on `NLTagger(.lexicalClass, .lemma)` and
+`NLTokenizer(unit: .sentence)` — verified to separate `lower`/adverb from
+`lower`/verb, to lemmatize contractions to `not`, and to segment the anchor's
+sentence — which removes the hand-kept vocabularies and token windows that
+failed three times.

@@ -6,7 +6,9 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 10, 2026
 
-- **🚩 A priority nobody declared is never claimed** — "that doesn't come first", "una prioridad realmente muy baja" and "the priority is X, not Y" are all read as what they are, and a priority stated right after a question is no longer skipped.
+- **🎙️ A busy disk no longer ends your recording** — when writing falls behind, an audio packet that arrives a frame larger than expected is handled instead of stopping the capture mid-meeting.
+
+- **🎧 Swapping headphones mid-meeting sounds clean** — the audio for the new device starts fresh instead of blending one sample of the old one across the gap.
 
 - **📝 Your half-written note survives switching panels** — the draft stays put while you check a card or your objectives.
 
@@ -14,13 +16,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 - **👀 The meeting's words never get squeezed off screen** — on a short window the captions and the assistant shrink together instead of one taking all the room.
 
-- **🚩 "That's a low priority" no longer becomes the priority** — a sentence that plays something down is never read as the meeting's focus, in English or Spanish.
-
-- **🎯 More ways of saying what matters get caught** — "the most important thing is the migration", "el foco es el cierre" and "the security patch takes precedence" now surface the same way an explicit priority does, and a sentence split across a pause is read as one.
-
 ## September 9, 2026
-
-- **🚩 When someone says what the priority is, Portavoz catches it** — the stated priority comes up during the call with the exact words it came from, and one click tracks it as an objective so it reaches your summary instead of getting lost in the transcript.
 
 - **🎯 The live panel fits on screen again** — Apuntador shows one panel at a time instead of stacking eight, keeps the newest answers open and folds older ones to a single line you can reopen, and never lets one long answer swallow the panel.
 

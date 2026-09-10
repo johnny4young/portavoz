@@ -100,7 +100,17 @@ final class SpeakerAttributionWindowTests: XCTestCase {
             LiveSpeakerHints.changed(from: (rows, labels), to: (reminted, labels)),
             "a re-minted speaker id is not a change the reader can see")
 
-        let moved = [rows[0], segment(start: 4, end: 9)]
+        // The id must be preserved, or `changed` short-circuits on it and the
+        // bounds comparison this asserts is never reached.
+        var moved = rows
+        moved[1] = TranscriptSegment(
+            id: rows[1].id,
+            meetingID: rows[1].meetingID,
+            speakerID: rows[1].speakerID,
+            channel: rows[1].channel,
+            text: rows[1].text,
+            startTime: 4,
+            endTime: 9)
         XCTAssertTrue(
             LiveSpeakerHints.changed(from: (rows, labels), to: (moved, labels)),
             "a row whose bounds moved is a change the reader can see")

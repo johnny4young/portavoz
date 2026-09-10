@@ -42,7 +42,24 @@ final class RecordingAssistLayoutTests: XCTestCase {
 
         // Paying one floor in full drove the other to zero, and with several
         // banners stacked on a small window that meant no captions at all.
-        for total in stride(from: CGFloat(30), through: floors, by: 20) {
+        // The sweep starts at the divider height, where the arithmetic used to
+        // round its way to a negative frame.
+        for step in stride(from: 0.0, through: 400.0, by: 0.5) {
+            let total = RecordingAssistLayout.dividerHeight + CGFloat(step)
+            let split = RecordingAssistLayout.split(total: total, fraction: 0.42)
+            XCTAssertGreaterThanOrEqual(
+                split.captions, 0, "negative caption height at \(total)")
+            XCTAssertGreaterThanOrEqual(
+                split.assist, 0, "negative assist height at \(total)")
+            XCTAssertEqual(
+                split.captions + split.assist,
+                total - RecordingAssistLayout.dividerHeight,
+                accuracy: 0.001,
+                "the two zones must account for every usable point at \(total)")
+        }
+
+        // Above a couple of points, neither zone may vanish.
+        for total in stride(from: CGFloat(20), through: floors, by: 5) {
             let split = RecordingAssistLayout.split(total: total, fraction: 0.42)
             XCTAssertGreaterThan(
                 split.captions, 0,
@@ -101,44 +118,24 @@ final class RecordingAssistLayoutTests: XCTestCase {
 
     func testTheFocusSlotPrefersWhatTheUserIsWaitingFor() {
         let card = UUID()
-        let priority = UUID()
         XCTAssertEqual(
             RecordingFocusSlot.resolve(
-                hasCatchUp: true,
-                directedCardID: card,
-                statedPriorityID: priority,
-                hasNextQuestion: true),
+                hasCatchUp: true, directedCardID: card, hasNextQuestion: true),
             .catchUp,
             "the user pressed Catch me up seconds ago")
         XCTAssertEqual(
             RecordingFocusSlot.resolve(
-                hasCatchUp: false,
-                directedCardID: card,
-                statedPriorityID: priority,
-                hasNextQuestion: true),
+                hasCatchUp: false, directedCardID: card, hasNextQuestion: true),
             .nextQuestion,
-            "the user pressed Suggest a question; an unbidden card must not eat it")
+            "a card that also lives in the Companion tab must not eat the "
+                + "suggestion the user just asked for")
         XCTAssertEqual(
             RecordingFocusSlot.resolve(
-                hasCatchUp: false,
-                directedCardID: card,
-                statedPriorityID: priority,
-                hasNextQuestion: false),
-            .directedCard(card),
-            "a question addressed to the user outranks a stated priority")
+                hasCatchUp: false, directedCardID: card, hasNextQuestion: false),
+            .directedCard(card))
         XCTAssertEqual(
             RecordingFocusSlot.resolve(
-                hasCatchUp: false,
-                directedCardID: nil,
-                statedPriorityID: priority,
-                hasNextQuestion: false),
-            .statedPriority(priority))
-        XCTAssertEqual(
-            RecordingFocusSlot.resolve(
-                hasCatchUp: false,
-                directedCardID: nil,
-                statedPriorityID: nil,
-                hasNextQuestion: false),
+                hasCatchUp: false, directedCardID: nil, hasNextQuestion: false),
             .none)
     }
 }

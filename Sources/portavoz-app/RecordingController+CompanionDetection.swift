@@ -38,7 +38,6 @@ extension RecordingController {
         guard let closed = captions.last(where: { $0.id == previousOpen }) else { return }
         requestLiveSummaryRefresh()
         observeProactiveAssist()
-        offerStatedPriority(in: closed)
         guard TurnEndpointPolicy.shouldDetect(
             after: speculativeTurnMark,
             rowID: closed.id,

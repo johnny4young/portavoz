@@ -1,4 +1,3 @@
-import IntelligenceKit
 import PortavozCore
 import SwiftUI
 
@@ -39,7 +38,6 @@ struct RecordingAssistPanel: View {
         RecordingFocusSlot.resolve(
             hasCatchUp: controller.catchUp.state != nil,
             directedCardID: focusCard?.id,
-            statedPriorityID: controller.priorityOffer?.id,
             hasNextQuestion: controller.nextQuestion.state != nil)
     }
 
@@ -87,10 +85,6 @@ private extension RecordingAssistPanel {
         case .directedCard:
             if let card = focusCard {
                 directedCard(card)
-            }
-        case .statedPriority:
-            if let offer = controller.priorityOffer {
-                priorityCard(offer)
             }
         case .nextQuestion:
             if let state = controller.nextQuestion.state {
@@ -143,66 +137,7 @@ private extension RecordingAssistPanel {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("recording-focus-card")
     }
-    /// A priority somebody declared out loud. Inert: it names what was said
-    /// and who to believe (the caption, at its timestamp), and does nothing
-    /// until the user turns it into an objective (D505).
-    func priorityCard(_ offer: StatedPriority) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Label(L10n.text("Stated priority"), systemImage: "flag.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tint)
-                Spacer()
-                Text(ClockFormat.mmss(offer.statedAt))
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(.tertiary)
-            }
-            Text(offer.subject)
-                .font(.callout.weight(.semibold))
-                .lineLimit(2)
-            // The exact caption, so the user judges the claim rather than
-            // trusting it.
-            Text(offer.statement)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
-            HStack(spacing: 8) {
-                Button(L10n.text("Track as objective")) {
-                    controller.acceptPriorityOffer()
-                }
-                .controlSize(.small)
-                .accessibilityIdentifier("recording-priority-accept")
-                .disabled(controller.priorityAcceptanceRefused)
-                Button(L10n.text("Not a priority")) {
-                    controller.dismissPriorityOffer()
-                }
-                .controlSize(.small)
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .accessibilityIdentifier("recording-priority-dismiss")
-                Spacer()
-            }
-            if controller.priorityAcceptanceRefused {
-                // The objectives list refused it. Saying so here beats clearing
-                // the card and losing the acceptance for the rest of the
-                // meeting, which is what used to happen.
-                Text(L10n.text("Your objectives list is full — remove one to track this."))
-                    .font(.caption2)
-                    .foregroundStyle(.orange)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("recording-priority-refused")
-            }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(.tint.opacity(0.30), lineWidth: 1)
-        )
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("recording-priority-card")
-    }
+
 }
 
 // MARK: - Tab bar
