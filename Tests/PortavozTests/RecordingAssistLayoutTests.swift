@@ -88,23 +88,44 @@ final class RecordingAssistLayoutTests: XCTestCase {
 
     func testTheFocusSlotPrefersWhatTheUserIsWaitingFor() {
         let card = UUID()
+        let priority = UUID()
         XCTAssertEqual(
             RecordingFocusSlot.resolve(
-                hasCatchUp: true, directedCardID: card, hasNextQuestion: true),
+                hasCatchUp: true,
+                directedCardID: card,
+                statedPriorityID: priority,
+                hasNextQuestion: true),
             .catchUp,
             "the user pressed Catch me up seconds ago")
         XCTAssertEqual(
             RecordingFocusSlot.resolve(
-                hasCatchUp: false, directedCardID: card, hasNextQuestion: true),
+                hasCatchUp: false,
+                directedCardID: card,
+                statedPriorityID: priority,
+                hasNextQuestion: true),
             .directedCard(card),
-            "a question addressed to the user outranks a suggestion")
+            "only a question addressed to the user has a deadline")
         XCTAssertEqual(
             RecordingFocusSlot.resolve(
-                hasCatchUp: false, directedCardID: nil, hasNextQuestion: true),
+                hasCatchUp: false,
+                directedCardID: nil,
+                statedPriorityID: priority,
+                hasNextQuestion: true),
+            .statedPriority(priority),
+            "somebody said the priority; the next question is only advice")
+        XCTAssertEqual(
+            RecordingFocusSlot.resolve(
+                hasCatchUp: false,
+                directedCardID: nil,
+                statedPriorityID: nil,
+                hasNextQuestion: true),
             .nextQuestion)
         XCTAssertEqual(
             RecordingFocusSlot.resolve(
-                hasCatchUp: false, directedCardID: nil, hasNextQuestion: false),
+                hasCatchUp: false,
+                directedCardID: nil,
+                statedPriorityID: nil,
+                hasNextQuestion: false),
             .none)
     }
 }

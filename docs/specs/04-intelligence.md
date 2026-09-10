@@ -2559,3 +2559,28 @@ See spec 03 (SpeakerNamer + NamingExcerpt + never-trust-verify filter).
 ## Planned (not implemented)
 
 BYOK summaries from the app (the Keychain plumbing already exists; the provider selector in the detail is missing — M12).
+
+## Stated priority — `StatedPriorityDetector` (Sep 2026, D505)
+
+A meeting-level priority somebody declares out loud is not a decision, an action
+item, a commitment or a topic, so before D505 it had no typed home: a real
+standup's priority survived verbatim in the transcript and reached the summary
+only as a per-person status line.
+
+The detector is deterministic, like the D138 endpointer and the D26 "asked you"
+gate. It admits one explicit copular shape in English and Spanish —
+`<priority-noun> [qualifier] is <SUBJECT>` and `<SUBJECT> is [the top]
+<priority-noun>` — and abstains on everything else: questions, negation,
+conditionals and modals, past tense, a subject made only of function words, and
+a clause that runs past `maximumSubjectWords`/`maximumSubjectCharacters`, which
+is rejected rather than truncated. "Focus on X", "X first" and "everything else
+on hold" are deliberately excluded as ordinary emphasis. Measured over one real
+meeting's 305 finalized segments: one detection, no false positives.
+
+`RecordingController.offerStatedPriority` runs it on each finalized caption,
+outside the Apuntador opt-in because it calls no model and sends nothing. The
+offer is inert in the D504 focus slot — bounded subject, the exact caption, its
+timestamp — and acceptance adds the subject to the objectives checklist, which
+already persists as a context item at Stop and already shapes the summary.
+Dismissal and acceptance both remember the subject key so a restatement is not
+re-offered.

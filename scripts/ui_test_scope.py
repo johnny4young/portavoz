@@ -97,6 +97,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "testLiveAssistKeepsOnePanelOpenAndABoundedCardList",
         ),
         test_id(
+            "StatedPriorityUITests",
+            "testAStatedPriorityIsOfferedAndBecomesAnObjective",
+        ),
+        test_id(
             "MeetingDetailUITests",
             "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador",
         ),

@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 110
+    "expectedCaseCount": 111
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -133,6 +133,7 @@
     "SkillsSettingsUITests/testSkillsPaneFailsClosedWhenDurablePolicyCannotLoad()": 20.0,
     "SkillsSettingsUITests/testSuggestedActionsExplainReviewFirstSafety()": 20.0,
     "SkillsSettingsUITests/testWaitingReceiptIgnoresUnavailablePolicyAndReviewsSourceWithoutRunning()": 24.924,
-    "SkillsSettingsUITests/testWaitingSkillApprovalCanBeRevokedBeforeHandoff()": 24.508
+    "SkillsSettingsUITests/testWaitingSkillApprovalCanBeRevokedBeforeHandoff()": 24.508,
+    "StatedPriorityUITests/testAStatedPriorityIsOfferedAndBecomesAnObjective()": 20.0
   }
 }

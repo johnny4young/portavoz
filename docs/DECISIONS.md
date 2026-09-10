@@ -19053,3 +19053,54 @@ architecture ratchet follows it there and now also forbids the pinned height.
 the window itself is pure policy under test. What this decision does **not**
 address is that the meeting's stated priority had nowhere to live: that gap is
 recorded in GAPS, not solved here.
+
+## D505 — A stated priority is detected, offered, and never assumed (Sep 2026)
+
+A real standup declared its priority out loud and later put everything else on
+hold. Capture and transcription were exact — the statement sits in the
+transcript verbatim — but the general summary reduced it to a per-person status
+line, the meeting produced zero action items, and the live Apuntador spent all
+23 of its cards on ambient context. The meeting-level typed truths are
+decisions, action items, commitments and topics; a stated priority is none of
+them, so the one sentence that reordered everyone's week had nowhere to go
+(GAPS #13).
+
+**Deterministic, like D138's endpointer and D26's "asked you" gate.** A model
+asked "what is the priority here?" always answers something, and a confident
+wrong priority is worse than none: it would reorder the user's meeting around a
+phrase somebody merely stressed. `StatedPriorityDetector` reads one explicit
+copular statement — `<priority-noun> [qualifier] is <SUBJECT>` or `<SUBJECT> is
+[the top] <priority-noun>`, English and Spanish — and abstains otherwise. It
+abstains on questions, negation, conditionals and modals, past tense (history
+re-prioritizes nothing), a subject that names nothing, and a clause that runs
+past the word or character bound rather than truncating it into a priority
+nobody stated. Over the field meeting's 305 finalized segments it fires once, on
+the line that declared the priority, with no false positives.
+
+**"Focus on X", "X first" and "everything else on hold" are deliberately out of
+scope.** All three occur in the same field transcript and all three are also
+ordinary meeting emphasis. Admitting them needs evidence that the emphasis was
+meant as a priority, which a string scan cannot have.
+
+**The offer is inert, and acceptance routes through an existing typed truth.**
+The detection reaches the focus slot D504 built, showing the bounded subject
+above the exact caption and its timestamp so the user judges the claim instead
+of trusting it. Accepting adds the subject to the objectives checklist, which
+already persists as a context item at Stop and already shapes the final summary;
+dismissing remembers the subject so the rest of the meeting does not re-offer
+it. This is deliberately not a new persisted type: a typed priority with its own
+evidence chain deserves a schema slice and an Ask lane, and neither is justified
+by a detector that has one meeting of field evidence.
+
+**Not gated by the Apuntador opt-in.** That gate exists because Apuntador runs a
+model over the conversation. This is a bounded string scan over a caption the
+app already holds; it sends nothing anywhere, calls no model, and acts on
+nothing by itself. Gating it would hide it from every user who has not opted
+into a different feature.
+
+**Consequences:** the detector's precision rests on one meeting. Its recall is
+knowingly low — everything but the explicit form is dropped — and that is the
+side to be wrong on. `StatedPriorityUITests` proves the detector, the offer and
+the accept path end to end with only the caption text seeded. What is still
+missing is durability without acceptance: an unaccepted offer is lost at Stop
+and Ask cannot answer "what was the priority?", which GAPS #13 keeps open.

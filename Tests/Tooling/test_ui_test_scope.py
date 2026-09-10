@@ -809,8 +809,9 @@ class UITestScopeTests(unittest.TestCase):
             + FEATURE_TESTS["live-assist"]
         )
         expected = tuple(test for test in ALL_TESTS if test in expected_set)
-        # 13 since D504 added the bounded live-assist panel journey.
-        self.assertEqual(len(expected), 13)
+        # 14 since D504 added the bounded live-assist panel journey and D505
+        # the stated-priority one.
+        self.assertEqual(len(expected), 14)
         self.assertTrue(ui_scope.APUNTADOR_LEAK_EVIDENCE_FILES.isdisjoint(
             ui_scope.FULL_BILINGUAL_HARNESS_FILES
         ))

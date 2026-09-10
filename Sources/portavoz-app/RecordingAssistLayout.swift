@@ -124,18 +124,24 @@ enum RecordingFocusSlot: Equatable, Sendable {
     case none
     case catchUp
     case directedCard(UUID)
+    case statedPriority(UUID)
     case nextQuestion
 
     /// Catch-up wins because the user pressed the button seconds ago and is
-    /// waiting for it. A question addressed to the user by name wins over the
-    /// suggested next question, which is only ever advice.
+    /// waiting for it. A question addressed to the user by name is the only
+    /// thing with a deadline, so it comes next. A stated priority outranks the
+    /// suggested next question because somebody actually said it, while the
+    /// suggestion is only ever advice — and it waits in the slot until the user
+    /// acts on it, so a directed question ahead of it never buries it.
     static func resolve(
         hasCatchUp: Bool,
         directedCardID: UUID?,
+        statedPriorityID: UUID?,
         hasNextQuestion: Bool
     ) -> RecordingFocusSlot {
         if hasCatchUp { return .catchUp }
         if let directedCardID { return .directedCard(directedCardID) }
+        if let statedPriorityID { return .statedPriority(statedPriorityID) }
         return hasNextQuestion ? .nextQuestion : .none
     }
 }

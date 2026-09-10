@@ -6,6 +6,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 9, 2026
 
+- **🚩 When someone says what the priority is, Portavoz catches it** — the stated priority comes up during the call with the exact words it came from, and one click tracks it as an objective so it reaches your summary instead of getting lost in the transcript.
+
 - **🎯 The live panel fits on screen again** — Apuntador shows one panel at a time instead of stacking eight, keeps the newest answers open and folds older ones to a single line you can reopen, and never lets one long answer swallow the panel.
 
 - **🙋 A question aimed at you never gets buried** — when someone asks you by name, that card moves above everything else and stays there while you switch panels.

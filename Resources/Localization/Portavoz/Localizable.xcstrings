@@ -8241,6 +8241,16 @@
         }
       }
     },
+    "Not a priority": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No es prioridad"
+          }
+        }
+      }
+    },
     "Not downloaded · ": {
       "localizations": {
         "es": {
@@ -13171,6 +13181,16 @@
         }
       }
     },
+    "Stated priority": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prioridad declarada"
+          }
+        }
+      }
+    },
     "Stays on this Mac. Included only when you export a .portavoz file.": {
       "localizations": {
         "es": {
@@ -15167,6 +15187,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Totales, cadencia, personas y compromisos — calculado en tu Mac"
+          }
+        }
+      }
+    },
+    "Track as objective": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seguirla como objetivo"
           }
         }
       }
