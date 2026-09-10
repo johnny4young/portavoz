@@ -6,6 +6,12 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 9, 2026
 
+- **🎯 The live panel fits on screen again** — Apuntador shows one panel at a time instead of stacking eight, keeps the newest answers open and folds older ones to a single line you can reopen, and never lets one long answer swallow the panel.
+
+- **🙋 A question aimed at you never gets buried** — when someone asks you by name, that card moves above everything else and stays there while you switch panels.
+
+- **↕️ Give the assistant as much room as you want** — drag the divider between the captions and the panel. Making the window taller now grows both, not just the captions.
+
 - **🎧 Switch your mic mid-meeting and stay in sync** — a replacement device running at a different sample rate no longer drifts a little further out with every second of audio.
 
 - **⚡ Live captions stay smooth in long meetings** — speaker labels are resolved over just the turns that can match, and the caption list is only redrawn when something actually changed.

@@ -363,6 +363,7 @@ final class RecordingController {
         coalescer.apply(segment, to: &captions)
         interviewAssist.observe(captions: captions)
         seedLiveTranslationUIIfRequested()
+        seedLiveCompanionUIIfRequested()
         detectClosedRow()
         armTurnEndpointDeadline()
         liveTranslationWakeHub.signal()
@@ -1085,5 +1086,40 @@ extension RecordingController {
         liveSpeakerLabels = result.labels
         requestLiveSummaryRefresh()
         liveTranslationWakeHub.signal()
+    }
+}
+
+private extension RecordingController {
+    /// Visual-only XCUITest fixture for the live assist panel. The recency
+    /// window, the folded rows and the focus slot are pure policy covered by
+    /// `CompanionCardWindowTests`; this branch proves the rendered panel
+    /// without a model producing cards on a runner (D504). It lives in an
+    /// extension because the class body is at its length cap, and in this file
+    /// because `companionCards` keeps a file-private setter.
+    func seedLiveCompanionUIIfRequested() {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard arguments.contains("-use-temp-store"),
+            arguments.contains("-seed-live-companion-ui"),
+            companionCards.isEmpty,
+            let row = captions.last
+        else { return }
+        companionCards = (0..<6).map { index in
+            CompanionCard(
+                question: "Seeded live question \(index + 1)?",
+                answer: String(
+                    repeating: "Seeded live answer \(index + 1). ",
+                    count: 12),
+                kind: .context,
+                source: "on-device",
+                directed: false,
+                askedAt: row.startTime + Double(index))
+        }
+        companionCards.append(CompanionCard(
+            question: "Ana, can you take the budget?",
+            answer: "",
+            kind: .context,
+            source: "on-device",
+            directed: true,
+            askedAt: row.startTime + 7))
     }
 }

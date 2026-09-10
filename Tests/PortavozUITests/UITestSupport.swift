@@ -322,6 +322,26 @@ extension XCUIApplication {
         descendants(matching: .any)[identifier]
     }
 
+    /// The live assist area shows one panel at a time (D504), so a journey
+    /// that asserts a panel must open its tab first. Fails with the tab name
+    /// rather than letting the panel's own assertion time out.
+    @MainActor
+    @discardableResult
+    func openAssistTab(
+        _ tab: String,
+        timeout: TimeInterval = 8,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let button = control(withIdentifier: "recording-assist-tab-\(tab)")
+        guard button.waitForExistenceFast(timeout: timeout) else {
+            XCTFail("the \(tab) assist tab never appeared", file: file, line: line)
+            return button
+        }
+        button.click()
+        return button
+    }
+
     /// Reassert Portavoz as the foreground app before a critical interaction.
     ///
     /// Full-suite runs can overlap with unrelated apps that legitimately raise

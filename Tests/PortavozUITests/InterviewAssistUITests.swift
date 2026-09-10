@@ -20,6 +20,8 @@ final class InterviewAssistUITests: PortavozUITestCase {
         XCTAssertTrue(toggle.waitForExistenceFast(timeout: 15))
         toggle.click()
 
+        // Interview becomes a tab once the recording opts in (D504).
+        app.openAssistTab("interview")
         let panel = app.control(withIdentifier: "recording-interview-panel")
         XCTAssertTrue(panel.waitForExistenceFast(timeout: 10))
         let question = app.control(
@@ -29,8 +31,9 @@ final class InterviewAssistUITests: PortavozUITestCase {
             : "What would Jordan do first during the database incident?"
         XCTAssertTrue(question.waitForLabelOrValue(expectedQuestion, timeout: 10))
 
-        let scroll = app.control(withIdentifier: "recording-assist-scroll")
-        XCTAssertTrue(scroll.waitForExistenceFast(timeout: 5))
+        let assist = app.control(withIdentifier: "recording-assist-panel")
+        XCTAssertTrue(assist.waitForExistenceFast(timeout: 5))
+        app.openAssistTab("objectives")
         let objective = app.control(withIdentifier: "recording-objective-field")
         XCTAssertTrue(objective.waitForHittable(timeout: 5))
         objective.click()
@@ -39,6 +42,8 @@ final class InterviewAssistUITests: PortavozUITestCase {
             : "Evaluate incident-response judgment"
         app.typeText(objectiveText)
         objective.typeKey(.return, modifierFlags: [])
+        // Both the admitted count and the saved row live on the objectives
+        // tab, so the original order survives the D504 split untouched.
         let objectiveCount = app.control(
             withIdentifier: "recording-interview-objective-count")
         let expectedObjectiveCount = isSpanish
@@ -47,6 +52,7 @@ final class InterviewAssistUITests: PortavozUITestCase {
         XCTAssertTrue(
             objectiveCount.waitForLabelOrValue(expectedObjectiveCount, timeout: 5),
             "objective admission must publish before proving its saved row")
+
         let savedObjective = app.descendants(matching: .any)
             .matching(NSPredicate(
                 format: "identifier BEGINSWITH %@ AND label == %@",
@@ -58,14 +64,15 @@ final class InterviewAssistUITests: PortavozUITestCase {
             "the product must materialize the exact admitted objective")
         XCTAssertTrue(
             savedObjective.revealVertically(
-                in: scroll,
+                in: assist,
                 maxScrolls: 0),
             "the product must keep the admitted objective fully visible "
                 + "without a test-owned wheel gesture")
 
+        app.openAssistTab("interview")
         let answerAction = app.control(withIdentifier: "recording-interview-answer")
         XCTAssertTrue(
-            answerAction.revealVertically(in: scroll),
+            answerAction.revealVertically(in: assist),
             "the answer action must be fully inside the assist viewport")
         answerAction.click()
 

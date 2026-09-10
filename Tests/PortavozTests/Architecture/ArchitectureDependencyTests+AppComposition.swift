@@ -1801,6 +1801,8 @@ extension ArchitectureDependencyTests {
             of: "Sources/portavoz-app/TranscriptSegmentsView.swift")
         let recording = try Self.contents(
             of: "Sources/portavoz-app/RecordingView.swift")
+        let assist = try Self.contents(
+            of: "Sources/portavoz-app/RecordingAssistPanel.swift")
         let objectives = try Self.contents(
             of: "Sources/portavoz-app/RecordingLiveAssist.swift")
         let uiTests = try Self.contents(
@@ -1861,13 +1863,19 @@ extension ArchitectureDependencyTests {
                 + "        .accessibilityIdentifier(\n"
                 + "            \"recording-objective-text-\\(objective.id.uuidString)\")\n"
                 + "        .id(objective.id)"))
-        XCTAssertTrue(recording.contains("ScrollViewReader { assistScroll in"))
-        XCTAssertTrue(recording.contains(
+        // The objectives tab still reveals a freshly added objective; the
+        // reader moved with it when the assist area became tabbed (D504).
+        XCTAssertTrue(assist.contains("ScrollViewReader { objectiveScroll in"))
+        XCTAssertTrue(assist.contains(
             ".onChange(of: controller.objectives.objectives.map(\\.id))"))
-        XCTAssertTrue(recording.contains(
-            "currentIDs.count == previousIDs.count + 1"))
-        XCTAssertTrue(recording.contains(
-            "assistScroll.scrollTo(addedObjectiveID, anchor: .center)"))
+        XCTAssertTrue(assist.contains(
+            "current.count == previous.count + 1"))
+        XCTAssertTrue(assist.contains(
+            "objectiveScroll.scrollTo(added, anchor: .center)"))
+        XCTAssertTrue(recording.contains("RecordingAssistPanel(controller: controller)"))
+        XCTAssertFalse(
+            recording.contains(".frame(maxHeight: 260)"),
+            "the assist area must grow with the window, not sit at a pinned height")
 
         let objectiveSubmit = try XCTUnwrap(interviewUITest.range(
             of: "objective.typeKey(.return, modifierFlags: [])"))
@@ -1890,7 +1898,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(askUITest.contains(
             "app.control(withIdentifier: \"recording-objective-add\").click()"))
         XCTAssertFalse(interviewUITest.contains(
-            "objectiveCount.revealVertically(in: scroll)"))
+            "objectiveCount.revealVertically(in: assist)"))
         XCTAssertFalse(interviewUITest.contains("above: objectiveCount"))
         XCTAssertFalse(interviewUITest.contains("missingTargetDeltaY"))
         XCTAssertFalse(interviewUITest.contains("private extension XCUIElement"))
@@ -1899,7 +1907,7 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(interviewUITest.contains(
             "scroll.scroll(byDeltaX: 0, deltaY: -240)"))
         XCTAssertTrue(interviewUITest.contains(
-            "answerAction.revealVertically(in: scroll)"))
+            "answerAction.revealVertically(in: assist)"))
 
         let commitmentExistence = try XCTUnwrap(uiTests.range(
             of: "review.waitForExistenceFast(timeout: 5)"))

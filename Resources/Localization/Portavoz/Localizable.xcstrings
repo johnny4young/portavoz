@@ -531,6 +531,16 @@
         }
       }
     },
+    "A running summary appears once there is enough to say.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El resumen en vivo aparece cuando ya hay algo que contar."
+          }
+        }
+      }
+    },
     "A safe recovery route is unavailable. This receipt remains available for review.": {
       "localizations": {
         "es": {
@@ -1417,6 +1427,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pregúntale a tu semana…"
+          }
+        }
+      }
+    },
+    "Assist area height": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alto del área de asistencia"
           }
         }
       }
@@ -2677,6 +2697,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Compacto — menos disco"
+          }
+        }
+      }
+    },
+    "Companion": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apuntador"
           }
         }
       }
@@ -4381,6 +4411,16 @@
         }
       }
     },
+    "Dismiss this card": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar esta tarjeta"
+          }
+        }
+      }
+    },
     "Dismiss this suggestion": {
       "localizations": {
         "es": {
@@ -5607,6 +5647,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Panel mini flotante con el timer y las captions — graba sin tapar tu reunión"
+          }
+        }
+      }
+    },
+    "Fold this card": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plegar esta tarjeta"
           }
         }
       }
@@ -10171,6 +10221,16 @@
         }
       }
     },
+    "Questions the meeting asks you show up here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquí aparecen las preguntas que la reunión te hace."
+          }
+        }
+      }
+    },
     "Quit": {
       "localizations": {
         "es": {
@@ -12471,6 +12531,16 @@
         }
       }
     },
+    "Show less": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar menos"
+          }
+        }
+      }
+    },
     "Show more automatic runs": {
       "localizations": {
         "es": {
@@ -13317,6 +13387,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Título sugerido desde el resumen — un click renombra, nada cambia solo"
+          }
+        }
+      }
+    },
+    "Suggestions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugerencias"
           }
         }
       }
@@ -14487,6 +14567,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Estas líneas se combinaron."
+          }
+        }
+      }
+    },
+    "They asked you": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Te preguntaron"
           }
         }
       }

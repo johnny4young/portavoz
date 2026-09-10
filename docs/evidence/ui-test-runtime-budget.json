@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 109
+    "expectedCaseCount": 110
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -96,6 +96,7 @@
     "PublicShowcaseUITests/testLiveTranslationShowcase()": 20.0,
     "PublicShowcaseUITests/testMeetingDetailShowcase()": 20.0,
     "PublicShowcaseUITests/testTodayShowcase()": 20.0,
+    "RecordingAssistUITests/testLiveAssistKeepsOnePanelOpenAndABoundedCardList()": 20.0,
     "SettingsUITests/testAudioPaneOffersCaptureSourceControls()": 20.0,
     "SettingsUITests/testCategoryNavigationRevealsEachPane()": 24.352,
     "SettingsUITests/testDataPaneExportsAReadableWholeLibraryMarkdownBackup()": 20.0,

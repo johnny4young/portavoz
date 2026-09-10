@@ -18995,3 +18995,61 @@ path keeps its own read. The correction suites are the gate.
 
 **Consequences:** every review finding R1-R18 is closed. What remains before 1.0
 is external verification, not code; `docs/GAPS.md` owns that list.
+
+## D504 — The live assist area is bounded, ranked and one panel deep (Sep 2026)
+
+Field use over two consecutive days exposed the live Apuntador as unusable at
+real volume. One 18-minute meeting produced 23 Companion cards; the user
+dismissed 9 of them **by hand, during the call**, and only 2 of the 23 were
+addressed to the user by name. The next day's meeting produced 12 and none were
+dismissed, so the cost scales with how much the meeting talks, not with how much
+of it matters.
+
+Three independent causes, all in `RecordingView`:
+
+1. The assist area was `.frame(maxHeight: 260)` while the captions took
+   `.frame(maxHeight: .infinity)`. A taller window grew only the captions, so
+   the obvious user remedy did nothing.
+2. Eight panels shared that one scroll — catch-up, next question, interview
+   assist, objectives, proactive assist, Companion cards, notes and the live
+   summary — stacked with no ranking, so the most relevant thing competed with
+   everything from minute one.
+3. The card list was unbounded and never truncated: `ForEach(…reversed())`
+   documented as "none dropped", with `.fixedSize(horizontal: false, vertical:
+   true)` on every answer. The 14 surviving cards of that meeting came to
+   roughly 1 950 pt of content in a 260 pt box — about seven screens, before
+   objectives, notes and the summary.
+
+**The area is a resizable split.** `RecordingAssistLayout.split(total:fraction:)`
+divides the flexible height, both zones have floors, and a drag handle stores
+the fraction. A window that is too short for both floors gives the assist area
+its floor: a caption strip degrades gracefully and a truncated assist panel does
+not.
+
+**One panel is open at a time.** `RecordingAssistTab` publishes companion,
+objectives and notes always, and interview, suggestions and summary once they
+can show something, so no tab ever opens onto blank space. A selection whose tab
+disappears falls back instead of leaving an empty panel.
+
+**Whatever cannot wait sits above the tabs.** `RecordingFocusSlot` ranks
+catch-up first — the user pressed the button seconds ago — then the newest card
+addressed to them by name, then the suggested next question. The focused card is
+removed from the list below so it is never shown twice, and it survives a tab
+switch.
+
+**Cards are bounded twice.** `CompanionCardWindow` keeps the newest three open
+with the answer clamped to four lines and an explicit "Show all"; everything
+older folds to its question on one line and stays reachable. Cards the user
+opens by hand claim the window first, so reaching back for an older card folds
+the oldest card that was open only by recency rather than growing the panel.
+Opening more than the limit by hand does grow it — that is the user asking,
+repeatedly.
+
+**Consequences:** `RecordingView` drops from 811 to 524 lines and the panels move
+to `RecordingAssistPanel`, `RecordingCompanionCardsView` and
+`RecordingNotesPanel`. The objectives reveal-on-add moved with its tab, and the
+architecture ratchet follows it there and now also forbids the pinned height.
+`RecordingAssistUITests` proves the rendered panel over a seeded live fixture;
+the window itself is pure policy under test. What this decision does **not**
+address is that the meeting's stated priority had nowhere to live: that gap is
+recorded in GAPS, not solved here.

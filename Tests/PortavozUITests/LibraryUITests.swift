@@ -459,6 +459,7 @@ final class LibraryUITests: PortavozUITestCase {
             "without an answer engine Sequoia must show an honest question-only card")
         let transcript = app.control(withIdentifier: "recording-live-transcript")
         XCTAssertTrue(transcript.waitForExistenceFast(timeout: 8))
+        app.openAssistTab("summary")
         let liveSummary = app.control(withIdentifier: "recording-live-summary")
         XCTAssertTrue(
             liveSummary.waitForExistenceFast(timeout: 8),
@@ -470,6 +471,7 @@ final class LibraryUITests: PortavozUITestCase {
             app.staticTexts[expectedLiveHighlights].waitForExistenceFast(timeout: 5),
             "the model-free checkpoint must disclose its extractive live highlights")
 
+        app.openAssistTab("objectives")
         let panel = app.control(withIdentifier: "recording-objectives-panel")
         XCTAssertTrue(
             panel.waitForExistenceFast(timeout: 8),
@@ -497,10 +499,12 @@ final class LibraryUITests: PortavozUITestCase {
         let proactive = app.control(withIdentifier: "recording-proactive-assist")
         XCTAssertTrue(proactive.exists)
         XCTAssertFalse(
-            app.control(withIdentifier: "recording-proactive-panel").exists,
+            app.control(withIdentifier: "recording-assist-tab-proactive").exists,
             "proactive help must be off until this recording explicitly opts in")
         proactive.click()
 
+        // Suggestions only becomes a tab once this recording opts in.
+        app.openAssistTab("proactive")
         let proactivePanel = app.control(withIdentifier: "recording-proactive-panel")
         XCTAssertTrue(proactivePanel.waitForExistenceFast(timeout: 5))
         let objectiveSuggestion = app.control(

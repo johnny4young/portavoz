@@ -93,6 +93,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "testRecordingOffersObjectivesNextQuestionAndTalkBalance",
         ),
         test_id(
+            "RecordingAssistUITests",
+            "testLiveAssistKeepsOnePanelOpenAndABoundedCardList",
+        ),
+        test_id(
             "MeetingDetailUITests",
             "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador",
         ),
