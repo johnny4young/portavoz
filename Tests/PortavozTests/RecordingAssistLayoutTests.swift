@@ -36,13 +36,26 @@ final class RecordingAssistLayoutTests: XCTestCase {
             allCaptions.assist, RecordingAssistLayout.minimumAssistHeight)
     }
 
-    func testAWindowTooShortForBothFloorsKeepsTheAssistPanelUsable() {
-        let total = RecordingAssistLayout.minimumCaptionsHeight
+    func testAWindowTooShortForBothFloorsShrinksThemTogether() {
+        let floors = RecordingAssistLayout.minimumCaptionsHeight
             + RecordingAssistLayout.minimumAssistHeight
-        let split = RecordingAssistLayout.split(total: total - 60, fraction: 0.42)
 
-        XCTAssertEqual(split.assist, RecordingAssistLayout.minimumAssistHeight)
-        XCTAssertGreaterThanOrEqual(split.captions, 0)
+        // Paying one floor in full drove the other to zero, and with several
+        // banners stacked on a small window that meant no captions at all.
+        for total in stride(from: CGFloat(30), through: floors, by: 20) {
+            let split = RecordingAssistLayout.split(total: total, fraction: 0.42)
+            XCTAssertGreaterThan(
+                split.captions, 0,
+                "the meeting's words must never be squeezed out at \(total)")
+            XCTAssertGreaterThan(split.assist, 0, "total \(total)")
+        }
+    }
+
+    func testANonFiniteHeightYieldsNothingRatherThanNaN() {
+        let split = RecordingAssistLayout.split(total: .infinity, fraction: 0.42)
+
+        XCTAssertEqual(split.captions, 0)
+        XCTAssertEqual(split.assist, 0)
     }
 
     func testClampRejectsRunawayAndNonFiniteFractions() {
@@ -103,23 +116,23 @@ final class RecordingAssistLayoutTests: XCTestCase {
                 directedCardID: card,
                 statedPriorityID: priority,
                 hasNextQuestion: true),
+            .nextQuestion,
+            "the user pressed Suggest a question; an unbidden card must not eat it")
+        XCTAssertEqual(
+            RecordingFocusSlot.resolve(
+                hasCatchUp: false,
+                directedCardID: card,
+                statedPriorityID: priority,
+                hasNextQuestion: false),
             .directedCard(card),
-            "only a question addressed to the user has a deadline")
+            "a question addressed to the user outranks a stated priority")
         XCTAssertEqual(
             RecordingFocusSlot.resolve(
                 hasCatchUp: false,
                 directedCardID: nil,
                 statedPriorityID: priority,
-                hasNextQuestion: true),
-            .statedPriority(priority),
-            "somebody said the priority; the next question is only advice")
-        XCTAssertEqual(
-            RecordingFocusSlot.resolve(
-                hasCatchUp: false,
-                directedCardID: nil,
-                statedPriorityID: nil,
-                hasNextQuestion: true),
-            .nextQuestion)
+                hasNextQuestion: false),
+            .statedPriority(priority))
         XCTAssertEqual(
             RecordingFocusSlot.resolve(
                 hasCatchUp: false,

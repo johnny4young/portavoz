@@ -91,9 +91,19 @@ final class SpeakerAttributionWindowTests: XCTestCase {
             LiveSpeakerHints.changed(from: (rows, labels), to: (rows, labels)),
             "an unchanged pass must not re-project the transcript")
 
-        var moved = rows
-        moved[1].speakerID = SpeakerID()
-        XCTAssertTrue(LiveSpeakerHints.changed(from: (rows, labels), to: (moved, labels)))
+        // `SpeakerAttributor` mints a fresh SpeakerID on every pass, so the id
+        // changing means nothing happened. Comparing it made this guard report
+        // a change on every diarizer turn and suppress nothing at all.
+        var reminted = rows
+        reminted[1].speakerID = SpeakerID()
+        XCTAssertFalse(
+            LiveSpeakerHints.changed(from: (rows, labels), to: (reminted, labels)),
+            "a re-minted speaker id is not a change the reader can see")
+
+        let moved = [rows[0], segment(start: 4, end: 9)]
+        XCTAssertTrue(
+            LiveSpeakerHints.changed(from: (rows, labels), to: (moved, labels)),
+            "a row whose bounds moved is a change the reader can see")
         XCTAssertTrue(
             LiveSpeakerHints.changed(from: (rows, labels), to: (rows, [:])))
         XCTAssertTrue(

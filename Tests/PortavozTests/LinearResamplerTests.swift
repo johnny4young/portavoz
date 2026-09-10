@@ -70,3 +70,28 @@ final class LinearResamplerTests: XCTestCase {
         XCTAssertEqual(first, afterReset)
     }
 }
+
+/// The streaming resampler carries a fractional frame between callbacks, so it
+/// can emit one more frame than the single-shot geometry reserves. The delivery
+/// gate has to reserve that frame, or a packet is admitted and then rejected on
+/// append — which terminates the capture as `.overloaded` mid-meeting.
+final class StreamingCarryAdmissionTests: XCTestCase {
+    func testTheGateReservesEveryFrameTheStreamCanEmit() throws {
+        for (source, target) in [
+            (44_100.0, 48_000.0), (48_000.0, 44_100.0), (16_000.0, 48_000.0)
+        ] {
+            var resampler = LinearResampler()
+            for _ in 0..<200 {
+                let input = [Float](repeating: 0, count: 4096)
+                let reserved = try CapturePCMGeometry.resampling(
+                    inputCount: input.count, source: source, target: target)
+                    .frameCount + CaptureDeliveryBuffer.streamingCarryFrames
+                let produced = try resampler.resample(
+                    input, from: source, to: target).count
+                XCTAssertLessThanOrEqual(
+                    produced, reserved,
+                    "\(Int(source))->\(Int(target)) emitted more than the gate admitted")
+            }
+        }
+    }
+}

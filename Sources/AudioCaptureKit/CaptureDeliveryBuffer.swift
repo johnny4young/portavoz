@@ -66,12 +66,22 @@ final class CaptureDeliveryBuffer: Sendable {
     }
 
     /// Validate both transient arrays before downmix/resampling allocate them.
+    /// A streaming resampler carries its fractional phase between callbacks, so
+    /// the frame it owes from the previous buffer lands in this one. That makes
+    /// its output up to one frame longer than the single-shot geometry, which
+    /// floors. Measured at exactly one across 44.1/48 in both directions; the
+    /// gate reserves it so an admitted packet is never rejected on `append` and
+    /// the capture terminated as `.overloaded`.
+    static let streamingCarryFrames = 1
+
     func admitNativeFrames(_ frames: Int, sourceRate: Double, targetRate: Double) throws {
         let output = try CapturePCMGeometry.resampling(
             inputCount: frames, source: sourceRate, target: targetRate).frameCount
         let fits = state.withLock {
             !$0.finished && $0.count < limits.packets
-                && frames <= limits.frames && output <= limits.frames - $0.retainedFrames
+                && frames <= limits.frames
+                && output + Self.streamingCarryFrames
+                    <= limits.frames - $0.retainedFrames
         }
         guard fits else {
             finish(failure: .overloaded, rejectedFrames: output)

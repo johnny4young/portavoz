@@ -244,6 +244,13 @@ public final class MicrophoneSource: CaptureReportingSource, @unchecked Sendable
     /// stream's original rate when they differ, and padding any capture gap
     /// (device switch downtime) with silence to keep the timeline aligned.
     private func installTap() {
+        // A replacement device starts a new stream: the carried sample belongs
+        // to the retired device, on the far side of the silence pad, and the
+        // carried phase is expressed in the old device's frames. Interpolating
+        // across that boundary blends two unrelated streams.
+        deliveredLock.lock()
+        resampler.reset()
+        deliveredLock.unlock()
         let input = engine.inputNode
         let target = streamSampleRate
         guard

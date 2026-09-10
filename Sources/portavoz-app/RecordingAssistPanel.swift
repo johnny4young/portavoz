@@ -16,6 +16,9 @@ struct RecordingAssistPanel: View {
     /// Owned here so switching tabs does not reset what the user opened.
     @State private var presentations: [UUID: CompanionCardPresentation] = [:]
     @State private var seenCompanionCount = 0
+    /// Held here for the same reason as `presentations`: the notes panel is a
+    /// branch of `activePanel` and loses its own state when the tab changes.
+    @State private var noteDraft = ""
 
     private var tabs: [RecordingAssistTab] {
         RecordingAssistTab.available(
@@ -169,6 +172,7 @@ private extension RecordingAssistPanel {
                 }
                 .controlSize(.small)
                 .accessibilityIdentifier("recording-priority-accept")
+                .disabled(controller.priorityAcceptanceRefused)
                 Button(L10n.text("Not a priority")) {
                     controller.dismissPriorityOffer()
                 }
@@ -177,6 +181,16 @@ private extension RecordingAssistPanel {
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("recording-priority-dismiss")
                 Spacer()
+            }
+            if controller.priorityAcceptanceRefused {
+                // The objectives list refused it. Saying so here beats clearing
+                // the card and losing the acceptance for the rest of the
+                // meeting, which is what used to happen.
+                Text(L10n.text("Your objectives list is full — remove one to track this."))
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("recording-priority-refused")
             }
         }
         .padding(12)
@@ -256,7 +270,7 @@ private extension RecordingAssistPanel {
         case .objectives:
             objectivesTab
         case .notes:
-            RecordingNotesPanel(controller: controller)
+            RecordingNotesPanel(controller: controller, draft: $noteDraft)
         case .interview:
             ScrollView { RecordingInterviewAssistView(controller: controller) }
         case .proactive:

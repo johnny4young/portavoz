@@ -61,6 +61,17 @@ final class RecordingAssistUITests: PortavozUITestCase {
             "opening an older card must close the oldest card open by recency")
         XCTAssertTrue(app.control(withIdentifier: "recording-companion-folded-2").exists)
 
+        // The fold chevron is what writes .collapsed; without a journey the
+        // recency window's own direction is unproven end to end.
+        let fold = app.control(withIdentifier: "recording-companion-fold-0")
+        XCTAssertTrue(fold.exists)
+        fold.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "recording-companion-folded-0")
+                .waitForExistenceFast(timeout: 3),
+            "folding an open card must leave it reachable as a one-line row")
+
+
         // One panel at a time: the Companion list leaves when Notes opens.
         app.openAssistTab("notes")
         XCTAssertFalse(
@@ -71,9 +82,22 @@ final class RecordingAssistUITests: PortavozUITestCase {
             app.control(withIdentifier: "recording-focus-card").exists,
             "the focus slot survives a tab switch — it is what cannot wait")
 
+        // Back on Companion the card folded earlier is still folded: what the
+        // user opened and closed is held by the panel, not by the list, so a
+        // tab switch cannot reset it.
         app.openAssistTab("companion")
         XCTAssertTrue(
-            app.control(withIdentifier: "recording-companion-card-0")
+            app.control(withIdentifier: "recording-companion-folded-0")
                 .waitForExistenceFast(timeout: 5))
+
+        // Last, because it empties the slot: the focus card is sticky until
+        // dismissed, so dismissal is the only thing that frees it.
+        let focusDismiss = app.control(withIdentifier: "recording-focus-dismiss")
+        XCTAssertTrue(focusDismiss.exists)
+        focusDismiss.click()
+        XCTAssertFalse(
+            app.control(withIdentifier: "recording-focus-card")
+                .waitForExistenceFast(timeout: 3),
+            "a dismissed focus card must free the slot")
     }
 }

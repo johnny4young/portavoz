@@ -35,10 +35,16 @@ enum RecordingAssistLayout {
     /// floor and the captions keep the rest, because a caption strip degrades
     /// gracefully and a truncated assist panel does not.
     static func split(total: CGFloat, fraction: Double) -> Split {
+        guard total.isFinite else { return Split(captions: 0, assist: 0) }
         let usable = max(total - dividerHeight, 0)
         guard usable > 0 else { return Split(captions: 0, assist: 0) }
         guard usable >= minimumCaptionsHeight + minimumAssistHeight else {
-            let assist = min(usable, minimumAssistHeight)
+            // Paying one floor in full drove the other to zero: with several
+            // banners stacked on a small window the captions disappeared
+            // entirely and the meeting had no words on screen. Both floors
+            // shrink together instead, so neither zone can vanish.
+            let assist = (usable * minimumAssistHeight
+                / (minimumCaptionsHeight + minimumAssistHeight)).rounded()
             return Split(captions: usable - assist, assist: assist)
         }
         let requested = (usable * clamp(fraction)).rounded()
@@ -127,12 +133,16 @@ enum RecordingFocusSlot: Equatable, Sendable {
     case statedPriority(UUID)
     case nextQuestion
 
-    /// Catch-up wins because the user pressed the button seconds ago and is
-    /// waiting for it. A question addressed to the user by name is the only
-    /// thing with a deadline, so it comes next. A stated priority outranks the
-    /// suggested next question because somebody actually said it, while the
-    /// suggestion is only ever advice — and it waits in the slot until the user
-    /// acts on it, so a directed question ahead of it never buries it.
+    /// What the user just asked for comes first, then what arrived on its own.
+    ///
+    /// Catch-up and the suggested next question are transient and are only
+    /// there because the user pressed a button seconds ago; a directed card and
+    /// a stated priority arrive unbidden and persist until answered. Ranking
+    /// the persistent ones higher meant one undismissed directed card silently
+    /// swallowed every later press of "Suggest a question" for the rest of the
+    /// meeting — the button did nothing, not even show its spinner. The
+    /// unbidden pair still cannot be lost: neither expires, so both return to
+    /// the slot as soon as the transient one is dismissed.
     static func resolve(
         hasCatchUp: Bool,
         directedCardID: UUID?,
@@ -140,8 +150,9 @@ enum RecordingFocusSlot: Equatable, Sendable {
         hasNextQuestion: Bool
     ) -> RecordingFocusSlot {
         if hasCatchUp { return .catchUp }
+        if hasNextQuestion { return .nextQuestion }
         if let directedCardID { return .directedCard(directedCardID) }
         if let statedPriorityID { return .statedPriority(statedPriorityID) }
-        return hasNextQuestion ? .nextQuestion : .none
+        return .none
     }
 }

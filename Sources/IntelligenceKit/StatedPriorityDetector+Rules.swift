@@ -63,8 +63,25 @@ enum PriorityVocabulary {
     /// re-prioritizes nothing.
     static let copulas: Set<String> = ["is", "are", "es", "son"]
 
+    /// The tokenizer keeps apostrophes inside words, so contractions are
+    /// matched whole rather than as a clipped stem.
     static let negations: Set<String> = [
-        "not", "no", "never", "nunca", "tampoco", "ni", "isn", "aren"
+        "not", "no", "never", "nunca", "tampoco", "ni",
+        "isn't", "aren't", "doesn't", "don't", "won't", "can't", "wasn't"
+    ]
+
+    /// Clause-initial words that make the clause a question. Kept here, and
+    /// matched UNFOLDED, because Spanish accents are exactly what separate the
+    /// accented interrogative from its unaccented everyday twin.
+    /// Borrowing `QuestionHeuristic`'s list was wrong: it is calibrated to
+    /// over-admit for a classifier that prunes afterwards, and it carries
+    /// "por", which silently dropped "Por ahora la prioridad es X".
+    static let clauseInitialInterrogatives: Set<String> = [
+        "what", "which", "who", "whom", "whose", "how", "why", "when", "where",
+        "is", "are", "do", "does", "did", "can", "could", "would", "should",
+        // Escaped so the English-prose ratchet reads vocabulary data, not prose.
+        "qu\u{00E9}", "cu\u{00E1}l", "cu\u{00E1}les", "qui\u{00E9}n", "qui\u{00E9}nes",
+        "c\u{00F3}mo", "cu\u{00E1}ndo", "d\u{00F3}nde", "ad\u{00F3}nde", "es", "son"
     ]
 
     /// A hypothetical priority is not a stated one.

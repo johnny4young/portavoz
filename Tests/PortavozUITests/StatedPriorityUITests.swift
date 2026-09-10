@@ -32,6 +32,9 @@ final class StatedPriorityUITests: PortavozUITestCase {
 
         let accept = app.control(withIdentifier: "recording-priority-accept")
         XCTAssertTrue(accept.exists, "the offer is inert until the user accepts it")
+        XCTAssertTrue(
+            app.control(withIdentifier: "recording-priority-dismiss").exists,
+            "declining is what records the subject as handled, so it must be there")
         accept.click()
 
         XCTAssertFalse(

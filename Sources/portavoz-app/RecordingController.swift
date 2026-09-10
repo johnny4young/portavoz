@@ -62,6 +62,13 @@ final class RecordingController {
     /// The one priority somebody stated out loud, waiting for the user to
     /// accept it as an objective or wave it away. Inert either way (D505).
     private(set) var priorityOffer: StatedPriority?
+    /// True when the last acceptance was refused because the objectives list is
+    /// full; the card stays up and says so instead of vanishing.
+    private(set) var priorityAcceptanceRefused = false
+    /// XCUITest fixtures seed once per recording. `companionCards.isEmpty` was
+    /// not enough: dismissing every seeded card restored the precondition and
+    /// the next caption seeded a fresh set.
+    private var seededUIFixtures: Set<String> = []
     /// Subjects already accepted or dismissed, so restating a priority does
     /// not re-offer it for the rest of the meeting.
     private var handledPriorityKeys: Set<String> = []
@@ -243,6 +250,8 @@ final class RecordingController {
         liveSummary = nil
         companionCards = []
         priorityOffer = nil
+        priorityAcceptanceRefused = false
+        seededUIFixtures = []
         handledPriorityKeys = []
         companionArtifactsByCardID = [:]
         companionTerminalRuns = []
@@ -331,6 +340,8 @@ final class RecordingController {
         summarizedCaptionIDs = []
         companionCards = []
         priorityOffer = nil
+        priorityAcceptanceRefused = false
+        seededUIFixtures = []
         handledPriorityKeys = []
         companionArtifactsByCardID = [:]
         companionTerminalRuns = []
@@ -378,22 +389,6 @@ final class RecordingController {
         detectClosedRow()
         armTurnEndpointDeadline()
         liveTranslationWakeHub.signal()
-    }
-
-    /// Visual-only XCUITest fixture. Routing and stale-lane semantics stay
-    /// covered by unit tests; this branch proves the rendered language rail
-    /// without requiring a runner to own Apple's downloadable language pack.
-    private func seedLiveTranslationUIIfRequested() {
-        let arguments = ProcessInfo.processInfo.arguments
-        guard arguments.contains("-use-temp-store"),
-            arguments.contains("-seed-live-translation-ui"),
-            let row = captions.last
-        else { return }
-        if translationTarget == nil { translationTarget = "en" }
-        translations[row.id] = arguments.contains("-seed-showcase")
-            ? PublicShowcaseFixture.translation(for: row.text)
-            : "Clearly separated test translation."
-        translatedSourceTexts[row.id] = row.text
     }
 
     private func applyStartRecordingResult(
@@ -1068,9 +1063,14 @@ enum LiveSpeakerHints {
     ) -> Bool {
         if updated.labels != current.labels { return true }
         guard updated.captions.count == current.captions.count else { return true }
+        // `speakerID` is deliberately absent. `SpeakerAttributor.attribute`
+        // builds its speaker table per call and `Speaker.init` defaults its id
+        // to a fresh UUID, so every pass returns the same rows carrying new
+        // ids. Comparing them could only ever report a change that did not
+        // happen, which made this guard suppress nothing. What the reader
+        // actually sees is the label, and `labels` above carries that.
         return !zip(updated.captions, current.captions).allSatisfy { new, old in
             new.id == old.id
-                && new.speakerID == old.speakerID
                 && new.text == old.text
                 && new.startTime == old.startTime
                 && new.endTime == old.endTime
@@ -1116,10 +1116,24 @@ extension RecordingController {
     /// nothing by itself.
     func offerStatedPriority(in row: TranscriptSegment) {
         guard phase == .recording else { return }
+        // An offer already on screen owns the slot until the user answers it.
+        // Replacing it swaps the subject and the meaning of both buttons under
+        // the cursor, and loses the first subject without recording it as
+        // handled.
+        guard priorityOffer == nil else { return }
         // Live speech splits one sentence across rows, so the scanner sees the
         // closed row together with its immediate predecessors and joins them
         // only when the earlier rows are genuine fragments.
-        let window = captions
+        // `detectClosedRow` hands over the row that just stopped being last, so
+        // the window has to end there. Taking the tail of `captions` instead
+        // made the guard below unsatisfiable and the join path dead.
+        guard let closedIndex = captions.lastIndex(where: { $0.id == row.id })
+        else {
+            offerStatedPriority(
+                text: row.text, rowID: row.id, statedAt: row.startTime)
+            return
+        }
+        let window = captions[...closedIndex]
             .suffix(StatedPriorityDetector.maximumJoinedCaptions)
             .map { caption in
                 PriorityScanCaption(
@@ -1129,11 +1143,6 @@ extension RecordingController {
                     channel: caption.channel.rawValue,
                     speaker: caption.speakerID?.rawValue.uuidString)
             }
-        guard window.last?.id == row.id else {
-            offerStatedPriority(
-                text: row.text, rowID: row.id, statedAt: row.startTime)
-            return
-        }
         guard let priority = StatedPriorityDetector.detect(inRecent: window),
               !handledPriorityKeys.contains(priority.subjectKey)
         else { return }
@@ -1157,8 +1166,18 @@ extension RecordingController {
     /// persists as a context item at Stop and already shapes the summary.
     func acceptPriorityOffer() {
         guard let offer = priorityOffer else { return }
-        handledPriorityKeys.insert(offer.subjectKey)
+        let before = objectives.objectives.count
         objectives.add(offer.subject)
+        guard objectives.objectives.count > before else {
+            // `RecordingObjectivesModel.add` refuses silently at the objective
+            // limit. Clearing the card and remembering the subject there would
+            // lose the acceptance for the rest of the meeting, and the only
+            // feedback lives on a tab the user is not looking at.
+            priorityAcceptanceRefused = true
+            return
+        }
+        priorityAcceptanceRefused = false
+        handledPriorityKeys.insert(offer.subjectKey)
         priorityOffer = nil
     }
 
@@ -1166,6 +1185,7 @@ extension RecordingController {
     /// not re-offer something the user already waved away.
     func dismissPriorityOffer() {
         guard let offer = priorityOffer else { return }
+        priorityAcceptanceRefused = false
         handledPriorityKeys.insert(offer.subjectKey)
         priorityOffer = nil
     }
@@ -1182,9 +1202,10 @@ private extension RecordingController {
         let arguments = ProcessInfo.processInfo.arguments
         guard arguments.contains("-use-temp-store"),
             arguments.contains("-seed-live-companion-ui"),
-            companionCards.isEmpty,
+            !seededUIFixtures.contains("companion"),
             let row = captions.last
         else { return }
+        seededUIFixtures.insert("companion")
         companionCards = (0..<6).map { index in
             CompanionCard(
                 question: "Seeded live question \(index + 1)?",
@@ -1211,13 +1232,31 @@ private extension RecordingController {
         let arguments = ProcessInfo.processInfo.arguments
         guard arguments.contains("-use-temp-store"),
             arguments.contains("-seed-stated-priority-ui"),
-            priorityOffer == nil,
-            handledPriorityKeys.isEmpty,
+            !seededUIFixtures.contains("priority"),
             let row = captions.last
         else { return }
+        seededUIFixtures.insert("priority")
         offerStatedPriority(
             text: "Priority is the billing migration, whatever is in progress",
             rowID: row.id,
             statedAt: row.startTime)
+    }
+}
+
+private extension RecordingController {
+    /// Visual-only XCUITest fixture. Routing and stale-lane semantics stay
+    /// covered by unit tests; this branch proves the rendered language rail
+    /// without requiring a runner to own Apple's downloadable language pack.
+    func seedLiveTranslationUIIfRequested() {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard arguments.contains("-use-temp-store"),
+            arguments.contains("-seed-live-translation-ui"),
+            let row = captions.last
+        else { return }
+        if translationTarget == nil { translationTarget = "en" }
+        translations[row.id] = arguments.contains("-seed-showcase")
+            ? PublicShowcaseFixture.translation(for: row.text)
+            : "Clearly separated test translation."
+        translatedSourceTexts[row.id] = row.text
     }
 }

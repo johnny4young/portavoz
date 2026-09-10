@@ -160,10 +160,9 @@ public enum StatedPriorityDetector {
 
 private extension StatedPriorityDetector {
     static func subject(in text: String) -> String? {
-        // Asking what the priority is states nothing.
-        guard !QuestionHeuristic.looksLikeQuestion(text) else { return nil }
         let tokens = tokenize(text)
         if let anchor = anchorRange(in: tokens),
+           !isInterrogative(tokens, around: anchor),
            !isDemoted(tokens, anchor: anchor),
            !isHypothetical(tokens, before: anchor.lowerBound),
            let found = forwardSubject(tokens, anchor: anchor)
@@ -172,11 +171,41 @@ private extension StatedPriorityDetector {
             return phrase
         }
         guard let verb = precedenceVerbRange(in: tokens),
+              !isInterrogative(tokens, around: verb),
+              !isDemoted(tokens, anchor: verb),
               !isHypothetical(tokens, before: verb.lowerBound),
               let found = backwardSubject(tokens, anchor: verb, requiresCopula: false),
               let phrase = validated(found)
         else { return nil }
         return phrase
+    }
+
+    /// Asking what the priority is states nothing — but only the clause holding
+    /// the anchor decides that.
+    ///
+    /// This used to defer to `QuestionHeuristic.looksLikeQuestion`, which
+    /// documents that it errs on the side of passing because a classifier prunes
+    /// after it. Used here as a suppressor that bias inverts into false
+    /// negatives: it treats a `?` anywhere in a multi-sentence caption as a
+    /// question, and its interrogative list carries `por`, so "Por ahora la
+    /// prioridad es X" was silently dropped.
+    static func isInterrogative(_ tokens: [Token], around anchor: Range<Int>) -> Bool {
+        let clause = clauseRange(in: tokens, containing: anchor)
+        if tokens[clause].contains(where: \.opensQuestion) { return true }
+        guard let first = clause.first else { return false }
+        // Unfolded on purpose: in Spanish the accent is what separates an
+        // interrogative from its unaccented everyday twin.
+        return PriorityVocabulary.clauseInitialInterrogatives
+            .contains(tokens[first].lowered)
+    }
+
+    /// The run of tokens between the clause breaks surrounding the anchor.
+    static func clauseRange(in tokens: [Token], containing anchor: Range<Int>) -> Range<Int> {
+        var start = anchor.lowerBound
+        while start > 0, !tokens[start - 1].closesClause { start -= 1 }
+        var end = anchor.upperBound - 1
+        while end + 1 < tokens.count, !tokens[end].closesClause { end += 1 }
+        return start..<(end + 1)
     }
 
     /// Earliest anchor, longest match at that position.
@@ -205,23 +234,27 @@ private extension StatedPriorityDetector {
 
     /// "The dashboard is a low priority" and "una prioridad baja" name what does
     /// NOT take precedence; reading either as a priority inverts the speaker.
-    /// English puts the qualifier before the anchor and Spanish usually after
-    /// it, so both sides are inspected.
+    ///
+    /// The scan follows the adjective run on both sides of the anchor — English
+    /// pre-modifies, Spanish post-modifies — and stops at the clause boundary or
+    /// at a copula, which is where the modifiers end. A fixed step count was
+    /// wrong in both directions: two intensifiers ("una prioridad realmente muy
+    /// baja") pushed the qualifier out of reach, and testing a token before
+    /// checking its clause break let the previous sentence's "low" suppress a
+    /// perfectly good declaration.
     static func isDemoted(_ tokens: [Token], anchor: Range<Int>) -> Bool {
         var index = anchor.lowerBound
-        var steps = 0
-        while index > 0, steps < 3 {
+        while index > 0 {
             index -= 1
-            steps += 1
-            if PriorityVocabulary.demoting.contains(tokens[index].folded) { return true }
             if tokens[index].closesClause { break }
+            if PriorityVocabulary.copulas.contains(tokens[index].folded) { break }
+            if PriorityVocabulary.demoting.contains(tokens[index].folded) { return true }
         }
         index = anchor.upperBound - 1
-        steps = 0
-        while index + 1 < tokens.count, steps < 2 {
+        while index + 1 < tokens.count {
             if tokens[index].closesClause { break }
             index += 1
-            steps += 1
+            if PriorityVocabulary.copulas.contains(tokens[index].folded) { break }
             if PriorityVocabulary.demoting.contains(tokens[index].folded) { return true }
         }
         return false
@@ -259,9 +292,22 @@ private extension StatedPriorityDetector {
             if PriorityVocabulary.conjunctions.contains(token.folded) { break }
             // Running past the cap means the clause never named a subject; a
             // truncated one would read as a priority nobody stated.
+            if PriorityVocabulary.negations.contains(token.folded) { return nil }
             if subject.count == maximumSubjectWords { return nil }
             subject.append(token)
-            if token.closesClause { break }
+            if token.closesClause {
+                // "The priority is the dashboard, not the billing migration."
+                // The clause break ends the subject before the correction is
+                // ever seen, so reporting it would name the thing the speaker
+                // just moved away from. Which of the two is meant is not
+                // decidable here, so neither is claimed.
+                let next = cursor + 1
+                if next < tokens.count,
+                   PriorityVocabulary.negations.contains(tokens[next].folded) {
+                    return nil
+                }
+                break
+            }
             cursor += 1
         }
         return subject.isEmpty ? nil : subject
@@ -287,6 +333,11 @@ private extension StatedPriorityDetector {
         while cursor >= 0 {
             let token = tokens[cursor]
             if PriorityVocabulary.conjunctions.contains(token.folded) { break }
+            // "The dashboard does not come first" names what does NOT take
+            // precedence. The copular path catches this in `copulaBefore`; the
+            // precedence-verb path has no such walk, so the subject itself is
+            // where both are checked.
+            if PriorityVocabulary.negations.contains(token.folded) { return nil }
             if subject.count == maximumSubjectWords { return nil }
             subject.insert(token, at: 0)
             // The clause flag sits on the token the punctuation follows, so a
@@ -323,6 +374,11 @@ private extension StatedPriorityDetector {
         let phrase = subject.map(\.text).joined(separator: " ")
         guard phrase.count >= 2, phrase.count <= maximumSubjectCharacters
         else { return nil }
+        // "so what is the priority" is a question the recognizer dropped the
+        // mark from; its subject would be the question word itself.
+        guard !subject.contains(where: {
+            PriorityVocabulary.clauseInitialInterrogatives.contains($0.lowered)
+        }) else { return nil }
         // At least one content word: "the priority is that" names nothing.
         guard subject.contains(where: {
             $0.folded.count >= 3 && !PriorityVocabulary.fillers.contains($0.folded)
@@ -381,6 +437,10 @@ private extension StatedPriorityDetector {
         let folded: String
         /// True when clause punctuation follows this token.
         let closesClause: Bool
+        /// True when a question mark sits against this token on either side.
+        /// Inverted Spanish marks open the clause, plain ones close it, so both
+        /// neighbours are tagged and the clause scan reads whichever it meets.
+        let opensQuestion: Bool
     }
 
     static let clauseBreakers: Set<Character> = [
@@ -390,9 +450,12 @@ private extension StatedPriorityDetector {
         "\u{00BF}", "\u{00A1}"
     ]
 
+    static let questionMarks: Set<Character> = ["?", "\u{00BF}"]
+
     static func tokenize(_ text: String) -> [Token] {
         var tokens: [Token] = []
         var current = ""
+        var carriesQuestion = false
         func flush() {
             guard !current.isEmpty else { return }
             let lowered = current.lowercased()
@@ -401,8 +464,10 @@ private extension StatedPriorityDetector {
                 lowered: lowered,
                 folded: lowered.folding(
                     options: [.diacriticInsensitive], locale: nil),
-                closesClause: false))
+                closesClause: false,
+                opensQuestion: carriesQuestion))
             current = ""
+            carriesQuestion = false
         }
         for character in text {
             if character.isLetter || character.isNumber
@@ -411,13 +476,20 @@ private extension StatedPriorityDetector {
                 continue
             }
             flush()
-            guard clauseBreakers.contains(character), let last = tokens.popLast()
-            else { continue }
+            guard clauseBreakers.contains(character) else { continue }
+            let question = questionMarks.contains(character)
+            // Only the INVERTED mark opens the clause that follows it. A
+            // closing "?" ends its own clause, and tagging what came after it
+            // made "Any other questions? OK the priority is X" look like a
+            // question in its second clause.
+            carriesQuestion = character == "\u{00BF}"
+            guard let last = tokens.popLast() else { continue }
             tokens.append(Token(
                 text: last.text,
                 lowered: last.lowered,
                 folded: last.folded,
-                closesClause: true))
+                closesClause: true,
+                opensQuestion: last.opensQuestion || question))
         }
         flush()
         return tokens

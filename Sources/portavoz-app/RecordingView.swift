@@ -34,6 +34,11 @@ struct RecordingView: View {
     private var assistFraction = RecordingAssistLayout.defaultFraction
     /// The fraction the current divider drag started from.
     @State private var dividerAnchor: Double?
+    /// The fraction being dragged right now. `@AppStorage` is written once, on
+    /// release: writing it per frame put a `UserDefaults` round trip and a full
+    /// `RecordingView` invalidation — captions re-projected and all — into every
+    /// tick of the gesture.
+    @State private var draggingFraction: Double?
 
     var body: some View {
         VStack(spacing: 16) {
@@ -154,7 +159,7 @@ struct RecordingView: View {
         GeometryReader { geo in
             let split = RecordingAssistLayout.split(
                 total: geo.size.height,
-                fraction: assistFraction)
+                fraction: draggingFraction ?? assistFraction)
             VStack(spacing: 0) {
                 LiveRecordingCaptionsView(controller: controller)
                     .frame(height: split.captions)
@@ -174,20 +179,28 @@ struct RecordingView: View {
             .frame(width: 46, height: 4)
             .frame(maxWidth: .infinity, minHeight: RecordingAssistLayout.dividerHeight)
             .contentShape(Rectangle())
+            // `set`, not `push`/`pop`: the divider only exists inside the
+            // recording phase, so a teardown while the pointer rests on it
+            // never delivers the matching exit and the pushed cursor would
+            // outlive the view.
             .onHover { inside in
-                if inside { NSCursor.resizeUpDown.push() } else { NSCursor.pop() }
+                if inside { NSCursor.resizeUpDown.set() } else { NSCursor.arrow.set() }
             }
             .gesture(
                 DragGesture()
                     .onChanged { value in
                         let anchor = dividerAnchor ?? assistFraction
                         dividerAnchor = anchor
-                        assistFraction = RecordingAssistLayout.fraction(
+                        draggingFraction = RecordingAssistLayout.fraction(
                             from: anchor,
                             draggedUpBy: -value.translation.height,
                             total: total)
                     }
-                    .onEnded { _ in dividerAnchor = nil })
+                    .onEnded { _ in
+                        if let dragged = draggingFraction { assistFraction = dragged }
+                        draggingFraction = nil
+                        dividerAnchor = nil
+                    })
             .accessibilityElement()
             .accessibilityLabel(L10n.text("Assist area height"))
             .accessibilityIdentifier("recording-assist-divider")
@@ -620,8 +633,4 @@ private extension RecordingView {
         return L10n.text("Preparing…")
     }
 
-}
-
-// Recap panels live outside the already-large view body.
-private extension RecordingView {
 }

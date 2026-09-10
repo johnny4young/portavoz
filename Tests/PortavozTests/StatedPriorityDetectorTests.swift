@@ -213,6 +213,62 @@ final class StatedPriorityDetectorTests: XCTestCase {
             "el reporte")
     }
 
+    // MARK: - Regressions found by the max-effort review
+
+    func testTheVerbPathAbstainsOnNegationLikeTheAnchorPath() {
+        XCTAssertNil(
+            detect("The dashboard does not come first."),
+            "a subject the speaker ruled out must never become the priority")
+        XCTAssertNil(detect("The dashboard doesn't come first."))
+        XCTAssertNil(detect("The security patch does not take precedence."))
+        XCTAssertNil(detect("El reporte no va primero."))
+    }
+
+    func testIntensifiersCannotPushADemotingQualifierOutOfReach() {
+        XCTAssertNil(
+            detect("El dashboard es una prioridad realmente muy baja."),
+            "the demote scan follows the adjective run, not a step count")
+        XCTAssertNil(detect("That is a really very low priority."))
+    }
+
+    func testADemotingWordInThePreviousSentenceIsNotOurs() {
+        XCTAssertEqual(
+            detect("Latency is low. The priority is the share link.")?.subject,
+            "the share link")
+        XCTAssertEqual(
+            detect("Ese ticket es menor. La prioridad es el enlace.")?.subject,
+            "el enlace")
+    }
+
+    func testADemotingWordPastACopulaIsNotAQualifier() {
+        XCTAssertEqual(
+            detect("The priority is to lower the latency.")?.subject,
+            "to lower the latency")
+    }
+
+    func testOnlyTheAnchorsOwnClauseDecidesWhetherItIsAQuestion() {
+        XCTAssertEqual(
+            detect("Por ahora la prioridad es la migracion.")?.subject,
+            "la migracion",
+            "a leading \"por\" is not an interrogative on its own")
+        XCTAssertEqual(
+            detect("Any other questions? OK the priority is the migration.")?.subject,
+            "the migration",
+            "a question in an earlier clause does not suppress a later statement")
+        XCTAssertNil(detect("What is the priority for this week?"))
+        XCTAssertNil(detect("\u{00BF}Cual es la prioridad de esta semana?"))
+        XCTAssertNil(
+            detect("so what is the priority"),
+            "a question the recognizer dropped the mark from is still a question")
+    }
+
+    func testASubjectTheSpeakerCorrectsAwayFromIsNotClaimed() {
+        XCTAssertNil(
+            detect("The priority is the dashboard, not the billing migration."),
+            "neither half is decidable here, so neither is claimed")
+        XCTAssertNil(detect("La prioridad es el dashboard, no la migracion."))
+    }
+
     // MARK: - Regressions found by measuring against real transcripts
 
     func testADemonstrativeSubjectNamesNothing() {

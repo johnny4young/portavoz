@@ -96,7 +96,7 @@
     "PublicShowcaseUITests/testLiveTranslationShowcase()": 20.0,
     "PublicShowcaseUITests/testMeetingDetailShowcase()": 20.0,
     "PublicShowcaseUITests/testTodayShowcase()": 20.0,
-    "RecordingAssistUITests/testLiveAssistKeepsOnePanelOpenAndABoundedCardList()": 20.0,
+    "RecordingAssistUITests/testLiveAssistKeepsOnePanelOpenAndABoundedCardList()": 25.0,
     "SettingsUITests/testAudioPaneOffersCaptureSourceControls()": 20.0,
     "SettingsUITests/testCategoryNavigationRevealsEachPane()": 24.352,
     "SettingsUITests/testDataPaneExportsAReadableWholeLibraryMarkdownBackup()": 20.0,
@@ -134,6 +134,6 @@
     "SkillsSettingsUITests/testSuggestedActionsExplainReviewFirstSafety()": 20.0,
     "SkillsSettingsUITests/testWaitingReceiptIgnoresUnavailablePolicyAndReviewsSourceWithoutRunning()": 24.924,
     "SkillsSettingsUITests/testWaitingSkillApprovalCanBeRevokedBeforeHandoff()": 24.508,
-    "StatedPriorityUITests/testAStatedPriorityIsOfferedAndBecomesAnObjective()": 20.0
+    "StatedPriorityUITests/testAStatedPriorityIsOfferedAndBecomesAnObjective()": 25.0
   }
 }

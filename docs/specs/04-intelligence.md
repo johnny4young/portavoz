@@ -2599,8 +2599,24 @@ correct. Guided generation constrains an answer's shape, not its truth, and
 declares anything. A model lane remains defensible only as stage three of a
 cascade, behind a classifier, and needs a labeled bilingual corpus first.
 
+D507 closed what a max-effort review found, all of it reproduced by running the
+shipped code: the precedence-verb branch had neither the negation guard nor the
+demote check the copular branch already had, so "The dashboard does not come
+first" reported `The dashboard does not`; the fixed demote window let
+"una prioridad realmente muy baja" through and let a previous sentence's `low`
+suppress a valid declaration, so the scan now follows the adjective run to the
+clause boundary or the copula; a subject the speaker corrects away from in the
+next clause is no longer claimed; and the detector owns a small interrogative
+vocabulary scoped to the anchor's own clause instead of deferring to
+`QuestionHeuristic`, which is calibrated to over-admit for a classifier that
+prunes after it and was dropping "Por ahora la prioridad es X" on its leading
+`por`. The join is also reachable now: it was wired to a window ending at the
+newest caption while `detectClosedRow` hands over the row that just stopped
+being newest.
+
 Measured over five real meetings and 3 754 finalized captions, two of which never
-contain the word: one detection, correct, no false positives.
+contain the word: one detection, correct, no false positives — unchanged by
+those corrections.
 
 `RecordingController.offerStatedPriority` runs it on each finalized caption,
 outside the Apuntador opt-in because it calls no model and sends nothing. The

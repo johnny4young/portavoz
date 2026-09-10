@@ -9,7 +9,10 @@ import SwiftUI
 /// the field stays put and the notes take whatever height the tab has (D504).
 struct RecordingNotesPanel: View {
     @Bindable var controller: RecordingController
-    @State private var draft = ""
+    /// Owned by the panel above, not here: this view is a branch of a
+    /// `@ViewBuilder switch`, so SwiftUI destroys its own `@State` on every tab
+    /// change and a half-typed note would go with it.
+    @Binding var draft: String
 
     private var trimmed: String {
         draft.trimmingCharacters(in: .whitespacesAndNewlines)

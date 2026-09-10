@@ -118,6 +118,11 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, CaptureRepor
     /// output and starts it, yielding into `self.continuation`. On the first
     /// build it pins `streamSampleRate`; later builds resample to it.
     private func buildGraph() throws { // swiftlint:disable:this function_body_length
+        // A rebuilt graph is a new stream; the carried sample and phase belong
+        // to the retired one.
+        deliveredLock.lock()
+        resampler.reset()
+        deliveredLock.unlock()
         guard let continuation else { return }
 
         // Skip PIDs that don't resolve to an audio process object (a process

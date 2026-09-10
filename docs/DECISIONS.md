@@ -19045,7 +19045,7 @@ the oldest card that was open only by recency rather than growing the panel.
 Opening more than the limit by hand does grow it — that is the user asking,
 repeatedly.
 
-**Consequences:** `RecordingView` drops from 811 to 524 lines and the panels move
+**Consequences:** `RecordingView` sheds roughly a third of its 811 lines as the panels move
 to `RecordingAssistPanel`, `RecordingCompanionCardsView` and
 `RecordingNotesPanel`. The objectives reveal-on-add moved with its tab, and the
 architecture ratchet follows it there and now also forbids the pinned height.
@@ -19166,3 +19166,79 @@ model extracts the subject only from sentences already admitted. That needs a
 labeled bilingual corpus, which is now the gating work rather than the code.
 GAPS #13 keeps the rest: persistence, retroactive detection over stored
 transcripts, and an Ask lane.
+
+## D507 — What a max-effort review found in D503–D506 (Sep 2026)
+
+Ten independent review angles over the four preceding commits, with the
+strongest findings reproduced by executing the shipped code rather than reading
+it. The uncomfortable result: three commits claimed a fix the evidence did not
+support, and every one of those claims had a green test suite and green CI
+behind it. The tests exercised the pure functions in isolation; none exercised
+the wiring.
+
+**Three fixes that did not hold.**
+
+- D506 says a sentence that plays something down is never read as the meeting's
+  focus. `"The dashboard does not come first."` returned the subject
+  `The dashboard does not`: the precedence-verb branch was added without the
+  negation guard the copular branch already had, and `isDemoted` was never
+  called on it. Both now apply to every path, and a negation anywhere in the
+  subject abstains.
+- D506's demoting-qualifier scan used fixed step counts.
+  `"una prioridad realmente muy baja"` cleared them and reported `El dashboard`
+  as the priority. The scan now follows the adjective run out to the clause
+  boundary or the copula, which is where modifiers actually end. The same fixed
+  window tested a token before checking its clause break, so a previous
+  sentence's `low` suppressed a perfectly good declaration.
+- D503/R9's republish guard compared `speakerID`. `SpeakerAttributor` builds its
+  speaker table per call and `Speaker.init` defaults its id to a fresh UUID, so
+  every pass returns the same rows carrying new ids and the guard reported a
+  change every time. It suppressed nothing. The comparison is gone; `labels`
+  already carries what the reader sees.
+
+**Two paths that could not run at all.** `detect(inRecent:)` was wired to a
+window ending at the newest caption, but `detectClosedRow` hands over the row
+that just *stopped* being newest, so the equality gating the join was
+unsatisfiable — the join, its policy and five of its tests were dead in the
+product while the CHANGELOG promised the behaviour to users. And the release
+note quoted `"that takes precedence"` and `"eso va primero"` as newly working;
+both are rejected, because `that` and `eso` are in the filler vocabulary.
+
+**Three ways the user could lose something.** Accepting a priority with eight
+objectives already listed marked it handled and cleared the card while
+`objectives.add` had silently refused it, so the acceptance vanished for the
+rest of the meeting; the card now stays and says why. A newer detection
+overwrote an offer the user had not answered, swapping the subject and the
+meaning of both buttons under the cursor. And the note draft moved into a view
+that is a branch of a `@ViewBuilder switch`, so any tab change discarded
+half-typed text — the sibling state was hoisted for exactly this reason and the
+draft was missed.
+
+**Two shapes that were wrong rather than buggy.** The short-window branch of
+`split` paid one floor in full, which drove the captions to zero height: with
+several banners stacked on a small window the meeting had no words on screen.
+Both floors shrink together now. And ranking the persistent focus-slot items
+above the transient ones meant one undismissed directed card swallowed every
+later press of "Suggest a question" — the button did nothing, not even show its
+spinner. What the user just asked for now comes first; the unbidden pair cannot
+be lost, because neither expires.
+
+**Two contracts that disagreed with each other.** `QuestionHeuristic` documents
+that it errs on the side of passing because a classifier prunes after it; used
+here as a suppressor that bias inverted into false negatives, dropping
+`"Por ahora la prioridad es X"` on its leading `por` and any multi-sentence
+caption containing a `?`. The detector now owns a small interrogative
+vocabulary calibrated for suppression, scoped to the anchor's own clause, and
+matched unfolded because in Spanish the accent is what marks the interrogative.
+And the streaming resampler emits up to one frame more than the single-shot
+geometry the delivery gate reserves — measured at exactly one across 44.1/48 in
+both directions — so an admitted packet could be rejected on append and end the
+capture as `.overloaded`. The gate reserves that frame; the receipt still
+reports the real one.
+
+**Consequences:** every fix above carries a regression test with neutral
+fixtures, and the field measurement is unchanged — five real meetings, 3 754
+finalized captions, one detection, no false positives. The lesson is narrower
+than "write more tests": each of these passed because the test called the pure
+function directly. A policy is only as good as the call site that reaches it,
+and none of the call sites were covered.

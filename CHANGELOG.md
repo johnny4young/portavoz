@@ -6,9 +6,17 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 10, 2026
 
+- **🚩 A priority nobody declared is never claimed** — "that doesn't come first", "una prioridad realmente muy baja" and "the priority is X, not Y" are all read as what they are, and a priority stated right after a question is no longer skipped.
+
+- **📝 Your half-written note survives switching panels** — the draft stays put while you check a card or your objectives.
+
+- **💡 "Suggest a question" always answers** — a card sitting in the focus slot no longer swallows it.
+
+- **👀 The meeting's words never get squeezed off screen** — on a short window the captions and the assistant shrink together instead of one taking all the room.
+
 - **🚩 "That's a low priority" no longer becomes the priority** — a sentence that plays something down is never read as the meeting's focus, in English or Spanish.
 
-- **🎯 More ways of saying what matters get caught** — "the most important thing is…", "el foco es…", "that takes precedence" and "eso va primero" now surface the same way an explicit priority does, and a sentence split across a pause is read as one.
+- **🎯 More ways of saying what matters get caught** — "the most important thing is the migration", "el foco es el cierre" and "the security patch takes precedence" now surface the same way an explicit priority does, and a sentence split across a pause is read as one.
 
 ## September 9, 2026
 

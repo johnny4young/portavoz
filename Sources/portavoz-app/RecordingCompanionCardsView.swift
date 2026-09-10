@@ -130,6 +130,7 @@ struct RecordingCompanionCardsView: View {
             }
             .buttonStyle(.plain)
             .help(L10n.text("Dismiss this card"))
+            .accessibilityIdentifier("recording-companion-dismiss-\(ordinal)")
         }
     }
 
@@ -171,6 +172,7 @@ struct RecordingCompanionCardsView: View {
                 .buttonStyle(.plain)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.tint)
+                .accessibilityIdentifier("recording-companion-show-less-\(ordinal)")
             }
             Spacer()
             if !row.card.answer.isEmpty {

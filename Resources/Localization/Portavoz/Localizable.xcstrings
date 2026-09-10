@@ -16441,6 +16441,16 @@
         }
       }
     },
+    "Your objectives list is full — remove one to track this.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu lista de objetivos está llena — quita uno para seguir esta."
+          }
+        }
+      }
+    },
     "Your question and meetings are not sent to the page. The selected local answer engine receives only the downloaded excerpt.": {
       "localizations": {
         "es": {
