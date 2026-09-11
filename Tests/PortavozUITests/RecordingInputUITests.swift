@@ -90,6 +90,11 @@ final class RecordingInputUITests: PortavozUITestCase {
     func testFailedRemovalKeepsTheAcceptedNoteUntilDiscardOrRetry() throws {
         let fixture = try Fixture()
         defer { fixture.remove() }
+        let entered = fixture.root.appendingPathComponent("remove-entered")
+        let release = fixture.root.appendingPathComponent("remove-release")
+        fixture.app.launchEnvironment["PORTAVOZ_UI_TEST_INPUT_ENTERED_PATH"] = entered.path
+        fixture.app.launchEnvironment["PORTAVOZ_UI_TEST_INPUT_CONTINUE_PATH"] = release.path
+        try Data().write(to: release, options: .atomic)
         try start(fixture)
         let app = fixture.app
         addNote("Keep this accepted note", in: app)
@@ -106,8 +111,14 @@ final class RecordingInputUITests: PortavozUITestCase {
         XCTAssertTrue(waitForUITestCondition(timeout: 3) { remove.isEnabled })
         XCTAssertTrue(remove.exists)
         _ = try fixture.query("DROP TRIGGER fail_live_remove")
+        try FileManager.default.removeItem(at: release)
+        try FileManager.default.removeItem(at: entered)
         remove.click()
-        XCTAssertTrue(waitForUITestCondition(timeout: 3) { !remove.exists })
+        XCTAssertTrue(waitForUITestCondition(timeout: 3) { FileManager.default.fileExists(atPath: entered.path) })
+        XCTAssertTrue(app.control(withIdentifier: "recording-input-saving").exists)
+        XCTAssertTrue(remove.exists, "click return is not a durable removal acknowledgement")
+        try Data().write(to: release, options: .atomic)
+        XCTAssertTrue(remove.waitForDisappearance(timeout: 3))
         XCTAssertEqual(try fixture.query("SELECT count(*) FROM contextItem WHERE deletedAt IS NULL"), "0")
         XCTAssertEqual(try fixture.query("SELECT count(*) FROM contextItem"), "1", "removal must leave a tombstone")
     }

@@ -7520,6 +7520,14 @@ no-audio fixture and proves ordered finalization; populated snapshot preservatio
 is separate storage/application evidence, not an assertion that this fixture
 published audio.
 
+The draft-navigation journey awaits note-row disappearance after Remove rather
+than assuming that returning from a click acknowledges an asynchronous storage
+commit. The failed-removal journey deliberately holds the next successful
+removal at the real application/store seam: the same accepted row remains
+visible while saving, then disappears only after release and leaves a canonical
+tombstone. The existing bounded predicate waiter, case inventory and budgets
+are unchanged; no sleep or successful-run retry stands in for this state proof.
+
 ### Receipt journey consolidation and fallible UI observations
 
 One Skills activity journey owns Recent's initial 20-row window and explicit

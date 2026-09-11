@@ -161,7 +161,8 @@ final class RecordingAssistUITests: PortavozUITestCase {
         saved.buttons.matching(NSPredicate(
             format: "identifier BEGINSWITH 'recording-note-remove-'"))
             .firstMatch.click()
-        XCTAssertFalse(saved.exists)
+        XCTAssertTrue(saved.waitForDisappearance(timeout: 3),
+                      "removal is acknowledged only after its asynchronous storage commit")
     }
 
     /// The live assist area stacked eight panels inside a 260 pt scroll with an
