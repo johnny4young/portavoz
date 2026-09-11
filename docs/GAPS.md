@@ -70,6 +70,25 @@ deterministic query-work/plan regressions from dedicated latency qualification,
 retaining the canonical 1,000/10,000-meeting measurements and their 250 ms limit.
 Do not stop unrelated tasks or relabel a failed measurement as qualified.
 
+### Shared-desktop UI qualification remains conditional
+
+Disposable main and Settings windows request zero-screen placement when their
+AppKit capture views attach. This is not continuous ownership of the desktop.
+An interactive multi-display run exposed negative-coordinate Settings controls
+after launch, and its recording also showed an unrelated application in the
+foreground. The controls remained actionable, but the placement assertions and
+individual timing budgets correctly rejected qualification. That evidence does
+not isolate a product window-lifecycle defect from external focus/placement
+interference, and a later passing focused journey cannot qualify the failed full
+run retroactively.
+
+Keep the zero-screen assertions, exact catalog, bilingual gate and timing budgets.
+Do not add positioning loops, dismiss other applications or stop unrelated tasks
+merely to obtain green results. A valid full run needs an automation-capable
+desktop that preserves its interaction context; any lifecycle change must first
+reproduce the problem at the actual window attachment/presentation boundary.
+Hosted CI and a local interactive run remain distinct evidence.
+
 ## Product gaps (users feel them)
 
 | # | Gap | Today | Missing | Plan |
