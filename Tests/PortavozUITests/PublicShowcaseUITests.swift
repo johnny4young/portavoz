@@ -89,7 +89,10 @@ final class PublicShowcaseUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "home-upcoming-showcase-sync-qvtl")
                 .waitForExistenceFast(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Review the Aurora Suite English docs draft"].exists)
+        XCTAssertTrue(
+            app.staticTexts["Review the Aurora Suite English docs draft"]
+                .waitForExistenceFast(timeout: 10),
+            "the agenda and open-work observation publish independently")
         XCTAssertTrue(
             app.descendants(matching: .any)
                 .matching(NSPredicate(format: "identifier BEGINSWITH 'home-recent-'"))

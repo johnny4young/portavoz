@@ -2484,9 +2484,9 @@ caller lands on: the header date with `New recording`/`Return to recording` and
 `Ask`; a this-week strip (`HomeWeekFacts`: meetings, recorded time, open
 to-dos) computed from the Library snapshot; **Up next** (today's and up to three
 of tomorrow's calendar events, each with `Brief` and an event-linked `Record`,
-or the calendar offer); **Open to-dos** (the first six open action items with
+or the calendar offer); **Open to-dos** (the first five open action items with
 the same checkbox action as the sidebar and a link to the source meeting, plus
-"N more in Radar"); **Pick up where you left off** (the four newest meetings
+"N more in Radar"); **Pick up where you left off** (the three newest meetings
 with voice mix, duration, open count and lifecycle badge); and **Ask your
 meetings** chips that submit a catalogued question through `AskModel` before
 routing to Ask, so the common daily questions cost one click. The view owns no

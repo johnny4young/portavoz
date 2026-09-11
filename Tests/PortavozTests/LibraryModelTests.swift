@@ -1,6 +1,7 @@
 import ApplicationKit
 import Foundation
 import IntegrationsKit
+import Observation
 import PortavozCore
 import XCTest
 
@@ -9,6 +10,44 @@ import XCTest
 
 @MainActor
 final class LibraryModelTests: XCTestCase {
+    func testAgendaAndOpenWorkPublishIndependentlyInEitherArrivalOrder() async {
+        for openWorkFirst in [false, true] {
+            let fixture = LibraryModelFixture()
+            let client = LibraryModelClientFake(fixture: fixture)
+            client.agenda = fixture.agenda
+            let updates = AsyncStream<LibraryUpdate>.makeStream()
+            client.libraryUpdates = updates.stream
+            let model = LibraryModel(client: client, searchDelay: .zero)
+            let started = expectation(description: "observation started")
+            withObservationTracking { _ = model.state.loadPhase } onChange: { started.fulfill() }
+            let observation = Task { await model.send(.observeLibrary) }
+            defer {
+                updates.continuation.finish()
+                observation.cancel()
+            }
+            await fulfillment(of: [started], timeout: 2)
+            let sections = openWorkFirst ? Array(fixture.updates().prefix(2).reversed())
+                : Array(fixture.updates().prefix(2))
+            for (index, section) in sections.enumerated() {
+                let changed = expectation(description: "section \(index) published")
+                withObservationTracking { _ = model.state } onChange: { changed.fulfill() }
+                updates.continuation.yield(section)
+                await fulfillment(of: [changed], timeout: 2)
+                if index == 0 {
+                    XCTAssertEqual(model.state.upcomingToday.isEmpty, openWorkFirst)
+                    XCTAssertEqual(model.state.openItems.isEmpty, !openWorkFirst)
+                    XCTAssertEqual(model.state.loadPhase, .loading)
+                }
+            }
+            updates.continuation.yield(.trash([]))
+            updates.continuation.finish()
+            _ = await observation.value
+            XCTAssertEqual(model.state.upcomingToday, fixture.agenda.today)
+            XCTAssertEqual(model.state.openItems.map(\.item.id), [fixture.actionItem.id])
+            XCTAssertEqual(model.state.loadPhase, .loaded)
+        }
+    }
+
     func testObservationPublishesOneCompleteSnapshotAndAgenda() async {
         let fixture = LibraryModelFixture()
         let client = LibraryModelClientFake(fixture: fixture)
@@ -302,6 +341,7 @@ private enum LibraryModelCall: Equatable {
 @MainActor
 private final class LibraryModelClientFake: LibraryModelClient {
     var updates: [LibraryUpdate]
+    var libraryUpdates: AsyncStream<LibraryUpdate>?
     var hits: [LibrarySearchHit]
     var agenda: LibraryModel.Agenda?
     var brief: MeetingBrief?
@@ -318,6 +358,7 @@ private final class LibraryModelClientFake: LibraryModelClient {
 
     func observeLibrary() -> AsyncStream<LibraryUpdate> {
         calls.append(.observeLibrary)
+        if let libraryUpdates { return libraryUpdates }
         return AsyncStream { continuation in
             for update in updates {
                 continuation.yield(update)

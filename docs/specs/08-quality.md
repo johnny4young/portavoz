@@ -7466,6 +7466,16 @@ after Tab, requires the real hit to be hittable, and still verifies the exact
 meeting, source timestamp and playback seek. Cold-start focus setup alone does
 not cover a later user-initiated editing session.
 
+### Independent Today section readiness
+
+The Today showcase waits independently for its exact open-work text. The seed
+marker proves database seeding, not completion of every presentation observation;
+an agenda or recent-meeting row cannot acknowledge the open-work section.
+`LibraryModelTests` drives the real observation action with separately released
+meeting/open-work updates in both arrival orders, proving that either section
+can be visible while the other is absent. Final content and loaded state remain
+required. The UI keeps the existing predicate waiter and per-case budget.
+
 ## Inference preparation evidence
 
 Resource collection also requires `summary-runtime-preparation-v1`. Immediately
