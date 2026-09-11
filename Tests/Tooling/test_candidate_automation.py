@@ -320,14 +320,46 @@ class CandidateAutomationTests(unittest.TestCase):
     def test_performance_ledger_rejects_non_authority_and_blocking_metric(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            # perf_ledger writes `authorityReason` only on a ledger it did not
+            # make authoritative. The validator once rejected that key as
+            # "forbidden" one line before its own authority check, and this
+            # test tolerated either message — so a busy-host run surfaced as
+            # a schema error instead of the reason the operator needed.
             ledger = self.performance_ledger()
             ledger["authority"] = "informational"
-            ledger["authorityReason"] = "mixed hosts"
+            ledger["authorityReason"] = (
+                "samples disagreed with themselves — the machine was busy"
+            )
             path = root / "informational.json"
             path.write_text(json.dumps(ledger))
             with self.assertRaisesRegex(
                 candidate.CandidateAutomationError,
-                "not authoritative|forbidden keys",
+                r"^performance ledger is not authoritative: "
+                r"samples disagreed with themselves — the machine was busy$",
+            ):
+                candidate.validate_performance_ledger(path, self.contract)
+
+            # A non-authoritative ledger with no stated reason still fails
+            # closed, with the plain message.
+            ledger = self.performance_ledger()
+            ledger["authority"] = "informational"
+            path = root / "informational-no-reason.json"
+            path.write_text(json.dumps(ledger))
+            with self.assertRaisesRegex(
+                candidate.CandidateAutomationError,
+                r"^performance ledger is not authoritative$",
+            ):
+                candidate.validate_performance_ledger(path, self.contract)
+
+            # And the key is never an excuse on an authoritative ledger: a
+            # reason on a ledger that claims authority is a contradiction.
+            ledger = self.performance_ledger()
+            ledger["authorityReason"] = "stale"
+            path = root / "contradiction.json"
+            path.write_text(json.dumps(ledger))
+            with self.assertRaisesRegex(
+                candidate.CandidateAutomationError,
+                "authoritative ledger must not carry an authorityReason",
             ):
                 candidate.validate_performance_ledger(path, self.contract)
 
