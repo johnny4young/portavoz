@@ -10,7 +10,7 @@ public struct ContextItem: Codable, Sendable, Identifiable {
         case link
         case codeSnippet
         case file
-        /// A pre-meeting objective. Persisted at Stop with its
+        /// A pre-meeting objective. Persisted on acceptance with its
         /// live check-off state folded into `content`, so the D28 notes
         /// block carries what was covered and what remained open.
         case objective

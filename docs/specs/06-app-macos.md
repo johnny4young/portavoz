@@ -2336,7 +2336,7 @@ Font: `docs/design/ds/` (authored in Claude Design, pine project). (1) `PVDesign
 
 **Catch me up (Jul 2026)**: a standing pull control in the recording bar (`recording-catch-up`) on EVERY platform. On macOS 26 with the on-device model available it renders a 2-4 bullet recap of the last five minutes of CLOSED captions (`CatchUpPolicy.clip` — window and minimum rows pinned by tests; the growing coalescer row is excluded) via `FoundationModelSummaryProvider.catchUp` at interactive priority with the injection guard; the formatted clip keeps its TAIL when over budget because newest speech wins. On Sequoia or without Apple Intelligence the same button answers with the honest capability explanation — visible and truthful, never a hidden control. The card (`recording-catch-up-panel`) never persists anywhere; dismiss cancels any in-flight generation, and Stop synchronously cancels and clears the ephemeral card before capture crosses the durable boundary.
 
-**Objectives with live check-off (D134, Jul 2026)**: `RecordingObjectivesModel` owns the checklist (`recording-objectives-panel`, add via `recording-objective-field`/`recording-objective-add`); adding trims and de-duplicates case-insensitively, manual toggling is always available and clears the model mark. The AUTOMATIC pass rides the signal-driven live-summary cycle behind the Apuntador opt-in: `ObjectiveCheckPolicy` (pure, tested) clips a 150-second window of closed rows and only runs with pending objectives plus enough conversation; `ObjectiveCheckDetector` (few-shot, `.background`, greedy) returns addressed indexes through a deterministic gate — out-of-range indexes drop, doubt leaves objectives pending, announced-but-not-discussed is explicitly NOT covered, and the model can never uncheck. At Stop the objectives join `contextItems` as `ContextItem.Kind.objective` rows ("✓ " prefix + check-off timestamp for covered ones), so the D28 notes block reports coverage to every summary without any schema change. Brief seeding is deferred (the `MeetingBrief` dies at the recording route boundary today).
+**Objectives with live check-off (D134, Jul 2026)**: `RecordingObjectivesModel` owns the checklist (`recording-objectives-panel`, add via `recording-objective-field`/`recording-objective-add`); adding trims and de-duplicates case-insensitively, manual toggling is always available and clears the model mark. The AUTOMATIC pass rides the signal-driven live-summary cycle behind the Apuntador opt-in: `ObjectiveCheckPolicy` (pure, tested) clips a 150-second window of closed rows and only runs with pending objectives plus enough conversation; `ObjectiveCheckDetector` (few-shot, `.background`, greedy) returns addressed indexes through a deterministic gate — out-of-range indexes drop, doubt leaves objectives pending, announced-but-not-discussed is explicitly NOT covered, and the model can never uncheck. Each accepted objective change commits a stable-ID `ContextItem.Kind.objective` row ("✓ " prefix + check-off timestamp for covered ones), so the D28 notes block reports coverage to every summary without any schema change. Brief seeding is deferred (the `MeetingBrief` dies at the recording route boundary today).
 
 **Next question + talk balance (D134/D174, Jul 2026)**: `RecordingNextQuestionModel` is the exact catch-up sibling (`recording-next-question` button, `recording-next-question-panel` card): pull-based, `.interactive`, capability-honest, stale-fenced on every exit, dismissed synchronously at Stop; its prompt carries the still-open objectives so a suggestion can steer back to them, and `PromptFactory.nextQuestionInstructions` pins one-or-two grounded questions, no filler. The talk-balance cue (`recording-talk-balance`, next to the mic meter) is `LiveTalkTimePolicy` — pure channel math over closed rows in a five-minute window, no model call, so it does NOT ride the Apuntador opt-in; it evaluates at most 1,024 closed candidates before the time filter, renders only once closed captions exist, and shifts to amber emphasis only past 60 seconds of attributed speech and a two-thirds share, with the exact percentage in accessibility value and help.
 
@@ -2352,20 +2352,36 @@ Font: `docs/design/ds/` (authored in Claude Design, pine project). (1) `PVDesign
 
 **Live assist area (Sep 2026, D504)**: `RecordingView` no longer stacks eight panels inside a pinned 260 pt scroll. `RecordingAssistLayout.split(total:fraction:)` divides the flexible height between the captions and the assist area, both with floors, and a drag handle persists the fraction in `recording.assist.fraction` — a taller window now grows both zones. `RecordingAssistPanel` shows exactly one panel: `RecordingAssistTab` publishes companion/objectives/notes always and interview/suggestions/summary only once they can show something, and a selection whose tab disappears falls back rather than leaving an empty panel. Above the tabs, `RecordingFocusSlot` holds the one thing that cannot wait — catch-up first (the user just pressed it), then the newest card addressed to them by name, then the suggested next question — and it survives a tab switch. In the Companion tab, `CompanionCardWindow` keeps the newest three cards open with the answer clamped to four lines plus an explicit "Show all"; older cards fold to their question on one line and reopen on click, and a hand-opened card claims the window so reaching back folds the oldest recency-open card instead of growing the panel. The focused card is excluded from the list so it is never rendered twice. Live cards remain unlimited and persisted for the meeting detail; only the live panel is bounded.
 
-**Accepted live-input durability — open code blocker**: pressing Add accepts a
-note into the controller's in-memory `contextItems`; objectives remain in their
-live model. Neither is journaled before Stop installs the captured snapshot.
-Interrupted-recording recovery cannot restore these unspoken inputs. Navigation
-preservation below is not crash durability; GAPS records the required ordered
-writer/Stop/recovery work and its failure-mode coverage.
+**Accepted live-input durability**: `RecordingInputPersistence` is one ordered
+recording-scoped owner. Note and objective controls submit through
+`ApplicationKit.PersistRecordingInput`; visible acceptance and editor clearing
+follow the database acknowledgement, never precede it. Failed writes retain
+the exact operation and text and stop later acknowledgements. Retry and explicit
+discard are controller actions, not view-owned Stop continuations. New automatic
+refreshes do not accumulate behind failure. Automatic objective check-off also
+uses stable IDs and a revision fence, so an intervening manual edit invalidates
+the offered result instead of overwriting it. Repeated or out-of-range detector
+indexes cannot duplicate the proposed durable identities.
+
+Stop closes audio first and drains admitted writes before constructing its
+snapshot. A failed write keeps the completed capture in the controller and
+presents retry/discard without starting another recording or silently leaving
+for Library. That pending state remains reachable after Library navigation and keeps launch
+recovery deferred until its controller-owned Stop is resolved.
+Retry commits the same identity and resumes Stop; explicit discard proceeds
+without the unaccepted change. Unsubmitted drafts remain memory-only. Accepted
+rows and removals survive process termination because recovery preserves their
+canonical storage authority, including when no audio file survived. The bounded
+file-handshake adapter used to test Stop races is selectable only in disposable
+`AppServices` composition; production recording has no handshake or delay.
 
 **Live assist corrections (Sep 2026, D507)**: `RecordingAssistLayout.split` shrinks both floors together when the window is too short for either — paying one in full drove the captions to zero height, and with several banners stacked on a small window the meeting had no words on screen. `RecordingFocusSlot.resolve` ranks catch-up and the suggested next question — which have this slot as their only home — above a directed card, which is also reachable in the Companion tab: the previous order let one undismissed directed card swallow every later press of "Suggest a question" for the rest of the meeting, and ranking anything above an item with no other home only moves the loss (D508). The initial note-draft fix moved state above the tab switch; D513 moves both editor drafts to the recording controller because library navigation also reconstructs that parent panel. `LiveSpeakerHints.changed` no longer compares `speakerID`: `SpeakerAttributor` mints a fresh one per pass, so the comparison reported a change every time and the guard suppressed nothing. The divider commits its fraction to `@AppStorage` once on release rather than on every frame, and sets the resize cursor rather than pushing it onto a stack that a teardown would never pop.
 
 **Live editor lifetime (Sep 2026, D513)**: one controller-owned `RecordingDrafts`
 value holds unsubmitted note and objective input for the active session. Both
 editors bind directly to it, so tab changes and Library browsing cannot discard
-typed text. Explicit Add clears only the submitted editor; recording reset clears
-both. Drafts are not automatic summary input, and this is not a disk-persistence
+typed text. Explicit Add clears only the successfully persisted editor; recording reset
+clears both. Drafts are not automatic summary input, and this is not a disk-persistence
 or crash-recovery guarantee. Real-app UI coverage types both drafts, reconstructs
 the panels, then submits and removes the retained note through individually
 identified controls.

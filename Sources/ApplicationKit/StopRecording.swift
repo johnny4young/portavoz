@@ -69,7 +69,7 @@ public protocol StopRecordingAudioFiles: Sendable {
 }
 
 /// Narrow storage boundary for the D43 captured aggregate handoff.
-public protocol StopRecordingStore: Sendable {
+public protocol StopRecordingStore: RecordingInputPresence {
     func discardUnstartedRecording(_ meetingID: MeetingID) async throws -> Bool
     func markStoppedMeetingNeedsAttention(
         _ meetingID: MeetingID,
@@ -527,7 +527,13 @@ private extension StopRecording {
         timestamp: Date
     ) async -> StopRecordingResult {
         let hasFile = await hasReservedCaptureFile(assets, audioDirectory: audioDirectory)
-        if hasFile || meeting.captureReport?.requiresAttention == true {
+        let hasInput: Bool
+        do {
+            hasInput = try await store.hasRecordingInput(for: meeting.id)
+        } catch {
+            return .processingFailed(failure: .recoveryPersistenceFailed, fallback: nil)
+        }
+        if hasFile || hasInput || meeting.captureReport?.requiresAttention == true {
             do {
                 let preserved = try await store.markStoppedMeetingNeedsAttention(
                     meeting.id,

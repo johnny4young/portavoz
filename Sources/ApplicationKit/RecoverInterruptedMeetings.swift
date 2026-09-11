@@ -14,7 +14,7 @@ public struct RecoverInterruptedMeetingState: Sendable {
 }
 
 /// Storage operations that protect D40 recovery from stale or partial writes.
-public protocol RecoverInterruptedMeetingsStore: Sendable {
+public protocol RecoverInterruptedMeetingsStore: RecordingInputPresence {
     func recoverExpiredRecoveryJobs(at timestamp: Date) async throws -> Int
     func recoveryCandidates() async throws -> [Meeting]
     func recoveryAssets(for meetingID: MeetingID) async throws -> [AudioAsset]
@@ -313,6 +313,28 @@ public struct RecoverInterruptedMeetings: ApplicationUseCase {
             timestamp: timestamp) || changed
     }
 
+    private func preserveMissingCapture(
+        _ meeting: Meeting, recoveredPending: [AudioAsset], timestamp: Date
+    ) async throws -> Bool {
+        if meeting.lifecycleState == .recording,
+            try await !store.hasRecordingInput(for: meeting.id),
+            try await store.discardRecoveryShell(meeting.id) {
+            return true
+        }
+        if !recoveredPending.isEmpty {
+            try await store.installRecoveryAssets(
+                recoveredPending,
+                for: meeting.id,
+                at: timestamp)
+        }
+        _ = try await store.markRecoveryNeedsAttention(
+            meeting.id,
+            errorCode: "capture.recovery.missing",
+            endedAt: meeting.startedAt,
+            at: timestamp)
+        return true
+    }
+
     private func recoverCaptureShell(
         _ meeting: Meeting,
         assets: [AudioAsset],
@@ -329,22 +351,7 @@ public struct RecoverInterruptedMeetings: ApplicationUseCase {
             uniqueKeysWithValues: recoveredPending.map { ($0.id, $0) })
         let recoveredAssets = assets.map { replacements[$0.id] ?? $0 }
         guard recoveredAssets.contains(where: { isPublished($0.healthStatus) }) else {
-            if meeting.lifecycleState == .recording,
-                try await store.discardRecoveryShell(meeting.id) {
-                return true
-            }
-            if !recoveredPending.isEmpty {
-                try await store.installRecoveryAssets(
-                    recoveredPending,
-                    for: meeting.id,
-                    at: timestamp)
-            }
-            _ = try await store.markRecoveryNeedsAttention(
-                meeting.id,
-                errorCode: "capture.recovery.missing",
-                endedAt: meeting.startedAt,
-                at: timestamp)
-            return true
+            return try await preserveMissingCapture(meeting, recoveredPending: recoveredPending, timestamp: timestamp)
         }
 
         var recoveredMeeting = meeting

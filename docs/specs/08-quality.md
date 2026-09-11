@@ -7489,3 +7489,33 @@ releases generation, then verifies the final answer and persisted citation.
 This changes only temporary-store fixture composition, not production latency.
 The handshake uses the launch-owned temporary directory and retains cancellation,
 cleanup and the original deadlines. No assertion or runtime budget is removed.
+
+
+### Recording-input durability journeys
+
+`RecordingInputPersistenceTests` crosses ApplicationKit into real StorageKit,
+including file-backed reopen, transaction rollback, immutable identity and the
+captured-snapshot boundary. The owner tests cover queued failure, explicit
+discard, cancellation of a waiting view and drain ordering. Real recovery tests
+retain accepted context when every audio file is missing.
+
+`RecordingInputUITests` launches a real disposable app against an explicitly
+isolated database and audio root. Successful Add is checked against SQLite before
+Stop; termination/relaunch exercises production recovery, and UI removals must
+leave tombstones. Test-installed SQLite triggers reject actual writes rather
+than returning a fake policy result. A composition-only file handshake holds an
+admitted write while Stop retires audio controls, then releases the real store
+call. Failure/retry crosses Library navigation so an ephemeral error view cannot
+own the pending Stop. Every journey has an explicit feature selector and budget;
+existing per-case and full-suite limits remain unchanged.
+
+The live-input UI journeys wait for the app's acknowledged state before making
+one-shot SQLite assertions. An external read transaction is not a passive
+observer of a rollback-journal writer: it can cause Stop to fail. A populated
+file-backed regression holds that reader deliberately, verifies the specific
+`BUSY`/Apple `IOERR_LOCK` boundary and unchanged accepted input, then releases
+it and completes the same Stop request. Polling the external database during
+Stop is not timing or product qualification. The held-write UI journey uses a
+no-audio fixture and proves ordered finalization; populated snapshot preservation
+is separate storage/application evidence, not an assertion that this fixture
+published audio.

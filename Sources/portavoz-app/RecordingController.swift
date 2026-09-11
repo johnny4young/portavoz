@@ -38,7 +38,7 @@ final class RecordingController {
     let catchUp = RecordingCatchUpModel()
 
     /// Pre-meeting objectives with live check-off. The checklist
-    /// is plain UI state; only the automatic pass on the summary cycle is
+    /// is durably acknowledged; only the automatic pass on the summary cycle is
     /// Apuntador work and respects that opt-in.
     let objectives = RecordingObjectivesModel()
 
@@ -54,10 +54,14 @@ final class RecordingController {
     /// source-closed, inert, throttled, and independently pausable.
     let proactiveAssist = RecordingProactiveAssistModel()
     /// The user's notes during the meeting (D28): intent for the summary.
-    /// Explicitly submitted notes enter summary input; Stop persists them.
+    /// Notes enter summary input only after their canonical rows commit.
     private(set) var contextItems: [ContextItem] = []
     /// Editor input outlives view reconstruction but is not submitted context.
     var drafts = RecordingDrafts()
+    let inputPersistence = RecordingInputPersistence()
+    private var pendingInputStop: (capture: StopRecordingCapture, voiceprint: Voiceprint?)?
+    var hasPendingInputStop: Bool { pendingInputStop != nil }
+    var recordingInputWriter: PersistRecordingInput? { services?.recordingInputWriter }
     /// Companion answer cards (D26), newest last. Opt-in per recording.
     private(set) var companionCards: [CompanionCard] = []
     private var companionArtifactsByCardID: [UUID: CompanionGenerationArtifact] = [:]
@@ -261,7 +265,9 @@ final class RecordingController {
         // A finished session must never block a hotkey/menu-bar start while
         // its previous detail remains open.
         if case .done = phase { phase = .idle }
-        guard phase == .idle || isFailed else { return }
+        guard phase == .idle || isFailed,
+              !inputPersistence.hasFailure, !inputPersistence.isSaving,
+              pendingInputStop == nil else { return }
 
         resetForRecordingStart()
         self.services = services
@@ -583,6 +589,32 @@ extension RecordingController {
             phase = .processing(L10n.text("Saving…"))
         }
 
+        await session.cancelVoiceprintRead()
+        pendingInputStop = (capture, voiceprint)
+        await completePendingInputStop(services: services)
+    }
+
+    func retryRecordingInput() async {
+        inputPersistence.retry()
+        guard let services else { return }
+        await completePendingInputStop(services: services)
+    }
+
+    func discardRecordingInput() async {
+        inputPersistence.discardFailedChange()
+        guard let services else { return }
+        await completePendingInputStop(services: services)
+    }
+
+    private func completePendingInputStop(services: AppServices) async {
+        await inputPersistence.drain()
+        guard let pending = pendingInputStop else { return }
+        guard !inputPersistence.hasFailure else {
+            phase = .failed(L10n.text("Your recording has stopped. Save or discard the unsaved change to continue."))
+            return
+        }
+        pendingInputStop = nil
+        phase = .processing(L10n.text("Saving…"))
         let result = await services.stopRecording.execute(StopRecordingRequest(
             recordingShell: recordingShell,
             reservedAssets: reservedAssets,
@@ -594,9 +626,8 @@ extension RecordingController {
                 companionArtifactsByCardID[$0.id]
             },
             companionTerminalRuns: companionTerminalRuns,
-            capture: capture,
-            voiceprint: voiceprint))
-        await session.cancelVoiceprintRead()
+            capture: pending.capture,
+            voiceprint: pending.voiceprint))
         applyStopRecordingResult(result, services: services)
     }
 
@@ -844,9 +875,13 @@ private extension RecordingController {
         // Apuntador-gated — it is a model judgment about the conversation,
         // exactly what the opt-in covers.
         if companionEnabled {
-            await objectives.runAutomaticCheck(
+            let objectiveRevision = objectives.revision
+            let changes = await objectives.automaticChanges(
                 captions: captions,
                 elapsed: Date().timeIntervalSince(startedAt))
+            if !Task.isCancelled, phase == .recording {
+                persistAutomaticObjectives(changes, expectedRevision: objectiveRevision)
+            }
         }
         observeProactiveAssist()
         return !Task.isCancelled && phase == .recording && hasBacklog
@@ -1003,20 +1038,30 @@ extension RecordingController {
     /// Adds a typed note anchored to the current moment of the recording.
     func addContextNote(_ text: String, kind: ContextItem.Kind = .note) {
         let content = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !content.isEmpty, phase == .recording else { return }
-        contextItems.append(
-            ContextItem(
-                meetingID: meetingID,
-                kind: kind,
-                content: content,
-                timestamp: Date().timeIntervalSince(startedAt)))
-        requestLiveSummaryRefresh()
+        guard !content.isEmpty, phase == .recording, let writer = recordingInputWriter else { return }
+        let item = ContextItem(meetingID: meetingID, kind: kind, content: content,
+                               timestamp: max(0, Date().timeIntervalSince(startedAt)))
+        inputPersistence.enqueue(text: content) { [weak self] in
+            try await writer.execute(meetingID: item.meetingID, items: [item])
+            guard let self else { return }
+            self.contextItems.append(item)
+            if self.drafts.note.trimmingCharacters(in: .whitespacesAndNewlines) == content {
+                self.drafts.note = ""
+            }
+            self.requestLiveSummaryRefresh()
+        }
     }
 
     func removeContextItem(_ id: UUID) {
-        contextItems.removeAll { $0.id == id }
-        requestLiveSummaryRefresh()
+        guard phase == .recording, let writer = recordingInputWriter else { return }
+        let sourceMeetingID = meetingID
+        inputPersistence.enqueue { [weak self] in
+            try await writer.execute(meetingID: sourceMeetingID, removing: [id])
+            self?.contextItems.removeAll { $0.id == id }
+            self?.requestLiveSummaryRefresh()
+        }
     }
+
 }
 
 extension RecordingController {

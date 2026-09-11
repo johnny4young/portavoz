@@ -204,8 +204,6 @@ extension ArchitectureDependencyTests {
             of: "Sources/portavoz-app/AppServices+ResourceGovernor.swift")
         let detection = try Self.contents(
             of: "Sources/portavoz-app/RecordingController+CompanionDetection.swift")
-        let objectives = try Self.contents(
-            of: "Sources/portavoz-app/RecordingObjectivesModel.swift")
         let stressGate = try Self.contents(
             of: "scripts/run-recording-reliability-stress.sh")
         let releaseGate = try Self.contents(
@@ -276,8 +274,8 @@ extension ArchitectureDependencyTests {
             "case .admitWithReducedConcurrency, .defer, .pauseAfterCheckpoint,"))
         XCTAssertTrue(resourceGovernor.contains(
             ".reject:\n            return false"))
-        XCTAssertTrue(objectives.contains(
-            "guard !Task.isCancelled, !addressed.isEmpty else { return }"))
+        // Objective response fencing is exercised across the actual await in
+        // RecordingObjectiveProposalTests, not frozen to predicate spelling.
 
         for gate in [stressGate, releaseGate] {
             XCTAssertTrue(gate.contains("LiveSummaryWorkCoordinatorTests"))

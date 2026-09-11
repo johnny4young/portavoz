@@ -92,6 +92,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "LibraryUITests",
             "testRecordingOffersObjectivesNextQuestionAndTalkBalance",
         ),
+        test_id("RecordingInputUITests", "testStopDrainsAnAdmittedWriteBeforeFinalizingTheRecording"),
+        test_id("RecordingInputUITests", "testAcceptedNotesAndObjectivesSurviveTerminationAndRecovery"),
+        test_id("RecordingInputUITests", "testFailedWriteRetainsInputAndStopWaitsForAnExplicitRetry"),
+        test_id("RecordingInputUITests", "testFailedRemovalKeepsTheAcceptedNoteUntilDiscardOrRetry"),
         test_id(
             "RecordingAssistUITests",
             "testLiveAssistKeepsOnePanelOpenAndABoundedCardList",

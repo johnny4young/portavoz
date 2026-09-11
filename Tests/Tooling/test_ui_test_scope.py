@@ -812,8 +812,9 @@ class UITestScopeTests(unittest.TestCase):
         )
         expected = tuple(test for test in ALL_TESTS if test in expected_set)
         # Includes five distinct assist journeys: layout, identity/reentry,
-        # manual requests, coalesced arrivals and unsubmitted drafts.
-        self.assertEqual(len(expected), 17)
+        # manual requests, coalesced arrivals and unsubmitted drafts, plus four
+        # durable-input journeys: recovery, retry, removal and held-write Stop.
+        self.assertEqual(len(expected), 21)
         self.assertTrue(ui_scope.APUNTADOR_LEAK_EVIDENCE_FILES.isdisjoint(
             ui_scope.FULL_BILINGUAL_HARNESS_FILES
         ))

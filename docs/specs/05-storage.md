@@ -181,7 +181,11 @@ fingerprint held by the Application observer.
 
 ## Database
 
-GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite WAL, at `Portavoz/portavoz.sqlite` inside the platform Application Support container (`~/Library/Application Support` on macOS; the app container on iOS). `MeetingStore.defaultDatabaseURL` owns that default and the CLI accepts `--db`.
+GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite through a serial `DatabaseQueue`, at `Portavoz/portavoz.sqlite` inside the platform Application Support container (`~/Library/Application Support` on macOS; the app container on iOS). `MeetingStore.defaultDatabaseURL` owns that default and the CLI accepts `--db`.
+The connection does not force WAL: a new file retains SQLite's rollback-journal
+default, and an existing file retains its journal mode. Independent readers can
+therefore conflict with a writer; the external-reader boundary and preserved
+input behavior are recorded in GAPS.
 
 ### Database-open recovery (D319)
 
@@ -1071,19 +1075,19 @@ IDs/channels/creation timestamps exactly match their pending reservations. It
 then advances the meeting to `captured`, updates published assets with complete
 CAF/checksum/level/health metadata (or explicit metadata-free missing/pending
 state), and inserts the provisional live cast/transcript, notes, and Apuntador
-cards. A changed shell, preexisting child/summary, malformed finalized
+cards. A changed shell, preexisting transcript/generated child, malformed finalized
 metadata, final-path uniqueness collision, or child insert failure rolls the
 entire transaction back. GRDB persists `Date` as UTC text with millisecond
 precision; shell `startedAt` and asset `createdAt` therefore match by their
 exact canonical database values. Raw submillisecond `Date` equality is never
 used as a stronger, non-durable identity constraint.
 
-This is currently the first durable boundary for live notes and manual
-objectives: Add updates the recording controller's memory, not `contextItem`.
-Interrupted-recording recovery builds a snapshot with empty context items and
-cannot recover those unspoken inputs before Stop. The missing pre-Stop row is
-reproduced in the real app; durable live-input journaling and its interaction
-with the no-preexisting-children invariant remain a code blocker in GAPS.
+Explicit live inputs now commit before this snapshot boundary through
+`PersistRecordingInput`. Existing context rows and tombstones are authoritative;
+Stop inserts only missing snapshot identities and recovery preserves accepted
+context even with an empty snapshot payload. Transcript and generated children
+retain their untouched-shell protection. See canonical live-input acceptance
+below for mutation fences and no-audio recovery.
 
 D43 extends this boundary with `installCapturedSnapshot(_:enqueue:at:)`.
 Normal Stop supplies the exact initial diarization request when live captions
@@ -1655,6 +1659,32 @@ still current. An incomplete refresh preserves the prior snapshot and may store
 current failed/cancelled attempts best effort. Later generic card saves retain
 the established link. A source rule prevents the macOS app from bypassing the
 use case through direct refine mutations (D47/D65/D66).
+
+### Canonical live-input acceptance
+
+`PersistRecordingInput` enters the narrow `RecordingInputStore` port. Its
+StorageKit transaction accepts only a live, unfinished, nondeleted recording;
+item offsets must be finite/nonnegative and content nonblank. Batches reject
+duplicate IDs, add/remove overlap, foreign ownership, kind changes and reuse of
+a tombstoned identity. Updating an objective retains its original UUID and
+creation time; removal writes the existing tombstone. The caller acknowledges
+only after commit and does not relabel a committed write as cancellation.
+
+`installCapturedSnapshot` still rejects preexisting transcript, speakers,
+summary and Companion children, but accepted context is explicitly allowed.
+Snapshot context IDs must be unique. Missing rows are inserted; an existing
+row's latest edit or tombstone wins over stale in-memory content. An identity
+collision from another meeting or kind rejects the transaction. This applies
+equally to normal Stop, its degradation ladder and empty-context recovery.
+The first processing job still commits atomically with the captured aggregate.
+
+Stop and launch recovery consult durable context, including tombstones, before
+hard-discarding a no-audio shell. Accepted unspoken input remains discoverable
+in a needs-attention meeting even when every capture file is absent. This uses
+the existing context table, FTS and journal triggers; no migration or parallel
+live-input journal is introduced. Populated reopen, transactional rejection,
+stale-snapshot removal, no-audio Stop and repeat recovery tests exercise the
+actual application/storage boundary.
 
 Slice 2H makes `MeetingStore` conform to the narrow `StopRecordingStore` port.
 The adapter exposes guarded empty-shell discard, canonical recovery marking,

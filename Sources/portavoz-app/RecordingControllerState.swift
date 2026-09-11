@@ -34,7 +34,8 @@ extension RecordingController {
     }
 
     var canReturnToLiveSession: Bool {
-        switch phase {
+        if hasPendingInputStop { return true }
+        return switch phase {
         case .preparing, .recording, .processing:
             true
         case .idle, .done, .failed:
@@ -91,20 +92,70 @@ extension RecordingController {
     }
 
     func addObjective(_ text: String) {
-        objectives.add(text)
-        observeProactiveAssist()
+        addObjectives([text])
+    }
+
+    func addObjectives(_ texts: [String]) {
+        guard phase == .recording, let writer = recordingInputWriter else { return }
+        let additions = objectives.proposedAdditions(texts)
+        guard !additions.isEmpty else { return }
+        let sourceMeetingID = meetingID
+        inputPersistence.enqueue(text: additions.map(\.text).joined(separator: "\n")) { [weak self] in
+            guard let self,
+                  self.objectives.proposedAdditions(additions.map(\.text)).count == additions.count else { return }
+            try await writer.execute(meetingID: sourceMeetingID,
+                                     items: additions.map { $0.contextItem(meetingID: sourceMeetingID) })
+            for objective in additions { self.objectives.accept(objective) }
+            if additions.count == 1,
+               self.drafts.objective.trimmingCharacters(in: .whitespacesAndNewlines) == additions[0].text {
+                self.drafts.objective = ""
+            }
+            self.observeProactiveAssist()
+        }
     }
 
     func toggleObjective(_ id: UUID) {
-        objectives.toggle(
-            id,
-            elapsed: Date().timeIntervalSince(startedAt))
-        observeProactiveAssist()
+        guard phase == .recording, let writer = recordingInputWriter else { return }
+        let sourceMeetingID = meetingID
+        let elapsed = max(0, Date().timeIntervalSince(startedAt))
+        inputPersistence.enqueue { [weak self] in
+            guard let self, let objective = self.objectives.proposedToggle(id, elapsed: elapsed) else { return }
+            try await writer.execute(meetingID: sourceMeetingID,
+                                     items: [objective.contextItem(meetingID: sourceMeetingID)])
+            self.objectives.accept(objective)
+            self.observeProactiveAssist()
+        }
     }
 
     func removeObjective(_ id: UUID) {
-        objectives.remove(id)
-        observeProactiveAssist()
+        guard phase == .recording, let writer = recordingInputWriter else { return }
+        let sourceMeetingID = meetingID
+        inputPersistence.enqueue { [weak self] in
+            try await writer.execute(meetingID: sourceMeetingID, removing: [id])
+            self?.objectives.remove(id)
+            self?.observeProactiveAssist()
+        }
+    }
+
+    func persistAutomaticObjectives(
+        _ changes: [RecordingObjectivesModel.LiveObjective], expectedRevision: Int
+    ) {
+        guard !changes.isEmpty, !inputPersistence.hasFailure, !inputPersistence.isSaving,
+              let writer = recordingInputWriter else { return }
+        let sourceMeetingID = meetingID
+        inputPersistence.enqueue { [weak self] in
+            guard let self, self.objectives.revision == expectedRevision else { return }
+            let accepted = changes.filter { candidate in
+                self.objectives.objectives.contains {
+                    $0.id == candidate.id && $0.text == candidate.text && $0.checkedAt == nil
+                }
+            }
+            guard !accepted.isEmpty else { return }
+            try await writer.execute(meetingID: sourceMeetingID,
+                                     items: accepted.map { $0.contextItem(meetingID: sourceMeetingID) })
+            for objective in accepted { self.objectives.accept(objective) }
+            self.observeProactiveAssist()
+        }
     }
 
     private var proactiveObjectives: [ProactiveAssistObjective] {

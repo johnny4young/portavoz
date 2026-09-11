@@ -810,6 +810,8 @@ private actor StopRecordingDependencies:
         existingPaths.contains(relativePath)
     }
 
+    func hasRecordingInput(for meetingID: MeetingID) async throws -> Bool { false }
+
     func discardUnstartedRecording(_ meetingID: MeetingID) async throws -> Bool {
         discardCount += 1
         events.append("discard")

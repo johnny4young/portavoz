@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 114
+    "expectedCaseCount": 118
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -137,6 +137,10 @@
     "SkillsSettingsUITests/testSkillsPaneFailsClosedWhenDurablePolicyCannotLoad()": 20.0,
     "SkillsSettingsUITests/testSuggestedActionsExplainReviewFirstSafety()": 20.0,
     "SkillsSettingsUITests/testWaitingReceiptIgnoresUnavailablePolicyAndReviewsSourceWithoutRunning()": 24.924,
-    "SkillsSettingsUITests/testWaitingSkillApprovalCanBeRevokedBeforeHandoff()": 24.508
+    "SkillsSettingsUITests/testWaitingSkillApprovalCanBeRevokedBeforeHandoff()": 24.508,
+    "RecordingInputUITests/testAcceptedNotesAndObjectivesSurviveTerminationAndRecovery()": 35.0,
+    "RecordingInputUITests/testFailedWriteRetainsInputAndStopWaitsForAnExplicitRetry()": 30.0,
+    "RecordingInputUITests/testFailedRemovalKeepsTheAcceptedNoteUntilDiscardOrRetry()": 25.0,
+    "RecordingInputUITests/testStopDrainsAnAdmittedWriteBeforeFinalizingTheRecording()": 25.0
   }
 }

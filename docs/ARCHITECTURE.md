@@ -1711,6 +1711,21 @@ evidence, but blocking proportional file work cannot occupy Swift's cooperative
 executor. One channel's publication failure preserves its staging file and
 does not block a healthy peer from publishing.
 
+Explicit live notes and objectives cross `PersistRecordingInput` before the
+editor clears or the checklist changes. Storage fences these atomic mutations
+to the active recording, immutable meeting/kind ownership, and stable item
+identities. Existing canonical context rows and removal tombstones take
+precedence over a later captured or recovery snapshot; the transcript and
+generated-artifact untouched-shell guard remains intact. There is no second
+journal or schema to promote at Stop.
+
+One recording-scoped presentation owner serializes admitted changes independently
+of view tasks. A failed operation retains its input and following operations
+until explicit retry or discard. Stop closes audio before draining that owner.
+If saving fails, the controller retains the completed capture and owns resuming
+Stop after the user's decision; Library navigation cannot strand this state.
+Recovery preserves accepted input even when no audio file survived.
+
 If the atomic captured snapshot is rejected, ApplicationKit retries that exact
 payload once to preserve every released feature after a transient Store
 failure. A repeated rejection enters one bounded audio-priority ladder: core

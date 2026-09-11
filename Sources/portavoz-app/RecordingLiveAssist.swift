@@ -64,6 +64,7 @@ struct RecordingObjectivesPanel: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .disabled(controller.inputPersistence.isSaving || controller.inputPersistence.hasFailure)
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
@@ -105,6 +106,7 @@ struct RecordingObjectivesPanel: View {
             .buttonStyle(.plain)
             .accessibilityLabel(L10n.text("Remove objective"))
             .help(L10n.text("Remove objective"))
+            .accessibilityIdentifier("recording-objective-remove-\(objective.id.uuidString)")
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(objective.text)
@@ -115,9 +117,6 @@ struct RecordingObjectivesPanel: View {
 
     private func add() {
         controller.addObjective(controller.drafts.objective)
-        if controller.objectives.admissionIssue == nil {
-            controller.drafts.objective = ""
-        }
     }
 
     private func objectiveIssue(

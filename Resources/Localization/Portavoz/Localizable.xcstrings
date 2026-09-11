@@ -3061,6 +3061,22 @@
         }
       }
     },
+    "Continue without this change": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue without this change"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuar sin este cambio"
+          }
+        }
+      }
+    },
     "Control": {
       "localizations": {
         "es": {
@@ -3731,6 +3747,22 @@
         }
       }
     },
+    "Couldn’t save this change. Your input has been kept.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t save this change. Your input has been kept."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo guardar este cambio. Tu texto se ha conservado."
+          }
+        }
+      }
+    },
     "Couldn’t update reminder suggestion": {
       "localizations": {
         "es": {
@@ -4327,6 +4359,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Descartar el clip"
+          }
+        }
+      }
+    },
+    "Discard unsaved change": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discard unsaved change"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar el cambio sin guardar"
           }
         }
       }
@@ -11561,6 +11609,22 @@
         }
       }
     },
+    "Retry saving": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retry saving"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reintentar guardar"
+          }
+        }
+      }
+    },
     "Retry scheduled": {
       "localizations": {
         "es": {
@@ -12067,6 +12131,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Guardando corrección de la transcripción"
+          }
+        }
+      }
+    },
+    "Saving your change…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saving your change…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardando tu cambio…"
           }
         }
       }
@@ -16417,6 +16497,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tu pregunta y tus reuniones no se envían a la página. El motor local seleccionado recibe solo el fragmento descargado."
+          }
+        }
+      }
+    },
+    "Your recording has stopped. Save or discard the unsaved change to continue.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your recording has stopped. Save or discard the unsaved change to continue."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu grabación se ha detenido. Guarda o descarta el cambio pendiente para continuar."
           }
         }
       }

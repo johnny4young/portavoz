@@ -55,13 +55,13 @@ final class LiveAssistUITestFixture {
                 askedAt: row.startTime + 7), in: controller)
         }
         // The existing transcript fixture waits at row 18 until XCUITest
-        // releases it; row 19 publishes both additions in the same callback.
+        // releases it; row 19 submits one batch, published after its commit.
         guard arrivals, !advanced, row.startTime >= 38 else { return }
         advanced = true
-        controller.addObjective(
-            "Confirm release readiness with the team and record every remaining risk before approval.")
-        controller.addObjective(
-            "Revisar la evidencia con el equipo y registrar los riesgos pendientes antes de aprobar la versión.")
+        controller.addObjectives([
+            "Confirm release readiness with the team and record every remaining risk before approval.",
+            "Revisar la evidencia con el equipo y registrar los riesgos pendientes antes de aprobar la versión."
+        ])
         if let previous = controller.companionCards.first(where: { $0.question == "Seeded live question 6?" }) {
             admit(CompanionCard(
                 question: "Seeded live question 6? Please.", answer: previous.answer,

@@ -87,6 +87,7 @@ struct RecordingView: View {
                 ) {
                     translationStatusBanner
                 }
+                RecordingInputStatusView(controller: controller)
                 assistSplit
 
             case .processing(let step):
@@ -123,7 +124,11 @@ struct RecordingView: View {
                         }
                     }
                 } actions: {
-                    recordingFailureActions
+                    if controller.hasPendingInputStop {
+                        RecordingInputStatusView(controller: controller)
+                    } else {
+                        recordingFailureActions
+                    }
                 }
                 Spacer()
             }

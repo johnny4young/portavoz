@@ -16,27 +16,34 @@ protocols and full-certification scorecard preserve those missing results.
 Code readiness does not authorize publication or establish notarization,
 production sync reliability, universal hardware support or real-world quality.
 
-### Accepted live input is not durable before Stop — code blocker
+### Accepted live input survives interrupted recordings
 
-During recording, `RecordingController.addContextNote` appends only to in-memory
-`contextItems`; manually entered objectives also remain in the live model. They
-reach durable StorageKit rows through the captured snapshot at Stop, not when
-the UI accepts Add. A real-app check with a synthetic note confirmed the visible
-accepted row while a successful read-only SQLite query still returned no matching
-`contextItem`. The interrupted-recording recovery snapshot supplies empty context
-items. A termination before Stop therefore has no journal from which to restore
-these unspoken inputs. The missing row was reproduced; forced-crash/relaunch
-preservation has not been demonstrated.
+**Implemented:** explicit notes and objective changes commit to canonical context
+rows before UI acknowledgement. Stable identities, removal tombstones,
+recording-only mutation fences, ordered Stop draining and recovery preservation
+replace the former in-memory-only acceptance. Write failures retain the change;
+retry/discard and any pending Stop belong to the recording controller, including
+across Library navigation. No-audio recovery does not discard accepted input.
+See the storage/app specifications and the recording-input application and
+real-app journeys. Unsubmitted drafts are still memory-only; this does not claim
+that text never submitted or a write rejected by the filesystem was durable.
 
-This is a user-work-loss defect, **not deferred physical verification**, and the
-code-ready milestone cannot be considered closed while it remains. Keeping
-unsubmitted editor drafts across tabs and library navigation does not fix it.
-A complete repair needs an application-owned durable live-input writer, stable
-add/remove identities, ordered Stop/drain and recovery semantics, explicit write
-failure handling that retains user input, and crash/relaunch, disk-failure and
-Stop-race coverage. The captured-snapshot invariant currently rejects preexisting
-children, so adding a fire-and-forget note write would break that boundary rather
-than repair it. This coordinated change is left open instead of partially applied.
+### External live-database readers can reject a concurrent writer
+
+The file-backed store uses a serial `DatabaseQueue` with SQLite's default
+journal and immediate lock-failure policy. An independent read transaction can
+therefore reject a concurrent Stop write; the controlled Apple SQLite probe
+reported `SQLITE_IOERR_LOCK`, not generic media failure. Accepted input remained
+unchanged and the same Stop completed after the reader released its lock.
+Ordinary in-process reads share the serialized owner; this finding concerns
+independent connections/processes, including diagnostic observers.
+
+UI tests now observe the app's acknowledgement before one-shot database
+assertions instead of creating this collision through external polling. This
+is not a general multi-process coordination fix. A future bounded lock policy
+must retain explicit failure, deadline/cancellation behavior, captured audio and
+accepted input, and validate SQLite/volume differences; do not mask all I/O
+errors or introduce unbounded retries. Copy a library for intrusive diagnostics.
 
 ### Source-size and lexical reuse boundaries
 

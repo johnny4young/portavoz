@@ -47,6 +47,7 @@ struct RecordingNotesPanel: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .disabled(controller.inputPersistence.isSaving || controller.inputPersistence.hasFailure)
     }
 
     private func note(_ item: ContextItem) -> some View {
@@ -78,6 +79,5 @@ struct RecordingNotesPanel: View {
         let note = controller.drafts.note.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !note.isEmpty else { return }
         controller.addContextNote(note)
-        controller.drafts.note = ""
     }
 }

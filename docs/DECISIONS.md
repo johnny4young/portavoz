@@ -19435,3 +19435,38 @@ accessibility identities and matching real-app assertions.
 **Boundary.** Preserving unsubmitted input during navigation is not an automatic
 submission policy or a durable journal. Drafts do not become model context by
 being typed, and neither this value nor the UI journey certifies crash recovery.
+
+
+## D514 — Live-input acceptance is a storage commit, not Stop
+
+A real-app probe accepted a typed note while a read-only query found no durable
+row. Recovery could not reconstruct unspoken notes or objectives. Merely adding
+an asynchronous save was unsafe: captured installation rejected any existing
+context, objective projections minted new IDs, and stale Stop payloads could
+resurrect a removal.
+
+Use the existing canonical context table instead of a parallel journal.
+ApplicationKit owns the live mutation port; StorageKit fences its transaction
+to an active recording and immutable identity/ownership, and retains removal
+tombstones. Captured installation still protects transcript/generated children,
+but explicitly preserves the already committed context authority. Empty-audio
+Stop/recovery consult it before discarding a reservation. No migration is needed.
+
+A recording-scoped owner serializes changes and acknowledges only committed
+writes. Failure retains the exact operation and input until explicit retry or
+discard. Stop closes audio first, then drains the owner. If saving fails, the
+controller keeps the completed capture and resumes Stop after that decision;
+view reconstruction must not own this continuation. A real-app failure/Stop/retry
+journey exposed the view-owned handoff even after storage and queue tests passed.
+
+Manual and automatic objective updates use the original objective UUID. An
+intervening manual edit invalidates an automatic proposal through the checklist
+revision. Failed saving stops background admission rather than accumulating an
+unbounded queue. Drafts are not silently promoted to accepted context.
+
+Regression evidence targets populated reopen, foreign/retired identity,
+transaction rollback, stale snapshot/tombstones, no-audio Stop and repeated
+recovery, plus real-app acceptance, termination/relaunch, removal failure,
+Library reentry, retry/discard and a held-write Stop handshake. Injected failures
+remain distinct from physical disk failure, and interrupted-process tests do
+not certify hardware power-loss behavior.

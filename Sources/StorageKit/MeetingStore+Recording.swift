@@ -346,14 +346,13 @@ extension MeetingStore {
                     SELECT id FROM speaker WHERE meetingID = ?
                     UNION ALL SELECT id FROM segment WHERE meetingID = ?
                     UNION ALL SELECT id FROM summary WHERE meetingID = ?
-                    UNION ALL SELECT id FROM contextItem WHERE meetingID = ?
                     UNION ALL SELECT id FROM companionCard WHERE meetingID = ?
                 )
                 """,
-            arguments: [key, key, key, key, key]) ?? false
+            arguments: [key, key, key, key]) ?? false
         guard !hasContent else {
             throw StorageError.invalidRecordingReservation(
-                "captured snapshot can only install into an untouched shell")
+                "captured snapshot cannot replace transcript or generated content")
         }
     }
 
@@ -384,11 +383,7 @@ extension MeetingStore {
                 segment, createdAt: timestamp, updatedAt: timestamp)
             try record.insert(db)
         }
-        for item in snapshot.contextItems {
-            let record = ContextItemRecord(
-                item, createdAt: timestamp, updatedAt: timestamp)
-            try record.insert(db)
-        }
+        try insertUnpersistedRecordingInput(snapshot.contextItems, at: timestamp, in: db)
         for run in snapshot.companionTerminalRuns {
             try GenerationRunRecord(run).insert(db)
         }
@@ -494,7 +489,8 @@ extension MeetingStore {
         _ snapshot: CapturedMeetingSnapshot
     ) throws {
         let speakerIDs = Set(snapshot.speakers.map(\.id))
-        guard snapshot.speakers.allSatisfy({ $0.meetingID == snapshot.meeting.id }),
+        guard Set(snapshot.contextItems.map(\.id)).count == snapshot.contextItems.count,
+            snapshot.speakers.allSatisfy({ $0.meetingID == snapshot.meeting.id }),
             snapshot.segments.allSatisfy({ segment in
                 segment.meetingID == snapshot.meeting.id
                     && segment.speakerID.map(speakerIDs.contains) ?? true

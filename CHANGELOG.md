@@ -6,6 +6,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 10, 2026
 
+- **💾 Safer live notes and objectives** — accepted changes survive interrupted recordings, and failed saves keep your input available to retry.
+
 - **📝 Keep unfinished live notes and objectives** — switching tabs or browsing the library no longer discards what you are typing.
 
 - **♿ Clear live-note actions** — note entry, Add and Remove now have individually addressable accessibility controls.
