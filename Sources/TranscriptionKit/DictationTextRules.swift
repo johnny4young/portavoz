@@ -14,10 +14,13 @@ public struct DictationReplacement: Codable, Equatable, Sendable {
     }
 }
 
-/// The deterministic tier of the two-tier dictation dictionary (the other
-/// tier is the vocabulary prompt, which biases the model DURING
-/// transcription). These rules run AFTER transcription, on the final text
-/// only — never on meeting transcripts, which must stay verbatim records.
+/// The deterministic tier of the two-tier dictation dictionary. The other
+/// tier is the vocabulary prompt, which biases WhisperEngine (prompt tokens)
+/// and SpeechAnalyzerEngine (contextual strings) during transcription but is
+/// not consumed by the live Parakeet path that dictation runs, so for
+/// dictation these rules are the only dictionary that changes the text.
+/// They run AFTER transcription, on the final text only — never on meeting
+/// transcripts, which must stay verbatim records.
 public enum DictationTextRules {
     /// Non-lexical hesitation fillers in the two supported dictation
     /// languages. Deliberately conservative: every entry is meaningless in
