@@ -44,7 +44,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 
 ## Status
 
-**Current release: 0.7.0. Shipping and self-updating on macOS Sequoia and later.** Install with Homebrew or grab the notarized DMG from [Releases](https://github.com/johnny4young/portavoz/releases); updates arrive automatically via Sparkle:
+**Current release: 1.0.0. Shipping and self-updating on macOS Sequoia and later.** Install with Homebrew or grab the notarized DMG from [Releases](https://github.com/johnny4young/portavoz/releases); updates arrive automatically via Sparkle:
 
 ```sh
 brew install --cask johnny4young/tap/portavoz

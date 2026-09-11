@@ -4,6 +4,33 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## 1.0.0 — September 11, 2026
+
+**Today's agenda, yesterday's answers.**
+
+- **Your day starts on Today** — the agenda with a countdown, a brief and an event-linked recording per meeting, the open to-dos, the meetings to resume, and one-click questions for Ask.
+- **Ask answers with evidence, from the sources you choose** — exact search first, local semantic recall when you enable it, the public page you point at, the local engine you pick, and answers that stream while they are written and stop at their deadline.
+- **Commitment Radar and confirmed decisions** — promises stay in view, know when they are yours, wait for your confirmation, can become reminders, and file by topic in a meeting memory graph that rebuilds in seconds.
+- **Portavoz proposes, you confirm** — Skills turn action items into GitHub or Linear issues, email recaps, secret Gists and reminders only after your review; every run leaves a receipt that reopens its source, and approvals really expire.
+- **Apuntador while the room waits** — live answers, catch-up, suggested questions, objectives, interview help grounded in your own notes, and proactive help that is never autopilot, on every supported Mac.
+- **Fix the transcript, keep the source** — split, merge and correct lines; search, Spotlight, semantic recall, summaries and Apuntador all learn the fix without touching the recording.
+- **Recordings that survive the real world** — a mic or headphone switch, a busy disk, a transcription hiccup at Stop, a crash mid-processing, a broken library or a damaged audio file no longer cost you the meeting.
+- **Native Mac workflows** — Siri and Shortcuts start and stop recordings and open exact work, Spotlight indexes your private work, your next meeting comes with a brief, and reminders heal themselves.
+- **Lighter on long meetings** — AI tasks yield to live recording, semantic backfill and backups step aside, and captions, waveforms and meters stay smooth for hours.
+- **Bilingual and accessible throughout** — Spanish everywhere in Meeting Detail, and individually addressable accessibility controls across the live panel, Companion cards, Skills and notes.
+
+## 0.7.0 — July 28, 2026
+
+**Live help, safer recordings.**
+
+- **Recording that protects the call and the result** — call-safe capture avoids taking over voice processing, Stop preserves the strongest valid audio and transcript state, and recovery explains exactly what is safe.
+- **Multilingual captions that remain the source of truth** — every actor keeps the language they spoke, live translation renders separately, and Refine becomes a reviewable draft instead of silently replacing the meeting.
+- **Apuntador while the room is waiting** — live answers, catch-up, suggested questions, objectives, and talk balance help during the meeting without uploading it by default.
+- **Private recall that reaches the right second** — accent-insensitive bilingual search, optional local semantic matches, Ask, Spotlight, MCP, and citations all converge on the same durable meeting evidence.
+- **A clearer review loop** — reversible clear playback, dismissible suggestions, enhanced notes, recaps, subtitles, chapters, privacy receipts, and actionable processing recovery make finished meetings easier to trust and use.
+- **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
+- **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
+
 ## September 10, 2026
 
 - **💾 Safer live notes and objectives** — accepted changes survive interrupted recordings, and failed saves keep your input available to retry.
@@ -123,18 +150,6 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 - **🛠️ Transcript fixes stay reachable** — Open text, speaker, split, merge, and hide corrections reliably even in a compact meeting window, without losing the immutable original evidence.
 - **🎯 Interview objectives stay identifiable** — Newly added objectives remain readable and reachable by assistive technologies throughout the live interview flow.
-
-## 0.7.0 — July 28, 2026
-
-**Live help, safer recordings.**
-
-- **Recording that protects the call and the result** — call-safe capture avoids taking over voice processing, Stop preserves the strongest valid audio and transcript state, and recovery explains exactly what is safe.
-- **Multilingual captions that remain the source of truth** — every actor keeps the language they spoke, live translation renders separately, and Refine becomes a reviewable draft instead of silently replacing the meeting.
-- **Apuntador while the room is waiting** — live answers, catch-up, suggested questions, objectives, and talk balance help during the meeting without uploading it by default.
-- **Private recall that reaches the right second** — accent-insensitive bilingual search, optional local semantic matches, Ask, Spotlight, MCP, and citations all converge on the same durable meeting evidence.
-- **A clearer review loop** — reversible clear playback, dismissible suggestions, enhanced notes, recaps, subtitles, chapters, privacy receipts, and actionable processing recovery make finished meetings easier to trust and use.
-- **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
-- **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
 
 ## August 24, 2026
 
