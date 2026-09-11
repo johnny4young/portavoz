@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "generation": "public-synthetic-v1",
+  "kind": "commitment-field-quality",
+  "contentSource": "synthetic-only",
+  "windowEndedAt": "2026-08-02T12:00:00Z",
+  "observations": [
+    {
+      "id": "00000000-0000-4000-8000-000000267001",
+      "language": "english",
+      "firstPresentedAt": "2026-05-04T12:00:00Z",
+      "outcome": "confirmed",
+      "reviewedAt": "2026-05-04T13:00:00Z",
+      "suggestedOwnerToken": "10000000-0000-4000-8000-000000000001",
+      "confirmedOwnerToken": "10000000-0000-4000-8000-000000000001",
+      "suggestedDueAt": "2026-06-01T12:00:00Z",
+      "confirmedDueAt": "2026-06-01T12:00:00Z",
+      "confirmationBasis": "generated-direct-evidence"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000267002",
+      "language": "english",
+      "firstPresentedAt": "2026-05-14T12:00:00Z",
+      "outcome": "confirmed",
+      "reviewedAt": "2026-05-14T16:00:00Z",
+      "suggestedOwnerToken": "10000000-0000-4000-8000-000000000001",
+      "confirmedOwnerToken": "10000000-0000-4000-8000-000000000002",
+      "confirmationBasis": "generated-direct-evidence"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000267003",
+      "language": "english",
+      "firstPresentedAt": "2026-05-24T12:00:00Z",
+      "outcome": "dismissed",
+      "reviewedAt": "2026-05-24T14:00:00Z",
+      "suggestedOwnerToken": "10000000-0000-4000-8000-000000000002",
+      "suggestedDueAt": "2026-06-30T12:00:00Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000267004",
+      "language": "english",
+      "firstPresentedAt": "2026-06-03T12:00:00Z",
+      "outcome": "pending"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000267005",
+      "language": "spanish",
+      "firstPresentedAt": "2026-06-08T12:00:00Z",
+      "outcome": "confirmed",
+      "reviewedAt": "2026-06-09T12:00:00Z",
+      "suggestedOwnerToken": "10000000-0000-4000-8000-000000000003",
+      "confirmedOwnerToken": "10000000-0000-4000-8000-000000000003",
+      "suggestedDueAt": "2026-07-01T12:00:00Z",
+      "confirmedDueAt": "2026-07-02T12:00:00Z",
+      "confirmationBasis": "user-note"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000267006",
+      "language": "spanish",
+      "firstPresentedAt": "2026-06-18T12:00:00Z",
+      "outcome": "dismissed",
+      "reviewedAt": "2026-06-18T15:00:00Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000267007",
+      "language": "spanish",
+      "firstPresentedAt": "2026-06-28T12:00:00Z",
+      "outcome": "deferred",
+      "suggestedOwnerToken": "10000000-0000-4000-8000-000000000004"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000267008",
+      "language": "spanish",
+      "firstPresentedAt": "2026-07-03T12:00:00Z",
+      "outcome": "confirmed",
+      "reviewedAt": "2026-07-05T12:00:00Z",
+      "confirmationBasis": "manual"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000267009",
+      "language": "mixed",
+      "firstPresentedAt": "2026-07-13T12:00:00Z",
+      "outcome": "confirmed",
+      "reviewedAt": "2026-07-13T18:00:00Z",
+      "suggestedOwnerToken": "10000000-0000-4000-8000-000000000005",
+      "confirmedOwnerToken": "10000000-0000-4000-8000-000000000005",
+      "suggestedDueAt": "2026-07-20T12:00:00Z",
+      "confirmedDueAt": "2026-07-20T12:00:00Z",
+      "confirmationBasis": "generated-direct-evidence"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000267010",
+      "language": "mixed",
+      "firstPresentedAt": "2026-07-18T12:00:00Z",
+      "outcome": "dismissed",
+      "reviewedAt": "2026-07-19T00:00:00Z",
+      "suggestedOwnerToken": "10000000-0000-4000-8000-000000000006",
+      "suggestedDueAt": "2026-07-31T12:00:00Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000267011",
+      "language": "mixed",
+      "firstPresentedAt": "2026-07-23T12:00:00Z",
+      "outcome": "confirmed",
+      "reviewedAt": "2026-07-26T12:00:00Z",
+      "suggestedOwnerToken": "10000000-0000-4000-8000-000000000007",
+      "confirmedOwnerToken": "10000000-0000-4000-8000-000000000007",
+      "confirmationBasis": "missing"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000267012",
+      "language": "mixed",
+      "firstPresentedAt": "2026-08-01T12:00:00Z",
+      "outcome": "pending"
+    }
+  ]
+}

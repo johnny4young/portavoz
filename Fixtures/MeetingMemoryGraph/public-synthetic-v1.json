@@ -1,0 +1,3966 @@
+{
+  "cases": [
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-001-1",
+            "language": "en",
+            "meetingID": "meeting-case-001-1",
+            "segmentID": "segment-case-001-1",
+            "text": "The team originally decided to batch atlas-001 every hour.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-001-2",
+            "language": "en",
+            "meetingID": "meeting-case-001-2",
+            "segmentID": "segment-case-001-2",
+            "text": "The team confirmed that atlas-001 will batch every ten minutes instead.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-001-3",
+            "language": "en",
+            "meetingID": "meeting-case-001-2",
+            "segmentID": "segment-case-001-3",
+            "text": "An unrelated archive for cobalt-001 remains monthly.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-001-1"
+            ],
+            "id": "fact-case-001-old",
+            "kind": "decision",
+            "objectID": "choice-atlas-001-hourly",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "superseded",
+            "subjectID": "atlas-001"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-001-2"
+            ],
+            "id": "fact-case-001-current",
+            "kind": "decision",
+            "objectID": "choice-atlas-001-ten-minutes",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-001"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-001-3"
+            ],
+            "id": "fact-case-001-distractor",
+            "kind": "decision",
+            "objectID": "choice-cobalt-001",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "cobalt-001"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-001-1",
+            "sequence": 1,
+            "title": "atlas-001 baseline"
+          },
+          {
+            "id": "meeting-case-001-2",
+            "sequence": 2,
+            "title": "atlas-001 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-001-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-001-old",
+          "fact-case-001-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-001-current"
+        ]
+      },
+      "id": "case-001",
+      "job": "decisionHistory",
+      "query": {
+        "language": "en",
+        "text": "What did we decide about atlas-001?"
+      },
+      "relationship": "englishToEnglish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-002-1",
+            "language": "es",
+            "meetingID": "meeting-case-002-1",
+            "segmentID": "segment-case-002-1",
+            "text": "El equipo decidió originalmente agrupar atlas-002 cada hora.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-002-2",
+            "language": "es",
+            "meetingID": "meeting-case-002-2",
+            "segmentID": "segment-case-002-2",
+            "text": "El equipo confirmó que atlas-002 se agrupará cada diez minutos.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-002-3",
+            "language": "es",
+            "meetingID": "meeting-case-002-2",
+            "segmentID": "segment-case-002-3",
+            "text": "Un archivo no relacionado de cobalt-002 seguirá mensual.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-002-1"
+            ],
+            "id": "fact-case-002-old",
+            "kind": "decision",
+            "objectID": "choice-atlas-002-hourly",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "superseded",
+            "subjectID": "atlas-002"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-002-2"
+            ],
+            "id": "fact-case-002-current",
+            "kind": "decision",
+            "objectID": "choice-atlas-002-ten-minutes",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-002"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-002-3"
+            ],
+            "id": "fact-case-002-distractor",
+            "kind": "decision",
+            "objectID": "choice-cobalt-002",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "cobalt-002"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-002-1",
+            "sequence": 1,
+            "title": "atlas-002 baseline"
+          },
+          {
+            "id": "meeting-case-002-2",
+            "sequence": 2,
+            "title": "atlas-002 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-002-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-002-old",
+          "fact-case-002-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-002-current"
+        ]
+      },
+      "id": "case-002",
+      "job": "decisionHistory",
+      "query": {
+        "language": "es",
+        "text": "¿Qué decidimos sobre atlas-002?"
+      },
+      "relationship": "spanishToSpanish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-003-1",
+            "language": "es",
+            "meetingID": "meeting-case-003-1",
+            "segmentID": "segment-case-003-1",
+            "text": "El equipo decidió originalmente agrupar atlas-003 cada hora.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-003-2",
+            "language": "es",
+            "meetingID": "meeting-case-003-2",
+            "segmentID": "segment-case-003-2",
+            "text": "El equipo confirmó que atlas-003 se agrupará cada diez minutos.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-003-3",
+            "language": "es",
+            "meetingID": "meeting-case-003-2",
+            "segmentID": "segment-case-003-3",
+            "text": "Un archivo no relacionado de cobalt-003 seguirá mensual.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-003-1"
+            ],
+            "id": "fact-case-003-old",
+            "kind": "decision",
+            "objectID": "choice-atlas-003-hourly",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "superseded",
+            "subjectID": "atlas-003"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-003-2"
+            ],
+            "id": "fact-case-003-current",
+            "kind": "decision",
+            "objectID": "choice-atlas-003-ten-minutes",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-003"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-003-3"
+            ],
+            "id": "fact-case-003-distractor",
+            "kind": "decision",
+            "objectID": "choice-cobalt-003",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "cobalt-003"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-003-1",
+            "sequence": 1,
+            "title": "atlas-003 baseline"
+          },
+          {
+            "id": "meeting-case-003-2",
+            "sequence": 2,
+            "title": "atlas-003 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-003-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-003-old",
+          "fact-case-003-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-003-current"
+        ]
+      },
+      "id": "case-003",
+      "job": "decisionHistory",
+      "query": {
+        "language": "en",
+        "text": "What did we decide about atlas-003?"
+      },
+      "relationship": "englishToSpanish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-004-1",
+            "language": "en",
+            "meetingID": "meeting-case-004-1",
+            "segmentID": "segment-case-004-1",
+            "text": "The team originally decided to batch atlas-004 every hour.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-004-2",
+            "language": "en",
+            "meetingID": "meeting-case-004-2",
+            "segmentID": "segment-case-004-2",
+            "text": "The team confirmed that atlas-004 will batch every ten minutes instead.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-004-3",
+            "language": "en",
+            "meetingID": "meeting-case-004-2",
+            "segmentID": "segment-case-004-3",
+            "text": "An unrelated archive for cobalt-004 remains monthly.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-004-1"
+            ],
+            "id": "fact-case-004-old",
+            "kind": "decision",
+            "objectID": "choice-atlas-004-hourly",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "superseded",
+            "subjectID": "atlas-004"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-004-2"
+            ],
+            "id": "fact-case-004-current",
+            "kind": "decision",
+            "objectID": "choice-atlas-004-ten-minutes",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-004"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-004-3"
+            ],
+            "id": "fact-case-004-distractor",
+            "kind": "decision",
+            "objectID": "choice-cobalt-004",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "cobalt-004"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-004-1",
+            "sequence": 1,
+            "title": "atlas-004 baseline"
+          },
+          {
+            "id": "meeting-case-004-2",
+            "sequence": 2,
+            "title": "atlas-004 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-004-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-004-old",
+          "fact-case-004-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-004-current"
+        ]
+      },
+      "id": "case-004",
+      "job": "decisionHistory",
+      "query": {
+        "language": "es",
+        "text": "¿Qué decidimos sobre atlas-004?"
+      },
+      "relationship": "spanishToEnglish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-005-1",
+            "language": "en",
+            "meetingID": "meeting-case-005-1",
+            "segmentID": "segment-case-005-1",
+            "text": "The team originally decided to batch atlas-005 every hour.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-005-2",
+            "language": "es",
+            "meetingID": "meeting-case-005-2",
+            "segmentID": "segment-case-005-2",
+            "text": "El equipo confirmó que atlas-005 se agrupará cada diez minutos.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-005-3",
+            "language": "mixed",
+            "meetingID": "meeting-case-005-2",
+            "segmentID": "segment-case-005-3",
+            "text": "An unrelated archive for cobalt-005 remains monthly. / Un archivo no relacionado de cobalt-005 seguirá mensual.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-005-1"
+            ],
+            "id": "fact-case-005-old",
+            "kind": "decision",
+            "objectID": "choice-atlas-005-hourly",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "superseded",
+            "subjectID": "atlas-005"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-005-2"
+            ],
+            "id": "fact-case-005-current",
+            "kind": "decision",
+            "objectID": "choice-atlas-005-ten-minutes",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-005"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-005-3"
+            ],
+            "id": "fact-case-005-distractor",
+            "kind": "decision",
+            "objectID": "choice-cobalt-005",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "cobalt-005"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-005-1",
+            "sequence": 1,
+            "title": "atlas-005 baseline"
+          },
+          {
+            "id": "meeting-case-005-2",
+            "sequence": 2,
+            "title": "atlas-005 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-005-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-005-old",
+          "fact-case-005-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-005-current"
+        ]
+      },
+      "id": "case-005",
+      "job": "decisionHistory",
+      "query": {
+        "language": "mixed",
+        "text": "What did we decide about atlas-005 y dame las fuentes?"
+      },
+      "relationship": "codeSwitched"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-006-1",
+            "language": "en",
+            "meetingID": "meeting-case-006-1",
+            "segmentID": "segment-case-006-1",
+            "text": "An unverified generated note claimed that atlas-006 might batch hourly.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-006-2",
+            "language": "en",
+            "meetingID": "meeting-case-006-2",
+            "segmentID": "segment-case-006-2",
+            "text": "A generated note guessed that atlas-006 might use ten-minute batches.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-006-3",
+            "language": "en",
+            "meetingID": "meeting-case-006-2",
+            "segmentID": "segment-case-006-3",
+            "text": "An unrelated archive for cobalt-006 remains monthly.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-006-1"
+            ],
+            "id": "fact-case-006-old",
+            "kind": "decision",
+            "objectID": "choice-atlas-006-hourly",
+            "origin": "generated",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "atlas-006"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-006-2"
+            ],
+            "id": "fact-case-006-current",
+            "kind": "decision",
+            "objectID": "choice-atlas-006-ten-minutes",
+            "origin": "generated",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "atlas-006"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-006-3"
+            ],
+            "id": "fact-case-006-distractor",
+            "kind": "decision",
+            "objectID": "choice-cobalt-006",
+            "origin": "generated",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "cobalt-006"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-006-1",
+            "sequence": 1,
+            "title": "atlas-006 baseline"
+          },
+          {
+            "id": "meeting-case-006-2",
+            "sequence": 2,
+            "title": "atlas-006 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": "insufficientConfirmedDecision",
+        "answerPolicy": "abstain",
+        "evidenceIDs": [],
+        "forbiddenResultIDs": [
+          "fact-case-006-old",
+          "fact-case-006-current",
+          "fact-case-006-distractor"
+        ],
+        "resultIDs": []
+      },
+      "id": "case-006",
+      "job": "decisionHistory",
+      "query": {
+        "language": "en",
+        "text": "What did we decide about atlas-006?"
+      },
+      "relationship": "abstention"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-007-1",
+            "language": "en",
+            "meetingID": "meeting-case-007-1",
+            "segmentID": "segment-case-007-1",
+            "text": "At the previous meeting, atlas-007 used the manual export.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-007-2",
+            "language": "en",
+            "meetingID": "meeting-case-007-2",
+            "segmentID": "segment-case-007-2",
+            "text": "Since then, atlas-007 changed to the signed automatic export.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-007-3",
+            "language": "en",
+            "meetingID": "meeting-case-007-2",
+            "segmentID": "segment-case-007-3",
+            "text": "The unrelated office inventory did not change.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-007-1"
+            ],
+            "id": "fact-case-007-baseline",
+            "kind": "decision",
+            "objectID": "export-atlas-007-manual",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-007"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-007-1",
+              "evidence-case-007-2"
+            ],
+            "id": "fact-case-007-change",
+            "kind": "relation",
+            "objectID": "export-atlas-007-manual",
+            "origin": "confirmed",
+            "predicate": "changes",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "export-atlas-007-signed"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-007-3"
+            ],
+            "id": "fact-case-007-distractor",
+            "kind": "relation",
+            "objectID": "atlas-007",
+            "origin": "generated",
+            "predicate": "associatedWith",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "office-inventory"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-007-1",
+            "sequence": 1,
+            "title": "atlas-007 baseline"
+          },
+          {
+            "id": "meeting-case-007-2",
+            "sequence": 2,
+            "title": "atlas-007 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-007-1",
+          "evidence-case-007-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-007-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-007-change"
+        ]
+      },
+      "id": "case-007",
+      "job": "changeSince",
+      "query": {
+        "language": "en",
+        "text": "What changed for atlas-007 since the last meeting?"
+      },
+      "relationship": "englishToEnglish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-008-1",
+            "language": "es",
+            "meetingID": "meeting-case-008-1",
+            "segmentID": "segment-case-008-1",
+            "text": "En la reunión anterior, atlas-008 usaba la exportación manual.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-008-2",
+            "language": "es",
+            "meetingID": "meeting-case-008-2",
+            "segmentID": "segment-case-008-2",
+            "text": "Desde entonces, atlas-008 cambió a la exportación automática firmada.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-008-3",
+            "language": "es",
+            "meetingID": "meeting-case-008-2",
+            "segmentID": "segment-case-008-3",
+            "text": "El inventario de oficina no relacionado no cambió.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-008-1"
+            ],
+            "id": "fact-case-008-baseline",
+            "kind": "decision",
+            "objectID": "export-atlas-008-manual",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-008"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-008-1",
+              "evidence-case-008-2"
+            ],
+            "id": "fact-case-008-change",
+            "kind": "relation",
+            "objectID": "export-atlas-008-manual",
+            "origin": "confirmed",
+            "predicate": "changes",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "export-atlas-008-signed"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-008-3"
+            ],
+            "id": "fact-case-008-distractor",
+            "kind": "relation",
+            "objectID": "atlas-008",
+            "origin": "generated",
+            "predicate": "associatedWith",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "office-inventory"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-008-1",
+            "sequence": 1,
+            "title": "atlas-008 baseline"
+          },
+          {
+            "id": "meeting-case-008-2",
+            "sequence": 2,
+            "title": "atlas-008 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-008-1",
+          "evidence-case-008-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-008-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-008-change"
+        ]
+      },
+      "id": "case-008",
+      "job": "changeSince",
+      "query": {
+        "language": "es",
+        "text": "¿Qué cambió para atlas-008 desde la última reunión?"
+      },
+      "relationship": "spanishToSpanish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-009-1",
+            "language": "es",
+            "meetingID": "meeting-case-009-1",
+            "segmentID": "segment-case-009-1",
+            "text": "En la reunión anterior, atlas-009 usaba la exportación manual.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-009-2",
+            "language": "es",
+            "meetingID": "meeting-case-009-2",
+            "segmentID": "segment-case-009-2",
+            "text": "Desde entonces, atlas-009 cambió a la exportación automática firmada.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-009-3",
+            "language": "es",
+            "meetingID": "meeting-case-009-2",
+            "segmentID": "segment-case-009-3",
+            "text": "El inventario de oficina no relacionado no cambió.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-009-1"
+            ],
+            "id": "fact-case-009-baseline",
+            "kind": "decision",
+            "objectID": "export-atlas-009-manual",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-009"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-009-1",
+              "evidence-case-009-2"
+            ],
+            "id": "fact-case-009-change",
+            "kind": "relation",
+            "objectID": "export-atlas-009-manual",
+            "origin": "confirmed",
+            "predicate": "changes",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "export-atlas-009-signed"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-009-3"
+            ],
+            "id": "fact-case-009-distractor",
+            "kind": "relation",
+            "objectID": "atlas-009",
+            "origin": "generated",
+            "predicate": "associatedWith",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "office-inventory"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-009-1",
+            "sequence": 1,
+            "title": "atlas-009 baseline"
+          },
+          {
+            "id": "meeting-case-009-2",
+            "sequence": 2,
+            "title": "atlas-009 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-009-1",
+          "evidence-case-009-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-009-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-009-change"
+        ]
+      },
+      "id": "case-009",
+      "job": "changeSince",
+      "query": {
+        "language": "en",
+        "text": "What changed for atlas-009 since the last meeting?"
+      },
+      "relationship": "englishToSpanish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-010-1",
+            "language": "en",
+            "meetingID": "meeting-case-010-1",
+            "segmentID": "segment-case-010-1",
+            "text": "At the previous meeting, atlas-010 used the manual export.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-010-2",
+            "language": "en",
+            "meetingID": "meeting-case-010-2",
+            "segmentID": "segment-case-010-2",
+            "text": "Since then, atlas-010 changed to the signed automatic export.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-010-3",
+            "language": "en",
+            "meetingID": "meeting-case-010-2",
+            "segmentID": "segment-case-010-3",
+            "text": "The unrelated office inventory did not change.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-010-1"
+            ],
+            "id": "fact-case-010-baseline",
+            "kind": "decision",
+            "objectID": "export-atlas-010-manual",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-010"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-010-1",
+              "evidence-case-010-2"
+            ],
+            "id": "fact-case-010-change",
+            "kind": "relation",
+            "objectID": "export-atlas-010-manual",
+            "origin": "confirmed",
+            "predicate": "changes",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "export-atlas-010-signed"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-010-3"
+            ],
+            "id": "fact-case-010-distractor",
+            "kind": "relation",
+            "objectID": "atlas-010",
+            "origin": "generated",
+            "predicate": "associatedWith",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "office-inventory"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-010-1",
+            "sequence": 1,
+            "title": "atlas-010 baseline"
+          },
+          {
+            "id": "meeting-case-010-2",
+            "sequence": 2,
+            "title": "atlas-010 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-010-1",
+          "evidence-case-010-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-010-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-010-change"
+        ]
+      },
+      "id": "case-010",
+      "job": "changeSince",
+      "query": {
+        "language": "es",
+        "text": "¿Qué cambió para atlas-010 desde la última reunión?"
+      },
+      "relationship": "spanishToEnglish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-011-1",
+            "language": "en",
+            "meetingID": "meeting-case-011-1",
+            "segmentID": "segment-case-011-1",
+            "text": "At the previous meeting, atlas-011 used the manual export.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-011-2",
+            "language": "es",
+            "meetingID": "meeting-case-011-2",
+            "segmentID": "segment-case-011-2",
+            "text": "Desde entonces, atlas-011 cambió a la exportación automática firmada.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-011-3",
+            "language": "mixed",
+            "meetingID": "meeting-case-011-2",
+            "segmentID": "segment-case-011-3",
+            "text": "The unrelated office inventory did not change. / El inventario de oficina no relacionado no cambió.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-011-1"
+            ],
+            "id": "fact-case-011-baseline",
+            "kind": "decision",
+            "objectID": "export-atlas-011-manual",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-011"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-011-1",
+              "evidence-case-011-2"
+            ],
+            "id": "fact-case-011-change",
+            "kind": "relation",
+            "objectID": "export-atlas-011-manual",
+            "origin": "confirmed",
+            "predicate": "changes",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "export-atlas-011-signed"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-011-3"
+            ],
+            "id": "fact-case-011-distractor",
+            "kind": "relation",
+            "objectID": "atlas-011",
+            "origin": "generated",
+            "predicate": "associatedWith",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "office-inventory"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-011-1",
+            "sequence": 1,
+            "title": "atlas-011 baseline"
+          },
+          {
+            "id": "meeting-case-011-2",
+            "sequence": 2,
+            "title": "atlas-011 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-011-1",
+          "evidence-case-011-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-011-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-011-change"
+        ]
+      },
+      "id": "case-011",
+      "job": "changeSince",
+      "query": {
+        "language": "mixed",
+        "text": "What changed for atlas-011 since the last meeting y dame las fuentes?"
+      },
+      "relationship": "codeSwitched"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-012-2",
+            "language": "es",
+            "meetingID": "meeting-case-012-2",
+            "segmentID": "segment-case-012-2",
+            "text": "Desde entonces, atlas-012 cambió a la exportación automática firmada.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-012-3",
+            "language": "es",
+            "meetingID": "meeting-case-012-2",
+            "segmentID": "segment-case-012-3",
+            "text": "El inventario de oficina no relacionado no cambió.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-012-2"
+            ],
+            "id": "fact-case-012-change",
+            "kind": "relation",
+            "objectID": "export-atlas-012-manual",
+            "origin": "confirmed",
+            "predicate": "changes",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "export-atlas-012-signed"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-012-3"
+            ],
+            "id": "fact-case-012-distractor",
+            "kind": "relation",
+            "objectID": "atlas-012",
+            "origin": "generated",
+            "predicate": "associatedWith",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "office-inventory"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-012-2",
+            "sequence": 2,
+            "title": "atlas-012 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": "missingTemporalBaseline",
+        "answerPolicy": "abstain",
+        "evidenceIDs": [],
+        "forbiddenResultIDs": [
+          "fact-case-012-change",
+          "fact-case-012-distractor"
+        ],
+        "resultIDs": []
+      },
+      "id": "case-012",
+      "job": "changeSince",
+      "query": {
+        "language": "es",
+        "text": "¿Qué cambió para atlas-012 desde la última reunión?"
+      },
+      "relationship": "abstention"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-013-1",
+            "language": "en",
+            "meetingID": "meeting-case-013-1",
+            "segmentID": "segment-case-013-1",
+            "text": "Mara completed the old atlas-013 inventory.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-013-2",
+            "language": "en",
+            "meetingID": "meeting-case-013-2",
+            "segmentID": "segment-case-013-2",
+            "text": "Mara committed to send the atlas-013 rollout checklist on Friday.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-013-3",
+            "language": "en",
+            "meetingID": "meeting-case-013-2",
+            "segmentID": "segment-case-013-3",
+            "text": "Noah committed to replace an unrelated projector.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-013-1"
+            ],
+            "id": "fact-case-013-completed",
+            "kind": "commitment",
+            "objectID": "person-mara",
+            "origin": "manual",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "completed",
+            "subjectID": "commitment-atlas-013-inventory"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-013-2"
+            ],
+            "id": "fact-case-013-open",
+            "kind": "commitment",
+            "objectID": "person-mara",
+            "origin": "confirmed",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "open",
+            "subjectID": "commitment-atlas-013-checklist"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-013-3"
+            ],
+            "id": "fact-case-013-distractor",
+            "kind": "commitment",
+            "objectID": "person-noah",
+            "origin": "confirmed",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "open",
+            "subjectID": "commitment-projector"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-013-1",
+            "sequence": 1,
+            "title": "atlas-013 baseline"
+          },
+          {
+            "id": "meeting-case-013-2",
+            "sequence": 2,
+            "title": "atlas-013 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-013-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-013-completed",
+          "fact-case-013-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-013-open"
+        ]
+      },
+      "id": "case-013",
+      "job": "personCommitments",
+      "query": {
+        "language": "en",
+        "text": "What has Mara committed to for atlas-013?"
+      },
+      "relationship": "englishToEnglish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-014-1",
+            "language": "es",
+            "meetingID": "meeting-case-014-1",
+            "segmentID": "segment-case-014-1",
+            "text": "Mara completó el inventario anterior de atlas-014.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-014-2",
+            "language": "es",
+            "meetingID": "meeting-case-014-2",
+            "segmentID": "segment-case-014-2",
+            "text": "Mara se comprometió a enviar la lista de lanzamiento de atlas-014 el viernes.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-014-3",
+            "language": "es",
+            "meetingID": "meeting-case-014-2",
+            "segmentID": "segment-case-014-3",
+            "text": "Noah se comprometió a reemplazar un proyector no relacionado.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-014-1"
+            ],
+            "id": "fact-case-014-completed",
+            "kind": "commitment",
+            "objectID": "person-mara",
+            "origin": "manual",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "completed",
+            "subjectID": "commitment-atlas-014-inventory"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-014-2"
+            ],
+            "id": "fact-case-014-open",
+            "kind": "commitment",
+            "objectID": "person-mara",
+            "origin": "confirmed",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "open",
+            "subjectID": "commitment-atlas-014-checklist"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-014-3"
+            ],
+            "id": "fact-case-014-distractor",
+            "kind": "commitment",
+            "objectID": "person-noah",
+            "origin": "confirmed",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "open",
+            "subjectID": "commitment-projector"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-014-1",
+            "sequence": 1,
+            "title": "atlas-014 baseline"
+          },
+          {
+            "id": "meeting-case-014-2",
+            "sequence": 2,
+            "title": "atlas-014 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-014-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-014-completed",
+          "fact-case-014-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-014-open"
+        ]
+      },
+      "id": "case-014",
+      "job": "personCommitments",
+      "query": {
+        "language": "es",
+        "text": "¿A qué se comprometió Mara para atlas-014?"
+      },
+      "relationship": "spanishToSpanish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-015-1",
+            "language": "es",
+            "meetingID": "meeting-case-015-1",
+            "segmentID": "segment-case-015-1",
+            "text": "Mara completó el inventario anterior de atlas-015.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-015-2",
+            "language": "es",
+            "meetingID": "meeting-case-015-2",
+            "segmentID": "segment-case-015-2",
+            "text": "Mara se comprometió a enviar la lista de lanzamiento de atlas-015 el viernes.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-015-3",
+            "language": "es",
+            "meetingID": "meeting-case-015-2",
+            "segmentID": "segment-case-015-3",
+            "text": "Noah se comprometió a reemplazar un proyector no relacionado.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-015-1"
+            ],
+            "id": "fact-case-015-completed",
+            "kind": "commitment",
+            "objectID": "person-mara",
+            "origin": "manual",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "completed",
+            "subjectID": "commitment-atlas-015-inventory"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-015-2"
+            ],
+            "id": "fact-case-015-open",
+            "kind": "commitment",
+            "objectID": "person-mara",
+            "origin": "confirmed",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "open",
+            "subjectID": "commitment-atlas-015-checklist"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-015-3"
+            ],
+            "id": "fact-case-015-distractor",
+            "kind": "commitment",
+            "objectID": "person-noah",
+            "origin": "confirmed",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "open",
+            "subjectID": "commitment-projector"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-015-1",
+            "sequence": 1,
+            "title": "atlas-015 baseline"
+          },
+          {
+            "id": "meeting-case-015-2",
+            "sequence": 2,
+            "title": "atlas-015 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-015-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-015-completed",
+          "fact-case-015-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-015-open"
+        ]
+      },
+      "id": "case-015",
+      "job": "personCommitments",
+      "query": {
+        "language": "en",
+        "text": "What has Mara committed to for atlas-015?"
+      },
+      "relationship": "englishToSpanish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-016-1",
+            "language": "en",
+            "meetingID": "meeting-case-016-1",
+            "segmentID": "segment-case-016-1",
+            "text": "Mara completed the old atlas-016 inventory.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-016-2",
+            "language": "en",
+            "meetingID": "meeting-case-016-2",
+            "segmentID": "segment-case-016-2",
+            "text": "Mara committed to send the atlas-016 rollout checklist on Friday.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-016-3",
+            "language": "en",
+            "meetingID": "meeting-case-016-2",
+            "segmentID": "segment-case-016-3",
+            "text": "Noah committed to replace an unrelated projector.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-016-1"
+            ],
+            "id": "fact-case-016-completed",
+            "kind": "commitment",
+            "objectID": "person-mara",
+            "origin": "manual",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "completed",
+            "subjectID": "commitment-atlas-016-inventory"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-016-2"
+            ],
+            "id": "fact-case-016-open",
+            "kind": "commitment",
+            "objectID": "person-mara",
+            "origin": "confirmed",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "open",
+            "subjectID": "commitment-atlas-016-checklist"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-016-3"
+            ],
+            "id": "fact-case-016-distractor",
+            "kind": "commitment",
+            "objectID": "person-noah",
+            "origin": "confirmed",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "open",
+            "subjectID": "commitment-projector"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-016-1",
+            "sequence": 1,
+            "title": "atlas-016 baseline"
+          },
+          {
+            "id": "meeting-case-016-2",
+            "sequence": 2,
+            "title": "atlas-016 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-016-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-016-completed",
+          "fact-case-016-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-016-open"
+        ]
+      },
+      "id": "case-016",
+      "job": "personCommitments",
+      "query": {
+        "language": "es",
+        "text": "¿A qué se comprometió Mara para atlas-016?"
+      },
+      "relationship": "spanishToEnglish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-017-1",
+            "language": "en",
+            "meetingID": "meeting-case-017-1",
+            "segmentID": "segment-case-017-1",
+            "text": "Mara completed the old atlas-017 inventory.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-017-2",
+            "language": "es",
+            "meetingID": "meeting-case-017-2",
+            "segmentID": "segment-case-017-2",
+            "text": "Mara se comprometió a enviar la lista de lanzamiento de atlas-017 el viernes.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-017-3",
+            "language": "mixed",
+            "meetingID": "meeting-case-017-2",
+            "segmentID": "segment-case-017-3",
+            "text": "Noah committed to replace an unrelated projector. / Noah se comprometió a reemplazar un proyector no relacionado.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-017-1"
+            ],
+            "id": "fact-case-017-completed",
+            "kind": "commitment",
+            "objectID": "person-mara",
+            "origin": "manual",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "completed",
+            "subjectID": "commitment-atlas-017-inventory"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-017-2"
+            ],
+            "id": "fact-case-017-open",
+            "kind": "commitment",
+            "objectID": "person-mara",
+            "origin": "confirmed",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "open",
+            "subjectID": "commitment-atlas-017-checklist"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-017-3"
+            ],
+            "id": "fact-case-017-distractor",
+            "kind": "commitment",
+            "objectID": "person-noah",
+            "origin": "confirmed",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "open",
+            "subjectID": "commitment-projector"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-017-1",
+            "sequence": 1,
+            "title": "atlas-017 baseline"
+          },
+          {
+            "id": "meeting-case-017-2",
+            "sequence": 2,
+            "title": "atlas-017 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-017-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-017-completed",
+          "fact-case-017-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-017-open"
+        ]
+      },
+      "id": "case-017",
+      "job": "personCommitments",
+      "query": {
+        "language": "mixed",
+        "text": "What has Mara committed to for atlas-017 y dame las fuentes?"
+      },
+      "relationship": "codeSwitched"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-018-1",
+            "language": "en",
+            "meetingID": "meeting-case-018-1",
+            "segmentID": "segment-case-018-1",
+            "text": "Mara completed the old atlas-018 inventory.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-018-2",
+            "language": "en",
+            "meetingID": "meeting-case-018-2",
+            "segmentID": "segment-case-018-2",
+            "text": "Alex committed to send the atlas-018 rollout checklist.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-018-3",
+            "language": "en",
+            "meetingID": "meeting-case-018-2",
+            "segmentID": "segment-case-018-3",
+            "text": "A different Alex committed to replace the projector.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-018-1"
+            ],
+            "id": "fact-case-018-completed",
+            "kind": "commitment",
+            "objectID": "person-mara",
+            "origin": "manual",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "completed",
+            "subjectID": "commitment-atlas-018-inventory"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-018-2"
+            ],
+            "id": "fact-case-018-open",
+            "kind": "commitment",
+            "objectID": "person-alex-a",
+            "origin": "confirmed",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "open",
+            "subjectID": "commitment-atlas-018-checklist"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-018-3"
+            ],
+            "id": "fact-case-018-distractor",
+            "kind": "commitment",
+            "objectID": "person-alex-b",
+            "origin": "confirmed",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "open",
+            "subjectID": "commitment-projector"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-018-1",
+            "sequence": 1,
+            "title": "atlas-018 baseline"
+          },
+          {
+            "id": "meeting-case-018-2",
+            "sequence": 2,
+            "title": "atlas-018 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": "ambiguousPerson",
+        "answerPolicy": "abstain",
+        "evidenceIDs": [],
+        "forbiddenResultIDs": [
+          "fact-case-018-completed",
+          "fact-case-018-open",
+          "fact-case-018-distractor"
+        ],
+        "resultIDs": []
+      },
+      "id": "case-018",
+      "job": "personCommitments",
+      "query": {
+        "language": "en",
+        "text": "What has Alex committed to for atlas-018?"
+      },
+      "relationship": "abstention"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-019-1",
+            "language": "en",
+            "meetingID": "meeting-case-019-1",
+            "segmentID": "segment-case-019-1",
+            "text": "Mara confirmed the commitment to launch atlas-019 on Friday.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-019-2",
+            "language": "en",
+            "meetingID": "meeting-case-019-2",
+            "segmentID": "segment-case-019-2",
+            "text": "The open retention decision explicitly blocks the atlas-019 launch.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-019-3",
+            "language": "en",
+            "meetingID": "meeting-case-019-2",
+            "segmentID": "segment-case-019-3",
+            "text": "The office inventory was mentioned near atlas-019, without blocking it.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-019-1"
+            ],
+            "id": "fact-case-019-commitment",
+            "kind": "commitment",
+            "objectID": "person-mara",
+            "origin": "confirmed",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "open",
+            "subjectID": "commitment-atlas-019-launch"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-019-1",
+              "evidence-case-019-2"
+            ],
+            "id": "fact-case-019-block",
+            "kind": "relation",
+            "objectID": "commitment-atlas-019-launch",
+            "origin": "confirmed",
+            "predicate": "blocks",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "decision-atlas-019-retention"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-019-3"
+            ],
+            "id": "fact-case-019-distractor",
+            "kind": "relation",
+            "objectID": "commitment-atlas-019-launch",
+            "origin": "generated",
+            "predicate": "associatedWith",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "office-inventory"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-019-1",
+            "sequence": 1,
+            "title": "atlas-019 baseline"
+          },
+          {
+            "id": "meeting-case-019-2",
+            "sequence": 2,
+            "title": "atlas-019 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-019-1",
+          "evidence-case-019-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-019-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-019-block"
+        ]
+      },
+      "id": "case-019",
+      "job": "commitmentBlockers",
+      "query": {
+        "language": "en",
+        "text": "Which open decisions block the atlas-019 commitment?"
+      },
+      "relationship": "englishToEnglish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-020-1",
+            "language": "es",
+            "meetingID": "meeting-case-020-1",
+            "segmentID": "segment-case-020-1",
+            "text": "Mara confirmó el compromiso de lanzar atlas-020 el viernes.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-020-2",
+            "language": "es",
+            "meetingID": "meeting-case-020-2",
+            "segmentID": "segment-case-020-2",
+            "text": "La decisión abierta de retención bloquea explícitamente el lanzamiento de atlas-020.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-020-3",
+            "language": "es",
+            "meetingID": "meeting-case-020-2",
+            "segmentID": "segment-case-020-3",
+            "text": "El inventario de oficina se mencionó cerca de atlas-020, sin bloquearlo.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-020-1"
+            ],
+            "id": "fact-case-020-commitment",
+            "kind": "commitment",
+            "objectID": "person-mara",
+            "origin": "confirmed",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "open",
+            "subjectID": "commitment-atlas-020-launch"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-020-1",
+              "evidence-case-020-2"
+            ],
+            "id": "fact-case-020-block",
+            "kind": "relation",
+            "objectID": "commitment-atlas-020-launch",
+            "origin": "confirmed",
+            "predicate": "blocks",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "decision-atlas-020-retention"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-020-3"
+            ],
+            "id": "fact-case-020-distractor",
+            "kind": "relation",
+            "objectID": "commitment-atlas-020-launch",
+            "origin": "generated",
+            "predicate": "associatedWith",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "office-inventory"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-020-1",
+            "sequence": 1,
+            "title": "atlas-020 baseline"
+          },
+          {
+            "id": "meeting-case-020-2",
+            "sequence": 2,
+            "title": "atlas-020 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-020-1",
+          "evidence-case-020-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-020-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-020-block"
+        ]
+      },
+      "id": "case-020",
+      "job": "commitmentBlockers",
+      "query": {
+        "language": "es",
+        "text": "¿Qué decisiones abiertas bloquean el compromiso de atlas-020?"
+      },
+      "relationship": "spanishToSpanish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-021-1",
+            "language": "es",
+            "meetingID": "meeting-case-021-1",
+            "segmentID": "segment-case-021-1",
+            "text": "Mara confirmó el compromiso de lanzar atlas-021 el viernes.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-021-2",
+            "language": "es",
+            "meetingID": "meeting-case-021-2",
+            "segmentID": "segment-case-021-2",
+            "text": "La decisión abierta de retención bloquea explícitamente el lanzamiento de atlas-021.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-021-3",
+            "language": "es",
+            "meetingID": "meeting-case-021-2",
+            "segmentID": "segment-case-021-3",
+            "text": "El inventario de oficina se mencionó cerca de atlas-021, sin bloquearlo.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-021-1"
+            ],
+            "id": "fact-case-021-commitment",
+            "kind": "commitment",
+            "objectID": "person-mara",
+            "origin": "confirmed",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "open",
+            "subjectID": "commitment-atlas-021-launch"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-021-1",
+              "evidence-case-021-2"
+            ],
+            "id": "fact-case-021-block",
+            "kind": "relation",
+            "objectID": "commitment-atlas-021-launch",
+            "origin": "confirmed",
+            "predicate": "blocks",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "decision-atlas-021-retention"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-021-3"
+            ],
+            "id": "fact-case-021-distractor",
+            "kind": "relation",
+            "objectID": "commitment-atlas-021-launch",
+            "origin": "generated",
+            "predicate": "associatedWith",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "office-inventory"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-021-1",
+            "sequence": 1,
+            "title": "atlas-021 baseline"
+          },
+          {
+            "id": "meeting-case-021-2",
+            "sequence": 2,
+            "title": "atlas-021 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-021-1",
+          "evidence-case-021-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-021-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-021-block"
+        ]
+      },
+      "id": "case-021",
+      "job": "commitmentBlockers",
+      "query": {
+        "language": "en",
+        "text": "Which open decisions block the atlas-021 commitment?"
+      },
+      "relationship": "englishToSpanish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-022-1",
+            "language": "en",
+            "meetingID": "meeting-case-022-1",
+            "segmentID": "segment-case-022-1",
+            "text": "Mara confirmed the commitment to launch atlas-022 on Friday.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-022-2",
+            "language": "en",
+            "meetingID": "meeting-case-022-2",
+            "segmentID": "segment-case-022-2",
+            "text": "The open retention decision explicitly blocks the atlas-022 launch.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-022-3",
+            "language": "en",
+            "meetingID": "meeting-case-022-2",
+            "segmentID": "segment-case-022-3",
+            "text": "The office inventory was mentioned near atlas-022, without blocking it.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-022-1"
+            ],
+            "id": "fact-case-022-commitment",
+            "kind": "commitment",
+            "objectID": "person-mara",
+            "origin": "confirmed",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "open",
+            "subjectID": "commitment-atlas-022-launch"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-022-1",
+              "evidence-case-022-2"
+            ],
+            "id": "fact-case-022-block",
+            "kind": "relation",
+            "objectID": "commitment-atlas-022-launch",
+            "origin": "confirmed",
+            "predicate": "blocks",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "decision-atlas-022-retention"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-022-3"
+            ],
+            "id": "fact-case-022-distractor",
+            "kind": "relation",
+            "objectID": "commitment-atlas-022-launch",
+            "origin": "generated",
+            "predicate": "associatedWith",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "office-inventory"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-022-1",
+            "sequence": 1,
+            "title": "atlas-022 baseline"
+          },
+          {
+            "id": "meeting-case-022-2",
+            "sequence": 2,
+            "title": "atlas-022 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-022-1",
+          "evidence-case-022-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-022-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-022-block"
+        ]
+      },
+      "id": "case-022",
+      "job": "commitmentBlockers",
+      "query": {
+        "language": "es",
+        "text": "¿Qué decisiones abiertas bloquean el compromiso de atlas-022?"
+      },
+      "relationship": "spanishToEnglish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-023-1",
+            "language": "en",
+            "meetingID": "meeting-case-023-1",
+            "segmentID": "segment-case-023-1",
+            "text": "Mara confirmed the commitment to launch atlas-023 on Friday.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-023-2",
+            "language": "es",
+            "meetingID": "meeting-case-023-2",
+            "segmentID": "segment-case-023-2",
+            "text": "La decisión abierta de retención bloquea explícitamente el lanzamiento de atlas-023.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-023-3",
+            "language": "mixed",
+            "meetingID": "meeting-case-023-2",
+            "segmentID": "segment-case-023-3",
+            "text": "The office inventory was mentioned near atlas-023, without blocking it. / El inventario de oficina se mencionó cerca de atlas-023, sin bloquearlo.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-023-1"
+            ],
+            "id": "fact-case-023-commitment",
+            "kind": "commitment",
+            "objectID": "person-mara",
+            "origin": "confirmed",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "open",
+            "subjectID": "commitment-atlas-023-launch"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-023-1",
+              "evidence-case-023-2"
+            ],
+            "id": "fact-case-023-block",
+            "kind": "relation",
+            "objectID": "commitment-atlas-023-launch",
+            "origin": "confirmed",
+            "predicate": "blocks",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "decision-atlas-023-retention"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-023-3"
+            ],
+            "id": "fact-case-023-distractor",
+            "kind": "relation",
+            "objectID": "commitment-atlas-023-launch",
+            "origin": "generated",
+            "predicate": "associatedWith",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "office-inventory"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-023-1",
+            "sequence": 1,
+            "title": "atlas-023 baseline"
+          },
+          {
+            "id": "meeting-case-023-2",
+            "sequence": 2,
+            "title": "atlas-023 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-023-1",
+          "evidence-case-023-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-023-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-023-block"
+        ]
+      },
+      "id": "case-023",
+      "job": "commitmentBlockers",
+      "query": {
+        "language": "mixed",
+        "text": "Which open decisions block the atlas-023 commitment y dame las fuentes?"
+      },
+      "relationship": "codeSwitched"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-024-1",
+            "language": "es",
+            "meetingID": "meeting-case-024-1",
+            "segmentID": "segment-case-024-1",
+            "text": "Mara confirmó el compromiso de lanzar atlas-024 el viernes.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-024-2",
+            "language": "es",
+            "meetingID": "meeting-case-024-2",
+            "segmentID": "segment-case-024-2",
+            "text": "La decisión de retención se mencionó cerca de atlas-024, sin declarar una dependencia.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-024-3",
+            "language": "es",
+            "meetingID": "meeting-case-024-2",
+            "segmentID": "segment-case-024-3",
+            "text": "El inventario de oficina se mencionó cerca de atlas-024, sin bloquearlo.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-024-1"
+            ],
+            "id": "fact-case-024-commitment",
+            "kind": "commitment",
+            "objectID": "person-mara",
+            "origin": "confirmed",
+            "predicate": "committedTo",
+            "stale": false,
+            "status": "open",
+            "subjectID": "commitment-atlas-024-launch"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-024-1",
+              "evidence-case-024-2"
+            ],
+            "id": "fact-case-024-block",
+            "kind": "relation",
+            "objectID": "commitment-atlas-024-launch",
+            "origin": "generated",
+            "predicate": "associatedWith",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "decision-atlas-024-retention"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-024-3"
+            ],
+            "id": "fact-case-024-distractor",
+            "kind": "relation",
+            "objectID": "commitment-atlas-024-launch",
+            "origin": "generated",
+            "predicate": "associatedWith",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "office-inventory"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-024-1",
+            "sequence": 1,
+            "title": "atlas-024 baseline"
+          },
+          {
+            "id": "meeting-case-024-2",
+            "sequence": 2,
+            "title": "atlas-024 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": "unsupportedCausalLink",
+        "answerPolicy": "abstain",
+        "evidenceIDs": [],
+        "forbiddenResultIDs": [
+          "fact-case-024-commitment",
+          "fact-case-024-block",
+          "fact-case-024-distractor"
+        ],
+        "resultIDs": []
+      },
+      "id": "case-024",
+      "job": "commitmentBlockers",
+      "query": {
+        "language": "es",
+        "text": "¿Qué decisiones abiertas bloquean el compromiso de atlas-024?"
+      },
+      "relationship": "abstention"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-025-1",
+            "language": "en",
+            "meetingID": "meeting-case-025-1",
+            "segmentID": "segment-case-025-1",
+            "text": "The team first introduced the term atlas-025 for the telemetry envelope.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-025-2",
+            "language": "en",
+            "meetingID": "meeting-case-025-2",
+            "segmentID": "segment-case-025-2",
+            "text": "A later meeting revisited atlas-025 after the prototype.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-025-3",
+            "language": "en",
+            "meetingID": "meeting-case-025-2",
+            "segmentID": "segment-case-025-3",
+            "text": "The unrelated term cobalt-025 appeared in another context.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-025-1"
+            ],
+            "id": "fact-case-025-first",
+            "kind": "topicMention",
+            "objectID": "meeting-case-025-1",
+            "origin": "manual",
+            "predicate": "discussed",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-025"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-025-2"
+            ],
+            "id": "fact-case-025-later",
+            "kind": "topicMention",
+            "objectID": "meeting-case-025-2",
+            "origin": "confirmed",
+            "predicate": "discussed",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-025"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-025-3"
+            ],
+            "id": "fact-case-025-distractor",
+            "kind": "topicMention",
+            "objectID": "meeting-case-025-2",
+            "origin": "confirmed",
+            "predicate": "discussed",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "cobalt-025"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-025-1",
+            "sequence": 1,
+            "title": "atlas-025 baseline"
+          },
+          {
+            "id": "meeting-case-025-2",
+            "sequence": 2,
+            "title": "atlas-025 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-025-1"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-025-later",
+          "fact-case-025-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-025-first"
+        ]
+      },
+      "id": "case-025",
+      "job": "firstDiscussion",
+      "query": {
+        "language": "en",
+        "text": "Where was atlas-025 first discussed?"
+      },
+      "relationship": "englishToEnglish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-026-1",
+            "language": "es",
+            "meetingID": "meeting-case-026-1",
+            "segmentID": "segment-case-026-1",
+            "text": "El equipo introdujo por primera vez el término atlas-026 para la envoltura de telemetría.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-026-2",
+            "language": "es",
+            "meetingID": "meeting-case-026-2",
+            "segmentID": "segment-case-026-2",
+            "text": "Una reunión posterior retomó atlas-026 después del prototipo.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-026-3",
+            "language": "es",
+            "meetingID": "meeting-case-026-2",
+            "segmentID": "segment-case-026-3",
+            "text": "El término no relacionado cobalt-026 apareció en otro contexto.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-026-1"
+            ],
+            "id": "fact-case-026-first",
+            "kind": "topicMention",
+            "objectID": "meeting-case-026-1",
+            "origin": "manual",
+            "predicate": "discussed",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-026"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-026-2"
+            ],
+            "id": "fact-case-026-later",
+            "kind": "topicMention",
+            "objectID": "meeting-case-026-2",
+            "origin": "confirmed",
+            "predicate": "discussed",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-026"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-026-3"
+            ],
+            "id": "fact-case-026-distractor",
+            "kind": "topicMention",
+            "objectID": "meeting-case-026-2",
+            "origin": "confirmed",
+            "predicate": "discussed",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "cobalt-026"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-026-1",
+            "sequence": 1,
+            "title": "atlas-026 baseline"
+          },
+          {
+            "id": "meeting-case-026-2",
+            "sequence": 2,
+            "title": "atlas-026 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-026-1"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-026-later",
+          "fact-case-026-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-026-first"
+        ]
+      },
+      "id": "case-026",
+      "job": "firstDiscussion",
+      "query": {
+        "language": "es",
+        "text": "¿Dónde se habló por primera vez de atlas-026?"
+      },
+      "relationship": "spanishToSpanish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-027-1",
+            "language": "es",
+            "meetingID": "meeting-case-027-1",
+            "segmentID": "segment-case-027-1",
+            "text": "El equipo introdujo por primera vez el término atlas-027 para la envoltura de telemetría.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-027-2",
+            "language": "es",
+            "meetingID": "meeting-case-027-2",
+            "segmentID": "segment-case-027-2",
+            "text": "Una reunión posterior retomó atlas-027 después del prototipo.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-027-3",
+            "language": "es",
+            "meetingID": "meeting-case-027-2",
+            "segmentID": "segment-case-027-3",
+            "text": "El término no relacionado cobalt-027 apareció en otro contexto.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-027-1"
+            ],
+            "id": "fact-case-027-first",
+            "kind": "topicMention",
+            "objectID": "meeting-case-027-1",
+            "origin": "manual",
+            "predicate": "discussed",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-027"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-027-2"
+            ],
+            "id": "fact-case-027-later",
+            "kind": "topicMention",
+            "objectID": "meeting-case-027-2",
+            "origin": "confirmed",
+            "predicate": "discussed",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-027"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-027-3"
+            ],
+            "id": "fact-case-027-distractor",
+            "kind": "topicMention",
+            "objectID": "meeting-case-027-2",
+            "origin": "confirmed",
+            "predicate": "discussed",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "cobalt-027"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-027-1",
+            "sequence": 1,
+            "title": "atlas-027 baseline"
+          },
+          {
+            "id": "meeting-case-027-2",
+            "sequence": 2,
+            "title": "atlas-027 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-027-1"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-027-later",
+          "fact-case-027-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-027-first"
+        ]
+      },
+      "id": "case-027",
+      "job": "firstDiscussion",
+      "query": {
+        "language": "en",
+        "text": "Where was atlas-027 first discussed?"
+      },
+      "relationship": "englishToSpanish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-028-1",
+            "language": "en",
+            "meetingID": "meeting-case-028-1",
+            "segmentID": "segment-case-028-1",
+            "text": "The team first introduced the term atlas-028 for the telemetry envelope.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-028-2",
+            "language": "en",
+            "meetingID": "meeting-case-028-2",
+            "segmentID": "segment-case-028-2",
+            "text": "A later meeting revisited atlas-028 after the prototype.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-028-3",
+            "language": "en",
+            "meetingID": "meeting-case-028-2",
+            "segmentID": "segment-case-028-3",
+            "text": "The unrelated term cobalt-028 appeared in another context.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-028-1"
+            ],
+            "id": "fact-case-028-first",
+            "kind": "topicMention",
+            "objectID": "meeting-case-028-1",
+            "origin": "manual",
+            "predicate": "discussed",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-028"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-028-2"
+            ],
+            "id": "fact-case-028-later",
+            "kind": "topicMention",
+            "objectID": "meeting-case-028-2",
+            "origin": "confirmed",
+            "predicate": "discussed",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-028"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-028-3"
+            ],
+            "id": "fact-case-028-distractor",
+            "kind": "topicMention",
+            "objectID": "meeting-case-028-2",
+            "origin": "confirmed",
+            "predicate": "discussed",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "cobalt-028"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-028-1",
+            "sequence": 1,
+            "title": "atlas-028 baseline"
+          },
+          {
+            "id": "meeting-case-028-2",
+            "sequence": 2,
+            "title": "atlas-028 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-028-1"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-028-later",
+          "fact-case-028-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-028-first"
+        ]
+      },
+      "id": "case-028",
+      "job": "firstDiscussion",
+      "query": {
+        "language": "es",
+        "text": "¿Dónde se habló por primera vez de atlas-028?"
+      },
+      "relationship": "spanishToEnglish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-029-1",
+            "language": "en",
+            "meetingID": "meeting-case-029-1",
+            "segmentID": "segment-case-029-1",
+            "text": "The team first introduced the term atlas-029 for the telemetry envelope.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-029-2",
+            "language": "es",
+            "meetingID": "meeting-case-029-2",
+            "segmentID": "segment-case-029-2",
+            "text": "Una reunión posterior retomó atlas-029 después del prototipo.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-029-3",
+            "language": "mixed",
+            "meetingID": "meeting-case-029-2",
+            "segmentID": "segment-case-029-3",
+            "text": "The unrelated term cobalt-029 appeared in another context. / El término no relacionado cobalt-029 apareció en otro contexto.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-029-1"
+            ],
+            "id": "fact-case-029-first",
+            "kind": "topicMention",
+            "objectID": "meeting-case-029-1",
+            "origin": "manual",
+            "predicate": "discussed",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-029"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-029-2"
+            ],
+            "id": "fact-case-029-later",
+            "kind": "topicMention",
+            "objectID": "meeting-case-029-2",
+            "origin": "confirmed",
+            "predicate": "discussed",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-029"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-029-3"
+            ],
+            "id": "fact-case-029-distractor",
+            "kind": "topicMention",
+            "objectID": "meeting-case-029-2",
+            "origin": "confirmed",
+            "predicate": "discussed",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "cobalt-029"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-029-1",
+            "sequence": 1,
+            "title": "atlas-029 baseline"
+          },
+          {
+            "id": "meeting-case-029-2",
+            "sequence": 2,
+            "title": "atlas-029 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-029-1"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-029-later",
+          "fact-case-029-distractor"
+        ],
+        "resultIDs": [
+          "fact-case-029-first"
+        ]
+      },
+      "id": "case-029",
+      "job": "firstDiscussion",
+      "query": {
+        "language": "mixed",
+        "text": "Where was atlas-029 first discussed y dame las fuentes?"
+      },
+      "relationship": "codeSwitched"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-030-1",
+            "language": "en",
+            "meetingID": "meeting-case-030-1",
+            "segmentID": "segment-case-030-1",
+            "text": "The team first introduced the term atlas-030 for the telemetry envelope.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-030-2",
+            "language": "en",
+            "meetingID": "meeting-case-030-2",
+            "segmentID": "segment-case-030-2",
+            "text": "A later meeting revisited atlas-030 after the prototype.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-030-3",
+            "language": "en",
+            "meetingID": "meeting-case-030-2",
+            "segmentID": "segment-case-030-3",
+            "text": "The unrelated term cobalt-030 appeared in another context.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-030-1"
+            ],
+            "id": "fact-case-030-first",
+            "kind": "topicMention",
+            "objectID": "meeting-case-030-1",
+            "origin": "manual",
+            "predicate": "discussed",
+            "stale": true,
+            "status": "confirmed",
+            "subjectID": "atlas-030"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-030-2"
+            ],
+            "id": "fact-case-030-later",
+            "kind": "topicMention",
+            "objectID": "meeting-case-030-2",
+            "origin": "confirmed",
+            "predicate": "discussed",
+            "stale": true,
+            "status": "confirmed",
+            "subjectID": "atlas-030"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-030-3"
+            ],
+            "id": "fact-case-030-distractor",
+            "kind": "topicMention",
+            "objectID": "meeting-case-030-2",
+            "origin": "confirmed",
+            "predicate": "discussed",
+            "stale": true,
+            "status": "confirmed",
+            "subjectID": "cobalt-030"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-030-1",
+            "sequence": 1,
+            "title": "atlas-030 baseline"
+          },
+          {
+            "id": "meeting-case-030-2",
+            "sequence": 2,
+            "title": "atlas-030 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": "staleEvidenceOnly",
+        "answerPolicy": "abstain",
+        "evidenceIDs": [],
+        "forbiddenResultIDs": [
+          "fact-case-030-first",
+          "fact-case-030-later",
+          "fact-case-030-distractor"
+        ],
+        "resultIDs": []
+      },
+      "id": "case-030",
+      "job": "firstDiscussion",
+      "query": {
+        "language": "en",
+        "text": "Where was atlas-030 first discussed?"
+      },
+      "relationship": "abstention"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-031-1",
+            "language": "en",
+            "meetingID": "meeting-case-031-1",
+            "segmentID": "segment-case-031-1",
+            "text": "The team confirmed that atlas-031 would use hourly batches.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-031-2",
+            "language": "en",
+            "meetingID": "meeting-case-031-2",
+            "segmentID": "segment-case-031-2",
+            "text": "The team replaced that decision: atlas-031 will use ten-minute batches.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-031-3",
+            "language": "en",
+            "meetingID": "meeting-case-031-2",
+            "segmentID": "segment-case-031-3",
+            "text": "A generated note guessed that atlas-031 might stay hourly.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-031-1"
+            ],
+            "id": "fact-case-031-old",
+            "kind": "decision",
+            "objectID": "choice-atlas-031-hourly",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "superseded",
+            "subjectID": "atlas-031"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-031-2"
+            ],
+            "id": "fact-case-031-new",
+            "kind": "decision",
+            "objectID": "choice-atlas-031-ten-minutes",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-031"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-031-1",
+              "evidence-case-031-2"
+            ],
+            "id": "fact-case-031-supersedes",
+            "kind": "relation",
+            "objectID": "fact-case-031-old",
+            "origin": "confirmed",
+            "predicate": "supersedes",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "fact-case-031-new"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-031-3"
+            ],
+            "id": "fact-case-031-guess",
+            "kind": "relation",
+            "objectID": "fact-case-031-new",
+            "origin": "generated",
+            "predicate": "contradicts",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "fact-case-031-old"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-031-1",
+            "sequence": 1,
+            "title": "atlas-031 baseline"
+          },
+          {
+            "id": "meeting-case-031-2",
+            "sequence": 2,
+            "title": "atlas-031 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-031-1",
+          "evidence-case-031-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-031-guess"
+        ],
+        "resultIDs": [
+          "fact-case-031-supersedes"
+        ]
+      },
+      "id": "case-031",
+      "job": "decisionConflicts",
+      "query": {
+        "language": "en",
+        "text": "Show contradictory or superseding decisions about atlas-031 with sources."
+      },
+      "relationship": "englishToEnglish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-032-1",
+            "language": "es",
+            "meetingID": "meeting-case-032-1",
+            "segmentID": "segment-case-032-1",
+            "text": "El equipo confirmó que atlas-032 usaría lotes cada hora.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-032-2",
+            "language": "es",
+            "meetingID": "meeting-case-032-2",
+            "segmentID": "segment-case-032-2",
+            "text": "El equipo reemplazó esa decisión: atlas-032 usará lotes cada diez minutos.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-032-3",
+            "language": "es",
+            "meetingID": "meeting-case-032-2",
+            "segmentID": "segment-case-032-3",
+            "text": "Una nota generada supuso que atlas-032 podría seguir cada hora.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-032-1"
+            ],
+            "id": "fact-case-032-old",
+            "kind": "decision",
+            "objectID": "choice-atlas-032-hourly",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "superseded",
+            "subjectID": "atlas-032"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-032-2"
+            ],
+            "id": "fact-case-032-new",
+            "kind": "decision",
+            "objectID": "choice-atlas-032-ten-minutes",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-032"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-032-1",
+              "evidence-case-032-2"
+            ],
+            "id": "fact-case-032-supersedes",
+            "kind": "relation",
+            "objectID": "fact-case-032-old",
+            "origin": "confirmed",
+            "predicate": "supersedes",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "fact-case-032-new"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-032-3"
+            ],
+            "id": "fact-case-032-guess",
+            "kind": "relation",
+            "objectID": "fact-case-032-new",
+            "origin": "generated",
+            "predicate": "contradicts",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "fact-case-032-old"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-032-1",
+            "sequence": 1,
+            "title": "atlas-032 baseline"
+          },
+          {
+            "id": "meeting-case-032-2",
+            "sequence": 2,
+            "title": "atlas-032 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-032-1",
+          "evidence-case-032-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-032-guess"
+        ],
+        "resultIDs": [
+          "fact-case-032-supersedes"
+        ]
+      },
+      "id": "case-032",
+      "job": "decisionConflicts",
+      "query": {
+        "language": "es",
+        "text": "Muestra decisiones contradictorias o reemplazadas sobre atlas-032 con fuentes."
+      },
+      "relationship": "spanishToSpanish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-033-1",
+            "language": "es",
+            "meetingID": "meeting-case-033-1",
+            "segmentID": "segment-case-033-1",
+            "text": "El equipo confirmó que atlas-033 usaría lotes cada hora.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-033-2",
+            "language": "es",
+            "meetingID": "meeting-case-033-2",
+            "segmentID": "segment-case-033-2",
+            "text": "El equipo reemplazó esa decisión: atlas-033 usará lotes cada diez minutos.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-033-3",
+            "language": "es",
+            "meetingID": "meeting-case-033-2",
+            "segmentID": "segment-case-033-3",
+            "text": "Una nota generada supuso que atlas-033 podría seguir cada hora.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-033-1"
+            ],
+            "id": "fact-case-033-old",
+            "kind": "decision",
+            "objectID": "choice-atlas-033-hourly",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "superseded",
+            "subjectID": "atlas-033"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-033-2"
+            ],
+            "id": "fact-case-033-new",
+            "kind": "decision",
+            "objectID": "choice-atlas-033-ten-minutes",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-033"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-033-1",
+              "evidence-case-033-2"
+            ],
+            "id": "fact-case-033-supersedes",
+            "kind": "relation",
+            "objectID": "fact-case-033-old",
+            "origin": "confirmed",
+            "predicate": "supersedes",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "fact-case-033-new"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-033-3"
+            ],
+            "id": "fact-case-033-guess",
+            "kind": "relation",
+            "objectID": "fact-case-033-new",
+            "origin": "generated",
+            "predicate": "contradicts",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "fact-case-033-old"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-033-1",
+            "sequence": 1,
+            "title": "atlas-033 baseline"
+          },
+          {
+            "id": "meeting-case-033-2",
+            "sequence": 2,
+            "title": "atlas-033 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-033-1",
+          "evidence-case-033-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-033-guess"
+        ],
+        "resultIDs": [
+          "fact-case-033-supersedes"
+        ]
+      },
+      "id": "case-033",
+      "job": "decisionConflicts",
+      "query": {
+        "language": "en",
+        "text": "Show contradictory or superseding decisions about atlas-033 with sources."
+      },
+      "relationship": "englishToSpanish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-034-1",
+            "language": "en",
+            "meetingID": "meeting-case-034-1",
+            "segmentID": "segment-case-034-1",
+            "text": "The team confirmed that atlas-034 would use hourly batches.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-034-2",
+            "language": "en",
+            "meetingID": "meeting-case-034-2",
+            "segmentID": "segment-case-034-2",
+            "text": "The team replaced that decision: atlas-034 will use ten-minute batches.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-034-3",
+            "language": "en",
+            "meetingID": "meeting-case-034-2",
+            "segmentID": "segment-case-034-3",
+            "text": "A generated note guessed that atlas-034 might stay hourly.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-034-1"
+            ],
+            "id": "fact-case-034-old",
+            "kind": "decision",
+            "objectID": "choice-atlas-034-hourly",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "superseded",
+            "subjectID": "atlas-034"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-034-2"
+            ],
+            "id": "fact-case-034-new",
+            "kind": "decision",
+            "objectID": "choice-atlas-034-ten-minutes",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-034"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-034-1",
+              "evidence-case-034-2"
+            ],
+            "id": "fact-case-034-supersedes",
+            "kind": "relation",
+            "objectID": "fact-case-034-old",
+            "origin": "confirmed",
+            "predicate": "supersedes",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "fact-case-034-new"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-034-3"
+            ],
+            "id": "fact-case-034-guess",
+            "kind": "relation",
+            "objectID": "fact-case-034-new",
+            "origin": "generated",
+            "predicate": "contradicts",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "fact-case-034-old"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-034-1",
+            "sequence": 1,
+            "title": "atlas-034 baseline"
+          },
+          {
+            "id": "meeting-case-034-2",
+            "sequence": 2,
+            "title": "atlas-034 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-034-1",
+          "evidence-case-034-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-034-guess"
+        ],
+        "resultIDs": [
+          "fact-case-034-supersedes"
+        ]
+      },
+      "id": "case-034",
+      "job": "decisionConflicts",
+      "query": {
+        "language": "es",
+        "text": "Muestra decisiones contradictorias o reemplazadas sobre atlas-034 con fuentes."
+      },
+      "relationship": "spanishToEnglish"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-035-1",
+            "language": "en",
+            "meetingID": "meeting-case-035-1",
+            "segmentID": "segment-case-035-1",
+            "text": "The team confirmed that atlas-035 would use hourly batches.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-035-2",
+            "language": "es",
+            "meetingID": "meeting-case-035-2",
+            "segmentID": "segment-case-035-2",
+            "text": "El equipo reemplazó esa decisión: atlas-035 usará lotes cada diez minutos.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-035-3",
+            "language": "mixed",
+            "meetingID": "meeting-case-035-2",
+            "segmentID": "segment-case-035-3",
+            "text": "A generated note guessed that atlas-035 might stay hourly. / Una nota generada supuso que atlas-035 podría seguir cada hora.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-035-1"
+            ],
+            "id": "fact-case-035-old",
+            "kind": "decision",
+            "objectID": "choice-atlas-035-hourly",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "superseded",
+            "subjectID": "atlas-035"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-035-2"
+            ],
+            "id": "fact-case-035-new",
+            "kind": "decision",
+            "objectID": "choice-atlas-035-ten-minutes",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "atlas-035"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-035-1",
+              "evidence-case-035-2"
+            ],
+            "id": "fact-case-035-supersedes",
+            "kind": "relation",
+            "objectID": "fact-case-035-old",
+            "origin": "confirmed",
+            "predicate": "supersedes",
+            "stale": false,
+            "status": "confirmed",
+            "subjectID": "fact-case-035-new"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-035-3"
+            ],
+            "id": "fact-case-035-guess",
+            "kind": "relation",
+            "objectID": "fact-case-035-new",
+            "origin": "generated",
+            "predicate": "contradicts",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "fact-case-035-old"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-035-1",
+            "sequence": 1,
+            "title": "atlas-035 baseline"
+          },
+          {
+            "id": "meeting-case-035-2",
+            "sequence": 2,
+            "title": "atlas-035 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": null,
+        "answerPolicy": "answer",
+        "evidenceIDs": [
+          "evidence-case-035-1",
+          "evidence-case-035-2"
+        ],
+        "forbiddenResultIDs": [
+          "fact-case-035-guess"
+        ],
+        "resultIDs": [
+          "fact-case-035-supersedes"
+        ]
+      },
+      "id": "case-035",
+      "job": "decisionConflicts",
+      "query": {
+        "language": "mixed",
+        "text": "Show contradictory or superseding decisions about atlas-035 with sources y dame las fuentes?"
+      },
+      "relationship": "codeSwitched"
+    },
+    {
+      "corpus": {
+        "evidence": [
+          {
+            "id": "evidence-case-036-1",
+            "language": "es",
+            "meetingID": "meeting-case-036-1",
+            "segmentID": "segment-case-036-1",
+            "text": "El equipo confirmó que atlas-036 usaría lotes cada hora.",
+            "timestampMilliseconds": 1000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-036-2",
+            "language": "es",
+            "meetingID": "meeting-case-036-2",
+            "segmentID": "segment-case-036-2",
+            "text": "Una nota generada propuso lotes de diez minutos para atlas-036, pero nadie confirmó un reemplazo.",
+            "timestampMilliseconds": 2000,
+            "transcriptRevision": 1
+          },
+          {
+            "id": "evidence-case-036-3",
+            "language": "es",
+            "meetingID": "meeting-case-036-2",
+            "segmentID": "segment-case-036-3",
+            "text": "Una nota generada supuso que atlas-036 podría seguir cada hora.",
+            "timestampMilliseconds": 3000,
+            "transcriptRevision": 1
+          }
+        ],
+        "facts": [
+          {
+            "evidenceIDs": [
+              "evidence-case-036-1"
+            ],
+            "id": "fact-case-036-old",
+            "kind": "decision",
+            "objectID": "choice-atlas-036-hourly",
+            "origin": "confirmed",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "superseded",
+            "subjectID": "atlas-036"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-036-2"
+            ],
+            "id": "fact-case-036-new",
+            "kind": "decision",
+            "objectID": "choice-atlas-036-ten-minutes",
+            "origin": "generated",
+            "predicate": "decisionAbout",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "atlas-036"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-036-1",
+              "evidence-case-036-2"
+            ],
+            "id": "fact-case-036-supersedes",
+            "kind": "relation",
+            "objectID": "fact-case-036-old",
+            "origin": "generated",
+            "predicate": "supersedes",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "fact-case-036-new"
+          },
+          {
+            "evidenceIDs": [
+              "evidence-case-036-3"
+            ],
+            "id": "fact-case-036-guess",
+            "kind": "relation",
+            "objectID": "fact-case-036-new",
+            "origin": "generated",
+            "predicate": "contradicts",
+            "stale": false,
+            "status": "observed",
+            "subjectID": "fact-case-036-old"
+          }
+        ],
+        "meetings": [
+          {
+            "id": "meeting-case-036-1",
+            "sequence": 1,
+            "title": "atlas-036 baseline"
+          },
+          {
+            "id": "meeting-case-036-2",
+            "sequence": 2,
+            "title": "atlas-036 follow-up"
+          }
+        ]
+      },
+      "expected": {
+        "abstentionReason": "unsupportedConflict",
+        "answerPolicy": "abstain",
+        "evidenceIDs": [],
+        "forbiddenResultIDs": [
+          "fact-case-036-old",
+          "fact-case-036-new",
+          "fact-case-036-supersedes",
+          "fact-case-036-guess"
+        ],
+        "resultIDs": []
+      },
+      "id": "case-036",
+      "job": "decisionConflicts",
+      "query": {
+        "language": "es",
+        "text": "Muestra decisiones contradictorias o reemplazadas sobre atlas-036 con fuentes."
+      },
+      "relationship": "abstention"
+    }
+  ],
+  "contentSource": "public-synthetic-only",
+  "generation": "public-synthetic-v1",
+  "jobs": [
+    {
+      "allowedResultKinds": [
+        "decision"
+      ],
+      "id": "decisionHistory",
+      "ordering": "currentConfirmedFirst",
+      "question": "What did we decide about X?",
+      "questionSpanish": "¿Qué decidimos sobre X?"
+    },
+    {
+      "allowedResultKinds": [
+        "relation"
+      ],
+      "id": "changeSince",
+      "ordering": "afterBaselineChronological",
+      "question": "What changed since the last meeting?",
+      "questionSpanish": "¿Qué cambió desde la última reunión?"
+    },
+    {
+      "allowedResultKinds": [
+        "commitment"
+      ],
+      "id": "personCommitments",
+      "ordering": "openBeforeCompleted",
+      "question": "What has this person committed to?",
+      "questionSpanish": "¿A qué se comprometió esta persona?"
+    },
+    {
+      "allowedResultKinds": [
+        "relation"
+      ],
+      "id": "commitmentBlockers",
+      "ordering": "directEvidenceOnly",
+      "question": "Which open decisions block this commitment?",
+      "questionSpanish": "¿Qué decisiones abiertas bloquean este compromiso?"
+    },
+    {
+      "allowedResultKinds": [
+        "topicMention"
+      ],
+      "id": "firstDiscussion",
+      "ordering": "earliestCurrentEvidenceFirst",
+      "question": "Where was this term first discussed?",
+      "questionSpanish": "¿Dónde se habló por primera vez de este término?"
+    },
+    {
+      "allowedResultKinds": [
+        "relation"
+      ],
+      "id": "decisionConflicts",
+      "ordering": "explicitRelationFirst",
+      "question": "Show contradictory or superseding decisions with sources.",
+      "questionSpanish": "Muestra decisiones contradictorias o reemplazadas con fuentes."
+    }
+  ],
+  "kind": "meeting-memory-graph-query-fixture",
+  "schemaVersion": 1
+}

@@ -1,0 +1,58 @@
+[
+  {
+    "shortDescription" : "Bilingual live-meeting question admission classifier.",
+    "metadataOutputVersion" : "3.0",
+    "outputSchema" : [
+      {
+        "isOptional" : "0",
+        "formattedType" : "String",
+        "type" : "String",
+        "name" : "label",
+        "shortDescription" : "Text label"
+      }
+    ],
+    "version" : "1.0.0",
+    "modelParameters" : [
+
+    ],
+    "author" : "Portavoz",
+    "specificationVersion" : 3,
+    "license" : "CC0-1.0 training corpus; generated model distributed under MIT.",
+    "stateSchema" : [
+
+    ],
+    "isUpdatable" : "0",
+    "availability" : {
+      "macOS" : "10.14",
+      "tvOS" : "12.0",
+      "visionOS" : "1.0",
+      "watchOS" : "5.0",
+      "iOS" : "12.0",
+      "macCatalyst" : "12.0"
+    },
+    "modelType" : {
+      "name" : "MLModelType_textClassifier"
+    },
+    "inputSchema" : [
+      {
+        "isOptional" : "0",
+        "formattedType" : "String",
+        "type" : "String",
+        "name" : "text",
+        "shortDescription" : "Input text"
+      }
+    ],
+    "classLabels" : [
+      "abstain",
+      "nonQuestion",
+      "question"
+    ],
+    "generatedClassName" : "PortavozLiveQuestionClassifier",
+    "userDefinedMetadata" : {
+      "featurePolicy" : "deterministic-name-punctuation-confidence-v1",
+      "corpusSHA256" : "d7d15611f91148ee4e4dd10cb3ea214b747009b82b2e82647bb7a8ab970dbe3d",
+      "corpusGeneration" : "public-synthetic-bilingual-v1"
+    },
+    "method" : "predict"
+  }
+]

@@ -323,6 +323,25 @@ final class RecoverInterruptedMeetingsUseCaseTests: XCTestCase {
         XCTAssertNil(recordingDetail)
     }
 
+    func testRealRecoveryKeepsAcceptedInputWhenEveryAudioFileIsMissing() async throws {
+        let fixture = RecoveryFixture()
+        let store = try MeetingStore.inMemory()
+        let meeting = fixture.meeting(id: MeetingID(), state: .recording)
+        try await store.beginRecording(meeting, assets: [fixture.pendingAsset(for: meeting)])
+        let item = ContextItem(meetingID: meeting.id, kind: .objective,
+                               content: "No asumir la aprobación", timestamp: 0)
+        try await PersistRecordingInput(store: store).execute(meetingID: meeting.id, items: [item])
+        let recovery = RecoverInterruptedMeetings(store: store, files: RecoveryFilesProbe(),
+                                                 activity: RecoveryActivityProbe(), now: { fixture.now })
+        _ = await recovery.execute(RecoverInterruptedMeetingsRequest())
+        _ = await recovery.execute(RecoverInterruptedMeetingsRequest())
+        let detail = try await store.detail(meeting.id)
+        XCTAssertEqual(detail?.meeting.lifecycleState, .needsAttention)
+        let rows = try await store.contextItems(for: meeting.id)
+        XCTAssertEqual(rows.map(\.id), [item.id])
+        XCTAssertEqual(rows.map(\.content), [item.content])
+    }
+
     func testRealStoreRepairsContentBearingRecordingShellInOneLaunchPass() async throws {
         let fixture = RecoveryFixture()
         let store = try MeetingStore.inMemory()
@@ -575,6 +594,8 @@ private actor RecoveryStoreProbe: RecoverInterruptedMeetingsStore {
         events.append("jobs")
         return meetingsWithJobs.contains(meetingID)
     }
+
+    func hasRecordingInput(for meetingID: MeetingID) async throws -> Bool { false }
 
     func discardRecoveryShell(_ meetingID: MeetingID) async throws -> Bool {
         events.append("discard")

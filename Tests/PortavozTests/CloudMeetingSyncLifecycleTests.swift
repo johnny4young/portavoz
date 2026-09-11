@@ -61,6 +61,79 @@ final class CloudMeetingSyncLifecycleTests: XCTestCase {
         XCTAssertEqual(seeded.progress.pendingLocalChanges, 1)
     }
 
+    func testExistingLibrarySeedPausesBeforeStorageAndResumesFromCaptureSignal() async throws {
+        let gate = TestDurableMaintenanceGate(
+            admission: .pause,
+            checkpoint: .pause)
+        let fixture = try makeFixture(
+            initialSeedBatchSize: 1,
+            maintenanceGate: gate.gate)
+        defer { fixture.cleanup() }
+        let meeting = Meeting(
+            title: "Existing local meeting",
+            startedAt: Date(timeIntervalSince1970: 1_784_340_000))
+        try await fixture.meetingStore.save(meeting)
+        for change in try await fixture.meetingStore.pendingMeetingSyncChanges() {
+            try await fixture.meetingStore.acknowledgeMeetingSync(change)
+        }
+
+        _ = await fixture.lifecycle.enable()
+        let paused = await fixture.lifecycle.includeExistingLibrary(
+            at: Date(timeIntervalSince1970: 1_784_340_100))
+        var snapshot = await fixture.transportStore.currentSnapshot()
+        XCTAssertEqual(paused.phase, .pending)
+        XCTAssertEqual(paused.initialSeedState, .requested)
+        XCTAssertEqual(paused.progress.pendingLocalChanges, 0)
+        XCTAssertNil(snapshot.initialSeedCursorMeetingID)
+        XCTAssertNil(snapshot.initialSeedPreparedAt)
+        let pausedSynchronizations = await fixture.driver.synchronizeCount()
+        XCTAssertEqual(pausedSynchronizations, 1)
+
+        gate.admission = .proceed
+        gate.checkpoint = .proceed
+        let resumed = await fixture.lifecycle.synchronizeNow()
+        snapshot = await fixture.transportStore.currentSnapshot()
+        XCTAssertEqual(resumed.phase, .pending)
+        XCTAssertEqual(resumed.progress.pendingLocalChanges, 1)
+        XCTAssertEqual(snapshot.initialSeedCursorMeetingID, meeting.id)
+        XCTAssertNotNil(snapshot.initialSeedPreparedAt)
+        let resumedSynchronizations = await fixture.driver.synchronizeCount()
+        XCTAssertEqual(resumedSynchronizations, 2)
+    }
+
+    func testExistingLibrarySeedYieldsAfterOneCommittedBatch() async throws {
+        let gate = TestDurableMaintenanceGate(
+            admission: .proceed,
+            checkpoint: .pause)
+        let fixture = try makeFixture(
+            initialSeedBatchSize: 1,
+            maintenanceGate: gate.gate)
+        defer { fixture.cleanup() }
+        let meetings = [
+            Meeting(title: "First existing meeting", startedAt: Date()),
+            Meeting(title: "Second existing meeting", startedAt: Date()),
+        ]
+        for meeting in meetings {
+            try await fixture.meetingStore.save(meeting)
+        }
+        for change in try await fixture.meetingStore.pendingMeetingSyncChanges() {
+            try await fixture.meetingStore.acknowledgeMeetingSync(change)
+        }
+
+        _ = await fixture.lifecycle.enable()
+        let paused = await fixture.lifecycle.includeExistingLibrary()
+        var snapshot = await fixture.transportStore.currentSnapshot()
+        XCTAssertEqual(paused.progress.pendingLocalChanges, 1)
+        XCTAssertNotNil(snapshot.initialSeedCursorMeetingID)
+        XCTAssertNil(snapshot.initialSeedPreparedAt)
+
+        gate.checkpoint = .proceed
+        let resumed = await fixture.lifecycle.synchronizeNow()
+        snapshot = await fixture.transportStore.currentSnapshot()
+        XCTAssertEqual(resumed.progress.pendingLocalChanges, 2)
+        XCTAssertNotNil(snapshot.initialSeedPreparedAt)
+    }
+
     func testSignedOutAccountPausesAndPreservesConsentForResume() async throws {
         let fixture = try makeFixture()
         defer { fixture.cleanup() }
@@ -204,7 +277,10 @@ final class CloudMeetingSyncLifecycleTests: XCTestCase {
         CloudMeetingSyncStateStore.accountFingerprint(forCloudRecordName: "icloud-user-b")
     }
 
-    private func makeFixture() throws -> LifecycleFixture {
+    private func makeFixture(
+        initialSeedBatchSize: Int = 100,
+        maintenanceGate: DurableMaintenanceGate = .unrestricted
+    ) throws -> LifecycleFixture {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("portavoz-cloud-lifecycle-tests")
             .appendingPathComponent(UUID().uuidString)
@@ -221,7 +297,9 @@ final class CloudMeetingSyncLifecycleTests: XCTestCase {
             transportStore: transportStore,
             localDeviceID: UUID(
                 uuidString: "50000000-0000-0000-0000-000000000001")!,
-            platform: platform)
+            platform: platform,
+            initialSeedBatchSize: initialSeedBatchSize,
+            maintenanceGate: maintenanceGate)
         return LifecycleFixture(
             root: root,
             meetingStore: meetingStore,
@@ -240,6 +318,56 @@ final class CloudMeetingSyncLifecycleTests: XCTestCase {
             generation: 3,
             changedAt: Date(timeIntervalSince1970: 1_784_340_000),
             mutation: .delete)
+    }
+}
+
+private final class TestDurableMaintenanceGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedAdmission: DurableMaintenanceDisposition
+    private var storedCheckpoint: DurableMaintenanceDisposition
+
+    init(
+        admission: DurableMaintenanceDisposition,
+        checkpoint: DurableMaintenanceDisposition
+    ) {
+        storedAdmission = admission
+        storedCheckpoint = checkpoint
+    }
+
+    var admission: DurableMaintenanceDisposition {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return storedAdmission
+        }
+        set {
+            lock.lock()
+            storedAdmission = newValue
+            lock.unlock()
+        }
+    }
+
+    var checkpoint: DurableMaintenanceDisposition {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return storedCheckpoint
+        }
+        set {
+            lock.lock()
+            storedCheckpoint = newValue
+            lock.unlock()
+        }
+    }
+
+    var gate: DurableMaintenanceGate {
+        DurableMaintenanceGate { [weak self] _, phase in
+            guard let self else { return .pause }
+            return switch phase {
+            case .admission: self.admission
+            case .checkpoint: self.checkpoint
+            }
+        }
     }
 }
 

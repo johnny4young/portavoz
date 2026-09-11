@@ -76,6 +76,7 @@ final class MeetingReminderWorkflowTests: XCTestCase {
 
     private func event(_ title: String, minutes: Double) -> UpcomingEvent {
         UpcomingEvent(
+            id: "event-\(title)-\(minutes)",
             title: title,
             startDate: now.addingTimeInterval(minutes * 60),
             attendees: [])

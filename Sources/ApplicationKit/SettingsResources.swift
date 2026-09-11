@@ -85,13 +85,56 @@ public enum ManageRecordingStorageResult: Equatable, Sendable {
     case moved(location: RecordingStorageLocation, recordingCount: Int)
 }
 
+/// Whether capture or post-capture work still owns files under the recordings
+/// root. Migration must not run while it does.
+public protocol RecordingStorageActivity: Sendable {
+    func recordingStorageIsBusy() async -> Bool
+}
+
+public enum ManageRecordingStorageError: Error, Equatable, LocalizedError, Sendable {
+    /// A meeting is recording or still being processed, so its audio files are
+    /// open. Moving them now would unlink the directory underneath the writers.
+    case recordingInProgress
+
+    /// The migration failed *and* could not put back everything it had moved.
+    /// Carried as its own case because every other failure is a true no-op —
+    /// telling the user "nothing was lost" here would be false, and the folder
+    /// and count are the only two facts that let them recover.
+    case recordingsStranded(count: Int, path: String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .recordingInProgress:
+            "Finish the current recording before moving the recordings folder."
+        case .recordingsStranded(let count, let path):
+            """
+            \(count) recording(s) were moved to \(path) and could not be put \
+            back. They are safe there: move them into the Audio folder of your \
+            recordings location, or point Portavoz at that folder.
+            """
+        }
+    }
+}
+
 /// Coordinates the durable recording-root change while keeping filesystem
 /// and marker-file behavior in an injected outer adapter.
+///
+/// Migration copies and then **deletes** each meeting directory when the
+/// destination is on another volume, so a live capture's directory would be
+/// unlinked while its writers still hold it open — every sample after the copy
+/// point lands in an unlinked inode and Stop reports the truncated copy as
+/// preserved audio. Recording safety outranks the setting, so this fails
+/// closed instead.
 public struct ManageRecordingStorage: ApplicationUseCase {
     private let storage: any RecordingStorageManaging
+    private let activity: (any RecordingStorageActivity)?
 
-    public init(storage: any RecordingStorageManaging) {
+    public init(
+        storage: any RecordingStorageManaging,
+        activity: (any RecordingStorageActivity)? = nil
+    ) {
         self.storage = storage
+        self.activity = activity
     }
 
     public func execute(
@@ -101,6 +144,9 @@ public struct ManageRecordingStorage: ApplicationUseCase {
         case .inspect:
             return .location(await storage.recordingStorageLocation())
         case .move(let destination):
+            if await activity?.recordingStorageIsBusy() == true {
+                throw ManageRecordingStorageError.recordingInProgress
+            }
             let count = try await storage.migrateRecordingStorage(
                 to: destination,
                 progress: request.progress)

@@ -21,9 +21,17 @@ public enum SubtitleExport {
     public static func render(
         _ format: Format,
         segments: [TranscriptSegment],
-        speakers: [Speaker]
+        speakers: [Speaker],
+        correctionProvenance: TranscriptCorrectionExportProvenance? = nil
     ) -> String {
-        let cues = cues(segments: segments, speakers: speakers)
+        let correctedSegmentIDs = correctionProvenance.map {
+            Set($0.sourceSegmentIDsByExportedSegmentID.keys)
+        } ?? []
+        let cues = cues(
+            segments: segments,
+            speakers: speakers,
+            correctedSegmentIDs: correctedSegmentIDs)
+        let provenanceNote = correctionProvenance.map(provenanceNote)
         switch format {
         case .srt:
             return cues.enumerated().map { index, cue in
@@ -38,8 +46,19 @@ public enum SubtitleExport {
                     + "\(timestamp(cue.end, separator: "."))\n"
                     + cue.displayText
             }.joined(separator: "\n\n")
-            return "WEBVTT\n\n" + body + "\n"
+            let note = provenanceNote.map { $0 + "\n\n" } ?? ""
+            return "WEBVTT\n\n" + note + body + "\n"
         }
+    }
+
+    private static func provenanceNote(
+        _ provenance: TranscriptCorrectionExportProvenance
+    ) -> String {
+        "NOTE Portavoz transcript correction provenance\n"
+            + "Accepted transcript revision: \(provenance.baseTranscriptRevision)\n"
+            + "Correction revision: \(provenance.correctionRevision.rawValue)\n"
+            + "Applied corrections: \(provenance.activeCorrectionIDs.count)\n"
+            + "Corrected text is an overlay; original transcript and audio are unchanged."
     }
 
     struct Cue: Equatable {
@@ -48,10 +67,11 @@ public enum SubtitleExport {
         var speakerID: SpeakerID?
         var speaker: String?
         var text: String
+        var isCorrected: Bool
 
         var displayText: String {
-            guard let speaker else { return text }
-            return "\(speaker): \(text)"
+            let spokenText = speaker.map { "\($0): \(text)" } ?? text
+            return isCorrected ? "[Corrected] \(spokenText)" : spokenText
         }
     }
 
@@ -60,7 +80,8 @@ public enum SubtitleExport {
     /// duration and characters.
     static func cues(
         segments: [TranscriptSegment],
-        speakers: [Speaker]
+        speakers: [Speaker],
+        correctedSegmentIDs: Set<UUID> = []
     ) -> [Cue] {
         let names = Dictionary(uniqueKeysWithValues: speakers.map {
             ($0.id, speakerName($0))
@@ -70,8 +91,10 @@ public enum SubtitleExport {
             let text = inlineText(segment.text)
             guard TranscriptContentPolicy.hasLexicalContent(text) else { continue }
             let speaker = segment.speakerID.flatMap { names[$0] }
+            let isCorrected = correctedSegmentIDs.contains(segment.id)
             if var last = cues.last,
                 last.speakerID == segment.speakerID,
+                last.isCorrected == isCorrected,
                 segment.endTime - last.start <= maximumCueSeconds,
                 last.displayText.count + text.count + 1 <= maximumCueCharacters {
                 last.end = max(last.end, segment.endTime)
@@ -83,7 +106,8 @@ public enum SubtitleExport {
                     end: max(segment.endTime, segment.startTime),
                     speakerID: segment.speakerID,
                     speaker: speaker,
-                    text: text))
+                    text: text,
+                    isCorrected: isCorrected))
             }
         }
         return cues

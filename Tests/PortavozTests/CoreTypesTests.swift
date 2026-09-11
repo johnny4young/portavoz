@@ -135,6 +135,12 @@ final class CoreTypesTests: XCTestCase {
         XCTAssertEqual(
             evidence.resolveEvidence(currentTranscriptRevision: 2, segments: []).status,
             .unavailable)
+        XCTAssertEqual(
+            evidence.resolveEvidence(
+                currentTranscriptRevision: 2,
+                segments: [segment, segment]).status,
+            .unavailable,
+            "duplicate imported identities must fail closed instead of trapping")
     }
 
     func testCompanionEvidenceSeparatesQuestionAndAnswerRoles() {

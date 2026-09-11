@@ -5,8 +5,10 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUTPUT="${1:-/private/tmp/portavoz-scale-baseline.json}"
 
 cd "$ROOT"
-swift build -c release --product portavoz-cli
-"$ROOT/.build/release/portavoz-cli" bench-scale \
+# shellcheck source=scripts/perf-binary.sh
+source "$ROOT/scripts/perf-binary.sh"
+portavoz_prepare_perf_binary "$ROOT"
+"$PORTAVOZ_PERF_BINARY" bench-scale \
     --library-sizes "${PORTAVOZ_SCALE_LIBRARY_SIZES:-1000,10000,50000,100000}" \
     --meeting-minutes "${PORTAVOZ_SCALE_MEETING_MINUTES:-30,120,480}" \
     --runs "${PORTAVOZ_SCALE_RUNS:-20}" \

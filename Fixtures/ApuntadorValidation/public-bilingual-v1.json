@@ -1,0 +1,741 @@
+{
+  "claims": [
+    {
+      "evidenceIDs": [
+        "evidence-meeting-en"
+      ],
+      "id": "claim-meeting-en",
+      "language": "en",
+      "status": "supported",
+      "text": "The launch is September 14 at 09:00 UTC after the rollback rehearsal."
+    },
+    {
+      "evidenceIDs": [
+        "distractor-meeting-en"
+      ],
+      "id": "forbidden-meeting-en",
+      "language": "en",
+      "status": "forbidden",
+      "text": "The launch is October 14."
+    },
+    {
+      "evidenceIDs": [
+        "evidence-meeting-es"
+      ],
+      "id": "claim-meeting-es",
+      "language": "es",
+      "status": "supported",
+      "text": "El lanzamiento es el 18 de septiembre a las 10:00 UTC después del ensayo de reversión."
+    },
+    {
+      "evidenceIDs": [
+        "distractor-meeting-es"
+      ],
+      "id": "forbidden-meeting-es",
+      "language": "es",
+      "status": "forbidden",
+      "text": "El lanzamiento es el 18 de octubre."
+    },
+    {
+      "evidenceIDs": [
+        "evidence-interview-en"
+      ],
+      "id": "claim-interview-en",
+      "language": "en",
+      "status": "supported",
+      "text": "Jordan would page the database owner within five minutes and freeze writes."
+    },
+    {
+      "evidenceIDs": [
+        "distractor-interview-en"
+      ],
+      "id": "forbidden-interview-en",
+      "language": "en",
+      "status": "forbidden",
+      "text": "Jordan would wait thirty minutes before paging."
+    },
+    {
+      "evidenceIDs": [
+        "evidence-interview-es"
+      ],
+      "id": "claim-interview-es",
+      "language": "es",
+      "status": "supported",
+      "text": "Camila avisaría en cinco minutos y congelaría escrituras."
+    },
+    {
+      "evidenceIDs": [
+        "distractor-interview-es"
+      ],
+      "id": "forbidden-interview-es",
+      "language": "es",
+      "status": "forbidden",
+      "text": "Camila esperaría treinta minutos antes de avisar."
+    },
+    {
+      "evidenceIDs": [
+        "evidence-note-en"
+      ],
+      "id": "claim-note-en",
+      "language": "en",
+      "status": "supported",
+      "text": "Invoices stay in the current region until two checksum rehearsals pass."
+    },
+    {
+      "evidenceIDs": [
+        "distractor-note-en"
+      ],
+      "id": "forbidden-note-en",
+      "language": "en",
+      "status": "forbidden",
+      "text": "Invoice PDFs should be sent before checksum validation."
+    },
+    {
+      "evidenceIDs": [
+        "evidence-note-es"
+      ],
+      "id": "claim-note-es",
+      "language": "es",
+      "status": "supported",
+      "text": "Las facturas siguen en la región actual hasta que dos ensayos de checksum pasen."
+    },
+    {
+      "evidenceIDs": [
+        "distractor-note-es"
+      ],
+      "id": "forbidden-note-es",
+      "language": "es",
+      "status": "forbidden",
+      "text": "Los PDF se deben enviar antes de validar el checksum."
+    }
+  ],
+  "contentSource": "public-synthetic-only",
+  "frozenAt": "2026-08-23T00:00:00Z",
+  "generation": "public-bilingual-v1",
+  "kind": "apuntador-validation-fixture",
+  "scenarios": [
+    {
+      "expectedClaimIDs": [
+        "claim-meeting-en"
+      ],
+      "expectedEvidenceIDs": [
+        "evidence-meeting-en"
+      ],
+      "expectedOutcome": "answered",
+      "fault": "none",
+      "forbiddenClaimIDs": [
+        "forbidden-meeting-en"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-meeting-en"
+      ],
+      "id": "scenario-meeting-en-answer",
+      "language": "en",
+      "question": "When is the Harbor launch?",
+      "sourceKinds": [
+        "meeting"
+      ]
+    },
+    {
+      "expectedClaimIDs": [],
+      "expectedEvidenceIDs": [],
+      "expectedOutcome": "abstained",
+      "fault": "none",
+      "forbiddenClaimIDs": [
+        "forbidden-meeting-en"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-meeting-en"
+      ],
+      "id": "scenario-meeting-en-abstain",
+      "language": "en",
+      "question": "Who approved an additional launch region?",
+      "sourceKinds": [
+        "meeting"
+      ]
+    },
+    {
+      "expectedClaimIDs": [
+        "claim-meeting-es"
+      ],
+      "expectedEvidenceIDs": [
+        "evidence-meeting-es"
+      ],
+      "expectedOutcome": "answered",
+      "fault": "none",
+      "forbiddenClaimIDs": [
+        "forbidden-meeting-es"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-meeting-es"
+      ],
+      "id": "scenario-meeting-es-answer",
+      "language": "es",
+      "question": "¿Cuándo es el lanzamiento Costa?",
+      "sourceKinds": [
+        "meeting"
+      ]
+    },
+    {
+      "expectedClaimIDs": [],
+      "expectedEvidenceIDs": [],
+      "expectedOutcome": "abstained",
+      "fault": "none",
+      "forbiddenClaimIDs": [
+        "forbidden-meeting-es"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-meeting-es"
+      ],
+      "id": "scenario-meeting-es-abstain",
+      "language": "es",
+      "question": "¿Quién aprobó una región adicional?",
+      "sourceKinds": [
+        "meeting"
+      ]
+    },
+    {
+      "expectedClaimIDs": [
+        "claim-interview-en"
+      ],
+      "expectedEvidenceIDs": [
+        "evidence-interview-en"
+      ],
+      "expectedOutcome": "answered",
+      "fault": "none",
+      "forbiddenClaimIDs": [
+        "forbidden-interview-en"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-interview-en"
+      ],
+      "id": "scenario-interview-en-answer",
+      "language": "en",
+      "question": "What would Jordan do first during the database incident?",
+      "sourceKinds": [
+        "interview"
+      ]
+    },
+    {
+      "expectedClaimIDs": [],
+      "expectedEvidenceIDs": [],
+      "expectedOutcome": "abstained",
+      "fault": "none",
+      "forbiddenClaimIDs": [
+        "forbidden-interview-en"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-interview-en"
+      ],
+      "id": "scenario-interview-en-abstain",
+      "language": "en",
+      "question": "Which monitoring vendor did Jordan choose?",
+      "sourceKinds": [
+        "interview"
+      ]
+    },
+    {
+      "expectedClaimIDs": [
+        "claim-interview-es"
+      ],
+      "expectedEvidenceIDs": [
+        "evidence-interview-es"
+      ],
+      "expectedOutcome": "answered",
+      "fault": "none",
+      "forbiddenClaimIDs": [
+        "forbidden-interview-es"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-interview-es"
+      ],
+      "id": "scenario-interview-es-answer",
+      "language": "es",
+      "question": "¿Qué haría Camila primero durante el incidente?",
+      "sourceKinds": [
+        "interview"
+      ]
+    },
+    {
+      "expectedClaimIDs": [],
+      "expectedEvidenceIDs": [],
+      "expectedOutcome": "abstained",
+      "fault": "none",
+      "forbiddenClaimIDs": [
+        "forbidden-interview-es"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-interview-es"
+      ],
+      "id": "scenario-interview-es-abstain",
+      "language": "es",
+      "question": "¿Qué proveedor de monitoreo eligió Camila?",
+      "sourceKinds": [
+        "interview"
+      ]
+    },
+    {
+      "expectedClaimIDs": [
+        "claim-note-en"
+      ],
+      "expectedEvidenceIDs": [
+        "evidence-note-en"
+      ],
+      "expectedOutcome": "answered",
+      "fault": "none",
+      "forbiddenClaimIDs": [
+        "forbidden-note-en"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-note-en"
+      ],
+      "id": "scenario-note-en-answer",
+      "language": "en",
+      "question": "What condition must pass before invoices move?",
+      "sourceKinds": [
+        "note"
+      ]
+    },
+    {
+      "expectedClaimIDs": [],
+      "expectedEvidenceIDs": [],
+      "expectedOutcome": "abstained",
+      "fault": "none",
+      "forbiddenClaimIDs": [
+        "forbidden-note-en"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-note-en"
+      ],
+      "id": "scenario-note-en-abstain",
+      "language": "en",
+      "question": "Which customer requested the migration?",
+      "sourceKinds": [
+        "note"
+      ]
+    },
+    {
+      "expectedClaimIDs": [
+        "claim-note-es"
+      ],
+      "expectedEvidenceIDs": [
+        "evidence-note-es"
+      ],
+      "expectedOutcome": "answered",
+      "fault": "none",
+      "forbiddenClaimIDs": [
+        "forbidden-note-es"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-note-es"
+      ],
+      "id": "scenario-note-es-answer",
+      "language": "es",
+      "question": "¿Qué condición debe cumplirse antes de mover las facturas?",
+      "sourceKinds": [
+        "note"
+      ]
+    },
+    {
+      "expectedClaimIDs": [],
+      "expectedEvidenceIDs": [],
+      "expectedOutcome": "abstained",
+      "fault": "none",
+      "forbiddenClaimIDs": [
+        "forbidden-note-es"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-note-es"
+      ],
+      "id": "scenario-note-es-abstain",
+      "language": "es",
+      "question": "¿Qué cliente pidió la migración?",
+      "sourceKinds": [
+        "note"
+      ]
+    },
+    {
+      "expectedClaimIDs": [],
+      "expectedEvidenceIDs": [],
+      "expectedOutcome": "cancelled",
+      "fault": "cancelBeforeEvidence",
+      "forbiddenClaimIDs": [
+        "forbidden-meeting-en"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-meeting-en"
+      ],
+      "id": "scenario-cancelbeforeevidence-en",
+      "language": "en",
+      "question": "Exercise the declared failure without publishing an answer.",
+      "sourceKinds": [
+        "meeting"
+      ]
+    },
+    {
+      "expectedClaimIDs": [],
+      "expectedEvidenceIDs": [],
+      "expectedOutcome": "cancelled",
+      "fault": "cancelBeforeEvidence",
+      "forbiddenClaimIDs": [
+        "forbidden-meeting-es"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-meeting-es"
+      ],
+      "id": "scenario-cancelbeforeevidence-es",
+      "language": "es",
+      "question": "Ejercita la falla declarada sin publicar una respuesta.",
+      "sourceKinds": [
+        "meeting"
+      ]
+    },
+    {
+      "expectedClaimIDs": [],
+      "expectedEvidenceIDs": [],
+      "expectedOutcome": "timedOut",
+      "fault": "timeout",
+      "forbiddenClaimIDs": [
+        "forbidden-interview-en"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-interview-en"
+      ],
+      "id": "scenario-timeout-en",
+      "language": "en",
+      "question": "Exercise the declared failure without publishing an answer.",
+      "sourceKinds": [
+        "interview"
+      ]
+    },
+    {
+      "expectedClaimIDs": [],
+      "expectedEvidenceIDs": [],
+      "expectedOutcome": "timedOut",
+      "fault": "timeout",
+      "forbiddenClaimIDs": [
+        "forbidden-interview-es"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-interview-es"
+      ],
+      "id": "scenario-timeout-es",
+      "language": "es",
+      "question": "Ejercita la falla declarada sin publicar una respuesta.",
+      "sourceKinds": [
+        "interview"
+      ]
+    },
+    {
+      "expectedClaimIDs": [],
+      "expectedEvidenceIDs": [],
+      "expectedOutcome": "unavailable",
+      "fault": "offline",
+      "forbiddenClaimIDs": [
+        "forbidden-note-en"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-note-en"
+      ],
+      "id": "scenario-offline-en",
+      "language": "en",
+      "question": "Exercise the declared failure without publishing an answer.",
+      "sourceKinds": [
+        "note"
+      ]
+    },
+    {
+      "expectedClaimIDs": [],
+      "expectedEvidenceIDs": [],
+      "expectedOutcome": "unavailable",
+      "fault": "offline",
+      "forbiddenClaimIDs": [
+        "forbidden-note-es"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-note-es"
+      ],
+      "id": "scenario-offline-es",
+      "language": "es",
+      "question": "Ejercita la falla declarada sin publicar una respuesta.",
+      "sourceKinds": [
+        "note"
+      ]
+    },
+    {
+      "expectedClaimIDs": [],
+      "expectedEvidenceIDs": [],
+      "expectedOutcome": "unavailable",
+      "fault": "providerDown",
+      "forbiddenClaimIDs": [
+        "forbidden-meeting-en"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-meeting-en"
+      ],
+      "id": "scenario-providerdown-en",
+      "language": "en",
+      "question": "Exercise the declared failure without publishing an answer.",
+      "sourceKinds": [
+        "meeting"
+      ]
+    },
+    {
+      "expectedClaimIDs": [],
+      "expectedEvidenceIDs": [],
+      "expectedOutcome": "unavailable",
+      "fault": "providerDown",
+      "forbiddenClaimIDs": [
+        "forbidden-meeting-es"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-meeting-es"
+      ],
+      "id": "scenario-providerdown-es",
+      "language": "es",
+      "question": "Ejercita la falla declarada sin publicar una respuesta.",
+      "sourceKinds": [
+        "meeting"
+      ]
+    },
+    {
+      "expectedClaimIDs": [],
+      "expectedEvidenceIDs": [],
+      "expectedOutcome": "unavailable",
+      "fault": "corruptedState",
+      "forbiddenClaimIDs": [
+        "forbidden-interview-en"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-interview-en"
+      ],
+      "id": "scenario-corruptedstate-en",
+      "language": "en",
+      "question": "Exercise the declared failure without publishing an answer.",
+      "sourceKinds": [
+        "interview"
+      ]
+    },
+    {
+      "expectedClaimIDs": [],
+      "expectedEvidenceIDs": [],
+      "expectedOutcome": "unavailable",
+      "fault": "corruptedState",
+      "forbiddenClaimIDs": [
+        "forbidden-interview-es"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-interview-es"
+      ],
+      "id": "scenario-corruptedstate-es",
+      "language": "es",
+      "question": "Ejercita la falla declarada sin publicar una respuesta.",
+      "sourceKinds": [
+        "interview"
+      ]
+    },
+    {
+      "expectedClaimIDs": [
+        "claim-note-en"
+      ],
+      "expectedEvidenceIDs": [
+        "evidence-note-en"
+      ],
+      "expectedOutcome": "recovered",
+      "fault": "relaunch",
+      "forbiddenClaimIDs": [
+        "forbidden-note-en"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-note-en"
+      ],
+      "id": "scenario-relaunch-en",
+      "language": "en",
+      "question": "Recover the note answer after relaunch.",
+      "sourceKinds": [
+        "note"
+      ]
+    },
+    {
+      "expectedClaimIDs": [
+        "claim-note-es"
+      ],
+      "expectedEvidenceIDs": [
+        "evidence-note-es"
+      ],
+      "expectedOutcome": "recovered",
+      "fault": "relaunch",
+      "forbiddenClaimIDs": [
+        "forbidden-note-es"
+      ],
+      "hardNegativeEvidenceIDs": [
+        "distractor-note-es"
+      ],
+      "id": "scenario-relaunch-es",
+      "language": "es",
+      "question": "Recupera la respuesta de la nota después del relanzamiento.",
+      "sourceKinds": [
+        "note"
+      ]
+    }
+  ],
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "author": null,
+      "id": "source-meeting-en",
+      "kind": "meeting",
+      "language": "en",
+      "objective": null,
+      "occurredAt": "2026-08-18T14:00:00Z",
+      "participants": [
+        "Avery",
+        "Mina"
+      ],
+      "passages": [
+        {
+          "id": "evidence-meeting-en",
+          "ordinal": 0,
+          "text": "Mina: The launch window is September 14 at 09:00 UTC, after the rollback rehearsal.",
+          "timestampMilliseconds": 12000
+        },
+        {
+          "id": "distractor-meeting-en",
+          "ordinal": 1,
+          "text": "Avery: October 14 belongs to the archived training exercise, not this launch.",
+          "timestampMilliseconds": 32000
+        }
+      ],
+      "title": "Harbor launch review"
+    },
+    {
+      "author": null,
+      "id": "source-meeting-es",
+      "kind": "meeting",
+      "language": "es",
+      "objective": null,
+      "occurredAt": "2026-08-18T15:00:00Z",
+      "participants": [
+        "Lucía",
+        "Tomás"
+      ],
+      "passages": [
+        {
+          "id": "evidence-meeting-es",
+          "ordinal": 0,
+          "text": "Lucía: La ventana de lanzamiento es el 18 de septiembre a las 10:00 UTC, después del ensayo de reversión.",
+          "timestampMilliseconds": 15000
+        },
+        {
+          "id": "distractor-meeting-es",
+          "ordinal": 1,
+          "text": "Tomás: El 18 de octubre corresponde al simulacro archivado, no a este lanzamiento.",
+          "timestampMilliseconds": 35000
+        }
+      ],
+      "title": "Revisión de lanzamiento Costa"
+    },
+    {
+      "author": null,
+      "id": "source-interview-en",
+      "kind": "interview",
+      "language": "en",
+      "objective": "Evaluate incident-response judgment",
+      "occurredAt": "2026-08-19T16:00:00Z",
+      "participants": [
+        "Interviewer",
+        "Jordan"
+      ],
+      "passages": [
+        {
+          "id": "evidence-interview-en",
+          "ordinal": 0,
+          "text": "Jordan: I would page the database owner within five minutes and freeze writes before rebuilding replicas.",
+          "timestampMilliseconds": 41000
+        },
+        {
+          "id": "distractor-interview-en",
+          "ordinal": 1,
+          "text": "Jordan: I would not disable alerts or wait thirty minutes before paging the owner.",
+          "timestampMilliseconds": 67000
+        }
+      ],
+      "title": "Incident response interview"
+    },
+    {
+      "author": null,
+      "id": "source-interview-es",
+      "kind": "interview",
+      "language": "es",
+      "objective": "Evaluar criterio de respuesta a incidentes",
+      "occurredAt": "2026-08-19T17:00:00Z",
+      "participants": [
+        "Entrevistadora",
+        "Camila"
+      ],
+      "passages": [
+        {
+          "id": "evidence-interview-es",
+          "ordinal": 0,
+          "text": "Camila: Avisaría a la responsable de base de datos en cinco minutos y congelaría escrituras antes de reconstruir réplicas.",
+          "timestampMilliseconds": 44000
+        },
+        {
+          "id": "distractor-interview-es",
+          "ordinal": 1,
+          "text": "Camila: No desactivaría alertas ni esperaría treinta minutos antes de avisar.",
+          "timestampMilliseconds": 71000
+        }
+      ],
+      "title": "Entrevista de respuesta a incidentes"
+    },
+    {
+      "author": "Rowan",
+      "id": "source-note-en",
+      "kind": "note",
+      "language": "en",
+      "objective": null,
+      "occurredAt": "2026-08-20T09:00:00Z",
+      "participants": [],
+      "passages": [
+        {
+          "id": "evidence-note-en",
+          "ordinal": 0,
+          "text": "Decision: keep invoices in the current region until the checksum rehearsal passes twice.",
+          "timestampMilliseconds": null
+        },
+        {
+          "id": "distractor-note-en",
+          "ordinal": 1,
+          "text": "Rejected draft: send invoice PDFs automatically before checksum validation.",
+          "timestampMilliseconds": null
+        }
+      ],
+      "title": "Billing migration note"
+    },
+    {
+      "author": "Renata",
+      "id": "source-note-es",
+      "kind": "note",
+      "language": "es",
+      "objective": null,
+      "occurredAt": "2026-08-20T10:00:00Z",
+      "participants": [],
+      "passages": [
+        {
+          "id": "evidence-note-es",
+          "ordinal": 0,
+          "text": "Decisión: mantener las facturas en la región actual hasta que el ensayo de checksum pase dos veces.",
+          "timestampMilliseconds": null
+        },
+        {
+          "id": "distractor-note-es",
+          "ordinal": 1,
+          "text": "Borrador rechazado: enviar los PDF automáticamente antes de validar el checksum.",
+          "timestampMilliseconds": null
+        }
+      ],
+      "title": "Nota de migración de facturación"
+    }
+  ]
+}

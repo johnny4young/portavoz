@@ -20,6 +20,25 @@ cd "$(dirname "$0")/.."
 VERSION="${1:?usage: scripts/make-release.sh <version>}"
 BUILD="${PORTAVOZ_BUILD:-$(date +%Y%m%d%H%M)}"
 GENERATE_APPCAST="${GENERATE_APPCAST:-$HOME/.local/bin/generate_appcast}"
+SOURCE_COMMIT="${PORTAVOZ_RELEASE_COMMIT:?A release requires PORTAVOZ_RELEASE_COMMIT}"
+
+if [[ ! "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "PORTAVOZ_RELEASE_COMMIT must be one full lowercase Git SHA." >&2
+  exit 64
+fi
+require_exact_source_checkout() {
+  local phase="$1"
+  if [[ "$(git rev-parse HEAD)" != "$SOURCE_COMMIT" ]]; then
+    echo "PORTAVOZ_RELEASE_COMMIT does not match HEAD at $phase." >&2
+    exit 64
+  fi
+  if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+    echo "A release requires a clean tracked worktree at $phase." >&2
+    exit 64
+  fi
+}
+
+require_exact_source_checkout "preflight"
 
 : "${PORTAVOZ_PROVISIONING_PROFILE:?A release requires the Developer ID CloudKit provisioning profile}"
 : "${PORTAVOZ_SIGN_IDENTITY:?A release requires a Developer ID Application identity}"
@@ -28,9 +47,16 @@ if [[ "$PORTAVOZ_SIGN_IDENTITY" == "-" ]]; then
   echo "A release cannot use an ad-hoc signing identity." >&2
   exit 64
 fi
+if [[ ! -x "$GENERATE_APPCAST" ]]; then
+  echo "A release requires an executable generate_appcast at $GENERATE_APPCAST." >&2
+  exit 64
+fi
 
-PORTAVOZ_REQUIRE_CLOUDKIT_PROFILE=1 \
+PORTAVOZ_RELEASE_COMMIT="$SOURCE_COMMIT" PORTAVOZ_REQUIRE_CLOUDKIT_PROFILE=1 \
   scripts/make-app.sh --release --version "$VERSION" --build "$BUILD"
+# Refuse notarization if the long app build observed or ended beside a changed
+# tracked checkout. Otherwise the stamped commit could name adjacent source.
+require_exact_source_checkout "post-build verification"
 scripts/make-dmg.sh --skip-build
 
 RELEASE_DIR=dist/release
@@ -39,12 +65,12 @@ mkdir -p "$RELEASE_DIR"
 mv "dist/Portavoz-$VERSION.dmg" "$RELEASE_DIR/"
 
 # Sparkle appcast (EdDSA-signed with the 'portavoz' Keychain key).
-if [[ -x "$GENERATE_APPCAST" ]]; then
-  "$GENERATE_APPCAST" --account portavoz "$RELEASE_DIR"
-else
-  echo "⚠️  generate_appcast not found ($GENERATE_APPCAST)."
-  echo "   Download it from the Sparkle release and export it in GENERATE_APPCAST."
-fi
+"$GENERATE_APPCAST" --account portavoz "$RELEASE_DIR"
+scripts/verify_release_appcast.py \
+  --appcast "$RELEASE_DIR/appcast.xml" \
+  --version "$VERSION" \
+  --build "$BUILD" \
+  --dmg "$RELEASE_DIR/Portavoz-$VERSION.dmg"
 
 # Homebrew cask with real version + sha256.
 SHA256="$(shasum -a 256 "$RELEASE_DIR/Portavoz-$VERSION.dmg" | cut -d' ' -f1)"

@@ -31,6 +31,7 @@ final class PostCaptureSummaryGenerationAttemptTests: XCTestCase {
             run.configJSON,
             #"{"attempt":2,"jobID":"31313131-3131-3131-3131-313131313131","#
                 + #""operation":"generate","recipeID":"general","#
+                + #""sourceCorrectionRevision":"accepted","#
                 + #""sourceTranscriptRevision":7,"workflow":"post-capture"}"#)
         XCTAssertEqual(
             run.metricsJSON,
@@ -101,6 +102,7 @@ private struct Fixture {
             request: request,
             selection: selection,
             sourceTranscriptRevision: 7,
+            sourceCorrectionRevision: .accepted,
             startedAt: startedAt)
         draft = SummaryDraft(
             meetingID: meetingID,

@@ -15,12 +15,13 @@ from pathlib import Path
 
 
 FORMAT_VERSION = 2
-PROTOCOL_VERSION = 1
+LEGACY_PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 MAX_REPORT_BYTES = 25 * 1024 * 1024
 RELEASE_APP = Path("/Applications/Portavoz.app")
 DEFAULT_APP = Path("/Applications/Portavoz Dev.app")
 CHECK_STATES = ("pass", "fail", "not-observed")
-SCENARIOS = {
+LEGACY_SCENARIOS = {
     "callback-recovery": (
         "warning-within-eight-seconds",
         "microphone-continued",
@@ -65,6 +66,55 @@ SCENARIOS = {
         "recording-stopped-and-saved",
     ),
 }
+EVIDENCE_SUBSYSTEMS = {
+    "recording.start.committed": "recording-start",
+    "capture.route.preserved": "capture-route",
+    "capture.callback.recovered": "callback-recovery",
+    "recording.stop.durable": "stop-durability",
+    "post-capture.admission.completed": "post-capture-admission",
+    "translation.live.separated": "live-translation",
+    "refine.language.preserved": "refine",
+}
+FIXTURES = {
+    "built-in-speaker-mic": (
+        "recording.start.committed",
+        "capture.route.preserved",
+        "recording.stop.durable",
+        "post-capture.admission.completed",
+    ),
+    "airpods": (
+        "recording.start.committed",
+        "capture.route.preserved",
+        "recording.stop.durable",
+        "post-capture.admission.completed",
+    ),
+    "mixed-language": (
+        "recording.start.committed",
+        "recording.stop.durable",
+        "post-capture.admission.completed",
+        "translation.live.separated",
+        "refine.language.preserved",
+    ),
+    "long-call": (
+        "recording.start.committed",
+        "capture.route.preserved",
+        "recording.stop.durable",
+        "post-capture.admission.completed",
+    ),
+    "source-callback-interruption": (
+        "recording.start.committed",
+        "capture.route.preserved",
+        "capture.callback.recovered",
+        "recording.stop.durable",
+        "post-capture.admission.completed",
+    ),
+    "model-cold-start": (
+        "recording.start.committed",
+        "recording.stop.durable",
+        "post-capture.admission.completed",
+    ),
+}
+FIXTURES_REQUIRING_AFTER_REFINE = {"mixed-language"}
 
 CODE_PATTERN = re.compile(r"^[A-Za-z0-9._-]{1,120}$")
 HOST_PATTERN = re.compile(r"^[a-z0-9.:[\]-]{1,253}$")
@@ -143,9 +193,11 @@ def timestamp(value, path):
     if len(value) > 64:
         raise EvidenceError(f"{path} exceeds the timestamp safety limit")
     try:
-        datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError as error:
         raise EvidenceError(f"{path} must be an ISO-8601 timestamp") from error
+    if parsed.utcoffset() is None:
+        raise EvidenceError(f"{path} must include a UTC offset")
     return value
 
 
@@ -401,8 +453,27 @@ def sw_vers(flag):
     return label(result.stdout.strip(), f"macOS.{flag}")
 
 
+def current_macos():
+    return {
+        "productVersion": sw_vers("-productVersion"),
+        "buildVersion": sw_vers("-buildVersion"),
+    }
+
+
+def validate_macos_observation(value):
+    value = object_shape(
+        value,
+        "macOS",
+        ("productVersion", "buildVersion"),
+    )
+    return {
+        "productVersion": label(value["productVersion"], "macOS.productVersion"),
+        "buildVersion": label(value["buildVersion"], "macOS.buildVersion"),
+    }
+
+
 def parse_checks(raw_checks, scenario):
-    allowed = set(SCENARIOS[scenario])
+    allowed = set(LEGACY_SCENARIOS[scenario])
     parsed = {}
     for raw in raw_checks:
         if "=" not in raw:
@@ -415,7 +486,30 @@ def parse_checks(raw_checks, scenario):
         if name in parsed:
             raise EvidenceError(f"duplicate check: {name}")
         parsed[name] = state
-    return {name: parsed.get(name, "not-observed") for name in SCENARIOS[scenario]}
+    return {
+        name: parsed.get(name, "not-observed")
+        for name in LEGACY_SCENARIOS[scenario]
+    }
+
+
+def parse_evidence(raw_evidence, fixture):
+    allowed = set(FIXTURES[fixture])
+    parsed = {}
+    for raw in raw_evidence:
+        if "=" not in raw:
+            raise EvidenceError(f"evidence must use id=state: {raw}")
+        identifier, state = raw.split("=", 1)
+        if identifier not in allowed:
+            raise EvidenceError(f"unknown evidence for {fixture}: {identifier}")
+        if state not in CHECK_STATES:
+            raise EvidenceError(f"invalid evidence state for {identifier}: {state}")
+        if identifier in parsed:
+            raise EvidenceError(f"duplicate evidence: {identifier}")
+        parsed[identifier] = state
+    return {
+        identifier: parsed.get(identifier, "not-observed")
+        for identifier in FIXTURES[fixture]
+    }
 
 
 def outcome(checks):
@@ -435,44 +529,83 @@ def write_json(path, value):
     os.replace(temporary, path)
 
 
-def collect(args):
-    app = safe_app_metadata(args.app)
-    report_path = Path(args.report).expanduser()
+def load_report(path, label):
+    report_path = Path(path).expanduser()
     if not report_path.is_file():
-        raise EvidenceError(f"support report not found: {report_path}")
+        raise EvidenceError(f"{label} support report not found: {report_path}")
     if report_path.stat().st_size > MAX_REPORT_BYTES:
-        raise EvidenceError("support report exceeds the 25 MiB safety limit")
+        raise EvidenceError(f"{label} support report exceeds the 25 MiB safety limit")
     try:
         report = json.loads(report_path.read_text(encoding="utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise EvidenceError("support report is not valid UTF-8 JSON") from error
+        raise EvidenceError(f"{label} support report is not valid UTF-8 JSON") from error
     validate_report(report)
-    checks = parse_checks(args.check, args.scenario)
-    elapsed = None
-    if args.elapsed_seconds is not None:
-        elapsed = number(args.elapsed_seconds, "elapsedSeconds", 0, 86_400)
+    return report
 
-    output = Path(args.output).expanduser()
-    if output.exists():
-        raise EvidenceError(f"output directory already exists: {output}")
-    manifest = {
-        "protocolVersion": PROTOCOL_VERSION,
-        "collectedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "scenario": args.scenario,
-        "outcome": outcome(checks),
-        "checks": checks,
-        "elapsedSeconds": elapsed,
-        "app": app,
-        "macOS": {
-            "productVersion": sw_vers("-productVersion"),
-            "buildVersion": sw_vers("-buildVersion"),
-        },
-        "supportReport": {
-            "formatVersion": report["formatVersion"],
-            "generatedAt": report["generatedAt"],
-            "meetingCount": report["storage"]["meetingCount"],
+
+def report_meeting(report, reference, label):
+    matches = [
+        meeting for meeting in report["meetings"]
+        if meeting["reference"] == reference
+    ]
+    if len(matches) != 1:
+        raise EvidenceError(
+            f"{label} support report must contain meeting reference exactly once: "
+            f"{reference}"
+        )
+    return matches[0]
+
+
+def report_metadata(report, meeting):
+    return {
+        "formatVersion": report["formatVersion"],
+        "generatedAt": report["generatedAt"],
+        "meetingCount": report["storage"]["meetingCount"],
+        "selectedMeeting": {
+            "lifecycleState": meeting["lifecycleState"],
+            "transcriptRevision": meeting["transcriptRevision"],
+            "audioAssetCount": len(meeting["audioAssets"]),
+            "segmentCount": meeting["transcript"]["segmentCount"],
+            "processingJobCount": len(meeting["processingJobs"]),
         },
     }
+
+
+def ensure_report_matches_app(report, app, label):
+    environment = report["environment"]
+    if environment["appVersion"] != app["version"]:
+        raise EvidenceError(f"{label} support report app version does not match bundle")
+    if environment["buildVersion"] != app["build"]:
+        raise EvidenceError(f"{label} support report build does not match bundle")
+
+
+def ensure_evidence_matches_report(evidence, meeting):
+    if (
+        evidence.get("recording.stop.durable") == "pass"
+        and meeting["lifecycleState"] == "recording"
+    ):
+        raise EvidenceError(
+            "recording.stop.durable cannot pass while the meeting is still recording"
+        )
+    if (
+        evidence.get("post-capture.admission.completed") == "pass"
+        and not meeting["audioAssets"]
+    ):
+        raise EvidenceError(
+            "post-capture.admission.completed cannot pass without an audio asset"
+        )
+    if evidence.get("capture.route.preserved") == "pass":
+        channels = {asset["channel"] for asset in meeting["audioAssets"]}
+        if not {"microphone", "system"}.issubset(channels):
+            raise EvidenceError(
+                "capture.route.preserved cannot pass without microphone and system assets"
+            )
+
+
+def publish_package(output, manifest, reports):
+    output = Path(output).expanduser()
+    if output.exists():
+        raise EvidenceError(f"output directory already exists: {output}")
     output.parent.mkdir(parents=True, exist_ok=True)
     staging = output.parent / f".{output.name}.field-evidence-{os.getpid()}"
     if staging.exists():
@@ -480,41 +613,193 @@ def collect(args):
     staging.mkdir(mode=0o700)
     try:
         write_json(staging / "manifest.json", manifest)
-        write_json(staging / "support-diagnostics.json", report)
+        for filename, report in reports.items():
+            write_json(staging / filename, report)
         os.rename(staging, output)
     except BaseException:
         shutil.rmtree(staging, ignore_errors=True)
         raise
+    return output
+
+
+def collect_legacy(args, app, system_observer):
+    if args.evidence or args.after_refine_report or args.meeting_reference:
+        raise EvidenceError(
+            "legacy --scenario accepts only --report and --check evidence"
+        )
+    report = load_report(args.report, "scenario")
+    checks = parse_checks(args.check, args.scenario)
+    elapsed = None
+    if args.elapsed_seconds is not None:
+        elapsed = number(args.elapsed_seconds, "elapsedSeconds", 0, 86_400)
+
+    manifest = {
+        "protocolVersion": LEGACY_PROTOCOL_VERSION,
+        "collectedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "scenario": args.scenario,
+        "outcome": outcome(checks),
+        "checks": checks,
+        "elapsedSeconds": elapsed,
+        "app": app,
+        "macOS": validate_macos_observation(system_observer()),
+        "supportReport": {
+            "formatVersion": report["formatVersion"],
+            "generatedAt": report["generatedAt"],
+            "meetingCount": report["storage"]["meetingCount"],
+        },
+    }
+    output = publish_package(
+        args.output,
+        manifest,
+        {"support-diagnostics.json": report},
+    )
     return output, manifest
+
+
+def collect_fixture(args, app, system_observer):
+    if args.check:
+        raise EvidenceError("canonical --fixture accepts --evidence, not --check")
+    if not args.meeting_reference:
+        raise EvidenceError("canonical --fixture requires --meeting-reference")
+    reference = string(
+        args.meeting_reference,
+        "meetingReference",
+        REFERENCE_PATTERN,
+    )
+    before = load_report(args.report, "before-Refine")
+    ensure_report_matches_app(before, app, "before-Refine")
+    before_meeting = report_meeting(before, reference, "before-Refine")
+    evidence = parse_evidence(args.evidence, args.fixture)
+    ensure_evidence_matches_report(evidence, before_meeting)
+
+    after = None
+    after_meeting = None
+    if args.after_refine_report:
+        after = load_report(args.after_refine_report, "after-Refine")
+        ensure_report_matches_app(after, app, "after-Refine")
+        after_meeting = report_meeting(after, reference, "after-Refine")
+        before_generated_at = datetime.fromisoformat(
+            before["generatedAt"].replace("Z", "+00:00")
+        )
+        after_generated_at = datetime.fromisoformat(
+            after["generatedAt"].replace("Z", "+00:00")
+        )
+        if after_generated_at < before_generated_at:
+            raise EvidenceError(
+                "after-Refine support report predates the before-Refine report"
+            )
+    elif args.fixture in FIXTURES_REQUIRING_AFTER_REFINE:
+        raise EvidenceError(f"{args.fixture} requires --after-refine-report")
+
+    if evidence.get("refine.language.preserved") == "pass":
+        if after_meeting is None:
+            raise EvidenceError(
+                "refine.language.preserved requires --after-refine-report"
+            )
+        if (
+            after_meeting["transcriptRevision"]
+            <= before_meeting["transcriptRevision"]
+        ):
+            raise EvidenceError(
+                "refine.language.preserved cannot pass without a newer "
+                "transcript revision"
+            )
+
+    elapsed = None
+    if args.elapsed_seconds is not None:
+        elapsed = number(args.elapsed_seconds, "elapsedSeconds", 0, 86_400)
+    manifest = {
+        "protocolVersion": PROTOCOL_VERSION,
+        "collectedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "fixture": args.fixture,
+        "meetingReference": reference,
+        "outcome": outcome(evidence),
+        "evidence": [
+            {
+                "id": identifier,
+                "subsystem": EVIDENCE_SUBSYSTEMS[identifier],
+                "state": state,
+            }
+            for identifier, state in evidence.items()
+        ],
+        "elapsedSeconds": elapsed,
+        "app": app,
+        "macOS": validate_macos_observation(system_observer()),
+        "supportReports": {
+            "beforeRefine": report_metadata(before, before_meeting),
+            "afterRefine": (
+                report_metadata(after, after_meeting)
+                if after is not None and after_meeting is not None
+                else None
+            ),
+        },
+    }
+    reports = {"support-before-refine.json": before}
+    if after is not None:
+        reports["support-after-refine.json"] = after
+    output = publish_package(args.output, manifest, reports)
+    return output, manifest
+
+
+def collect(args, system_observer=current_macos):
+    app = safe_app_metadata(args.app)
+    if args.fixture:
+        return collect_fixture(args, app, system_observer)
+    return collect_legacy(args, app, system_observer)
 
 
 def parser():
     result = argparse.ArgumentParser(
         description="Package content-free Portavoz field evidence without audio or text."
     )
-    result.add_argument("--scenario", choices=tuple(SCENARIOS), required=True)
-    result.add_argument("--report", required=True, help="Exported format-v2 support JSON")
+    mode = result.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--fixture", choices=tuple(FIXTURES))
+    mode.add_argument(
+        "--scenario",
+        choices=tuple(LEGACY_SCENARIOS),
+        help="Legacy protocol-v1 scenario retained for one release",
+    )
+    result.add_argument(
+        "--report",
+        required=True,
+        help="Exported format-v2 support JSON; before-Refine in fixture mode",
+    )
+    result.add_argument(
+        "--after-refine-report",
+        help="Optional paired format-v2 support JSON exported after Refine",
+    )
+    result.add_argument(
+        "--meeting-reference",
+        help="Pseudonymous meeting reference from the support report",
+    )
     result.add_argument("--output", required=True, help="New evidence directory")
     result.add_argument("--app", default=str(DEFAULT_APP), help="Portavoz Dev.app bundle")
     result.add_argument(
         "--check",
         action="append",
         default=[],
-        help="Scenario check as name=pass|fail|not-observed; repeat as needed",
+        help="Legacy scenario check as name=pass|fail|not-observed",
+    )
+    result.add_argument(
+        "--evidence",
+        action="append",
+        default=[],
+        help="Canonical fixture evidence as id=pass|fail|not-observed",
     )
     result.add_argument("--elapsed-seconds", type=float)
     return result
 
 
-def main():
-    args = parser().parse_args()
+def main(argv=None, system_observer=current_macos):
+    args = parser().parse_args(argv)
     try:
-        output, manifest = collect(args)
+        output, manifest = collect(args, system_observer)
     except (EvidenceError, OSError, plistlib.InvalidFileException, subprocess.SubprocessError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
     print(f"OK -> {output}")
-    print(f"scenario={manifest['scenario']} outcome={manifest['outcome']}")
+    mode = "fixture" if "fixture" in manifest else "scenario"
+    print(f"{mode}={manifest[mode]} outcome={manifest['outcome']}")
     return 0
 
 

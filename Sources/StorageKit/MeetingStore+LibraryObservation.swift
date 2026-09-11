@@ -16,12 +16,44 @@ extension MeetingStore {
         public let failures: Int
     }
 
+    /// The `segment` columns the library list and its voice mix actually read.
+    ///
+    /// Scoped to columns, not the whole table: a semantic embedding backfill
+    /// writes `embedding`/`embeddingFingerprint` on `segment` in batches, and a
+    /// whole-table region made every batch commit re-fetch the entire library
+    /// and recompute every voice mix — the more of the library was being
+    /// indexed, the more often it happened.
+    static let librarySegmentRegion = SQLRequest<Row>(sql: """
+        SELECT meetingID, speakerID, deletedAt, startTime, endTime FROM segment
+        """)
+
+    /// The `segment` columns full-text search reads. `text` is included, so an
+    /// edit that changes what FTS indexes still re-runs the query.
+    static let searchSegmentRegion = SQLRequest<Row>(sql: """
+        SELECT id, meetingID, text, startTime, deletedAt FROM segment
+        """)
+
+    /// Derived correction text read by FTS. Semantic publication updates only
+    /// the excluded vector columns, so indexing never re-fires Library search.
+    static let searchCorrectedTextRegion = SQLRequest<Row>(sql: """
+        SELECT segmentID, meetingID, baseTranscriptRevision, text
+        FROM segmentCorrectedText
+        """)
+
+    static let searchStructuralTextRegion = SQLRequest<Row>(sql: """
+        SELECT resultID, meetingID, correctionID, baseTranscriptRevision,
+               kind, text, startTime
+        FROM transcriptStructuralSearchRow
+        """)
+
     /// Meeting rows and voice mix share one update cadence. No action-item or
     /// trash write can trigger this observation unless the meeting root itself
     /// changes.
     public func observeLibraryMeetings() -> AsyncThrowingStream<LibraryMeetingRows, Error> {
         let observation = ValueObservation.tracking(
-            regions: [Table("meeting"), Table("speaker"), Table("segment")],
+            regions: [
+                Table("meeting"), Table("speaker"), Self.librarySegmentRegion
+            ],
             fetch: { database in
                 try Self.fetchLibraryMeetingRows(in: database)
             })
@@ -84,7 +116,14 @@ extension MeetingStore {
             }
         }
         let observation = ValueObservation.tracking(
-            regions: [Table("meeting"), Table("segment")],
+            regions: [
+                Table("meeting"),
+                Self.searchSegmentRegion,
+                Self.searchCorrectedTextRegion,
+                Self.searchStructuralTextRegion,
+                Table("transcriptStructuralSearchSource"),
+                Table("transcriptCorrectionSearchState")
+            ],
             fetch: { database in
                 try Self.fetchSearch(in: database, match: match, limit: limit)
             })
@@ -130,32 +169,6 @@ private extension MeetingStore {
                     LibraryMeetingRow(meeting: $0, voiceMix: [])
                 },
                 failures: 1)
-        }
-    }
-}
-
-extension MeetingStore {
-    func observedStream<Reducer>(
-        _ observation: ValueObservation<Reducer>
-    ) -> AsyncThrowingStream<Reducer.Value, Error>
-    where Reducer: ValueReducer, Reducer.Value: Sendable {
-        let values = observation.values(
-            in: database,
-            bufferingPolicy: .bufferingNewest(1))
-        return AsyncThrowingStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
-            let task = Task {
-                do {
-                    for try await value in values {
-                        continuation.yield(value)
-                    }
-                    continuation.finish()
-                } catch is CancellationError {
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
-                }
-            }
-            continuation.onTermination = { _ in task.cancel() }
         }
     }
 }

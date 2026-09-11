@@ -11,6 +11,11 @@ public actor RecordingSession {
         public let files: [AudioChannel: URL]
         /// Finalized media evidence keyed by structural capture channel.
         public let publishedFiles: [AudioChannel: PublishedCaptureFile]
+        /// Exact PCM frames accepted by each channel writer. Keeping the
+        /// integer count alongside derived seconds lets long-run evidence
+        /// detect even one lost or duplicated frame without floating-point
+        /// reconstruction.
+        public let framesWritten: [AudioChannel: Int64]
         public let secondsWritten: [AudioChannel: TimeInterval]
         /// Highest absolute sample per channel (0...1). A channel that wrote
         /// audio but peaks at 0 delivered pure silence — on `.system` that
@@ -21,21 +26,26 @@ public actor RecordingSession {
         public let rms: [AudioChannel: Float]
         /// Capture errors per channel; a failed channel doesn't kill the session.
         public let errors: [AudioChannel: String]
+        public let captureReport: CaptureReport?
 
         public init(
             files: [AudioChannel: URL],
+            framesWritten: [AudioChannel: Int64] = [:],
             secondsWritten: [AudioChannel: TimeInterval],
             peaks: [AudioChannel: Float] = [:],
             rms: [AudioChannel: Float] = [:],
             publishedFiles: [AudioChannel: PublishedCaptureFile] = [:],
-            errors: [AudioChannel: String] = [:]
+            errors: [AudioChannel: String] = [:],
+            captureReport: CaptureReport? = nil
         ) {
             self.files = files
             self.publishedFiles = publishedFiles
+            self.framesWritten = framesWritten
             self.secondsWritten = secondsWritten
             self.peaks = peaks
             self.rms = rms
             self.errors = errors
+            self.captureReport = captureReport
         }
 
         /// Absolute difference in written duration between mic and system —
@@ -49,13 +59,21 @@ public actor RecordingSession {
         }
     }
 
+    private struct OwnedSource: Sendable {
+        let id = UUID()
+        let source: any AudioCaptureSource
+    }
+
     private let outputDirectory: URL
-    private var sources: [AudioChannel: any AudioCaptureSource] = [:]
+    private var sources: [AudioChannel: OwnedSource] = [:]
     private var writers: [AudioChannel: CaptureFileWriter] = [:]
     private var consumers: [AudioChannel: Task<Void, Never>] = [:]
     private var peaks: [AudioChannel: Float] = [:]
     private var rms: [AudioChannel: Float] = [:]
     private var errors: [AudioChannel: String] = [:]
+    private var startedChannels: Set<AudioChannel> = []
+    private var reportingSources: [AudioChannel: any CaptureReportingSource] = [:]
+    private var failures: [AudioChannel: CaptureFailure] = [:]
     private let systemLiveness: SystemCaptureLivenessMonitor
     public private(set) var isRecording = false
 
@@ -81,10 +99,13 @@ public actor RecordingSession {
     ///
     /// `onChunk` observes every chunk *after* it is persisted — the seam
     /// where live transcription hangs off the recording pipeline without
-    /// the writer ever waiting on it.
+    /// the writer ever waiting on it. `onLevel` receives compact signal
+    /// evidence computed by the same pass that updates final media health, so
+    /// optional presentation never scans the PCM buffer again.
     public func start(
         sources newSources: [any AudioCaptureSource],
         onChunk: (@Sendable (AudioChunk) -> Void)? = nil,
+        onLevel: (@Sendable (PersistedAudioLevel) -> Void)? = nil,
         onHealthEvent: (@Sendable (RecordingCaptureHealthEvent) -> Void)? = nil
     ) async throws {
         guard !isRecording else { return }
@@ -95,59 +116,21 @@ public actor RecordingSession {
                 let channel = source.channel
                 let stagingURL = outputDirectory.appendingPathComponent(
                     AudioCapturePath.stagingFilename(for: channel))
-                let stream = try await source.start()
-                sources[channel] = source
-                let livenessMonitor = systemLiveness
-
-                consumers[channel] = Task { [weak self] in
-                    var writer: CaptureFileWriter?
-                    var peak: Float = 0
-                    var sumSquares = 0.0
-                    var sampleCount: Int64 = 0
-                    do {
-                        for try await chunk in stream {
-                            if writer == nil {
-                                let created = try CaptureFileWriter(
-                                    url: stagingURL, sampleRate: chunk.sampleRate)
-                                writer = created
-                                await self?.register(writer: created, for: channel)
-                            }
-                            try writer?.append(chunk.samples)
-                            // Signal evidence must describe bytes that were
-                            // actually accepted by the writer. Clamp to the
-                            // signed-PCM range because the file conversion
-                            // clips out-of-range Float32 input to that range.
-                            for sample in chunk.samples {
-                                let magnitude = min(abs(sample), 1)
-                                if magnitude > peak { peak = magnitude }
-                                sumSquares += Double(magnitude) * Double(magnitude)
-                            }
-                            sampleCount += Int64(chunk.samples.count)
-                            let signals = livenessMonitor.observe(channel: chunk.channel)
-                            if !signals.isEmpty {
-                                let events = await self?.handleLiveness(signals)
-                                    ?? []
-                                for event in events { onHealthEvent?(event) }
-                            }
-                            onChunk?(chunk)
-                        }
-                        let measuredRMS = sampleCount > 0
-                            ? Float((sumSquares / Double(sampleCount)).squareRoot()) : 0
-                        await self?.report(
-                            peak: peak, rms: measuredRMS, error: nil, for: channel)
-                    } catch {
-                        // A failed channel ends its own file; the session keeps
-                        // the other channels alive.
-                        let measuredRMS = sampleCount > 0
-                            ? Float((sumSquares / Double(sampleCount)).squareRoot()) : 0
-                        await self?.report(
-                            peak: peak,
-                            rms: measuredRMS,
-                            error: String(describing: error),
-                            for: channel)
-                        onHealthEvent?(.streamFailed(channel: channel))
-                    }
+                if let reporting = source as? any CaptureReportingSource {
+                    reporting.setCaptureFailureHandler { onHealthEvent?(.streamFailed(channel: channel)) }
+                    reportingSources[channel] = reporting
                 }
+                let stream = try await source.start()
+                startedChannels.insert(channel)
+                let owned = OwnedSource(source: source)
+                sources[channel] = owned
+                consumers[channel] = makeConsumer(
+                    stream: stream,
+                    stagingURL: stagingURL,
+                    source: owned,
+                    onChunk: onChunk,
+                    onLevel: onLevel,
+                    onHealthEvent: onHealthEvent)
             }
         } catch {
             // Startup is all-or-nothing: if mic starts but the system tap fails
@@ -159,17 +142,107 @@ public actor RecordingSession {
         isRecording = true
     }
 
+    private func makeConsumer(
+        stream: AsyncThrowingStream<AudioChunk, Error>,
+        stagingURL: URL,
+        source: OwnedSource,
+        onChunk: (@Sendable (AudioChunk) -> Void)?,
+        onLevel: (@Sendable (PersistedAudioLevel) -> Void)?,
+        onHealthEvent: (@Sendable (RecordingCaptureHealthEvent) -> Void)?
+    ) -> Task<Void, Never> {
+        let livenessMonitor = systemLiveness
+        let channel = source.source.channel
+        return Task { [weak self] in
+            var writer: CaptureFileWriter?
+            var peak: Float = 0
+            var sumSquares = 0.0
+            var sampleCount: Int64 = 0
+            var writing = false
+            do {
+                for try await chunk in stream {
+                    writing = true
+                    if writer == nil {
+                        let created = try CaptureFileWriter(
+                            url: stagingURL, sampleRate: chunk.sampleRate)
+                        writer = created
+                        await self?.register(writer: created, for: channel)
+                    }
+                    try writer?.append(chunk.samples)
+                    writing = false
+                    let signal = PersistedChunkSignal.measure(chunk.samples)
+                    peak = max(peak, signal.peak)
+                    sumSquares += signal.sumSquares
+                    sampleCount += Int64(chunk.samples.count)
+                    let signals = livenessMonitor.observe(channel: chunk.channel)
+                    if !signals.isEmpty {
+                        let events = await self?.handleLiveness(signals) ?? []
+                        for event in events { onHealthEvent?(event) }
+                    }
+                    onChunk?(chunk)
+                    onLevel?(PersistedAudioLevel(
+                        channel: chunk.channel,
+                        peak: signal.peak,
+                        rms: signal.rms,
+                        timestamp: chunk.timestamp,
+                        duration: chunk.duration))
+                }
+                try Task.checkCancellation()
+                await self?.report(
+                    peak: peak,
+                    rms: PersistedChunkSignal.rms(
+                        sumSquares: sumSquares, sampleCount: sampleCount),
+                    error: nil,
+                    for: channel)
+            } catch {
+                // A failed channel ends its own file; the session keeps the
+                // other channels alive.
+                await self?.report(
+                    peak: peak,
+                    rms: PersistedChunkSignal.rms(
+                        sumSquares: sumSquares, sampleCount: sampleCount),
+                    error: String(describing: error),
+                    for: channel)
+                await self?.recordFailure(
+                    writing ? .writerFailed : (error as? CaptureDeliveryFailure)?.cause
+                        ?? (error is CancellationError ? .cancelled : .sourceFailed), for: channel)
+                if (source.source as? any CaptureReportingSource)?.captureReport.failure == nil {
+                    onHealthEvent?(.streamFailed(channel: channel))
+                }
+                // Retire the failed producer off its realtime callback. A
+                // completed consumer must not leave hardware/queued PCM alive
+                // until the user eventually stops an otherwise healthy peer.
+                await self?.retireFailedSource(channel: channel, ownerID: source.id)
+            }
+        }
+    }
+
+    private func recordFailure(_ failure: CaptureFailure, for channel: AudioChannel) {
+        failures[channel] = failure
+    }
+
+    private func retireFailedSource(channel: AudioChannel, ownerID: UUID) async {
+        guard let owned = sources[channel], owned.id == ownerID else { return }
+        sources.removeValue(forKey: channel)
+        await owned.source.stop()
+    }
+
     /// Stops all sources, drains pending chunks, and reports what was written.
     public func stop() async -> Summary {
-        for source in sources.values {
-            await source.stop()
+        // Claim teardown before suspension. A simultaneous consumer failure
+        // must not stop the same producer again while global Stop owns it.
+        let retiring = sources
+        sources.removeAll()
+        for owned in retiring.values {
+            await owned.source.stop()
         }
         for consumer in consumers.values {
             await consumer.value
         }
 
+        var frames: [AudioChannel: Int64] = [:]
         var seconds: [AudioChannel: TimeInterval] = [:]
         for (channel, writer) in writers {
+            frames[channel] = Int64(writer.framesWritten)
             seconds[channel] = writer.secondsWritten
         }
 
@@ -180,6 +253,7 @@ public actor RecordingSession {
         let measuredRMS = rms
 
         sources.removeAll()
+        for writer in writers.values { writer.close() }
         writers.removeAll()
         consumers.removeAll()
         isRecording = false
@@ -196,20 +270,46 @@ public actor RecordingSession {
         for (channel, error) in publication.errors {
             errors[channel] = errors[channel].map { "\($0); \(error)" } ?? error
         }
+        let captureReport = captureReport(frames: frames, publicationErrors: Set(publication.errors.keys))
         let summary = Summary(
             files: publication.files,
+            framesWritten: frames,
             secondsWritten: seconds,
             peaks: measuredPeaks,
             rms: measuredRMS,
             publishedFiles: publication.publishedFiles,
-            errors: errors)
+            errors: errors,
+            captureReport: captureReport)
 
         peaks.removeAll()
         rms.removeAll()
         errors.removeAll()
+        failures.removeAll()
+        startedChannels.removeAll()
+        reportingSources.removeAll()
         systemLiveness.reset()
 
         return summary
+    }
+
+    private func captureReport(
+        frames: [AudioChannel: Int64], publicationErrors: Set<AudioChannel>
+    ) -> CaptureReport? {
+        let channelReports = startedChannels.map { channel in
+            let producer = reportingSources[channel]?.captureReport
+            let failure = producer?.failure ?? failures[channel]
+            return CaptureChannelReport(
+                channel: channel, acceptedFrames: producer?.acceptedFrames,
+                paddingFrames: producer?.paddingFrames, rejectedFrames: producer?.rejectedFrames,
+                writtenFrames: failures[channel] == .writerFailed ? nil : frames[channel] ?? 0,
+                failure: failure, publicationFailed: publicationErrors.contains(channel))
+        }
+        // Reports are constructed from checked native counts, not dependency text.
+        do {
+            return channelReports.isEmpty ? nil : try CaptureReport(channels: channelReports)
+        } catch {
+            return CaptureReport.unverified(channels: startedChannels)
+        }
     }
 
     private func handleLiveness(
@@ -223,7 +323,7 @@ public actor RecordingSession {
                     channel: .system,
                     secondsWithoutFrames: secondsWithoutFrames))
             case .recoveryDue(let attempt, let secondsWithoutFrames):
-                guard let source = sources[.system] as? any RecoverableAudioCaptureSource else {
+                guard let source = sources[.system]?.source as? any RecoverableAudioCaptureSource else {
                     continue
                 }
                 await source.requestRecovery()
@@ -251,6 +351,33 @@ public actor RecordingSession {
         peaks[channel] = peak
         self.rms[channel] = rms
         if let error { errors[channel] = error }
+    }
+}
+
+private struct PersistedChunkSignal {
+    let peak: Float
+    let sumSquares: Double
+    let rms: Float
+
+    /// Signal evidence describes only bytes accepted by the writer. Clamp to
+    /// signed PCM because file conversion clips out-of-range Float32 input.
+    static func measure(_ samples: [Float]) -> PersistedChunkSignal {
+        var peak: Float = 0
+        var sumSquares = 0.0
+        for sample in samples {
+            let magnitude = min(abs(sample), 1)
+            peak = max(peak, magnitude)
+            sumSquares += Double(magnitude) * Double(magnitude)
+        }
+        return PersistedChunkSignal(
+            peak: peak,
+            sumSquares: sumSquares,
+            rms: rms(sumSquares: sumSquares, sampleCount: Int64(samples.count)))
+    }
+
+    static func rms(sumSquares: Double, sampleCount: Int64) -> Float {
+        guard sampleCount > 0 else { return 0 }
+        return Float((sumSquares / Double(sampleCount)).squareRoot())
     }
 }
 

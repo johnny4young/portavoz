@@ -1,5 +1,6 @@
 import Foundation
 import IntegrationsKit
+import PortavozCore
 import StorageKit
 @testable import portavoz_app
 import XCTest
@@ -90,6 +91,18 @@ final class MeetingSyncModelTests: XCTestCase {
         XCTAssertEqual(client.synchronizeCount, 1)
     }
 
+    func testCaptureCompletionResumesOnlyAnExplicitPendingSeed() async throws {
+        let client = TestMeetingSyncModelClient()
+        client.setStatus(.readyForTests(seed: .requested))
+        let model = MeetingSyncModel(client: client)
+        await model.start()
+
+        model.maintenanceMayResume()
+        try await waitUntil { client.synchronizeCount == 1 }
+
+        XCTAssertEqual(client.synchronizeCount, 1)
+    }
+
     func testUserActionQueuedWhileBusyIsNotReplacedBySynchronization() async throws {
         let client = TestMeetingSyncModelClient()
         client.suspendEnable = true
@@ -154,6 +167,34 @@ final class MeetingSyncModelTests: XCTestCase {
         XCTAssertEqual(client.pauseCount, 1)
         XCTAssertEqual(client.synchronizeCount, 1)
         XCTAssertEqual(model.status.phase, .synchronized)
+    }
+
+    func testTelemetryDistinguishesAutomaticResumeFromExplicitSync() async {
+        let client = TestMeetingSyncModelClient()
+        let recorder = ResourceWorkloadEventRecorder()
+        let model = MeetingSyncModel(
+            client: client,
+            telemetry: ResourceWorkloadTelemetry(receiver: recorder.receive))
+
+        await model.start()
+        await model.send(.enable)
+
+        let descriptors = recorder.events.compactMap { event -> ResourceWorkloadDescriptor? in
+            guard case .started(let span) = event else { return nil }
+            return span.descriptor
+        }
+        XCTAssertEqual(
+            descriptors,
+            [
+                ResourceWorkloadDescriptor(
+                    workloadClass: .maintenance,
+                    kind: .librarySync,
+                    operation: .execute),
+                ResourceWorkloadDescriptor(
+                    workloadClass: .userInitiated,
+                    kind: .librarySync,
+                    operation: .execute),
+            ])
     }
 
     private func waitUntil(
@@ -275,15 +316,25 @@ private final class TestMeetingSyncModelClient: MeetingSyncModelClient {
         synchronizationContinuation = nil
         continuation?.resume()
     }
+
+    func setStatus(_ status: CloudMeetingSyncStatus) {
+        self.status = status
+    }
 }
 
 private extension CloudMeetingSyncStatus {
     static var readyForTests: CloudMeetingSyncStatus {
+        readyForTests(seed: .notRequested)
+    }
+
+    static func readyForTests(
+        seed: CloudSyncInitialSeedState
+    ) -> CloudMeetingSyncStatus {
         CloudMeetingSyncStatus(
-            phase: .synchronized,
+            phase: seed == .requested ? .pending : .synchronized,
             accountStatus: .available,
             isEnabled: true,
-            initialSeedState: .notRequested,
+            initialSeedState: seed,
             progress: CloudMeetingSyncProgress(
                 pendingLocalChanges: 0,
                 queuedTransfers: 0,

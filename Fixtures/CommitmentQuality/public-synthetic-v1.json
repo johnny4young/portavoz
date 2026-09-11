@@ -1,0 +1,1288 @@
+{
+  "schemaVersion": 1,
+  "kind": "commitment-quality-fixture",
+  "generation": "public-synthetic-v1",
+  "contentSource": "public-synthetic-only",
+  "cases": [
+    {
+      "id": "case-001",
+      "language": "en",
+      "label": "commitment",
+      "transcript": [
+        {
+          "id": "evidence-001-1",
+          "speaker": "Mara",
+          "language": "en",
+          "text": "I will send the release plan by Friday."
+        }
+      ],
+      "actionItem": {
+        "text": "Send the release plan by Friday",
+        "owner": "Mara",
+        "evidenceIDs": [
+          "evidence-001-1"
+        ]
+      },
+      "expected": {
+        "candidate": true,
+        "owner": "Mara",
+        "deadline": "friday",
+        "evidenceIDs": [
+          "evidence-001-1"
+        ]
+      }
+    },
+    {
+      "id": "case-002",
+      "language": "en",
+      "label": "commitment",
+      "transcript": [
+        {
+          "id": "evidence-002-1",
+          "speaker": "Noah",
+          "language": "en",
+          "text": "I'll review the migration notes."
+        }
+      ],
+      "actionItem": {
+        "text": "Review the migration notes",
+        "owner": "Noah",
+        "evidenceIDs": [
+          "evidence-002-1"
+        ]
+      },
+      "expected": {
+        "candidate": true,
+        "owner": "Noah",
+        "deadline": null,
+        "evidenceIDs": [
+          "evidence-002-1"
+        ]
+      }
+    },
+    {
+      "id": "case-003",
+      "language": "en",
+      "label": "commitment",
+      "transcript": [
+        {
+          "id": "evidence-003-1",
+          "speaker": "S2",
+          "language": "en",
+          "text": "We will publish the report tomorrow."
+        }
+      ],
+      "actionItem": {
+        "text": "Publish the report tomorrow",
+        "owner": "",
+        "evidenceIDs": [
+          "evidence-003-1"
+        ]
+      },
+      "expected": {
+        "candidate": true,
+        "owner": null,
+        "deadline": "tomorrow",
+        "evidenceIDs": [
+          "evidence-003-1"
+        ]
+      }
+    },
+    {
+      "id": "case-004",
+      "language": "en",
+      "label": "commitment",
+      "transcript": [
+        {
+          "id": "evidence-004-1",
+          "speaker": "Priya",
+          "language": "en",
+          "text": "I commit to finish the audit by 2026-08-15."
+        }
+      ],
+      "actionItem": {
+        "text": "Finish the audit by 2026-08-15",
+        "owner": "Priya",
+        "evidenceIDs": [
+          "evidence-004-1"
+        ]
+      },
+      "expected": {
+        "candidate": true,
+        "owner": "Priya",
+        "deadline": "2026-08-15",
+        "evidenceIDs": [
+          "evidence-004-1"
+        ]
+      }
+    },
+    {
+      "id": "case-005",
+      "language": "en",
+      "label": "suggestion",
+      "transcript": [
+        {
+          "id": "evidence-005-1",
+          "speaker": "Mara",
+          "language": "en",
+          "text": "We should consider moving the review to Monday."
+        }
+      ],
+      "actionItem": {
+        "text": "Move the review to Monday",
+        "owner": "Mara",
+        "evidenceIDs": [
+          "evidence-005-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-006",
+      "language": "en",
+      "label": "suggestion",
+      "transcript": [
+        {
+          "id": "evidence-006-1",
+          "speaker": "Noah",
+          "language": "en",
+          "text": "Maybe Priya could draft the checklist."
+        }
+      ],
+      "actionItem": {
+        "text": "Draft the checklist",
+        "owner": "Priya",
+        "evidenceIDs": [
+          "evidence-006-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-007",
+      "language": "en",
+      "label": "suggestion",
+      "transcript": [
+        {
+          "id": "evidence-007-1",
+          "speaker": "S2",
+          "language": "en",
+          "text": "I suggest that the team publish a weekly report."
+        }
+      ],
+      "actionItem": {
+        "text": "Publish a weekly report",
+        "owner": "S2",
+        "evidenceIDs": [
+          "evidence-007-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-008",
+      "language": "en",
+      "label": "hypothetical",
+      "transcript": [
+        {
+          "id": "evidence-008-1",
+          "speaker": "Mara",
+          "language": "en",
+          "text": "If the vendor fails, I would prepare a rollback by Friday."
+        }
+      ],
+      "actionItem": {
+        "text": "Prepare a rollback by Friday",
+        "owner": "Mara",
+        "evidenceIDs": [
+          "evidence-008-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-009",
+      "language": "en",
+      "label": "hypothetical",
+      "transcript": [
+        {
+          "id": "evidence-009-1",
+          "speaker": "Noah",
+          "language": "en",
+          "text": "We could send the patch tomorrow if tests pass."
+        }
+      ],
+      "actionItem": {
+        "text": "Send the patch tomorrow",
+        "owner": "Noah",
+        "evidenceIDs": [
+          "evidence-009-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-010",
+      "language": "en",
+      "label": "hypothetical",
+      "transcript": [
+        {
+          "id": "evidence-010-1",
+          "speaker": "Priya",
+          "language": "en",
+          "text": "I might own the migration in a future phase."
+        }
+      ],
+      "actionItem": {
+        "text": "Own the migration",
+        "owner": "Priya",
+        "evidenceIDs": [
+          "evidence-010-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-011",
+      "language": "en",
+      "label": "status-report",
+      "transcript": [
+        {
+          "id": "evidence-011-1",
+          "speaker": "Mara",
+          "language": "en",
+          "text": "I already sent the release plan on Friday."
+        }
+      ],
+      "actionItem": {
+        "text": "Send the release plan",
+        "owner": "Mara",
+        "evidenceIDs": [
+          "evidence-011-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-012",
+      "language": "en",
+      "label": "status-report",
+      "transcript": [
+        {
+          "id": "evidence-012-1",
+          "speaker": "Noah",
+          "language": "en",
+          "text": "The team is reviewing the migration notes now."
+        }
+      ],
+      "actionItem": {
+        "text": "Review the migration notes",
+        "owner": "Noah",
+        "evidenceIDs": [
+          "evidence-012-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-013",
+      "language": "en",
+      "label": "status-report",
+      "transcript": [
+        {
+          "id": "evidence-013-1",
+          "speaker": "Priya",
+          "language": "en",
+          "text": "The audit was completed on 2026-08-15."
+        }
+      ],
+      "actionItem": {
+        "text": "Complete the audit by 2026-08-15",
+        "owner": "Priya",
+        "evidenceIDs": [
+          "evidence-013-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-014",
+      "language": "en",
+      "label": "question",
+      "transcript": [
+        {
+          "id": "evidence-014-1",
+          "speaker": "Mara",
+          "language": "en",
+          "text": "Will Noah send the release plan by Friday?"
+        }
+      ],
+      "actionItem": {
+        "text": "Send the release plan by Friday",
+        "owner": "Noah",
+        "evidenceIDs": [
+          "evidence-014-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-015",
+      "language": "en",
+      "label": "question",
+      "transcript": [
+        {
+          "id": "evidence-015-1",
+          "speaker": "Noah",
+          "language": "en",
+          "text": "Should we publish the report tomorrow?"
+        }
+      ],
+      "actionItem": {
+        "text": "Publish the report tomorrow",
+        "owner": "",
+        "evidenceIDs": [
+          "evidence-015-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-016",
+      "language": "en",
+      "label": "question",
+      "transcript": [
+        {
+          "id": "evidence-016-1",
+          "speaker": "Priya",
+          "language": "en",
+          "text": "Who owns the migration audit?"
+        }
+      ],
+      "actionItem": {
+        "text": "Own the migration audit",
+        "owner": "Priya",
+        "evidenceIDs": [
+          "evidence-016-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-017",
+      "language": "es",
+      "label": "commitment",
+      "transcript": [
+        {
+          "id": "evidence-017-1",
+          "speaker": "Mara",
+          "language": "es",
+          "text": "Voy a enviar el plan de lanzamiento el viernes."
+        }
+      ],
+      "actionItem": {
+        "text": "Enviar el plan de lanzamiento el viernes",
+        "owner": "Mara",
+        "evidenceIDs": [
+          "evidence-017-1"
+        ]
+      },
+      "expected": {
+        "candidate": true,
+        "owner": "Mara",
+        "deadline": "friday",
+        "evidenceIDs": [
+          "evidence-017-1"
+        ]
+      }
+    },
+    {
+      "id": "case-018",
+      "language": "es",
+      "label": "commitment",
+      "transcript": [
+        {
+          "id": "evidence-018-1",
+          "speaker": "Noah",
+          "language": "es",
+          "text": "Me comprometo a revisar las notas de migración."
+        }
+      ],
+      "actionItem": {
+        "text": "Revisar las notas de migración",
+        "owner": "Noah",
+        "evidenceIDs": [
+          "evidence-018-1"
+        ]
+      },
+      "expected": {
+        "candidate": true,
+        "owner": "Noah",
+        "deadline": null,
+        "evidenceIDs": [
+          "evidence-018-1"
+        ]
+      }
+    },
+    {
+      "id": "case-019",
+      "language": "es",
+      "label": "commitment",
+      "transcript": [
+        {
+          "id": "evidence-019-1",
+          "speaker": "S2",
+          "language": "es",
+          "text": "Publicaremos el informe mañana."
+        }
+      ],
+      "actionItem": {
+        "text": "Publicar el informe mañana",
+        "owner": "",
+        "evidenceIDs": [
+          "evidence-019-1"
+        ]
+      },
+      "expected": {
+        "candidate": true,
+        "owner": null,
+        "deadline": "tomorrow",
+        "evidenceIDs": [
+          "evidence-019-1"
+        ]
+      }
+    },
+    {
+      "id": "case-020",
+      "language": "es",
+      "label": "commitment",
+      "transcript": [
+        {
+          "id": "evidence-020-1",
+          "speaker": "Priya",
+          "language": "es",
+          "text": "Terminaré la auditoría para el 2026-08-15."
+        }
+      ],
+      "actionItem": {
+        "text": "Terminar la auditoría para el 2026-08-15",
+        "owner": "Priya",
+        "evidenceIDs": [
+          "evidence-020-1"
+        ]
+      },
+      "expected": {
+        "candidate": true,
+        "owner": "Priya",
+        "deadline": "2026-08-15",
+        "evidenceIDs": [
+          "evidence-020-1"
+        ]
+      }
+    },
+    {
+      "id": "case-021",
+      "language": "es",
+      "label": "suggestion",
+      "transcript": [
+        {
+          "id": "evidence-021-1",
+          "speaker": "Mara",
+          "language": "es",
+          "text": "Deberíamos considerar mover la revisión al lunes."
+        }
+      ],
+      "actionItem": {
+        "text": "Mover la revisión al lunes",
+        "owner": "Mara",
+        "evidenceIDs": [
+          "evidence-021-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-022",
+      "language": "es",
+      "label": "suggestion",
+      "transcript": [
+        {
+          "id": "evidence-022-1",
+          "speaker": "Noah",
+          "language": "es",
+          "text": "Quizá Priya podría redactar la lista."
+        }
+      ],
+      "actionItem": {
+        "text": "Redactar la lista",
+        "owner": "Priya",
+        "evidenceIDs": [
+          "evidence-022-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-023",
+      "language": "es",
+      "label": "suggestion",
+      "transcript": [
+        {
+          "id": "evidence-023-1",
+          "speaker": "S2",
+          "language": "es",
+          "text": "Sugiero que el equipo publique un informe semanal."
+        }
+      ],
+      "actionItem": {
+        "text": "Publicar un informe semanal",
+        "owner": "S2",
+        "evidenceIDs": [
+          "evidence-023-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-024",
+      "language": "es",
+      "label": "hypothetical",
+      "transcript": [
+        {
+          "id": "evidence-024-1",
+          "speaker": "Mara",
+          "language": "es",
+          "text": "Si falla el proveedor, prepararía un rollback el viernes."
+        }
+      ],
+      "actionItem": {
+        "text": "Preparar un rollback el viernes",
+        "owner": "Mara",
+        "evidenceIDs": [
+          "evidence-024-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-025",
+      "language": "es",
+      "label": "hypothetical",
+      "transcript": [
+        {
+          "id": "evidence-025-1",
+          "speaker": "Noah",
+          "language": "es",
+          "text": "Podríamos enviar el parche mañana si pasan las pruebas."
+        }
+      ],
+      "actionItem": {
+        "text": "Enviar el parche mañana",
+        "owner": "Noah",
+        "evidenceIDs": [
+          "evidence-025-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-026",
+      "language": "es",
+      "label": "hypothetical",
+      "transcript": [
+        {
+          "id": "evidence-026-1",
+          "speaker": "Priya",
+          "language": "es",
+          "text": "Tal vez asumiría la migración en una fase futura."
+        }
+      ],
+      "actionItem": {
+        "text": "Asumir la migración",
+        "owner": "Priya",
+        "evidenceIDs": [
+          "evidence-026-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-027",
+      "language": "es",
+      "label": "status-report",
+      "transcript": [
+        {
+          "id": "evidence-027-1",
+          "speaker": "Mara",
+          "language": "es",
+          "text": "Ya envié el plan de lanzamiento el viernes."
+        }
+      ],
+      "actionItem": {
+        "text": "Enviar el plan de lanzamiento",
+        "owner": "Mara",
+        "evidenceIDs": [
+          "evidence-027-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-028",
+      "language": "es",
+      "label": "status-report",
+      "transcript": [
+        {
+          "id": "evidence-028-1",
+          "speaker": "Noah",
+          "language": "es",
+          "text": "El equipo está revisando ahora las notas de migración."
+        }
+      ],
+      "actionItem": {
+        "text": "Revisar las notas de migración",
+        "owner": "Noah",
+        "evidenceIDs": [
+          "evidence-028-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-029",
+      "language": "es",
+      "label": "status-report",
+      "transcript": [
+        {
+          "id": "evidence-029-1",
+          "speaker": "Priya",
+          "language": "es",
+          "text": "La auditoría fue terminada el 2026-08-15."
+        }
+      ],
+      "actionItem": {
+        "text": "Terminar la auditoría para el 2026-08-15",
+        "owner": "Priya",
+        "evidenceIDs": [
+          "evidence-029-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-030",
+      "language": "es",
+      "label": "question",
+      "transcript": [
+        {
+          "id": "evidence-030-1",
+          "speaker": "Mara",
+          "language": "es",
+          "text": "¿Noah enviará el plan de lanzamiento el viernes?"
+        }
+      ],
+      "actionItem": {
+        "text": "Enviar el plan de lanzamiento el viernes",
+        "owner": "Noah",
+        "evidenceIDs": [
+          "evidence-030-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-031",
+      "language": "es",
+      "label": "question",
+      "transcript": [
+        {
+          "id": "evidence-031-1",
+          "speaker": "Noah",
+          "language": "es",
+          "text": "¿Deberíamos publicar el informe mañana?"
+        }
+      ],
+      "actionItem": {
+        "text": "Publicar el informe mañana",
+        "owner": "",
+        "evidenceIDs": [
+          "evidence-031-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-032",
+      "language": "es",
+      "label": "question",
+      "transcript": [
+        {
+          "id": "evidence-032-1",
+          "speaker": "Priya",
+          "language": "es",
+          "text": "¿Quién se encarga de la auditoría de migración?"
+        }
+      ],
+      "actionItem": {
+        "text": "Encargarse de la auditoría",
+        "owner": "Priya",
+        "evidenceIDs": [
+          "evidence-032-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-033",
+      "language": "mixed",
+      "label": "commitment",
+      "transcript": [
+        {
+          "id": "evidence-033-1",
+          "speaker": "Mara",
+          "language": "mixed",
+          "text": "Voy a send the rollout plan by Friday."
+        }
+      ],
+      "actionItem": {
+        "text": "Send the rollout plan by Friday",
+        "owner": "Mara",
+        "evidenceIDs": [
+          "evidence-033-1"
+        ]
+      },
+      "expected": {
+        "candidate": true,
+        "owner": "Mara",
+        "deadline": "friday",
+        "evidenceIDs": [
+          "evidence-033-1"
+        ]
+      }
+    },
+    {
+      "id": "case-034",
+      "language": "mixed",
+      "label": "commitment",
+      "transcript": [
+        {
+          "id": "evidence-034-1",
+          "speaker": "Ana",
+          "language": "es",
+          "text": "Yo me encargo de revisar el contrato."
+        },
+        {
+          "id": "evidence-034-2",
+          "speaker": "Ana",
+          "language": "en",
+          "text": "I'll have it ready by Monday."
+        }
+      ],
+      "actionItem": {
+        "text": "Revisar el contrato by Monday",
+        "owner": "Ana",
+        "evidenceIDs": [
+          "evidence-034-1",
+          "evidence-034-2"
+        ]
+      },
+      "expected": {
+        "candidate": true,
+        "owner": "Ana",
+        "deadline": "monday",
+        "evidenceIDs": [
+          "evidence-034-1",
+          "evidence-034-2"
+        ]
+      }
+    },
+    {
+      "id": "case-035",
+      "language": "mixed",
+      "label": "commitment",
+      "transcript": [
+        {
+          "id": "evidence-035-1",
+          "speaker": "S3",
+          "language": "mixed",
+          "text": "We will publicar el report mañana."
+        }
+      ],
+      "actionItem": {
+        "text": "Publicar el report mañana",
+        "owner": "",
+        "evidenceIDs": [
+          "evidence-035-1"
+        ]
+      },
+      "expected": {
+        "candidate": true,
+        "owner": null,
+        "deadline": "tomorrow",
+        "evidenceIDs": [
+          "evidence-035-1"
+        ]
+      }
+    },
+    {
+      "id": "case-036",
+      "language": "mixed",
+      "label": "commitment",
+      "transcript": [
+        {
+          "id": "evidence-036-1",
+          "speaker": "Priya",
+          "language": "mixed",
+          "text": "Me comprometo to finish the audit by 2026-08-15."
+        }
+      ],
+      "actionItem": {
+        "text": "Finish the audit by 2026-08-15",
+        "owner": "Priya",
+        "evidenceIDs": [
+          "evidence-036-1"
+        ]
+      },
+      "expected": {
+        "candidate": true,
+        "owner": "Priya",
+        "deadline": "2026-08-15",
+        "evidenceIDs": [
+          "evidence-036-1"
+        ]
+      }
+    },
+    {
+      "id": "case-037",
+      "language": "mixed",
+      "label": "suggestion",
+      "transcript": [
+        {
+          "id": "evidence-037-1",
+          "speaker": "Mara",
+          "language": "mixed",
+          "text": "Maybe deberíamos move the review to Monday."
+        }
+      ],
+      "actionItem": {
+        "text": "Move the review to Monday",
+        "owner": "Mara",
+        "evidenceIDs": [
+          "evidence-037-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-038",
+      "language": "mixed",
+      "label": "suggestion",
+      "transcript": [
+        {
+          "id": "evidence-038-1",
+          "speaker": "Ana",
+          "language": "mixed",
+          "text": "I suggest que Priya redacte the checklist."
+        }
+      ],
+      "actionItem": {
+        "text": "Redactar the checklist",
+        "owner": "Priya",
+        "evidenceIDs": [
+          "evidence-038-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-039",
+      "language": "mixed",
+      "label": "suggestion",
+      "transcript": [
+        {
+          "id": "evidence-039-1",
+          "speaker": "S3",
+          "language": "mixed",
+          "text": "Podríamos maybe publish a weekly report."
+        }
+      ],
+      "actionItem": {
+        "text": "Publish a weekly report",
+        "owner": "S3",
+        "evidenceIDs": [
+          "evidence-039-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-040",
+      "language": "mixed",
+      "label": "hypothetical",
+      "transcript": [
+        {
+          "id": "evidence-040-1",
+          "speaker": "Mara",
+          "language": "mixed",
+          "text": "If falla el vendor, I would prepare rollback by Friday."
+        }
+      ],
+      "actionItem": {
+        "text": "Prepare rollback by Friday",
+        "owner": "Mara",
+        "evidenceIDs": [
+          "evidence-040-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-041",
+      "language": "mixed",
+      "label": "hypothetical",
+      "transcript": [
+        {
+          "id": "evidence-041-1",
+          "speaker": "Ana",
+          "language": "mixed",
+          "text": "Enviaríamos the patch tomorrow si pasan tests."
+        }
+      ],
+      "actionItem": {
+        "text": "Enviar the patch tomorrow",
+        "owner": "Ana",
+        "evidenceIDs": [
+          "evidence-041-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-042",
+      "language": "mixed",
+      "label": "hypothetical",
+      "transcript": [
+        {
+          "id": "evidence-042-1",
+          "speaker": "Priya",
+          "language": "mixed",
+          "text": "Tal vez I might own la migración later."
+        }
+      ],
+      "actionItem": {
+        "text": "Own la migración",
+        "owner": "Priya",
+        "evidenceIDs": [
+          "evidence-042-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-043",
+      "language": "mixed",
+      "label": "status-report",
+      "transcript": [
+        {
+          "id": "evidence-043-1",
+          "speaker": "Mara",
+          "language": "mixed",
+          "text": "Ya sent the release plan el viernes."
+        }
+      ],
+      "actionItem": {
+        "text": "Send the release plan",
+        "owner": "Mara",
+        "evidenceIDs": [
+          "evidence-043-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-044",
+      "language": "mixed",
+      "label": "status-report",
+      "transcript": [
+        {
+          "id": "evidence-044-1",
+          "speaker": "Ana",
+          "language": "mixed",
+          "text": "The team está revisando migration notes now."
+        }
+      ],
+      "actionItem": {
+        "text": "Review migration notes",
+        "owner": "Ana",
+        "evidenceIDs": [
+          "evidence-044-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-045",
+      "language": "mixed",
+      "label": "status-report",
+      "transcript": [
+        {
+          "id": "evidence-045-1",
+          "speaker": "Priya",
+          "language": "mixed",
+          "text": "La audit was completed on 2026-08-15."
+        }
+      ],
+      "actionItem": {
+        "text": "Complete the audit by 2026-08-15",
+        "owner": "Priya",
+        "evidenceIDs": [
+          "evidence-045-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-046",
+      "language": "mixed",
+      "label": "question",
+      "transcript": [
+        {
+          "id": "evidence-046-1",
+          "speaker": "Mara",
+          "language": "mixed",
+          "text": "Will Noah enviar the plan by Friday?"
+        }
+      ],
+      "actionItem": {
+        "text": "Enviar the plan by Friday",
+        "owner": "Noah",
+        "evidenceIDs": [
+          "evidence-046-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-047",
+      "language": "mixed",
+      "label": "question",
+      "transcript": [
+        {
+          "id": "evidence-047-1",
+          "speaker": "Ana",
+          "language": "mixed",
+          "text": "¿Should we publish el report mañana?"
+        }
+      ],
+      "actionItem": {
+        "text": "Publish el report mañana",
+        "owner": "",
+        "evidenceIDs": [
+          "evidence-047-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    },
+    {
+      "id": "case-048",
+      "language": "mixed",
+      "label": "question",
+      "transcript": [
+        {
+          "id": "evidence-048-1",
+          "speaker": "Priya",
+          "language": "mixed",
+          "text": "Who se encarga de the migration audit?"
+        }
+      ],
+      "actionItem": {
+        "text": "Own the migration audit",
+        "owner": "Priya",
+        "evidenceIDs": [
+          "evidence-048-1"
+        ]
+      },
+      "expected": {
+        "candidate": false,
+        "owner": null,
+        "deadline": null,
+        "evidenceIDs": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,635 @@
+import Foundation
+import GRDB
+import PortavozCore
+import XCTest
+
+@testable import StorageKit
+
+/// Current correction search: accepted replacements retain accepted identity;
+/// split and merge results use their composed row identity while exposing
+/// ordered accepted provenance.
+final class SegmentCorrectedTextSearchTests: XCTestCase {
+    private let sourceDeviceID = UUID(
+        uuidString: "00000000-0000-4000-9000-000000000002")!
+
+    // MARK: - Search behavior against the real store
+
+    func testReplaceTextCorrectionMovesTheLineToItsCorrectedText() async throws {
+        let fixture = try await makeFixture(texts: [
+            "the atlas rollout starts Monday",
+            "an unrelated planning line"
+        ])
+        _ = try await fixture.store.appendTranscriptCorrection(event(
+            201,
+            fixture: fixture,
+            targets: [fixture.segments[0].id],
+            kind: .replaceText(text: "the atlas-500 deployment starts Monday", language: "en")))
+
+        let correctedHits = try await fixture.store.search("deployment")
+        XCTAssertEqual(correctedHits.count, 1)
+        XCTAssertEqual(
+            correctedHits.first?.segmentID, fixture.segments[0].id,
+            "citation identity must stay the accepted segment")
+        XCTAssertEqual(
+            correctedHits.first?.text,
+            "the atlas-500 deployment starts Monday")
+
+        let staleHits = try await fixture.store.search("rollout")
+        XCTAssertTrue(
+            staleHits.isEmpty,
+            "the replaced original text must stop serving as current")
+
+        let untouched = try await fixture.store.search("unrelated")
+        XCTAssertEqual(untouched.count, 1, "uncorrected lines are unaffected")
+    }
+
+    /// The bug this predicate split fixes: a speaker-only correction leaves
+    /// the text untouched, so the line must stay findable. Discriminates the
+    /// text-affecting predicate from the historical any-correction one.
+    func testChangeSpeakerOnlyCorrectionKeepsTheLineSearchable() async throws {
+        let fixture = try await makeFixture(texts: ["the quarterly budget review"])
+        _ = try await fixture.store.appendTranscriptCorrection(event(
+            202,
+            fixture: fixture,
+            targets: [fixture.segments[0].id],
+            kind: .changeSpeaker(fixture.secondSpeaker.id)))
+
+        let hits = try await fixture.store.search("quarterly")
+        XCTAssertEqual(
+            hits.count, 1,
+            "a speaker correction does not change what text exists")
+        XCTAssertEqual(hits.first?.segmentID, fixture.segments[0].id)
+    }
+
+    func testSuppressedSegmentStaysOutOfSearchEntirely() async throws {
+        let fixture = try await makeFixture(texts: ["the confidential aside"])
+        _ = try await fixture.store.appendTranscriptCorrection(event(
+            203,
+            fixture: fixture,
+            targets: [fixture.segments[0].id],
+            kind: .suppress))
+
+        let hits = try await fixture.store.search("confidential")
+        XCTAssertTrue(hits.isEmpty, "structural corrections keep today's exclusion")
+        let projected = try await correctedRowCount(fixture)
+        XCTAssertEqual(projected, 0)
+    }
+
+    func testSplitPartsSearchIndependentlyWithStableResultIdentity() async throws {
+        let fixture = try await makeFixture(texts: ["alpha launch beta review"])
+        let firstPartID = id(501)
+        let secondPartID = id(502)
+        _ = try await fixture.store.appendTranscriptCorrection(event(
+            211,
+            fixture: fixture,
+            targets: [fixture.segments[0].id],
+            kind: .split([
+                TranscriptCorrectionPart(
+                    id: firstPartID,
+                    text: "alpha launch",
+                    speakerID: fixture.firstSpeaker.id,
+                    language: "en",
+                    startTime: 0,
+                    endTime: 1),
+                TranscriptCorrectionPart(
+                    id: secondPartID,
+                    text: "beta review",
+                    speakerID: fixture.firstSpeaker.id,
+                    language: "en",
+                    startTime: 1,
+                    endTime: 2)
+            ])))
+
+        let first = try await fixture.store.search("alpha")
+        let second = try await fixture.store.search("beta")
+        let spanning = try await fixture.store.search("launch beta")
+
+        XCTAssertEqual(first.map(\.resultID), [firstPartID])
+        XCTAssertEqual(second.map(\.resultID), [secondPartID])
+        XCTAssertEqual(first.first?.sourceSegmentIDs, [fixture.segments[0].id])
+        XCTAssertEqual(second.first?.sourceSegmentIDs, [fixture.segments[0].id])
+        XCTAssertTrue(
+            spanning.isEmpty,
+            "terms split across two visible rows must not masquerade as one hit")
+    }
+
+    func testMergeSearchesAcrossAcceptedBoundariesWithOrderedProvenance() async throws {
+        let fixture = try await makeFixture(texts: [
+            "the atlas rollout starts Monday",
+            "an unrelated planning line"
+        ])
+        let merge = event(
+            212,
+            fixture: fixture,
+            targets: fixture.segments.map(\.id),
+            kind: .merge(replacementText: nil, language: nil))
+        _ = try await fixture.store.appendTranscriptCorrection(merge)
+
+        let hits = try await fixture.store.search("Monday unrelated")
+
+        XCTAssertEqual(hits.map(\.resultID), [merge.id])
+        XCTAssertEqual(hits.first?.sourceSegmentIDs, fixture.segments.map(\.id))
+        XCTAssertEqual(
+            hits.first?.text,
+            "the atlas rollout starts Monday an unrelated planning line")
+    }
+
+    func testMeetingScopeAppliesToAcceptedCorrectedAndStructuralLanes() async throws {
+        let fixture = try await makeFixture(texts: [
+            "original replacement wording",
+            "first structural fragment",
+            "scoped-token accepted wording"
+        ])
+        _ = try await fixture.store.appendTranscriptCorrection(event(
+            217,
+            fixture: fixture,
+            targets: [fixture.segments[0].id],
+            kind: .replaceText(
+                text: "scoped-token corrected wording",
+                language: "en")))
+        let structuralResultID = id(519)
+        let structural = event(
+            218,
+            fixture: fixture,
+            targets: [fixture.segments[1].id],
+            kind: .split([
+                TranscriptCorrectionPart(
+                    id: structuralResultID,
+                    text: "scoped-token structural wording",
+                    speakerID: fixture.firstSpeaker.id,
+                    language: "en",
+                    startTime: fixture.segments[1].startTime,
+                    endTime: fixture.segments[1].startTime + 1),
+                TranscriptCorrectionPart(
+                    id: id(520),
+                    text: "remaining fragment",
+                    speakerID: fixture.firstSpeaker.id,
+                    language: "en",
+                    startTime: fixture.segments[1].startTime + 1,
+                    endTime: fixture.segments[1].endTime)
+            ]))
+        _ = try await fixture.store.appendTranscriptCorrection(structural)
+
+        let otherMeeting = Meeting(
+            title: "Other meeting",
+            startedAt: date(500),
+            language: "en")
+        let otherSegment = TranscriptSegment(
+            meetingID: otherMeeting.id,
+            channel: .system,
+            text: "scoped-token foreign accepted wording",
+            language: "en",
+            startTime: 0,
+            endTime: 2,
+            isFinal: true)
+        try await fixture.store.save(otherMeeting)
+        try await fixture.store.save([otherSegment])
+
+        let library = try await fixture.store.search("scoped-token")
+        let scoped = try await fixture.store.search(
+            "scoped-token",
+            meetingID: fixture.meeting.id)
+        let other = try await fixture.store.search(
+            "scoped-token",
+            meetingID: otherMeeting.id)
+
+        XCTAssertEqual(library.count, 4)
+        XCTAssertEqual(Set(scoped.map(\.meetingID)), [fixture.meeting.id])
+        XCTAssertEqual(
+            Set(scoped.map(\.resultID)),
+            [fixture.segments[0].id, fixture.segments[2].id, structuralResultID])
+        XCTAssertEqual(other.map(\.segmentID), [otherSegment.id])
+    }
+
+    func testRestoreAfterMergeRemovesStructuralIdentityAndReactivatesSources() async throws {
+        let fixture = try await makeFixture(texts: ["alpha launch", "beta review"])
+        let merge = event(
+            213,
+            fixture: fixture,
+            targets: fixture.segments.map(\.id),
+            kind: .merge(replacementText: nil, language: nil))
+        _ = try await fixture.store.appendTranscriptCorrection(merge)
+        _ = try await fixture.store.appendTranscriptCorrection(event(
+            214,
+            fixture: fixture,
+            targets: merge.targetSegmentIDs,
+            kind: .restore,
+            supersedes: merge.id))
+
+        let spanning = try await fixture.store.search("launch beta")
+        let first = try await fixture.store.search("alpha")
+        let second = try await fixture.store.search("beta")
+        XCTAssertTrue(spanning.isEmpty)
+        XCTAssertEqual(first.map(\.resultID), [fixture.segments[0].id])
+        XCTAssertEqual(second.map(\.resultID), [fixture.segments[1].id])
+    }
+
+    func testRestoreReturnsTheLineToItsAcceptedText() async throws {
+        let fixture = try await makeFixture(texts: ["the original wording stands"])
+        let replace = event(
+            204,
+            fixture: fixture,
+            targets: [fixture.segments[0].id],
+            kind: .replaceText(text: "the corrected wording stands", language: "en"))
+        _ = try await fixture.store.appendTranscriptCorrection(replace)
+        _ = try await fixture.store.appendTranscriptCorrection(event(
+            205,
+            fixture: fixture,
+            targets: [fixture.segments[0].id],
+            kind: .restore,
+            supersedes: replace.id))
+
+        let original = try await fixture.store.search("original")
+        XCTAssertEqual(original.count, 1, "restore reactivates the accepted text")
+        let corrected = try await fixture.store.search("corrected")
+        XCTAssertTrue(corrected.isEmpty, "the superseded replacement stops serving")
+    }
+
+    func testTombstonedCorrectionStopsServingItsText() async throws {
+        let fixture = try await makeFixture(texts: ["the original wording stands"])
+        let replace = event(
+            206,
+            fixture: fixture,
+            targets: [fixture.segments[0].id],
+            kind: .replaceText(text: "the corrected wording stands", language: "en"))
+        _ = try await fixture.store.appendTranscriptCorrection(replace)
+        _ = try await fixture.store.tombstoneTranscriptCorrection(
+            replace.id,
+            meetingID: fixture.meeting.id,
+            at: date(300))
+
+        let corrected = try await fixture.store.search("corrected")
+        XCTAssertTrue(corrected.isEmpty)
+        let original = try await fixture.store.search("original")
+        XCTAssertEqual(original.count, 1)
+    }
+
+    /// The query-time revision guard is the belt behind the transactional
+    /// refresh: even if a projection row survives a revision advance, it must
+    /// not serve as current.
+    func testCorrectedTextForAStaleRevisionNeverServes() async throws {
+        let fixture = try await makeFixture(texts: ["the original wording stands"])
+        _ = try await fixture.store.appendTranscriptCorrection(event(
+            207,
+            fixture: fixture,
+            targets: [fixture.segments[0].id],
+            kind: .replaceText(text: "the corrected wording stands", language: "en")))
+        let served = try await fixture.store.search("corrected")
+        XCTAssertEqual(served.count, 1)
+
+        try await fixture.store.database.write { database in
+            try database.execute(
+                sql: "UPDATE meeting SET transcriptRevision = transcriptRevision + 1 WHERE id = ?",
+                arguments: [fixture.meeting.id.rawValue.uuidString])
+        }
+
+        let corrected = try await fixture.store.search("corrected")
+        XCTAssertTrue(
+            corrected.isEmpty,
+            "a revision advance makes every prior correction stale")
+    }
+
+    /// The projection is disposable: wipe it, refresh, and the corrected text
+    /// serves again — including its FTS mirror.
+    func testProjectionRebuildsFromCorrectionHistory() async throws {
+        let fixture = try await makeFixture(texts: ["the original wording stands"])
+        _ = try await fixture.store.appendTranscriptCorrection(event(
+            208,
+            fixture: fixture,
+            targets: [fixture.segments[0].id],
+            kind: .replaceText(text: "the corrected wording stands", language: "en")))
+
+        let meetingID = fixture.meeting.id
+        try await fixture.store.database.write { database in
+            try database.execute(sql: "DELETE FROM segmentCorrectedText")
+        }
+        let wiped = try await fixture.store.search("corrected")
+        XCTAssertTrue(wiped.isEmpty)
+
+        try await fixture.store.database.write { database in
+            try MeetingStore.refreshTranscriptCorrectionSearchProjection(
+                meetingID: meetingID,
+                in: database)
+        }
+        let served = try await fixture.store.search("corrected")
+        XCTAssertEqual(served.count, 1)
+    }
+
+    /// An upgrade must not wait for the next correction write: v33 backfills
+    /// the projection for libraries that corrected text before it existed.
+    func testMigrationBackfillsCorrectedTextForExistingCorrections() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("segment-corrected-backfill-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(
+            at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let databaseURL = directory.appendingPathComponent("library.sqlite")
+
+        do {
+            let fixture = try await makeFixture(
+                texts: ["the original wording stands"],
+                databaseURL: databaseURL)
+            _ = try await fixture.store.appendTranscriptCorrection(event(
+                209,
+                fixture: fixture,
+                targets: [fixture.segments[0].id],
+                kind: .replaceText(
+                    text: "the corrected wording stands", language: "en")))
+            // Simulate a pre-v33 library: history exists and neither search
+            // projection does. v33 must run before v36 creates sparse state.
+            try await fixture.store.database.write { database in
+                try database.execute(sql: "DROP TABLE transcriptCorrectionSearchState")
+                try database.execute(sql: "DROP TABLE segmentCorrectedSearch")
+                try database.execute(sql: "DROP TABLE segmentCorrectedText")
+                try database.execute(
+                    sql: "DELETE FROM grdb_migrations WHERE identifier IN ('v33', 'v36')")
+            }
+        }
+
+        let reopened = try MeetingStore(databaseURL: databaseURL)
+        let hits = try await reopened.search("corrected")
+        XCTAssertEqual(hits.count, 1, "reopening runs v33 and its backfill")
+    }
+
+    /// v37 is additive over the disposable v33 projection: an existing
+    /// corrected row survives the upgrade and immediately becomes a bounded
+    /// semantic-maintenance candidate without another correction write.
+    func testMigrationV37AddsCorrectedSemanticLaneToExistingProjection() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("segment-corrected-semantic-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(
+            at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let databaseURL = directory.appendingPathComponent("library.sqlite")
+        let segmentID: UUID
+        let correctionID: UUID
+
+        do {
+            let fixture = try await makeFixture(
+                texts: ["the original wording stands"],
+                databaseURL: databaseURL)
+            let correction = event(
+                210,
+                fixture: fixture,
+                targets: [fixture.segments[0].id],
+                kind: .replaceText(
+                    text: "the corrected semantic wording stands",
+                    language: "en"))
+            _ = try await fixture.store.appendTranscriptCorrection(correction)
+            segmentID = fixture.segments[0].id
+            correctionID = correction.id
+
+            // Simulate the exact v36 table shape and migration ledger.
+            try await fixture.store.database.write { database in
+                try database.execute(
+                    sql: "ALTER TABLE segmentCorrectedText DROP COLUMN embeddingFingerprint")
+                try database.execute(
+                    sql: "ALTER TABLE segmentCorrectedText DROP COLUMN embedding")
+                try database.execute(
+                    sql: "DELETE FROM grdb_migrations WHERE identifier = 'v37'")
+            }
+        }
+
+        let reopened = try MeetingStore(databaseURL: databaseURL)
+        let columns = try await reopened.database.read { database in
+            try Set(database.columns(in: "segmentCorrectedText").map(\.name))
+        }
+        let candidates = try await reopened.segmentsNeedingEmbeddings(limit: 2)
+
+        XCTAssertTrue(columns.isSuperset(of: ["embedding", "embeddingFingerprint"]))
+        XCTAssertEqual(candidates.map(\.id), [segmentID])
+        XCTAssertEqual(candidates.map(\.text), ["the corrected semantic wording stands"])
+        XCTAssertEqual(candidates.map(\.source), [.corrected(correctionID: correctionID)])
+    }
+
+    func testMigrationV38BackfillsStructuralSearchRows() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("structural-search-backfill-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(
+            at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let databaseURL = directory.appendingPathComponent("library.sqlite")
+        let mergeID: UUID
+        let sources: [UUID]
+
+        do {
+            let fixture = try await makeFixture(
+                texts: ["alpha launch", "beta review"],
+                databaseURL: databaseURL)
+            let merge = event(
+                215,
+                fixture: fixture,
+                targets: fixture.segments.map(\.id),
+                kind: .merge(replacementText: nil, language: nil))
+            _ = try await fixture.store.appendTranscriptCorrection(merge)
+            mergeID = merge.id
+            sources = fixture.segments.map(\.id)
+            try await fixture.store.database.write { database in
+                try database.execute(sql: "DROP TABLE transcriptStructuralSearch")
+                try database.execute(sql: "DROP TABLE transcriptStructuralSearchSource")
+                try database.execute(sql: "DROP TABLE transcriptStructuralSearchRow")
+                try database.execute(
+                    sql: "DELETE FROM grdb_migrations WHERE identifier = 'v38'")
+            }
+        }
+
+        let reopened = try MeetingStore(databaseURL: databaseURL)
+        let hits = try await reopened.search("launch beta")
+
+        XCTAssertEqual(hits.map(\.resultID), [mergeID])
+        XCTAssertEqual(hits.first?.sourceSegmentIDs, sources)
+    }
+
+    // MARK: - Pure projection policy
+
+    /// Two active replacements over one segment are an invalid history
+    /// (`overlappingTargets`); the whole meeting projects nothing rather than
+    /// guessing which text the user meant.
+    func testTwoActiveReplacementsOverOneSegmentProjectNothing() {
+        let meetingID = MeetingID()
+        let segmentID = id(1)
+        let events = [
+            replacementEvent(11, meetingID: meetingID, target: segmentID, text: "first"),
+            replacementEvent(12, meetingID: meetingID, target: segmentID, text: "second")
+        ]
+        XCTAssertTrue(
+            SegmentCorrectedTextProjection.activeReplacements(
+                history: events,
+                meetingID: meetingID,
+                baseTranscriptRevision: 3).isEmpty,
+            "conflicting active replacements fail closed")
+    }
+
+    /// Active text + structural corrections on one segment are likewise an
+    /// invalid history — the projection must not serve half of it.
+    func testOverlappingTextAndStructuralHistoryProjectsNothing() {
+        let meetingID = MeetingID()
+        let corrected = id(1)
+        let events = [
+            replacementEvent(21, meetingID: meetingID, target: corrected, text: "changed"),
+            TranscriptCorrectionEvent(
+                id: id(23),
+                meetingID: meetingID,
+                baseTranscriptRevision: 3,
+                targetSegmentIDs: [corrected],
+                kind: .suppress,
+                sourceDeviceID: sourceDeviceID,
+                createdAt: date(23))
+        ]
+        XCTAssertTrue(
+            SegmentCorrectedTextProjection.activeReplacements(
+                history: events,
+                meetingID: meetingID,
+                baseTranscriptRevision: 3).isEmpty)
+    }
+
+    /// A structural correction elsewhere never bleeds into another segment's
+    /// replacement: valid histories keep projecting the unaffected text.
+    func testStructuralCorrectionOnAnotherSegmentKeepsTheReplacement() {
+        let meetingID = MeetingID()
+        let suppressed = id(1)
+        let corrected = id(2)
+        let events = [
+            replacementEvent(31, meetingID: meetingID, target: corrected, text: "kept"),
+            TranscriptCorrectionEvent(
+                id: id(33),
+                meetingID: meetingID,
+                baseTranscriptRevision: 3,
+                targetSegmentIDs: [suppressed],
+                kind: .suppress,
+                sourceDeviceID: sourceDeviceID,
+                createdAt: date(33))
+        ]
+        let replacements = SegmentCorrectedTextProjection.activeReplacements(
+            history: events,
+            meetingID: meetingID,
+            baseTranscriptRevision: 3)
+        XCTAssertEqual(replacements.map(\.segmentID), [corrected])
+        XCTAssertEqual(replacements.map(\.text), ["kept"])
+    }
+
+    func testMalformedHistoryProjectsNothing() {
+        let meetingID = MeetingID()
+        let duplicated = replacementEvent(
+            31, meetingID: meetingID, target: id(1), text: "changed")
+        XCTAssertTrue(
+            SegmentCorrectedTextProjection.activeReplacements(
+                history: [duplicated, duplicated],
+                meetingID: meetingID,
+                baseTranscriptRevision: 3).isEmpty)
+    }
+
+    func testStaleRevisionReplacementsProjectNothing() {
+        let meetingID = MeetingID()
+        let events = [
+            replacementEvent(41, meetingID: meetingID, target: id(1), text: "changed")
+        ]
+        XCTAssertTrue(
+            SegmentCorrectedTextProjection.activeReplacements(
+                history: events,
+                meetingID: meetingID,
+                baseTranscriptRevision: 4).isEmpty,
+            "events for another revision are not active")
+    }
+
+    // MARK: - Fixtures
+
+    private struct Fixture {
+        let store: MeetingStore
+        let meeting: Meeting
+        let firstSpeaker: Speaker
+        let secondSpeaker: Speaker
+        let segments: [TranscriptSegment]
+    }
+
+    private func makeFixture(
+        texts: [String],
+        databaseURL: URL? = nil
+    ) async throws -> Fixture {
+        let store: MeetingStore
+        if let databaseURL {
+            store = try MeetingStore(databaseURL: databaseURL)
+        } else {
+            store = try MeetingStore.inMemory()
+        }
+        let meeting = Meeting(
+            title: "Corrected search",
+            startedAt: date(0),
+            language: "en",
+            transcriptRevision: 3)
+        let firstSpeaker = Speaker(meetingID: meeting.id, label: "S1")
+        let secondSpeaker = Speaker(meetingID: meeting.id, label: "S2")
+        let segments = texts.enumerated().map { index, text in
+            TranscriptSegment(
+                id: id(index + 1),
+                meetingID: meeting.id,
+                speakerID: firstSpeaker.id,
+                channel: .system,
+                text: text,
+                language: "en",
+                startTime: Double(index * 3),
+                endTime: Double(index * 3 + 2),
+                confidence: 0.9,
+                isFinal: true)
+        }
+        try await store.save(meeting)
+        try await store.save([firstSpeaker, secondSpeaker])
+        try await store.save(segments)
+        return Fixture(
+            store: store,
+            meeting: meeting,
+            firstSpeaker: firstSpeaker,
+            secondSpeaker: secondSpeaker,
+            segments: segments)
+    }
+
+    private func correctedRowCount(_ fixture: Fixture) async throws -> Int {
+        try await fixture.store.database.read { database in
+            try Int.fetchOne(
+                database,
+                sql: "SELECT COUNT(*) FROM segmentCorrectedText") ?? 0
+        }
+    }
+
+    private func event(
+        _ value: Int,
+        fixture: Fixture,
+        targets: [UUID],
+        kind: TranscriptCorrectionKind,
+        supersedes: UUID? = nil
+    ) -> TranscriptCorrectionEvent {
+        TranscriptCorrectionEvent(
+            id: id(value),
+            meetingID: fixture.meeting.id,
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            targetSegmentIDs: targets,
+            kind: kind,
+            sourceDeviceID: sourceDeviceID,
+            createdAt: date(Double(value)),
+            supersedesCorrectionID: supersedes)
+    }
+
+    private func replacementEvent(
+        _ value: Int,
+        meetingID: MeetingID,
+        target: UUID,
+        text: String
+    ) -> TranscriptCorrectionEvent {
+        TranscriptCorrectionEvent(
+            id: id(value),
+            meetingID: meetingID,
+            baseTranscriptRevision: 3,
+            targetSegmentIDs: [target],
+            kind: .replaceText(text: text, language: "en"),
+            sourceDeviceID: sourceDeviceID,
+            createdAt: date(Double(value)))
+    }
+
+    private func date(_ offset: TimeInterval) -> Date {
+        Date(timeIntervalSince1970: 1_810_000_000 + offset)
+    }
+
+    private func id(_ value: Int) -> UUID {
+        UUID(uuidString: String(format: "00000000-0000-4000-8000-9%011d", value))!
+    }
+}

@@ -6,10 +6,18 @@ import TranscriptionKit
 
 /// A caption source, erased so the macOS-26-only transcriber type never
 /// escapes into code compiled for the app's macOS 14 floor.
-private struct CaptionFeed {
-    let feed: (AudioChunk) -> Void
-    let finish: () -> Void
-    let wait: () async -> Void
+struct FirstListenCaptionFeed: Sendable {
+    let feed: @Sendable (AudioChunk) -> Void
+    let finish: @Sendable () -> Void
+    let cancel: @Sendable () -> Void
+    let wait: @Sendable () async -> Void
+}
+
+/// One started microphone stream plus the asynchronous teardown that owns its
+/// tap and engine. Tests inject this boundary without touching a real device.
+struct FirstListenAudioCapture: Sendable {
+    let chunks: AsyncThrowingStream<AudioChunk, Error>
+    let stop: @Sendable () async -> Void
 }
 
 /// The onboarding "first listen" (design system 6a-4): before any 1 GB model
@@ -21,6 +29,11 @@ private struct CaptionFeed {
 @MainActor
 @Observable
 final class FirstListenController {
+    typealias CaptureFactory = @MainActor @Sendable () async throws -> FirstListenAudioCapture
+    typealias CaptionFactory = @MainActor @Sendable (
+        _ apply: @escaping @MainActor @Sendable (String, String) -> Void
+    ) async -> FirstListenCaptionFeed?
+
     enum Phase: Equatable {
         case idle
         case preparing
@@ -46,7 +59,18 @@ final class FirstListenController {
     private(set) var capturedSamples: [Float] = []
     private(set) var capturedSampleRate: Double = 16_000
 
+    private let captureFactory: CaptureFactory
+    private let captionFactory: CaptionFactory
     private var job: Task<Void, Never>?
+    private var activeSessionID: UUID?
+
+    init(
+        captureFactory: CaptureFactory? = nil,
+        captionFactory: CaptionFactory? = nil
+    ) {
+        self.captureFactory = captureFactory ?? Self.startLiveCapture
+        self.captionFactory = captionFactory ?? Self.startLiveCaptionFeed
+    }
 
     var hasCaption: Bool { !caption.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -62,13 +86,24 @@ final class FirstListenController {
         guard !isBusy else { return }
         reset()
         phase = .preparing
-        job = Task { await run() }
+        let sessionID = UUID()
+        activeSessionID = sessionID
+        job = Task { [weak self] in
+            await self?.run(sessionID: sessionID)
+        }
     }
 
     func cancel() {
+        let discardedPartialCapture = isBusy
+        activeSessionID = nil
         job?.cancel()
         job = nil
-        if isBusy { phase = .idle }
+        if discardedPartialCapture {
+            phase = .idle
+            capturedSamples = []
+            secondsLeft = Self.captureSeconds
+        }
+        level = 0
     }
 
     private func reset() {
@@ -78,18 +113,27 @@ final class FirstListenController {
         capturedSamples = []
     }
 
-    private func run() async {
+    private func run(sessionID: UUID) async {
+        var capture: FirstListenAudioCapture?
+        var captions: FirstListenCaptionFeed?
         do {
-            let microphone = MicrophoneSource(voiceProcessing: false)
-            let micStream = try await microphone.start()
-            defer { Task { await microphone.stop() } }
-
-            let captions = await startCaptionFeed()
+            captions = await captionFactory { [weak self] settled, volatile in
+                guard let self, self.activeSessionID == sessionID else { return }
+                self.applyCaption(settled: settled, volatile: volatile)
+            }
+            try requireActive(sessionID)
+            let captionsAvailable = captions != nil
+            // Resolve Apple's optional caption asset before opening the mic.
+            // Otherwise its live stream buffers while the asset awaits and a
+            // cold first listen can retain an unbounded audio backlog.
+            let startedCapture = try await captureFactory()
+            capture = startedCapture
+            try requireActive(sessionID)
             phase = .listening
 
             let start = Date()
-            for try await chunk in micStream {
-                if Task.isCancelled { break }
+            for try await chunk in startedCapture.chunks {
+                try requireActive(sessionID)
                 capturedSamples.append(contentsOf: chunk.samples)
                 capturedSampleRate = chunk.sampleRate
                 captions?.feed(chunk)
@@ -98,19 +142,68 @@ final class FirstListenController {
                 secondsLeft = max(0, Self.captureSeconds - Int(elapsed))
                 if elapsed >= Double(Self.captureSeconds) { break }
             }
+            try requireActive(sessionID)
             captions?.finish()
-            await captions?.wait()
+            await startedCapture.stop()
+            capture = nil
+            await Self.waitForCompletion(of: captions)
+            captions = nil
+            try requireActive(sessionID)
 
             level = 0
-            phase = captions == nil ? .captionsUnavailable : .done
+            phase = captionsAvailable ? .done : .captionsUnavailable
+            activeSessionID = nil
+            job = nil
+        } catch is CancellationError {
+            captions?.cancel()
+            await capture?.stop()
+            await captions?.wait()
+            guard activeSessionID == sessionID else { return }
+            activeSessionID = nil
+            job = nil
+            level = 0
+            capturedSamples = []
+            secondsLeft = Self.captureSeconds
+            phase = .idle
         } catch {
+            captions?.cancel()
+            await capture?.stop()
+            await captions?.wait()
+            guard activeSessionID == sessionID, !Task.isCancelled else { return }
+            activeSessionID = nil
+            job = nil
+            level = 0
             phase = .failed(error.localizedDescription)
         }
     }
 
+    private func requireActive(_ sessionID: UUID) throws {
+        try Task.checkCancellation()
+        guard activeSessionID == sessionID else { throw CancellationError() }
+    }
+
+    private static func waitForCompletion(of captions: FirstListenCaptionFeed?) async {
+        guard let captions else { return }
+        await withTaskCancellationHandler {
+            await captions.wait()
+        } onCancel: {
+            captions.cancel()
+        }
+    }
+
+    private static func startLiveCapture() async throws -> FirstListenAudioCapture {
+        let microphone = MicrophoneSource(voiceProcessing: false)
+        let chunks = try await microphone.start()
+        return FirstListenAudioCapture(
+            chunks: chunks,
+            stop: { await microphone.stop() })
+    }
+
     /// Build the on-device caption feed if this OS has `SpeechAnalyzer`; nil
     /// means pre-macOS 26 — the listen still records audio, just without text.
-    private func startCaptionFeed() async -> CaptionFeed? {
+    private static func startLiveCaptionFeed(
+        apply: @escaping @MainActor @Sendable (String, String) -> Void
+    ) async -> FirstListenCaptionFeed? {
         guard #available(macOS 26.0, *), SpeechAnalyzerEngine.isAvailable else { return nil }
         let locale: Locale
         do {
@@ -121,7 +214,7 @@ final class FirstListenController {
         let (stream, continuation) = AsyncStream.makeStream(of: AudioChunk.self)
         let segments = SpeechAnalyzerEngine()
             .transcribe(stream, hints: TranscriptionHints(), locale: locale)
-        let consume = Task { @MainActor [weak self] in
+        let consume = Task { @MainActor in
             var settled = ""
             do {
                 for try await segment in segments {
@@ -129,9 +222,9 @@ final class FirstListenController {
                     guard !text.isEmpty else { continue }
                     if segment.isFinal {
                         settled = settled.isEmpty ? text : settled + " " + text
-                        self?.applyCaption(settled: settled, volatile: "")
+                        apply(settled, "")
                     } else {
-                        self?.applyCaption(settled: settled, volatile: text)
+                        apply(settled, text)
                     }
                 }
             } catch {
@@ -139,9 +232,13 @@ final class FirstListenController {
                 // listen still completes on the audio deadline.
             }
         }
-        return CaptionFeed(
+        return FirstListenCaptionFeed(
             feed: { continuation.yield($0) },
             finish: { continuation.finish() },
+            cancel: {
+                consume.cancel()
+                continuation.finish()
+            },
             wait: { await consume.value })
     }
 

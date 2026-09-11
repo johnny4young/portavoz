@@ -1,0 +1,57 @@
+{
+  "kind": "apuntador-leak-baseline-contract",
+  "maximumLeakedBytes": 0,
+  "maximumLeaks": 0,
+  "policies": {
+    "application": "release-disposable-ad-hoc-copy",
+    "memoryContent": "withheld",
+    "network": "not-required",
+    "privateLibrary": "forbidden",
+    "source": "public-synthetic-only",
+    "stacks": "withheld"
+  },
+  "scenarios": [
+    {
+      "adapter": "released-prefilter",
+      "evidence": [
+        "observations"
+      ],
+      "id": "live-assist-released",
+      "iterations": 100,
+      "kind": "live-assist",
+      "successMarker": "live-assist-validation: observations written"
+    },
+    {
+      "adapter": "bundled-question",
+      "evidence": [
+        "observations"
+      ],
+      "id": "live-assist-bundled-question",
+      "iterations": 100,
+      "kind": "live-assist",
+      "successMarker": "live-assist-validation: observations written"
+    },
+    {
+      "adapter": "not-applicable",
+      "evidence": [
+        "pipeline",
+        "resource"
+      ],
+      "id": "ask",
+      "iterations": 10,
+      "kind": "ask",
+      "successMarker": "bench-ask: resource sample complete"
+    },
+    {
+      "adapter": "not-applicable",
+      "evidence": [
+        "resource"
+      ],
+      "id": "semantic-indexing",
+      "iterations": 10,
+      "kind": "semantic-indexing",
+      "successMarker": "bench-indexing: resource sample complete"
+    }
+  ],
+  "schemaVersion": 2
+}

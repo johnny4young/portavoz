@@ -22,6 +22,60 @@ final class AudioInputFormatPolicyTests: XCTestCase {
             sampleRate: .nan,
             channelCount: 1))
     }
+
+    func testInputTapObservesEachDeliveredHardwareFormatWithoutRequestingOne() throws {
+        let builtInFormat = try XCTUnwrap(AVAudioFormat(
+            standardFormatWithSampleRate: 48_000,
+            channels: 1))
+        let bluetoothFormat = try XCTUnwrap(AVAudioFormat(
+            standardFormatWithSampleRate: 24_000,
+            channels: 1))
+
+        XCTAssertNil(AudioInputTapPolicy.requestedFormat)
+        XCTAssertEqual(
+            AudioInputTapPolicy.sourceSampleRate(for: builtInFormat),
+            48_000)
+        XCTAssertEqual(
+            AudioInputTapPolicy.sourceSampleRate(for: bluetoothFormat),
+            24_000)
+    }
+}
+
+final class AudioRouteTransitionGateTests: XCTestCase {
+    func testOnlyNewestRequestMayMutateTheActiveGraph() throws {
+        var gate = AudioRouteTransitionGate()
+        gate.activate()
+
+        let stale = try XCTUnwrap(gate.request())
+        let newest = try XCTUnwrap(gate.request())
+
+        XCTAssertFalse(gate.admits(stale))
+        XCTAssertTrue(gate.admits(newest))
+    }
+
+    func testStopInvalidatesDelayedRouteWork() throws {
+        var gate = AudioRouteTransitionGate()
+        gate.activate()
+        let ticket = try XCTUnwrap(gate.request())
+
+        gate.deactivate()
+
+        XCTAssertFalse(gate.admits(ticket))
+        XCTAssertNil(gate.request())
+    }
+
+    func testNewCaptureGenerationRejectsPriorTickets() throws {
+        var gate = AudioRouteTransitionGate()
+        gate.activate()
+        let priorCapture = try XCTUnwrap(gate.request())
+
+        gate.deactivate()
+        gate.activate()
+        let currentCapture = try XCTUnwrap(gate.request())
+
+        XCTAssertFalse(gate.admits(priorCapture))
+        XCTAssertTrue(gate.admits(currentCapture))
+    }
 }
 
 final class CaptureFileWriterTests: XCTestCase {
@@ -37,16 +91,17 @@ final class CaptureFileWriterTests: XCTestCase {
         try autoreleasepool {
             let writer = try CaptureFileWriter(url: url, sampleRate: 48_000)
             try writer.append([Float](repeating: 0.25, count: 4_800))
-            try writer.append([Float](repeating: -0.25, count: 4_800))
+            try writer.append([Float](repeating: -0.25, count: 2_400))
+            try writer.append([Float](repeating: 0.125, count: 7_200))
             framesWritten = writer.framesWritten
             secondsWritten = writer.secondsWritten
         }
 
-        XCTAssertEqual(framesWritten, 9_600)
-        XCTAssertEqual(secondsWritten, 0.2, accuracy: 0.0001)
+        XCTAssertEqual(framesWritten, 14_400)
+        XCTAssertEqual(secondsWritten, 0.3, accuracy: 0.0001)
 
         let read = try AVAudioFile(forReading: url)
-        XCTAssertEqual(read.length, 9_600)
+        XCTAssertEqual(read.length, 14_400)
         XCTAssertEqual(read.fileFormat.channelCount, 1)
         XCTAssertEqual(read.fileFormat.sampleRate, 48_000)
     }
@@ -60,9 +115,102 @@ final class CaptureFileWriterTests: XCTestCase {
         try writer.append([])
         XCTAssertEqual(writer.framesWritten, 0)
     }
+
+    func testExplicitCloseIsIdempotentAndRejectsLaterPCM() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(UUID().uuidString).caf")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let writer = try CaptureFileWriter(url: url, sampleRate: 48_000)
+        try writer.append([0.25])
+
+        writer.close()
+        writer.close()
+
+        XCTAssertThrowsError(try writer.append([0.25])) { error in
+            guard case AudioCaptureError.captureWriterClosed = error else {
+                return XCTFail("wrong error: \(error)")
+            }
+        }
+        XCTAssertEqual(writer.framesWritten, 1)
+        XCTAssertEqual(writer.secondsWritten, 1.0 / 48_000, accuracy: 0.000_001)
+    }
 }
 
 final class RecordingSummaryTests: XCTestCase {
+    func testFailedProducerRetiresBeforeGlobalStopAndPreservesBothFilesAndHealthyPeer() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let microphone = FakeCaptureSource(channel: .microphone)
+        let system = FakeCaptureSource(channel: .system)
+        let probe = CaptureLivenessProbe()
+        let session = RecordingSession(outputDirectory: root)
+        try await session.start(sources: [microphone, system],
+            onChunk: { probe.record(chunk: $0) }, onHealthEvent: { probe.record(event: $0) })
+        microphone.yield(at: 0)
+        system.yield(at: 0)
+        try await waitUntil { probe.chunkCount(for: .microphone) == 1 && probe.chunkCount(for: .system) == 1 }
+        microphone.fail()
+        try await waitUntil { microphone.stopCount == 1 }
+        XCTAssertTrue(probe.events.contains(.streamFailed(channel: .microphone)))
+        XCTAssertEqual(system.stopCount, 0)
+        let recording = await session.isRecording
+        XCTAssertTrue(recording)
+        system.yield(at: 0.1)
+        try await waitUntil { probe.chunkCount(for: .system) == 2 }
+        let summary = await session.stop()
+        XCTAssertEqual(microphone.stopCount, 1)
+        XCTAssertEqual(system.stopCount, 1)
+        XCTAssertNotNil(summary.errors[.microphone])
+        XCTAssertNil(summary.errors[.system])
+        XCTAssertEqual(summary.framesWritten[.microphone], 1)
+        XCTAssertEqual(summary.framesWritten[.system], 2)
+        for (channel, frames) in [(AudioChannel.microphone, Int64(1)), (.system, Int64(2))] {
+            let url = try XCTUnwrap(summary.files[channel])
+            XCTAssertEqual(try AVAudioFile(forReading: url).length, frames)
+        }
+        _ = await session.stop()
+        XCTAssertEqual(microphone.stopCount, 1)
+        XCTAssertEqual(system.stopCount, 1)
+    }
+
+    func testInvalidWriterGeometryRetiresOnlyItsSourceWithoutCreatingInvalidMedia() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let microphone = FakeCaptureSource(channel: .microphone, chunks: [
+            AudioChunk(channel: .microphone, samples: [0.1], sampleRate: .nan, timestamp: 0)
+        ])
+        let system = FakeCaptureSource(channel: .system)
+        let probe = CaptureLivenessProbe()
+        let session = RecordingSession(outputDirectory: root)
+        try await session.start(sources: [microphone, system], onChunk: { probe.record(chunk: $0) })
+        try await waitUntil { microphone.stopCount == 1 }
+        XCTAssertEqual(system.stopCount, 0)
+        system.yield(at: 0)
+        try await waitUntil { probe.chunkCount(for: .system) == 1 }
+        let summary = await session.stop()
+        XCTAssertNil(summary.files[.microphone])
+        XCTAssertNotNil(summary.errors[.microphone])
+        XCTAssertEqual(summary.framesWritten[.system], 1)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent(
+            AudioCapturePath.stagingFilename(for: .microphone)).path))
+        XCTAssertEqual(microphone.stopCount, 1)
+    }
+
+    func testGlobalStopOwnsTeardownWhenItsSourceFinishesWithAnError() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let source = FakeCaptureSource(channel: .microphone, stopError: FakeCaptureError.streamFailed, chunks: [
+            AudioChunk(channel: .microphone, samples: [0.25, 0.25], sampleRate: 48_000, timestamp: 0)
+        ])
+        let session = RecordingSession(outputDirectory: root)
+        try await session.start(sources: [source])
+        let summary = await session.stop()
+        XCTAssertEqual(source.stopCount, 1, "failure teardown cannot steal an already-claimed producer")
+        XCTAssertEqual(summary.framesWritten[.microphone], 2)
+        XCTAssertNotNil(summary.files[.microphone])
+        XCTAssertNotNil(summary.errors[.microphone])
+    }
+
     func testDriftRequiresBothChannels() {
         let micOnly = RecordingSession.Summary(
             files: [.microphone: URL(fileURLWithPath: "/tmp/microphone.wav")],
@@ -195,6 +343,7 @@ final class RecordingSummaryTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: stagingURL.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: finalURL.path))
         XCTAssertEqual(summary.files[.microphone], finalURL)
+        XCTAssertEqual(summary.framesWritten[.microphone], 4_800)
         XCTAssertEqual(media.url, finalURL)
         XCTAssertEqual(media.container, "caf")
         XCTAssertEqual(media.codec, "pcm-s16le")
@@ -207,6 +356,37 @@ final class RecordingSummaryTests: XCTestCase {
         XCTAssertEqual(media.healthStatus, .healthy)
         XCTAssertEqual(media.peakDBFS, -12.041, accuracy: 0.01)
         XCTAssertEqual(media.rmsDBFS, -12.041, accuracy: 0.01)
+    }
+
+    func testPersistedChunkPublishesCompactLevelEvidenceFromWriterPass() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = FakeCaptureSource(
+            channel: .microphone,
+            chunks: [AudioChunk(
+                channel: .microphone,
+                samples: [-2, 0.5],
+                sampleRate: 48_000,
+                timestamp: 4.25)])
+        let probe = PersistedAudioLevelProbe()
+        let session = RecordingSession(outputDirectory: directory)
+
+        try await session.start(
+            sources: [source],
+            onLevel: { probe.record($0) })
+        _ = await session.stop()
+
+        let level = try XCTUnwrap(probe.values.first)
+        XCTAssertEqual(probe.values.count, 1)
+        XCTAssertEqual(level.channel, .microphone)
+        XCTAssertEqual(level.peak, 1, accuracy: 0.0001)
+        XCTAssertEqual(level.rms, 0.790_569, accuracy: 0.0001)
+        XCTAssertEqual(level.timestamp, 4.25)
+        XCTAssertEqual(level.duration, 2.0 / 48_000, accuracy: 0.000_001)
     }
 
     func testPublisherNeverOverwritesAnExistingFinalFile() throws {
@@ -413,11 +593,13 @@ final class SystemCaptureLivenessPolicyTests: XCTestCase {
 
 private enum FakeCaptureError: Error {
     case startFailed
+    case streamFailed
 }
 
 private final class FakeCaptureSource: AudioCaptureSource, @unchecked Sendable {
     let channel: AudioChannel
     private let startError: Error?
+    private let stopError: Error?
     private let chunks: [AudioChunk]
     private let lock = NSLock()
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
@@ -426,15 +608,21 @@ private final class FakeCaptureSource: AudioCaptureSource, @unchecked Sendable {
     init(
         channel: AudioChannel,
         startError: Error? = nil,
+        stopError: Error? = nil,
         chunks: [AudioChunk] = []
     ) {
         self.channel = channel
         self.startError = startError
+        self.stopError = stopError
         self.chunks = chunks
     }
 
     var stopCount: Int {
         lock.withLock { stops }
+    }
+
+    func fail() {
+        lock.withLock { continuation }?.finish(throwing: FakeCaptureError.streamFailed)
     }
 
     func yield(at timestamp: TimeInterval) {
@@ -462,7 +650,7 @@ private final class FakeCaptureSource: AudioCaptureSource, @unchecked Sendable {
             self.continuation = nil
             return current
         }
-        continuation?.finish()
+        if let stopError { continuation?.finish(throwing: stopError) } else { continuation?.finish() }
     }
 }
 
@@ -534,6 +722,19 @@ private final class CaptureLivenessProbe: @unchecked Sendable {
     }
 }
 
+private final class PersistedAudioLevelProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var capturedValues: [PersistedAudioLevel] = []
+
+    var values: [PersistedAudioLevel] {
+        lock.withLock { capturedValues }
+    }
+
+    func record(_ value: PersistedAudioLevel) {
+        lock.withLock { capturedValues.append(value) }
+    }
+}
+
 final class DownmixTests: XCTestCase {
     func testStereoBufferAveragesToMono() throws {
         let format = try XCTUnwrap(AVAudioFormat(
@@ -550,48 +751,10 @@ final class DownmixTests: XCTestCase {
             channels[1][frame] = 0.0
         }
 
-        let mono = Downmix.mono(from: buffer)
+        let mono = try Downmix.mono(from: buffer)
         XCTAssertEqual(mono.count, 4)
         for value in mono {
             XCTAssertEqual(value, 0.5, accuracy: 0.0001)
-        }
-    }
-}
-
-final class ResampleTests: XCTestCase {
-    func testSameRateIsPassthrough() {
-        let samples: [Float] = [0.1, 0.2, 0.3]
-        XCTAssertEqual(Resample.linear(samples, from: 48_000, to: 48_000), samples)
-    }
-
-    func testDownsamplePreservesDurationAndShape() {
-        // 1 s of a ramp at 48 kHz → 24 kHz keeps 1 s and stays monotonic.
-        let source = (0..<48_000).map { Float($0) / 48_000 }
-        let out = Resample.linear(source, from: 48_000, to: 24_000)
-        XCTAssertEqual(out.count, 24_000)
-        XCTAssertEqual(out.first ?? -1, 0, accuracy: 0.001)
-        XCTAssertEqual(out.last ?? -1, 1, accuracy: 0.001)
-        for index in 1..<out.count {
-            XCTAssertGreaterThanOrEqual(out[index], out[index - 1])
-        }
-    }
-
-    func testUpsampleInterpolatesBetweenNeighbors() {
-        // 24 kHz → 48 kHz doubles the samples; odd indices are midpoints.
-        let out = Resample.linear([0, 1, 0, 1], from: 24_000, to: 48_000)
-        XCTAssertEqual(out.count, 8)
-        XCTAssertEqual(out[0], 0, accuracy: 0.0001)
-        XCTAssertEqual(out[1], 0.5, accuracy: 0.0001)
-        XCTAssertEqual(out[2], 1, accuracy: 0.0001)
-        XCTAssertEqual(out[3], 0.5, accuracy: 0.0001)
-    }
-
-    func testConstantSignalStaysConstantAtWeirdRatio() {
-        let out = Resample.linear(
-            [Float](repeating: 0.7, count: 441), from: 44_100, to: 48_000)
-        XCTAssertEqual(out.count, 480)
-        for value in out {
-            XCTAssertEqual(value, 0.7, accuracy: 0.0001)
         }
     }
 }

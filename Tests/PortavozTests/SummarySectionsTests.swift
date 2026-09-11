@@ -42,4 +42,66 @@ final class SummarySectionsTests: XCTestCase {
         XCTAssertTrue(parsed.intro.isEmpty)
         XCTAssertTrue(parsed.sections.isEmpty)
     }
+
+    func testGeneratedDocumentShowsCanonicalCommitmentsOnlyThroughTypedControls() {
+        let english = MeetingGeneratedDocumentPresentation(markdown: """
+            The team approved the rollout.
+
+            ## Decisions
+            - Ship on Friday.
+
+            ## Action Items
+            - Ana will prepare the release.
+
+            ## Open Questions
+            - Who owns support?
+            """, hasTypedCommitments: true)
+        let spanish = MeetingGeneratedDocumentPresentation(markdown: """
+            El equipo aprobó el despliegue.
+
+            ## Decisiones
+            - Publicar el viernes.
+
+            ## Pendientes
+            - Ana preparará el release.
+
+            ## Preguntas abiertas
+            - ¿Quién atiende soporte?
+            """, hasTypedCommitments: true)
+
+        XCTAssertEqual(english.sections.map(\.heading), ["Decisions", "Open Questions"])
+        XCTAssertEqual(english.sections.map(\.sourceOrdinal), [0, 2])
+        XCTAssertEqual(english.canonicalCommitmentSectionCount, 1)
+        XCTAssertEqual(spanish.sections.map(\.heading), ["Decisiones", "Preguntas abiertas"])
+        XCTAssertEqual(spanish.sections.map(\.sourceOrdinal), [0, 2])
+        XCTAssertEqual(spanish.canonicalCommitmentSectionCount, 1)
+    }
+
+    func testGeneratedDocumentKeepsRecipeSectionsThatAreNotCanonicalAppendices() {
+        let presentation = MeetingGeneratedDocumentPresentation(markdown: """
+            ## Next Steps
+            - Validate the migration.
+
+            ## Tareas pendientes
+            - Review the custom plan.
+            """, hasTypedCommitments: true)
+
+        XCTAssertEqual(presentation.overviewMarkdown, "")
+        XCTAssertEqual(
+            presentation.sections.map(\.heading),
+            ["Next Steps", "Tareas pendientes"])
+        XCTAssertEqual(presentation.canonicalCommitmentSectionCount, 0)
+    }
+
+    func testGeneratedDocumentPreservesCanonicalLookingSectionWithoutTypedCommitments() {
+        let presentation = MeetingGeneratedDocumentPresentation(
+            markdown: """
+                ## Action Items
+                - Legacy content that has no typed task.
+                """,
+            hasTypedCommitments: false)
+
+        XCTAssertEqual(presentation.sections.map(\.heading), ["Action Items"])
+        XCTAssertEqual(presentation.canonicalCommitmentSectionCount, 0)
+    }
 }

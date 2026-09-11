@@ -45,19 +45,38 @@ extension CloudMeetingSyncStateStore {
             from: Data(contentsOf: url))
     }
 
+    /// The complete proof, run when the snapshot arrives from disk: every
+    /// field, every staged payload re-read and re-hashed, every record's
+    /// system fields, and the engine state blob.
     static func validate(
         _ snapshot: CloudMeetingSyncSnapshot,
         payloadDirectory: URL
     ) throws {
-        try validateSnapshotShape(snapshot)
-        try validateAttempts(snapshot.attempts, payloadDirectory: payloadDirectory)
-        try validateDeferredReplays(
+        try validateForCommit(snapshot)
+        try validateAttemptPayloads(
+            snapshot.attempts,
+            payloadDirectory: payloadDirectory)
+        try validateDeferredReplayPayloads(
             snapshot.deferredReplays,
             payloadDirectory: payloadDirectory)
         try validateRecordMetadata(snapshot.recordMetadata)
         if let data = snapshot.engineStateData {
             _ = try decoder().decode(CKSyncEngine.State.Serialization.self, from: data)
         }
+    }
+
+    /// What a commit can prove without touching the filesystem. A commit
+    /// changes in-memory fields; re-reading and SHA-256ing every staged
+    /// payload and re-decoding the engine-state blob on each one made every
+    /// `.stateUpdate` cost O(total staged bytes). The bytes a commit may have
+    /// just written are verified where they are written, and the durable
+    /// proof is re-run in full the next time the snapshot is loaded.
+    static func validateForCommit(_ snapshot: CloudMeetingSyncSnapshot) throws {
+        try validateSnapshotShape(snapshot)
+        try validateAttempts(
+            snapshot.attempts,
+            deferredReplays: snapshot.deferredReplays)
+        try validateDeferredReplays(snapshot.deferredReplays)
     }
 
     static func validateSnapshotShape(_ snapshot: CloudMeetingSyncSnapshot) throws {
@@ -120,7 +139,9 @@ extension CloudMeetingSyncStateStore {
         let seedHasAccount = snapshot.initialSeedAccountFingerprint != nil
         let seedHasRequest = snapshot.initialSeedRequestedAt != nil
         guard seedHasAccount == seedHasRequest,
-              snapshot.initialSeedCompletedAt == nil || seedHasRequest
+              snapshot.initialSeedPreparedAt == nil || seedHasRequest,
+              snapshot.initialSeedCompletedAt == nil || seedHasRequest,
+              snapshot.initialSeedCursorMeetingID == nil || seedHasRequest
         else {
             throw CloudMeetingTransportError.invalidState("incomplete initial seed state")
         }
@@ -139,9 +160,11 @@ extension CloudMeetingSyncStateStore {
         }
     }
 
+    /// Field and phase invariants only — no file access, so a commit can prove
+    /// them on every write.
     static func validateAttempts(
         _ attempts: [CloudSyncAttempt],
-        payloadDirectory: URL
+        deferredReplays: [CloudSyncDeferredReplay]
     ) throws {
         for attempt in attempts {
             guard attempt.generation > 0,
@@ -173,12 +196,29 @@ extension CloudMeetingSyncStateStore {
                 }
             case .blocked:
                 guard attempt.attemptCount > 0,
-                      attempt.lastFailure == .terminal,
+                      attempt.lastFailure == .terminal
+                        || (attempt.lastFailure == .serverConflict
+                            && deferredReplays.contains {
+                                $0.meetingID == attempt.meetingID
+                                    && $0.blocksOutgoing
+                            }),
                       attempt.nextRetryAt == nil
                 else {
                     throw CloudMeetingTransportError.invalidState("invalid blocked attempt")
                 }
             }
+        }
+    }
+
+    /// Re-reads and re-hashes every staged attempt payload. Run when the
+    /// snapshot arrives from disk, not on every commit: a commit changes
+    /// in-memory fields, and the bytes it may have just written were verified
+    /// where they were written.
+    static func validateAttemptPayloads(
+        _ attempts: [CloudSyncAttempt],
+        payloadDirectory: URL
+    ) throws {
+        for attempt in attempts {
             let url = payloadDirectory.appendingPathComponent(attempt.payloadFileName)
             let payload = try protectedPayload(
                 at: url,
@@ -208,9 +248,9 @@ extension CloudMeetingSyncStateStore {
         }
     }
 
+    /// Field invariants only — see `validateAttempts`.
     static func validateDeferredReplays(
-        _ replays: [CloudSyncDeferredReplay],
-        payloadDirectory: URL
+        _ replays: [CloudSyncDeferredReplay]
     ) throws {
         for replay in replays {
             guard replay.generation > 0,
@@ -223,6 +263,14 @@ extension CloudMeetingSyncStateStore {
             else {
                 throw CloudMeetingTransportError.invalidState("invalid deferred replay")
             }
+        }
+    }
+
+    static func validateDeferredReplayPayloads(
+        _ replays: [CloudSyncDeferredReplay],
+        payloadDirectory: URL
+    ) throws {
+        for replay in replays {
             let url = payloadDirectory.appendingPathComponent(replay.payloadFileName)
             let payload = try protectedPayload(
                 at: url,

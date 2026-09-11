@@ -1,0 +1,22 @@
+{
+  "fixtureChecksum": "4677098f8bb0a49424936ba602d53147346663b802e897de9a9418a9ab743e0e",
+  "fixtureGeneration": "public-bilingual-v1",
+  "kind": "apuntador-validation-budget",
+  "quality": {
+    "expectedScenarioCount": 24,
+    "maximumForbiddenClaims": 0,
+    "maximumHardNegativeCitations": 0,
+    "maximumLatePublicationsAfterTerminal": 0,
+    "minimumCitationPrecision": 1.0,
+    "minimumClaimPrecision": 1.0,
+    "minimumClaimRecall": 1.0,
+    "minimumEvidenceRecall": 1.0,
+    "minimumOutcomeAccuracy": 1.0
+  },
+  "schemaVersion": 1,
+  "timing": {
+    "maximumCompletionMilliseconds": 10000.0,
+    "maximumFirstEvidenceMilliseconds": 2000.0,
+    "maximumP95CompletionMilliseconds": 5000.0
+  }
+}

@@ -1,0 +1,6695 @@
+{
+  "contentSource": "public-synthetic-only",
+  "generation": "public-synthetic-v2",
+  "kind": "ask-quality-fixture",
+  "queries": [
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-049"
+      ],
+      "id": "query-001",
+      "intent": "name",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-001"
+        }
+      ],
+      "text": "¿Quién quedó responsable de atlas-001 según Mara?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-050"
+      ],
+      "id": "query-002",
+      "intent": "name",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 2000,
+          "grade": 3,
+          "segmentID": "segment-002"
+        }
+      ],
+      "text": "Who became responsible for atlas-002 according to Mara?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-051"
+      ],
+      "id": "query-003",
+      "intent": "name",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 3000,
+          "grade": 3,
+          "segmentID": "segment-003"
+        }
+      ],
+      "text": "Who became responsible for atlas-003 according to Noah?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-052"
+      ],
+      "id": "query-004",
+      "intent": "name",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 4000,
+          "grade": 3,
+          "segmentID": "segment-004"
+        }
+      ],
+      "text": "¿Quién quedó responsable de atlas-004 según Noah?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-053"
+      ],
+      "id": "query-005",
+      "intent": "name",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 5000,
+          "grade": 3,
+          "segmentID": "segment-005"
+        }
+      ],
+      "text": "¿What acordó Sofía sobre atlas-005 before Friday?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-054"
+      ],
+      "id": "query-006",
+      "intent": "name",
+      "relationship": "robustness",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 6000,
+          "grade": 3,
+          "segmentID": "segment-006"
+        }
+      ],
+      "text": "¿Quien quedo responsable de atlas-006 segun Sofia?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-055"
+      ],
+      "id": "query-007",
+      "intent": "date",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 7000,
+          "grade": 3,
+          "segmentID": "segment-007"
+        }
+      ],
+      "text": "¿Para qué fecha programó Eli la entrega atlas-007?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-056"
+      ],
+      "id": "query-008",
+      "intent": "date",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 8000,
+          "grade": 3,
+          "segmentID": "segment-008"
+        }
+      ],
+      "text": "When did Eli schedule delivery atlas-008?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-057"
+      ],
+      "id": "query-009",
+      "intent": "date",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 9000,
+          "grade": 3,
+          "segmentID": "segment-009"
+        }
+      ],
+      "text": "When did Iris schedule delivery atlas-009?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-058"
+      ],
+      "id": "query-010",
+      "intent": "date",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 10000,
+          "grade": 3,
+          "segmentID": "segment-010"
+        }
+      ],
+      "text": "¿Para qué fecha programó Iris la entrega atlas-010?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-059"
+      ],
+      "id": "query-011",
+      "intent": "date",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 11000,
+          "grade": 3,
+          "segmentID": "segment-011"
+        }
+      ],
+      "text": "¿What acordó Leo sobre atlas-011 before Friday?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-060"
+      ],
+      "id": "query-012",
+      "intent": "date",
+      "relationship": "robustness",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 12000,
+          "grade": 3,
+          "segmentID": "segment-012"
+        }
+      ],
+      "text": "¿Para que fecha programo Leo la entrega atlas-012?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-061"
+      ],
+      "id": "query-013",
+      "intent": "commitment",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 13000,
+          "grade": 3,
+          "segmentID": "segment-013"
+        }
+      ],
+      "text": "¿Qué se comprometió a entregar Mara para atlas-013?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-062"
+      ],
+      "id": "query-014",
+      "intent": "commitment",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 14000,
+          "grade": 3,
+          "segmentID": "segment-014"
+        }
+      ],
+      "text": "What did Mara commit to deliver for atlas-014?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-063"
+      ],
+      "id": "query-015",
+      "intent": "commitment",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 15000,
+          "grade": 3,
+          "segmentID": "segment-015"
+        }
+      ],
+      "text": "What did Noah commit to deliver for atlas-015?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-064"
+      ],
+      "id": "query-016",
+      "intent": "commitment",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 16000,
+          "grade": 3,
+          "segmentID": "segment-016"
+        }
+      ],
+      "text": "¿Qué se comprometió a entregar Noah para atlas-016?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-065"
+      ],
+      "id": "query-017",
+      "intent": "commitment",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 17000,
+          "grade": 3,
+          "segmentID": "segment-017"
+        }
+      ],
+      "text": "¿What acordó Sofía sobre atlas-017 before Friday?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-066"
+      ],
+      "id": "query-018",
+      "intent": "commitment",
+      "relationship": "robustness",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 18000,
+          "grade": 3,
+          "segmentID": "segment-018"
+        }
+      ],
+      "text": "¿Que se comprometio a entregar Sofia para atlas-018?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-067"
+      ],
+      "id": "query-019",
+      "intent": "decision",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 19000,
+          "grade": 3,
+          "segmentID": "segment-019"
+        }
+      ],
+      "text": "¿Qué decisión confirmó Eli sobre atlas-019?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-068"
+      ],
+      "id": "query-020",
+      "intent": "decision",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 20000,
+          "grade": 3,
+          "segmentID": "segment-020"
+        }
+      ],
+      "text": "What decision did Eli confirm for atlas-020?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-069"
+      ],
+      "id": "query-021",
+      "intent": "decision",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 21000,
+          "grade": 3,
+          "segmentID": "segment-021"
+        }
+      ],
+      "text": "What decision did Iris confirm for atlas-021?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-070"
+      ],
+      "id": "query-022",
+      "intent": "decision",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 22000,
+          "grade": 3,
+          "segmentID": "segment-022"
+        }
+      ],
+      "text": "¿Qué decisión confirmó Iris sobre atlas-022?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-071"
+      ],
+      "id": "query-023",
+      "intent": "decision",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 23000,
+          "grade": 3,
+          "segmentID": "segment-023"
+        }
+      ],
+      "text": "¿What acordó Leo sobre atlas-023 before Friday?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-072"
+      ],
+      "id": "query-024",
+      "intent": "decision",
+      "relationship": "robustness",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 24000,
+          "grade": 3,
+          "segmentID": "segment-024"
+        }
+      ],
+      "text": "¿Que decision confirmo Leo sobre atlas-024?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-073"
+      ],
+      "id": "query-025",
+      "intent": "risk",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 25000,
+          "grade": 3,
+          "segmentID": "segment-025"
+        }
+      ],
+      "text": "¿Qué riesgo registró Mara para atlas-025?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-074"
+      ],
+      "id": "query-026",
+      "intent": "risk",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 26000,
+          "grade": 3,
+          "segmentID": "segment-026"
+        }
+      ],
+      "text": "What risk did Mara record for atlas-026?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-075"
+      ],
+      "id": "query-027",
+      "intent": "risk",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 27000,
+          "grade": 3,
+          "segmentID": "segment-027"
+        }
+      ],
+      "text": "What risk did Noah record for atlas-027?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-076"
+      ],
+      "id": "query-028",
+      "intent": "risk",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 28000,
+          "grade": 3,
+          "segmentID": "segment-028"
+        }
+      ],
+      "text": "¿Qué riesgo registró Noah para atlas-028?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-077"
+      ],
+      "id": "query-029",
+      "intent": "risk",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 29000,
+          "grade": 3,
+          "segmentID": "segment-029"
+        }
+      ],
+      "text": "¿What acordó Sofía sobre atlas-029 before Friday?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-078"
+      ],
+      "id": "query-030",
+      "intent": "risk",
+      "relationship": "robustness",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 30000,
+          "grade": 3,
+          "segmentID": "segment-030"
+        }
+      ],
+      "text": "¿Que riesgo registro Sofia para atlas-030?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-079"
+      ],
+      "id": "query-031",
+      "intent": "technicalIdentifier",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 31000,
+          "grade": 3,
+          "segmentID": "segment-031"
+        }
+      ],
+      "text": "¿Qué esquema técnico usa atlas-031 según Eli?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-080"
+      ],
+      "id": "query-032",
+      "intent": "technicalIdentifier",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 32000,
+          "grade": 3,
+          "segmentID": "segment-032"
+        }
+      ],
+      "text": "Which technical schema does atlas-032 use according to Eli?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-081"
+      ],
+      "id": "query-033",
+      "intent": "technicalIdentifier",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 33000,
+          "grade": 3,
+          "segmentID": "segment-033"
+        }
+      ],
+      "text": "Which technical schema does atlas-033 use according to Iris?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-082"
+      ],
+      "id": "query-034",
+      "intent": "technicalIdentifier",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 34000,
+          "grade": 3,
+          "segmentID": "segment-034"
+        }
+      ],
+      "text": "¿Qué esquema técnico usa atlas-034 según Iris?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-083"
+      ],
+      "id": "query-035",
+      "intent": "technicalIdentifier",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 35000,
+          "grade": 3,
+          "segmentID": "segment-035"
+        }
+      ],
+      "text": "¿What acordó Leo sobre atlas-035 before Friday?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-084"
+      ],
+      "id": "query-036",
+      "intent": "technicalIdentifier",
+      "relationship": "robustness",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 36000,
+          "grade": 3,
+          "segmentID": "segment-036"
+        }
+      ],
+      "text": "¿Qué esqumea técnico usa atlas-036 según Leo?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-085"
+      ],
+      "id": "query-037",
+      "intent": "paraphrase",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 37000,
+          "grade": 3,
+          "segmentID": "segment-037"
+        }
+      ],
+      "text": "¿Qué se resolvió sobre el lanzamiento atlas-037?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-086"
+      ],
+      "id": "query-038",
+      "intent": "paraphrase",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 38000,
+          "grade": 3,
+          "segmentID": "segment-038"
+        }
+      ],
+      "text": "What was resolved about launch atlas-038?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-087"
+      ],
+      "id": "query-039",
+      "intent": "paraphrase",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 39000,
+          "grade": 3,
+          "segmentID": "segment-039"
+        }
+      ],
+      "text": "What was resolved about launch atlas-039?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-088"
+      ],
+      "id": "query-040",
+      "intent": "paraphrase",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 40000,
+          "grade": 3,
+          "segmentID": "segment-040"
+        }
+      ],
+      "text": "¿Qué se resolvió sobre el lanzamiento atlas-040?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-089"
+      ],
+      "id": "query-041",
+      "intent": "paraphrase",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 41000,
+          "grade": 3,
+          "segmentID": "segment-041"
+        }
+      ],
+      "text": "¿What acordó Sofía sobre atlas-041 before Friday?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-090"
+      ],
+      "id": "query-042",
+      "intent": "paraphrase",
+      "relationship": "robustness",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 42000,
+          "grade": 3,
+          "segmentID": "segment-042"
+        }
+      ],
+      "text": "¿Qué se resolbió sobre el lanzamiento atlas-042?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-091"
+      ],
+      "id": "query-043",
+      "intent": "negation",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 43000,
+          "grade": 3,
+          "segmentID": "segment-043"
+        }
+      ],
+      "text": "¿Qué no debe hacer atlas-043 según Eli?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-092"
+      ],
+      "id": "query-044",
+      "intent": "negation",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 44000,
+          "grade": 3,
+          "segmentID": "segment-044"
+        }
+      ],
+      "text": "What must atlas-044 not do according to Eli?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-093"
+      ],
+      "id": "query-045",
+      "intent": "negation",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 45000,
+          "grade": 3,
+          "segmentID": "segment-045"
+        }
+      ],
+      "text": "What must atlas-045 not do according to Iris?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-094"
+      ],
+      "id": "query-046",
+      "intent": "negation",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 46000,
+          "grade": 3,
+          "segmentID": "segment-046"
+        }
+      ],
+      "text": "¿Qué no debe hacer atlas-046 según Iris?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-095"
+      ],
+      "id": "query-047",
+      "intent": "negation",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 47000,
+          "grade": 3,
+          "segmentID": "segment-047"
+        }
+      ],
+      "text": "¿What acordó Leo sobre atlas-047 before Friday?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-096"
+      ],
+      "id": "query-048",
+      "intent": "negation",
+      "relationship": "robustness",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 48000,
+          "grade": 3,
+          "segmentID": "segment-048"
+        }
+      ],
+      "text": "¿Qué no debe hacer atlas-048 según Leo?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-097"
+      ],
+      "id": "query-049",
+      "intent": "name",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 49000,
+          "grade": 3,
+          "segmentID": "segment-049"
+        }
+      ],
+      "text": "¿Quién quedó responsable de atlas-049 según Mara?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-098"
+      ],
+      "id": "query-050",
+      "intent": "name",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 50000,
+          "grade": 3,
+          "segmentID": "segment-050"
+        }
+      ],
+      "text": "Who became responsible for atlas-050 according to Mara?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-099"
+      ],
+      "id": "query-051",
+      "intent": "name",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 51000,
+          "grade": 3,
+          "segmentID": "segment-051"
+        }
+      ],
+      "text": "Who became responsible for atlas-051 according to Noah?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-100"
+      ],
+      "id": "query-052",
+      "intent": "name",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 52000,
+          "grade": 3,
+          "segmentID": "segment-052"
+        }
+      ],
+      "text": "¿Quién quedó responsable de atlas-052 según Noah?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-101"
+      ],
+      "id": "query-053",
+      "intent": "name",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 53000,
+          "grade": 3,
+          "segmentID": "segment-053"
+        }
+      ],
+      "text": "¿What acordó Sofía sobre atlas-053 before Friday?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-102"
+      ],
+      "id": "query-054",
+      "intent": "name",
+      "relationship": "robustness",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 54000,
+          "grade": 3,
+          "segmentID": "segment-054"
+        }
+      ],
+      "text": "¿Quién quedó resposable de atlas-054 según Sofía?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-103"
+      ],
+      "id": "query-055",
+      "intent": "date",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 55000,
+          "grade": 3,
+          "segmentID": "segment-055"
+        }
+      ],
+      "text": "¿Para qué fecha programó Eli la entrega atlas-055?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-104"
+      ],
+      "id": "query-056",
+      "intent": "date",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 56000,
+          "grade": 3,
+          "segmentID": "segment-056"
+        }
+      ],
+      "text": "When did Eli schedule delivery atlas-056?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-105"
+      ],
+      "id": "query-057",
+      "intent": "date",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 57000,
+          "grade": 3,
+          "segmentID": "segment-057"
+        }
+      ],
+      "text": "When did Iris schedule delivery atlas-057?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-106"
+      ],
+      "id": "query-058",
+      "intent": "date",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 58000,
+          "grade": 3,
+          "segmentID": "segment-058"
+        }
+      ],
+      "text": "¿Para qué fecha programó Iris la entrega atlas-058?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-107"
+      ],
+      "id": "query-059",
+      "intent": "date",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 59000,
+          "grade": 3,
+          "segmentID": "segment-059"
+        }
+      ],
+      "text": "¿What acordó Leo sobre atlas-059 before Friday?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-108"
+      ],
+      "id": "query-060",
+      "intent": "date",
+      "relationship": "robustness",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 60000,
+          "grade": 3,
+          "segmentID": "segment-060"
+        }
+      ],
+      "text": "¿Para qué fecha progamó Leo la entrega atlas-060?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-109"
+      ],
+      "id": "query-061",
+      "intent": "commitment",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 61000,
+          "grade": 3,
+          "segmentID": "segment-061"
+        }
+      ],
+      "text": "¿Qué se comprometió a entregar Mara para atlas-061?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-110"
+      ],
+      "id": "query-062",
+      "intent": "commitment",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 62000,
+          "grade": 3,
+          "segmentID": "segment-062"
+        }
+      ],
+      "text": "What did Mara commit to deliver for atlas-062?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-111"
+      ],
+      "id": "query-063",
+      "intent": "commitment",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 63000,
+          "grade": 3,
+          "segmentID": "segment-063"
+        }
+      ],
+      "text": "What did Noah commit to deliver for atlas-063?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-112"
+      ],
+      "id": "query-064",
+      "intent": "commitment",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 64000,
+          "grade": 3,
+          "segmentID": "segment-064"
+        }
+      ],
+      "text": "¿Qué se comprometió a entregar Noah para atlas-064?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-113"
+      ],
+      "id": "query-065",
+      "intent": "commitment",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 65000,
+          "grade": 3,
+          "segmentID": "segment-065"
+        }
+      ],
+      "text": "¿What acordó Sofía sobre atlas-065 before Friday?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-114"
+      ],
+      "id": "query-066",
+      "intent": "commitment",
+      "relationship": "robustness",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 66000,
+          "grade": 3,
+          "segmentID": "segment-066"
+        }
+      ],
+      "text": "¿Qué se comprometió a entregar Sofía para GraphQL-v3-atlas-066?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-115"
+      ],
+      "id": "query-067",
+      "intent": "decision",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 67000,
+          "grade": 3,
+          "segmentID": "segment-067"
+        }
+      ],
+      "text": "¿Qué decisión confirmó Eli sobre atlas-067?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-116"
+      ],
+      "id": "query-068",
+      "intent": "decision",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 68000,
+          "grade": 3,
+          "segmentID": "segment-068"
+        }
+      ],
+      "text": "What decision did Eli confirm for atlas-068?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-117"
+      ],
+      "id": "query-069",
+      "intent": "decision",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 69000,
+          "grade": 3,
+          "segmentID": "segment-069"
+        }
+      ],
+      "text": "What decision did Iris confirm for atlas-069?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-118"
+      ],
+      "id": "query-070",
+      "intent": "decision",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 70000,
+          "grade": 3,
+          "segmentID": "segment-070"
+        }
+      ],
+      "text": "¿Qué decisión confirmó Iris sobre atlas-070?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-119"
+      ],
+      "id": "query-071",
+      "intent": "decision",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 71000,
+          "grade": 3,
+          "segmentID": "segment-071"
+        }
+      ],
+      "text": "¿What acordó Leo sobre atlas-071 before Friday?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-120"
+      ],
+      "id": "query-072",
+      "intent": "decision",
+      "relationship": "robustness",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 72000,
+          "grade": 3,
+          "segmentID": "segment-072"
+        }
+      ],
+      "text": "¿Qué decisión confirmó Leo sobre GraphQL-v3-atlas-072?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-121"
+      ],
+      "id": "query-073",
+      "intent": "risk",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 73000,
+          "grade": 3,
+          "segmentID": "segment-073"
+        }
+      ],
+      "text": "¿Qué riesgo registró Mara para atlas-073?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-122"
+      ],
+      "id": "query-074",
+      "intent": "risk",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 74000,
+          "grade": 3,
+          "segmentID": "segment-074"
+        }
+      ],
+      "text": "What risk did Mara record for atlas-074?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-123"
+      ],
+      "id": "query-075",
+      "intent": "risk",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 75000,
+          "grade": 3,
+          "segmentID": "segment-075"
+        }
+      ],
+      "text": "What risk did Noah record for atlas-075?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-124"
+      ],
+      "id": "query-076",
+      "intent": "risk",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 76000,
+          "grade": 3,
+          "segmentID": "segment-076"
+        }
+      ],
+      "text": "¿Qué riesgo registró Noah para atlas-076?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-125"
+      ],
+      "id": "query-077",
+      "intent": "risk",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 77000,
+          "grade": 3,
+          "segmentID": "segment-077"
+        }
+      ],
+      "text": "¿What acordó Sofía sobre atlas-077 before Friday?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-126"
+      ],
+      "id": "query-078",
+      "intent": "risk",
+      "relationship": "robustness",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 78000,
+          "grade": 3,
+          "segmentID": "segment-078"
+        }
+      ],
+      "text": "¿Qué riesgo registró Sofía para GraphQL-v3-atlas-078?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-127"
+      ],
+      "id": "query-079",
+      "intent": "technicalIdentifier",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 79000,
+          "grade": 3,
+          "segmentID": "segment-079"
+        }
+      ],
+      "text": "¿Qué esquema técnico usa atlas-079 según Eli?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-128"
+      ],
+      "id": "query-080",
+      "intent": "technicalIdentifier",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 80000,
+          "grade": 3,
+          "segmentID": "segment-080"
+        }
+      ],
+      "text": "Which technical schema does atlas-080 use according to Eli?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-129"
+      ],
+      "id": "query-081",
+      "intent": "technicalIdentifier",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 81000,
+          "grade": 3,
+          "segmentID": "segment-081"
+        }
+      ],
+      "text": "Which technical schema does atlas-081 use according to Iris?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-130"
+      ],
+      "id": "query-082",
+      "intent": "technicalIdentifier",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 82000,
+          "grade": 3,
+          "segmentID": "segment-082"
+        }
+      ],
+      "text": "¿Qué esquema técnico usa atlas-082 según Iris?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-131"
+      ],
+      "id": "query-083",
+      "intent": "technicalIdentifier",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 83000,
+          "grade": 3,
+          "segmentID": "segment-083"
+        }
+      ],
+      "text": "¿What acordó Leo sobre atlas-083 before Friday?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-132"
+      ],
+      "id": "query-084",
+      "intent": "technicalIdentifier",
+      "relationship": "robustness",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 84000,
+          "grade": 3,
+          "segmentID": "segment-084"
+        }
+      ],
+      "text": "¿Qué esquema técnico usa GraphQL-v3-atlas-084 según Leo?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-133"
+      ],
+      "id": "query-085",
+      "intent": "paraphrase",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 85000,
+          "grade": 3,
+          "segmentID": "segment-085"
+        }
+      ],
+      "text": "¿Qué se resolvió sobre el lanzamiento atlas-085?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-134"
+      ],
+      "id": "query-086",
+      "intent": "paraphrase",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 86000,
+          "grade": 3,
+          "segmentID": "segment-086"
+        }
+      ],
+      "text": "What was resolved about launch atlas-086?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-135"
+      ],
+      "id": "query-087",
+      "intent": "paraphrase",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 87000,
+          "grade": 3,
+          "segmentID": "segment-087"
+        }
+      ],
+      "text": "What was resolved about launch atlas-087?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-136"
+      ],
+      "id": "query-088",
+      "intent": "paraphrase",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 88000,
+          "grade": 3,
+          "segmentID": "segment-088"
+        }
+      ],
+      "text": "¿Qué se resolvió sobre el lanzamiento atlas-088?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-137"
+      ],
+      "id": "query-089",
+      "intent": "paraphrase",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 89000,
+          "grade": 3,
+          "segmentID": "segment-089"
+        }
+      ],
+      "text": "¿What acordó Sofía sobre atlas-089 before Friday?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-138"
+      ],
+      "id": "query-090",
+      "intent": "paraphrase",
+      "relationship": "robustness",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 90000,
+          "grade": 3,
+          "segmentID": "segment-090"
+        }
+      ],
+      "text": "¿Qué se resolvió sobre el lanzamiento GraphQL-v3-atlas-090?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-139"
+      ],
+      "id": "query-091",
+      "intent": "negation",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 91000,
+          "grade": 3,
+          "segmentID": "segment-091"
+        }
+      ],
+      "text": "¿Qué no debe hacer atlas-091 según Eli?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-140"
+      ],
+      "id": "query-092",
+      "intent": "negation",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 92000,
+          "grade": 3,
+          "segmentID": "segment-092"
+        }
+      ],
+      "text": "What must atlas-092 not do according to Eli?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-141"
+      ],
+      "id": "query-093",
+      "intent": "negation",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 93000,
+          "grade": 3,
+          "segmentID": "segment-093"
+        }
+      ],
+      "text": "What must atlas-093 not do according to Iris?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-142"
+      ],
+      "id": "query-094",
+      "intent": "negation",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 94000,
+          "grade": 3,
+          "segmentID": "segment-094"
+        }
+      ],
+      "text": "¿Qué no debe hacer atlas-094 según Iris?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-143"
+      ],
+      "id": "query-095",
+      "intent": "negation",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 95000,
+          "grade": 3,
+          "segmentID": "segment-095"
+        }
+      ],
+      "text": "¿What acordó Leo sobre atlas-095 before Friday?"
+    },
+    {
+      "answerPolicy": "abstain",
+      "hardNegativeSegmentIDs": [
+        "segment-144"
+      ],
+      "id": "query-096",
+      "intent": "notFound",
+      "relationship": "robustness",
+      "relevant": [],
+      "text": "¿Qué se acordó sobre missing-016?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-145"
+      ],
+      "id": "query-097",
+      "intent": "name",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 97000,
+          "grade": 3,
+          "segmentID": "segment-097"
+        }
+      ],
+      "text": "¿Quién quedó responsable de atlas-097 según Mara?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-146"
+      ],
+      "id": "query-098",
+      "intent": "name",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 98000,
+          "grade": 3,
+          "segmentID": "segment-098"
+        }
+      ],
+      "text": "Who became responsible for atlas-098 according to Mara?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-147"
+      ],
+      "id": "query-099",
+      "intent": "name",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 99000,
+          "grade": 3,
+          "segmentID": "segment-099"
+        }
+      ],
+      "text": "Who became responsible for atlas-099 according to Noah?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-148"
+      ],
+      "id": "query-100",
+      "intent": "name",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 100000,
+          "grade": 3,
+          "segmentID": "segment-100"
+        }
+      ],
+      "text": "¿Quién quedó responsable de atlas-100 según Noah?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-149"
+      ],
+      "id": "query-101",
+      "intent": "name",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 101000,
+          "grade": 3,
+          "segmentID": "segment-101"
+        }
+      ],
+      "text": "¿What acordó Sofía sobre atlas-101 before Friday?"
+    },
+    {
+      "answerPolicy": "abstain",
+      "hardNegativeSegmentIDs": [
+        "segment-150"
+      ],
+      "id": "query-102",
+      "intent": "notFound",
+      "relationship": "robustness",
+      "relevant": [],
+      "text": "¿Qué se acordó sobre missing-017?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-151"
+      ],
+      "id": "query-103",
+      "intent": "date",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 103000,
+          "grade": 3,
+          "segmentID": "segment-103"
+        }
+      ],
+      "text": "¿Para qué fecha programó Eli la entrega atlas-103?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-152"
+      ],
+      "id": "query-104",
+      "intent": "date",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 104000,
+          "grade": 3,
+          "segmentID": "segment-104"
+        }
+      ],
+      "text": "When did Eli schedule delivery atlas-104?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-153"
+      ],
+      "id": "query-105",
+      "intent": "date",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 105000,
+          "grade": 3,
+          "segmentID": "segment-105"
+        }
+      ],
+      "text": "When did Iris schedule delivery atlas-105?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-154"
+      ],
+      "id": "query-106",
+      "intent": "date",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 106000,
+          "grade": 3,
+          "segmentID": "segment-106"
+        }
+      ],
+      "text": "¿Para qué fecha programó Iris la entrega atlas-106?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-155"
+      ],
+      "id": "query-107",
+      "intent": "date",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 107000,
+          "grade": 3,
+          "segmentID": "segment-107"
+        }
+      ],
+      "text": "¿What acordó Leo sobre atlas-107 before Friday?"
+    },
+    {
+      "answerPolicy": "abstain",
+      "hardNegativeSegmentIDs": [
+        "segment-156"
+      ],
+      "id": "query-108",
+      "intent": "notFound",
+      "relationship": "robustness",
+      "relevant": [],
+      "text": "¿Qué se acordó sobre missing-018?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-157"
+      ],
+      "id": "query-109",
+      "intent": "commitment",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 109000,
+          "grade": 3,
+          "segmentID": "segment-109"
+        }
+      ],
+      "text": "¿Qué se comprometió a entregar Mara para atlas-109?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-158"
+      ],
+      "id": "query-110",
+      "intent": "commitment",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 110000,
+          "grade": 3,
+          "segmentID": "segment-110"
+        }
+      ],
+      "text": "What did Mara commit to deliver for atlas-110?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-159"
+      ],
+      "id": "query-111",
+      "intent": "commitment",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 111000,
+          "grade": 3,
+          "segmentID": "segment-111"
+        }
+      ],
+      "text": "What did Noah commit to deliver for atlas-111?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-160"
+      ],
+      "id": "query-112",
+      "intent": "commitment",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 112000,
+          "grade": 3,
+          "segmentID": "segment-112"
+        }
+      ],
+      "text": "¿Qué se comprometió a entregar Noah para atlas-112?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-161"
+      ],
+      "id": "query-113",
+      "intent": "commitment",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 113000,
+          "grade": 3,
+          "segmentID": "segment-113"
+        }
+      ],
+      "text": "¿What acordó Sofía sobre atlas-113 before Friday?"
+    },
+    {
+      "answerPolicy": "abstain",
+      "hardNegativeSegmentIDs": [
+        "segment-162"
+      ],
+      "id": "query-114",
+      "intent": "notFound",
+      "relationship": "robustness",
+      "relevant": [],
+      "text": "¿Qué se acordó sobre missing-019?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-163"
+      ],
+      "id": "query-115",
+      "intent": "decision",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 115000,
+          "grade": 3,
+          "segmentID": "segment-115"
+        }
+      ],
+      "text": "¿Qué decisión confirmó Eli sobre atlas-115?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-164"
+      ],
+      "id": "query-116",
+      "intent": "decision",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 116000,
+          "grade": 3,
+          "segmentID": "segment-116"
+        }
+      ],
+      "text": "What decision did Eli confirm for atlas-116?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-165"
+      ],
+      "id": "query-117",
+      "intent": "decision",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 117000,
+          "grade": 3,
+          "segmentID": "segment-117"
+        }
+      ],
+      "text": "What decision did Iris confirm for atlas-117?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-166"
+      ],
+      "id": "query-118",
+      "intent": "decision",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 118000,
+          "grade": 3,
+          "segmentID": "segment-118"
+        }
+      ],
+      "text": "¿Qué decisión confirmó Iris sobre atlas-118?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-167"
+      ],
+      "id": "query-119",
+      "intent": "decision",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 119000,
+          "grade": 3,
+          "segmentID": "segment-119"
+        }
+      ],
+      "text": "¿What acordó Leo sobre atlas-119 before Friday?"
+    },
+    {
+      "answerPolicy": "abstain",
+      "hardNegativeSegmentIDs": [
+        "segment-168"
+      ],
+      "id": "query-120",
+      "intent": "notFound",
+      "relationship": "robustness",
+      "relevant": [],
+      "text": "¿Qué se acordó sobre missing-020?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-169"
+      ],
+      "id": "query-121",
+      "intent": "risk",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 121000,
+          "grade": 3,
+          "segmentID": "segment-121"
+        }
+      ],
+      "text": "¿Qué riesgo registró Mara para atlas-121?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-170"
+      ],
+      "id": "query-122",
+      "intent": "risk",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 122000,
+          "grade": 3,
+          "segmentID": "segment-122"
+        }
+      ],
+      "text": "What risk did Mara record for atlas-122?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-171"
+      ],
+      "id": "query-123",
+      "intent": "risk",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 123000,
+          "grade": 3,
+          "segmentID": "segment-123"
+        }
+      ],
+      "text": "What risk did Noah record for atlas-123?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-172"
+      ],
+      "id": "query-124",
+      "intent": "risk",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 124000,
+          "grade": 3,
+          "segmentID": "segment-124"
+        }
+      ],
+      "text": "¿Qué riesgo registró Noah para atlas-124?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-173"
+      ],
+      "id": "query-125",
+      "intent": "technicalIdentifier",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 125000,
+          "grade": 3,
+          "segmentID": "segment-125"
+        }
+      ],
+      "text": "¿Qué esquema técnico usa atlas-125 según Sofía?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-174"
+      ],
+      "id": "query-126",
+      "intent": "technicalIdentifier",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 126000,
+          "grade": 3,
+          "segmentID": "segment-126"
+        }
+      ],
+      "text": "Which technical schema does atlas-126 use according to Sofía?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-175"
+      ],
+      "id": "query-127",
+      "intent": "technicalIdentifier",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 127000,
+          "grade": 3,
+          "segmentID": "segment-127"
+        }
+      ],
+      "text": "Which technical schema does atlas-127 use according to Eli?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-176"
+      ],
+      "id": "query-128",
+      "intent": "technicalIdentifier",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 128000,
+          "grade": 3,
+          "segmentID": "segment-128"
+        }
+      ],
+      "text": "¿Qué esquema técnico usa atlas-128 según Eli?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-177"
+      ],
+      "id": "query-129",
+      "intent": "paraphrase",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 129000,
+          "grade": 3,
+          "segmentID": "segment-129"
+        }
+      ],
+      "text": "¿Qué se resolvió sobre el lanzamiento atlas-129?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-178"
+      ],
+      "id": "query-130",
+      "intent": "paraphrase",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 130000,
+          "grade": 3,
+          "segmentID": "segment-130"
+        }
+      ],
+      "text": "What was resolved about launch atlas-130?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-179"
+      ],
+      "id": "query-131",
+      "intent": "paraphrase",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 131000,
+          "grade": 3,
+          "segmentID": "segment-131"
+        }
+      ],
+      "text": "What was resolved about launch atlas-131?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-180"
+      ],
+      "id": "query-132",
+      "intent": "paraphrase",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 132000,
+          "grade": 3,
+          "segmentID": "segment-132"
+        }
+      ],
+      "text": "¿Qué se resolvió sobre el lanzamiento atlas-132?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-181"
+      ],
+      "id": "query-133",
+      "intent": "negation",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 133000,
+          "grade": 3,
+          "segmentID": "segment-133"
+        }
+      ],
+      "text": "¿Qué no debe hacer atlas-133 según Mara?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-182"
+      ],
+      "id": "query-134",
+      "intent": "negation",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 134000,
+          "grade": 3,
+          "segmentID": "segment-134"
+        }
+      ],
+      "text": "What must atlas-134 not do according to Mara?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-183"
+      ],
+      "id": "query-135",
+      "intent": "negation",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 135000,
+          "grade": 3,
+          "segmentID": "segment-135"
+        }
+      ],
+      "text": "What must atlas-135 not do according to Noah?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-184"
+      ],
+      "id": "query-136",
+      "intent": "negation",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 136000,
+          "grade": 3,
+          "segmentID": "segment-136"
+        }
+      ],
+      "text": "¿Qué no debe hacer atlas-136 según Noah?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-185"
+      ],
+      "id": "query-137",
+      "intent": "name",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 137000,
+          "grade": 3,
+          "segmentID": "segment-137"
+        }
+      ],
+      "text": "¿Quién quedó responsable de atlas-137 según Sofía?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-186"
+      ],
+      "id": "query-138",
+      "intent": "name",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 138000,
+          "grade": 3,
+          "segmentID": "segment-138"
+        }
+      ],
+      "text": "Who became responsible for atlas-138 according to Sofía?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-187"
+      ],
+      "id": "query-139",
+      "intent": "name",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 139000,
+          "grade": 3,
+          "segmentID": "segment-139"
+        }
+      ],
+      "text": "Who became responsible for atlas-139 according to Eli?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-188"
+      ],
+      "id": "query-140",
+      "intent": "name",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 140000,
+          "grade": 3,
+          "segmentID": "segment-140"
+        }
+      ],
+      "text": "¿Quién quedó responsable de atlas-140 según Eli?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-189"
+      ],
+      "id": "query-141",
+      "intent": "date",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 141000,
+          "grade": 3,
+          "segmentID": "segment-141"
+        }
+      ],
+      "text": "¿Para qué fecha programó Iris la entrega atlas-141?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-190"
+      ],
+      "id": "query-142",
+      "intent": "date",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 142000,
+          "grade": 3,
+          "segmentID": "segment-142"
+        }
+      ],
+      "text": "When did Iris schedule delivery atlas-142?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-191"
+      ],
+      "id": "query-143",
+      "intent": "date",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 143000,
+          "grade": 3,
+          "segmentID": "segment-143"
+        }
+      ],
+      "text": "When did Leo schedule delivery atlas-143?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-192"
+      ],
+      "id": "query-144",
+      "intent": "date",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 144000,
+          "grade": 3,
+          "segmentID": "segment-144"
+        }
+      ],
+      "text": "¿Para qué fecha programó Leo la entrega atlas-144?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-193"
+      ],
+      "id": "query-145",
+      "intent": "commitment",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 145000,
+          "grade": 3,
+          "segmentID": "segment-145"
+        }
+      ],
+      "text": "¿Qué se comprometió a entregar Mara para atlas-145?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-194"
+      ],
+      "id": "query-146",
+      "intent": "commitment",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 146000,
+          "grade": 3,
+          "segmentID": "segment-146"
+        }
+      ],
+      "text": "What did Mara commit to deliver for atlas-146?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-195"
+      ],
+      "id": "query-147",
+      "intent": "commitment",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 147000,
+          "grade": 3,
+          "segmentID": "segment-147"
+        }
+      ],
+      "text": "What did Noah commit to deliver for atlas-147?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-196"
+      ],
+      "id": "query-148",
+      "intent": "commitment",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 148000,
+          "grade": 3,
+          "segmentID": "segment-148"
+        }
+      ],
+      "text": "¿Qué se comprometió a entregar Noah para atlas-148?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-197"
+      ],
+      "id": "query-149",
+      "intent": "decision",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 149000,
+          "grade": 3,
+          "segmentID": "segment-149"
+        }
+      ],
+      "text": "¿Qué decisión confirmó Sofía sobre atlas-149?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-198"
+      ],
+      "id": "query-150",
+      "intent": "decision",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 150000,
+          "grade": 3,
+          "segmentID": "segment-150"
+        }
+      ],
+      "text": "What decision did Sofía confirm for atlas-150?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-199"
+      ],
+      "id": "query-151",
+      "intent": "decision",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 151000,
+          "grade": 3,
+          "segmentID": "segment-151"
+        }
+      ],
+      "text": "What decision did Eli confirm for atlas-151?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-200"
+      ],
+      "id": "query-152",
+      "intent": "decision",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 152000,
+          "grade": 3,
+          "segmentID": "segment-152"
+        }
+      ],
+      "text": "¿Qué decisión confirmó Eli sobre atlas-152?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-201"
+      ],
+      "id": "query-153",
+      "intent": "risk",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 153000,
+          "grade": 3,
+          "segmentID": "segment-153"
+        }
+      ],
+      "text": "¿Qué riesgo registró Iris para atlas-153?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-202"
+      ],
+      "id": "query-154",
+      "intent": "risk",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 154000,
+          "grade": 3,
+          "segmentID": "segment-154"
+        }
+      ],
+      "text": "What risk did Iris record for atlas-154?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-203"
+      ],
+      "id": "query-155",
+      "intent": "risk",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 155000,
+          "grade": 3,
+          "segmentID": "segment-155"
+        }
+      ],
+      "text": "What risk did Leo record for atlas-155?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-204"
+      ],
+      "id": "query-156",
+      "intent": "risk",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 156000,
+          "grade": 3,
+          "segmentID": "segment-156"
+        }
+      ],
+      "text": "¿Qué riesgo registró Leo para atlas-156?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-205"
+      ],
+      "id": "query-157",
+      "intent": "technicalIdentifier",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 157000,
+          "grade": 3,
+          "segmentID": "segment-157"
+        }
+      ],
+      "text": "¿Qué esquema técnico usa atlas-157 según Mara?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-206"
+      ],
+      "id": "query-158",
+      "intent": "technicalIdentifier",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 158000,
+          "grade": 3,
+          "segmentID": "segment-158"
+        }
+      ],
+      "text": "Which technical schema does atlas-158 use according to Mara?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-207"
+      ],
+      "id": "query-159",
+      "intent": "technicalIdentifier",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 159000,
+          "grade": 3,
+          "segmentID": "segment-159"
+        }
+      ],
+      "text": "Which technical schema does atlas-159 use according to Noah?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-208"
+      ],
+      "id": "query-160",
+      "intent": "technicalIdentifier",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 160000,
+          "grade": 3,
+          "segmentID": "segment-160"
+        }
+      ],
+      "text": "¿Qué esquema técnico usa atlas-160 según Noah?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-209"
+      ],
+      "id": "query-161",
+      "intent": "paraphrase",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 161000,
+          "grade": 3,
+          "segmentID": "segment-161"
+        }
+      ],
+      "text": "¿Qué se resolvió sobre el lanzamiento atlas-161?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-210"
+      ],
+      "id": "query-162",
+      "intent": "paraphrase",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 162000,
+          "grade": 3,
+          "segmentID": "segment-162"
+        }
+      ],
+      "text": "What was resolved about launch atlas-162?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-211"
+      ],
+      "id": "query-163",
+      "intent": "paraphrase",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 163000,
+          "grade": 3,
+          "segmentID": "segment-163"
+        }
+      ],
+      "text": "What was resolved about launch atlas-163?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-212"
+      ],
+      "id": "query-164",
+      "intent": "paraphrase",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 164000,
+          "grade": 3,
+          "segmentID": "segment-164"
+        }
+      ],
+      "text": "¿Qué se resolvió sobre el lanzamiento atlas-164?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-213"
+      ],
+      "id": "query-165",
+      "intent": "negation",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 165000,
+          "grade": 3,
+          "segmentID": "segment-165"
+        }
+      ],
+      "text": "¿Qué no debe hacer atlas-165 según Iris?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-214"
+      ],
+      "id": "query-166",
+      "intent": "negation",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 166000,
+          "grade": 3,
+          "segmentID": "segment-166"
+        }
+      ],
+      "text": "What must atlas-166 not do according to Iris?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-215"
+      ],
+      "id": "query-167",
+      "intent": "negation",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 167000,
+          "grade": 3,
+          "segmentID": "segment-167"
+        }
+      ],
+      "text": "What must atlas-167 not do according to Leo?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-216"
+      ],
+      "id": "query-168",
+      "intent": "negation",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 168000,
+          "grade": 3,
+          "segmentID": "segment-168"
+        }
+      ],
+      "text": "¿Qué no debe hacer atlas-168 según Leo?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-217"
+      ],
+      "id": "query-169",
+      "intent": "name",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 169000,
+          "grade": 3,
+          "segmentID": "segment-169"
+        }
+      ],
+      "text": "¿Quién quedó responsable de atlas-169 según Mara?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-218"
+      ],
+      "id": "query-170",
+      "intent": "name",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 170000,
+          "grade": 3,
+          "segmentID": "segment-170"
+        }
+      ],
+      "text": "Who became responsible for atlas-170 according to Mara?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-219"
+      ],
+      "id": "query-171",
+      "intent": "name",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 171000,
+          "grade": 3,
+          "segmentID": "segment-171"
+        }
+      ],
+      "text": "Who became responsible for atlas-171 according to Noah?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-220"
+      ],
+      "id": "query-172",
+      "intent": "name",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 172000,
+          "grade": 3,
+          "segmentID": "segment-172"
+        }
+      ],
+      "text": "¿Quién quedó responsable de atlas-172 según Noah?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-221"
+      ],
+      "id": "query-173",
+      "intent": "date",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 173000,
+          "grade": 3,
+          "segmentID": "segment-173"
+        }
+      ],
+      "text": "¿Para qué fecha programó Sofía la entrega atlas-173?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-222"
+      ],
+      "id": "query-174",
+      "intent": "date",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 174000,
+          "grade": 3,
+          "segmentID": "segment-174"
+        }
+      ],
+      "text": "When did Sofía schedule delivery atlas-174?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-223"
+      ],
+      "id": "query-175",
+      "intent": "date",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 175000,
+          "grade": 3,
+          "segmentID": "segment-175"
+        }
+      ],
+      "text": "When did Eli schedule delivery atlas-175?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-224"
+      ],
+      "id": "query-176",
+      "intent": "date",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 176000,
+          "grade": 3,
+          "segmentID": "segment-176"
+        }
+      ],
+      "text": "¿Para qué fecha programó Eli la entrega atlas-176?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-225"
+      ],
+      "id": "query-177",
+      "intent": "commitment",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 177000,
+          "grade": 3,
+          "segmentID": "segment-177"
+        }
+      ],
+      "text": "¿Qué se comprometió a entregar Iris para atlas-177?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-226"
+      ],
+      "id": "query-178",
+      "intent": "commitment",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 178000,
+          "grade": 3,
+          "segmentID": "segment-178"
+        }
+      ],
+      "text": "What did Iris commit to deliver for atlas-178?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-227"
+      ],
+      "id": "query-179",
+      "intent": "commitment",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 179000,
+          "grade": 3,
+          "segmentID": "segment-179"
+        }
+      ],
+      "text": "What did Leo commit to deliver for atlas-179?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-228"
+      ],
+      "id": "query-180",
+      "intent": "commitment",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 180000,
+          "grade": 3,
+          "segmentID": "segment-180"
+        }
+      ],
+      "text": "¿Qué se comprometió a entregar Leo para atlas-180?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-229"
+      ],
+      "id": "query-181",
+      "intent": "decision",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 181000,
+          "grade": 3,
+          "segmentID": "segment-181"
+        }
+      ],
+      "text": "¿Qué decisión confirmó Mara sobre atlas-181?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-230"
+      ],
+      "id": "query-182",
+      "intent": "decision",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 182000,
+          "grade": 3,
+          "segmentID": "segment-182"
+        }
+      ],
+      "text": "What decision did Mara confirm for atlas-182?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-231"
+      ],
+      "id": "query-183",
+      "intent": "decision",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 183000,
+          "grade": 3,
+          "segmentID": "segment-183"
+        }
+      ],
+      "text": "What decision did Noah confirm for atlas-183?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-232"
+      ],
+      "id": "query-184",
+      "intent": "decision",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 184000,
+          "grade": 3,
+          "segmentID": "segment-184"
+        }
+      ],
+      "text": "¿Qué decisión confirmó Noah sobre atlas-184?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-233"
+      ],
+      "id": "query-185",
+      "intent": "risk",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 185000,
+          "grade": 3,
+          "segmentID": "segment-185"
+        }
+      ],
+      "text": "¿Qué riesgo registró Sofía para atlas-185?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-234"
+      ],
+      "id": "query-186",
+      "intent": "risk",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 186000,
+          "grade": 3,
+          "segmentID": "segment-186"
+        }
+      ],
+      "text": "What risk did Sofía record for atlas-186?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-235"
+      ],
+      "id": "query-187",
+      "intent": "risk",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 187000,
+          "grade": 3,
+          "segmentID": "segment-187"
+        }
+      ],
+      "text": "What risk did Eli record for atlas-187?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-236"
+      ],
+      "id": "query-188",
+      "intent": "risk",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 188000,
+          "grade": 3,
+          "segmentID": "segment-188"
+        }
+      ],
+      "text": "¿Qué riesgo registró Eli para atlas-188?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-237"
+      ],
+      "id": "query-189",
+      "intent": "technicalIdentifier",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 189000,
+          "grade": 3,
+          "segmentID": "segment-189"
+        }
+      ],
+      "text": "¿Qué esquema técnico usa atlas-189 según Iris?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-238"
+      ],
+      "id": "query-190",
+      "intent": "technicalIdentifier",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 190000,
+          "grade": 3,
+          "segmentID": "segment-190"
+        }
+      ],
+      "text": "Which technical schema does atlas-190 use according to Iris?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-239"
+      ],
+      "id": "query-191",
+      "intent": "technicalIdentifier",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 191000,
+          "grade": 3,
+          "segmentID": "segment-191"
+        }
+      ],
+      "text": "Which technical schema does atlas-191 use according to Leo?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-240"
+      ],
+      "id": "query-192",
+      "intent": "technicalIdentifier",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 192000,
+          "grade": 3,
+          "segmentID": "segment-192"
+        }
+      ],
+      "text": "¿Qué esquema técnico usa atlas-192 según Leo?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-001"
+      ],
+      "id": "query-193",
+      "intent": "paraphrase",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 193000,
+          "grade": 3,
+          "segmentID": "segment-193"
+        }
+      ],
+      "text": "¿Qué se resolvió sobre el lanzamiento atlas-193?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-002"
+      ],
+      "id": "query-194",
+      "intent": "paraphrase",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 194000,
+          "grade": 3,
+          "segmentID": "segment-194"
+        }
+      ],
+      "text": "What was resolved about launch atlas-194?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-003"
+      ],
+      "id": "query-195",
+      "intent": "paraphrase",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 195000,
+          "grade": 3,
+          "segmentID": "segment-195"
+        }
+      ],
+      "text": "What was resolved about launch atlas-195?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-004"
+      ],
+      "id": "query-196",
+      "intent": "paraphrase",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 196000,
+          "grade": 3,
+          "segmentID": "segment-196"
+        }
+      ],
+      "text": "¿Qué se resolvió sobre el lanzamiento atlas-196?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-005"
+      ],
+      "id": "query-197",
+      "intent": "negation",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 197000,
+          "grade": 3,
+          "segmentID": "segment-197"
+        }
+      ],
+      "text": "¿Qué no debe hacer atlas-197 según Sofía?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-006"
+      ],
+      "id": "query-198",
+      "intent": "negation",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 198000,
+          "grade": 3,
+          "segmentID": "segment-198"
+        }
+      ],
+      "text": "What must atlas-198 not do according to Sofía?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-007"
+      ],
+      "id": "query-199",
+      "intent": "negation",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 199000,
+          "grade": 3,
+          "segmentID": "segment-199"
+        }
+      ],
+      "text": "What must atlas-199 not do according to Eli?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-008"
+      ],
+      "id": "query-200",
+      "intent": "negation",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 200000,
+          "grade": 3,
+          "segmentID": "segment-200"
+        }
+      ],
+      "text": "¿Qué no debe hacer atlas-200 según Eli?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-009"
+      ],
+      "id": "query-201",
+      "intent": "name",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 201000,
+          "grade": 3,
+          "segmentID": "segment-201"
+        }
+      ],
+      "text": "¿Quién quedó responsable de atlas-201 según Iris?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-010"
+      ],
+      "id": "query-202",
+      "intent": "name",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 202000,
+          "grade": 3,
+          "segmentID": "segment-202"
+        }
+      ],
+      "text": "Who became responsible for atlas-202 according to Iris?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-011"
+      ],
+      "id": "query-203",
+      "intent": "date",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 203000,
+          "grade": 3,
+          "segmentID": "segment-203"
+        }
+      ],
+      "text": "¿Para qué fecha programó Leo la entrega atlas-203?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-012"
+      ],
+      "id": "query-204",
+      "intent": "date",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 204000,
+          "grade": 3,
+          "segmentID": "segment-204"
+        }
+      ],
+      "text": "When did Leo schedule delivery atlas-204?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-013"
+      ],
+      "id": "query-205",
+      "intent": "commitment",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 205000,
+          "grade": 3,
+          "segmentID": "segment-205"
+        }
+      ],
+      "text": "¿Qué se comprometió a entregar Mara para atlas-205?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-014"
+      ],
+      "id": "query-206",
+      "intent": "commitment",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 206000,
+          "grade": 3,
+          "segmentID": "segment-206"
+        }
+      ],
+      "text": "What did Mara commit to deliver for atlas-206?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-015"
+      ],
+      "id": "query-207",
+      "intent": "decision",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 207000,
+          "grade": 3,
+          "segmentID": "segment-207"
+        }
+      ],
+      "text": "¿Qué decisión confirmó Noah sobre atlas-207?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-016"
+      ],
+      "id": "query-208",
+      "intent": "decision",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 208000,
+          "grade": 3,
+          "segmentID": "segment-208"
+        }
+      ],
+      "text": "What decision did Noah confirm for atlas-208?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-017"
+      ],
+      "id": "query-209",
+      "intent": "risk",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 209000,
+          "grade": 3,
+          "segmentID": "segment-209"
+        }
+      ],
+      "text": "¿Qué riesgo registró Sofía para atlas-209?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-018"
+      ],
+      "id": "query-210",
+      "intent": "risk",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 210000,
+          "grade": 3,
+          "segmentID": "segment-210"
+        }
+      ],
+      "text": "What risk did Sofía record for atlas-210?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-019"
+      ],
+      "id": "query-211",
+      "intent": "technicalIdentifier",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 211000,
+          "grade": 3,
+          "segmentID": "segment-211"
+        }
+      ],
+      "text": "¿Qué esquema técnico usa atlas-211 según Eli?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-020"
+      ],
+      "id": "query-212",
+      "intent": "technicalIdentifier",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 212000,
+          "grade": 3,
+          "segmentID": "segment-212"
+        }
+      ],
+      "text": "Which technical schema does atlas-212 use according to Eli?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-021"
+      ],
+      "id": "query-213",
+      "intent": "paraphrase",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 213000,
+          "grade": 3,
+          "segmentID": "segment-213"
+        }
+      ],
+      "text": "¿Qué se resolvió sobre el lanzamiento atlas-213?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-022"
+      ],
+      "id": "query-214",
+      "intent": "paraphrase",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 214000,
+          "grade": 3,
+          "segmentID": "segment-214"
+        }
+      ],
+      "text": "What was resolved about launch atlas-214?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-023"
+      ],
+      "id": "query-215",
+      "intent": "negation",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 215000,
+          "grade": 3,
+          "segmentID": "segment-215"
+        }
+      ],
+      "text": "¿Qué no debe hacer atlas-215 según Leo?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-024"
+      ],
+      "id": "query-216",
+      "intent": "negation",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 216000,
+          "grade": 3,
+          "segmentID": "segment-216"
+        }
+      ],
+      "text": "What must atlas-216 not do according to Leo?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-025"
+      ],
+      "id": "query-217",
+      "intent": "name",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 217000,
+          "grade": 3,
+          "segmentID": "segment-217"
+        }
+      ],
+      "text": "¿Quién quedó responsable de atlas-217 según Mara?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-026"
+      ],
+      "id": "query-218",
+      "intent": "name",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 218000,
+          "grade": 3,
+          "segmentID": "segment-218"
+        }
+      ],
+      "text": "Who became responsible for atlas-218 according to Mara?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-027"
+      ],
+      "id": "query-219",
+      "intent": "date",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 219000,
+          "grade": 3,
+          "segmentID": "segment-219"
+        }
+      ],
+      "text": "¿Para qué fecha programó Noah la entrega atlas-219?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-028"
+      ],
+      "id": "query-220",
+      "intent": "date",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 220000,
+          "grade": 3,
+          "segmentID": "segment-220"
+        }
+      ],
+      "text": "When did Noah schedule delivery atlas-220?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-029"
+      ],
+      "id": "query-221",
+      "intent": "commitment",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 221000,
+          "grade": 3,
+          "segmentID": "segment-221"
+        }
+      ],
+      "text": "¿Qué se comprometió a entregar Sofía para atlas-221?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-030"
+      ],
+      "id": "query-222",
+      "intent": "commitment",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 222000,
+          "grade": 3,
+          "segmentID": "segment-222"
+        }
+      ],
+      "text": "What did Sofía commit to deliver for atlas-222?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-031"
+      ],
+      "id": "query-223",
+      "intent": "decision",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 223000,
+          "grade": 3,
+          "segmentID": "segment-223"
+        }
+      ],
+      "text": "¿Qué decisión confirmó Eli sobre atlas-223?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-032"
+      ],
+      "id": "query-224",
+      "intent": "decision",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 224000,
+          "grade": 3,
+          "segmentID": "segment-224"
+        }
+      ],
+      "text": "What decision did Eli confirm for atlas-224?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-033"
+      ],
+      "id": "query-225",
+      "intent": "risk",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 225000,
+          "grade": 3,
+          "segmentID": "segment-225"
+        }
+      ],
+      "text": "¿Qué riesgo registró Iris para atlas-225?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-034"
+      ],
+      "id": "query-226",
+      "intent": "risk",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 226000,
+          "grade": 3,
+          "segmentID": "segment-226"
+        }
+      ],
+      "text": "What risk did Iris record for atlas-226?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-035"
+      ],
+      "id": "query-227",
+      "intent": "technicalIdentifier",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 227000,
+          "grade": 3,
+          "segmentID": "segment-227"
+        }
+      ],
+      "text": "¿Qué esquema técnico usa atlas-227 según Leo?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-036"
+      ],
+      "id": "query-228",
+      "intent": "technicalIdentifier",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 228000,
+          "grade": 3,
+          "segmentID": "segment-228"
+        }
+      ],
+      "text": "Which technical schema does atlas-228 use according to Leo?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-037"
+      ],
+      "id": "query-229",
+      "intent": "paraphrase",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 229000,
+          "grade": 3,
+          "segmentID": "segment-229"
+        }
+      ],
+      "text": "¿Qué se resolvió sobre el lanzamiento atlas-229?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-038"
+      ],
+      "id": "query-230",
+      "intent": "paraphrase",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Mara",
+          "expectedTimestampMilliseconds": 230000,
+          "grade": 3,
+          "segmentID": "segment-230"
+        }
+      ],
+      "text": "What was resolved about launch atlas-230?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-039"
+      ],
+      "id": "query-231",
+      "intent": "negation",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 231000,
+          "grade": 3,
+          "segmentID": "segment-231"
+        }
+      ],
+      "text": "¿Qué no debe hacer atlas-231 según Noah?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-040"
+      ],
+      "id": "query-232",
+      "intent": "negation",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Noah",
+          "expectedTimestampMilliseconds": 232000,
+          "grade": 3,
+          "segmentID": "segment-232"
+        }
+      ],
+      "text": "What must atlas-232 not do according to Noah?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-041"
+      ],
+      "id": "query-233",
+      "intent": "name",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 233000,
+          "grade": 3,
+          "segmentID": "segment-233"
+        }
+      ],
+      "text": "¿Quién quedó responsable de atlas-233 según Sofía?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-042"
+      ],
+      "id": "query-234",
+      "intent": "name",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 234000,
+          "grade": 3,
+          "segmentID": "segment-234"
+        }
+      ],
+      "text": "Who became responsible for atlas-234 according to Sofía?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-043"
+      ],
+      "id": "query-235",
+      "intent": "date",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 235000,
+          "grade": 3,
+          "segmentID": "segment-235"
+        }
+      ],
+      "text": "¿Para qué fecha programó Eli la entrega atlas-235?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-044"
+      ],
+      "id": "query-236",
+      "intent": "date",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eli",
+          "expectedTimestampMilliseconds": 236000,
+          "grade": 3,
+          "segmentID": "segment-236"
+        }
+      ],
+      "text": "When did Eli schedule delivery atlas-236?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-045"
+      ],
+      "id": "query-237",
+      "intent": "commitment",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 237000,
+          "grade": 3,
+          "segmentID": "segment-237"
+        }
+      ],
+      "text": "¿Qué se comprometió a entregar Iris para atlas-237?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-046"
+      ],
+      "id": "query-238",
+      "intent": "commitment",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Iris",
+          "expectedTimestampMilliseconds": 238000,
+          "grade": 3,
+          "segmentID": "segment-238"
+        }
+      ],
+      "text": "What did Iris commit to deliver for atlas-238?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-047"
+      ],
+      "id": "query-239",
+      "intent": "decision",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 239000,
+          "grade": 3,
+          "segmentID": "segment-239"
+        }
+      ],
+      "text": "¿Qué decisión confirmó Leo sobre atlas-239?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-048"
+      ],
+      "id": "query-240",
+      "intent": "decision",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Leo",
+          "expectedTimestampMilliseconds": 240000,
+          "grade": 3,
+          "segmentID": "segment-240"
+        }
+      ],
+      "text": "What decision did Leo confirm for atlas-240?"
+    }
+  ],
+  "schemaVersion": 1,
+  "segments": [
+    {
+      "id": "segment-001",
+      "language": "es",
+      "meetingID": "meeting-001",
+      "meetingTitle": "Public synthetic meeting 001",
+      "owner": "Mara",
+      "text": "Mara nombró a atlas-001 como responsable de la migración.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-002",
+      "language": "en",
+      "meetingID": "meeting-001",
+      "meetingTitle": "Public synthetic meeting 001",
+      "owner": "Mara",
+      "text": "Mara named atlas-002 as the migration owner.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-003",
+      "language": "es",
+      "meetingID": "meeting-001",
+      "meetingTitle": "Public synthetic meeting 001",
+      "owner": "Noah",
+      "text": "Noah nombró a atlas-003 como responsable de la migración.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-004",
+      "language": "en",
+      "meetingID": "meeting-001",
+      "meetingTitle": "Public synthetic meeting 001",
+      "owner": "Noah",
+      "text": "Noah named atlas-004 as the migration owner.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-005",
+      "language": "mixed",
+      "meetingID": "meeting-002",
+      "meetingTitle": "Public synthetic meeting 002",
+      "owner": "Sofía",
+      "text": "Sofía nombró a atlas-005 como responsable de la migración. Follow-up: Sofía named atlas-005 as the migration owner.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-006",
+      "language": "es",
+      "meetingID": "meeting-002",
+      "meetingTitle": "Public synthetic meeting 002",
+      "owner": "Sofía",
+      "text": "Sofía nombró a atlas-006 como responsable de la migración.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-007",
+      "language": "es",
+      "meetingID": "meeting-002",
+      "meetingTitle": "Public synthetic meeting 002",
+      "owner": "Eli",
+      "text": "Eli fijó la entrega atlas-007 para el viernes 12 de marzo.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-008",
+      "language": "en",
+      "meetingID": "meeting-002",
+      "meetingTitle": "Public synthetic meeting 002",
+      "owner": "Eli",
+      "text": "Eli scheduled delivery atlas-008 for Friday, March 12.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-009",
+      "language": "es",
+      "meetingID": "meeting-003",
+      "meetingTitle": "Public synthetic meeting 003",
+      "owner": "Iris",
+      "text": "Iris fijó la entrega atlas-009 para el viernes 12 de marzo.",
+      "timestampMilliseconds": 9000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-010",
+      "language": "en",
+      "meetingID": "meeting-003",
+      "meetingTitle": "Public synthetic meeting 003",
+      "owner": "Iris",
+      "text": "Iris scheduled delivery atlas-010 for Friday, March 12.",
+      "timestampMilliseconds": 10000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-011",
+      "language": "mixed",
+      "meetingID": "meeting-003",
+      "meetingTitle": "Public synthetic meeting 003",
+      "owner": "Leo",
+      "text": "Leo fijó la entrega atlas-011 para el viernes 12 de marzo. Follow-up: Leo scheduled delivery atlas-011 for Friday, March 12.",
+      "timestampMilliseconds": 11000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-012",
+      "language": "es",
+      "meetingID": "meeting-003",
+      "meetingTitle": "Public synthetic meeting 003",
+      "owner": "Leo",
+      "text": "Leo fijó la entrega atlas-012 para el viernes 12 de marzo.",
+      "timestampMilliseconds": 12000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-013",
+      "language": "es",
+      "meetingID": "meeting-004",
+      "meetingTitle": "Public synthetic meeting 004",
+      "owner": "Mara",
+      "text": "Mara se comprometió a entregar atlas-013 antes del viernes.",
+      "timestampMilliseconds": 13000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-014",
+      "language": "en",
+      "meetingID": "meeting-004",
+      "meetingTitle": "Public synthetic meeting 004",
+      "owner": "Mara",
+      "text": "Mara committed to deliver atlas-014 before Friday.",
+      "timestampMilliseconds": 14000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-015",
+      "language": "es",
+      "meetingID": "meeting-004",
+      "meetingTitle": "Public synthetic meeting 004",
+      "owner": "Noah",
+      "text": "Noah se comprometió a entregar atlas-015 antes del viernes.",
+      "timestampMilliseconds": 15000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-016",
+      "language": "en",
+      "meetingID": "meeting-004",
+      "meetingTitle": "Public synthetic meeting 004",
+      "owner": "Noah",
+      "text": "Noah committed to deliver atlas-016 before Friday.",
+      "timestampMilliseconds": 16000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-017",
+      "language": "mixed",
+      "meetingID": "meeting-005",
+      "meetingTitle": "Public synthetic meeting 005",
+      "owner": "Sofía",
+      "text": "Sofía se comprometió a entregar atlas-017 antes del viernes. Follow-up: Sofía committed to deliver atlas-017 before Friday.",
+      "timestampMilliseconds": 17000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-018",
+      "language": "es",
+      "meetingID": "meeting-005",
+      "meetingTitle": "Public synthetic meeting 005",
+      "owner": "Sofía",
+      "text": "Sofía se comprometió a entregar atlas-018 antes del viernes.",
+      "timestampMilliseconds": 18000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-019",
+      "language": "es",
+      "meetingID": "meeting-005",
+      "meetingTitle": "Public synthetic meeting 005",
+      "owner": "Eli",
+      "text": "Eli confirmó la decisión atlas-019: aprobar el presupuesto.",
+      "timestampMilliseconds": 19000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-020",
+      "language": "en",
+      "meetingID": "meeting-005",
+      "meetingTitle": "Public synthetic meeting 005",
+      "owner": "Eli",
+      "text": "Eli confirmed decision atlas-020: approve the budget.",
+      "timestampMilliseconds": 20000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-021",
+      "language": "es",
+      "meetingID": "meeting-006",
+      "meetingTitle": "Public synthetic meeting 006",
+      "owner": "Iris",
+      "text": "Iris confirmó la decisión atlas-021: aprobar el presupuesto.",
+      "timestampMilliseconds": 21000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-022",
+      "language": "en",
+      "meetingID": "meeting-006",
+      "meetingTitle": "Public synthetic meeting 006",
+      "owner": "Iris",
+      "text": "Iris confirmed decision atlas-022: approve the budget.",
+      "timestampMilliseconds": 22000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-023",
+      "language": "mixed",
+      "meetingID": "meeting-006",
+      "meetingTitle": "Public synthetic meeting 006",
+      "owner": "Leo",
+      "text": "Leo confirmó la decisión atlas-023: aprobar el presupuesto. Follow-up: Leo confirmed decision atlas-023: approve the budget.",
+      "timestampMilliseconds": 23000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-024",
+      "language": "es",
+      "meetingID": "meeting-006",
+      "meetingTitle": "Public synthetic meeting 006",
+      "owner": "Leo",
+      "text": "Leo confirmó la decisión atlas-024: aprobar el presupuesto.",
+      "timestampMilliseconds": 24000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-025",
+      "language": "es",
+      "meetingID": "meeting-007",
+      "meetingTitle": "Public synthetic meeting 007",
+      "owner": "Mara",
+      "text": "Mara registró el riesgo atlas-025: la migración puede duplicar eventos.",
+      "timestampMilliseconds": 25000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-026",
+      "language": "en",
+      "meetingID": "meeting-007",
+      "meetingTitle": "Public synthetic meeting 007",
+      "owner": "Mara",
+      "text": "Mara recorded risk atlas-026: the migration may duplicate events.",
+      "timestampMilliseconds": 26000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-027",
+      "language": "es",
+      "meetingID": "meeting-007",
+      "meetingTitle": "Public synthetic meeting 007",
+      "owner": "Noah",
+      "text": "Noah registró el riesgo atlas-027: la migración puede duplicar eventos.",
+      "timestampMilliseconds": 27000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-028",
+      "language": "en",
+      "meetingID": "meeting-007",
+      "meetingTitle": "Public synthetic meeting 007",
+      "owner": "Noah",
+      "text": "Noah recorded risk atlas-028: the migration may duplicate events.",
+      "timestampMilliseconds": 28000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-029",
+      "language": "mixed",
+      "meetingID": "meeting-008",
+      "meetingTitle": "Public synthetic meeting 008",
+      "owner": "Sofía",
+      "text": "Sofía registró el riesgo atlas-029: la migración puede duplicar eventos. Follow-up: Sofía recorded risk atlas-029: the migration may duplicate events.",
+      "timestampMilliseconds": 29000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-030",
+      "language": "es",
+      "meetingID": "meeting-008",
+      "meetingTitle": "Public synthetic meeting 008",
+      "owner": "Sofía",
+      "text": "Sofía registró el riesgo atlas-030: la migración puede duplicar eventos.",
+      "timestampMilliseconds": 30000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-031",
+      "language": "es",
+      "meetingID": "meeting-008",
+      "meetingTitle": "Public synthetic meeting 008",
+      "owner": "Eli",
+      "text": "Eli indicó que atlas-031 usa GraphQL schema v3.",
+      "timestampMilliseconds": 31000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-032",
+      "language": "en",
+      "meetingID": "meeting-008",
+      "meetingTitle": "Public synthetic meeting 008",
+      "owner": "Eli",
+      "text": "Eli said atlas-032 uses GraphQL schema v3.",
+      "timestampMilliseconds": 32000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-033",
+      "language": "es",
+      "meetingID": "meeting-009",
+      "meetingTitle": "Public synthetic meeting 009",
+      "owner": "Iris",
+      "text": "Iris indicó que atlas-033 usa GraphQL schema v3.",
+      "timestampMilliseconds": 33000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-034",
+      "language": "en",
+      "meetingID": "meeting-009",
+      "meetingTitle": "Public synthetic meeting 009",
+      "owner": "Iris",
+      "text": "Iris said atlas-034 uses GraphQL schema v3.",
+      "timestampMilliseconds": 34000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-035",
+      "language": "mixed",
+      "meetingID": "meeting-009",
+      "meetingTitle": "Public synthetic meeting 009",
+      "owner": "Leo",
+      "text": "Leo indicó que atlas-035 usa GraphQL schema v3. Follow-up: Leo said atlas-035 uses GraphQL schema v3.",
+      "timestampMilliseconds": 35000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-036",
+      "language": "es",
+      "meetingID": "meeting-009",
+      "meetingTitle": "Public synthetic meeting 009",
+      "owner": "Leo",
+      "text": "Leo indicó que atlas-036 usa GraphQL schema v3.",
+      "timestampMilliseconds": 36000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-037",
+      "language": "es",
+      "meetingID": "meeting-010",
+      "meetingTitle": "Public synthetic meeting 010",
+      "owner": "Mara",
+      "text": "Mara acordó atlas-037: posponer el lanzamiento hasta abril.",
+      "timestampMilliseconds": 37000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-038",
+      "language": "en",
+      "meetingID": "meeting-010",
+      "meetingTitle": "Public synthetic meeting 010",
+      "owner": "Mara",
+      "text": "Mara agreed on atlas-038: postpone the launch until April.",
+      "timestampMilliseconds": 38000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-039",
+      "language": "es",
+      "meetingID": "meeting-010",
+      "meetingTitle": "Public synthetic meeting 010",
+      "owner": "Noah",
+      "text": "Noah acordó atlas-039: posponer el lanzamiento hasta abril.",
+      "timestampMilliseconds": 39000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-040",
+      "language": "en",
+      "meetingID": "meeting-010",
+      "meetingTitle": "Public synthetic meeting 010",
+      "owner": "Noah",
+      "text": "Noah agreed on atlas-040: postpone the launch until April.",
+      "timestampMilliseconds": 40000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-041",
+      "language": "mixed",
+      "meetingID": "meeting-011",
+      "meetingTitle": "Public synthetic meeting 011",
+      "owner": "Sofía",
+      "text": "Sofía acordó atlas-041: posponer el lanzamiento hasta abril. Follow-up: Sofía agreed on atlas-041: postpone the launch until April.",
+      "timestampMilliseconds": 41000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-042",
+      "language": "es",
+      "meetingID": "meeting-011",
+      "meetingTitle": "Public synthetic meeting 011",
+      "owner": "Sofía",
+      "text": "Sofía acordó atlas-042: posponer el lanzamiento hasta abril.",
+      "timestampMilliseconds": 42000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-043",
+      "language": "es",
+      "meetingID": "meeting-011",
+      "meetingTitle": "Public synthetic meeting 011",
+      "owner": "Eli",
+      "text": "Eli aclaró que atlas-043 no debe eliminar registros históricos.",
+      "timestampMilliseconds": 43000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-044",
+      "language": "en",
+      "meetingID": "meeting-011",
+      "meetingTitle": "Public synthetic meeting 011",
+      "owner": "Eli",
+      "text": "Eli clarified that atlas-044 must not delete historical records.",
+      "timestampMilliseconds": 44000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-045",
+      "language": "es",
+      "meetingID": "meeting-012",
+      "meetingTitle": "Public synthetic meeting 012",
+      "owner": "Iris",
+      "text": "Iris aclaró que atlas-045 no debe eliminar registros históricos.",
+      "timestampMilliseconds": 45000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-046",
+      "language": "en",
+      "meetingID": "meeting-012",
+      "meetingTitle": "Public synthetic meeting 012",
+      "owner": "Iris",
+      "text": "Iris clarified that atlas-046 must not delete historical records.",
+      "timestampMilliseconds": 46000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-047",
+      "language": "mixed",
+      "meetingID": "meeting-012",
+      "meetingTitle": "Public synthetic meeting 012",
+      "owner": "Leo",
+      "text": "Leo aclaró que atlas-047 no debe eliminar registros históricos. Follow-up: Leo clarified that atlas-047 must not delete historical records.",
+      "timestampMilliseconds": 47000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-048",
+      "language": "es",
+      "meetingID": "meeting-012",
+      "meetingTitle": "Public synthetic meeting 012",
+      "owner": "Leo",
+      "text": "Leo aclaró que atlas-048 no debe eliminar registros históricos.",
+      "timestampMilliseconds": 48000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-049",
+      "language": "es",
+      "meetingID": "meeting-013",
+      "meetingTitle": "Public synthetic meeting 013",
+      "owner": "Mara",
+      "text": "Mara nombró a atlas-049 como responsable de la migración.",
+      "timestampMilliseconds": 49000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-050",
+      "language": "en",
+      "meetingID": "meeting-013",
+      "meetingTitle": "Public synthetic meeting 013",
+      "owner": "Mara",
+      "text": "Mara named atlas-050 as the migration owner.",
+      "timestampMilliseconds": 50000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-051",
+      "language": "es",
+      "meetingID": "meeting-013",
+      "meetingTitle": "Public synthetic meeting 013",
+      "owner": "Noah",
+      "text": "Noah nombró a atlas-051 como responsable de la migración.",
+      "timestampMilliseconds": 51000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-052",
+      "language": "en",
+      "meetingID": "meeting-013",
+      "meetingTitle": "Public synthetic meeting 013",
+      "owner": "Noah",
+      "text": "Noah named atlas-052 as the migration owner.",
+      "timestampMilliseconds": 52000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-053",
+      "language": "mixed",
+      "meetingID": "meeting-014",
+      "meetingTitle": "Public synthetic meeting 014",
+      "owner": "Sofía",
+      "text": "Sofía nombró a atlas-053 como responsable de la migración. Follow-up: Sofía named atlas-053 as the migration owner.",
+      "timestampMilliseconds": 53000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-054",
+      "language": "es",
+      "meetingID": "meeting-014",
+      "meetingTitle": "Public synthetic meeting 014",
+      "owner": "Sofía",
+      "text": "Sofía nombró a atlas-054 como responsable de la migración.",
+      "timestampMilliseconds": 54000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-055",
+      "language": "es",
+      "meetingID": "meeting-014",
+      "meetingTitle": "Public synthetic meeting 014",
+      "owner": "Eli",
+      "text": "Eli fijó la entrega atlas-055 para el viernes 12 de marzo.",
+      "timestampMilliseconds": 55000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-056",
+      "language": "en",
+      "meetingID": "meeting-014",
+      "meetingTitle": "Public synthetic meeting 014",
+      "owner": "Eli",
+      "text": "Eli scheduled delivery atlas-056 for Friday, March 12.",
+      "timestampMilliseconds": 56000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-057",
+      "language": "es",
+      "meetingID": "meeting-015",
+      "meetingTitle": "Public synthetic meeting 015",
+      "owner": "Iris",
+      "text": "Iris fijó la entrega atlas-057 para el viernes 12 de marzo.",
+      "timestampMilliseconds": 57000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-058",
+      "language": "en",
+      "meetingID": "meeting-015",
+      "meetingTitle": "Public synthetic meeting 015",
+      "owner": "Iris",
+      "text": "Iris scheduled delivery atlas-058 for Friday, March 12.",
+      "timestampMilliseconds": 58000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-059",
+      "language": "mixed",
+      "meetingID": "meeting-015",
+      "meetingTitle": "Public synthetic meeting 015",
+      "owner": "Leo",
+      "text": "Leo fijó la entrega atlas-059 para el viernes 12 de marzo. Follow-up: Leo scheduled delivery atlas-059 for Friday, March 12.",
+      "timestampMilliseconds": 59000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-060",
+      "language": "es",
+      "meetingID": "meeting-015",
+      "meetingTitle": "Public synthetic meeting 015",
+      "owner": "Leo",
+      "text": "Leo fijó la entrega atlas-060 para el viernes 12 de marzo.",
+      "timestampMilliseconds": 60000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-061",
+      "language": "es",
+      "meetingID": "meeting-016",
+      "meetingTitle": "Public synthetic meeting 016",
+      "owner": "Mara",
+      "text": "Mara se comprometió a entregar atlas-061 antes del viernes.",
+      "timestampMilliseconds": 61000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-062",
+      "language": "en",
+      "meetingID": "meeting-016",
+      "meetingTitle": "Public synthetic meeting 016",
+      "owner": "Mara",
+      "text": "Mara committed to deliver atlas-062 before Friday.",
+      "timestampMilliseconds": 62000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-063",
+      "language": "es",
+      "meetingID": "meeting-016",
+      "meetingTitle": "Public synthetic meeting 016",
+      "owner": "Noah",
+      "text": "Noah se comprometió a entregar atlas-063 antes del viernes.",
+      "timestampMilliseconds": 63000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-064",
+      "language": "en",
+      "meetingID": "meeting-016",
+      "meetingTitle": "Public synthetic meeting 016",
+      "owner": "Noah",
+      "text": "Noah committed to deliver atlas-064 before Friday.",
+      "timestampMilliseconds": 64000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-065",
+      "language": "mixed",
+      "meetingID": "meeting-017",
+      "meetingTitle": "Public synthetic meeting 017",
+      "owner": "Sofía",
+      "text": "Sofía se comprometió a entregar atlas-065 antes del viernes. Follow-up: Sofía committed to deliver atlas-065 before Friday.",
+      "timestampMilliseconds": 65000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-066",
+      "language": "es",
+      "meetingID": "meeting-017",
+      "meetingTitle": "Public synthetic meeting 017",
+      "owner": "Sofía",
+      "text": "Sofía se comprometió a entregar atlas-066 antes del viernes.",
+      "timestampMilliseconds": 66000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-067",
+      "language": "es",
+      "meetingID": "meeting-017",
+      "meetingTitle": "Public synthetic meeting 017",
+      "owner": "Eli",
+      "text": "Eli confirmó la decisión atlas-067: aprobar el presupuesto.",
+      "timestampMilliseconds": 67000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-068",
+      "language": "en",
+      "meetingID": "meeting-017",
+      "meetingTitle": "Public synthetic meeting 017",
+      "owner": "Eli",
+      "text": "Eli confirmed decision atlas-068: approve the budget.",
+      "timestampMilliseconds": 68000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-069",
+      "language": "es",
+      "meetingID": "meeting-018",
+      "meetingTitle": "Public synthetic meeting 018",
+      "owner": "Iris",
+      "text": "Iris confirmó la decisión atlas-069: aprobar el presupuesto.",
+      "timestampMilliseconds": 69000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-070",
+      "language": "en",
+      "meetingID": "meeting-018",
+      "meetingTitle": "Public synthetic meeting 018",
+      "owner": "Iris",
+      "text": "Iris confirmed decision atlas-070: approve the budget.",
+      "timestampMilliseconds": 70000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-071",
+      "language": "mixed",
+      "meetingID": "meeting-018",
+      "meetingTitle": "Public synthetic meeting 018",
+      "owner": "Leo",
+      "text": "Leo confirmó la decisión atlas-071: aprobar el presupuesto. Follow-up: Leo confirmed decision atlas-071: approve the budget.",
+      "timestampMilliseconds": 71000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-072",
+      "language": "es",
+      "meetingID": "meeting-018",
+      "meetingTitle": "Public synthetic meeting 018",
+      "owner": "Leo",
+      "text": "Leo confirmó la decisión atlas-072: aprobar el presupuesto.",
+      "timestampMilliseconds": 72000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-073",
+      "language": "es",
+      "meetingID": "meeting-019",
+      "meetingTitle": "Public synthetic meeting 019",
+      "owner": "Mara",
+      "text": "Mara registró el riesgo atlas-073: la migración puede duplicar eventos.",
+      "timestampMilliseconds": 73000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-074",
+      "language": "en",
+      "meetingID": "meeting-019",
+      "meetingTitle": "Public synthetic meeting 019",
+      "owner": "Mara",
+      "text": "Mara recorded risk atlas-074: the migration may duplicate events.",
+      "timestampMilliseconds": 74000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-075",
+      "language": "es",
+      "meetingID": "meeting-019",
+      "meetingTitle": "Public synthetic meeting 019",
+      "owner": "Noah",
+      "text": "Noah registró el riesgo atlas-075: la migración puede duplicar eventos.",
+      "timestampMilliseconds": 75000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-076",
+      "language": "en",
+      "meetingID": "meeting-019",
+      "meetingTitle": "Public synthetic meeting 019",
+      "owner": "Noah",
+      "text": "Noah recorded risk atlas-076: the migration may duplicate events.",
+      "timestampMilliseconds": 76000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-077",
+      "language": "mixed",
+      "meetingID": "meeting-020",
+      "meetingTitle": "Public synthetic meeting 020",
+      "owner": "Sofía",
+      "text": "Sofía registró el riesgo atlas-077: la migración puede duplicar eventos. Follow-up: Sofía recorded risk atlas-077: the migration may duplicate events.",
+      "timestampMilliseconds": 77000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-078",
+      "language": "es",
+      "meetingID": "meeting-020",
+      "meetingTitle": "Public synthetic meeting 020",
+      "owner": "Sofía",
+      "text": "Sofía registró el riesgo atlas-078: la migración puede duplicar eventos.",
+      "timestampMilliseconds": 78000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-079",
+      "language": "es",
+      "meetingID": "meeting-020",
+      "meetingTitle": "Public synthetic meeting 020",
+      "owner": "Eli",
+      "text": "Eli indicó que atlas-079 usa GraphQL schema v3.",
+      "timestampMilliseconds": 79000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-080",
+      "language": "en",
+      "meetingID": "meeting-020",
+      "meetingTitle": "Public synthetic meeting 020",
+      "owner": "Eli",
+      "text": "Eli said atlas-080 uses GraphQL schema v3.",
+      "timestampMilliseconds": 80000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-081",
+      "language": "es",
+      "meetingID": "meeting-021",
+      "meetingTitle": "Public synthetic meeting 021",
+      "owner": "Iris",
+      "text": "Iris indicó que atlas-081 usa GraphQL schema v3.",
+      "timestampMilliseconds": 81000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-082",
+      "language": "en",
+      "meetingID": "meeting-021",
+      "meetingTitle": "Public synthetic meeting 021",
+      "owner": "Iris",
+      "text": "Iris said atlas-082 uses GraphQL schema v3.",
+      "timestampMilliseconds": 82000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-083",
+      "language": "mixed",
+      "meetingID": "meeting-021",
+      "meetingTitle": "Public synthetic meeting 021",
+      "owner": "Leo",
+      "text": "Leo indicó que atlas-083 usa GraphQL schema v3. Follow-up: Leo said atlas-083 uses GraphQL schema v3.",
+      "timestampMilliseconds": 83000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-084",
+      "language": "es",
+      "meetingID": "meeting-021",
+      "meetingTitle": "Public synthetic meeting 021",
+      "owner": "Leo",
+      "text": "Leo indicó que atlas-084 usa GraphQL schema v3.",
+      "timestampMilliseconds": 84000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-085",
+      "language": "es",
+      "meetingID": "meeting-022",
+      "meetingTitle": "Public synthetic meeting 022",
+      "owner": "Mara",
+      "text": "Mara acordó atlas-085: posponer el lanzamiento hasta abril.",
+      "timestampMilliseconds": 85000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-086",
+      "language": "en",
+      "meetingID": "meeting-022",
+      "meetingTitle": "Public synthetic meeting 022",
+      "owner": "Mara",
+      "text": "Mara agreed on atlas-086: postpone the launch until April.",
+      "timestampMilliseconds": 86000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-087",
+      "language": "es",
+      "meetingID": "meeting-022",
+      "meetingTitle": "Public synthetic meeting 022",
+      "owner": "Noah",
+      "text": "Noah acordó atlas-087: posponer el lanzamiento hasta abril.",
+      "timestampMilliseconds": 87000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-088",
+      "language": "en",
+      "meetingID": "meeting-022",
+      "meetingTitle": "Public synthetic meeting 022",
+      "owner": "Noah",
+      "text": "Noah agreed on atlas-088: postpone the launch until April.",
+      "timestampMilliseconds": 88000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-089",
+      "language": "mixed",
+      "meetingID": "meeting-023",
+      "meetingTitle": "Public synthetic meeting 023",
+      "owner": "Sofía",
+      "text": "Sofía acordó atlas-089: posponer el lanzamiento hasta abril. Follow-up: Sofía agreed on atlas-089: postpone the launch until April.",
+      "timestampMilliseconds": 89000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-090",
+      "language": "es",
+      "meetingID": "meeting-023",
+      "meetingTitle": "Public synthetic meeting 023",
+      "owner": "Sofía",
+      "text": "Sofía acordó atlas-090: posponer el lanzamiento hasta abril.",
+      "timestampMilliseconds": 90000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-091",
+      "language": "es",
+      "meetingID": "meeting-023",
+      "meetingTitle": "Public synthetic meeting 023",
+      "owner": "Eli",
+      "text": "Eli aclaró que atlas-091 no debe eliminar registros históricos.",
+      "timestampMilliseconds": 91000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-092",
+      "language": "en",
+      "meetingID": "meeting-023",
+      "meetingTitle": "Public synthetic meeting 023",
+      "owner": "Eli",
+      "text": "Eli clarified that atlas-092 must not delete historical records.",
+      "timestampMilliseconds": 92000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-093",
+      "language": "es",
+      "meetingID": "meeting-024",
+      "meetingTitle": "Public synthetic meeting 024",
+      "owner": "Iris",
+      "text": "Iris aclaró que atlas-093 no debe eliminar registros históricos.",
+      "timestampMilliseconds": 93000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-094",
+      "language": "en",
+      "meetingID": "meeting-024",
+      "meetingTitle": "Public synthetic meeting 024",
+      "owner": "Iris",
+      "text": "Iris clarified that atlas-094 must not delete historical records.",
+      "timestampMilliseconds": 94000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-095",
+      "language": "mixed",
+      "meetingID": "meeting-024",
+      "meetingTitle": "Public synthetic meeting 024",
+      "owner": "Leo",
+      "text": "Leo aclaró que atlas-095 no debe eliminar registros históricos. Follow-up: Leo clarified that atlas-095 must not delete historical records.",
+      "timestampMilliseconds": 95000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-096",
+      "language": "es",
+      "meetingID": "meeting-024",
+      "meetingTitle": "Public synthetic meeting 024",
+      "owner": "Leo",
+      "text": "Leo documentó atlas-096 como una revisión rutinaria del equipo.",
+      "timestampMilliseconds": 96000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-097",
+      "language": "es",
+      "meetingID": "meeting-025",
+      "meetingTitle": "Public synthetic meeting 025",
+      "owner": "Mara",
+      "text": "Mara nombró a atlas-097 como responsable de la migración.",
+      "timestampMilliseconds": 97000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-098",
+      "language": "en",
+      "meetingID": "meeting-025",
+      "meetingTitle": "Public synthetic meeting 025",
+      "owner": "Mara",
+      "text": "Mara named atlas-098 as the migration owner.",
+      "timestampMilliseconds": 98000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-099",
+      "language": "es",
+      "meetingID": "meeting-025",
+      "meetingTitle": "Public synthetic meeting 025",
+      "owner": "Noah",
+      "text": "Noah nombró a atlas-099 como responsable de la migración.",
+      "timestampMilliseconds": 99000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-100",
+      "language": "en",
+      "meetingID": "meeting-025",
+      "meetingTitle": "Public synthetic meeting 025",
+      "owner": "Noah",
+      "text": "Noah named atlas-100 as the migration owner.",
+      "timestampMilliseconds": 100000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-101",
+      "language": "mixed",
+      "meetingID": "meeting-026",
+      "meetingTitle": "Public synthetic meeting 026",
+      "owner": "Sofía",
+      "text": "Sofía nombró a atlas-101 como responsable de la migración. Follow-up: Sofía named atlas-101 as the migration owner.",
+      "timestampMilliseconds": 101000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-102",
+      "language": "es",
+      "meetingID": "meeting-026",
+      "meetingTitle": "Public synthetic meeting 026",
+      "owner": "Sofía",
+      "text": "Sofía documentó atlas-102 como una revisión rutinaria del equipo.",
+      "timestampMilliseconds": 102000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-103",
+      "language": "es",
+      "meetingID": "meeting-026",
+      "meetingTitle": "Public synthetic meeting 026",
+      "owner": "Eli",
+      "text": "Eli fijó la entrega atlas-103 para el viernes 12 de marzo.",
+      "timestampMilliseconds": 103000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-104",
+      "language": "en",
+      "meetingID": "meeting-026",
+      "meetingTitle": "Public synthetic meeting 026",
+      "owner": "Eli",
+      "text": "Eli scheduled delivery atlas-104 for Friday, March 12.",
+      "timestampMilliseconds": 104000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-105",
+      "language": "es",
+      "meetingID": "meeting-027",
+      "meetingTitle": "Public synthetic meeting 027",
+      "owner": "Iris",
+      "text": "Iris fijó la entrega atlas-105 para el viernes 12 de marzo.",
+      "timestampMilliseconds": 105000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-106",
+      "language": "en",
+      "meetingID": "meeting-027",
+      "meetingTitle": "Public synthetic meeting 027",
+      "owner": "Iris",
+      "text": "Iris scheduled delivery atlas-106 for Friday, March 12.",
+      "timestampMilliseconds": 106000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-107",
+      "language": "mixed",
+      "meetingID": "meeting-027",
+      "meetingTitle": "Public synthetic meeting 027",
+      "owner": "Leo",
+      "text": "Leo fijó la entrega atlas-107 para el viernes 12 de marzo. Follow-up: Leo scheduled delivery atlas-107 for Friday, March 12.",
+      "timestampMilliseconds": 107000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-108",
+      "language": "es",
+      "meetingID": "meeting-027",
+      "meetingTitle": "Public synthetic meeting 027",
+      "owner": "Leo",
+      "text": "Leo documentó atlas-108 como una revisión rutinaria del equipo.",
+      "timestampMilliseconds": 108000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-109",
+      "language": "es",
+      "meetingID": "meeting-028",
+      "meetingTitle": "Public synthetic meeting 028",
+      "owner": "Mara",
+      "text": "Mara se comprometió a entregar atlas-109 antes del viernes.",
+      "timestampMilliseconds": 109000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-110",
+      "language": "en",
+      "meetingID": "meeting-028",
+      "meetingTitle": "Public synthetic meeting 028",
+      "owner": "Mara",
+      "text": "Mara committed to deliver atlas-110 before Friday.",
+      "timestampMilliseconds": 110000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-111",
+      "language": "es",
+      "meetingID": "meeting-028",
+      "meetingTitle": "Public synthetic meeting 028",
+      "owner": "Noah",
+      "text": "Noah se comprometió a entregar atlas-111 antes del viernes.",
+      "timestampMilliseconds": 111000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-112",
+      "language": "en",
+      "meetingID": "meeting-028",
+      "meetingTitle": "Public synthetic meeting 028",
+      "owner": "Noah",
+      "text": "Noah committed to deliver atlas-112 before Friday.",
+      "timestampMilliseconds": 112000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-113",
+      "language": "mixed",
+      "meetingID": "meeting-029",
+      "meetingTitle": "Public synthetic meeting 029",
+      "owner": "Sofía",
+      "text": "Sofía se comprometió a entregar atlas-113 antes del viernes. Follow-up: Sofía committed to deliver atlas-113 before Friday.",
+      "timestampMilliseconds": 113000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-114",
+      "language": "es",
+      "meetingID": "meeting-029",
+      "meetingTitle": "Public synthetic meeting 029",
+      "owner": "Sofía",
+      "text": "Sofía documentó atlas-114 como una revisión rutinaria del equipo.",
+      "timestampMilliseconds": 114000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-115",
+      "language": "es",
+      "meetingID": "meeting-029",
+      "meetingTitle": "Public synthetic meeting 029",
+      "owner": "Eli",
+      "text": "Eli confirmó la decisión atlas-115: aprobar el presupuesto.",
+      "timestampMilliseconds": 115000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-116",
+      "language": "en",
+      "meetingID": "meeting-029",
+      "meetingTitle": "Public synthetic meeting 029",
+      "owner": "Eli",
+      "text": "Eli confirmed decision atlas-116: approve the budget.",
+      "timestampMilliseconds": 116000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-117",
+      "language": "es",
+      "meetingID": "meeting-030",
+      "meetingTitle": "Public synthetic meeting 030",
+      "owner": "Iris",
+      "text": "Iris confirmó la decisión atlas-117: aprobar el presupuesto.",
+      "timestampMilliseconds": 117000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-118",
+      "language": "en",
+      "meetingID": "meeting-030",
+      "meetingTitle": "Public synthetic meeting 030",
+      "owner": "Iris",
+      "text": "Iris confirmed decision atlas-118: approve the budget.",
+      "timestampMilliseconds": 118000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-119",
+      "language": "mixed",
+      "meetingID": "meeting-030",
+      "meetingTitle": "Public synthetic meeting 030",
+      "owner": "Leo",
+      "text": "Leo confirmó la decisión atlas-119: aprobar el presupuesto. Follow-up: Leo confirmed decision atlas-119: approve the budget.",
+      "timestampMilliseconds": 119000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-120",
+      "language": "es",
+      "meetingID": "meeting-030",
+      "meetingTitle": "Public synthetic meeting 030",
+      "owner": "Leo",
+      "text": "Leo documentó atlas-120 como una revisión rutinaria del equipo.",
+      "timestampMilliseconds": 120000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-121",
+      "language": "es",
+      "meetingID": "meeting-031",
+      "meetingTitle": "Public synthetic meeting 031",
+      "owner": "Mara",
+      "text": "Mara registró el riesgo atlas-121: la migración puede duplicar eventos.",
+      "timestampMilliseconds": 121000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-122",
+      "language": "en",
+      "meetingID": "meeting-031",
+      "meetingTitle": "Public synthetic meeting 031",
+      "owner": "Mara",
+      "text": "Mara recorded risk atlas-122: the migration may duplicate events.",
+      "timestampMilliseconds": 122000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-123",
+      "language": "es",
+      "meetingID": "meeting-031",
+      "meetingTitle": "Public synthetic meeting 031",
+      "owner": "Noah",
+      "text": "Noah registró el riesgo atlas-123: la migración puede duplicar eventos.",
+      "timestampMilliseconds": 123000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-124",
+      "language": "en",
+      "meetingID": "meeting-031",
+      "meetingTitle": "Public synthetic meeting 031",
+      "owner": "Noah",
+      "text": "Noah recorded risk atlas-124: the migration may duplicate events.",
+      "timestampMilliseconds": 124000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-125",
+      "language": "es",
+      "meetingID": "meeting-032",
+      "meetingTitle": "Public synthetic meeting 032",
+      "owner": "Sofía",
+      "text": "Sofía indicó que atlas-125 usa GraphQL schema v3.",
+      "timestampMilliseconds": 125000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-126",
+      "language": "en",
+      "meetingID": "meeting-032",
+      "meetingTitle": "Public synthetic meeting 032",
+      "owner": "Sofía",
+      "text": "Sofía said atlas-126 uses GraphQL schema v3.",
+      "timestampMilliseconds": 126000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-127",
+      "language": "es",
+      "meetingID": "meeting-032",
+      "meetingTitle": "Public synthetic meeting 032",
+      "owner": "Eli",
+      "text": "Eli indicó que atlas-127 usa GraphQL schema v3.",
+      "timestampMilliseconds": 127000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-128",
+      "language": "en",
+      "meetingID": "meeting-032",
+      "meetingTitle": "Public synthetic meeting 032",
+      "owner": "Eli",
+      "text": "Eli said atlas-128 uses GraphQL schema v3.",
+      "timestampMilliseconds": 128000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-129",
+      "language": "es",
+      "meetingID": "meeting-033",
+      "meetingTitle": "Public synthetic meeting 033",
+      "owner": "Iris",
+      "text": "Iris acordó atlas-129: posponer el lanzamiento hasta abril.",
+      "timestampMilliseconds": 129000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-130",
+      "language": "en",
+      "meetingID": "meeting-033",
+      "meetingTitle": "Public synthetic meeting 033",
+      "owner": "Iris",
+      "text": "Iris agreed on atlas-130: postpone the launch until April.",
+      "timestampMilliseconds": 130000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-131",
+      "language": "es",
+      "meetingID": "meeting-033",
+      "meetingTitle": "Public synthetic meeting 033",
+      "owner": "Leo",
+      "text": "Leo acordó atlas-131: posponer el lanzamiento hasta abril.",
+      "timestampMilliseconds": 131000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-132",
+      "language": "en",
+      "meetingID": "meeting-033",
+      "meetingTitle": "Public synthetic meeting 033",
+      "owner": "Leo",
+      "text": "Leo agreed on atlas-132: postpone the launch until April.",
+      "timestampMilliseconds": 132000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-133",
+      "language": "es",
+      "meetingID": "meeting-034",
+      "meetingTitle": "Public synthetic meeting 034",
+      "owner": "Mara",
+      "text": "Mara aclaró que atlas-133 no debe eliminar registros históricos.",
+      "timestampMilliseconds": 133000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-134",
+      "language": "en",
+      "meetingID": "meeting-034",
+      "meetingTitle": "Public synthetic meeting 034",
+      "owner": "Mara",
+      "text": "Mara clarified that atlas-134 must not delete historical records.",
+      "timestampMilliseconds": 134000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-135",
+      "language": "es",
+      "meetingID": "meeting-034",
+      "meetingTitle": "Public synthetic meeting 034",
+      "owner": "Noah",
+      "text": "Noah aclaró que atlas-135 no debe eliminar registros históricos.",
+      "timestampMilliseconds": 135000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-136",
+      "language": "en",
+      "meetingID": "meeting-034",
+      "meetingTitle": "Public synthetic meeting 034",
+      "owner": "Noah",
+      "text": "Noah clarified that atlas-136 must not delete historical records.",
+      "timestampMilliseconds": 136000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-137",
+      "language": "es",
+      "meetingID": "meeting-035",
+      "meetingTitle": "Public synthetic meeting 035",
+      "owner": "Sofía",
+      "text": "Sofía nombró a atlas-137 como responsable de la migración.",
+      "timestampMilliseconds": 137000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-138",
+      "language": "en",
+      "meetingID": "meeting-035",
+      "meetingTitle": "Public synthetic meeting 035",
+      "owner": "Sofía",
+      "text": "Sofía named atlas-138 as the migration owner.",
+      "timestampMilliseconds": 138000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-139",
+      "language": "es",
+      "meetingID": "meeting-035",
+      "meetingTitle": "Public synthetic meeting 035",
+      "owner": "Eli",
+      "text": "Eli nombró a atlas-139 como responsable de la migración.",
+      "timestampMilliseconds": 139000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-140",
+      "language": "en",
+      "meetingID": "meeting-035",
+      "meetingTitle": "Public synthetic meeting 035",
+      "owner": "Eli",
+      "text": "Eli named atlas-140 as the migration owner.",
+      "timestampMilliseconds": 140000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-141",
+      "language": "es",
+      "meetingID": "meeting-036",
+      "meetingTitle": "Public synthetic meeting 036",
+      "owner": "Iris",
+      "text": "Iris fijó la entrega atlas-141 para el viernes 12 de marzo.",
+      "timestampMilliseconds": 141000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-142",
+      "language": "en",
+      "meetingID": "meeting-036",
+      "meetingTitle": "Public synthetic meeting 036",
+      "owner": "Iris",
+      "text": "Iris scheduled delivery atlas-142 for Friday, March 12.",
+      "timestampMilliseconds": 142000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-143",
+      "language": "es",
+      "meetingID": "meeting-036",
+      "meetingTitle": "Public synthetic meeting 036",
+      "owner": "Leo",
+      "text": "Leo fijó la entrega atlas-143 para el viernes 12 de marzo.",
+      "timestampMilliseconds": 143000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-144",
+      "language": "en",
+      "meetingID": "meeting-036",
+      "meetingTitle": "Public synthetic meeting 036",
+      "owner": "Leo",
+      "text": "Leo scheduled delivery atlas-144 for Friday, March 12.",
+      "timestampMilliseconds": 144000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-145",
+      "language": "es",
+      "meetingID": "meeting-037",
+      "meetingTitle": "Public synthetic meeting 037",
+      "owner": "Mara",
+      "text": "Mara se comprometió a entregar atlas-145 antes del viernes.",
+      "timestampMilliseconds": 145000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-146",
+      "language": "en",
+      "meetingID": "meeting-037",
+      "meetingTitle": "Public synthetic meeting 037",
+      "owner": "Mara",
+      "text": "Mara committed to deliver atlas-146 before Friday.",
+      "timestampMilliseconds": 146000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-147",
+      "language": "es",
+      "meetingID": "meeting-037",
+      "meetingTitle": "Public synthetic meeting 037",
+      "owner": "Noah",
+      "text": "Noah se comprometió a entregar atlas-147 antes del viernes.",
+      "timestampMilliseconds": 147000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-148",
+      "language": "en",
+      "meetingID": "meeting-037",
+      "meetingTitle": "Public synthetic meeting 037",
+      "owner": "Noah",
+      "text": "Noah committed to deliver atlas-148 before Friday.",
+      "timestampMilliseconds": 148000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-149",
+      "language": "es",
+      "meetingID": "meeting-038",
+      "meetingTitle": "Public synthetic meeting 038",
+      "owner": "Sofía",
+      "text": "Sofía confirmó la decisión atlas-149: aprobar el presupuesto.",
+      "timestampMilliseconds": 149000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-150",
+      "language": "en",
+      "meetingID": "meeting-038",
+      "meetingTitle": "Public synthetic meeting 038",
+      "owner": "Sofía",
+      "text": "Sofía confirmed decision atlas-150: approve the budget.",
+      "timestampMilliseconds": 150000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-151",
+      "language": "es",
+      "meetingID": "meeting-038",
+      "meetingTitle": "Public synthetic meeting 038",
+      "owner": "Eli",
+      "text": "Eli confirmó la decisión atlas-151: aprobar el presupuesto.",
+      "timestampMilliseconds": 151000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-152",
+      "language": "en",
+      "meetingID": "meeting-038",
+      "meetingTitle": "Public synthetic meeting 038",
+      "owner": "Eli",
+      "text": "Eli confirmed decision atlas-152: approve the budget.",
+      "timestampMilliseconds": 152000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-153",
+      "language": "es",
+      "meetingID": "meeting-039",
+      "meetingTitle": "Public synthetic meeting 039",
+      "owner": "Iris",
+      "text": "Iris registró el riesgo atlas-153: la migración puede duplicar eventos.",
+      "timestampMilliseconds": 153000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-154",
+      "language": "en",
+      "meetingID": "meeting-039",
+      "meetingTitle": "Public synthetic meeting 039",
+      "owner": "Iris",
+      "text": "Iris recorded risk atlas-154: the migration may duplicate events.",
+      "timestampMilliseconds": 154000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-155",
+      "language": "es",
+      "meetingID": "meeting-039",
+      "meetingTitle": "Public synthetic meeting 039",
+      "owner": "Leo",
+      "text": "Leo registró el riesgo atlas-155: la migración puede duplicar eventos.",
+      "timestampMilliseconds": 155000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-156",
+      "language": "en",
+      "meetingID": "meeting-039",
+      "meetingTitle": "Public synthetic meeting 039",
+      "owner": "Leo",
+      "text": "Leo recorded risk atlas-156: the migration may duplicate events.",
+      "timestampMilliseconds": 156000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-157",
+      "language": "es",
+      "meetingID": "meeting-040",
+      "meetingTitle": "Public synthetic meeting 040",
+      "owner": "Mara",
+      "text": "Mara indicó que atlas-157 usa GraphQL schema v3.",
+      "timestampMilliseconds": 157000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-158",
+      "language": "en",
+      "meetingID": "meeting-040",
+      "meetingTitle": "Public synthetic meeting 040",
+      "owner": "Mara",
+      "text": "Mara said atlas-158 uses GraphQL schema v3.",
+      "timestampMilliseconds": 158000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-159",
+      "language": "es",
+      "meetingID": "meeting-040",
+      "meetingTitle": "Public synthetic meeting 040",
+      "owner": "Noah",
+      "text": "Noah indicó que atlas-159 usa GraphQL schema v3.",
+      "timestampMilliseconds": 159000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-160",
+      "language": "en",
+      "meetingID": "meeting-040",
+      "meetingTitle": "Public synthetic meeting 040",
+      "owner": "Noah",
+      "text": "Noah said atlas-160 uses GraphQL schema v3.",
+      "timestampMilliseconds": 160000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-161",
+      "language": "es",
+      "meetingID": "meeting-041",
+      "meetingTitle": "Public synthetic meeting 041",
+      "owner": "Sofía",
+      "text": "Sofía acordó atlas-161: posponer el lanzamiento hasta abril.",
+      "timestampMilliseconds": 161000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-162",
+      "language": "en",
+      "meetingID": "meeting-041",
+      "meetingTitle": "Public synthetic meeting 041",
+      "owner": "Sofía",
+      "text": "Sofía agreed on atlas-162: postpone the launch until April.",
+      "timestampMilliseconds": 162000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-163",
+      "language": "es",
+      "meetingID": "meeting-041",
+      "meetingTitle": "Public synthetic meeting 041",
+      "owner": "Eli",
+      "text": "Eli acordó atlas-163: posponer el lanzamiento hasta abril.",
+      "timestampMilliseconds": 163000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-164",
+      "language": "en",
+      "meetingID": "meeting-041",
+      "meetingTitle": "Public synthetic meeting 041",
+      "owner": "Eli",
+      "text": "Eli agreed on atlas-164: postpone the launch until April.",
+      "timestampMilliseconds": 164000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-165",
+      "language": "es",
+      "meetingID": "meeting-042",
+      "meetingTitle": "Public synthetic meeting 042",
+      "owner": "Iris",
+      "text": "Iris aclaró que atlas-165 no debe eliminar registros históricos.",
+      "timestampMilliseconds": 165000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-166",
+      "language": "en",
+      "meetingID": "meeting-042",
+      "meetingTitle": "Public synthetic meeting 042",
+      "owner": "Iris",
+      "text": "Iris clarified that atlas-166 must not delete historical records.",
+      "timestampMilliseconds": 166000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-167",
+      "language": "es",
+      "meetingID": "meeting-042",
+      "meetingTitle": "Public synthetic meeting 042",
+      "owner": "Leo",
+      "text": "Leo aclaró que atlas-167 no debe eliminar registros históricos.",
+      "timestampMilliseconds": 167000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-168",
+      "language": "en",
+      "meetingID": "meeting-042",
+      "meetingTitle": "Public synthetic meeting 042",
+      "owner": "Leo",
+      "text": "Leo clarified that atlas-168 must not delete historical records.",
+      "timestampMilliseconds": 168000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-169",
+      "language": "es",
+      "meetingID": "meeting-043",
+      "meetingTitle": "Public synthetic meeting 043",
+      "owner": "Mara",
+      "text": "Mara nombró a atlas-169 como responsable de la migración.",
+      "timestampMilliseconds": 169000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-170",
+      "language": "en",
+      "meetingID": "meeting-043",
+      "meetingTitle": "Public synthetic meeting 043",
+      "owner": "Mara",
+      "text": "Mara named atlas-170 as the migration owner.",
+      "timestampMilliseconds": 170000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-171",
+      "language": "es",
+      "meetingID": "meeting-043",
+      "meetingTitle": "Public synthetic meeting 043",
+      "owner": "Noah",
+      "text": "Noah nombró a atlas-171 como responsable de la migración.",
+      "timestampMilliseconds": 171000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-172",
+      "language": "en",
+      "meetingID": "meeting-043",
+      "meetingTitle": "Public synthetic meeting 043",
+      "owner": "Noah",
+      "text": "Noah named atlas-172 as the migration owner.",
+      "timestampMilliseconds": 172000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-173",
+      "language": "es",
+      "meetingID": "meeting-044",
+      "meetingTitle": "Public synthetic meeting 044",
+      "owner": "Sofía",
+      "text": "Sofía fijó la entrega atlas-173 para el viernes 12 de marzo.",
+      "timestampMilliseconds": 173000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-174",
+      "language": "en",
+      "meetingID": "meeting-044",
+      "meetingTitle": "Public synthetic meeting 044",
+      "owner": "Sofía",
+      "text": "Sofía scheduled delivery atlas-174 for Friday, March 12.",
+      "timestampMilliseconds": 174000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-175",
+      "language": "es",
+      "meetingID": "meeting-044",
+      "meetingTitle": "Public synthetic meeting 044",
+      "owner": "Eli",
+      "text": "Eli fijó la entrega atlas-175 para el viernes 12 de marzo.",
+      "timestampMilliseconds": 175000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-176",
+      "language": "en",
+      "meetingID": "meeting-044",
+      "meetingTitle": "Public synthetic meeting 044",
+      "owner": "Eli",
+      "text": "Eli scheduled delivery atlas-176 for Friday, March 12.",
+      "timestampMilliseconds": 176000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-177",
+      "language": "es",
+      "meetingID": "meeting-045",
+      "meetingTitle": "Public synthetic meeting 045",
+      "owner": "Iris",
+      "text": "Iris se comprometió a entregar atlas-177 antes del viernes.",
+      "timestampMilliseconds": 177000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-178",
+      "language": "en",
+      "meetingID": "meeting-045",
+      "meetingTitle": "Public synthetic meeting 045",
+      "owner": "Iris",
+      "text": "Iris committed to deliver atlas-178 before Friday.",
+      "timestampMilliseconds": 178000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-179",
+      "language": "es",
+      "meetingID": "meeting-045",
+      "meetingTitle": "Public synthetic meeting 045",
+      "owner": "Leo",
+      "text": "Leo se comprometió a entregar atlas-179 antes del viernes.",
+      "timestampMilliseconds": 179000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-180",
+      "language": "en",
+      "meetingID": "meeting-045",
+      "meetingTitle": "Public synthetic meeting 045",
+      "owner": "Leo",
+      "text": "Leo committed to deliver atlas-180 before Friday.",
+      "timestampMilliseconds": 180000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-181",
+      "language": "es",
+      "meetingID": "meeting-046",
+      "meetingTitle": "Public synthetic meeting 046",
+      "owner": "Mara",
+      "text": "Mara confirmó la decisión atlas-181: aprobar el presupuesto.",
+      "timestampMilliseconds": 181000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-182",
+      "language": "en",
+      "meetingID": "meeting-046",
+      "meetingTitle": "Public synthetic meeting 046",
+      "owner": "Mara",
+      "text": "Mara confirmed decision atlas-182: approve the budget.",
+      "timestampMilliseconds": 182000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-183",
+      "language": "es",
+      "meetingID": "meeting-046",
+      "meetingTitle": "Public synthetic meeting 046",
+      "owner": "Noah",
+      "text": "Noah confirmó la decisión atlas-183: aprobar el presupuesto.",
+      "timestampMilliseconds": 183000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-184",
+      "language": "en",
+      "meetingID": "meeting-046",
+      "meetingTitle": "Public synthetic meeting 046",
+      "owner": "Noah",
+      "text": "Noah confirmed decision atlas-184: approve the budget.",
+      "timestampMilliseconds": 184000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-185",
+      "language": "es",
+      "meetingID": "meeting-047",
+      "meetingTitle": "Public synthetic meeting 047",
+      "owner": "Sofía",
+      "text": "Sofía registró el riesgo atlas-185: la migración puede duplicar eventos.",
+      "timestampMilliseconds": 185000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-186",
+      "language": "en",
+      "meetingID": "meeting-047",
+      "meetingTitle": "Public synthetic meeting 047",
+      "owner": "Sofía",
+      "text": "Sofía recorded risk atlas-186: the migration may duplicate events.",
+      "timestampMilliseconds": 186000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-187",
+      "language": "es",
+      "meetingID": "meeting-047",
+      "meetingTitle": "Public synthetic meeting 047",
+      "owner": "Eli",
+      "text": "Eli registró el riesgo atlas-187: la migración puede duplicar eventos.",
+      "timestampMilliseconds": 187000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-188",
+      "language": "en",
+      "meetingID": "meeting-047",
+      "meetingTitle": "Public synthetic meeting 047",
+      "owner": "Eli",
+      "text": "Eli recorded risk atlas-188: the migration may duplicate events.",
+      "timestampMilliseconds": 188000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-189",
+      "language": "es",
+      "meetingID": "meeting-048",
+      "meetingTitle": "Public synthetic meeting 048",
+      "owner": "Iris",
+      "text": "Iris indicó que atlas-189 usa GraphQL schema v3.",
+      "timestampMilliseconds": 189000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-190",
+      "language": "en",
+      "meetingID": "meeting-048",
+      "meetingTitle": "Public synthetic meeting 048",
+      "owner": "Iris",
+      "text": "Iris said atlas-190 uses GraphQL schema v3.",
+      "timestampMilliseconds": 190000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-191",
+      "language": "es",
+      "meetingID": "meeting-048",
+      "meetingTitle": "Public synthetic meeting 048",
+      "owner": "Leo",
+      "text": "Leo indicó que atlas-191 usa GraphQL schema v3.",
+      "timestampMilliseconds": 191000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-192",
+      "language": "en",
+      "meetingID": "meeting-048",
+      "meetingTitle": "Public synthetic meeting 048",
+      "owner": "Leo",
+      "text": "Leo said atlas-192 uses GraphQL schema v3.",
+      "timestampMilliseconds": 192000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-193",
+      "language": "es",
+      "meetingID": "meeting-049",
+      "meetingTitle": "Public synthetic meeting 049",
+      "owner": "Mara",
+      "text": "Mara acordó atlas-193: posponer el lanzamiento hasta abril.",
+      "timestampMilliseconds": 193000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-194",
+      "language": "en",
+      "meetingID": "meeting-049",
+      "meetingTitle": "Public synthetic meeting 049",
+      "owner": "Mara",
+      "text": "Mara agreed on atlas-194: postpone the launch until April.",
+      "timestampMilliseconds": 194000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-195",
+      "language": "es",
+      "meetingID": "meeting-049",
+      "meetingTitle": "Public synthetic meeting 049",
+      "owner": "Noah",
+      "text": "Noah acordó atlas-195: posponer el lanzamiento hasta abril.",
+      "timestampMilliseconds": 195000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-196",
+      "language": "en",
+      "meetingID": "meeting-049",
+      "meetingTitle": "Public synthetic meeting 049",
+      "owner": "Noah",
+      "text": "Noah agreed on atlas-196: postpone the launch until April.",
+      "timestampMilliseconds": 196000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-197",
+      "language": "es",
+      "meetingID": "meeting-050",
+      "meetingTitle": "Public synthetic meeting 050",
+      "owner": "Sofía",
+      "text": "Sofía aclaró que atlas-197 no debe eliminar registros históricos.",
+      "timestampMilliseconds": 197000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-198",
+      "language": "en",
+      "meetingID": "meeting-050",
+      "meetingTitle": "Public synthetic meeting 050",
+      "owner": "Sofía",
+      "text": "Sofía clarified that atlas-198 must not delete historical records.",
+      "timestampMilliseconds": 198000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-199",
+      "language": "es",
+      "meetingID": "meeting-050",
+      "meetingTitle": "Public synthetic meeting 050",
+      "owner": "Eli",
+      "text": "Eli aclaró que atlas-199 no debe eliminar registros históricos.",
+      "timestampMilliseconds": 199000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-200",
+      "language": "en",
+      "meetingID": "meeting-050",
+      "meetingTitle": "Public synthetic meeting 050",
+      "owner": "Eli",
+      "text": "Eli clarified that atlas-200 must not delete historical records.",
+      "timestampMilliseconds": 200000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-201",
+      "language": "es",
+      "meetingID": "meeting-051",
+      "meetingTitle": "Public synthetic meeting 051",
+      "owner": "Iris",
+      "text": "Iris nombró a atlas-201 como responsable de la migración.",
+      "timestampMilliseconds": 201000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-202",
+      "language": "en",
+      "meetingID": "meeting-051",
+      "meetingTitle": "Public synthetic meeting 051",
+      "owner": "Iris",
+      "text": "Iris named atlas-202 as the migration owner.",
+      "timestampMilliseconds": 202000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-203",
+      "language": "es",
+      "meetingID": "meeting-051",
+      "meetingTitle": "Public synthetic meeting 051",
+      "owner": "Leo",
+      "text": "Leo fijó la entrega atlas-203 para el viernes 12 de marzo.",
+      "timestampMilliseconds": 203000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-204",
+      "language": "en",
+      "meetingID": "meeting-051",
+      "meetingTitle": "Public synthetic meeting 051",
+      "owner": "Leo",
+      "text": "Leo scheduled delivery atlas-204 for Friday, March 12.",
+      "timestampMilliseconds": 204000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-205",
+      "language": "es",
+      "meetingID": "meeting-052",
+      "meetingTitle": "Public synthetic meeting 052",
+      "owner": "Mara",
+      "text": "Mara se comprometió a entregar atlas-205 antes del viernes.",
+      "timestampMilliseconds": 205000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-206",
+      "language": "en",
+      "meetingID": "meeting-052",
+      "meetingTitle": "Public synthetic meeting 052",
+      "owner": "Mara",
+      "text": "Mara committed to deliver atlas-206 before Friday.",
+      "timestampMilliseconds": 206000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-207",
+      "language": "es",
+      "meetingID": "meeting-052",
+      "meetingTitle": "Public synthetic meeting 052",
+      "owner": "Noah",
+      "text": "Noah confirmó la decisión atlas-207: aprobar el presupuesto.",
+      "timestampMilliseconds": 207000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-208",
+      "language": "en",
+      "meetingID": "meeting-052",
+      "meetingTitle": "Public synthetic meeting 052",
+      "owner": "Noah",
+      "text": "Noah confirmed decision atlas-208: approve the budget.",
+      "timestampMilliseconds": 208000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-209",
+      "language": "es",
+      "meetingID": "meeting-053",
+      "meetingTitle": "Public synthetic meeting 053",
+      "owner": "Sofía",
+      "text": "Sofía registró el riesgo atlas-209: la migración puede duplicar eventos.",
+      "timestampMilliseconds": 209000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-210",
+      "language": "en",
+      "meetingID": "meeting-053",
+      "meetingTitle": "Public synthetic meeting 053",
+      "owner": "Sofía",
+      "text": "Sofía recorded risk atlas-210: the migration may duplicate events.",
+      "timestampMilliseconds": 210000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-211",
+      "language": "es",
+      "meetingID": "meeting-053",
+      "meetingTitle": "Public synthetic meeting 053",
+      "owner": "Eli",
+      "text": "Eli indicó que atlas-211 usa GraphQL schema v3.",
+      "timestampMilliseconds": 211000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-212",
+      "language": "en",
+      "meetingID": "meeting-053",
+      "meetingTitle": "Public synthetic meeting 053",
+      "owner": "Eli",
+      "text": "Eli said atlas-212 uses GraphQL schema v3.",
+      "timestampMilliseconds": 212000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-213",
+      "language": "es",
+      "meetingID": "meeting-054",
+      "meetingTitle": "Public synthetic meeting 054",
+      "owner": "Iris",
+      "text": "Iris acordó atlas-213: posponer el lanzamiento hasta abril.",
+      "timestampMilliseconds": 213000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-214",
+      "language": "en",
+      "meetingID": "meeting-054",
+      "meetingTitle": "Public synthetic meeting 054",
+      "owner": "Iris",
+      "text": "Iris agreed on atlas-214: postpone the launch until April.",
+      "timestampMilliseconds": 214000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-215",
+      "language": "es",
+      "meetingID": "meeting-054",
+      "meetingTitle": "Public synthetic meeting 054",
+      "owner": "Leo",
+      "text": "Leo aclaró que atlas-215 no debe eliminar registros históricos.",
+      "timestampMilliseconds": 215000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-216",
+      "language": "en",
+      "meetingID": "meeting-054",
+      "meetingTitle": "Public synthetic meeting 054",
+      "owner": "Leo",
+      "text": "Leo clarified that atlas-216 must not delete historical records.",
+      "timestampMilliseconds": 216000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-217",
+      "language": "es",
+      "meetingID": "meeting-055",
+      "meetingTitle": "Public synthetic meeting 055",
+      "owner": "Mara",
+      "text": "Mara nombró a atlas-217 como responsable de la migración.",
+      "timestampMilliseconds": 217000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-218",
+      "language": "en",
+      "meetingID": "meeting-055",
+      "meetingTitle": "Public synthetic meeting 055",
+      "owner": "Mara",
+      "text": "Mara named atlas-218 as the migration owner.",
+      "timestampMilliseconds": 218000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-219",
+      "language": "es",
+      "meetingID": "meeting-055",
+      "meetingTitle": "Public synthetic meeting 055",
+      "owner": "Noah",
+      "text": "Noah fijó la entrega atlas-219 para el viernes 12 de marzo.",
+      "timestampMilliseconds": 219000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-220",
+      "language": "en",
+      "meetingID": "meeting-055",
+      "meetingTitle": "Public synthetic meeting 055",
+      "owner": "Noah",
+      "text": "Noah scheduled delivery atlas-220 for Friday, March 12.",
+      "timestampMilliseconds": 220000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-221",
+      "language": "es",
+      "meetingID": "meeting-056",
+      "meetingTitle": "Public synthetic meeting 056",
+      "owner": "Sofía",
+      "text": "Sofía se comprometió a entregar atlas-221 antes del viernes.",
+      "timestampMilliseconds": 221000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-222",
+      "language": "en",
+      "meetingID": "meeting-056",
+      "meetingTitle": "Public synthetic meeting 056",
+      "owner": "Sofía",
+      "text": "Sofía committed to deliver atlas-222 before Friday.",
+      "timestampMilliseconds": 222000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-223",
+      "language": "es",
+      "meetingID": "meeting-056",
+      "meetingTitle": "Public synthetic meeting 056",
+      "owner": "Eli",
+      "text": "Eli confirmó la decisión atlas-223: aprobar el presupuesto.",
+      "timestampMilliseconds": 223000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-224",
+      "language": "en",
+      "meetingID": "meeting-056",
+      "meetingTitle": "Public synthetic meeting 056",
+      "owner": "Eli",
+      "text": "Eli confirmed decision atlas-224: approve the budget.",
+      "timestampMilliseconds": 224000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-225",
+      "language": "es",
+      "meetingID": "meeting-057",
+      "meetingTitle": "Public synthetic meeting 057",
+      "owner": "Iris",
+      "text": "Iris registró el riesgo atlas-225: la migración puede duplicar eventos.",
+      "timestampMilliseconds": 225000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-226",
+      "language": "en",
+      "meetingID": "meeting-057",
+      "meetingTitle": "Public synthetic meeting 057",
+      "owner": "Iris",
+      "text": "Iris recorded risk atlas-226: the migration may duplicate events.",
+      "timestampMilliseconds": 226000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-227",
+      "language": "es",
+      "meetingID": "meeting-057",
+      "meetingTitle": "Public synthetic meeting 057",
+      "owner": "Leo",
+      "text": "Leo indicó que atlas-227 usa GraphQL schema v3.",
+      "timestampMilliseconds": 227000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-228",
+      "language": "en",
+      "meetingID": "meeting-057",
+      "meetingTitle": "Public synthetic meeting 057",
+      "owner": "Leo",
+      "text": "Leo said atlas-228 uses GraphQL schema v3.",
+      "timestampMilliseconds": 228000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-229",
+      "language": "es",
+      "meetingID": "meeting-058",
+      "meetingTitle": "Public synthetic meeting 058",
+      "owner": "Mara",
+      "text": "Mara acordó atlas-229: posponer el lanzamiento hasta abril.",
+      "timestampMilliseconds": 229000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-230",
+      "language": "en",
+      "meetingID": "meeting-058",
+      "meetingTitle": "Public synthetic meeting 058",
+      "owner": "Mara",
+      "text": "Mara agreed on atlas-230: postpone the launch until April.",
+      "timestampMilliseconds": 230000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-231",
+      "language": "es",
+      "meetingID": "meeting-058",
+      "meetingTitle": "Public synthetic meeting 058",
+      "owner": "Noah",
+      "text": "Noah aclaró que atlas-231 no debe eliminar registros históricos.",
+      "timestampMilliseconds": 231000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-232",
+      "language": "en",
+      "meetingID": "meeting-058",
+      "meetingTitle": "Public synthetic meeting 058",
+      "owner": "Noah",
+      "text": "Noah clarified that atlas-232 must not delete historical records.",
+      "timestampMilliseconds": 232000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-233",
+      "language": "es",
+      "meetingID": "meeting-059",
+      "meetingTitle": "Public synthetic meeting 059",
+      "owner": "Sofía",
+      "text": "Sofía nombró a atlas-233 como responsable de la migración.",
+      "timestampMilliseconds": 233000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-234",
+      "language": "en",
+      "meetingID": "meeting-059",
+      "meetingTitle": "Public synthetic meeting 059",
+      "owner": "Sofía",
+      "text": "Sofía named atlas-234 as the migration owner.",
+      "timestampMilliseconds": 234000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-235",
+      "language": "es",
+      "meetingID": "meeting-059",
+      "meetingTitle": "Public synthetic meeting 059",
+      "owner": "Eli",
+      "text": "Eli fijó la entrega atlas-235 para el viernes 12 de marzo.",
+      "timestampMilliseconds": 235000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-236",
+      "language": "en",
+      "meetingID": "meeting-059",
+      "meetingTitle": "Public synthetic meeting 059",
+      "owner": "Eli",
+      "text": "Eli scheduled delivery atlas-236 for Friday, March 12.",
+      "timestampMilliseconds": 236000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-237",
+      "language": "es",
+      "meetingID": "meeting-060",
+      "meetingTitle": "Public synthetic meeting 060",
+      "owner": "Iris",
+      "text": "Iris se comprometió a entregar atlas-237 antes del viernes.",
+      "timestampMilliseconds": 237000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-238",
+      "language": "en",
+      "meetingID": "meeting-060",
+      "meetingTitle": "Public synthetic meeting 060",
+      "owner": "Iris",
+      "text": "Iris committed to deliver atlas-238 before Friday.",
+      "timestampMilliseconds": 238000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-239",
+      "language": "es",
+      "meetingID": "meeting-060",
+      "meetingTitle": "Public synthetic meeting 060",
+      "owner": "Leo",
+      "text": "Leo confirmó la decisión atlas-239: aprobar el presupuesto.",
+      "timestampMilliseconds": 239000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-240",
+      "language": "en",
+      "meetingID": "meeting-060",
+      "meetingTitle": "Public synthetic meeting 060",
+      "owner": "Leo",
+      "text": "Leo confirmed decision atlas-240: approve the budget.",
+      "timestampMilliseconds": 240000,
+      "transcriptRevision": 1
+    }
+  ]
+}

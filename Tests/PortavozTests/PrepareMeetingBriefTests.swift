@@ -96,6 +96,7 @@ final class PrepareMeetingBriefTests: XCTestCase {
 
     private var event: UpcomingEvent {
         UpcomingEvent(
+            id: "event-budget-rollout",
             title: "Budget rollout",
             startDate: Date(timeIntervalSince1970: 1_789_000_000),
             attendees: ["Ana"])

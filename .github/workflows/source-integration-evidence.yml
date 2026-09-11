@@ -1,0 +1,59 @@
+name: Source integration evidence
+run-name: Source integration ${{ inputs.commit }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact release version
+        required: true
+        type: string
+      build:
+        description: Exact release build
+        required: true
+        type: string
+      commit:
+        description: Full integrated release commit
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: source-integration-${{ inputs.commit }}
+  cancel-in-progress: false
+
+jobs:
+  qualify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Qualify reviewed integration and exact hosted CI
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PORTAVOZ_RELEASE_VERSION: ${{ inputs.version }}
+          PORTAVOZ_RELEASE_BUILD: ${{ inputs.build }}
+          PORTAVOZ_RELEASE_COMMIT: ${{ inputs.commit }}
+        run: |
+          python3 scripts/source_integration_qualification.py \
+            --version "$PORTAVOZ_RELEASE_VERSION" \
+            --build "$PORTAVOZ_RELEASE_BUILD" \
+            --commit "$PORTAVOZ_RELEASE_COMMIT" \
+            --output dist/source-integration-evidence
+
+      - name: Preserve content-free qualification evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: source-integration-${{ inputs.commit }}-${{ github.run_id }}
+          path: dist/source-integration-evidence
+          if-no-files-found: error
+          retention-days: 14

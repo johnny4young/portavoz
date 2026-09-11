@@ -1,0 +1,1149 @@
+import copy
+import contextlib
+import importlib.util
+import io
+import json
+import stat
+import subprocess
+import tempfile
+import unittest
+from collections import Counter
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[2]
+SCRIPT = ROOT / "scripts" / "commitment_link_quality.py"
+SPEC = importlib.util.spec_from_file_location("commitment_link_quality", SCRIPT)
+quality = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(quality)
+FIXTURE = ROOT / "Fixtures" / "CommitmentLinkQuality" / "public-synthetic-v1.json"
+CORPUS = ROOT / "Fixtures" / "CommitmentLinkQuality" / "public-corpus-v1.json"
+
+
+class CommitmentLinkQualityTests(unittest.TestCase):
+    def fixture(self):
+        return quality.validate_fixture(quality.load_json(FIXTURE, "fixture"))
+
+    def observations(self):
+        return quality.control_observations(self.fixture())
+
+    def similarity_observations(self):
+        fixture = self.fixture()
+        control = quality.control_observations(fixture)
+        return {
+            "schemaVersion": 1,
+            "kind": quality.SIMILARITY_OBSERVATION_KIND,
+            "fixtureGeneration": fixture["generation"],
+            "fixtureSHA256": quality.fixture_digest(fixture),
+            "adapter": "product-accelerate-exact-scored-v1",
+            "embeddingProfileFingerprint": "a" * 64,
+            "build": "0.9.0+1",
+            "commit": "b" * 40,
+            "evaluationStatus": "not-evaluated",
+            "servingStatus": "not-approved",
+            "observations": [
+                {
+                    "caseID": row["caseID"],
+                    "semanticHits": [
+                        {
+                            "evidenceSegmentID": evidence_id,
+                            "similarity": round(0.9 - rank * 0.1, 6),
+                        }
+                        for rank, evidence_id in enumerate(
+                            row["semanticHitSegmentIDs"]
+                        )
+                    ],
+                    "suggestions": row["suggestions"],
+                }
+                for row in control["observations"]
+            ],
+        }
+
+    def private_fixture(self):
+        fixture = self.fixture()
+        return {
+            "schemaVersion": 1,
+            "kind": quality.PRIVATE_FIXTURE_KIND,
+            "generation": "private-anonymized-v1",
+            "contentSource": quality.PRIVATE_SOURCE,
+            "anonymization": {
+                "policy": quality.PRIVATE_ANONYMIZATION_POLICY,
+                "reviewStatus": quality.PRIVATE_REVIEW_STATUS,
+                "containsAudio": False,
+                "containsFilePaths": False,
+                "containsAccountIdentifiers": False,
+                "containsDirectIdentifiers": False,
+            },
+            "cases": fixture["cases"],
+        }
+
+    def private_similarity_observations(self):
+        fixture = self.private_fixture()
+        public = self.similarity_observations()
+        return {
+            "schemaVersion": 1,
+            "kind": quality.PRIVATE_SIMILARITY_OBSERVATION_KIND,
+            "fixtureGeneration": fixture["generation"],
+            "fixtureSHA256": quality.fixture_digest(fixture),
+            "contentSource": quality.PRIVATE_SOURCE,
+            "anonymization": fixture["anonymization"],
+            "adapter": "product-accelerate-exact-private-scored-v1",
+            "embeddingProfileFingerprint": public[
+                "embeddingProfileFingerprint"
+            ],
+            "build": public["build"],
+            "commit": public["commit"],
+            "evaluationStatus": "not-evaluated",
+            "servingStatus": "not-approved",
+            "observations": public["observations"],
+        }
+
+    def test_public_corpus_is_bounded_and_rejects_incomplete_languages(self):
+        corpus = quality.load_public_corpus(CORPUS)
+        self.assertEqual(
+            {language: len(rows) for language, rows in corpus["vocabularies"].items()},
+            {"en": 12, "es": 12, "mixed": 12},
+        )
+        broken = copy.deepcopy(corpus)
+        del broken["templates"]["distractorTitle"]["mixed"]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "broken-corpus.json"
+            path.write_text(json.dumps(broken, ensure_ascii=False), encoding="utf-8")
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                "languages are incomplete",
+            ):
+                quality.load_public_corpus(path)
+
+    def test_public_fixture_is_reproducible_balanced_and_bounded(self):
+        fixture = self.fixture()
+
+        self.assertEqual(fixture, quality.public_fixture())
+        self.assertEqual(len(fixture["cases"]), 36)
+        self.assertEqual(
+            Counter(case["language"] for case in fixture["cases"]),
+            Counter({"en": 12, "es": 12, "mixed": 12}),
+        )
+        self.assertEqual(
+            sum(bool(case["expected"]["linkableCommitmentIDs"])
+                for case in fixture["cases"]),
+            18,
+        )
+        self.assertTrue(all(len(case["targets"]) <= 2 for case in fixture["cases"]))
+        self.assertTrue(any(
+            len(target["evidence"]) == 2
+            for case in fixture["cases"]
+            for target in case["targets"]
+        ))
+
+    def test_private_fixture_reuses_balance_and_requires_owner_attestation(self):
+        fixture = self.private_fixture()
+
+        self.assertIs(quality.validate_private_fixture(fixture), fixture)
+        self.assertEqual(len(fixture["cases"]), 36)
+        self.assertEqual(
+            Counter(case["language"] for case in fixture["cases"]),
+            Counter({"en": 12, "es": 12, "mixed": 12}),
+        )
+
+        for mutate, message in (
+            (
+                lambda value: value["anonymization"].update(
+                    {"reviewStatus": "automatic"}
+                ),
+                "owner-reviewed",
+            ),
+            (
+                lambda value: value["anonymization"].update(
+                    {"containsDirectIdentifiers": True}
+                ),
+                "containsDirectIdentifiers",
+            ),
+            (lambda value: value["cases"].pop(), "exactly 36"),
+        ):
+            broken = copy.deepcopy(fixture)
+            mutate(broken)
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                message,
+            ):
+                quality.validate_private_fixture(broken)
+
+    def test_private_fixture_rejects_obvious_identifier_patterns(self):
+        fixture = self.private_fixture()
+        for text, message in (
+            ("Contact person@example.com", "email address"),
+            ("Open https://example.com/private", "URL"),
+            ("Read /Users/person/meeting.txt", "filesystem path"),
+            ("Call +1 (555) 123-4567", "phone-like number"),
+            ("Raw 123e4567-e89b-12d3-a456-426614174000", "UUID"),
+        ):
+            broken = copy.deepcopy(fixture)
+            broken["cases"][0]["candidate"]["text"] = text
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                message,
+            ):
+                quality.validate_private_fixture(broken)
+
+    def test_private_fixture_cli_requires_owner_only_regular_input(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "private-pack.json"
+            path.write_text(
+                json.dumps(self.private_fixture()),
+                encoding="utf-8",
+            )
+            path.chmod(0o644)
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(
+                    quality.main([
+                        "validate-private",
+                        "--fixture", str(path),
+                    ]),
+                    64,
+                )
+            path.chmod(0o600)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(
+                    quality.main([
+                        "validate-private",
+                        "--fixture", str(path),
+                    ]),
+                    0,
+                )
+
+            link = Path(directory) / "private-pack-link.json"
+            link.symlink_to(path)
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(
+                    quality.main([
+                        "validate-private",
+                        "--fixture", str(link),
+                    ]),
+                    64,
+                )
+
+        repository_path = ROOT / "private-pack-unignored-test.json"
+        try:
+            repository_path.write_text(
+                json.dumps(self.private_fixture()),
+                encoding="utf-8",
+            )
+            repository_path.chmod(0o600)
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(
+                    quality.main([
+                        "validate-private",
+                        "--fixture", str(repository_path),
+                    ]),
+                    64,
+                )
+        finally:
+            repository_path.unlink(missing_ok=True)
+
+    def test_private_similarity_contract_binds_private_provenance(self):
+        fixture = self.private_fixture()
+        observations = self.private_similarity_observations()
+
+        self.assertIs(
+            quality.validate_private_similarity_observations(
+                observations,
+                fixture,
+            ),
+            observations,
+        )
+        self.assertEqual(
+            observations["fixtureSHA256"],
+            quality.fixture_digest(fixture),
+        )
+        self.assertEqual(observations["contentSource"], quality.PRIVATE_SOURCE)
+        self.assertEqual(observations["evaluationStatus"], "not-evaluated")
+        self.assertEqual(observations["servingStatus"], "not-approved")
+
+        for mutate, message in (
+            (
+                lambda value: value.update(
+                    {"contentSource": quality.PUBLIC_SOURCE}
+                ),
+                "contentSource",
+            ),
+            (
+                lambda value: value["anonymization"].update(
+                    {"reviewStatus": "automatic"}
+                ),
+                "anonymization provenance",
+            ),
+            (
+                lambda value: value.update(
+                    {"kind": quality.SIMILARITY_OBSERVATION_KIND}
+                ),
+                "kind",
+            ),
+        ):
+            broken = copy.deepcopy(observations)
+            mutate(broken)
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                message,
+            ):
+                quality.validate_private_similarity_observations(
+                    broken,
+                    fixture,
+                )
+
+    def test_private_similarity_cli_requires_owner_only_ignored_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture_path = root / "private-pack.json"
+            observation_path = root / "private-similarity.json"
+            fixture_path.write_text(
+                json.dumps(self.private_fixture()),
+                encoding="utf-8",
+            )
+            observation_path.write_text(
+                json.dumps(self.private_similarity_observations()),
+                encoding="utf-8",
+            )
+            fixture_path.chmod(0o600)
+            observation_path.chmod(0o644)
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(
+                    quality.main([
+                        "validate-private-similarity",
+                        "--fixture", str(fixture_path),
+                        "--observations", str(observation_path),
+                    ]),
+                    64,
+                )
+            observation_path.chmod(0o600)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(
+                    quality.main([
+                        "validate-private-similarity",
+                        "--fixture", str(fixture_path),
+                        "--observations", str(observation_path),
+                    ]),
+                    0,
+                )
+
+    def test_private_destination_preflight_refuses_repository_leakage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            destination = Path(directory) / "private-similarity.json"
+            self.assertEqual(
+                quality.validate_private_destination_path(
+                    destination,
+                    "private similarity observations",
+                ),
+                destination.resolve(),
+            )
+
+        repository_destination = ROOT / "private-similarity-unignored.json"
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "covered by .gitignore",
+        ):
+            quality.validate_private_destination_path(
+                repository_destination,
+                "private similarity observations",
+            )
+
+    def test_private_policy_replay_is_distinct_deterministic_and_non_serving(self):
+        fixture = self.private_fixture()
+        observations = self.private_similarity_observations()
+
+        first = quality.replay_private_similarity_policies(
+            fixture,
+            observations,
+        )
+        second = quality.replay_private_similarity_policies(
+            fixture,
+            observations,
+        )
+
+        self.assertEqual(first, second)
+        self.assertEqual(first["kind"], quality.PRIVATE_POLICY_REPLAY_KIND)
+        self.assertEqual(first["fixtureSHA256"], quality.fixture_digest(fixture))
+        self.assertEqual(
+            first["sourceObservationSHA256"],
+            quality.document_digest(observations),
+        )
+        self.assertEqual(first["contentSource"], quality.PRIVATE_SOURCE)
+        self.assertEqual(first["anonymization"], fixture["anonymization"])
+        self.assertEqual(first["candidateCount"], 3)
+        self.assertEqual(
+            [row["minimumSimilarity"] for row in first["candidates"]],
+            [-1.0, 0.85, 0.95],
+        )
+        self.assertEqual(first["evaluationStatus"], "review-required")
+        self.assertEqual(first["selectionStatus"], "not-selected")
+        self.assertEqual(first["productDecision"], "not-evaluated")
+        self.assertEqual(first["servingStatus"], "not-approved")
+        with self.assertRaises(quality.CommitmentLinkQualityError):
+            quality.replay_similarity_policies(fixture, observations)
+
+    def test_private_policy_replay_rejects_tampering_and_source_drift(self):
+        fixture = self.private_fixture()
+        observations = self.private_similarity_observations()
+        replay = quality.replay_private_similarity_policies(
+            fixture,
+            observations,
+        )
+
+        self.assertIs(
+            quality.validate_private_policy_replay(
+                replay,
+                fixture,
+                observations,
+            ),
+            replay,
+        )
+        for mutate in (
+            lambda value: value.update({"selectionStatus": "selected"}),
+            lambda value: value["anonymization"].update(
+                {"reviewStatus": "automatic"}
+            ),
+            lambda value: value["candidates"][0]["metrics"].update(
+                {"linkPrecision": 0.123}
+            ),
+        ):
+            broken = copy.deepcopy(replay)
+            mutate(broken)
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                "deterministic recomputation",
+            ):
+                quality.validate_private_policy_replay(
+                    broken,
+                    fixture,
+                    observations,
+                )
+
+        drifted = copy.deepcopy(observations)
+        drifted["build"] = "0.9.0+2"
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "deterministic recomputation",
+        ):
+            quality.validate_private_policy_replay(
+                replay,
+                fixture,
+                drifted,
+            )
+
+    def test_private_policy_replay_cli_keeps_all_artifacts_owner_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture_path = root / "private-pack.json"
+            observations_path = root / "private-similarity.json"
+            replay_path = root / "private-policy-replay.json"
+            fixture_path.write_text(
+                json.dumps(self.private_fixture()),
+                encoding="utf-8",
+            )
+            observations_path.write_text(
+                json.dumps(self.private_similarity_observations()),
+                encoding="utf-8",
+            )
+            fixture_path.chmod(0o600)
+            observations_path.chmod(0o600)
+
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(
+                    quality.main([
+                        "replay-private-similarity",
+                        "--fixture", str(fixture_path),
+                        "--observations", str(observations_path),
+                        "--output", str(replay_path),
+                    ]),
+                    0,
+                )
+                self.assertEqual(
+                    quality.main([
+                        "validate-private-policy-replay",
+                        "--fixture", str(fixture_path),
+                        "--observations", str(observations_path),
+                        "--replay", str(replay_path),
+                    ]),
+                    0,
+                )
+            self.assertEqual(stat.S_IMODE(replay_path.stat().st_mode), 0o600)
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(
+                    quality.main([
+                        "replay-private-similarity",
+                        "--fixture", str(fixture_path),
+                        "--observations", str(observations_path),
+                        "--output", str(replay_path),
+                    ]),
+                    64,
+                )
+
+    def test_profile_matrix_aligns_public_and_private_observed_thresholds(self):
+        public_fixture = self.fixture()
+        public_observations = self.similarity_observations()
+        public_replay = quality.replay_similarity_policies(
+            public_fixture,
+            public_observations,
+        )
+        private_fixture = self.private_fixture()
+        private_observations = self.private_similarity_observations()
+        for row in private_observations["observations"]:
+            for hit in row["semanticHits"]:
+                hit["similarity"] = round(hit["similarity"] + 0.025, 6)
+        private_replay = quality.replay_private_similarity_policies(
+            private_fixture,
+            private_observations,
+        )
+
+        first = quality.compare_public_private_profile(
+            public_fixture,
+            public_observations,
+            public_replay,
+            private_fixture,
+            private_observations,
+            private_replay,
+            expected_build="0.9.0+1",
+            expected_commit="b" * 40,
+        )
+        second = quality.compare_public_private_profile(
+            public_fixture,
+            public_observations,
+            public_replay,
+            private_fixture,
+            private_observations,
+            private_replay,
+        )
+
+        self.assertEqual(first, second)
+        self.assertEqual(first["kind"], quality.PROFILE_MATRIX_KIND)
+        self.assertEqual(first["alignedCandidateCount"], 5)
+        self.assertEqual(
+            [row["minimumSimilarity"] for row in first["candidates"]],
+            [-1.0, 0.85, 0.875, 0.95, 0.9625],
+        )
+        self.assertEqual(first["evaluationStatus"], "review-required")
+        self.assertEqual(first["selectionStatus"], "not-selected")
+        self.assertEqual(first["productDecision"], "not-evaluated")
+        self.assertEqual(first["servingStatus"], "not-approved")
+        self.assertEqual(
+            first["public"]["observationSHA256"],
+            quality.document_digest(public_observations),
+        )
+        self.assertEqual(
+            first["private"]["replaySHA256"],
+            quality.document_digest(private_replay),
+        )
+        fixture_text = public_fixture["cases"][0]["candidate"]["text"]
+        self.assertNotIn(fixture_text, json.dumps(first, ensure_ascii=False))
+
+    def test_profile_matrix_rejects_noncomparable_sources_and_tampering(self):
+        public_fixture = self.fixture()
+        public_observations = self.similarity_observations()
+        public_replay = quality.replay_similarity_policies(
+            public_fixture,
+            public_observations,
+        )
+        private_fixture = self.private_fixture()
+        private_observations = self.private_similarity_observations()
+        private_replay = quality.replay_private_similarity_policies(
+            private_fixture,
+            private_observations,
+        )
+        matrix = quality.compare_public_private_profile(
+            public_fixture,
+            public_observations,
+            public_replay,
+            private_fixture,
+            private_observations,
+            private_replay,
+        )
+
+        mismatched = copy.deepcopy(private_observations)
+        mismatched["embeddingProfileFingerprint"] = "c" * 64
+        mismatched_replay = quality.replay_private_similarity_policies(
+            private_fixture,
+            mismatched,
+        )
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "embeddingProfileFingerprint",
+        ):
+            quality.compare_public_private_profile(
+                public_fixture,
+                public_observations,
+                public_replay,
+                private_fixture,
+                mismatched,
+                mismatched_replay,
+            )
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "expected commit",
+        ):
+            quality.compare_public_private_profile(
+                public_fixture,
+                public_observations,
+                public_replay,
+                private_fixture,
+                private_observations,
+                private_replay,
+                expected_commit="d" * 40,
+            )
+
+        broken = copy.deepcopy(matrix)
+        broken["candidates"][0]["private"]["metrics"][
+            "linkPrecision"
+        ] = 0.123
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "deterministic recomputation",
+        ):
+            quality.validate_public_private_profile_matrix(
+                broken,
+                public_fixture,
+                public_observations,
+                public_replay,
+                private_fixture,
+                private_observations,
+                private_replay,
+            )
+
+    def test_profile_matrix_cli_publishes_owner_only_and_never_overwrites(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bundle = root / "matrix-bundle"
+            self.assertEqual(
+                quality.validate_private_directory_destination(
+                    bundle,
+                    "profile matrix bundle",
+                ),
+                bundle.resolve(),
+            )
+            bundle.mkdir(mode=0o700)
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                "already exists",
+            ):
+                quality.validate_private_directory_destination(
+                    bundle,
+                    "profile matrix bundle",
+                )
+            paths = {
+                "public_fixture": root / "public-fixture.json",
+                "public_observations": root / "public-observations.json",
+                "public_replay": root / "public-replay.json",
+                "private_fixture": root / "private-fixture.json",
+                "private_observations": root / "private-observations.json",
+                "private_replay": root / "private-replay.json",
+                "matrix": root / "profile-matrix.json",
+            }
+            documents = {
+                "public_fixture": self.fixture(),
+                "public_observations": self.similarity_observations(),
+                "private_fixture": self.private_fixture(),
+                "private_observations": self.private_similarity_observations(),
+            }
+            documents["public_replay"] = quality.replay_similarity_policies(
+                documents["public_fixture"],
+                documents["public_observations"],
+            )
+            documents["private_replay"] = (
+                quality.replay_private_similarity_policies(
+                    documents["private_fixture"],
+                    documents["private_observations"],
+                )
+            )
+            for key, document in documents.items():
+                paths[key].write_text(json.dumps(document), encoding="utf-8")
+                paths[key].chmod(0o600)
+
+            common = [
+                "--public-fixture", str(paths["public_fixture"]),
+                "--public-observations", str(paths["public_observations"]),
+                "--public-replay", str(paths["public_replay"]),
+                "--private-fixture", str(paths["private_fixture"]),
+                "--private-observations", str(paths["private_observations"]),
+                "--private-replay", str(paths["private_replay"]),
+                "--expected-build", "0.9.0+1",
+                "--expected-commit", "b" * 40,
+            ]
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(quality.main([
+                    "compare-profile-matrix",
+                    *common,
+                    "--output", str(paths["matrix"]),
+                ]), 0)
+                self.assertEqual(quality.main([
+                    "validate-profile-matrix",
+                    *common,
+                    "--matrix", str(paths["matrix"]),
+                ]), 0)
+            self.assertEqual(
+                stat.S_IMODE(paths["matrix"].stat().st_mode),
+                0o600,
+            )
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(quality.main([
+                    "compare-profile-matrix",
+                    *common,
+                    "--output", str(paths["matrix"]),
+                ]), 64)
+
+    def test_profile_matrix_runner_is_clean_atomic_and_download_free(self):
+        runner_path = ROOT / "scripts" / "run-commitment-link-profile-matrix.sh"
+        runner = runner_path.read_text(encoding="utf-8")
+
+        self.assertEqual(
+            subprocess.run(
+                ["bash", "-n", str(runner_path)],
+                check=False,
+                capture_output=True,
+            ).returncode,
+            0,
+        )
+        self.assertGreaterEqual(
+            runner.count("git status --porcelain --untracked-files=all"),
+            2,
+        )
+        self.assertEqual(
+            runner.count("swift build -c release --product portavoz-cli"),
+            1,
+        )
+        self.assertEqual(runner.count("--asset-download never"), 2)
+        self.assertNotIn("--asset-download if-needed", runner)
+        self.assertIn("compare-profile-matrix", runner)
+        self.assertIn("validate-profile-matrix", runner)
+        self.assertIn('mv "$stage" "$output"', runner)
+
+    def test_fixture_rejects_link_truth_without_exact_owner(self):
+        fixture = self.fixture()
+        broken = copy.deepcopy(fixture)
+        case = next(
+            item for item in broken["cases"]
+            if item["expected"]["linkableCommitmentIDs"]
+            and item["candidate"]["assignee"]["kind"] == "person"
+        )
+        target_id = case["expected"]["linkableCommitmentIDs"][0]
+        target = next(item for item in case["targets"] if item["id"] == target_id)
+        target["assignee"] = quality.owner("person", "person-conflict")
+
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "exact ownership",
+        ):
+            quality.validate_fixture(broken)
+
+    def test_fixture_rejects_semantic_and_link_truth_drift(self):
+        fixture = self.fixture()
+        broken = copy.deepcopy(fixture)
+        case = next(item for item in broken["cases"] if item["expected"]["mustAbstain"])
+        case["expected"]["linkableCommitmentIDs"] = [case["targets"][0]["id"]]
+
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "semantically relevant|abstention truth",
+        ):
+            quality.validate_fixture(broken)
+
+    def test_perfect_control_is_explicitly_review_only(self):
+        fixture = self.fixture()
+        scorecard, details = quality.evaluate(
+            fixture,
+            quality.control_observations(fixture),
+        )
+
+        self.assertEqual(scorecard["counts"]["cases"], 36)
+        self.assertEqual(scorecard["counts"]["linkableCases"], 18)
+        self.assertEqual(scorecard["counts"]["abstentionCases"], 18)
+        self.assertEqual(scorecard["counts"]["suggestions"], 21)
+        self.assertEqual(scorecard["metrics"]["semanticTargetRecallAt20"], 1.0)
+        self.assertEqual(scorecard["metrics"]["linkF1"], 1.0)
+        self.assertEqual(scorecard["metrics"]["abstentionAccuracy"], 1.0)
+        self.assertEqual(scorecard["metrics"]["supportedSuggestionRate"], 1.0)
+        self.assertEqual(scorecard["qualityDecision"], "review-required")
+        self.assertEqual(scorecard["productDecision"], "not-evaluated")
+        self.assertEqual(len(details), 36)
+        multi_evidence_case = next(
+            case for case in fixture["cases"]
+            if any(len(target["evidence"]) == 2 for target in case["targets"])
+        )
+        multi_observation = next(
+            row for row in quality.control_observations(fixture)["observations"]
+            if row["caseID"] == multi_evidence_case["id"]
+        )
+        self.assertEqual(
+            len(multi_observation["suggestions"][0]["matchedEvidenceSegmentIDs"]),
+            2,
+        )
+
+    def test_wrong_person_suggestion_is_false_and_unsupported(self):
+        fixture = self.fixture()
+        observations = quality.control_observations(fixture)
+        case = next(item for item in fixture["cases"] if item["class"] == "wrong-person")
+        observation = next(
+            item for item in observations["observations"] if item["caseID"] == case["id"]
+        )
+        target = case["targets"][0]
+        hit = observation["semanticHitSegmentIDs"][0]
+        observation["suggestions"] = [{
+            "commitmentID": target["id"],
+            "assignee": target["assignee"],
+            "matchedEvidenceSegmentIDs": [hit],
+            "bestSemanticRank": 1,
+        }]
+
+        scorecard, _ = quality.evaluate(fixture, observations)
+
+        self.assertEqual(scorecard["counts"]["falsePositiveSuggestions"], 1)
+        self.assertEqual(scorecard["counts"]["unsupportedSuggestions"], 1)
+        self.assertEqual(scorecard["metrics"]["falseSuggestionRate"], 0.055556)
+
+    def test_semantically_wrong_but_policy_valid_suggestion_is_still_false(self):
+        fixture = self.fixture()
+        observations = quality.control_observations(fixture)
+        case = next(item for item in fixture["cases"] if item["class"] == "no-overlap")
+        observation = next(
+            item for item in observations["observations"] if item["caseID"] == case["id"]
+        )
+        target = case["targets"][0]
+        hit = target["evidence"][0]["id"]
+        observation["semanticHitSegmentIDs"] = [hit]
+        observation["suggestions"] = [{
+            "commitmentID": target["id"],
+            "assignee": target["assignee"],
+            "matchedEvidenceSegmentIDs": [hit],
+            "bestSemanticRank": 1,
+        }]
+
+        scorecard, _ = quality.evaluate(fixture, observations)
+
+        self.assertEqual(scorecard["counts"]["falsePositiveSuggestions"], 1)
+        self.assertEqual(scorecard["counts"]["supportedSuggestions"], 22)
+        self.assertEqual(scorecard["counts"]["unsupportedSuggestions"], 0)
+        self.assertLess(scorecard["metrics"]["linkPrecision"], 1.0)
+
+    def test_observation_contract_rejects_missing_duplicate_and_unknown_evidence(self):
+        fixture = self.fixture()
+        observations = quality.control_observations(fixture)
+        missing = copy.deepcopy(observations)
+        missing["observations"].pop()
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "exactly one",
+        ):
+            quality.validate_observations(missing, fixture)
+
+        duplicate = copy.deepcopy(observations)
+        duplicate["observations"][-1]["caseID"] = duplicate["observations"][0]["caseID"]
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "duplicate observation",
+        ):
+            quality.validate_observations(duplicate, fixture)
+
+        unknown = copy.deepcopy(observations)
+        unknown["observations"][0]["semanticHitSegmentIDs"] = ["evidence-unknown"]
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "unknown evidence",
+        ):
+            quality.validate_observations(unknown, fixture)
+
+    def test_observation_contract_rejects_over_bounded_and_drifted_fixture(self):
+        fixture = self.fixture()
+        observations = quality.control_observations(fixture)
+        over_bounded = copy.deepcopy(observations)
+        over_bounded["observations"][0]["suggestions"] = (
+            over_bounded["observations"][0]["suggestions"] * 4
+        )
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "bounded to three",
+        ):
+            quality.validate_observations(over_bounded, fixture)
+
+        drifted = copy.deepcopy(observations)
+        drifted["fixtureSHA256"] = "0" * 64
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "digest does not match",
+        ):
+            quality.validate_observations(drifted, fixture)
+
+    def test_similarity_contract_binds_profile_provenance_and_stays_non_serving(self):
+        fixture = self.fixture()
+        observations = self.similarity_observations()
+
+        self.assertIs(
+            quality.validate_similarity_observations(observations, fixture),
+            observations,
+        )
+        self.assertEqual(observations["evaluationStatus"], "not-evaluated")
+        self.assertEqual(observations["servingStatus"], "not-approved")
+        self.assertEqual(len(observations["observations"]), 36)
+
+        for key, value, message in (
+            ("embeddingProfileFingerprint", "short", "fingerprint"),
+            ("build", "invalid build", "build"),
+            ("commit", "ABC", "commit"),
+            ("evaluationStatus", "accepted", "not-evaluated"),
+            ("servingStatus", "approved", "not-approved"),
+        ):
+            broken = copy.deepcopy(observations)
+            broken[key] = value
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                message,
+            ):
+                quality.validate_similarity_observations(broken, fixture)
+
+    def test_similarity_contract_rejects_unknown_duplicate_and_misordered_scores(self):
+        fixture = self.fixture()
+        observations = self.similarity_observations()
+        row_index, row = next(
+            (index, item)
+            for index, item in enumerate(observations["observations"])
+            if len(item["semanticHits"]) >= 2
+        )
+
+        for mutate, message in (
+            (
+                lambda value: value["observations"][0].update(
+                    {"unexpected": True}
+                ),
+                "exactly",
+            ),
+            (
+                lambda value: value["observations"][row_index]["semanticHits"][0].update(
+                    {"evidenceSegmentID": "evidence-unknown"}
+                ),
+                "unknown",
+            ),
+            (
+                lambda value: value["observations"][row_index]["semanticHits"].append(
+                    copy.deepcopy(
+                        value["observations"][row_index]["semanticHits"][0]
+                    )
+                ),
+                "duplicates",
+            ),
+        ):
+            broken = copy.deepcopy(observations)
+            mutate(broken)
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                message,
+            ):
+                quality.validate_similarity_observations(broken, fixture)
+
+        case_id = row["caseID"]
+        for similarity, message in (
+            (float("nan"), "finite cosine"),
+            (1.1, "finite cosine"),
+        ):
+            broken = copy.deepcopy(observations)
+            broken_row = next(
+                item for item in broken["observations"]
+                if item["caseID"] == case_id
+            )
+            broken_row["semanticHits"][0]["similarity"] = similarity
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                message,
+            ):
+                quality.validate_similarity_observations(broken, fixture)
+
+        broken = copy.deepcopy(observations)
+        broken_row = next(
+            item for item in broken["observations"]
+            if item["caseID"] == case_id
+        )
+        broken_row["semanticHits"][0]["similarity"] = 0.1
+        broken_row["semanticHits"][1]["similarity"] = 0.9
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "descending similarity",
+        ):
+            quality.validate_similarity_observations(broken, fixture)
+
+    def test_policy_replay_enumerates_distinct_outcomes_without_selecting_one(self):
+        fixture = self.fixture()
+        observations = self.similarity_observations()
+
+        first = quality.replay_similarity_policies(fixture, observations)
+        second = quality.replay_similarity_policies(fixture, observations)
+
+        self.assertEqual(first, second)
+        self.assertEqual(first["kind"], quality.POLICY_REPLAY_KIND)
+        self.assertEqual(first["sourceObservationSHA256"], quality.document_digest(
+            observations
+        ))
+        self.assertEqual(first["sweepGeneration"], quality.POLICY_SWEEP_GENERATION)
+        self.assertEqual(first["policyRule"], quality.POLICY_RULE)
+        self.assertEqual(first["candidateCount"], 3)
+        self.assertEqual(
+            [row["minimumSimilarity"] for row in first["candidates"]],
+            [-1.0, 0.85, 0.95],
+        )
+        self.assertEqual(first["candidates"][0]["admittedSuggestions"], 21)
+        self.assertEqual(first["candidates"][-1]["admittedSuggestions"], 0)
+        self.assertEqual(first["candidates"][-1]["rejectedSuggestions"], 21)
+        self.assertEqual(first["evaluationStatus"], "review-required")
+        self.assertEqual(first["selectionStatus"], "not-selected")
+        self.assertEqual(first["productDecision"], "not-evaluated")
+        self.assertEqual(first["servingStatus"], "not-approved")
+
+    def test_policy_replay_rejects_unsupported_baseline_suggestions(self):
+        fixture = self.fixture()
+        observations = self.similarity_observations()
+        suggestion = next(
+            row["suggestions"][0]
+            for row in observations["observations"]
+            if row["suggestions"]
+        )
+        suggestion["bestSemanticRank"] += 1
+
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "unsupported legal suggestion",
+        ):
+            quality.replay_similarity_policies(fixture, observations)
+
+    def test_policy_replay_keeps_one_candidate_for_an_all_abstaining_adapter(self):
+        fixture = self.fixture()
+        observations = self.similarity_observations()
+        for row in observations["observations"]:
+            row["suggestions"] = []
+
+        replay = quality.replay_similarity_policies(fixture, observations)
+
+        self.assertEqual(replay["candidateCount"], 1)
+        self.assertEqual(replay["candidates"][0]["minimumSimilarity"], -1.0)
+        self.assertEqual(replay["candidates"][0]["admittedSuggestions"], 0)
+        self.assertEqual(replay["candidates"][0]["rejectedSuggestions"], 0)
+
+    def test_policy_replay_validation_rejects_tampering_and_source_drift(self):
+        fixture = self.fixture()
+        observations = self.similarity_observations()
+        replay = quality.replay_similarity_policies(fixture, observations)
+
+        self.assertIs(
+            quality.validate_policy_replay(replay, fixture, observations),
+            replay,
+        )
+        for mutate in (
+            lambda value: value.update({"selectionStatus": "selected"}),
+            lambda value: value["candidates"][0]["metrics"].update(
+                {"linkPrecision": 0.123}
+            ),
+            lambda value: value["candidates"].reverse(),
+        ):
+            broken = copy.deepcopy(replay)
+            mutate(broken)
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                "deterministic recomputation",
+            ):
+                quality.validate_policy_replay(broken, fixture, observations)
+
+        drifted = copy.deepcopy(observations)
+        drifted["build"] = "0.9.0+2"
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "deterministic recomputation",
+        ):
+            quality.validate_policy_replay(replay, fixture, drifted)
+
+    def test_details_output_is_owner_only_and_non_overwriting(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "details.json"
+            quality.write_json(path, {"safe": True}, owner_only=True)
+
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                "already exists",
+            ):
+                quality.write_json(path, {"safe": True}, owner_only=True)
+
+    def test_cli_validate_control_and_evaluate(self):
+        fixture = self.fixture()
+        with tempfile.TemporaryDirectory() as directory:
+            observations_path = Path(directory) / "observations.json"
+            observations_path.write_text(
+                json.dumps(quality.control_observations(fixture)),
+                encoding="utf-8",
+            )
+            similarity_path = Path(directory) / "similarity.json"
+            similarity_path.write_text(
+                json.dumps(self.similarity_observations()),
+                encoding="utf-8",
+            )
+            details_path = Path(directory) / "details.json"
+            replay_path = Path(directory) / "policy-replay.json"
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(
+                    quality.main(["validate", "--fixture", str(FIXTURE)]),
+                    0,
+                )
+                self.assertEqual(
+                    quality.main(["control", "--fixture", str(FIXTURE)]),
+                    0,
+                )
+                self.assertEqual(
+                    quality.main([
+                        "validate-similarity",
+                        "--fixture", str(FIXTURE),
+                        "--observations", str(similarity_path),
+                    ]),
+                    0,
+                )
+                self.assertEqual(
+                    quality.main([
+                        "replay-similarity",
+                        "--fixture", str(FIXTURE),
+                        "--observations", str(similarity_path),
+                        "--output", str(replay_path),
+                    ]),
+                    0,
+                )
+                self.assertEqual(
+                    quality.main([
+                        "validate-policy-replay",
+                        "--fixture", str(FIXTURE),
+                        "--observations", str(similarity_path),
+                        "--replay", str(replay_path),
+                    ]),
+                    0,
+                )
+                self.assertEqual(
+                    quality.main([
+                        "evaluate",
+                        "--fixture", str(FIXTURE),
+                        "--observations", str(observations_path),
+                        "--details-output", str(details_path),
+                    ]),
+                    0,
+                )
+            self.assertTrue(details_path.is_file())
+            self.assertEqual(stat.S_IMODE(details_path.stat().st_mode), 0o600)
+            self.assertTrue(replay_path.is_file())
+            self.assertEqual(stat.S_IMODE(replay_path.stat().st_mode), 0o600)
+
+    def test_make_target_emits_one_review_only_scorecard(self):
+        result = subprocess.run(
+            ["make", "--no-print-directory", "commitment-link-quality-control"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        scorecard = json.loads(result.stdout)
+
+        self.assertEqual(scorecard["kind"], quality.SCORECARD_KIND)
+        self.assertEqual(scorecard["qualityDecision"], "review-required")
+        self.assertEqual(scorecard["productDecision"], "not-evaluated")
+
+
+if __name__ == "__main__":
+    unittest.main()

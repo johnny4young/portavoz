@@ -1,0 +1,147 @@
+{
+  "kind": "candidate-automation-contract",
+  "modelFixture": {
+    "conversationText": "Fixtures/CandidateAutomation/public-diarization-en-es-v1.txt",
+    "conversationVoices": [
+      "Daniel",
+      "Paulina"
+    ],
+    "rateWordsPerMinute": 170,
+    "systemVoice": "Samantha",
+    "text": "Fixtures/CandidateAutomation/public-model-lane-en-v1.txt"
+  },
+  "modelGatedTestClasses": [
+    "DiarizationIntegrationTests",
+    "FoundationModelIntegrationTests",
+    "MeetingTypeDetectorIntegrationTests",
+    "ObjectiveCheckDetectorShapeTests",
+    "ParakeetIntegrationTests",
+    "SentenceEmbedderIntegrationTests"
+  ],
+  "memoryLeaks": {
+    "contract": "docs/evidence/apuntador-leak-baseline.json",
+    "requiredScenarios": [
+      "live-assist-released",
+      "live-assist-bundled-question",
+      "ask",
+      "semantic-indexing"
+    ],
+    "scenarioIterations": {
+      "ask": 10,
+      "live-assist-bundled-question": 100,
+      "live-assist-released": 100,
+      "semantic-indexing": 10
+    }
+  },
+  "performance": {
+    "acceptedMeasuredStates": [
+      "diagnostic",
+      "pass"
+    ],
+    "binaryPolicy": "single-exact-release-build-sha256-v1",
+    "confirmationRuns": 3,
+    "hostReadiness": {
+      "maximumCPUCapacityFraction": 0.25,
+      "maximumInterferenceCPUPercent": 2.0,
+      "maximumLoadPerProcessor": 0.5,
+      "maximumWaitSeconds": 300.0,
+      "recognizedInterferenceClasses": [
+        "browser-automation",
+        "build-driver",
+        "clang-compiler",
+        "container-virtualization",
+        "external-build-runtime",
+        "javascript-runtime",
+        "linker",
+        "media-processing",
+        "source-analysis",
+        "swift-compiler",
+        "symbolication"
+      ],
+      "requiredConsecutiveSamples": 10,
+      "requiresNoPortavozApp": true,
+      "sampleIntervalSeconds": 0.5,
+      "throughputCalibration": {
+        "bytesPerSample": 536870912,
+        "maximumCPUMilliseconds": 200.0,
+        "maximumDispersionRatio": 1.15,
+        "maximumWallMilliseconds": 200.0,
+        "sampleCount": 5,
+        "version": "sha256-zero-block-512mib-v1"
+      },
+      "version": "prebuilt-release-host-readiness-v5"
+    },
+    "allowedNotMeasuredMetricIDs": [
+      "capture.drift-30min",
+      "detail.first-content",
+      "detail.potential-hangs",
+      "diarization.der",
+      "live.transcript-lag.p95",
+      "recording.idle-footprint",
+      "recording.peak-footprint",
+      "refine.speed-factor",
+      "startup.cold-first-frame",
+      "summary.generation",
+      "waveform.first.wall",
+      "waveform.repeat.cpu.p95",
+      "waveform.repeat.wall.p95"
+    ],
+    "requiredMeasuredMetricIDs": [
+      "detail.core-read.2h.p95",
+      "detail.health.2h.p95",
+      "detail.health.8h.p95",
+      "search.exact.100k.p95",
+      "search.lexical-ask.100k.p95",
+      "semantic.cpu.100k.p95",
+      "semantic.incremental-footprint.100k.p95",
+      "semantic.wall.100k.p95",
+      "spotlight.cpu.100k.p95",
+      "spotlight.incremental-footprint.100k.p95",
+      "spotlight.peak-footprint.100k.p95",
+      "spotlight.wall.100k.p95"
+    ],
+    "thresholdContract": "docs/evidence/perf-thresholds.json"
+  },
+  "proofs": [
+    "finite-scope",
+    "autonomous-validation",
+    "model-gated",
+    "performance-ledger",
+    "resource-baseline",
+    "long-capture",
+    "upgrade-recovery",
+    "complete-bilingual-ui"
+  ],
+  "resource": {
+    "contract": "docs/evidence/resource-baseline-matrix.json",
+    "samplesPerScenario": 3,
+    "requiredScenarios": [
+      "ask",
+      "idle",
+      "indexing",
+      "recording",
+      "recording-batch",
+      "recording-indexing",
+      "refine",
+      "stop",
+      "summary"
+    ]
+  },
+  "schemaVersion": 9,
+  "ui": {
+    "budget": "docs/evidence/ui-test-runtime-budget.json",
+    "locales": [
+      "en",
+      "es"
+    ]
+  },
+  "upgradeRecoveryTestClasses": [
+    "BackupFailureRecoveryStoreTests",
+    "LibraryMarkdownBackupRecoveryStoreTests",
+    "MeetingStoreLaunchRecoveryTests",
+    "ProcessingJobPersistenceTests",
+    "RecoverInterruptedMeetingsUseCaseTests",
+    "RecoverLibraryMarkdownBackupTests",
+    "StorageUpgradeTests"
+  ]
+}

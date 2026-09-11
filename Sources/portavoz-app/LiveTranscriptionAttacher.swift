@@ -3,19 +3,42 @@ import Foundation
 import PortavozCore
 import TranscriptionKit
 
+/// One pinned process runtime plus the composition-owned completion that ends
+/// its residency lease. The bridge never knows which concrete model registry
+/// backs the handle.
+struct LiveTranscriptionRuntime: Sendable {
+    let engine: any TranscriptionEngine
+    private let completion: @MainActor @Sendable () -> Void
+
+    init(
+        engine: any TranscriptionEngine,
+        completion: @escaping @MainActor @Sendable () -> Void
+    ) {
+        self.engine = engine
+        self.completion = completion
+    }
+
+    @MainActor
+    func finish() {
+        completion()
+    }
+}
+
 /// Recording-scoped bridge that attaches live speech consumers immediately or
 /// after the process-wide verified model load completes. Capture owns the
 /// bounded producer separately, so this actor can never delay audio writes.
 actor LiveTranscriptionAttacher {
-    typealias Loader = @MainActor @Sendable () async throws -> any TranscriptionEngine
+    typealias Loader = @MainActor @Sendable () async throws -> LiveTranscriptionRuntime
 
     nonisolated let feeds: BoundedLiveAudioFeeds
 
     private let channels: [AudioChannel]
     private let hints: TranscriptionHints
     private let callbacks: StartRecordingLiveCallbacks
+    private let telemetry: ResourceWorkloadTelemetry
     private var consumers: [Task<Void, Never>] = []
     private var attachmentTask: Task<Void, Never>?
+    private var runtime: LiveTranscriptionRuntime?
     private var active = false
     private var requiresRecovery: Bool
 
@@ -23,25 +46,27 @@ actor LiveTranscriptionAttacher {
         channels: [AudioChannel],
         hints: TranscriptionHints,
         callbacks: StartRecordingLiveCallbacks,
-        initialTranscriberAvailable: Bool,
-        capacityPerChannel: Int = 128
+        initialRuntime: LiveTranscriptionRuntime?,
+        capacityPerChannel: Int = 128,
+        telemetry: ResourceWorkloadTelemetry = .disabled
     ) {
         self.channels = Array(Set(channels))
         self.hints = hints
         self.callbacks = callbacks
-        requiresRecovery = !initialTranscriberAvailable
+        self.telemetry = telemetry
+        runtime = initialRuntime
+        requiresRecovery = initialRuntime == nil
         feeds = BoundedLiveAudioFeeds(
             channels: channels,
             capacityPerChannel: capacityPerChannel)
     }
 
     func recordingDidStart(
-        initialTranscriber: (any TranscriptionEngine)?,
         loader: @escaping Loader
     ) {
         active = true
-        if let initialTranscriber {
-            attach(initialTranscriber)
+        if let runtime {
+            attach(runtime.engine)
             callbacks.liveTranscription(.available)
             return
         }
@@ -49,12 +74,22 @@ actor LiveTranscriptionAttacher {
         callbacks.liveTranscription(.preparing)
         attachmentTask = Task { [weak self] in
             do {
-                let transcriber = try await loader()
-                try Task.checkCancellation()
-                await self?.attachLoaded(transcriber)
+                let runtime = try await loader()
+                do {
+                    try Task.checkCancellation()
+                } catch {
+                    await runtime.finish()
+                    throw error
+                }
+                guard let self else {
+                    await runtime.finish()
+                    return
+                }
+                await self.attachLoaded(runtime)
             } catch is CancellationError {
                 // Stop cancels this recording's waiter only. The shared model
-                // task remains process-owned and can serve the next session.
+                // task remains process-owned and can serve the next session;
+                // a lease returned after cancellation is completed above.
             } catch {
                 await self?.deferredAttachmentFailed()
             }
@@ -71,13 +106,20 @@ actor LiveTranscriptionAttacher {
         for consumer in pending {
             await consumer.value
         }
+        let runtime = runtime
+        self.runtime = nil
+        await runtime?.finish()
         return requiresRecovery
     }
 
-    private func attachLoaded(_ transcriber: any TranscriptionEngine) {
-        guard active else { return }
+    private func attachLoaded(_ runtime: LiveTranscriptionRuntime) async {
+        guard active else {
+            await runtime.finish()
+            return
+        }
         attachmentTask = nil
-        attach(transcriber)
+        self.runtime = runtime
+        attach(runtime.engine)
         callbacks.liveTranscription(.available)
     }
 
@@ -92,22 +134,46 @@ actor LiveTranscriptionAttacher {
         for channel in channels {
             guard let stream = feeds.stream(for: channel) else { continue }
             let segments = transcriber.transcribe(stream, hints: hints)
+            let telemetry = telemetry
             consumers.append(Task { [weak self] in
+                let span = telemetry.begin(ResourceWorkloadDescriptor(
+                    workloadClass: .liveInteractive,
+                    kind: .liveTranscription,
+                    operation: .execute))
                 do {
                     for try await segment in segments {
-                        guard let self else { return }
+                        guard let self else {
+                            telemetry.finish(span, outcome: .cancelled)
+                            return
+                        }
                         await self.callbacks.caption(segment)
                     }
+                    telemetry.finish(span, outcome: .completed)
+                } catch is CancellationError {
+                    telemetry.finish(span, outcome: .cancelled)
                 } catch {
+                    telemetry.finish(span, outcome: .failed)
                     await self?.liveLaneFailed()
                 }
             })
         }
     }
 
+    /// Recording the failure and telling the user about it are separate
+    /// concerns, and only the second one ends with the session.
+    ///
+    /// `finish()` clears `active` before draining the consumers, and the
+    /// engine's final flush is exactly where a transcription failure is most
+    /// likely. Gating `requiresRecovery` on `active` therefore dropped the one
+    /// failure that matters most: Stop would see partial captions with no
+    /// recovery flag, enqueue only diarization over them, and commit the
+    /// meeting as complete with the tail of the conversation missing — while
+    /// the finalized audio still contained it.
     private func liveLaneFailed() {
-        guard active else { return }
         requiresRecovery = true
+        // The live caption UI is gone once the session ends; only this part
+        // belongs to the active session.
+        guard active else { return }
         callbacks.liveTranscription(.failed)
     }
 }

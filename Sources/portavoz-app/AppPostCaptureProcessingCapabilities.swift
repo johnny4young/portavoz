@@ -29,9 +29,11 @@ final class AppPostCaptureProcessingCapabilities:
         guard FileManager.default.fileExists(atPath: url.path) else {
             throw PostCaptureProcessingCapabilityError.audioUnavailable
         }
-        let transcriber = try await services.loadTranscriberIfNeeded()
+        let runtime = try await services.acquireLiveSpeechRuntime(
+            workloadClass: .postCapture)
+        defer { _ = services.finishLiveSpeechRuntime(runtime) }
         return try await services.transcriptionScheduler.batch {
-            try await transcriber.transcribeFile(
+            try await runtime.engine.transcribeFile(
                 at: url,
                 hints: hints,
                 channel: channel)
@@ -46,7 +48,10 @@ final class AppPostCaptureProcessingCapabilities:
         }.value
     }
 
-    func diarizePostCaptureAudio(_ asset: AudioAsset) async throws -> [SpeakerTurn] {
+    func diarizePostCaptureAudio(
+        _ asset: AudioAsset,
+        voiceprint: Voiceprint?
+    ) async throws -> [SpeakerTurn] {
         guard let services else { throw CancellationError() }
         let url = RecordingsLocation.shared.resolve(asset.relativePath)
         guard FileManager.default.fileExists(atPath: url.path) else {
@@ -56,8 +61,23 @@ final class AppPostCaptureProcessingCapabilities:
         // Attribution remains degradable: unavailable model preparation or
         // inference yields an unattributed system channel, but missing durable
         // audio remains a workflow failure.
-        guard let diarizer = try? await services.loadDiarizerIfNeeded() else { return [] }
-        return (try? await diarizer.diarizeFile(at: url)) ?? []
+        guard let runtime = try? await services.acquireDiarizationRuntime(
+            workloadClass: .postCapture)
+        else { return [] }
+        defer {
+            _ = services.finishDiarizationRuntime(runtime)
+        }
+        let diarizer = services.makeDiarizer(
+            from: runtime,
+            voiceprint: voiceprint)
+        return (try? await services.workloadTelemetry.measure(
+            ResourceWorkloadDescriptor(
+                workloadClass: .postCapture,
+                kind: .speakerDiarization,
+                operation: .execute)
+        ) {
+            try await diarizer.diarizeFile(at: url)
+        }) ?? []
     }
 
     func postCaptureSummaryProvider() async -> PostCaptureSummaryProviderSelection? {

@@ -12,20 +12,33 @@ struct RecordingView: View {
     /// Calendar event this recording came from (brief's "Record this
     /// meeting") — nil for a blank recording.
     let event: UpcomingEvent?
+    /// Recovery routing reuses the exact failure UI but must never trigger a
+    /// new capture merely because SwiftUI constructed the destination.
+    let startsAutomatically: Bool
     /// Shared with the menu bar and the HUD (AppServices): the session
     /// must be visible and stoppable from outside this view.
     private var controller: RecordingController { services.recording }
-    /// Log-viewer follow mode: captions auto-scroll while the user is at
-    /// the bottom; scrolling away pauses the follow (so they can read
-    /// back) and it resumes 10 s after the last manual scroll.
-    @State private var noteDraft = ""
     /// Compact floating HUD (GAPS #4): recording without the full window.
     @State private var hud = RecordingHUDController()
     /// One-tap dismiss for the "no incoming audio" nudge (in-person meetings
     /// legitimately have a silent system channel).
     @State private var systemWarningDismissed = false
+    /// A hard-limited call may remain usable, so the quality warning is
+    /// dismissable without changing or attenuating captured audio.
+    @State private var clippingWarningDismissed = false
     /// One-tap dismiss for the "capturing app directly" note.
     @State private var appTapNoteDismissed = false
+    /// Where the user put the divider between the captions and the assist
+    /// area, kept across recordings.
+    @AppStorage("recording.assist.fraction")
+    private var assistFraction = RecordingAssistLayout.defaultFraction
+    /// The fraction the current divider drag started from.
+    @State private var dividerAnchor: Double?
+    /// The fraction being dragged right now. `@AppStorage` is written once, on
+    /// release: writing it per frame put a `UserDefaults` round trip and a full
+    /// `RecordingView` invalidation — captions re-projected and all — into every
+    /// tick of the gesture.
+    @State private var draggingFraction: Double?
 
     var body: some View {
         VStack(spacing: 16) {
@@ -48,6 +61,15 @@ struct RecordingView: View {
                 if controller.systemAudioMissing && !systemWarningDismissed {
                     systemAudioBanner
                 }
+                if controller.systemAudioClipping && !clippingWarningDismissed {
+                    systemAudioClippingBanner
+                }
+                if controller.microphoneCaptureFailed {
+                    Label(L10n.text("Microphone capture failed. Stop and start a new recording."),
+                          systemImage: "mic.slash.fill")
+                        .foregroundStyle(.orange)
+                        .accessibilityIdentifier("recording-microphone-capture-failure")
+                }
                 if controller.systemCaptureHealth != .healthy {
                     systemCaptureHealthBanner
                 }
@@ -65,31 +87,8 @@ struct RecordingView: View {
                 ) {
                     translationStatusBanner
                 }
-                LiveRecordingCaptionsView(controller: controller)
-                    .frame(maxHeight: .infinity)
-                    .padding(.horizontal, 20)
-                ScrollView {
-                    VStack(spacing: 10) {
-                        if let state = controller.catchUp.state {
-                            catchUpPanel(state)
-                        }
-                        if let state = controller.nextQuestion.state {
-                            RecordingNextQuestionCard(state: state) {
-                                controller.nextQuestion.dismiss()
-                            }
-                        }
-                        RecordingObjectivesPanel(controller: controller)
-                        companionCardsPanel
-                        notesPanel
-                        if let live = controller.liveSummary {
-                            liveSummaryPanel(live)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .frame(maxWidth: .infinity)
-                }
-                .frame(maxHeight: 260)
-                .padding(.bottom, 16)
+                RecordingInputStatusView(controller: controller)
+                assistSplit
 
             case .processing(let step):
                 Spacer()
@@ -125,15 +124,93 @@ struct RecordingView: View {
                         }
                     }
                 } actions: {
-                    recordingFailureActions
+                    if controller.hasPendingInputStop {
+                        RecordingInputStatusView(controller: controller)
+                    } else {
+                        recordingFailureActions
+                    }
                 }
                 Spacer()
             }
         }
         .navigationTitle("Recording")
         .liveTranslation(controller)
-        .task { await controller.start(services: services, event: event) }
+        .task { await startRecording() }
         .onDisappear { hud.close() }
+    }
+
+    @MainActor
+    private func startRecording() async {
+        guard startsAutomatically else { return }
+        await controller.start(services: services, event: event)
+
+        services.simulateStopIntentIfRequested()
+    }
+
+    /// Captions and the assist area split the flexible height and the user
+    /// owns where the line sits. The assist area used to be pinned at
+    /// `maxHeight: 260` while the captions took every flexible point, so a
+    /// taller window grew only the captions (D504).
+    private var assistSplit: some View {
+        GeometryReader { geo in
+            let split = RecordingAssistLayout.split(
+                total: geo.size.height,
+                fraction: draggingFraction ?? assistFraction)
+            VStack(spacing: 0) {
+                LiveRecordingCaptionsView(controller: controller)
+                    .frame(height: split.captions)
+                    .padding(.horizontal, 20)
+                assistDivider(total: geo.size.height)
+                RecordingAssistPanel(controller: controller)
+                    .frame(height: split.assist)
+                    .padding(.horizontal, 20)
+            }
+        }
+        .padding(.bottom, 16)
+    }
+
+    private func assistDivider(total: CGFloat) -> some View {
+        Capsule()
+            .fill(.quaternary)
+            .frame(width: 46, height: 4)
+            .frame(maxWidth: .infinity, minHeight: RecordingAssistLayout.dividerHeight)
+            .contentShape(Rectangle())
+            // `set`, not `push`/`pop`: the divider only exists inside the
+            // recording phase, so a teardown while the pointer rests on it
+            // never delivers the matching exit and the pushed cursor would
+            // outlive the view.
+            .onHover { inside in
+                if inside { NSCursor.resizeUpDown.set() } else { NSCursor.arrow.set() }
+            }
+            .gesture(
+                DragGesture()
+                    .onChanged { value in
+                        let anchor = dividerAnchor ?? assistFraction
+                        dividerAnchor = anchor
+                        draggingFraction = RecordingAssistLayout.fraction(
+                            from: anchor,
+                            draggedUpBy: -value.translation.height,
+                            total: total)
+                    }
+                    .onEnded { _ in
+                        if let dragged = draggingFraction { assistFraction = dragged }
+                        draggingFraction = nil
+                        dividerAnchor = nil
+                    })
+            .accessibilityElement()
+            .accessibilityLabel(L10n.text("Assist area height"))
+            .accessibilityIdentifier("recording-assist-divider")
+            .accessibilityAdjustableAction { direction in
+                let step = RecordingAssistLayout.fractionStep
+                switch direction {
+                case .increment:
+                    assistFraction = RecordingAssistLayout.clamp(assistFraction + step)
+                case .decrement:
+                    assistFraction = RecordingAssistLayout.clamp(assistFraction - step)
+                @unknown default:
+                    break
+                }
+            }
     }
 
     private var recordingBar: some View {
@@ -166,77 +243,6 @@ struct RecordingView: View {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    /// The coauthoring input (D28): jot notes while the meeting happens.
-    /// Each note is anchored to the current moment and woven into the final
-    /// summary as intent — expanded with facts and marked as yours (▸).
-    private var notesPanel: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Your notes", systemImage: "square.and.pencil")
-                .font(.headline)
-            HStack(alignment: .bottom, spacing: 6) {
-                TextField("Add a note…", text: $noteDraft, axis: .vertical)
-                    .textFieldStyle(.roundedBorder)
-                    .lineLimit(1...3)
-                    .onSubmit(addNote)
-                Button(action: addNote) {
-                    Image(systemName: "arrow.up.circle.fill").imageScale(.large)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(
-                    noteDraft.trimmingCharacters(in: .whitespaces).isEmpty
-                        ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.tint))
-                .disabled(noteDraft.trimmingCharacters(in: .whitespaces).isEmpty)
-                .help(L10n.text("Add note (⏎)"))
-            }
-            if !controller.contextItems.isEmpty {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 6) {
-                        // Newest first — the note you just took is right there.
-                        ForEach(controller.contextItems.reversed()) { item in
-                            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                Text("▸").foregroundStyle(.tint)
-                                Text(stamp(item.timestamp))
-                                    .font(.caption2.monospacedDigit())
-                                    .foregroundStyle(.tertiary)
-                                Text(item.content)
-                                    .font(.callout)
-                                    .textSelection(.enabled)
-                                Spacer(minLength: 2)
-                                Button {
-                                    controller.removeContextItem(item.id)
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundStyle(.tertiary)
-                                }
-                                .buttonStyle(.plain)
-                                .help(L10n.text("Remove note"))
-                            }
-                        }
-                    }
-                }
-                .frame(maxHeight: 160)
-            }
-            Text("They guide the final summary: they are expanded with facts and marked as yours (▸).")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
-    }
-
-    private func addNote() {
-        let text = noteDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
-        controller.addContextNote(text)
-        noteDraft = ""
-    }
-
-    private func stamp(_ seconds: TimeInterval) -> String {
-        let total = max(0, Int(seconds))
-        return String(format: "%02d:%02d", total / 60, total % 60)
-    }
-
 }
 
 /// High-frequency caption projection has its own observation boundary. Mic
@@ -248,7 +254,7 @@ private struct LiveRecordingCaptionsView: View {
 
     var body: some View {
         let projection = LiveCaptionParagraphProjector.project(
-            captions: Array(controller.captions.suffix(150)),
+            captions: controller.captions,
             liveSpeakerLabels: controller.liveSpeakerLabels,
             translations: controller.translations)
         GeometryReader { geo in
@@ -504,6 +510,27 @@ extension RecordingView {
         .padding(.horizontal, 20)
     }
 
+    /// Repeated ceiling hits mean the call source is likely already distorted.
+    /// Portavoz reports the quality risk but never changes the call graph or
+    /// rewrites the evidence that Refine will later review.
+    var systemAudioClippingBanner: some View {
+        HStack(spacing: 8) {
+            Label(
+                "The other participants' audio is clipping — transcript accuracy may be lower.",
+                systemImage: "waveform.badge.exclamationmark")
+                .font(.caption)
+                .foregroundStyle(.orange)
+            Button("Dismiss") { clippingWarningDismissed = true }
+                .buttonStyle(.plain)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("recording-system-audio-clipping-dismiss")
+        }
+        .padding(.horizontal, 20)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("recording-system-audio-clipping")
+    }
+
     /// Shown when a Bluetooth output made Portavoz tap the meeting app's
     /// process directly so the call stays isolated from unrelated app audio
     /// (and still works on AirPods, where HFP silences the global tap).
@@ -567,82 +594,6 @@ extension RecordingView {
     }
 }
 
-// MARK: - Companion cards
-//
-// The live answer panel (D26), split out to keep the main view under
-// the type-body cap.
-
-extension RecordingView {
-    /// The companion's answer cards (D26): question detected in the
-    /// conversation → suggested answer. Read, copy or dismiss — never acts
-    /// on its own.
-    @ViewBuilder
-    private var companionCardsPanel: some View {
-        // Newest first, none dropped — the panel lives in a scroll view, so
-        // older cards stay reachable instead of falling off after a few.
-        ForEach(Array(controller.companionCards.reversed())) { card in
-            companionCardView(card)
-        }
-    }
-
-    private func companionCardView(_ card: CompanionCard) -> some View {
-        let tint: Color = card.directed ? .orange : PVDesign.accent
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                Label(card.question, systemImage: "questionmark.bubble.fill")
-                    .font(.callout.weight(.semibold))
-                Spacer(minLength: 4)
-                Button {
-                    controller.dismissCompanionCard(card.id)
-                } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
-                }
-                .buttonStyle(.plain)
-            }
-            if !card.answer.isEmpty {
-                Text(card.answer)
-                    .font(.callout)
-                    .textSelection(.enabled)
-                    // Always take the ideal height inside the scroll — a
-                    // compressed Text is what painted over the card footer.
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            HStack {
-                Text(companionCardTag(card))
-                    .font(.caption2)
-                    .foregroundStyle(card.directed ? tint : Color.secondary)
-                Spacer()
-                if !card.answer.isEmpty {
-                    Button {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(card.answer, forType: .string)
-                    } label: {
-                        Image(systemName: "doc.on.doc")
-                    }
-                    .buttonStyle(.plain)
-                    .controlSize(.small)
-                    .help(L10n.text("Copy response"))
-                }
-            }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(tint.opacity(0.25), lineWidth: 1)
-        )
-    }
-
-    private func companionCardTag(_ card: CompanionCard) -> String {
-        let base = card.kind == .context ? "from this meeting" : "knowledge · \(card.source)"
-        if card.directed {
-            return card.answer.isEmpty ? "asked you" : "asked you · \(base)"
-        }
-        return base
-    }
-}
-
 private extension RecordingView {
     @ViewBuilder
     private var recordingFailureActions: some View {
@@ -675,66 +626,7 @@ private extension RecordingView {
         if case .downloading(let status) = services.modelsState {
             return status
         }
-        return "Preparing…"
+        return L10n.text("Preparing…")
     }
 
-}
-
-// Recap panels live outside the already-large view body.
-private extension RecordingView {
-    /// The pull-based recap card: generating, the recap itself, or the
-    /// honest capability/insufficient-content explanation. Dismiss is the
-    /// only other action — this card never persists anywhere.
-    private func catchUpPanel(_ state: RecordingCatchUpModel.State) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Label(L10n.text("Catch me up"), systemImage: "clock.arrow.circlepath")
-                    .font(.headline)
-                Spacer()
-                Button {
-                    controller.catchUp.dismiss()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(L10n.text("Dismiss catch-up"))
-                .accessibilityIdentifier("recording-catch-up-dismiss")
-            }
-            switch state {
-            case .generating:
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    Text(L10n.text("Catching you up…"))
-                        .foregroundStyle(.secondary)
-                }
-            case .ready(let recap):
-                MarkdownText(text: recap)
-                    .font(.callout)
-            case .unavailable(let reason):
-                Text(reason)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
-        .accessibilityIdentifier("recording-catch-up-panel")
-    }
-
-    private func liveSummaryPanel(_ markdown: String) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                Label("Live summary", systemImage: "sparkles")
-                    .font(.headline)
-                MarkdownText(text: markdown)
-                    .font(.callout)
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
-    }
 }

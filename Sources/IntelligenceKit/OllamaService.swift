@@ -81,6 +81,20 @@ public enum OllamaService {
             consentSource: consentSource)
     }
 
+    /// A grounded Ask provider pinned to the same fixed loopback service as
+    /// summaries. Gateway policy rejects any forged remote destination.
+    public static func askAnswerer(
+        model: String,
+        gateway: any DataEgressGateway
+    ) -> OpenAICompatibleRAGAnswerer {
+        OpenAICompatibleRAGAnswerer(
+            endpoint: openAIEndpoint,
+            model: model,
+            apiKey: "ollama",
+            gateway: gateway,
+            consentSource: .summaryEngineSettings)
+    }
+
     /// Stable identity used by both the summary material cache and durable
     /// operation fingerprints. It mirrors the provider's endpoint-host/model
     /// identity instead of inventing a second Ollama-specific key.

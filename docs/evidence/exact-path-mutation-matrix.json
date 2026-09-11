@@ -1,0 +1,29 @@
+{
+  "batchSizes": [
+    1,
+    10,
+    100
+  ],
+  "buildConfiguration": "release",
+  "canonicalScales": [
+    1000,
+    10000,
+    50000,
+    100000
+  ],
+  "dimension": 512,
+  "fixtureVersion": "synthetic-exact-path-mutation-v1",
+  "hostReceiptSchemaVersion": 1,
+  "measurementPolicyVersion": "alternating-mutation-engine-order-v1",
+  "minimumObservations": 3,
+  "mutationLifecycle": "control-authoritative-source-publication-vs-candidate-prepared-vectors-v1",
+  "rebuildLifecycle": "control-source-publication-vs-candidate-prepared-vectors-v1",
+  "resultLimit": 10,
+  "reviewPolicyVersion": "human-threshold-free-mutation-review-v1",
+  "runsPerBatch": 5,
+  "schemaVersion": 1,
+  "supportedOperatingSystemMajors": [
+    15,
+    26
+  ]
+}

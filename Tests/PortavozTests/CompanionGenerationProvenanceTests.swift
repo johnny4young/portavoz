@@ -22,6 +22,10 @@ final class CompanionGenerationProvenanceTests: XCTestCase {
             request: first,
             externalProvider: externalProvider))
 
+        XCTAssertEqual(
+            base,
+            "0872a9aff42fb1aa72c4cf999689bf0ec05574327d11150e7186b8fc43391ffd",
+            "refactors must preserve the durable operation identity")
         XCTAssertEqual(base, CompanionGenerationOperationFingerprint.compute(
             request: first,
             externalProvider: externalProvider))
@@ -60,6 +64,52 @@ final class CompanionGenerationProvenanceTests: XCTestCase {
             cardID: cardID,
             request: request(questionSegmentIDs: []),
             answerEvidenceIndexes: [0]))
+    }
+
+    func testCorrectedRowEvidenceProjectsToOrderedImmutableSources() throws {
+        let generatedQuestionID = UUID(
+            uuidString: "C3000000-0000-0000-0000-000000000007")!
+        let generatedAnswerID = UUID(
+            uuidString: "C3000000-0000-0000-0000-000000000008")!
+        let mergedSourceID = UUID(
+            uuidString: "C3000000-0000-0000-0000-000000000009")!
+        let generatedPassage = RAGPassage(
+            segmentID: generatedAnswerID,
+            meetingID: meetingID,
+            meetingTitle: "This meeting",
+            timestamp: 8,
+            text: "Me: Confirmado.")
+        let mapping = [
+            generatedQuestionID: [questionSegmentID],
+            generatedAnswerID: [firstPassageID, mergedSourceID, firstPassageID],
+        ]
+        let corrected = request(
+            questionSegmentIDs: [generatedQuestionID],
+            passages: [generatedPassage],
+            evidenceSourceIDsByGeneratedID: mapping)
+        let cardID = UUID(uuidString: "C3000000-0000-0000-0000-00000000000A")!
+
+        let evidence = try XCTUnwrap(CompanionEvidenceFactory.make(
+            cardID: cardID,
+            request: corrected,
+            answerEvidenceIndexes: [0]))
+
+        XCTAssertEqual(evidence.questionSegmentIDs, [questionSegmentID])
+        XCTAssertEqual(evidence.answerSegmentIDs, [firstPassageID, mergedSourceID])
+        XCTAssertNotEqual(
+            CompanionGenerationOperationFingerprint.compute(
+                request: corrected,
+                externalProvider: nil),
+            CompanionGenerationOperationFingerprint.compute(
+                request: request(
+                    questionSegmentIDs: [generatedQuestionID],
+                    passages: [generatedPassage],
+                    evidenceSourceIDsByGeneratedID: [
+                        generatedQuestionID: [questionSegmentID],
+                        generatedAnswerID: [secondPassageID],
+                    ]),
+                externalProvider: nil),
+            "the operation identity must bind the accepted evidence projection")
     }
 
     func testAttemptRecordsContentFreeProviderEgressAndAggregateMetrics() throws {
@@ -195,15 +245,18 @@ final class CompanionGenerationProvenanceTests: XCTestCase {
                 meetingTitle: "This meeting",
                 timestamp: 8,
                 text: "Me: Confirmado."),
-        ]
+        ],
+        evidenceSourceIDsByGeneratedID: [UUID: [UUID]] = [:]
     ) -> CompanionGenerationRequest {
         CompanionGenerationRequest(
             meetingID: meetingID,
             sourceTranscriptRevision: 5,
+            sourceCorrectionRevision: .accepted,
             workflow: .postRefine,
             candidate: candidate,
             questionSegmentIDs: questionSegmentIDs ?? [questionSegmentID],
             recentTranscript: passages,
+            evidenceSourceIDsByGeneratedID: evidenceSourceIDsByGeneratedID,
             ownerName: "Johnny",
             outputLanguage: "es",
             askedAt: 12)

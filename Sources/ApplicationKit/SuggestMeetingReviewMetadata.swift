@@ -74,10 +74,11 @@ public struct SuggestMeetingReviewMetadata: ApplicationUseCase {
         try Task.checkCancellation()
 
         let detail = request.review
+        let segments = detail.transcriptGenerationMaterial().segments
         let recipe = try await suggestedRecipe(for: request)
         let meetingTitle = try await suggestedMeetingTitle(for: request)
         let chapterTitles = try await suggestedChapterTitles(
-            segments: detail.segments,
+            segments: segments,
             excluding: request.titledChapterStarts)
 
         return MeetingReviewMetadataSuggestions(
@@ -92,14 +93,15 @@ private extension SuggestMeetingReviewMetadata {
         for request: SuggestMeetingReviewMetadataRequest
     ) async throws -> Recipe? {
         let detail = request.review
+        let segments = detail.transcriptGenerationMaterial().segments
         guard request.suggestRecipe,
-              !detail.segments.isEmpty,
+              !segments.isEmpty,
               detail.summary?.draft.recipeID == Recipe.general.id
         else { return nil }
 
         let generated = try await bestEffort {
             try await generator.meetingRecipe(
-                segments: detail.segments,
+                segments: segments,
                 speakerCount: detail.speakers.count)
         }
         try Task.checkCancellation()
@@ -114,6 +116,7 @@ private extension SuggestMeetingReviewMetadata {
     ) async throws -> String? {
         let detail = request.review
         guard request.suggestMeetingTitle,
+              detail.summaryFreshness == .current,
               detail.meeting.title.first?.isNumber == true,
               let summary = detail.summary
         else { return nil }

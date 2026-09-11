@@ -23,7 +23,7 @@ final class RecordingHUDController {
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false)
-        panel.level = .floating
+        panel.level = UITestWindowPlacement.floatingPanelLevel()
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.isMovableByWindowBackground = true
         panel.backgroundColor = .clear
@@ -105,7 +105,7 @@ struct RecordingHUDView: View {
                         .fill(.red)
                         .frame(width: 8, height: 8)
                         .opacity(elapsed.isMultiple(of: 2) ? 1 : 0.35)
-                    Text(String(format: "%02d:%02d", max(0, elapsed) / 60, max(0, elapsed) % 60))
+                    Text(ClockFormat.mmss(TimeInterval(elapsed)))
                         .font(.callout.monospacedDigit().weight(.medium))
                 }
             }
@@ -121,6 +121,12 @@ struct RecordingHUDView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
                 hudMeter
+                if controller.microphoneCaptureFailed {
+                    Label(L10n.text("Microphone capture failed. Stop and start a new recording."),
+                          systemImage: "mic.slash.fill")
+                        .foregroundStyle(.orange)
+                        .accessibilityIdentifier("recording-hud-microphone-capture-failure")
+                }
                 if controller.systemCaptureHealth != .healthy {
                     Label {
                         Text(hudCaptureHealthMessage)

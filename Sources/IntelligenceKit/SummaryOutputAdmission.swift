@@ -38,6 +38,23 @@ enum SummaryEvidenceAdmission {
         normalizedTokens(in: text).joined(separator: " ")
     }
 
+    /// A generated decision often carries an attribution prefix while the
+    /// same generated task carries that identity in its separate owner field
+    /// (`S2: "Use X"` versus `"Use X" — S2`). Compare their claim bodies,
+    /// not their rendering shapes.
+    static func normalizedStatementText(_ text: String) -> String {
+        let withoutCoauthorMarker = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(
+                of: #"^\s*▸\s*"#,
+                with: "",
+                options: .regularExpression)
+        let withoutAttribution = withoutCoauthorMarker.replacingOccurrences(
+            of: #"^\s*(?:[A-Za-z]\d+|Me|Them|Yo|Ellos|[\p{L}\p{M}'’.-]{2,40})\s*:\s*"#,
+            with: "",
+            options: [.regularExpression, .caseInsensitive])
+        return normalizedComparableText(withoutAttribution)
+    }
+
     private static func normalizedTokens(in text: String) -> [String] {
         let folded = text.folding(
             options: [.caseInsensitive, .diacriticInsensitive],
@@ -64,7 +81,9 @@ enum SummaryActionAdmission {
                 return false
             }
             guard seen.insert(normalized).inserted else { return false }
+            let statement = SummaryEvidenceAdmission.normalizedStatementText(trimmed)
             return !decisionCopies.contains(normalized)
+                && !decisionCopies.contains(statement)
         }
     }
 
@@ -75,7 +94,12 @@ enum SummaryActionAdmission {
         guard sections.count == recipe.sections.count else { return [] }
         return Set(sections.enumerated().flatMap { index, section -> [String] in
             guard recipe.decisionSectionIndexes.contains(index) else { return [] }
-            return section.bullets.map(SummaryEvidenceAdmission.normalizedComparableText)
+            return section.bullets.flatMap { bullet in
+                [
+                    SummaryEvidenceAdmission.normalizedComparableText(bullet),
+                    SummaryEvidenceAdmission.normalizedStatementText(bullet)
+                ]
+            }
         }.filter { !$0.isEmpty })
     }
 }

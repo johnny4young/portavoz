@@ -1,4 +1,5 @@
 import Foundation
+import PortavozCore
 import XCTest
 
 @testable import IntelligenceKit
@@ -181,6 +182,32 @@ final class IntelligenceSchedulerTests: XCTestCase {
         XCTAssertEqual(pending, 0)
     }
 
+    func testCancellationAfterOperationStartsRejectsItsLateValue() async throws {
+        let scheduler = IntelligenceScheduler()
+        let gate = Gate()
+        let task = Task {
+            try await scheduler.run(.interactive) {
+                await gate.wait()
+                return "late value"
+            }
+        }
+        await waitUntil { await scheduler.pendingCount == 1 }
+
+        task.cancel()
+        await gate.open()
+
+        do {
+            _ = try await task.value
+            XCTFail("a cancelled in-flight operation must not return a late value")
+        } catch is CancellationError {
+            // Expected even when the opaque operation ignores cancellation.
+        }
+        let next = try await scheduler.run(.interactive) { "next" }
+        XCTAssertEqual(next, "next")
+        let pending = await scheduler.pendingCount
+        XCTAssertEqual(pending, 0)
+    }
+
     func testThrowingJobReleasesSlot() async throws {
         struct Boom: Error {}
         let scheduler = IntelligenceScheduler()
@@ -224,5 +251,63 @@ final class IntelligenceSchedulerTests: XCTestCase {
         let entries = await log.entries
         // The interactive answer lands BETWEEN the chain's steps.
         XCTAssertEqual(entries, ["step1", "answer", "step2"])
+    }
+
+    func testTelemetrySeparatesQueueWaitFromInferenceWithoutPayloads() async throws {
+        let recorder = ResourceWorkloadEventRecorder()
+        let scheduler = IntelligenceScheduler(telemetry: ResourceWorkloadTelemetry(
+            receiver: recorder.receive))
+
+        let result = try await scheduler.run(.interactive) { "answer" }
+
+        XCTAssertEqual(result, "answer")
+        XCTAssertEqual(
+            recorder.events.compactMap(\.startedDescriptor),
+            [
+                ResourceWorkloadDescriptor(
+                    workloadClass: .userInitiated,
+                    kind: .languageInference,
+                    operation: .queueWait),
+                ResourceWorkloadDescriptor(
+                    workloadClass: .userInitiated,
+                    kind: .languageInference,
+                    operation: .execute),
+            ])
+        XCTAssertEqual(
+            recorder.events.compactMap(\.finishedOutcome),
+            [.completed, .completed])
+    }
+
+    func testBackgroundTelemetryUsesPostCaptureClass() async throws {
+        let recorder = ResourceWorkloadEventRecorder()
+        let scheduler = IntelligenceScheduler(telemetry: ResourceWorkloadTelemetry(
+            receiver: recorder.receive))
+
+        _ = try await scheduler.run(.background) { "summary" }
+
+        XCTAssertEqual(
+            recorder.events.compactMap(\.startedDescriptor),
+            [
+                ResourceWorkloadDescriptor(
+                    workloadClass: .postCapture,
+                    kind: .languageInference,
+                    operation: .queueWait),
+                ResourceWorkloadDescriptor(
+                    workloadClass: .postCapture,
+                    kind: .languageInference,
+                    operation: .execute),
+            ])
+    }
+}
+
+private extension ResourceWorkloadEvent {
+    var startedDescriptor: ResourceWorkloadDescriptor? {
+        guard case .started(let span) = self else { return nil }
+        return span.descriptor
+    }
+
+    var finishedOutcome: ResourceWorkloadOutcome? {
+        guard case .finished(_, let outcome) = self else { return nil }
+        return outcome
     }
 }

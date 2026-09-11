@@ -125,6 +125,7 @@ private struct AppRefineMeetingPreferences: RefineMeetingPreferences {
 private final class AppRefineMeetingProcessor: RefineMeetingProcessor {
     private weak var services: AppServices?
     private let descriptor: ModelDescriptor
+    private var whisperRuntime: AppServices.WhisperRuntimeLease?
 
     init(services: AppServices) {
         self.services = services
@@ -140,7 +141,8 @@ private final class AppRefineMeetingProcessor: RefineMeetingProcessor {
 
     func prepare(progress: @escaping RefineMeetingProgressHandler) async throws {
         guard let services else { throw AppRefineMeetingError.servicesUnavailable }
-        _ = try await services.loadWhisperIfNeeded(
+        if whisperRuntime != nil { return }
+        whisperRuntime = try await services.acquireWhisperRuntime(
             descriptor: descriptor,
             progress: { _ in },
             preparationProgress: { size, percent, isDownloading in
@@ -158,22 +160,47 @@ private final class AppRefineMeetingProcessor: RefineMeetingProcessor {
         hints: TranscriptionHints,
         channel: AudioChannel
     ) async throws -> FileTranscription {
-        guard let whisper = services?.whisper else {
+        guard let services, let whisper = whisperRuntime?.engine else {
             throw AppRefineMeetingError.transcriberUnavailable
         }
-        return try await whisper.transcribeFile(
-            at: fileURL,
-            hints: hints,
-            channel: channel)
+        return try await services.workloadTelemetry.measure(
+            ResourceWorkloadDescriptor(
+                workloadClass: .userInitiated,
+                kind: .qualityTranscription,
+                operation: .execute)
+        ) {
+            try await whisper.transcribeFile(
+                at: fileURL,
+                hints: hints,
+                channel: channel)
+        }
     }
 
     func diarize(fileURL: URL) async throws -> [SpeakerTurn] {
         guard let services else { throw AppRefineMeetingError.servicesUnavailable }
-        let diarizer = try await services.loadDiarizerIfNeeded()
-        return try await diarizer.diarizeFile(at: fileURL)
+        let runtime = try await services.acquireDiarizationRuntime()
+        defer {
+            _ = services.finishDiarizationRuntime(runtime)
+        }
+        let voiceprint = await services.currentDiarizationVoiceprint()
+        let diarizer = services.makeDiarizer(
+            from: runtime,
+            voiceprint: voiceprint)
+        return try await services.workloadTelemetry.measure(
+            ResourceWorkloadDescriptor(
+                workloadClass: .userInitiated,
+                kind: .speakerDiarization,
+                operation: .execute)
+        ) {
+            try await diarizer.diarizeFile(at: fileURL)
+        }
     }
 
     func scheduleIdleRelease() {
+        if let whisperRuntime {
+            _ = services?.finishWhisperRuntime(whisperRuntime)
+            self.whisperRuntime = nil
+        }
         services?.scheduleWhisperRelease()
         services?.scheduleRecordingEnginesRelease()
     }
@@ -205,9 +232,14 @@ private final class AppRefineMeetingCompanion: RefineMeetingCompanion {
             return RefineMeetingCompanionRefresh(cards: [], completed: false)
         }
         let result = await CompanionRefresh.regenerate(
-            from: segments,
+            from: MeetingTranscriptGenerationMaterial(
+                segments: segments,
+                sourceSegmentIDsByGeneratedID: Dictionary(
+                    uniqueKeysWithValues: segments.map { ($0.id, [$0.id]) }),
+                baseTranscriptRevision: transcriptRevision,
+                correctionRevision: .accepted),
             meetingID: meetingID,
-            transcriptRevision: transcriptRevision,
+            workflow: .postRefine,
             byok: await services.companionBYOKClient())
         return RefineMeetingCompanionRefresh(
             cards: [],

@@ -4,11 +4,13 @@ import PortavozCore
 
 struct MeetingSyncLocalState {
     let audioDirectory: String?
+    let captureReport: CaptureReport?
     let peopleBySpeakerID: [String: String]
     let segmentsByID: [String: SegmentRecord]
     let summariesByID: [String: SummaryRecord]
     let portableSummariesByID: [String: MeetingSyncSummary]
     let cardsByID: [String: CompanionCardRecord]
+    let correctionsByID: [UUID: TranscriptCorrectionEvent]
 }
 
 extension MeetingStore {
@@ -16,7 +18,8 @@ extension MeetingStore {
         _ aggregate: MeetingSyncAggregate,
         meetingID: MeetingID
     ) throws {
-        guard aggregate.formatVersion == MeetingSyncAggregate.currentFormatVersion,
+        guard MeetingSyncAggregate.supportedFormatVersions.contains(
+            aggregate.formatVersion),
               aggregate.meeting.value.id == meetingID,
               aggregate.meeting.value.audioDirectory == nil
         else {
@@ -32,6 +35,14 @@ extension MeetingStore {
             meetingID: meetingID,
             speakerIDs: speakerIDs,
             segmentIDs: segmentIDs)
+        do {
+            try TranscriptCorrectionPolicy.validateHistory(
+                aggregate.transcriptCorrections,
+                meetingID: meetingID)
+        } catch {
+            throw StorageError.invalidSyncState(
+                "remote transcript correction history is invalid: \(error)")
+        }
     }
 
     static func validateRemoteCastAndTranscript(
@@ -148,12 +159,25 @@ extension MeetingStore {
     ) throws {
         let meetingID = aggregate.meeting.value.id
         let key = meetingID.rawValue.uuidString
+        let previousProjection = try MeetingRecord.fetchOne(db, key: key).map { record in
+            try currentCorrectionRevision(
+                meetingID: meetingID,
+                transcriptRevision: record.transcriptRevision,
+                in: db)
+        }
         let local = try meetingSyncLocalState(meetingID: meetingID, in: db)
 
         try validateImmutableRemoteSummaries(
             aggregate.summaries,
             against: local.portableSummariesByID)
-        try deletePortableMeetingChildren(meetingKey: key, in: db)
+        try validateImmutableRemoteCorrections(
+            aggregate.transcriptCorrections,
+            against: local.correctionsByID)
+        let replacesCorrections = aggregate.formatVersion >= 2
+        try deletePortableMeetingChildren(
+            meetingKey: key,
+            includingTranscriptCorrections: replacesCorrections,
+            in: db)
         try insertRemoteMeeting(aggregate.meeting, local: local, in: db)
         try insertRemoteSpeakers(aggregate.speakers, local: local, in: db)
         try insertRemoteSegments(aggregate.segments, local: local, in: db)
@@ -163,6 +187,27 @@ extension MeetingStore {
             aggregate.companionCards,
             meetingID: meetingID,
             local: local,
+            in: db)
+        if replacesCorrections {
+            try insertRemoteTranscriptCorrections(
+                aggregate.transcriptCorrections,
+                in: db)
+        }
+        if let previousProjection {
+            let currentProjection = try transcriptCorrectionRevision(
+                meetingID: meetingID,
+                in: db)
+            try invalidateAcceptedOnlyDerivedWork(
+                meetingID: meetingID,
+                previous: previousProjection,
+                current: currentProjection,
+                at: aggregate.meeting.updatedAt,
+                in: db)
+        }
+        // Unconditional: replay hard-deletes segments (cascading the corrected
+        // rows away) even when the correction fingerprint did not change.
+        try refreshTranscriptCorrectionSearchProjection(
+            meetingID: meetingID,
             in: db)
     }
 
@@ -177,8 +222,10 @@ extension MeetingStore {
             .compactMap { record in
                 record.personID.map { (record.id, $0) }
             }
+        let localMeeting = try MeetingRecord.fetchOne(db, key: meetingKey)
         return try MeetingSyncLocalState(
-            audioDirectory: MeetingRecord.fetchOne(db, key: meetingKey)?.audioDirectory,
+            audioDirectory: localMeeting?.audioDirectory,
+            captureReport: localMeeting?.meeting.captureReport,
             peopleBySpeakerID: Dictionary(uniqueKeysWithValues: people),
             segmentsByID: dictionary(
                 of: SegmentRecord.self,
@@ -199,7 +246,11 @@ extension MeetingStore {
                 of: CompanionCardRecord.self,
                 id: { $0.id },
                 meetingKey: meetingKey,
-                in: db))
+                in: db),
+            correctionsByID: Dictionary(uniqueKeysWithValues:
+                try fetchTranscriptCorrectionHistory(
+                    meetingID: meetingID,
+                    in: db).map { ($0.id, $0) }))
     }
 
     static func dictionary<Record: FetchableRecord & TableRecord>(
@@ -216,11 +267,20 @@ extension MeetingStore {
 
     static func deletePortableMeetingChildren(
         meetingKey: String,
+        includingTranscriptCorrections: Bool,
         in db: Database
     ) throws {
-        for table in [
+        var tables = [
             "actionItem", "summary", "contextItem", "companionCard", "segment", "speaker"
-        ] {
+        ]
+        if includingTranscriptCorrections {
+            tables.insert("transcriptCorrection", at: 0)
+            // A superseded correction is deleted in the same statement as its
+            // successor, and the self-referencing RESTRICT is checked per row.
+            // Defer to commit so replay can replace a corrected meeting.
+            try db.execute(sql: "PRAGMA defer_foreign_keys = ON")
+        }
+        for table in tables {
             try db.execute(
                 sql: "DELETE FROM \(table) WHERE meetingID = ?",
                 arguments: [meetingKey])
@@ -234,6 +294,13 @@ extension MeetingStore {
     ) throws {
         var meeting = synced.value
         meeting.audioDirectory = local.audioDirectory
+        if let previous = local.captureReport {
+            guard meeting.captureReport == nil || meeting.captureReport == previous else {
+                throw StorageError.invalidSyncState("immutable capture evidence conflicts")
+            }
+            // A legacy peer cannot erase the originating capture authority.
+            meeting.captureReport = previous
+        }
         try MeetingRecord(
             meeting,
             createdAt: synced.createdAt,
@@ -270,6 +337,7 @@ extension MeetingStore {
             if let localRecord = local.segmentsByID[record.id],
                localRecord.text == record.text {
                 record.embedding = localRecord.embedding
+                record.embeddingFingerprint = localRecord.embeddingFingerprint
                 record.generationRunID = localRecord.generationRunID
             }
             try record.insert(db)
@@ -348,6 +416,38 @@ extension MeetingStore {
                 throw StorageError.invalidSyncState(
                     "remote sync cannot rewrite immutable summary \(difference)")
             }
+        }
+    }
+
+    static func validateImmutableRemoteCorrections(
+        _ corrections: [TranscriptCorrectionEvent],
+        against local: [UUID: TranscriptCorrectionEvent]
+    ) throws {
+        for correction in corrections {
+            guard let existing = local[correction.id] else { continue }
+            if let difference = TranscriptCorrectionPolicy.immutableDifference(
+                existing,
+                correction) {
+                throw StorageError.invalidSyncState(
+                    "remote sync cannot rewrite immutable correction \(difference)")
+            }
+            do {
+                try TranscriptCorrectionPolicy.validateTombstoneTransition(
+                    from: existing,
+                    to: correction)
+            } catch {
+                throw StorageError.invalidSyncState(
+                    "remote sync cannot regress a correction tombstone")
+            }
+        }
+    }
+
+    static func insertRemoteTranscriptCorrections(
+        _ corrections: [TranscriptCorrectionEvent],
+        in db: Database
+    ) throws {
+        for correction in corrections.sorted(by: TranscriptCorrectionPolicy.precedes) {
+            try insertTranscriptCorrection(correction, in: db)
         }
     }
 

@@ -92,4 +92,28 @@ final class LiveCaptionParagraphProjectorTests: XCTestCase {
 
         XCTAssertEqual(result.segments.map(\.id), [first.id, second.id])
     }
+
+    func testProjectionOwnsBoundedRecentSourceWindow() {
+        let rows = (0..<(LiveCaptionParagraphProjector.maximumSourceRows + 25)).map {
+            row(
+                "Remote turn \($0).",
+                channel: .system,
+                start: TimeInterval($0 * 5),
+                end: TimeInterval($0 * 5 + 1))
+        }
+        let firstRetained = rows[rows.count - LiveCaptionParagraphProjector.maximumSourceRows]
+        let result = LiveCaptionParagraphProjector.project(
+            captions: rows,
+            liveSpeakerLabels: [:],
+            translations: [
+                rows[0].id: "Dropped.",
+                firstRetained.id: "Retained.",
+            ])
+
+        XCTAssertEqual(
+            result.segments.map(\.id),
+            Array(rows.suffix(LiveCaptionParagraphProjector.maximumSourceRows)).map(\.id))
+        XCTAssertNil(result.translations[rows[0].id])
+        XCTAssertEqual(result.translations[firstRetained.id], "Retained.")
+    }
 }

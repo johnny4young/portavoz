@@ -1,0 +1,12 @@
+{
+  "authority": "research-comparison-only",
+  "baselineSchemaVersion": 1,
+  "engineDecision": "not-evaluated",
+  "hostReceiptSchemaVersion": 2,
+  "maximumBaselineBytes": 2097152,
+  "maximumReceiptStreamBytes": 1048576,
+  "maximumScorecardBytes": 524288,
+  "reviewPolicyVersion": "explicit-scorecard-digest-and-source-v1",
+  "schemaVersion": 1,
+  "scorecardSchemaVersion": 1
+}

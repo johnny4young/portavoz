@@ -23,12 +23,32 @@ final class CloudMeetingSyncStateTests: XCTestCase {
         snapshot = await store.currentSnapshot()
         XCTAssertEqual(snapshot.initialSeedState, .notRequested)
 
-        try await store.requestInitialSeed(at: now)
+        let requested = try await store.requestInitialSeed(at: now)
+        XCTAssertTrue(requested)
         snapshot = await store.currentSnapshot()
         XCTAssertEqual(snapshot.initialSeedState, .requested)
+        let cursor = MeetingID(rawValue: UUID(
+            uuidString: "10000000-0000-0000-0000-000000000001")!)
+        try await store.recordInitialSeedProgress(through: cursor)
+        try await store.markInitialSeedPrepared(at: now.addingTimeInterval(0.5))
+        let duplicateRequest = try await store.requestInitialSeed(
+            at: now.addingTimeInterval(0.75))
+        XCTAssertFalse(
+            duplicateRequest,
+            "duplicate user actions must not reset durable seed progress")
+        snapshot = await store.currentSnapshot()
+        XCTAssertEqual(snapshot.initialSeedCursorMeetingID, cursor)
+        XCTAssertNotNil(snapshot.initialSeedPreparedAt)
         try await store.markInitialSeedComplete(at: now.addingTimeInterval(1))
         snapshot = await store.currentSnapshot()
         XCTAssertEqual(snapshot.initialSeedState, .complete)
+
+        let restarted = try CloudMeetingSyncStateStore(rootDirectory: root)
+        let restartedSnapshot = await restarted.currentSnapshot()
+        XCTAssertEqual(restartedSnapshot.initialSeedCursorMeetingID, cursor)
+        XCTAssertEqual(
+            restartedSnapshot.initialSeedPreparedAt,
+            snapshot.initialSeedPreparedAt)
 
         try await store.updateAccount(status: .available, fingerprint: second)
         snapshot = await store.currentSnapshot()
@@ -39,6 +59,67 @@ final class CloudMeetingSyncStateTests: XCTestCase {
             snapshot.initialSeedState,
             .notRequested,
             "a different iCloud account requires its own explicit initial seed")
+    }
+
+    func testRequestedPreCheckpointSnapshotResumesWithEmptyProgress() async throws {
+        let root = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try await readyStore(at: root)
+        try await store.requestInitialSeed(
+            at: Date(timeIntervalSince1970: 1_784_320_000))
+
+        let stateURL = root.appendingPathComponent("transport-state.json")
+        let encoded = try Data(contentsOf: stateURL)
+        var legacy = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        legacy.removeValue(forKey: "initialSeedCursorMeetingID")
+        legacy.removeValue(forKey: "initialSeedPreparedAt")
+        try JSONSerialization.data(
+            withJSONObject: legacy,
+            options: [.sortedKeys])
+            .write(to: stateURL, options: .atomic)
+
+        let restarted = try CloudMeetingSyncStateStore(rootDirectory: root)
+        let snapshot = await restarted.currentSnapshot()
+        XCTAssertEqual(snapshot.initialSeedState, .requested)
+        XCTAssertNil(snapshot.initialSeedCursorMeetingID)
+        XCTAssertNil(snapshot.initialSeedPreparedAt)
+    }
+
+    func testLegacyDeferredReplayDefaultsToNonBlockingOnRestart() async throws {
+        let root = temporaryDirectory()
+        let assetRoot = temporaryDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: root)
+            try? FileManager.default.removeItem(at: assetRoot)
+        }
+        let store = try await readyStore(at: root)
+        let remote = makeEnvelope(
+            generation: 2,
+            sourceDeviceID: UUID(
+                uuidString: "30000000-0000-0000-0000-000000000099")!,
+            title: "Legacy deferred remote")
+        let record = try CloudMeetingRecordCodec().encode(
+            remote,
+            assetDirectory: assetRoot).record
+        try await store.stageDeferredReplay(remote, from: record)
+
+        let stateURL = root.appendingPathComponent("transport-state.json")
+        var rootObject = try XCTUnwrap(
+            JSONSerialization.jsonObject(
+                with: Data(contentsOf: stateURL)) as? [String: Any])
+        var replays = try XCTUnwrap(
+            rootObject["deferredReplays"] as? [[String: Any]])
+        replays[0].removeValue(forKey: "blocksOutgoing")
+        rootObject["deferredReplays"] = replays
+        try JSONSerialization.data(
+            withJSONObject: rootObject,
+            options: [.sortedKeys])
+            .write(to: stateURL, options: .atomic)
+
+        let restarted = try CloudMeetingSyncStateStore(rootDirectory: root)
+        let snapshot = await restarted.currentSnapshot()
+        XCTAssertEqual(snapshot.deferredReplays.map(\.blocksOutgoing), [false])
     }
 
     func testExactAttemptSurvivesRestartAndLateSuccessCannotEraseNewerGeneration() async throws {
@@ -238,6 +319,40 @@ final class CloudMeetingSyncStateTests: XCTestCase {
         }
     }
 
+    func testLegacyDeferredReplayWithoutOutgoingFenceDecodesAsNonBlocking() async throws {
+        let root = temporaryDirectory()
+        let assetRoot = temporaryDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: root)
+            try? FileManager.default.removeItem(at: assetRoot)
+        }
+        let store = try await readyStore(at: root)
+        let remote = makeEnvelope(
+            generation: 4,
+            sourceDeviceID: UUID(
+                uuidString: "30000000-0000-0000-0000-000000000099")!,
+            title: "Legacy deferred remote")
+        let record = try CloudMeetingRecordCodec().encode(
+            remote,
+            assetDirectory: assetRoot).record
+        try await store.stageDeferredReplay(remote, from: record)
+
+        let stateURL = root.appendingPathComponent("transport-state.json")
+        let encoded = try Data(contentsOf: stateURL)
+        var legacy = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        var replays = try XCTUnwrap(legacy["deferredReplays"] as? [[String: Any]])
+        XCTAssertEqual(replays.count, 1)
+        replays[0].removeValue(forKey: "blocksOutgoing")
+        legacy["deferredReplays"] = replays
+        try JSONSerialization.data(withJSONObject: legacy, options: [.sortedKeys])
+            .write(to: stateURL, options: .atomic)
+
+        let restarted = try CloudMeetingSyncStateStore(rootDirectory: root)
+        let snapshot = await restarted.currentSnapshot()
+        XCTAssertEqual(snapshot.deferredReplays.map(\.blocksOutgoing), [false])
+    }
+
     func testAccountSwitchClearsOnlyAccountScopedTransportState() async throws {
         let root = temporaryDirectory()
         let assetRoot = temporaryDirectory()
@@ -286,6 +401,115 @@ final class CloudMeetingSyncStateTests: XCTestCase {
             at: root.appendingPathComponent("payloads"),
             includingPropertiesForKeys: nil).map(\.lastPathComponent)
         XCTAssertEqual(payloadNames, snapshot.attempts.map(\.payloadFileName))
+    }
+
+    /// A conflict-blocked attempt is fenced by its blocking replay. Switching
+    /// accounts clears every replay, so leaving the attempt fenced leaves the
+    /// snapshot in a state its own validator rejects — and every later commit,
+    /// including the next account check, throws.
+    func testAccountSwitchReopensAttemptsWhoseBlockingReplayItClears() async throws {
+        let root = temporaryDirectory()
+        let assetRoot = temporaryDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: root)
+            try? FileManager.default.removeItem(at: assetRoot)
+        }
+        try FileManager.default.createDirectory(
+            at: assetRoot, withIntermediateDirectories: true)
+        let store = try await readyStore(at: root)
+        let now = Date(timeIntervalSince1970: 1_784_320_000)
+        let outgoing = makeEnvelope(generation: 1, meetingOffset: 1)
+        _ = try await store.stage(outgoing, at: now)
+
+        // The remote copy of the same meeting arrives and fences the local send.
+        let remoteDevice = UUID(uuidString: "30000000-0000-0000-0000-000000000099")!
+        let blocking = makeEnvelope(
+            generation: 2,
+            meetingOffset: 1,
+            sourceDeviceID: remoteDevice,
+            title: "Blocking remote")
+        let blockingRecord = try CloudMeetingRecordCodec().encode(
+            blocking,
+            assetDirectory: assetRoot).record
+        try await store.stageDeferredReplay(
+            blocking,
+            from: blockingRecord,
+            blocksOutgoing: true)
+        var snapshot = await store.currentSnapshot()
+        XCTAssertEqual(snapshot.attempts.first?.phase, .blocked)
+
+        let secondAccount = fingerprint("icloud-user-b")
+        try await store.updateAccount(status: .available, fingerprint: secondAccount)
+
+        snapshot = await store.currentSnapshot()
+        XCTAssertTrue(snapshot.deferredReplays.isEmpty)
+        XCTAssertEqual(
+            snapshot.attempts.map(\.meetingID),
+            [outgoing.meetingID],
+            "local unsent work survives an account switch")
+        XCTAssertEqual(
+            snapshot.attempts.first?.phase,
+            .ready,
+            "the fence died with the replay that held it")
+        XCTAssertNil(snapshot.attempts.first?.lastFailure)
+
+        // The proof that the snapshot is valid: a later commit must succeed.
+        try await store.updateAccount(status: .available, fingerprint: secondAccount)
+    }
+
+    /// A newer remote generation that no longer blocks replaces the blocking
+    /// replay. The attempt it fenced must be reopened with it, or the snapshot
+    /// keeps a blocked attempt whose blocker no longer exists.
+    func testNonBlockingReplacementReopensTheAttemptItUnfences() async throws {
+        let root = temporaryDirectory()
+        let assetRoot = temporaryDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: root)
+            try? FileManager.default.removeItem(at: assetRoot)
+        }
+        try FileManager.default.createDirectory(
+            at: assetRoot, withIntermediateDirectories: true)
+        let store = try await readyStore(at: root)
+        let now = Date(timeIntervalSince1970: 1_784_320_000)
+        let outgoing = makeEnvelope(generation: 1, meetingOffset: 1)
+        _ = try await store.stage(outgoing, at: now)
+
+        let remoteDevice = UUID(uuidString: "30000000-0000-0000-0000-000000000099")!
+        let blocking = makeEnvelope(
+            generation: 2,
+            meetingOffset: 1,
+            sourceDeviceID: remoteDevice,
+            title: "Blocking remote")
+        let codec = CloudMeetingRecordCodec()
+        try await store.stageDeferredReplay(
+            blocking,
+            from: try codec.encode(blocking, assetDirectory: assetRoot).record,
+            blocksOutgoing: true)
+        var snapshot = await store.currentSnapshot()
+        XCTAssertEqual(snapshot.attempts.first?.phase, .blocked)
+
+        let newer = makeEnvelope(
+            generation: 3,
+            meetingOffset: 1,
+            sourceDeviceID: remoteDevice,
+            title: "Newer compatible remote")
+        try await store.stageDeferredReplay(
+            newer,
+            from: try codec.encode(newer, assetDirectory: assetRoot).record,
+            blocksOutgoing: false)
+
+        snapshot = await store.currentSnapshot()
+        XCTAssertEqual(snapshot.deferredReplays.map(\.generation), [3])
+        XCTAssertFalse(snapshot.deferredReplays.allSatisfy(\.blocksOutgoing))
+        XCTAssertEqual(
+            snapshot.attempts.first?.phase,
+            .ready,
+            "no blocking replay remains, so nothing may keep the attempt fenced")
+        XCTAssertNil(snapshot.attempts.first?.lastFailure)
+
+        try await store.updateAccount(
+            status: .available,
+            fingerprint: fingerprint("icloud-user-a"))
     }
 
     func testProtectedPayloadCorruptionFailsClosedOnRestart() async throws {

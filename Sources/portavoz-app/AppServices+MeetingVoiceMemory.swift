@@ -1,7 +1,6 @@
 import ApplicationKit
 import DiarizationKit
 import Foundation
-import ModelStoreKit
 import PortavozCore
 import StorageKit
 
@@ -36,7 +35,7 @@ extension AppServices {
             memory: AppRememberedVoiceMemory(
                 gallery: voiceGallery,
                 disabled: ProcessInfo.processInfo.arguments.contains("-use-temp-store")),
-            extractor: AppMeetingVoiceprintExtractor(modelStore: modelStore))
+            extractor: AppMeetingVoiceprintExtractor(services: self))
     }
 }
 
@@ -61,13 +60,19 @@ private struct AppRememberedVoiceMemory: RememberedVoiceMemory {
     }
 }
 
-private struct AppMeetingVoiceprintExtractor: MeetingVoiceprintExtracting {
-    let modelStore: ModelStore
+@MainActor
+private final class AppMeetingVoiceprintExtractor: MeetingVoiceprintExtracting {
+    private weak var services: AppServices?
+
+    init(services: AppServices) {
+        self.services = services
+    }
 
     func extractVoiceprints(
         from detail: MeetingLibraryDetail,
         speakerLabels: [String]
     ) async throws -> [String: Voiceprint] {
+        guard let services else { throw CancellationError() }
         guard let relative = detail.meeting.audioDirectory else { return [:] }
         let directory = RecordingsLocation.shared.resolve(relative)
         guard let systemURL = MeetingAudioLayout.channelFile(
@@ -90,7 +95,12 @@ private struct AppMeetingVoiceprintExtractor: MeetingVoiceprintExtracting {
         }
         guard !ranges.isEmpty else { return [:] }
 
-        let diarizer = try await PyannoteDiarizer.loadRecommended(store: modelStore)
+        let runtime = try await services.acquireDiarizationRuntime()
+        defer {
+            _ = services.finishDiarizationRuntime(runtime)
+            services.scheduleRecordingEnginesRelease()
+        }
+        let diarizer = services.makeDiarizer(from: runtime)
         return try await diarizer.extractVoiceprints(
             fromFile: systemURL,
             rangesBySpeaker: ranges)

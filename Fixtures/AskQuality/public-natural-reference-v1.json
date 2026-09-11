@@ -1,0 +1,868 @@
+{
+  "contentSource": "public-synthetic-only",
+  "generation": "public-natural-reference-v1",
+  "kind": "ask-quality-fixture",
+  "queries": [
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-002"
+      ],
+      "id": "query-001",
+      "intent": "commitment",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Lena",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-001"
+        }
+      ],
+      "text": "Who is sending the accessibility review to the client?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-004"
+      ],
+      "id": "query-002",
+      "intent": "name",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Lucía",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-003"
+        }
+      ],
+      "text": "¿Quién se encarga de revisar los subtítulos antes de publicar?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-006"
+      ],
+      "id": "query-003",
+      "intent": "date",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Nora",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-005"
+        }
+      ],
+      "text": "When are we moving the customer workshop?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-008"
+      ],
+      "id": "query-004",
+      "intent": "date",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Andrés",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-007"
+        }
+      ],
+      "text": "¿Cuándo tendremos el informe de consumo energético?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-010"
+      ],
+      "id": "query-005",
+      "intent": "decision",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Eva",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-009"
+        }
+      ],
+      "text": "Why did we postpone the database migration?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-012"
+      ],
+      "id": "query-006",
+      "intent": "risk",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Diego",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-011"
+        }
+      ],
+      "text": "¿Qué problema impide abrir las inscripciones?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-014"
+      ],
+      "id": "query-007",
+      "intent": "name",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Sofía",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-013"
+        }
+      ],
+      "text": "Who will check the backup restoration?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-016"
+      ],
+      "id": "query-008",
+      "intent": "decision",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Amir",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-015"
+        }
+      ],
+      "text": "¿Por qué elegimos las entrevistas individuales?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-018"
+      ],
+      "id": "query-009",
+      "intent": "date",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Marina",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-017"
+        }
+      ],
+      "text": "When is the customer feedback review?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-020"
+      ],
+      "id": "query-010",
+      "intent": "commitment",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Theo",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-019"
+        }
+      ],
+      "text": "¿Quién dará seguimiento al consentimiento de los participantes?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-022"
+      ],
+      "id": "query-011",
+      "intent": "name",
+      "relationship": "codeSwitched",
+      "relevant": [
+        {
+          "expectedOwner": "Elena",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-021"
+        }
+      ],
+      "text": "¿Quién owns la revisión de permisos del microphone?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-024"
+      ],
+      "id": "query-012",
+      "intent": "paraphrase",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Aisha",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-023"
+        }
+      ],
+      "text": "Which option lets participants talk without the whole team listening?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-026"
+      ],
+      "id": "query-013",
+      "intent": "technicalIdentifier",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Inez",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-025"
+        }
+      ],
+      "text": "Who owns incident NET-42?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-028"
+      ],
+      "id": "query-014",
+      "intent": "date",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Pablo",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-027"
+        }
+      ],
+      "text": "¿Cuándo resolvemos AUDIO-73?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-030"
+      ],
+      "id": "query-015",
+      "intent": "commitment",
+      "relationship": "englishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Julia",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-029"
+        }
+      ],
+      "text": "Who will verify CACHE-18 after the rollback?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-032"
+      ],
+      "id": "query-016",
+      "intent": "decision",
+      "relationship": "spanishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Naomi",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-031"
+        }
+      ],
+      "text": "¿Qué decidimos para ACCESS-29?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-034"
+      ],
+      "id": "query-017",
+      "intent": "name",
+      "relationship": "robustness",
+      "relevant": [
+        {
+          "expectedOwner": "Ravi",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-033"
+        }
+      ],
+      "text": "Who owns ticket SYNC-57 now?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-036"
+      ],
+      "id": "query-018",
+      "intent": "name",
+      "relationship": "robustness",
+      "relevant": [
+        {
+          "expectedOwner": "Raúl",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-035"
+        }
+      ],
+      "text": "¿Quién quedó responsable de VOICE-64?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-034"
+      ],
+      "id": "query-019",
+      "intent": "paraphrase",
+      "relationship": "robustness",
+      "relevant": [
+        {
+          "expectedOwner": "Ravi",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-033"
+        }
+      ],
+      "text": "Who owns ticket sync fifty seven now?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-038"
+      ],
+      "id": "query-020",
+      "intent": "negation",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Freya",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-037"
+        }
+      ],
+      "text": "Which action did we choose for UI-81, not the rejected proposal?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-040"
+      ],
+      "id": "query-021",
+      "intent": "negation",
+      "relationship": "spanishToSpanish",
+      "relevant": [
+        {
+          "expectedOwner": "Óscar",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-039"
+        }
+      ],
+      "text": "¿Qué aprobamos para DATA-32, sin incluir lo que descartamos?"
+    },
+    {
+      "answerPolicy": "answer",
+      "hardNegativeSegmentIDs": [
+        "segment-042"
+      ],
+      "id": "query-022",
+      "intent": "decision",
+      "relationship": "englishToEnglish",
+      "relevant": [
+        {
+          "expectedOwner": "Bea",
+          "expectedTimestampMilliseconds": 1000,
+          "grade": 3,
+          "segmentID": "segment-041"
+        }
+      ],
+      "text": "How do the decisions for MOBILE-11 and MOBILE-12 differ?"
+    },
+    {
+      "answerPolicy": "abstain",
+      "hardNegativeSegmentIDs": [
+        "segment-043"
+      ],
+      "id": "query-023",
+      "intent": "notFound",
+      "relationship": "englishToEnglish",
+      "relevant": [],
+      "text": "What did the team decide about the lunar laboratory budget?"
+    },
+    {
+      "answerPolicy": "abstain",
+      "hardNegativeSegmentIDs": [
+        "segment-044"
+      ],
+      "id": "query-024",
+      "intent": "notFound",
+      "relationship": "spanishToSpanish",
+      "relevant": [],
+      "text": "¿Quién aprobó el viaje del equipo a la Antártida?"
+    }
+  ],
+  "schemaVersion": 1,
+  "segments": [
+    {
+      "id": "segment-001",
+      "language": "en",
+      "meetingID": "meeting-001",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Lena",
+      "text": "Lena: I will send the accessibility review to the client after lunch.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-002",
+      "language": "en",
+      "meetingID": "meeting-002",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Owen",
+      "text": "Owen: I sent the security review to the client yesterday.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-003",
+      "language": "es",
+      "meetingID": "meeting-003",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Lucía",
+      "text": "Lucía: Me encargo de revisar los subtítulos antes de publicar el vídeo.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-004",
+      "language": "es",
+      "meetingID": "meeting-004",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Pedro",
+      "text": "Pedro: Revisaré la música, pero no los subtítulos del vídeo.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-005",
+      "language": "en",
+      "meetingID": "meeting-005",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Nora",
+      "text": "Nora: We agreed to move the customer workshop to Thursday afternoon.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-006",
+      "language": "en",
+      "meetingID": "meeting-006",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Nora",
+      "text": "Nora: The internal workshop will remain on Tuesday morning.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-007",
+      "language": "es",
+      "meetingID": "meeting-007",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Andrés",
+      "text": "Andrés: Entregaré el informe de consumo energético el lunes por la mañana.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-008",
+      "language": "es",
+      "meetingID": "meeting-008",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Andrés",
+      "text": "Andrés: El informe de almacenamiento estará listo el viernes.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-009",
+      "language": "en",
+      "meetingID": "meeting-009",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Eva",
+      "text": "Eva: We postponed the database migration because the restore drill failed.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-010",
+      "language": "en",
+      "meetingID": "meeting-010",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Eva",
+      "text": "Eva: We postponed the office move because the furniture arrived late.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-011",
+      "language": "es",
+      "meetingID": "meeting-011",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Diego",
+      "text": "Diego: Las inscripciones están bloqueadas porque falla el correo de confirmación.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-012",
+      "language": "es",
+      "meetingID": "meeting-012",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Diego",
+      "text": "Diego: Las inscripciones del taller anterior cerraron por falta de cupos.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-013",
+      "language": "es",
+      "meetingID": "meeting-013",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Sofía",
+      "text": "Sofía: Yo verificaré la restauración de la copia de seguridad esta tarde.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-014",
+      "language": "es",
+      "meetingID": "meeting-014",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Hugo",
+      "text": "Hugo: Voy a configurar una nueva copia de seguridad, no a restaurarla.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-015",
+      "language": "en",
+      "meetingID": "meeting-015",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Amir",
+      "text": "Amir: We chose individual interviews so participants can discuss sensitive experiences privately.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-016",
+      "language": "en",
+      "meetingID": "meeting-016",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Amir",
+      "text": "Amir: We chose a group workshop to compare opinions in public.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-017",
+      "language": "es",
+      "meetingID": "meeting-017",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Marina",
+      "text": "Marina: Revisaremos los comentarios de los clientes el miércoles después de comer.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-018",
+      "language": "es",
+      "meetingID": "meeting-018",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Marina",
+      "text": "Marina: Revisaremos el presupuesto el martes antes de comer.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-019",
+      "language": "en",
+      "meetingID": "meeting-019",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Theo",
+      "text": "Theo: I will follow up on participant consent before any interviews are recorded.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-020",
+      "language": "en",
+      "meetingID": "meeting-020",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Rosa",
+      "text": "Rosa: I will follow up on catering before the interviews start.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-021",
+      "language": "mixed",
+      "meetingID": "meeting-021",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Elena",
+      "text": "Elena: I own la revisión de permisos del micrófono para el próximo release.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-022",
+      "language": "mixed",
+      "meetingID": "meeting-022",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Sam",
+      "text": "Sam: I own the camera permission review for the next release.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-023",
+      "language": "en",
+      "meetingID": "meeting-023",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Aisha",
+      "text": "Aisha: Private one-to-one interviews let participants share concerns without the team present.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-024",
+      "language": "en",
+      "meetingID": "meeting-024",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Aisha",
+      "text": "Aisha: The public all-hands invites everyone to hear questions together.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-025",
+      "language": "en",
+      "meetingID": "meeting-025",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Inez",
+      "text": "Inez: I own incident NET-42 and will update the network recovery checklist.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-026",
+      "language": "en",
+      "meetingID": "meeting-026",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Max",
+      "text": "Max: I own incident NET-420 and will update the network recovery checklist.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-027",
+      "language": "es",
+      "meetingID": "meeting-027",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Pablo",
+      "text": "Pablo: Resolveremos AUDIO-73 el jueves, después de validar la entrada del micrófono.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-028",
+      "language": "es",
+      "meetingID": "meeting-028",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Pablo",
+      "text": "Pablo: Resolveremos AUDIO-730 el martes, después de validar la salida del altavoz.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-029",
+      "language": "es",
+      "meetingID": "meeting-029",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Julia",
+      "text": "Julia: Verificaré CACHE-18 después de revertir el despliegue.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-030",
+      "language": "es",
+      "meetingID": "meeting-030",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Luis",
+      "text": "Luis: Verificaré CACHE-180 antes de desplegar.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-031",
+      "language": "en",
+      "meetingID": "meeting-031",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Naomi",
+      "text": "Naomi: For ACCESS-29 we decided to keep keyboard navigation enabled offline.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-032",
+      "language": "en",
+      "meetingID": "meeting-032",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Naomi",
+      "text": "Naomi: For ACCESS-290 we decided to require an online account.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-033",
+      "language": "en",
+      "meetingID": "meeting-033",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Ravi",
+      "text": "Ravi: After today's handover, ticket sync fifty seven belongs to me.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-034",
+      "language": "en",
+      "meetingID": "meeting-034",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Maya",
+      "text": "Maya: Ticket SYNC-57 used to belong to me before today's handover.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-035",
+      "language": "es",
+      "meetingID": "meeting-035",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Raúl",
+      "text": "Raúl: Al cerrar la reunión quedé responsable del caso voice sesenta y cuatro.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-036",
+      "language": "es",
+      "meetingID": "meeting-036",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Nadia",
+      "text": "Nadia: El caso VOICE-64 todavía no tenía responsable cuando empezó la reunión.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-037",
+      "language": "en",
+      "meetingID": "meeting-037",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Freya",
+      "text": "Freya: For UI-81 we chose the compact toolbar. The full-screen proposal was rejected.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-038",
+      "language": "en",
+      "meetingID": "meeting-038",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Freya",
+      "text": "Freya: The first proposal for UI-81 was a full-screen overlay covering the editor.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-039",
+      "language": "es",
+      "meetingID": "meeting-039",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Óscar",
+      "text": "Óscar: Para DATA-32 aprobamos la copia local. Descartamos el servidor externo.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-040",
+      "language": "es",
+      "meetingID": "meeting-040",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Óscar",
+      "text": "Óscar: La propuesta inicial de DATA-32 enviaba la copia a un servidor externo.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-041",
+      "language": "en",
+      "meetingID": "meeting-041",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Bea",
+      "text": "Bea: MOBILE-11 keeps audio on the phone; MOBILE-12 hands processing to the Mac.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-042",
+      "language": "en",
+      "meetingID": "meeting-042",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Bea",
+      "text": "Bea: MOBILE-11 keeps audio on the phone. This note does not cover the other decision.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-043",
+      "language": "en",
+      "meetingID": "meeting-043",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Fin",
+      "text": "Fin: The team approved the office stationery budget for this quarter.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "segment-044",
+      "language": "es",
+      "meetingID": "meeting-044",
+      "meetingTitle": "Synthetic research and operations notes",
+      "owner": "Alba",
+      "text": "Alba: Aprobamos el viaje a la oficina de Madrid para el taller de producto.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    }
+  ]
+}

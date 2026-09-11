@@ -10,27 +10,15 @@ import FoundationModels
 /// fallback; this labels them for navigation. Suggestion-only and best-effort:
 /// nil when the model is unavailable or returns something unusable, and the
 /// caller falls back to the excerpt.
-@available(macOS 26.0, *)
+@available(macOS 26.0, iOS 26.0, *)
 public enum ChapterTitler {
-    static let instructions = """
-        You label a section of a meeting transcript with a SHORT topic heading, \
-        like a chapter title. Rules: 2 to 4 words, in the SAME language as the \
-        transcript, Title Case, no quotes and no trailing period. Name the TOPIC \
-        being discussed — never copy a verbatim line and never generic fillers \
-        like "Okay", "Introduction", "Discussion" or "Meeting".
-        \(PromptFactory.sourceMaterialGuard())
-        Examples:
-        - talk about which subscriber IDs the events need → Subscriber IDs
-        - deciding to decommission a legacy API endpoint → Endpoint Decommission
-        - repaso del presupuesto de transcripción del Q3 → Presupuesto Q3
-        """
-
     /// A topic title for the chapter's text, or nil when the model is
     /// unavailable/unsure or the passage is too thin to label.
     public static func title(forChapterText text: String) async -> String? {
         let excerpt = String(text.prefix(1200))
         guard excerpt.count >= 24 else { return nil }
-        let session = LanguageModelSession(instructions: instructions)
+        let session = LanguageModelSession(
+            instructions: PromptFactory.chapterTitleInstructions)
         let generated: GeneratedChapterTitle? = try? await IntelligenceScheduler.shared
             .run(.background) {
                 try await session.respond(
@@ -48,7 +36,7 @@ public enum ChapterTitler {
     }
 }
 
-@available(macOS 26.0, *)
+@available(macOS 26.0, iOS 26.0, *)
 @Generable(description: "A short topic heading for a meeting chapter")
 struct GeneratedChapterTitle {
     @Guide(description: "2 to 4 words, same language as the transcript, the topic — never a verbatim quote")

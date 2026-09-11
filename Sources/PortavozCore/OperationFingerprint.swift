@@ -12,7 +12,16 @@ public enum OperationFingerprint {
         let canonical = ([version] + components).map { component in
             "\(component.utf8.count):\(component)"
         }.joined(separator: "|")
-        let digest = SHA256.hash(data: Data(canonical.utf8))
-        return digest.map { String(format: "%02x", $0) }.joined()
+        return ContentDigest.sha256(Data(canonical.utf8))
+    }
+}
+
+/// Stable content digest shared by application workflows without importing
+/// platform cryptography frameworks into their orchestration layer.
+public enum ContentDigest {
+    public static func sha256(_ data: Data) -> String {
+        SHA256.hash(data: data)
+            .map { String(format: "%02x", $0) }
+            .joined()
     }
 }

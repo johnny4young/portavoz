@@ -121,6 +121,61 @@ final class SettingsResourcesTests: XCTestCase {
         }
     }
 
+    // MARK: - Migration must never run over a live capture
+
+    /// The cross-volume branch of `migrateAudio` copies and then deletes each
+    /// meeting directory, so moving while a meeting records unlinks the
+    /// directory its writers still hold open and truncates the recording.
+    func testMigrationIsRefusedWhileTheRecordingPipelineIsBusy() async {
+        let fake = RecordingStorageManagerFake(
+            location: storageLocation("initial", custom: false),
+            movedLocation: storageLocation("moved", custom: true),
+            movedCount: 3)
+
+        do {
+            _ = try await ManageRecordingStorage(
+                storage: fake,
+                activity: RecordingStorageActivityFake(isBusy: true)
+            ).execute(ManageRecordingStorageRequest(action: .move(to: nil)))
+            XCTFail("a move during capture must be refused")
+        } catch {
+            XCTAssertEqual(
+                error as? ManageRecordingStorageError,
+                .recordingInProgress)
+        }
+        let moves = await fake.moves
+        XCTAssertTrue(moves.isEmpty, "the refusal must precede any file work")
+    }
+
+    func testMigrationProceedsWhenNothingHoldsTheRecordingsRoot() async throws {
+        let moved = storageLocation("moved", custom: true)
+        let fake = RecordingStorageManagerFake(
+            location: storageLocation("initial", custom: false),
+            movedLocation: moved,
+            movedCount: 2)
+
+        let result = try await ManageRecordingStorage(
+            storage: fake,
+            activity: RecordingStorageActivityFake(isBusy: false)
+        ).execute(ManageRecordingStorageRequest(action: .move(to: nil)))
+
+        XCTAssertEqual(result, .moved(location: moved, recordingCount: 2))
+    }
+
+    /// Inspection touches no files, so Settings can still show where
+    /// recordings live during a meeting.
+    func testInspectionRemainsAvailableWhileBusy() async throws {
+        let initial = storageLocation("initial", custom: false)
+        let fake = RecordingStorageManagerFake(location: initial)
+
+        let result = try await ManageRecordingStorage(
+            storage: fake,
+            activity: RecordingStorageActivityFake(isBusy: true)
+        ).execute(ManageRecordingStorageRequest(action: .inspect))
+
+        XCTAssertEqual(result, .location(initial))
+    }
+
     private func storageLocation(
         _ name: String,
         custom: Bool
@@ -134,6 +189,12 @@ final class SettingsResourcesTests: XCTestCase {
 
 private enum SettingsResourceTestError: Error, Equatable {
     case failed
+}
+
+private struct RecordingStorageActivityFake: RecordingStorageActivity {
+    let isBusy: Bool
+
+    func recordingStorageIsBusy() async -> Bool { isBusy }
 }
 
 private struct AudioInputListingFake: AudioInputListing {

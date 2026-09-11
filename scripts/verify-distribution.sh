@@ -6,7 +6,34 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-DMG="${1:?usage: scripts/verify-distribution.sh <Portavoz.dmg>}"
+usage() {
+  cat <<'EOF'
+Usage: scripts/verify-distribution.sh <Portavoz.dmg> [--receipt <path>]
+
+Verifies the signed, notarized, stapled DMG and its independently extracted
+app. When --receipt is provided, writes a content-free distribution receipt
+only after every verification succeeds.
+EOF
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+if [[ $# -ne 1 && $# -ne 3 ]]; then
+  usage >&2
+  exit 64
+fi
+
+DMG="$1"
+RECEIPT=""
+if [[ $# -eq 3 ]]; then
+  if [[ "$2" != "--receipt" || -z "$3" ]]; then
+    usage >&2
+    exit 64
+  fi
+  RECEIPT="$3"
+fi
 if [[ ! -f "$DMG" ]]; then
   echo "distribution image not found: $DMG" >&2
   exit 66
@@ -43,5 +70,44 @@ codesign --verify --deep --strict --verbose=2 "$APP_COPY"
 xcrun stapler validate "$APP_COPY"
 spctl -a -vvv -t exec "$APP_COPY"
 scripts/verify-cloudkit-capabilities.sh "$APP_COPY"
+
+SOURCE_COMMIT="$({
+  /usr/libexec/PlistBuddy \
+    -c 'Print :PortavozSourceCommit' \
+    "$APP_COPY/Contents/Info.plist"
+} 2>/dev/null || true)"
+if [[ ! "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "The extracted app is missing its exact PortavozSourceCommit." >&2
+  exit 65
+fi
+
+if [[ -n "$RECEIPT" ]]; then
+  EXPECTED_COMMIT="${PORTAVOZ_RELEASE_COMMIT:-}"
+  if [[ ! "$EXPECTED_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "PORTAVOZ_RELEASE_COMMIT is required to write a distribution receipt." >&2
+    exit 64
+  fi
+  if [[ "$SOURCE_COMMIT" != "$EXPECTED_COMMIT" ]]; then
+    echo "The extracted app source commit does not match PORTAVOZ_RELEASE_COMMIT." >&2
+    exit 65
+  fi
+  VERSION="$(
+    /usr/libexec/PlistBuddy \
+      -c 'Print :CFBundleShortVersionString' \
+      "$APP_COPY/Contents/Info.plist"
+  )"
+  BUILD="$(
+    /usr/libexec/PlistBuddy \
+      -c 'Print :CFBundleVersion' \
+      "$APP_COPY/Contents/Info.plist"
+  )"
+  DIGEST="$(shasum -a 256 "$DMG" | awk '{print $1}')"
+  python3 scripts/release_reliability.py record-distribution \
+    --version "$VERSION" \
+    --build "$BUILD" \
+    --commit "$SOURCE_COMMIT" \
+    --sha256 "$DIGEST" \
+    --output "$RECEIPT"
+fi
 
 echo "OK → $DMG and extracted Portavoz.app are self-contained for Gatekeeper and CloudKit."

@@ -51,21 +51,28 @@ extension MeetingStore {
             let segments = try SegmentRecord
                 .filter(Column("meetingID") == key)
                 .filter(Column("deletedAt") == nil)
-                .order(Column("startTime"))
+                .order(Column("startTime"), Column("id"))
                 .fetchAll(db)
                 .map { try $0.segment }
             // Released export semantics are strict for the core aggregate but
-            // degrade optional summary/note/Companion decode failures to empty.
-            let summary = try? Self.mostRecentSummarySnapshot(
-                meetingID: id,
-                in: db)?.draft
-            let contextItems = (try? ContextItemRecord
-                .filter(Column("meetingID") == key)
-                .filter(Column("deletedAt") == nil)
-                .order(Column("timestamp"))
-                .fetchAll(db)
-                .map { try $0.item }) ?? []
-            let companionCards = (try? Self.companionCards(meetingID: id, in: db)) ?? []
+            // degrade optional summary/note/Companion **decode** failures to
+            // empty. A database failure is not a decode failure: swallowing it
+            // exported a meeting that had silently lost its summary, notes, or
+            // Companion cards, so only `StorageError` degrades here.
+            let summary = try Self.degradingUndecodableExport(nil) {
+                try Self.mostRecentSummarySnapshot(meetingID: id, in: db)?.draft
+            }
+            let contextItems = try Self.degradingUndecodableExport([]) {
+                try ContextItemRecord
+                    .filter(Column("meetingID") == key)
+                    .filter(Column("deletedAt") == nil)
+                    .order(Column("timestamp"))
+                    .fetchAll(db)
+                    .map { try $0.item }
+            }
+            let companionCards = try Self.degradingUndecodableExport([]) {
+                try Self.companionCards(meetingID: id, in: db)
+            }
 
             return MeetingExportSnapshot(
                 meeting: try meeting.meeting,
@@ -74,6 +81,20 @@ extension MeetingStore {
                 summary: summary,
                 contextItems: contextItems,
                 companionCards: companionCards)
+        }
+    }
+
+    /// Runs an optional export payload, degrading only a value this store
+    /// cannot decode. Every other failure — a busy or unreadable database —
+    /// reaches the caller instead of producing a quietly incomplete export.
+    private static func degradingUndecodableExport<T>(
+        _ fallback: T,
+        _ load: () throws -> T
+    ) throws -> T {
+        do {
+            return try load()
+        } catch is StorageError {
+            return fallback
         }
     }
 }

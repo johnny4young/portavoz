@@ -33,8 +33,11 @@ extension AppServices {
                 language: "es"))
         }
 
-        // The hero meeting: full cast, transcript, co-authored summary.
+        // The hero meeting: full cast, transcript, co-authored summary. Its
+        // identity is fixed so the screenshot journey can target it exactly
+        // while newer fictional meetings sit above it in the sidebar.
         let meeting = Meeting(
+            id: Self.showcaseHeroMeetingID,
             title: "2026-07-10 Sprint Demo · Zephyr",
             startedAt: base,
             endedAt: base.addingTimeInterval(42 * 60),
@@ -112,7 +115,7 @@ extension AppServices {
             providerID: "localhost",
             modelID: "showcase-local-summary",
             attemptedAt: base.addingTimeInterval(7 * 60)))
-        requestSpotlightReindex()
+        requestSearchReconciliation()
     }
     // swiftlint:enable function_body_length
 }
@@ -163,5 +166,40 @@ enum PublicShowcaseFixture {
         default:
             "The team confirms the next step and its owner."
         }
+    }
+}
+
+extension AppServices {
+    /// The fixed identity of the showcase hero meeting.
+    static let showcaseHeroMeetingID = MeetingID(rawValue: UUID(
+        uuidString: "5E0C0A5E-0000-4000-8000-000000000001")!)
+
+    /// Fictional agenda for the public Today screenshot: nothing here reads
+    /// the operator's calendar, and the times track the real clock.
+    static func showcaseAgenda() -> LibraryModel.Agenda {
+        let now = Date()
+        let calendar = Calendar.current
+        let startOfTomorrow = calendar.startOfDay(for: now.addingTimeInterval(24 * 3_600))
+        return LibraryModel.Agenda(
+            offerCalendar: false,
+            today: [
+                UpcomingEvent(
+                    id: "showcase-sync-qvtl",
+                    title: "Sync semanal QVTL",
+                    startDate: now.addingTimeInterval(45 * 60),
+                    attendees: ["Marta", "Ilarion"]),
+                UpcomingEvent(
+                    id: "showcase-1-1-marta",
+                    title: "1:1 con Marta",
+                    startDate: now.addingTimeInterval(4 * 3_600),
+                    attendees: ["Marta"])
+            ],
+            tomorrow: [
+                UpcomingEvent(
+                    id: "showcase-kickoff-kepler",
+                    title: "Kickoff Kepler · fase 2",
+                    startDate: startOfTomorrow.addingTimeInterval(10 * 3_600),
+                    attendees: ["Ilarion", "Nora"])
+            ])
     }
 }

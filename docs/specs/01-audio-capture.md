@@ -1,6 +1,6 @@
 # Spec 01 — Audio capture (AudioCaptureKit)
 
-Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (superseded AEC default), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (validated launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Apuntador evidence conservation), D104 (application-owned post-capture execution), D120 (system callback liveness and recovery), D123 (long-call finalization and content-free capture evidence), D125 (observational call-safe capture), D127 (audio-priority Stop and same-pass launch recovery).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (superseded AEC default), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (validated launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Apuntador evidence conservation), D104 (application-owned post-capture execution), D120 (system callback liveness and recovery), D123 (long-call finalization and content-free capture evidence), D125 (observational call-safe capture), D127 (audio-priority Stop and same-pass launch recovery), D162 (audio-first live-speech residency), D163 (generation-fenced route handoff), D168 (bounded persisted-level presentation), D173 (observational clipping evidence).
 
 ## Channel model (D5)
 
@@ -32,16 +32,32 @@ Two SEPARATE streams, never mixed before diarization:
   exception that terminates the process. Capture waits for an in-flight warm-up
   before installing its tap, and every warm-up, start, stop, and device-restart
   graph mutation is serialized on one queue.
-- **Device-change resilience**: observes `AVAudioEngineConfigurationChange` (connecting headphones SILENTLY STOPS the engine — real bug: a mic died at minute 24 of 30). On change: reinstalls the tap, retries every 0.5 s if there is no usable input, resamples the new device to the stream's original rate (`Resample.linear`, tested), and **fills the gap with silence** so the timeline remains aligned with the system channel (gap = samples expected by clock − delivered; 0.5 s threshold).
+- **Device-change resilience (D163)**: observes `AVAudioEngineConfigurationChange` (connecting headphones silently stops and uninitializes the engine). The callback only submits a delayed request and returns from AVFAudio's internal queue. A pure generation gate coalesces burst notifications and invalidates pending work at Stop. The admitted handoff retires the old graph and creates a fresh `AVAudioEngine`, where exactly one noncoercing tap (`format: nil`) follows the settled hardware. It derives the source rate from each delivered buffer, retries every 0.5 s while no usable input exists, resamples the new device to the stream's original rate and **fills the gap with silence** so the timeline remains aligned with the system channel (gap = samples expected by clock − delivered; 0.5 s threshold). This prevents both stale-format failures and the field-observed process-terminating duplicate-tap exception during a built-in-mic/AirPods transition.
+- **Rate conversion carries its phase (D503)**: each source owns one
+  `LinearResampler` under its delivery lock. It keeps the fractional read
+  position and the last sample between callbacks, so a device running at a
+  different rate than the stream cannot lose the per-buffer remainder and
+  drift away from the system channel. The unused single-shot `Resample.linear`
+  and its duplicate characterization tests were removed; capture uses only the
+  streaming converter.
+- **PCM discontinuities are not notification-dependent (D510)**: the converter
+  remembers the validated source/target rate pair of nonempty PCM and retires
+  its phase and carry when either changes. Both sources send same-rate buffers
+  through that path too: passthrough must end an earlier conversion interval.
+  Empty or rejected buffers do not replace an active pair. Explicit graph
+  resets still handle two different devices reporting the same rate.
+  `MicrophoneSource.makeInputTap` builds the exact native callback independently
+  of graph installation; synthetic native-buffer tests exercise profile flips,
+  passthrough intervals, one-frame chunks and delivery without starting hardware.
 - Device selection by UID/name (`--mic` in CLI) through `kAudioOutputUnitProperty_CurrentDevice`; on restart, if the pinned device has disappeared, it falls back to the default. The app preserves the preferred UID, marks it unavailable in Ajustes, and uses the default input only for that recording.
-- **Local mute**: `setMuted` replaces every mic-channel buffer with exactly the same number of zero samples. The call is untouched and the dual timeline remains aligned.
+- **Local mute**: `setMuted` replaces every mic-channel buffer with exactly the same number of zero samples. It also discards the resampler's previous voice sample, without resetting its phase or output count. Otherwise the first muted interpolation still contains prior voice. The call is untouched and the dual timeline remains aligned; unmute cannot recover input captured while muted.
 
 ## ProcessTapSource — `Sources/AudioCaptureKit/ProcessTapSource.swift`
 
 - `CATapDescription(stereoMixdownOfProcesses:)` receives `[AudioObjectID]` directly (not `[NSNumber]`); PID→object through `kAudioHardwarePropertyTranslatePIDToProcessObject`. No PIDs = global system tap.
 - Requires a private aggregate device with `kAudioAggregateDeviceTapListKey` + `kAudioSubTapDriftCompensationKey: true`; the format is read with `kAudioTapPropertyFormat` BEFORE the IOProc.
 - **A tap without TCC permission delivers SILENCE, not an error** (0.0 peak in `system.caf` = missing "Grabación de pantalla y audio del sistema" → enable and relaunch). `RecordingSession.Summary.peaks` detects it.
-- **OUTPUT-change resilience** (real field bug Jul 2026: switching from Mac speaker → headphones left the system channel MUTED): the tap/aggregate binds to the default output when created and does not follow it automatically. `ProcessTapSource` listens to `kAudioHardwarePropertyDefaultOutputDevice` (listener block on a serial rebuild queue) and **rebuilds the graph** (tap+aggregate+IOProc) on the new output while preserving the SAME stream/continuation; it resamples to the original rate and fills the switching gap with silence (mirrors mic input resilience). It cannot be unit-tested without real Core Audio → field verification pending.
+- **OUTPUT-change resilience (D163)** (real field bug Jul 2026: switching from Mac speaker → headphones left the system channel muted): the tap/aggregate binds to the default output when created and does not follow it automatically. `ProcessTapSource` listens to `kAudioHardwarePropertyDefaultOutputDevice` and **rebuilds the graph** (tap+aggregate+IOProc) on the new output while preserving the same stream/continuation; it resamples to the original rate and fills the switching gap with silence. Start, listener registration, every admitted rebuild/retry, callback recovery, and Stop now mutate Core Audio identifiers only on one rebuild queue. The same generation gate coalesces bursts and prevents a queued rebuild from racing or undoing Stop. Real Core Audio continuity still requires the explicit field gate in `GAPS.md`.
 - **Callback-death recovery (D120/D123)**: a second field failure stopped the IOProc callback permanently while microphone frames and the recording remained active. After the first system frame, `RecordingSession` treats persisted microphone frames as a heartbeat. Eight seconds without another system frame emits content-free stalled/retrying health, asks the optional `RecoverableAudioCaptureSource` capability to rebuild this graph in place, and retries no more than every eight seconds. A returning frame emits recovered health. Silent PCM is healthy liveness and never triggers a rebuild; no system frame at all is left to the existing permission/silence checks rather than guessed as a callback death. After two continuous outage minutes, the full view and HUD make Stop prominent because the call may have ended, but recovery continues and Portavoz never stops automatically. The pure policies and full session-to-source recovery are unit tested; a real Core Audio recovery remains a field gate.
 - **App-mode scope**: `captureMode` (`auto`/`app`/`system`) decides between global and direct taps. The direct tap includes the PID of each recognized meeting app and only audio processes whose bundle ID is that app or a dot-delimited child (browser/Zoom/Teams helpers); music and notifications from unrelated apps are excluded. Without a recognized app, an empty list explicitly degrades to the global tap, as explained in Ajustes.
 - The first buffer arrives **~2.4 s after** the mic starts (ScreenCaptureKit startup latency) — constant offset, not drift; the drift harness covers it with a ±5 s range.
@@ -50,19 +66,97 @@ Two SEPARATE streams, never mixed before diarization:
 
 Actor that coordinates sources and writers by channel (created lazily with the first chunk, at the source's actual rate). `onChunk` is the seam where live transcription attaches without making the writer wait. `onHealthEvent` carries content-free stalled/retry/recovered/stream-failed evidence to the application boundary. The liveness policy itself is behind a short lock rather than an actor hop for every chunk; only a rare signal re-enters the actor for source lookup and recovery. A failed channel ends its file and does NOT kill the session (per-channel errors in the Summary). `Summary`: published files, `PublishedCaptureFile` evidence, seconds written, peak/RMS amplitudes, errors, and `driftSeconds`.
 
+`Summary.framesWritten` retains the exact integer PCM count for every created
+writer; seconds are a projection, not the conservation authority. Stop waits
+for both consumers, snapshots the counts, explicitly closes each native writer,
+and only then sends staging URLs to publication. This makes the publication
+boundary independent of when completed Swift task contexts release captures.
+
+### Checked PCM geometry and failed-source ownership (D478)
+
+`CapturePCMGeometry` admits finite positive rates, exact native frame counts,
+finite resampling ratios, and overflow-checked clock-gap/delivered totals before
+numeric conversion or PCM allocation. The microphone and process tap share this
+policy; tap ASBD admission also requires a positive channel count. Invalid
+geometry finishes the affected stream with `unsupportedFormat`, not a numeric
+trap or silent passthrough. Normal interpolation, pinned stream rate, the
+half-second gap threshold, and exact padding timestamps/frame totals remain
+unchanged. The writer rejects an invalid rate before native format creation and
+checks native capacity plus accumulated frame count before each durable append.
+
+A consumer failure reports the existing per-channel health/error evidence, then
+retires only its UUID-owned source outside the realtime callback. Global Stop
+claims all remaining source owners before its first suspension, so a producer
+that fails during teardown is not stopped twice. The healthy peer continues;
+accepted staging audio remains available for the existing Stop/publication path.
+This owner fence does not authorize overlapping application recording lifecycles.
+
+Numeric representability is not a physical-memory budget. D482 adds separate
+physical allocation/backlog admission below. Hardware route recovery and
+physical Sequoia/Tahoe validation remain separate from arithmetic tests.
+
+### Native PCM views and interleaved channels (D479)
+
+`Downmix` owns one Float32 PCM admission path for both `AVAudioPCMBuffer` and
+raw Core Audio buffer lists. Before borrowing samples, it verifies linear PCM,
+native endianness, 32-bit samples, finite positive rate, exact frame stride,
+channel/buffer layout, whole frames, matching planar byte counts, and alignment
+for available nonempty data. Coherent empty buffers remain empty.
+The platform still owns the native pointers' validity and lifetime; declared
+metadata checks cannot validate an arbitrary forged allocation.
+
+Both views then use the declared interleaving. Planar averages retain the
+released channel-sum/multiply order; interleaved averages advance by the complete
+frame stride rather than confusing adjacent channel values with later frames.
+A short later plane is an unsupported-format error, never a truncated channel.
+Core Audio explicitly allows disabled input to retain nonzero byte counts with
+null data: that state is typed internal unavailability. Capture skips the whole
+incomplete chunk before clock anchoring, retaining stream/liveness/route recovery
+rather than inventing a silent channel or permanently stopping disabled input.
+Other malformed layouts use the existing per-channel failure/owner-retirement
+path. External-file silence inspection
+keeps the channel when downmix admission fails, matching its unreadable-file
+policy rather than declaring uninspected audio silent.
+
+This closes native-view safety and channel-mixing defects. D482 separately
+bounds capture backlog and long-gap allocation; full resource qualification
+remains distinct from those structural guarantees.
+
+### Persisted level evidence (D168)
+
+After `CaptureFileWriter.append` accepts a chunk, `RecordingSession` performs
+one PCM scan that both accumulates final peak/RMS media evidence and derives a
+compact per-chunk `PersistedAudioLevel`. The optional `onLevel` callback
+receives channel, clamped peak, RMS, timestamp, and exact accepted chunk
+duration only after that durable append. The application can therefore drive
+meters, silence warnings, and sustained-ceiling evidence without rescanning or
+retaining the full sample array. Its clipping policy accumulates captured time,
+not callback count, so a route with different buffer sizes cannot change the
+warning threshold. This evidence is observational: Portavoz neither attenuates
+the source nor changes the call graph or raw recording. `onChunk` remains the
+independent live-consumer seam; neither callback can delay the writer with an
+actor hop or model operation.
+
 Startup is transactional at both levels. `ApplicationKit.StartRecording`
 samples title/language/vocabulary/capture preferences once, asks a private app
-runtime to warm the microphone, select structural channels, and report whether
-a verified live Parakeet instance is already resident. Model readiness is
-evidence, never a capture gate. Before any source starts, the use case atomically
-inserts a `recording` meeting shell and one pending `AudioAsset` reservation per
-selected channel. The runtime then starts `RecordingSession` immediately. If
-Parakeet is resident it also owns one direct stream per channel; otherwise it
-starts one deduplicated verified model-preparation task after audio is active
-and marks the session for complete transcript recovery at Stop. A failed live
-lane sets the same recovery marker without stopping audio or its peer. Source-
-start failure stops partially started sources, closes any live feeds, and stops
-mic warm-up. The use case inspects both reserved
+runtime to resolve microphone authorization before any `AVAudioEngine` access,
+warm the microphone, select structural channels, and report whether a verified
+live Parakeet instance is already resident. A user-initiated Start may issue
+the one-time macOS prompt; denied or restricted access fails through the typed
+preparation boundary without constructing an input graph. Model readiness is
+evidence, never a capture gate. Before any source starts, the use case
+atomically inserts a `recording` meeting shell and one pending `AudioAsset`
+reservation per selected channel. The runtime then starts `RecordingSession`
+immediately. If Parakeet is resident, preparation claims one active-use lease
+and the recording-scoped attacher owns it across one direct stream per channel;
+otherwise the attacher joins one deduplicated verified model load after audio
+is active and takes the resulting lease only for that recording. Stop never
+waits for a cold process load: a late completion ends its lease without
+attaching, while the session remains marked for complete transcript recovery.
+A failed live lane sets the same recovery marker without stopping audio or its
+peer. Source-start failure stops partially started sources, closes any live
+feeds, stops mic warm-up, and ends any claimed runtime lease. The use case
+inspects both reserved
 staging paths and their published counterparts: any file retains the shell as
 `needsAttention`; only an untouched empty shell can pass D37's guarded discard.
 Every failed attempt schedules idle engine release (D49).
@@ -141,12 +235,18 @@ cards without their successful run are omitted rather than persisted with
 invented provenance. Every accepted rung remains atomic, discoverable, and
 recoverable.
 
-`CaptureFileWriter`: 16-bit mono PCM through AVAudioFile from Float32, **CAF** container — its data chunk remains sized "to EOF" while being written, so a crash leaves the file readable. **Empirically verified (Jul 2026)**: `kill -9` at 6 s of recording → WAV read 0.00 s / 0 bytes; CAF preserves 5.23 s. Readers continue through `MeetingAudioLayout.channelFile`, which prefers user-compressed `.m4a`, then current `.caf`, then legacy `.wav`; staging files remain invisible. `verify_drift.py` converts CAF with afconvert.
+`CaptureFileWriter`: 16-bit mono PCM through AVAudioFile from Float32, **CAF** container — its data chunk remains sized "to EOF" while being written, so a crash leaves the file readable. One grow-only PCM buffer is reused for every callback and explicitly closed at Stop; variable-size chunks can grow the buffer but meeting duration cannot. Publication's 1 MiB SHA-256 loop drains every `FileHandle` block in its own autorelease pool, so finalizing a multi-hour file cannot retain one `Data` per block. **Empirically verified (Jul 2026)**: `kill -9` at 6 s of recording → WAV read 0.00 s / 0 bytes; CAF preserves 5.23 s. Readers continue through `MeetingAudioLayout.channelFile`, which prefers user-compressed `.m4a`, then current `.caf`, then legacy `.wav`; staging files remain invisible. `verify_drift.py` converts CAF with afconvert.
 
 ## Verified synchronization (M1)
 
 - **Measured drift: 4 ms over 22 real minutes** (+4 ppm, linear across 5 points; 30 min projection ≈ 7 ms; criterion < 50 ms). Harness: `scripts/verify_drift.py` (RMS envelope correlation, ±5 s range with edge warning — with ±2 s, the actual 2.4 s offset fell outside the range and reported false drift).
 - Method requirement: both channels must share real audio (meeting over speakers, or a real call where the mic captures the user).
+- **Accelerated long-capture proof (D191):** `make long-capture-baseline`
+  drives 172,800,000 frames per channel (three logical hours at 16 kHz) through
+  `RecordingSession`, with at most one unacknowledged chunk per channel. The
+  Release report requires exact writer and published-file frame counts, healthy
+  media, zero frame drift, and a 16 MiB duration-invariant heap fence. It is not
+  real-time route, thermal, disk-pressure, or physical-footprint evidence.
 
 ## Recordings folder
 
@@ -238,3 +338,39 @@ Other planned work: room channel; −23 LUFS normalization in the capture
 pipeline (today only peak-normalize before Whisper, spec 02).
 Playback/waveform/clips, skip silence, AAC transcode, and import are already
 implemented in M11 (spec 06 + AudioPlaybackKit).
+
+### Bounded pull delivery and independent failure evidence (D482)
+
+`CaptureDeliveryBuffer` retains at most 1,048,576 mono Float frames (4 MiB) and
+256 fixed ring slots per producer. Descriptor capacity is independent so tiny
+callbacks cannot create unbounded metadata. Both downmix input and resampling
+output counts are admitted before allocation. This is a starting engineering
+budget: it allows roughly 21.8 seconds at 48 kHz with 4096-frame callbacks, not
+an SLA for slow disks. Native buffers, callback scratch arrays and one in-flight
+pull are outside the retained-queue count and must be included in process-level
+resource measurements.
+
+Packets carry padding counts/timestamps instead of silence arrays. One
+`AsyncThrowingStream(unfolding:)` pulls chunks of at most 4096 frames; it has no
+second push queue. Stop closes admission and drains accepted packets, including
+padding. Overflow rejects the triggering callback, publishes a one-shot
+content-free health notification and dispatches graph teardown off IO before
+waiting for drain. Accepted/rejected-at-admission counts do not estimate future
+uncaptured time. Cancellation wakes a parked consumer; concurrent consumer
+misuse fails rather than replacing its continuation. The producer is single-use,
+as are its existing clock and delivered-frame timeline.
+
+`CaptureReportingSource` is optional: third-party/test sources remain valid,
+with unknown producer counts. The session combines source evidence, successful
+writer counts and publication failures in `CaptureReport`; a writer failure
+makes its write count unknown because native partial writes cannot be proven.
+The existing summary successful-append counter is retained for diagnostics.
+A structurally inconsistent report degrades to explicit failure, not legacy
+nil evidence. Long gaps are memory bounded but still require proportional CAF
+writes and Stop time. Real disk pressure, hardware routes, and multi-hour
+resource evidence remain open.
+
+The unfolding closure owns a consumer lifetime token. Swift may discard that
+closure on cancellation before its first invocation, so token release also
+retires producer admission. RecordingSession checks cancellation after its loop
+rather than treating a cancellation-induced nil as successful completion.

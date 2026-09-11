@@ -14,7 +14,8 @@ public enum MeetingExporter {
         speakers: [Speaker],
         segments: [TranscriptSegment],
         summary: SummaryDraft? = nil,
-        summaryVersion: Int? = nil
+        summaryVersion: Int? = nil,
+        correctionProvenance: TranscriptCorrectionExportProvenance? = nil
     ) -> String {
         var parts: [String] = ["# \(meeting.title)"]
 
@@ -56,7 +57,36 @@ public enum MeetingExporter {
             parts.append(block)
         }
 
+        if let correctionProvenance {
+            parts.append(correctionProvenanceMarkdown(correctionProvenance))
+        }
+
         return parts.joined(separator: "\n\n") + "\n"
+    }
+
+    private static func correctionProvenanceMarkdown(
+        _ provenance: TranscriptCorrectionExportProvenance
+    ) -> String {
+        var lines = [
+            "## Transcript correction provenance",
+            "",
+            "> Corrected text is a local overlay. The accepted transcript and original audio remain unchanged.",
+            "",
+            "- Accepted transcript revision: \(provenance.baseTranscriptRevision)",
+            "- Correction revision: `\(provenance.correctionRevision.rawValue)`",
+            "- Applied corrections: \(provenance.activeCorrectionIDs.count)"
+        ]
+        let mappings = provenance.sourceSegmentIDsByExportedSegmentID.sorted {
+            $0.key.uuidString < $1.key.uuidString
+        }
+        if !mappings.isEmpty {
+            lines.append("- Corrected row sources:")
+            for (rowID, sourceIDs) in mappings {
+                let sources = sourceIDs.map(\.uuidString).joined(separator: ", ")
+                lines.append("  - `\(rowID.uuidString)` ← `\(sources)`")
+            }
+        }
+        return lines.joined(separator: "\n")
     }
 
     /// The summary's own `##` headings become `###` so they nest under

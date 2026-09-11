@@ -6,6 +6,71 @@ import PortavozCore
 /// recipe sections, the never-invent rule — are pinned by unit tests
 /// instead of hoped for.
 public enum PromptFactory {
+    /// Provider-neutral instructions for the Foundation Models chapter adapter.
+    /// Keeping prompt material outside the availability-gated adapter lets the
+    /// oldest supported runtime verify the shared trust boundary without loading
+    /// Foundation Models metadata.
+    static let chapterTitleInstructions = """
+        You label a section of a meeting transcript with a SHORT topic heading, \
+        like a chapter title. Rules: 2 to 4 words, in the SAME language as the \
+        transcript, Title Case, no quotes and no trailing period. Name the TOPIC \
+        being discussed — never copy a verbatim line and never generic fillers \
+        like "Okay", "Introduction", "Discussion" or "Meeting".
+        \(sourceMaterialGuard())
+        Examples:
+        - talk about which subscriber IDs the events need → Subscriber IDs
+        - deciding to decommission a legacy API endpoint → Endpoint Decommission
+        - repaso del presupuesto de transcripción del Q3 → Presupuesto Q3
+        """
+
+    /// Provider-neutral instructions for the Foundation Models brief adapter.
+    static let briefInstructions = """
+        You brief the user before an upcoming meeting using ONLY the numbered \
+        context passages from their past meetings. Produce two or three short \
+        bullets, each a concrete fact worth remembering (decisions, open \
+        threads, commitments), in the same language as the passages. Each \
+        bullet MUST cite the number of the passage it comes from. Never \
+        comment on the meeting's duration, format or logistics, and never \
+        invent facts that are not in a passage.
+        \(sourceMaterialGuard())
+        """
+
+    /// Provider-neutral instructions for the Foundation Models recipe adapter.
+    static let meetingTypeInstructions = """
+        You classify a meeting transcript excerpt into exactly one type.
+        Types: standup (each person reports progress, blockers and plans), \
+        one-on-one (two people, personal check-in, feedback, career or work agreements), \
+        planning (scoping goals, risks and next steps for future work), \
+        interview (one side evaluates the other's background and skills), \
+        discovery (learning a user's or customer's problems, needs and context), \
+        postmortem (reconstructing an incident: timeline, causes, follow-ups), \
+        retro (a team reviews how a period went: went well, to improve, agreements), \
+        general (anything else: reviews, debugging sessions, broad discussions).
+        Examples:
+        - "yesterday I finished the migration, today I'll take the API, no blockers" → standup
+        - "how are you feeling about the workload? — honestly a bit stretched" → one-on-one
+        - "for Q3 the goal is the iOS launch; main risk is the review times" → planning
+        - "tell me about your experience with distributed systems" → interview
+        - "walk me through how your team handles invoices today" → discovery
+        - "the outage started at 9:14 when the deploy hit the primary region" → postmortem
+        - "this sprint the reviews went great but the handoffs kept slipping" → retro
+        - "the bug is in the retry loop, look at line 40" → general
+        \(sourceMaterialGuard())
+        When unsure, answer general.
+        """
+
+    /// Provider-neutral instructions for the Foundation Models title adapter.
+    static let titleInstructions = """
+        You title meetings from their summary. Return a short, specific title \
+        in the SAME language as the summary: at most six words, no dates, no \
+        quotes, no trailing period. Name the concrete topic, never generic \
+        words like "meeting", "sync" alone, or "discussion".
+        \(sourceMaterialGuard())
+        Examples:
+        - summary about a device-ID bug in the QVTL pipeline → QVTL device-ID bug
+        - resumen sobre el presupuesto de transcripción del Q3 → Presupuesto de transcripción Q3
+        """
+
     /// System/instructions text for the single-pass or reduce phase.
     public static func summaryInstructions(
         recipe: Recipe,
@@ -39,6 +104,10 @@ public enum PromptFactory {
         lines.append(
             "A decision is not an action item: never copy a decision bullet into the "
                 + "action-items field unless the transcript states a separate commitment.")
+        lines.append(
+            "An action item must be a concrete future commitment or assigned next step, "
+                + "not a quote, current-state description, explanation, or decision restatement. "
+                + "When no explicit commitment exists, return no action item.")
         lines.append(
             "When the material has [E#] tags, cite only exact tags that directly support "
                 + "the overview, a decision-bearing bullet, or an action item; "
@@ -153,7 +222,7 @@ public enum PromptFactory {
         return lines.joined(separator: "\n")
     }
 
-    /// Instructions for the on-demand next-question suggestion (APUN-004):
+    /// Instructions for the on-demand next-question suggestion:
     /// the user asks "what should I ask now?" and wants questions the
     /// EXCERPT earns — follow-ups on what was just said, or a bridge to a
     /// still-open objective — never generic interview filler.

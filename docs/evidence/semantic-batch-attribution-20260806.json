@@ -1,0 +1,58 @@
+{
+ "authority": "diagnostic-only",
+ "configuration": {
+  "embeddingDimension": 512,
+  "measurementRuns": 20,
+  "resultLimit": 12,
+  "totalSegments": 100000
+ },
+ "findings": [
+  "Robust and reproduced in both builds: three variants cost about the same as one traversal (p50 ratio 0.98 and 1.11), where the previous per-variant loop cost three traversals by construction.",
+  "Not resolvable on this host: whether one variant regressed. The two builds disagree with themselves - the initial batched build measured three variants faster than one, which is impossible - so machine noise exceeds the effect.",
+  "Every run here, including the pre-change build at 129.14 ms, is far above the 100 ms budget and the 92.85 ms committed baseline. The budget verdict needs a controlled host."
+ ],
+ "note": "Measured on a developer workstation with Portavoz Dev and other applications running. PERF-001 requires a controlled host as the release authority, so these numbers are attribution evidence for D290 and are NOT a budget verdict. The committed 26 Jul baseline for the same 100k/512-dimension configuration is 92.85 ms p95; no run here approaches it, including the pre-change build.",
+ "runs": [
+  {
+   "build": "pre-change",
+   "cpuP95Milliseconds": 130.74,
+   "dispersionRatio": 1.039,
+   "queryVariants": 1,
+   "wallP50Milliseconds": 124.32,
+   "wallP95Milliseconds": 129.14
+  },
+  {
+   "build": "batched-initial",
+   "cpuP95Milliseconds": 173.99,
+   "dispersionRatio": 1.226,
+   "queryVariants": 1,
+   "wallP50Milliseconds": 144.89,
+   "wallP95Milliseconds": 177.66
+  },
+  {
+   "build": "batched-initial",
+   "cpuP95Milliseconds": 155.64,
+   "dispersionRatio": 1.091,
+   "queryVariants": 3,
+   "wallP50Milliseconds": 141.62,
+   "wallP95Milliseconds": 154.48
+  },
+  {
+   "build": "batched-hot-loop-fixed",
+   "cpuP95Milliseconds": 143.81,
+   "dispersionRatio": 1.126,
+   "queryVariants": 1,
+   "wallP50Milliseconds": 137.02,
+   "wallP95Milliseconds": 154.25
+  },
+  {
+   "build": "batched-hot-loop-fixed",
+   "cpuP95Milliseconds": 161.56,
+   "dispersionRatio": 1.193,
+   "queryVariants": 3,
+   "wallP50Milliseconds": 152.17,
+   "wallP95Milliseconds": 181.53
+  }
+ ],
+ "schemaVersion": 1
+}

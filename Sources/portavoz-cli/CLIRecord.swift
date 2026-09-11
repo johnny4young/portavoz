@@ -23,42 +23,54 @@ enum RecordCommand {
         var modelsDir: String?
         var voiceProcessing = false
 
-        var index = 0
-        while index < arguments.count {
-            switch arguments[index] {
-            case "--seconds":
+        do {
+            var index = 0
+            while index < arguments.count {
+                switch arguments[index] {
+                case "--seconds":
+                    seconds = try CLIOptionValue.integer(
+                        arguments,
+                        index: &index,
+                        option: "--seconds",
+                        range: CLIOptionBounds.durationSeconds)
+                case "--mic":
+                    micIdentifier = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--mic")
+                case "--pid":
+                    let pid = try CLIOptionValue.integer(
+                        arguments,
+                        index: &index,
+                        option: "--pid",
+                        range: CLIOptionBounds.processID)
+                    pids.append(pid_t(pid))
+                case "--system":
+                    captureSystem = true
+                case "--out":
+                    outputPath = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--out")
+                case "--transcribe":
+                    transcribe = true
+                case "--language":
+                    language = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--language")
+                case "--models-dir":
+                    modelsDir = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--models-dir")
+                case "--aec":
+                    voiceProcessing = true
+                case "--no-aec":
+                    // Backward-compatible spelling from the former AEC-by-default
+                    // CLI. Raw, call-safe capture is now already the default.
+                    voiceProcessing = false
+                default:
+                    print("Unknown option: \(arguments[index])")
+                    return
+                }
                 index += 1
-                if index < arguments.count { seconds = Int(arguments[index]) ?? seconds }
-            case "--mic":
-                index += 1
-                if index < arguments.count { micIdentifier = arguments[index] }
-            case "--pid":
-                index += 1
-                if index < arguments.count, let pid = Int32(arguments[index]) { pids.append(pid) }
-            case "--system":
-                captureSystem = true
-            case "--out":
-                index += 1
-                if index < arguments.count { outputPath = arguments[index] }
-            case "--transcribe":
-                transcribe = true
-            case "--language":
-                index += 1
-                if index < arguments.count { language = arguments[index] }
-            case "--models-dir":
-                index += 1
-                if index < arguments.count { modelsDir = arguments[index] }
-            case "--aec":
-                voiceProcessing = true
-            case "--no-aec":
-                // Backward-compatible spelling from the former AEC-by-default
-                // CLI. Raw, call-safe capture is now already the default.
-                voiceProcessing = false
-            default:
-                print("Unknown option: \(arguments[index])")
-                return
             }
-            index += 1
+        } catch {
+            print("error: \(error.localizedDescription)")
+            return
         }
 
         var sources: [any AudioCaptureSource] = [
@@ -108,6 +120,8 @@ enum RecordCommand {
                             let start = CLISupport.timestamp(segment.startTime)
                             print("  [\(channel.rawValue) \(start)] \(mark) \(segment.text)")
                         }
+                    } catch is CancellationError {
+                        // Explicit command cancellation is normal teardown.
                     } catch {
                         print("  ⚠️ live transcription (\(channel.rawValue)) failed: \(error)")
                     }
@@ -127,12 +141,13 @@ enum RecordCommand {
             let channels = sources.map { $0.channel.rawValue }.joined(separator: " + ")
             let suffix = transcribe ? " (live transcript below)" : ""
             print("Recording \(channels) for \(seconds)s → \(outputDirectory.path)\(suffix)")
-            try await Task.sleep(nanoseconds: UInt64(seconds) * 1_000_000_000)
+            try await Task.sleep(for: .seconds(Double(seconds)))
             let summary = await session.stop()
 
-            for continuation in channelFeeds.values { continuation.finish() }
-            var totalSegments = 0
-            for job in liveJobs { totalSegments += await job.value }
+            let totalSegments = await finishLiveJobs(
+                channelFeeds,
+                jobs: liveJobs,
+                cancel: false)
 
             for channel in AudioChannel.allCases {
                 guard let url = summary.files[channel] else { continue }
@@ -165,7 +180,26 @@ enum RecordCommand {
                 )
             }
         } catch {
+            _ = await session.stop()
+            _ = await finishLiveJobs(
+                channelFeeds,
+                jobs: liveJobs,
+                cancel: true)
             print("error: \(error)")
         }
+    }
+
+    private static func finishLiveJobs(
+        _ feeds: [AudioChannel: AsyncStream<AudioChunk>.Continuation],
+        jobs: [Task<Int, Never>],
+        cancel: Bool
+    ) async -> Int {
+        for continuation in feeds.values { continuation.finish() }
+        if cancel {
+            for job in jobs { job.cancel() }
+        }
+        var totalSegments = 0
+        for job in jobs { totalSegments += await job.value }
+        return totalSegments
     }
 }

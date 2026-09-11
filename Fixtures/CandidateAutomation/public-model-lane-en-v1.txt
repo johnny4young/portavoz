@@ -1,0 +1,5 @@
+Welcome to the public Portavoz model qualification. This synthetic recording
+contains no user meeting or private note. The team confirms a small release
+plan, reviews one measurable risk, and records a follow-up for tomorrow. The
+assistant must process the spoken audio locally, return bounded evidence, and
+never expose transcript content in the qualification receipt.

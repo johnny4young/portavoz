@@ -5,6 +5,58 @@ import XCTest
 @testable import StorageKit
 
 final class LibraryObservationTests: XCTestCase {
+    /// The semantic backfill writes `embedding`/`embeddingFingerprint` on
+    /// `segment` in batches. Tracking the whole table made every batch commit
+    /// re-fetch the entire library and recompute every voice mix — the more of
+    /// the library was being indexed, the more often it happened.
+    func testIndexingEmbeddingsDoesNotRefireTheLibraryOrSearch() async throws {
+        let store = try MeetingStore.inMemory()
+
+        try await store.database.read { database in
+            let library = try MeetingStore.librarySegmentRegion
+                .databaseRegion(database)
+            let search = try MeetingStore.searchSegmentRegion
+                .databaseRegion(database)
+            let correctedSearch = try MeetingStore.searchCorrectedTextRegion
+                .databaseRegion(database)
+            let structuralSearch = try MeetingStore.searchStructuralTextRegion
+                .databaseRegion(database)
+
+            for region in [library, search] {
+                XCTAssertFalse(
+                    region.isModified(byEventsOfKind: .update(
+                        tableName: "segment",
+                        columnNames: ["embedding", "embeddingFingerprint"])),
+                    "indexing is not a library change")
+            }
+
+            // Everything either projection reads still re-fires it.
+            XCTAssertTrue(library.isModified(byEventsOfKind: .update(
+                tableName: "segment", columnNames: ["speakerID"])))
+            XCTAssertTrue(library.isModified(byEventsOfKind: .update(
+                tableName: "segment", columnNames: ["deletedAt"])))
+            XCTAssertTrue(search.isModified(byEventsOfKind: .update(
+                tableName: "segment", columnNames: ["text"])))
+            XCTAssertTrue(search.isModified(byEventsOfKind: .update(
+                tableName: "segment", columnNames: ["deletedAt"])))
+            // A new or removed row is a change to every column.
+            XCTAssertTrue(library.isModified(
+                byEventsOfKind: .insert(tableName: "segment")))
+            XCTAssertTrue(search.isModified(
+                byEventsOfKind: .delete(tableName: "segment")))
+            XCTAssertFalse(correctedSearch.isModified(byEventsOfKind: .update(
+                tableName: "segmentCorrectedText",
+                columnNames: ["embedding", "embeddingFingerprint"])))
+            XCTAssertTrue(correctedSearch.isModified(byEventsOfKind: .update(
+                tableName: "segmentCorrectedText", columnNames: ["text"])))
+            XCTAssertFalse(structuralSearch.isModified(byEventsOfKind: .update(
+                tableName: "transcriptStructuralSearchRow",
+                columnNames: ["embedding", "embeddingFingerprint"])))
+            XCTAssertTrue(structuralSearch.isModified(byEventsOfKind: .update(
+                tableName: "transcriptStructuralSearchRow", columnNames: ["text"])))
+        }
+    }
+
     func testScopedObservationsTrackOnlyTheirQueryInputsThroughLifecycle() async throws {
         let store = try MeetingStore.inMemory()
         var meetingRows = store.observeLibraryMeetings().makeAsyncIterator()
@@ -130,6 +182,51 @@ final class LibraryObservationTests: XCTestCase {
         try await store.save([segment])
         let removed = try await nextSearch(&iterator) { $0.isEmpty }
         XCTAssertTrue(removed.isEmpty)
+    }
+
+    func testSearchObservationRefreshesWhenStructuralProjectionChanges() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Planning", startedAt: Date())
+        let speaker = Speaker(meetingID: meeting.id, label: "S1")
+        let segments = [
+            TranscriptSegment(
+                meetingID: meeting.id,
+                speakerID: speaker.id,
+                channel: .system,
+                text: "alpha accepted",
+                startTime: 0,
+                endTime: 2,
+                isFinal: true),
+            TranscriptSegment(
+                meetingID: meeting.id,
+                speakerID: speaker.id,
+                channel: .system,
+                text: "beta accepted",
+                startTime: 2,
+                endTime: 4,
+                isFinal: true)
+        ]
+        try await store.save(meeting)
+        try await store.save([speaker])
+        try await store.save(segments)
+        var iterator = store.observeLibrarySearch("merged").makeAsyncIterator()
+        let initial = try await nextSearch(&iterator)
+        XCTAssertTrue(initial.isEmpty)
+
+        let merge = TranscriptCorrectionEvent(
+            meetingID: meeting.id,
+            baseTranscriptRevision: meeting.transcriptRevision,
+            targetSegmentIDs: segments.map(\.id),
+            kind: .merge(
+                replacementText: "merged structural result",
+                language: "en"),
+            sourceDeviceID: UUID(),
+            createdAt: Date())
+        _ = try await store.appendTranscriptCorrection(merge)
+
+        let updated = try await nextSearch(&iterator) { $0.count == 1 }
+        XCTAssertEqual(updated.map(\.resultID), [merge.id])
+        XCTAssertEqual(updated.first?.sourceSegmentIDs, segments.map(\.id))
     }
 
     func testSearchObservationMatchesEitherBilingualQueryAsACompleteVariant() async throws {

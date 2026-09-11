@@ -22,6 +22,14 @@ extension AppServices {
             mlxModelDirectory: { [modelLifecycle] in
                 await modelLifecycle.installation(for: ModelCatalog.mlxQwen35)?.directory
             },
+            mlxProvider: { [weak self] directory, priority in
+                guard let self else {
+                    return AppUnavailableSummaryProvider()
+                }
+                return self.makeMLXSummaryProvider(
+                    modelDirectory: directory,
+                    priority: priority)
+            },
             foundationModelsCapability: foundationModelsCapability,
             gateway: dataEgressGateway)
     }
@@ -51,6 +59,109 @@ extension AppServices {
             apiKey: try? await secrets.value(for: .byokAPIKey),
             gateway: dataEgressGateway)
     }
+
+    /// Refines the already-published deterministic rolling checkpoint with
+    /// the explicitly selected local engine. Unavailable assets return nil;
+    /// provider failures and cancellation remain errors so the controller can
+    /// fence them without confusing them with a successful empty refinement.
+    func refineLiveSummary(
+        checkpoint: DeterministicLiveSummaryCheckpoint,
+        meetingID: MeetingID,
+        speakers: [Speaker],
+        targetLanguage: String,
+        glossary: [String],
+        contextItems: [ContextItem]
+    ) async throws -> String? {
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-use-temp-store"),
+            !arguments.contains("-allow-live-summary-provider") {
+            return nil
+        }
+        guard await admitLiveLanguageInference() else { return nil }
+
+        let request = SummaryRequest(
+            meetingID: meetingID,
+            segments: checkpoint.segments,
+            speakers: speakers,
+            recipe: .general,
+            targetLanguage: targetLanguage,
+            glossary: glossary,
+            contextItems: contextItems)
+        let descriptor = ResourceWorkloadDescriptor(
+            workloadClass: .liveInteractive,
+            kind: .languageInference,
+            operation: .execute)
+
+        switch summaryEngine {
+        case .appleOnDevice:
+            guard foundationModelsCapability.isAvailable else { return nil }
+            guard #available(macOS 26.0, *) else { return nil }
+            return try await withLiveSummaryRefinementTimeout(.seconds(12)) {
+                try await self.workloadTelemetry.measure(descriptor) {
+                    try await FoundationModelSummaryProvider().summarizeNotes(
+                        checkpoint.material,
+                        request: request,
+                        priority: .background).markdown
+                }
+            }
+        case .ollama:
+            guard let ollamaModel else { return nil }
+            let provider = OllamaService.summaryProvider(
+                model: ollamaModel,
+                gateway: dataEgressGateway,
+                consentSource: .summaryEngineSettings)
+            return try await withLiveSummaryRefinementTimeout(.seconds(12)) {
+                try await self.workloadTelemetry.measure(descriptor) {
+                    try await provider.summarize(request).markdown
+                }
+            }
+        case .mlx:
+            guard let directory = await modelLifecycle.installation(
+                for: ModelCatalog.mlxQwen35)?.directory
+            else { return nil }
+            let provider = makeMLXSummaryProvider(
+                modelDirectory: directory,
+                priority: .background,
+                workloadClass: .liveInteractive)
+            return try await withLiveSummaryRefinementTimeout(.seconds(12)) {
+                try await self.workloadTelemetry.measure(descriptor) {
+                    try await provider.summarize(request).markdown
+                }
+            }
+        }
+    }
+}
+
+struct LiveSummaryRefinementTimeoutError: Error {}
+
+private enum LiveSummaryRefinementTimedResult<Value: Sendable>: Sendable {
+    case value(Value)
+    case timedOut
+}
+
+func withLiveSummaryRefinementTimeout<Value: Sendable>(
+    _ duration: Duration,
+    operation: @escaping @Sendable () async throws -> Value
+) async throws -> Value {
+    try await withThrowingTaskGroup(
+        of: LiveSummaryRefinementTimedResult<Value>.self
+    ) { group in
+        group.addTask { .value(try await operation()) }
+        group.addTask {
+            try await Task.sleep(for: duration)
+            return .timedOut
+        }
+        defer { group.cancelAll() }
+        guard let first = try await group.next() else {
+            throw CancellationError()
+        }
+        switch first {
+        case .value(let value):
+            return value
+        case .timedOut:
+            throw LiveSummaryRefinementTimeoutError()
+        }
+    }
 }
 
 /// Production filesystem adapter for permanent meeting-audio removal.
@@ -73,6 +184,10 @@ struct AppSummaryRegenerationProviderResolver: SummaryRegenerationProviderResolv
     let defaultEngine: SummaryEngine
     let ollamaModel: String?
     let mlxModelDirectory: @Sendable () async -> URL?
+    let mlxProvider: @MainActor @Sendable (
+        _ directory: URL,
+        _ priority: IntelligenceScheduler.Priority
+    ) -> any SummaryProvider
     let foundationModelsCapability: FoundationModelsCapability
     let gateway: any DataEgressGateway
 
@@ -99,7 +214,9 @@ struct AppSummaryRegenerationProviderResolver: SummaryRegenerationProviderResolv
             }
             return .available(
                 AppDirectSummaryRegenerationProvider(
-                    provider: MLXSummaryProvider(modelDirectory: mlxModelDirectory),
+                    provider: await mlxProvider(
+                        mlxModelDirectory,
+                        .interactive),
                     providerID: MLXSummaryProvider.providerID,
                     modelID: ModelCatalog.mlxQwen35.id,
                     modelRevision: ModelCatalog.mlxQwen35.revision))
@@ -120,10 +237,56 @@ struct AppSummaryRegenerationProviderResolver: SummaryRegenerationProviderResolv
         }
         return .available(AppFoundationSummaryRegenerationProvider())
     }
+
+    /// Samples the same explicit engine choice for manual Ask without
+    /// borrowing summary output contracts or silently falling through to a
+    /// different provider when the selected engine is unavailable.
+    func resolveAsk(
+        mlxProvider: @MainActor @Sendable (
+            _ directory: URL,
+            _ priority: IntelligenceScheduler.Priority
+        ) -> any RAGTextAnswering
+    ) async -> AppAskAnswerProviderResolution {
+        switch defaultEngine {
+        case .ollama:
+            guard let ollamaModel else {
+                return .unavailable(.ollamaModelNotSelected)
+            }
+            return .available(OllamaService.askAnswerer(
+                model: ollamaModel,
+                gateway: gateway))
+        case .mlx:
+            guard let directory = await mlxModelDirectory() else {
+                return .unavailable(.mlxModelNotDownloaded)
+            }
+            return .available(await mlxProvider(directory, .interactive))
+        case .appleOnDevice:
+            break
+        }
+
+        switch foundationModelsCapability {
+        case .requiresMacOS26:
+            return .unavailable(.requiresMacOS26)
+        case .unavailable(let reason):
+            return .unavailable(.appleOnDevice(reason: reason))
+        case .available:
+            break
+        }
+        guard #available(macOS 26.0, *) else {
+            return .unavailable(.requiresMacOS26)
+        }
+        return .available(RAGAnswerer())
+    }
 }
 
 private enum AppSummaryRegenerationProviderError: Error {
     case translationUnsupported
+}
+
+struct AppUnavailableSummaryProvider: SummaryProvider {
+    func summarize(_ request: SummaryRequest) async throws -> SummaryDraft {
+        throw CancellationError()
+    }
 }
 
 private struct AppDirectSummaryRegenerationProvider: SummaryRegenerationProvider {

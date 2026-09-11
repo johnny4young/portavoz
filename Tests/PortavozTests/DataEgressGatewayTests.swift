@@ -2,6 +2,7 @@ import Foundation
 @testable import IntegrationsKit
 @testable import IntelligenceKit
 import PortavozCore
+import StorageKit
 import XCTest
 
 final class DataEgressGatewayTests: XCTestCase {
@@ -469,6 +470,110 @@ final class DataEgressGatewayTests: XCTestCase {
         }
     }
 
+    func testWebGatewayAcceptsOnlyExactContentFreeGETMetadata() throws {
+        let url = URL(string: "http://127.0.0.1:8765/source")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        let valid = webMetadata(destination: url)
+
+        XCTAssertNoThrow(try URLSessionDataEgressGateway.validate(
+            request,
+            metadata: valid))
+
+        var withBody = request
+        withBody.httpBody = Data("question or meeting material".utf8)
+        let invalidMetadata = [
+            DataEgressRequest(
+                operation: .webSourceRetrieval,
+                destination: DataEgressDestination(url: url),
+                dataClassification: .meetingAnswerMaterial,
+                meetingID: nil,
+                consentSource: .explicitWebAsk,
+                providerDisclosure: valid.providerDisclosure),
+            DataEgressRequest(
+                operation: .webSourceRetrieval,
+                destination: DataEgressDestination(url: url),
+                dataClassification: .publicWebSourceRequest,
+                meetingID: meetingID,
+                consentSource: .explicitWebAsk,
+                providerDisclosure: valid.providerDisclosure),
+            DataEgressRequest(
+                operation: .webSourceRetrieval,
+                destination: DataEgressDestination(url: url),
+                dataClassification: .publicWebSourceRequest,
+                meetingID: nil,
+                consentSource: .summaryEngineSettings,
+                providerDisclosure: valid.providerDisclosure),
+            DataEgressRequest(
+                operation: .webSourceRetrieval,
+                destination: DataEgressDestination(url: url),
+                dataClassification: .publicWebSourceRequest,
+                meetingID: nil,
+                consentSource: .explicitWebAsk,
+                providerDisclosure: DataEgressProviderDisclosure(
+                    providerID: "127.0.0.1",
+                    modelID: "must-stay-nil")),
+        ]
+        for metadata in invalidMetadata {
+            XCTAssertThrowsError(try URLSessionDataEgressGateway.validate(
+                request,
+                metadata: metadata))
+        }
+        XCTAssertThrowsError(try URLSessionDataEgressGateway.validate(
+            withBody,
+            metadata: valid))
+        var post = request
+        post.httpMethod = "POST"
+        XCTAssertThrowsError(try URLSessionDataEgressGateway.validate(
+            post,
+            metadata: valid))
+
+        let insecureRemote = URL(string: "http://example.com/source")!
+        var remoteRequest = URLRequest(url: insecureRemote)
+        remoteRequest.httpMethod = "GET"
+        XCTAssertThrowsError(try URLSessionDataEgressGateway.validate(
+            remoteRequest,
+            metadata: webMetadata(destination: insecureRemote)))
+    }
+
+    func testWebGatewayStreamsWithinCapAndRejectsFirstExcessByte() async throws {
+        let state = ReceiptTransportState.shared
+        let recorder = ReceiptRecorderProbe(state: state)
+        let session = receiptSession()
+        defer { session.invalidateAndCancel(); state.reset() }
+        let gateway = URLSessionDataEgressGateway(
+            session: session,
+            receiptRecorder: recorder)
+        let url = URL(string: "http://127.0.0.1:8765/source")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        let maximum = 512 * 1_024
+
+        state.reset(
+            responseData: Data(repeating: 0x61, count: maximum),
+            responseHeaders: [
+                "Content-Type": "text/plain",
+                "X-Fixture": "bounded",
+            ])
+        let response = try await gateway.perform(
+            request,
+            metadata: webMetadata(destination: url))
+        XCTAssertEqual(response.data.count, maximum)
+        XCTAssertEqual(response.headers["content-type"], "text/plain")
+        XCTAssertEqual(response.headers["x-fixture"], "bounded")
+
+        state.reset(responseData: Data(repeating: 0x62, count: maximum + 1))
+        await XCTAssertThrowsErrorAsync(try await gateway.perform(
+            request,
+            metadata: webMetadata(destination: url))) { error in
+                XCTAssertEqual(
+                    error as? DataEgressGatewayError,
+                    .responseTooLarge(
+                        actualBytes: maximum + 1,
+                        maximumBytes: maximum))
+            }
+    }
+
     func testGatewayPersistsContentFreeReceiptBeforeTransport() async throws {
         let state = ReceiptTransportState.shared
         state.reset()
@@ -497,6 +602,47 @@ final class DataEgressGatewayTests: XCTestCase {
         XCTAssertEqual(event.destinationScope, .remote)
         XCTAssertEqual(event.attemptedAt, attemptedAt)
         XCTAssertFalse(event.destinationHost.contains("/v1"))
+    }
+
+    func testGatewayPersistsGlobalAskReceiptBeforeLoopbackTransport() async throws {
+        let state = ReceiptTransportState.shared
+        state.reset()
+        let store = try MeetingStore.inMemory()
+        let recorder = GlobalAskReceiptRecorderProbe(
+            state: state,
+            store: store)
+        let session = receiptSession()
+        defer { session.invalidateAndCancel(); state.reset() }
+        let gateway = URLSessionDataEgressGateway(
+            session: session,
+            receiptRecorder: recorder)
+        let endpoint = OllamaService.openAIEndpoint
+        let request = try OpenAICompatibleChatCodec.urlRequest(
+            endpoint: endpoint,
+            model: "qwen-local",
+            apiKey: "ollama",
+            system: "grounded",
+            user: "bounded meeting evidence",
+            temperature: 0,
+            maxTokens: 500)
+        let metadata = DataEgressRequest(
+            operation: .askAnswerGeneration,
+            destination: DataEgressDestination(
+                url: try XCTUnwrap(request.url)),
+            dataClassification: .meetingAnswerMaterial,
+            meetingID: nil,
+            consentSource: .summaryEngineSettings,
+            providerDisclosure: DataEgressProviderDisclosure(
+                providerID: "localhost",
+                modelID: "qwen-local"))
+
+        _ = try await gateway.perform(request, metadata: metadata)
+
+        XCTAssertEqual(state.snapshot().timeline, ["receipt", "transport"])
+        let events = try await store.globalDataEgressEvents()
+        XCTAssertEqual(events.count, 1)
+        XCTAssertNil(events.first?.meetingID)
+        XCTAssertEqual(events.first?.operation, .askAnswerGeneration)
     }
 
     func testReceiptFailurePreventsTransport() async throws {
@@ -540,6 +686,52 @@ final class DataEgressGatewayTests: XCTestCase {
         XCTAssertEqual(state.snapshot().timeline, ["receipt", "transport"])
         let events = await recorder.snapshot()
         XCTAssertEqual(events.count, 1)
+    }
+
+    func testStableAttemptIDStopsGistRetryBeforeSecondTransport() async throws {
+        let state = ReceiptTransportState.shared
+        state.reset(error: URLError(.cannotConnectToHost))
+        let store = try MeetingStore.inMemory()
+        try await store.save(Meeting(
+            id: meetingID,
+            title: "Gist duplicate fence",
+            startedAt: Date(timeIntervalSince1970: 1_800_000_000)))
+        let session = receiptSession()
+        defer { session.invalidateAndCancel(); state.reset() }
+        let eventID = DataEgressEventID(rawValue: UUID(
+            uuidString: "E6000000-0000-0000-0000-000000000098")!)
+        let gateway = URLSessionDataEgressGateway(
+            session: session,
+            receiptRecorder: store,
+            makeEventID: { eventID })
+        let request = try GistPublisher.request(
+            markdown: "# Exact approved draft",
+            filename: "approved.md",
+            description: "Approved",
+            isPublic: false,
+            token: "test-token")
+        let metadata = publishingMetadata(
+            operation: .publishGitHubGist,
+            destination: try XCTUnwrap(request.url),
+            meetingID: meetingID,
+            classification: .meetingExportDocument,
+            consentSource: .explicitGistPublish,
+            providerID: "api.github.com")
+
+        await XCTAssertThrowsErrorAsync(
+            try await gateway.perform(request, metadata: metadata)) { error in
+                XCTAssertEqual((error as? URLError)?.code, .cannotConnectToHost)
+            }
+        await XCTAssertThrowsErrorAsync(
+            try await gateway.perform(request, metadata: metadata)) { error in
+                XCTAssertNil(
+                    error as? URLError,
+                    "the duplicate receipt must fail before URLSession")
+            }
+
+        XCTAssertEqual(state.snapshot().requestCount, 1)
+        let events = try await store.dataEgressEvents(for: meetingID)
+        XCTAssertEqual(events.map(\.id), [eventID])
     }
 
     func testInvalidMetadataCreatesNeitherReceiptNorTransport() async throws {
@@ -699,6 +891,17 @@ final class DataEgressGatewayTests: XCTestCase {
                 providerID: "api.example.com",
                 modelID: "m"))
     }
+
+    private func webMetadata(destination: URL) -> DataEgressRequest {
+        DataEgressRequest(
+            operation: .webSourceRetrieval,
+            destination: DataEgressDestination(url: destination),
+            dataClassification: .publicWebSourceRequest,
+            meetingID: nil,
+            consentSource: .explicitWebAsk,
+            providerDisclosure: DataEgressProviderDisclosure(
+                providerID: destination.host ?? ""))
+    }
 }
 
 private final class ReceiptTransportState: @unchecked Sendable {
@@ -708,12 +911,22 @@ private final class ReceiptTransportState: @unchecked Sendable {
     private var timeline: [String] = []
     private var requestCount = 0
     private var error: Error?
+    private var responseData = Data(#"{"ok":true}"#.utf8)
+    private var responseHeaders = ["Content-Type": "application/json"]
 
-    func reset(error: Error? = nil) {
+    func reset(
+        error: Error? = nil,
+        responseData: Data = Data(#"{"ok":true}"#.utf8),
+        responseHeaders: [String: String] = [
+            "Content-Type": "application/json",
+        ]
+    ) {
         lock.lock()
         timeline = []
         requestCount = 0
         self.error = error
+        self.responseData = responseData
+        self.responseHeaders = responseHeaders
         lock.unlock()
     }
 
@@ -737,6 +950,13 @@ private final class ReceiptTransportState: @unchecked Sendable {
         let snapshot = (timeline, requestCount)
         lock.unlock()
         return snapshot
+    }
+
+    func responseFixture() -> (data: Data, headers: [String: String]) {
+        lock.lock()
+        let fixture = (responseData, responseHeaders)
+        lock.unlock()
+        return fixture
     }
 }
 
@@ -769,13 +989,14 @@ private final class ReceiptURLProtocol: URLProtocol, @unchecked Sendable {
             client?.urlProtocol(self, didFailWithError: error)
             return
         }
+        let fixture = ReceiptTransportState.shared.responseFixture()
         let response = HTTPURLResponse(
             url: request.url!,
             statusCode: 200,
             httpVersion: "HTTP/1.1",
-            headerFields: ["Content-Type": "application/json"])!
+            headerFields: fixture.headers)!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: Data(#"{"ok":true}"#.utf8))
+        client?.urlProtocol(self, didLoad: fixture.data)
         client?.urlProtocolDidFinishLoading(self)
     }
 
@@ -801,6 +1022,21 @@ private actor ReceiptRecorderProbe: DataEgressEventRecorder {
     }
 
     func snapshot() -> [DataEgressEvent] { events }
+}
+
+private actor GlobalAskReceiptRecorderProbe: DataEgressEventRecorder {
+    let state: ReceiptTransportState
+    let store: MeetingStore
+
+    init(state: ReceiptTransportState, store: MeetingStore) {
+        self.state = state
+        self.store = store
+    }
+
+    func recordDataEgressEvent(_ event: DataEgressEvent) async throws {
+        try await store.recordDataEgressEvent(event)
+        state.appendReceipt()
+    }
 }
 
 struct TestDataEgressGateway: DataEgressGateway {
@@ -844,4 +1080,18 @@ actor CapturingDataEgressGateway: DataEgressGateway {
     }
 
     func snapshot() -> Capture? { capture }
+}
+
+private func XCTAssertThrowsErrorAsync<T>(
+    _ expression: @autoclosure () async throws -> T,
+    _ errorHandler: (any Error) -> Void,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) async {
+    do {
+        _ = try await expression()
+        XCTFail("Expected expression to throw", file: file, line: line)
+    } catch {
+        errorHandler(error)
+    }
 }

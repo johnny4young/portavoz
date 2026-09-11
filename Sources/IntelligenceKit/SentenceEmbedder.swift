@@ -1,5 +1,6 @@
 import Foundation
 import NaturalLanguage
+import PortavozCore
 
 /// On-device sentence embeddings via Apple's contextual embedding model
 /// (NaturalLanguage). One Latin-script model covers Spanish AND English
@@ -36,6 +37,19 @@ public actor SentenceEmbedder {
 
     /// Vector dimensionality of the underlying model.
     public var dimension: Int { embedding.dimension }
+
+    /// Durable compatibility identity for vectors created by this exact model
+    /// and Portavoz pooling/encoding pipeline. Reading this does not load or
+    /// download model assets.
+    public func semanticEmbeddingProfile() -> SemanticEmbeddingProfile {
+        SemanticEmbeddingProfile(
+            modelIdentifier: embedding.modelIdentifier,
+            modelRevision: Int(clamping: embedding.revision),
+            vectorDimension: embedding.dimension,
+            pipelineIdentifier: "token-mean-pooling-l2",
+            pipelineRevision: 1,
+            vectorSchemaVersion: 1)
+    }
 
     /// Whether Apple's one-time Latin embedding assets are already present.
     /// Instant search checks this before semantic work so typing never opens a

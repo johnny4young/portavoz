@@ -1,0 +1,17 @@
+{
+  "authority": "private-commitment-link-calibration-only",
+  "maximumArtifactBytes": 4194304,
+  "maximumReceiptBytes": 2097152,
+  "matrixSchemaVersion": 1,
+  "productDecision": "not-evaluated",
+  "qualityFloorMeaning": "selected-candidate-observed-metrics-v1",
+  "qualityFloorStatus": "accepted-for-confirmation-evaluation",
+  "receiptSchemaVersion": 1,
+  "requiredMatrixEvaluationStatus": "review-required",
+  "requiredMatrixSelectionStatus": "not-selected",
+  "requiredReviewAcknowledgement": "selected-candidate-metrics-reviewed-no-serving-approval-v1",
+  "reviewPolicyVersion": "explicit-human-matrix-digest-source-and-candidate-v1",
+  "schemaVersion": 1,
+  "selectionStatus": "owner-selected-for-evaluation",
+  "servingStatus": "not-approved"
+}

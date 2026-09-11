@@ -15,8 +15,11 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
         }
 
         await attacher.recordingDidStart(
-            initialTranscriber: nil,
-            loader: { EchoLiveTranscriptionEngine() })
+            loader: {
+                LiveTranscriptionRuntime(
+                    engine: EchoLiveTranscriptionEngine(),
+                    completion: { probe.recordRuntimeFinish() })
+            })
 
         try await waitUntil {
             probe.events == [.preparing, .available] && probe.captionTimes.count == 2
@@ -26,14 +29,19 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
         XCTAssertTrue(requiresRecovery, "audio before hot attachment still needs durable recovery")
         XCTAssertEqual(probe.events, [.preparing, .available])
         XCTAssertEqual(probe.captionTimes, [3, 4])
+        XCTAssertEqual(probe.runtimeFinishCount, 1)
     }
 
     func testResidentModelStartsAvailableWithoutRecovery() async throws {
         let probe = LiveTranscriptionProbe()
-        let attacher = makeAttacher(probe: probe, initialAvailable: true, capacity: 2)
+        let recorder = ResourceWorkloadEventRecorder()
+        let attacher = makeAttacher(
+            probe: probe,
+            initialAvailable: true,
+            capacity: 2,
+            telemetry: ResourceWorkloadTelemetry(receiver: recorder.receive))
 
         await attacher.recordingDidStart(
-            initialTranscriber: EchoLiveTranscriptionEngine(),
             loader: { throw LiveTranscriptionTestFailure.unexpectedLoad })
         attacher.feeds.yield(chunk(at: 1))
 
@@ -42,6 +50,56 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
 
         XCTAssertFalse(requiresRecovery)
         XCTAssertEqual(probe.events, [.available])
+        XCTAssertEqual(probe.runtimeFinishCount, 1)
+        guard case .started(let started) = recorder.events.first,
+              case .finished(let finished, let outcome) = recorder.events.last
+        else {
+            return XCTFail("Expected one matched live-transcription interval")
+        }
+        XCTAssertEqual(recorder.events.count, 2)
+        XCTAssertEqual(started, finished)
+        XCTAssertEqual(
+            started.descriptor,
+            ResourceWorkloadDescriptor(
+                workloadClass: .liveInteractive,
+                kind: .liveTranscription,
+                operation: .execute))
+        XCTAssertEqual(outcome, .completed)
+    }
+
+    /// The engine's final flush is the likeliest place for a live-lane failure,
+    /// and it happens after `finish()` clears `active`. If that failure does
+    /// not raise recovery, Stop sees partial captions with no flag, enqueues
+    /// only diarization over them, and commits the meeting as complete with
+    /// the tail of the conversation missing — while the audio still has it.
+    func testFailureWhileDrainingAtStopStillRequiresRecovery() async throws {
+        let probe = LiveTranscriptionProbe()
+        let attacher = LiveTranscriptionAttacher(
+            channels: [.microphone],
+            hints: TranscriptionHints(meetingID: MeetingID()),
+            callbacks: StartRecordingLiveCallbacks(
+                caption: { probe.record(caption: $0) },
+                liveTranscription: { probe.record(event: $0) }),
+            initialRuntime: LiveTranscriptionRuntime(
+                engine: FinalFlushFailingEngine(),
+                completion: { probe.recordRuntimeFinish() }),
+            capacityPerChannel: 2,
+            telemetry: .disabled)
+
+        await attacher.recordingDidStart(
+            loader: { throw LiveTranscriptionTestFailure.unexpectedLoad })
+        attacher.feeds.yield(chunk(at: 1))
+        try await waitUntil { probe.captionTimes == [1] }
+
+        // The failure surfaces only as the stream closes inside finish().
+        let requiresRecovery = await attacher.finish()
+
+        XCTAssertTrue(
+            requiresRecovery,
+            "a live-lane failure at Stop must force durable re-transcription")
+        XCTAssertFalse(
+            probe.events.contains(.failed),
+            "the caption UI is already gone, so it must not be notified")
     }
 
     func testDeferredLoadFailureIsVisibleAndFallsBackToDurableTranscript() async throws {
@@ -49,18 +107,39 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
         let attacher = makeAttacher(probe: probe, initialAvailable: false, capacity: 2)
 
         await attacher.recordingDidStart(
-            initialTranscriber: nil,
             loader: { throw LiveTranscriptionTestFailure.loadFailed })
 
         try await waitUntil { probe.events == [.preparing, .failed] }
         let requiresRecovery = await attacher.finish()
         XCTAssertTrue(requiresRecovery)
+        XCTAssertEqual(probe.runtimeFinishCount, 0)
+    }
+
+    func testRuntimeCompletingAfterStopIsRelinquishedWithoutAttaching() async throws {
+        let probe = LiveTranscriptionProbe()
+        let loader = DeferredLiveTranscriptionLoader()
+        let attacher = makeAttacher(
+            probe: probe,
+            initialAvailable: false,
+            capacity: 2)
+
+        await attacher.recordingDidStart(loader: {
+            try await loader.runtime(probe: probe)
+        })
+        let requiresRecovery = await attacher.finish()
+        loader.complete()
+
+        try await waitUntil { probe.runtimeFinishCount == 1 }
+        XCTAssertTrue(requiresRecovery)
+        XCTAssertEqual(probe.events, [.preparing])
+        XCTAssertTrue(probe.captionTimes.isEmpty)
     }
 
     private func makeAttacher(
         probe: LiveTranscriptionProbe,
         initialAvailable: Bool,
-        capacity: Int
+        capacity: Int,
+        telemetry: ResourceWorkloadTelemetry = .disabled
     ) -> LiveTranscriptionAttacher {
         LiveTranscriptionAttacher(
             channels: [.microphone],
@@ -68,8 +147,13 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
             callbacks: StartRecordingLiveCallbacks(
                 caption: { probe.record(caption: $0) },
                 liveTranscription: { probe.record(event: $0) }),
-            initialTranscriberAvailable: initialAvailable,
-            capacityPerChannel: capacity)
+            initialRuntime: initialAvailable
+                ? LiveTranscriptionRuntime(
+                    engine: EchoLiveTranscriptionEngine(),
+                    completion: { probe.recordRuntimeFinish() })
+                : nil,
+            capacityPerChannel: capacity,
+            telemetry: telemetry)
     }
 
     private func chunk(at index: Int) -> AudioChunk {
@@ -97,7 +181,7 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
 
 @MainActor
 final class LiveTranslationStateTests: XCTestCase {
-    func testChangingTargetCannotReuseTranslationsFromThePreviousLanguage() {
+    func testChangingTargetCannotReuseTranslationsFromThePreviousLanguage() async {
         let controller = RecordingController()
         let segmentID = UUID()
         let unsupportedID = UUID()
@@ -117,7 +201,7 @@ final class LiveTranslationStateTests: XCTestCase {
         XCTAssertEqual(controller.translationState, .waitingForTranscript)
     }
 
-    func testChangingSourceLaneRequiresFreshDownloadConsent() {
+    func testChangingSourceLaneRequiresFreshDownloadConsent() async {
         let controller = RecordingController()
         controller.translationTarget = "en"
         controller.beginLiveTranslationPair(LiveTranslationPair(source: "es", target: "en"))
@@ -129,7 +213,7 @@ final class LiveTranslationStateTests: XCTestCase {
         XCTAssertFalse(controller.translationDownloadApproved)
     }
 
-    func testDisablingTranslationClearsStateAndRenderedRows() {
+    func testDisablingTranslationClearsStateAndRenderedRows() async {
         let controller = RecordingController()
         controller.translationTarget = "es"
         controller.translations[UUID()] = "Texto"
@@ -141,7 +225,7 @@ final class LiveTranslationStateTests: XCTestCase {
         XCTAssertEqual(controller.translationState, .off)
     }
 
-    func testCanceledPreviousTargetCannotPublishLateTranslationsOrState() {
+    func testCanceledPreviousTargetCannotPublishLateTranslationsOrState() async {
         let controller = RecordingController()
         let segmentID = UUID()
         controller.translationTarget = "es"
@@ -151,6 +235,7 @@ final class LiveTranslationStateTests: XCTestCase {
 
         XCTAssertFalse(controller.storeLiveTranslations(
             [segmentID: "Respuesta antigua"],
+            sourceTexts: [segmentID: "Old source"],
             for: stalePair))
         controller.updateLiveTranslationState(.active, for: stalePair)
 
@@ -158,7 +243,7 @@ final class LiveTranslationStateTests: XCTestCase {
         XCTAssertEqual(controller.translationState, .waitingForTranscript)
     }
 
-    func testCanceledPreviousSourceCannotPublishIntoNewPairWithSameTarget() {
+    func testCanceledPreviousSourceCannotPublishIntoNewPairWithSameTarget() async {
         let controller = RecordingController()
         let segmentID = UUID()
         controller.translationTarget = "en"
@@ -168,6 +253,7 @@ final class LiveTranslationStateTests: XCTestCase {
 
         XCTAssertFalse(controller.storeLiveTranslations(
             [segmentID: "Stale Spanish result"],
+            sourceTexts: [segmentID: "Fuente anterior"],
             for: stalePair))
         controller.updateLiveTranslationState(.active, for: stalePair)
 
@@ -176,7 +262,7 @@ final class LiveTranslationStateTests: XCTestCase {
         XCTAssertEqual(controller.translationState, .waitingForTranscript)
     }
 
-    func testVisibleTranslationStatesDescribeAutomaticFailureRetry() {
+    func testVisibleTranslationStatesDescribeAutomaticFailureRetry() async {
         XCTAssertEqual(
             LiveTranslationState.waitingForTranscript.statusMessageKey,
             "Live translation will start as soon as captions are available.")
@@ -192,7 +278,7 @@ final class LiveTranslationStateTests: XCTestCase {
         XCTAssertNil(LiveTranslationState.active.statusMessageKey)
     }
 
-    func testWaitingTranslationStatusYieldsToTerminalCaptionFailure() {
+    func testWaitingTranslationStatusYieldsToTerminalCaptionFailure() async {
         XCTAssertTrue(LiveTranslationState.waitingForTranscript.shouldPresentStatus(
             liveTranscriptState: .preparing))
         XCTAssertFalse(LiveTranslationState.waitingForTranscript.shouldPresentStatus(
@@ -207,7 +293,7 @@ final class LiveTranslationStateTests: XCTestCase {
             liveTranscriptState: .available))
     }
 
-    func testUnsupportedLaneRemainsVisibleAfterAnotherLaneSucceeds() {
+    func testUnsupportedLaneRemainsVisibleAfterAnotherLaneSucceeds() async {
         let controller = RecordingController()
         controller.translationTarget = "en"
         let unsupportedPair = LiveTranslationPair(source: "zu", target: "en")
@@ -226,6 +312,142 @@ final class LiveTranslationStateTests: XCTestCase {
         controller.updateLiveTranslationState(.active, for: supportedPair)
 
         XCTAssertEqual(controller.translationState, .partiallyUnsupported)
+    }
+}
+
+final class LiveTranslationReliabilityPolicyTests: XCTestCase {
+    func testAssetReadinessNeverReusesConsentAcrossStates() {
+        XCTAssertEqual(
+            LiveTranslationAssetPolicy.action(
+                readiness: .installed,
+                downloadApproved: false,
+                preparedInThisLane: false),
+            .translate)
+        XCTAssertEqual(
+            LiveTranslationAssetPolicy.action(
+                readiness: .downloadable,
+                downloadApproved: false,
+                preparedInThisLane: false),
+            .requestDownloadConsent)
+        XCTAssertEqual(
+            LiveTranslationAssetPolicy.action(
+                readiness: .downloadable,
+                downloadApproved: true,
+                preparedInThisLane: false),
+            .prepareAssets)
+        XCTAssertEqual(
+            LiveTranslationAssetPolicy.action(
+                readiness: .downloadable,
+                downloadApproved: false,
+                preparedInThisLane: true),
+            .translate)
+        XCTAssertEqual(
+            LiveTranslationAssetPolicy.action(
+                readiness: .unsupported,
+                downloadApproved: true,
+                preparedInThisLane: true),
+            .passthroughUnsupported)
+    }
+
+    func testOfflineRetryBackoffIsDeterministicAndBounded() {
+        XCTAssertEqual(
+            (1...7).map(LiveTranslationRetryPolicy.delayMilliseconds),
+            [1_000, 2_000, 4_000, 8_000, 8_000, 8_000, 8_000])
+        XCTAssertEqual(
+            LiveTranslationRetryPolicy.delayMilliseconds(afterFailure: 100),
+            LiveTranslationRetryPolicy.maximumDelayMilliseconds)
+    }
+
+    func testExactSourceRevisionOwnsEachPublishedTranslation() {
+        let id = UUID()
+        let meetingID = MeetingID()
+        let original = segment(
+            id: id,
+            meetingID: meetingID,
+            text: "Esta fila sigue creciendo",
+            language: "es")
+        let pair = LiveTranslationPair(source: "es", target: "en")
+
+        let exact = LiveTranslationResultAdmission.admit(
+            values: [id: "This row is still growing"],
+            sourceTexts: [id: original.text],
+            currentSegments: [original],
+            pair: pair)
+        XCTAssertEqual(exact.values[id], "This row is still growing")
+
+        let grown = segment(
+            id: id,
+            meetingID: meetingID,
+            text: "Esta fila sigue creciendo y ahora tiene más contexto",
+            language: "es")
+        let stale = LiveTranslationResultAdmission.admit(
+            values: [id: "This row is still growing"],
+            sourceTexts: [id: original.text],
+            currentSegments: [grown],
+            pair: pair)
+        XCTAssertTrue(stale.values.isEmpty)
+        XCTAssertTrue(stale.sourceTexts.isEmpty)
+    }
+
+    func testRemovedWrongLanguageAndEmptyResponsesFailClosed() {
+        let id = UUID()
+        let meetingID = MeetingID()
+        let english = segment(
+            id: id,
+            meetingID: meetingID,
+            text: "This row was relabeled as English.",
+            language: "en")
+        let pair = LiveTranslationPair(source: "es", target: "en")
+
+        for current in [[], [english]] {
+            let result = LiveTranslationResultAdmission.admit(
+                values: [id: "   "],
+                sourceTexts: [id: english.text],
+                currentSegments: current,
+                pair: pair)
+            XCTAssertTrue(result.values.isEmpty)
+        }
+    }
+
+    func testDuplicateCurrentIdentityCannotPublishOrTrap() {
+        let id = UUID()
+        let meetingID = MeetingID()
+        let original = segment(
+            id: id,
+            meetingID: meetingID,
+            text: "Esta fila tiene una identidad duplicada.",
+            language: "es")
+        let duplicate = segment(
+            id: id,
+            meetingID: meetingID,
+            text: "Esta revisión no debe ganar silenciosamente.",
+            language: "es")
+
+        let result = LiveTranslationResultAdmission.admit(
+            values: [id: "This row has a duplicate identity."],
+            sourceTexts: [id: original.text],
+            currentSegments: [original, duplicate],
+            pair: LiveTranslationPair(source: "es", target: "en"))
+
+        XCTAssertTrue(result.values.isEmpty)
+        XCTAssertTrue(result.sourceTexts.isEmpty)
+    }
+
+    private func segment(
+        id: UUID,
+        meetingID: MeetingID,
+        text: String,
+        language: String
+    ) -> TranscriptSegment {
+        TranscriptSegment(
+            id: id,
+            meetingID: meetingID,
+            channel: .system,
+            text: text,
+            language: language,
+            startTime: 0,
+            endTime: 1,
+            isFinal: true)
     }
 }
 
@@ -467,6 +689,68 @@ final class LiveTranslationRoutingTests: XCTestCase {
             pair: pair).isEmpty)
     }
 
+    func testTranslationWorkIsDrainedInSmallChronologicalBatches() throws {
+        let spanish = (0..<12).map { index in
+            segment(
+                text: "Intervención española número \(index) con evidencia suficiente.",
+                language: "es",
+                start: TimeInterval(index))
+        }
+        let open = segment(
+            text: "This target-language row stays open.",
+            language: "en",
+            start: 20)
+        let segments = spanish + [open]
+        let pair = LiveTranslationPair(source: "es", target: "en")
+
+        let first = LiveTranslationRouting.pendingRows(
+            segments: segments,
+            translatedSourceTexts: [:],
+            unsupportedIDs: [],
+            pair: pair)
+        let completed = Dictionary(uniqueKeysWithValues: first.map {
+            ($0.id, $0.text)
+        })
+        let second = LiveTranslationRouting.pendingRows(
+            segments: segments,
+            translatedSourceTexts: completed,
+            unsupportedIDs: [],
+            pair: pair)
+
+        XCTAssertEqual(first.count, LiveTranslationWorkPolicy.maximumBatchSize)
+        XCTAssertEqual(first.map(\.id), Array(spanish.prefix(8)).map(\.id))
+        XCTAssertEqual(second.map(\.id), Array(spanish.dropFirst(8)).map(\.id))
+    }
+
+    func testLiveLookbackHasAnExplicitRecentRowLimit() throws {
+        let spanish = (0..<70).map { index in
+            segment(
+                text: "Intervención reciente número \(index) en español.",
+                language: "es",
+                start: TimeInterval(index))
+        }
+        let open = segment(
+            text: "This target-language row stays open.",
+            language: "en",
+            start: 80)
+        let segments = spanish + [open]
+        let pair = try XCTUnwrap(LiveTranslationRouting.nextPair(
+            segments: segments,
+            translatedSourceTexts: [:],
+            unsupportedIDs: [],
+            target: "en"))
+        let pending = LiveTranslationRouting.pendingRows(
+            segments: segments,
+            translatedSourceTexts: [:],
+            unsupportedIDs: [],
+            pair: pair)
+
+        let firstEligibleIndex =
+            segments.count - LiveTranslationWorkPolicy.recentRowLimit
+        XCTAssertEqual(pair, LiveTranslationPair(source: "es", target: "en"))
+        XCTAssertEqual(pending.first?.id, segments[firstEligibleIndex].id)
+    }
+
     private func segment(
         text: String,
         language: String?,
@@ -488,15 +772,44 @@ final class TranscriptFocusVisualPolicyTests: XCTestCase {
         guard #available(macOS 15.0, *) else { return }
 
         XCTAssertTrue(
-            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .tracking))
+            TranscriptFollowOwnershipPolicy.shouldYieldFollow(
+                mode: .live,
+                for: .tracking))
         XCTAssertTrue(
-            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .interacting))
+            TranscriptFollowOwnershipPolicy.shouldYieldFollow(
+                mode: .live,
+                for: .interacting))
         XCTAssertTrue(
-            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .decelerating))
+            TranscriptFollowOwnershipPolicy.shouldYieldFollow(
+                mode: .live,
+                for: .decelerating))
         XCTAssertFalse(
-            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .idle))
+            TranscriptFollowOwnershipPolicy.shouldYieldFollow(
+                mode: .live,
+                for: .idle))
         XCTAssertFalse(
-            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .animating))
+            TranscriptFollowOwnershipPolicy.shouldYieldFollow(
+                mode: .live,
+                for: .animating))
+        XCTAssertFalse(
+            TranscriptFollowOwnershipPolicy.shouldYieldFollow(
+                mode: .playback,
+                for: .tracking))
+    }
+
+    func testPlaybackAlwaysFollowsWhileLiveHonorsReaderOwnership() {
+        XCTAssertTrue(
+            TranscriptFollowOwnershipPolicy.followsActiveLine(
+                mode: .playback,
+                isFollowingLive: false))
+        XCTAssertTrue(
+            TranscriptFollowOwnershipPolicy.followsActiveLine(
+                mode: .live,
+                isFollowingLive: true))
+        XCTAssertFalse(
+            TranscriptFollowOwnershipPolicy.followsActiveLine(
+                mode: .live,
+                isFollowingLive: false))
     }
 
     func testLiveFollowKeepsNearbyHistorySharpLonger() {
@@ -568,27 +881,16 @@ final class TranscriptFocusVisualPolicyTests: XCTestCase {
     }
 }
 
-final class RecordingMeterPublicationPolicyTests: XCTestCase {
-    func testMeterPublishesAtMostTwentyFramesPerSecond() {
-        XCTAssertFalse(RecordingMeterPublicationPolicy.shouldPublish(
-            now: 10.04,
-            last: 10))
-        XCTAssertTrue(RecordingMeterPublicationPolicy.shouldPublish(
-            now: 10.05,
-            last: 10))
-    }
-}
-
 @MainActor
 final class RecordingSystemCaptureHealthPresentationTests: XCTestCase {
-    func testOnlyProlongedRecoverableOutageSuggestsCallMayHaveEnded() {
+    func testOnlyProlongedRecoverableOutageSuggestsCallMayHaveEnded() async {
         XCTAssertTrue(
             RecordingSystemCaptureHealth.stalled(secondsWithoutFrames: 120)
                 .shouldSuggestStop)
         XCTAssertFalse(RecordingSystemCaptureHealth.failed.shouldSuggestStop)
     }
 
-    func testCompactHUDDistinguishesTerminalFailureFromRecoverableInterruption() {
+    func testCompactHUDDistinguishesTerminalFailureFromRecoverableInterruption() async {
         XCTAssertEqual(
             RecordingSystemCaptureHealth.stalled(secondsWithoutFrames: 8)
                 .compactStatusMessageKey,
@@ -608,6 +910,7 @@ private final class LiveTranscriptionProbe: @unchecked Sendable {
     private let lock = NSLock()
     private var storedEvents: [StartRecordingLiveTranscriptionEvent] = []
     private var storedCaptionTimes: [TimeInterval] = []
+    private var storedRuntimeFinishCount = 0
 
     var events: [StartRecordingLiveTranscriptionEvent] {
         lock.withLock { storedEvents }
@@ -617,12 +920,84 @@ private final class LiveTranscriptionProbe: @unchecked Sendable {
         lock.withLock { storedCaptionTimes.sorted() }
     }
 
+    var runtimeFinishCount: Int {
+        lock.withLock { storedRuntimeFinishCount }
+    }
+
     func record(event: StartRecordingLiveTranscriptionEvent) {
         lock.withLock { storedEvents.append(event) }
     }
 
     func record(caption: TranscriptSegment) {
         lock.withLock { storedCaptionTimes.append(caption.startTime) }
+    }
+
+    func recordRuntimeFinish() {
+        lock.withLock { storedRuntimeFinishCount += 1 }
+    }
+}
+
+private final class DeferredLiveTranscriptionLoader: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var completed = false
+
+    func runtime(
+        probe: LiveTranscriptionProbe
+    ) async throws -> LiveTranscriptionRuntime {
+        await withCheckedContinuation { continuation in
+            lock.withLock {
+                if completed {
+                    continuation.resume()
+                } else {
+                    self.continuation = continuation
+                }
+            }
+        }
+        return LiveTranscriptionRuntime(
+            engine: EchoLiveTranscriptionEngine(),
+            completion: { probe.recordRuntimeFinish() })
+    }
+
+    func complete() {
+        let continuation = lock.withLock {
+            completed = true
+            defer { self.continuation = nil }
+            return self.continuation
+        }
+        continuation?.resume()
+    }
+}
+
+/// Emits captions and then fails when the audio stream closes — the engine's
+/// final flush, which is exactly when `finish()` has already cleared `active`.
+private struct FinalFlushFailingEngine: TranscriptionEngine {
+    let descriptor = EngineDescriptor(
+        id: "test-final-flush-failure",
+        displayName: "Test final-flush failure",
+        realTimeFactor: 0,
+        runsOnDevice: true,
+        approximateMemoryMB: 0)
+
+    func transcribe(
+        _ audio: AsyncStream<AudioChunk>,
+        hints: TranscriptionHints
+    ) -> AsyncThrowingStream<TranscriptSegment, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                for await chunk in audio {
+                    continuation.yield(TranscriptSegment(
+                        meetingID: hints.meetingID ?? MeetingID(),
+                        channel: chunk.channel,
+                        text: "chunk \(Int(chunk.timestamp))",
+                        startTime: chunk.timestamp,
+                        endTime: chunk.timestamp + 0.1,
+                        isFinal: true))
+                }
+                continuation.finish(throwing: LiveTranscriptionTestFailure.loadFailed)
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
     }
 }
 

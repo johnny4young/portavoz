@@ -12,8 +12,10 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     case intelligence
     case voice
     case agenda
+    case skills
     case integrations
     case sync
+    case backgroundWork = "background-work"
     case data
 
     var id: String { rawValue }
@@ -25,8 +27,10 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .intelligence: L10n.text("Intelligence")
         case .voice: L10n.text("My voice & Apuntador")
         case .agenda: L10n.text("Agenda & automation")
+        case .skills: L10n.text("Suggested actions")
         case .integrations: L10n.text("Integrations")
         case .sync: L10n.text("Sync")
+        case .backgroundWork: L10n.text("Background activity")
         case .data: L10n.text("Your data")
         }
     }
@@ -38,8 +42,10 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .intelligence: "sparkles"
         case .voice: "person.wave.2"
         case .agenda: "calendar.badge.clock"
+        case .skills: "sparkles"
         case .integrations: "link"
         case .sync: "icloud"
+        case .backgroundWork: "clock.arrow.circlepath"
         case .data: "lock.shield"
         }
     }
@@ -53,8 +59,10 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .intelligence: L10n.text("Summary engine · Whisper refine · vocabulary")
         case .voice: L10n.text("Enrolled voice · your name · Apuntador")
         case .agenda: L10n.text("Reminder · end-of-meeting Shortcut · title template")
+        case .skills: L10n.text("Review · enable · history")
         case .integrations: L10n.text("BYOK OpenAI-compatible · GitHub gists · MCP")
         case .sync: L10n.text("iCloud · status · existing library")
+        case .backgroundWork: L10n.text("Recovery · processing · local indexes")
         case .data: L10n.text("Export Markdown · recordings folder · trash")
         }
     }
@@ -74,10 +82,14 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
             "voice enroll apuntador name remembered"
         case .agenda:
             "reminder calendar shortcut title template"
+        case .skills:
+            "actions suggestions skills automation pause enable receipts local drafts exports"
         case .integrations:
             "byok api key github gist token mcp endpoint openai"
         case .sync:
             "icloud cloud sync status existing library encrypted devices pause remove"
+        case .backgroundWork:
+            "background activity recovery processing jobs spotlight semantic index graph retry progress"
         case .data:
             "export markdown backup folder recordings trash privacy local"
         }

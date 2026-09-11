@@ -43,6 +43,8 @@ public typealias StartRecordingCaptionHandler =
     @Sendable (TranscriptSegment) async -> Void
 public typealias StartRecordingChunkHandler =
     @Sendable (AudioChunk) -> Void
+public typealias StartRecordingLevelHandler =
+    @Sendable (PersistedAudioLevel) -> Void
 public typealias StartRecordingHealthHandler =
     @Sendable (RecordingCaptureHealthEvent) -> Void
 
@@ -63,17 +65,20 @@ public typealias StartRecordingLiveTranscriptionHandler =
 public struct StartRecordingLiveCallbacks: Sendable {
     public let caption: StartRecordingCaptionHandler
     public let chunk: StartRecordingChunkHandler
+    public let level: StartRecordingLevelHandler
     public let health: StartRecordingHealthHandler
     public let liveTranscription: StartRecordingLiveTranscriptionHandler
 
     public init(
         caption: @escaping StartRecordingCaptionHandler = { _ in },
         chunk: @escaping StartRecordingChunkHandler = { _ in },
+        level: @escaping StartRecordingLevelHandler = { _ in },
         health: @escaping StartRecordingHealthHandler = { _ in },
         liveTranscription: @escaping StartRecordingLiveTranscriptionHandler = { _ in }
     ) {
         self.caption = caption
         self.chunk = chunk
+        self.level = level
         self.health = health
         self.liveTranscription = liveTranscription
     }
@@ -159,9 +164,12 @@ public protocol StartRecordingStore: Sendable {
 
 extension MeetingStore: StartRecordingStore {
     public func startedMeetingCount(on date: Date, calendar: Calendar) async -> Int {
-        ((try? await meetings()) ?? [])
-            .filter { calendar.isDate($0.startedAt, inSameDayAs: date) }
-            .count
+        // The daily title sequence only needs a count. Materializing every
+        // meeting to filter one day grew with the library on every Start.
+        let dayStart = calendar.startOfDay(for: date)
+        guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart)
+        else { return 0 }
+        return (try? await liveMeetingCount(startedIn: dayStart..<dayEnd)) ?? 0
     }
 
     public func reserveRecording(_ meeting: Meeting, assets: [AudioAsset]) async throws {
@@ -285,6 +293,17 @@ public enum StartRecordingResult: Sendable {
     )
 }
 
+extension StartRecordingResult {
+    /// A failed Start is a failed recording-critical workload, not a completed
+    /// one; the ledger must be able to tell them apart.
+    var workloadOutcome: ResourceWorkloadOutcome {
+        switch self {
+        case .started: .completed
+        case .preparationFailed, .captureFailed: .failed
+        }
+    }
+}
+
 /// Prepares the platform runtime, reserves the discoverable aggregate before
 /// any source starts, and reconciles a failed source start against filesystem
 /// evidence. Live UI policy remains in the controller.
@@ -296,6 +315,7 @@ public struct StartRecording: ApplicationUseCase {
     private let makeMeetingID: @Sendable () -> MeetingID
     private let now: @Sendable () -> Date
     private let calendar: Calendar
+    private let telemetry: ResourceWorkloadTelemetry
 
     public init(
         preferences: any StartRecordingPreferences,
@@ -304,7 +324,8 @@ public struct StartRecording: ApplicationUseCase {
         runtime: any StartRecordingRuntime,
         makeMeetingID: @escaping @Sendable () -> MeetingID = { MeetingID() },
         now: @escaping @Sendable () -> Date = { Date() },
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        telemetry: ResourceWorkloadTelemetry = .disabled
     ) {
         self.preferences = preferences
         self.audioFiles = audioFiles
@@ -313,19 +334,28 @@ public struct StartRecording: ApplicationUseCase {
         self.makeMeetingID = makeMeetingID
         self.now = now
         self.calendar = calendar
+        self.telemetry = telemetry
     }
 
     public func execute(_ request: StartRecordingRequest) async -> StartRecordingResult {
+        let span = telemetry.begin(ResourceWorkloadDescriptor(
+            workloadClass: .recordingCritical,
+            kind: .audioCapture,
+            operation: .execute))
         let sampledPreferences = await preferences.startRecordingPreferences()
+        let result: StartRecordingResult
         switch await prepareRuntime(sampledPreferences) {
         case .failed(let result):
+            self.telemetry.finish(span, outcome: result.workloadOutcome)
             return result
         case .ready(let prepared):
-            return await reserveAndStart(
+            result = await reserveAndStart(
                 request,
                 preferences: sampledPreferences,
                 prepared: prepared)
         }
+        telemetry.finish(span, outcome: result.workloadOutcome)
+        return result
     }
 
     private func prepareRuntime(

@@ -7,6 +7,34 @@ import XCTest
 @testable import StorageKit
 
 final class StopRecordingUseCaseTests: XCTestCase {
+    func testCaptureFailureSurvivesPublishedHandoffAndProcessingProjection() async throws {
+        let fixture = StopRecordingFixture()
+        let dependencies = StopRecordingDependencies(shell: fixture.shell)
+        let report = try CaptureReport(channels: [CaptureChannelReport(
+            channel: .microphone, acceptedFrames: 8, paddingFrames: 0,
+            rejectedFrames: 1, writtenFrames: 8, failure: .overloaded)])
+        let capture = StopRecordingCapture(
+            publishedFiles: [.system: fixture.publishedFile()], captureReport: report)
+        let result = await fixture.useCase(dependencies).execute(fixture.request(capture: capture))
+        guard case .completed(let commit) = result else { return XCTFail("accepted peer must survive") }
+        XCTAssertEqual(commit.meeting.captureReport, report)
+        let state = await dependencies.state()
+        XCTAssertEqual(state.installs.first?.snapshot.meeting.captureReport, report)
+    }
+
+    func testFailedCaptureWithoutAnyFilePreservesAnHonestDurableWarning() async throws {
+        let fixture = StopRecordingFixture()
+        let dependencies = StopRecordingDependencies(shell: fixture.shell)
+        let report = try CaptureReport(channels: [CaptureChannelReport(channel: .microphone, failure: .sourceFailed)])
+        let capture = StopRecordingCapture(publishedFiles: [:], captureReport: report)
+        let result = await fixture.useCase(dependencies).execute(fixture.request(capture: capture))
+        guard case .failedCapturePreserved(let commit) = result else { return XCTFail("failure must not be deleted") }
+        XCTAssertEqual(commit.meeting.lastProcessingError, "capture.no-audio")
+        XCTAssertEqual(commit.meeting.captureReport, report)
+        XCTAssertEqual(commit.meeting.lifecycleState, .needsAttention)
+    }
+
+
     func testPublishedCaptureInstallsExactJobAndKicksAfterCommit() async throws {
         let fixture = StopRecordingFixture()
         let dependencies = StopRecordingDependencies(shell: fixture.shell)
@@ -98,6 +126,36 @@ final class StopRecordingUseCaseTests: XCTestCase {
         XCTAssertEqual(state.installs[0].snapshot.segments.count, 1)
         XCTAssertEqual(state.installs[0].requests.map(\.kind), [.transcription])
         XCTAssertEqual(state.kickCount, 1)
+    }
+
+    /// The live lane failed, so the captions in hand are partial by
+    /// definition, and the saved audio cannot admit a recovery transcription.
+    /// Publishing those captions as the final transcript would present partial
+    /// speech as the whole meeting. The meeting must stay needs-attention.
+    func testUnrecoverableTranscriptNeverPublishesPartialCaptionsAsFinal() async {
+        let fixture = StopRecordingFixture()
+        let dependencies = StopRecordingDependencies(shell: fixture.shell)
+        let capture = StopRecordingCapture(
+            publishedFiles: [.system: fixture.publishedFile(healthStatus: .silent)],
+            transcriptRequiresRecovery: true)
+
+        let result = await fixture.useCase(dependencies).execute(
+            fixture.request(captions: [fixture.captions[0]], capture: capture))
+
+        guard case .processingFailed(let failure, let fallback) = result else {
+            return XCTFail(
+                "an unrecoverable transcript must not complete as if it were whole")
+        }
+        XCTAssertEqual(failure, .processingInputInvalid)
+        let commit = try? XCTUnwrap(fallback)
+        XCTAssertEqual(commit?.meeting.lifecycleState, .needsAttention)
+        XCTAssertEqual(
+            commit?.meeting.lastProcessingError,
+            "transcription.recovery.unavailable")
+        let state = await dependencies.state()
+        XCTAssertTrue(
+            state.installs.allSatisfy { $0.requests.isEmpty },
+            "no processing work can be admitted against unusable audio")
     }
 
     func testSilentAudioStillPreservesExplicitEmptyTranscriptGuidance() async {
@@ -419,6 +477,22 @@ final class StopRecordingUseCaseTests: XCTestCase {
         XCTAssertEqual(state.releaseCount, 1)
     }
 
+    func testExecutionEmitsOneRecordingCriticalWorkload() async {
+        let fixture = StopRecordingFixture()
+        let dependencies = StopRecordingDependencies(shell: fixture.shell)
+        let recorder = ResourceWorkloadEventRecorder()
+
+        let result = await fixture.useCase(
+            dependencies,
+            telemetry: ResourceWorkloadTelemetry(receiver: recorder.receive)
+        ).execute(fixture.request())
+
+        guard case .completed = result else {
+            return XCTFail("fixture should complete")
+        }
+        assertRecordingCriticalWorkload(recorder.events)
+    }
+
     func testRealStoreAdapterAtomicallyInstallsSnapshotAndInitialJob() async throws {
         let fixture = StopRecordingFixture()
         let store = try MeetingStore.inMemory()
@@ -662,12 +736,16 @@ private struct StopRecordingFixture {
             voiceprint: Voiceprint(embedding: [0.1, 0.2], createdAt: startedAt))
     }
 
-    func useCase(_ dependencies: StopRecordingDependencies) -> StopRecording {
+    func useCase(
+        _ dependencies: StopRecordingDependencies,
+        telemetry: ResourceWorkloadTelemetry = .disabled
+    ) -> StopRecording {
         StopRecording(
             audioFiles: dependencies,
             store: dependencies,
             lifecycle: dependencies,
-            now: { now })
+            now: { now },
+            telemetry: telemetry)
     }
 }
 
@@ -732,6 +810,8 @@ private actor StopRecordingDependencies:
         existingPaths.contains(relativePath)
     }
 
+    func hasRecordingInput(for meetingID: MeetingID) async throws -> Bool { false }
+
     func discardUnstartedRecording(_ meetingID: MeetingID) async throws -> Bool {
         discardCount += 1
         events.append("discard")
@@ -743,6 +823,7 @@ private actor StopRecordingDependencies:
         _ meetingID: MeetingID,
         errorCode: String,
         endedAt: Date,
+        captureReport: CaptureReport?,
         at timestamp: Date
     ) async throws -> Meeting {
         if let markError { throw markError }
@@ -752,6 +833,7 @@ private actor StopRecordingDependencies:
         marked.endedAt = endedAt
         marked.lifecycleState = .needsAttention
         marked.lastProcessingError = errorCode
+        marked.captureReport = captureReport
         return marked
     }
 

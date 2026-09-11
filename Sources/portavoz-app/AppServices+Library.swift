@@ -69,22 +69,22 @@ extension AppServices: LibraryModelClient {
     }
 
     func renameLibraryMeeting(_ meeting: Meeting) async throws {
-        defer { requestSpotlightReindex() }
+        defer { requestSearchReconciliation() }
         try await store.save(meeting)
     }
 
     func setLibraryActionItem(_ id: UUID, done: Bool) async throws {
-        defer { requestSpotlightReindex() }
+        defer { requestSearchReconciliation() }
         try await store.setActionItem(id, done: done)
     }
 
     func deleteLibraryMeeting(_ id: MeetingID) async throws {
-        defer { requestSpotlightReindex() }
+        defer { requestSearchReconciliation() }
         try await meetingLifecycle.delete(id)
     }
 
     func restoreLibraryMeeting(_ id: MeetingID) async throws {
-        defer { requestSpotlightReindex() }
+        defer { requestSearchReconciliation() }
         try await meetingLifecycle.restore(id)
     }
 
@@ -105,14 +105,21 @@ extension AppServices: LibraryModelClient {
     }
 
     func libraryAgenda() -> LibraryModel.Agenda? {
-        if ProcessInfo.processInfo.arguments.contains("-seed-brief") {
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-seed-brief") {
             return LibraryModel.Agenda(
                 offerCalendar: false,
                 today: [UpcomingEvent(
+                    id: "ui-test-upcoming-rollout",
                     title: "Presupuesto rollout",
                     startDate: Date().addingTimeInterval(15 * 60),
                     attendees: ["Ana"])],
                 tomorrow: [])
+        }
+        // Opt-in, because agenda rows lengthen the sidebar and the other
+        // showcase journeys assert on a meeting row being reachable there.
+        if arguments.contains("-seed-showcase-agenda") {
+            return Self.showcaseAgenda()
         }
         guard !ProcessInfo.processInfo.arguments.contains("-use-temp-store") else {
             return nil
@@ -223,6 +230,7 @@ private func makeApplicationSearchHit(_ hit: SearchHit) -> LibrarySearchHit {
         meetingID: hit.meetingID,
         meetingTitle: hit.meetingTitle,
         segmentID: hit.segmentID,
+        sourceSegmentIDs: hit.sourceSegmentIDs,
         snippet: hit.snippet,
         startTime: hit.startTime)
 }

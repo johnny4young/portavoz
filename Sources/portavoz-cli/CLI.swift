@@ -9,9 +9,8 @@ import Foundation
 /// behalf of the terminal.
 @main
 struct PortavozCLI {
-    // CLI de desarrollo: el dispatcher de subcomandos es un switch
-    // inherentemente largo (una rama por comando).
-    // swiftlint:disable:next cyclomatic_complexity
+    // The development dispatcher is inherently one branch per subcommand.
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func main() async {
         let platform = CLIPlatformDependencies()
         var arguments = Array(CommandLine.arguments.dropFirst())
@@ -64,14 +63,31 @@ struct PortavozCLI {
             await BenchWaveformCommand.run(arguments)
         case "bench-spotlight":
             await BenchSpotlightCommand.run(arguments)
+        case "bench-capture":
+            await BenchCaptureCommand.run(arguments)
+        case "bench-ask-quality":
+            await BenchAskQualityCommand.run(arguments)
+        case "bench-ask-attribution":
+            await BenchAskQualityCommand.run(arguments, attribution: true)
+        case "bench-retrieval-chunks":
+            await BenchRetrievalChunkEvidenceCommand.run(arguments)
+        case "bench-commitment-link-quality":
+            await BenchCommitmentLinkQualityCommand.run(arguments)
+        case "bench-commitment-link-similarity":
+            await BenchCommitmentLinkSimilarityCommand.run(arguments)
+        case "bench-private-commitment-link-similarity":
+            await BenchPrivateLinkSimilarityCommand.run(arguments)
         default:
             printUsage()
         }
     }
 
     static func printUsage() {
-        print(
-            """
+        print(usage)
+    }
+
+    private static let usage =
+        """
             Portavoz dev CLI
 
             Usage:
@@ -79,14 +95,46 @@ struct PortavozCLI {
               portavoz-cli record [--seconds N] [--mic <name-or-uid>] [--pid <pid> ...] [--system]
                                   [--out <dir>] [--transcribe] [--language es] [--models-dir <dir>]
               portavoz-cli transcribe --file <wav> [--language es] [--models-dir <dir>]
+              portavoz-cli bench-live --file <wav|caf>
+                                      [--engine parakeet|speech|nemotron-latin-1120]
+                                      [--seconds N] [--language es] [--reference <txt>]
+                                      [--output <json>] [--models-dir <dir>]
               portavoz-cli bench-fts [--meetings N] [--segments-per-meeting N]
               portavoz-cli bench-scale [--library-sizes 1000,10000,50000,100000]
                                         [--meeting-minutes 30,120,480] [--runs 20] [--output <json>]
-              portavoz-cli bench-semantic [--segments 100000] [--runs 20] [--output <json>]
+              portavoz-cli bench-semantic [--segments 100000] [--runs 20] [--variants 1] [--output <json>]
               portavoz-cli bench-waveform [--mic <audio>] [--system <audio>]
                                           [--buckets 600] [--runs 20] [--output <json>]
               portavoz-cli bench-spotlight [--mode legacy|snapshot] [--meetings 100000]
                                           [--runs 3] [--delivery-items 1000] [--output <json>]
+              portavoz-cli bench-capture [--duration-seconds 10800] [--chunk-frames 4800]
+                                         [--source-commit <sha>] [--output <json>]
+              portavoz-cli bench-ask-quality --fixture <json> --output <json>
+                                              --build <id> --commit <sha>
+                                              [--retrieval-unit <unit>]
+                                              [--asset-download never|if-needed]
+                units: segment, speaker-turn, conversation-window,
+                       semantic-boundary
+              portavoz-cli bench-ask-attribution --fixture <json> --output <json>
+                                                  --build <id> --commit <sha>
+                                                  [--retrieval-unit <unit>]
+                uses installed assets only; stage evidence, not serving approval
+              portavoz-cli bench-retrieval-chunks --fixture <json> --output <json>
+                                                  --build <id> --commit <sha>
+                                                  --fixture-sha256 <sha256>
+                                                  --toolchain-sha256 <sha256>
+                                                  --host-profile <profile>
+                                                  --retrieval-unit <unit>
+                units: segment, speaker-turn, conversation-window,
+                       semantic-boundary
+              portavoz-cli bench-commitment-link-quality --fixture <json> --output <json>
+                                                         [--asset-download never|if-needed]
+              portavoz-cli bench-commitment-link-similarity --fixture <json> --output <json>
+                                                            --build <id> --commit <sha>
+                                                            [--asset-download never|if-needed]
+              portavoz-cli bench-private-commitment-link-similarity --fixture <json> --output <json>
+                                                                    --build <id> --commit <sha>
+                                                                    [--asset-download never|if-needed]
               portavoz-cli diarize --file <wav> [--attribute] [--language es] [--models-dir <dir>]
               portavoz-cli summarize --file <wav> [--out-language es] [--glossary a,b,c]
                                      [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]
@@ -109,8 +157,6 @@ struct PortavozCLI {
               --language <tag>   Language hint, e.g. "es" or "en" (default: auto-detect)
               --models-dir <dir> Model store root (default: ~/Library/Application Support/Portavoz/Models)
             """
-        )
-    }
 
     static func listDevices() {
         #if os(macOS)

@@ -163,52 +163,6 @@ extension MeetingStore {
         }
     }
 
-    /// Repeat-safe lifecycle transition used when launch recovery cannot
-    /// resume work automatically. Only incomplete live aggregates may move to
-    /// `needsAttention`; a ready meeting is never downgraded by a stale scan.
-    @discardableResult
-    public func markMeetingNeedsAttention(
-        _ meetingID: MeetingID,
-        errorCode: String,
-        endedAt: Date? = nil,
-        at timestamp: Date = Date()
-    ) async throws -> Meeting {
-        guard Self.isCanonicalRecoveryCode(errorCode) else {
-            throw StorageError.invalidRecordingReservation(
-                "recovery error code must be canonical and non-empty")
-        }
-        let key = meetingID.rawValue.uuidString
-        return try await database.write { db in
-            guard var record = try MeetingRecord
-                .filter(Column("id") == key)
-                .filter(Column("deletedAt") == nil)
-                .fetchOne(db)
-            else { throw StorageError.meetingNotFound(meetingID) }
-            guard record.lifecycleState == MeetingLifecycleState.recording.rawValue
-                || record.lifecycleState == MeetingLifecycleState.captured.rawValue
-                || record.lifecycleState == MeetingLifecycleState.processing.rawValue
-                || record.lifecycleState == MeetingLifecycleState.needsAttention.rawValue
-            else {
-                throw StorageError.invalidRecordingReservation(
-                    "a ready meeting cannot be downgraded by launch recovery")
-            }
-            if record.lifecycleState == MeetingLifecycleState.recording.rawValue {
-                let recoveredEnd = max(endedAt ?? record.startedAt, record.startedAt)
-                record.endedAt = record.endedAt ?? recoveredEnd
-            }
-            let alreadyMarked =
-                record.lifecycleState == MeetingLifecycleState.needsAttention.rawValue
-                && record.lastProcessingError == errorCode
-            if !alreadyMarked {
-                record.lifecycleState = MeetingLifecycleState.needsAttention.rawValue
-                record.lastProcessingError = errorCode
-                record.updatedAt = timestamp
-                try record.update(db)
-            }
-            return try record.meeting
-        }
-    }
-
     /// Rolls back a reservation that never became a user meeting. Hard delete
     /// is intentionally limited to a `recording` shell with no persisted user
     /// or generated content; normal meetings continue to use tombstones (D4).
@@ -392,14 +346,13 @@ extension MeetingStore {
                     SELECT id FROM speaker WHERE meetingID = ?
                     UNION ALL SELECT id FROM segment WHERE meetingID = ?
                     UNION ALL SELECT id FROM summary WHERE meetingID = ?
-                    UNION ALL SELECT id FROM contextItem WHERE meetingID = ?
                     UNION ALL SELECT id FROM companionCard WHERE meetingID = ?
                 )
                 """,
-            arguments: [key, key, key, key, key]) ?? false
+            arguments: [key, key, key, key]) ?? false
         guard !hasContent else {
             throw StorageError.invalidRecordingReservation(
-                "captured snapshot can only install into an untouched shell")
+                "captured snapshot cannot replace transcript or generated content")
         }
     }
 
@@ -430,11 +383,7 @@ extension MeetingStore {
                 segment, createdAt: timestamp, updatedAt: timestamp)
             try record.insert(db)
         }
-        for item in snapshot.contextItems {
-            let record = ContextItemRecord(
-                item, createdAt: timestamp, updatedAt: timestamp)
-            try record.insert(db)
-        }
+        try insertUnpersistedRecordingInput(snapshot.contextItems, at: timestamp, in: db)
         for run in snapshot.companionTerminalRuns {
             try GenerationRunRecord(run).insert(db)
         }
@@ -540,7 +489,8 @@ extension MeetingStore {
         _ snapshot: CapturedMeetingSnapshot
     ) throws {
         let speakerIDs = Set(snapshot.speakers.map(\.id))
-        guard snapshot.speakers.allSatisfy({ $0.meetingID == snapshot.meeting.id }),
+        guard Set(snapshot.contextItems.map(\.id)).count == snapshot.contextItems.count,
+            snapshot.speakers.allSatisfy({ $0.meetingID == snapshot.meeting.id }),
             snapshot.segments.allSatisfy({ segment in
                 segment.meetingID == snapshot.meeting.id
                     && segment.speakerID.map(speakerIDs.contains) ?? true
@@ -706,14 +656,6 @@ extension MeetingStore {
             && formatMatches
             && integrityMatches
             && lifecycleMatches
-    }
-
-    private static func isCanonicalRecoveryCode(_ value: String) -> Bool {
-        let isKnown = value.hasPrefix("capture.")
-            || value == "transcription.empty"
-            || value == "processing.interrupted"
-        return isKnown
-            && value == value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func reconcileLifecycleAfterCaptureRecovery(

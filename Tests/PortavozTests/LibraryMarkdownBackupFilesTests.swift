@@ -1,5 +1,7 @@
 import ApplicationKit
+import Darwin
 import Foundation
+import PortavozCore
 import XCTest
 
 @testable import portavoz_app
@@ -46,6 +48,57 @@ final class LibraryMarkdownBackupFilesTests: XCTestCase {
             .existingMarkdownFileNames(in: directory)
 
         XCTAssertEqual(names, ["One.md", "Two.MD"])
+    }
+
+    func testRecoveryEvidenceRequiresExactRegularFileBytes() async throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let data = Data("# Exact backup\n".utf8)
+        let publication = LibraryMarkdownBackupRecoveryPublication(
+            sequence: 0,
+            meetingID: MeetingID(),
+            fileName: "Meeting.md",
+            sha256: ContentDigest.sha256(data),
+            byteCount: data.count)
+        let files = AppLibraryMarkdownBackupFiles()
+
+        let missingEvidence = try await files.evidence(
+            for: publication,
+            in: directory)
+        XCTAssertEqual(missingEvidence, .missing)
+
+        let destination = directory.appendingPathComponent("Meeting.md")
+        try data.write(to: destination)
+        let matchingEvidence = try await files.evidence(
+            for: publication,
+            in: directory)
+        XCTAssertEqual(matchingEvidence, .matching)
+
+        try Data("# Other backup\n".utf8).write(to: destination)
+        let conflictingEvidence = try await files.evidence(
+            for: publication,
+            in: directory)
+        XCTAssertEqual(conflictingEvidence, .conflicting)
+
+        try FileManager.default.removeItem(at: destination)
+        let target = directory.appendingPathComponent("target.md")
+        try data.write(to: target)
+        try FileManager.default.createSymbolicLink(
+            at: destination,
+            withDestinationURL: target)
+        let symlinkEvidence = try await files.evidence(
+            for: publication,
+            in: directory)
+        XCTAssertEqual(symlinkEvidence, .conflicting)
+
+        try FileManager.default.removeItem(at: destination)
+        guard Darwin.mkfifo(destination.path, 0o600) == 0 else {
+            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+        }
+        let fifoEvidence = try await files.evidence(
+            for: publication,
+            in: directory)
+        XCTAssertEqual(fifoEvidence, .conflicting)
     }
 
     private func temporaryDirectory() throws -> URL {

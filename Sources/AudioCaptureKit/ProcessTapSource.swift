@@ -4,6 +4,7 @@ import AVFAudio
 import CoreAudio
 import Foundation
 import PortavozCore
+import os
 
 /// Captures the audio *output* of specific processes (or all of them) via a
 /// Core Audio process tap on a private aggregate device (macOS 14.4+).
@@ -24,7 +25,7 @@ import PortavozCore
 /// `@unchecked Sendable`: Core Audio object IDs are plain integers; mutable
 /// state is owned by `start()`/`stop()` and the serialized IO/rebuild queues.
 @available(macOS 14.4, *)
-public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked Sendable {
+public final class ProcessTapSource: RecoverableAudioCaptureSource, CaptureReportingSource, @unchecked Sendable {
     public let channel: AudioChannel = .system
 
     private let processIDs: [pid_t]
@@ -35,8 +36,26 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
     private var tapID = AudioObjectID(kAudioObjectUnknown)
     private var aggregateID = AudioObjectID(kAudioObjectUnknown)
     private var ioProcID: AudioDeviceIOProcID?
-    private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
+    private let delivery = CaptureDeliveryBuffer(channel: .system)
+    private var continuation: CaptureDeliveryBuffer?
+    private let failureHandler = OSAllocatedUnfairLock<(@Sendable () -> Void)?>(initialState: nil)
+
+    public var captureReport: CaptureChannelReport { delivery.report() }
+
+    public func setCaptureFailureHandler(_ handler: @escaping @Sendable () -> Void) {
+        failureHandler.withLock { $0 = handler }
+    }
+
+    private func observeDeliveryFailure() {
+        delivery.setFailureHandler { [weak self] in
+            guard let self else { return }
+            self.failureHandler.withLock { $0 }?()
+            // Never mutate the hardware graph from its realtime callback.
+            self.rebuildQueue.async { [weak self] in self?.stopOnRebuildQueue() }
+        }
+    }
     private var outputListener: AudioObjectPropertyListenerBlock?
+    private var routeTransitions = AudioRouteTransitionGate()
     /// Rate of the first graph; the stream promises this rate for its whole
     /// life, so a rebuild on a device with a different rate gets resampled.
     private var streamSampleRate: Double = 0
@@ -44,6 +63,9 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
     /// Touched from the IO thread and the rebuild queue.
     private let deliveredLock = NSLock()
     private var samplesDelivered = 0
+    /// Phase carries across callbacks so a rate-mismatched device does not
+    /// drift into a half-second silence pad. Guarded by `deliveredLock`.
+    private var resampler = LinearResampler()
 
     /// - Parameter processIDs: PIDs whose output to capture. Empty captures
     ///   every process (global tap) — prefer per-app taps in product code.
@@ -52,15 +74,38 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
     }
 
     public func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
-        let (stream, continuation) = AsyncThrowingStream<AudioChunk, Error>.makeStream()
+        try await withCheckedThrowingContinuation { completion in
+            rebuildQueue.async { [self] in
+                do {
+                    completion.resume(returning: try startOnRebuildQueue())
+                } catch {
+                    completion.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    /// Owns every mutable Core Audio graph identifier on `rebuildQueue`.
+    private func startOnRebuildQueue() throws -> AsyncThrowingStream<AudioChunk, Error> {
+        guard delivery.isAccepting, continuation == nil else {
+            throw CaptureDeliveryFailure(cause: .sourceFailed)
+        }
+        observeDeliveryFailure()
+        let stream = delivery.stream()
+        let continuation = delivery
         self.continuation = continuation
+        routeTransitions.activate()
         do {
             try buildGraph()
         } catch {
             // Core Audio setup is multi-step; any throw after creating a tap,
             // aggregate device, or IOProc must release the partial graph
             // before the caller retries.
-            await stop()
+            routeTransitions.deactivate()
+            removeOutputDeviceListener()
+            destroyGraph()
+            continuation.finish()
+            self.continuation = nil
             throw error
         }
         installOutputDeviceListener()
@@ -73,13 +118,18 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
     /// output and starts it, yielding into `self.continuation`. On the first
     /// build it pins `streamSampleRate`; later builds resample to it.
     private func buildGraph() throws { // swiftlint:disable:this function_body_length
+        // A rebuilt graph is a new stream; the carried sample and phase belong
+        // to the retired one.
+        deliveredLock.lock()
+        resampler.reset()
+        deliveredLock.unlock()
         guard let continuation else { return }
 
         // Skip PIDs that don't resolve to an audio process object (a process
         // may have exited, or never produced audio); tap the rest as a
         // mixdown. If none resolve, fall back to the global tap rather than
         // failing the recording.
-        let objects = processIDs.compactMap { try? Self.processObject(for: $0) }
+        let objects = processIDs.compactMap(Self.processObject(for:))
         let description: CATapDescription
         if objects.isEmpty {
             description = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
@@ -94,6 +144,9 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
         tapID = tap
 
         let format = try Self.tapStreamFormat(tapID: tap)
+        guard CapturePCMGeometry.isUsable(sampleRate: format.mSampleRate), format.mChannelsPerFrame > 0 else {
+            throw AudioCaptureError.unsupportedFormat
+        }
         if streamSampleRate == 0 { streamSampleRate = format.mSampleRate }
 
         let aggregateDescription: [String: Any] = [
@@ -123,34 +176,36 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
         let status = AudioDeviceCreateIOProcIDWithBlock(
             &procID, aggregate, ioQueue
         ) { [weak self] _, inputData, inputTime, _, _ in
-            guard let self else { return }
-            var samples = Downmix.mono(fromBufferList: inputData, format: format)
-            guard !samples.isEmpty else { return }
-            if nativeRate != targetRate, nativeRate > 0, targetRate > 0 {
-                samples = Resample.linear(samples, from: nativeRate, to: targetRate)
-            }
-            let elapsed = clock.elapsed(hostTime: inputTime.pointee.mHostTime)
+            guard let self, continuation.isAccepting else { return }
+            var samples: [Float]
+            let elapsed: TimeInterval
             // Pad the output-switch downtime with silence so the system file
             // stays aligned with wall-clock (and the mic channel).
-            let expected = Int(elapsed * targetRate)
-            let delivered = self.deliveredSnapshot()
-            let gap = expected - delivered
-            if gap > Int(targetRate / 2) {
-                continuation.yield(AudioChunk(
-                    channel: .system,
-                    samples: [Float](repeating: 0, count: gap),
-                    sampleRate: targetRate,
-                    timestamp: Double(delivered) / targetRate
-                ))
-                self.addDelivered(gap)
+            let plan: CapturePCMGeometry.Delivery
+            do {
+                samples = try Downmix.mono(fromBufferList: inputData, format: format) { frames in
+                    try continuation.admitNativeFrames(frames, sourceRate: nativeRate, targetRate: targetRate)
+                }
+                guard !samples.isEmpty else { return }
+                elapsed = clock.elapsed(hostTime: inputTime.pointee.mHostTime)
+                samples = try self.resampled(
+                    samples, from: nativeRate, to: targetRate)
+                plan = try CapturePCMGeometry.delivery(
+                    elapsed: elapsed, sampleRate: targetRate,
+                    delivered: self.deliveredSnapshot(), incoming: samples.count)
+            } catch Downmix.InputError.unavailable {
+                // Disabled native input keeps its stream/route recovery alive.
+                return
+            } catch let failure as CaptureDeliveryFailure {
+                continuation.finish(failure: failure.cause)
+                return
+            } catch {
+                continuation.finish(failure: .invalidFormat)
+                return
             }
-            continuation.yield(AudioChunk(
-                channel: .system,
-                samples: samples,
-                sampleRate: targetRate,
-                timestamp: elapsed
-            ))
-            self.addDelivered(samples.count)
+            if continuation.append(samples: samples, rate: targetRate, timestamp: elapsed, plan: plan) {
+                self.setDelivered(plan.deliveredFrameCount)
+            }
         }
         try check(status, "AudioDeviceCreateIOProcIDWithBlock")
         ioProcID = procID
@@ -160,14 +215,39 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
     /// Rebuilds the tap graph on the new default output. Runs serialized so a
     /// burst of change notifications can't race; retries shortly if the new
     /// device isn't ready yet.
-    private func rebuild(delay: TimeInterval = 0) {
+    private func requestRebuild() {
+        rebuildQueue.async { [weak self] in
+            guard let self, let ticket = self.routeTransitions.request() else {
+                return
+            }
+            self.scheduleRebuild(
+                ticket: ticket,
+                delay: AudioRouteTransitionTiming.settleDelay
+            )
+        }
+    }
+
+    private func scheduleRebuild(
+        ticket: AudioRouteTransitionGate.Ticket,
+        delay: TimeInterval
+    ) {
         rebuildQueue.asyncAfter(deadline: .now() + delay) { [weak self] in
-            guard let self, self.continuation != nil else { return }
+            guard
+                let self,
+                self.continuation != nil,
+                self.routeTransitions.admits(ticket)
+            else {
+                return
+            }
             self.destroyGraph()
             do {
                 try self.buildGraph()
             } catch {
-                self.rebuild(delay: 0.5)
+                self.destroyGraph()
+                self.scheduleRebuild(
+                    ticket: ticket,
+                    delay: AudioRouteTransitionTiming.retryDelay
+                )
             }
         }
     }
@@ -176,7 +256,7 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
     /// stopped delivering frames while the microphone remains alive. The
     /// serialized rebuild queue preserves the current stream and its timeline.
     public func requestRecovery() async {
-        rebuild()
+        requestRebuild()
     }
 
     private func installOutputDeviceListener() {
@@ -186,7 +266,7 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
             mElement: kAudioObjectPropertyElementMain
         )
         let listener: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
-            self?.rebuild()
+            self?.requestRebuild()
         }
         let status = AudioObjectAddPropertyListenerBlock(
             AudioObjectID(kAudioObjectSystemObject), &address, rebuildQueue, listener)
@@ -224,10 +304,21 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
     }
 
     public func stop() async {
+        await withCheckedContinuation { completion in
+            rebuildQueue.async { [self] in
+                stopOnRebuildQueue()
+                completion.resume()
+            }
+        }
+    }
+
+    private func stopOnRebuildQueue() {
+        routeTransitions.deactivate()
         removeOutputDeviceListener()
         destroyGraph()
         continuation?.finish()
         continuation = nil
+        failureHandler.withLock { $0 = nil }
     }
 
     // MARK: - Core Audio plumbing
@@ -238,20 +329,30 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
         }
     }
 
+    private func resampled(
+        _ samples: [Float],
+        from source: Double,
+        to target: Double
+    ) throws -> [Float] {
+        deliveredLock.lock()
+        defer { deliveredLock.unlock() }
+        return try resampler.resample(samples, from: source, to: target)
+    }
+
     private func deliveredSnapshot() -> Int {
         deliveredLock.lock()
         defer { deliveredLock.unlock() }
         return samplesDelivered
     }
 
-    private func addDelivered(_ count: Int) {
+    private func setDelivered(_ count: Int) {
         deliveredLock.lock()
         defer { deliveredLock.unlock() }
-        samplesDelivered += count
+        samplesDelivered = count
     }
 
     /// Translates a POSIX PID into the Core Audio process object that taps target.
-    private static func processObject(for pid: pid_t) throws -> AudioObjectID {
+    private static func processObject(for pid: pid_t) -> AudioObjectID? {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyTranslatePIDToProcessObject,
             mScope: kAudioObjectPropertyScopeGlobal,
@@ -271,7 +372,7 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked S
             )
         }
         guard status == noErr, object != AudioObjectID(kAudioObjectUnknown) else {
-            throw AudioCaptureError.processNotFound(pid)
+            return nil
         }
         return object
     }

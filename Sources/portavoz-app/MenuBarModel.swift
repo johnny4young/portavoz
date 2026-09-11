@@ -8,7 +8,19 @@ import PortavozCore
 @MainActor
 protocol MenuBarModelClient: AnyObject {
     func observeMenuBar() -> AsyncStream<MenuBarUpdate>
-    func nextMenuBarEvent() -> UpcomingEvent?
+    func nextMenuBarEvent() async -> UpcomingEvent?
+    func menuBarBriefOffer(
+        for event: UpcomingEvent
+    ) async -> PreMeetingBriefOffer?
+    func prepareMenuBarBrief(
+        for event: UpcomingEvent
+    ) async -> MeetingBrief?
+    func performMenuBarBriefSkill(
+        proposalID: UUID,
+        offer: PreMeetingBriefOffer,
+        approvedBrief: MeetingBrief
+    ) async throws -> String?
+    func dismissMenuBarBriefOffer(_ offer: PreMeetingBriefOffer) async throws
 }
 
 /// Presentation owner for the resident macOS surface. SwiftUI renders one
@@ -16,6 +28,24 @@ protocol MenuBarModelClient: AnyObject {
 @MainActor
 @Observable
 final class MenuBarModel {
+    struct BriefConfirmTarget: Identifiable {
+        let proposalID: UUID
+        let offer: PreMeetingBriefOffer
+        let brief: MeetingBrief
+
+        var id: UUID { proposalID }
+    }
+
+    struct BriefPreparationRequest: Identifiable {
+        let id = UUID()
+        let offer: PreMeetingBriefOffer
+    }
+
+    enum BriefConfirmationResult: Equatable {
+        case succeeded
+        case failed(String)
+    }
+
     enum LoadPhase: Equatable {
         case idle
         case loading
@@ -30,6 +60,12 @@ final class MenuBarModel {
         fileprivate(set) var meetings: [MenuBarMeeting] = []
         fileprivate(set) var pendingByMeeting: [MeetingID: Int] = [:]
         fileprivate(set) var nextEvent: UpcomingEvent?
+        fileprivate(set) var briefOffer: PreMeetingBriefOffer?
+        fileprivate(set) var briefPreparationRequest: BriefPreparationRequest?
+        fileprivate(set) var briefConfirmTarget: BriefConfirmTarget?
+        fileprivate(set) var preparedBrief: MeetingBrief?
+        fileprivate(set) var preparedEventID: String?
+        fileprivate(set) var briefFailure: String?
     }
 
     private(set) var state = State()
@@ -49,11 +85,103 @@ final class MenuBarModel {
         observedSections = []
         failedSections = []
         state.loadPhase = .loading
-        state.nextEvent = client.nextMenuBarEvent()
+        let nextEvent = await client.nextMenuBarEvent()
+        guard !Task.isCancelled,
+              observationID == currentObservationID
+        else { return }
+        let briefOffer: PreMeetingBriefOffer? = if let nextEvent {
+            await client.menuBarBriefOffer(for: nextEvent)
+        } else {
+            nil
+        }
+        guard !Task.isCancelled,
+              observationID == currentObservationID
+        else { return }
+        state.nextEvent = nextEvent
+        state.briefOffer = briefOffer
 
         for await update in client.observeMenuBar() {
             guard !Task.isCancelled, observationID == currentObservationID else { return }
             publish(update)
+        }
+    }
+
+    func requestBrief(_ offer: PreMeetingBriefOffer) {
+        guard state.briefPreparationRequest == nil,
+              state.briefConfirmTarget == nil,
+              state.preparedBrief == nil,
+              state.briefOffer?.id == offer.id
+        else { return }
+        state.briefFailure = nil
+        state.briefPreparationRequest = BriefPreparationRequest(offer: offer)
+    }
+
+    func prepareRequestedBrief() async {
+        guard let request = state.briefPreparationRequest else { return }
+        let brief = await client.prepareMenuBarBrief(for: request.offer.event)
+        guard !Task.isCancelled,
+              state.briefPreparationRequest?.id == request.id
+        else { return }
+        state.briefPreparationRequest = nil
+        guard let brief else {
+            state.briefFailure = L10n.text(
+                "The brief could not be prepared. Nothing ran.")
+            return
+        }
+        state.briefConfirmTarget = BriefConfirmTarget(
+            proposalID: UUID(),
+            offer: request.offer,
+            brief: brief)
+    }
+
+    func confirmBrief(
+        _ target: BriefConfirmTarget
+    ) async -> BriefConfirmationResult {
+        do {
+            let failure = try await client.performMenuBarBriefSkill(
+                proposalID: target.proposalID,
+                offer: target.offer,
+                approvedBrief: target.brief)
+            guard !Task.isCancelled,
+                  state.briefConfirmTarget?.proposalID == target.proposalID
+            else {
+                return .failed(L10n.text("The brief was cancelled. Nothing ran."))
+            }
+            guard let failure else {
+                state.briefConfirmTarget = nil
+                state.briefOffer = nil
+                state.preparedBrief = target.brief
+                state.preparedEventID = target.offer.event.id
+                return .succeeded
+            }
+            return .failed(failure)
+        } catch is CancellationError {
+            return .failed(L10n.text("The brief was cancelled. Nothing ran."))
+        } catch {
+            return .failed(L10n.text(
+                "The brief could not be prepared. Nothing ran."))
+        }
+    }
+
+    func cancelBriefConfirmation() {
+        state.briefConfirmTarget = nil
+    }
+
+    func closePreparedBrief() {
+        state.preparedBrief = nil
+    }
+
+    func dismissBriefOffer(_ offer: PreMeetingBriefOffer) async {
+        do {
+            try await client.dismissMenuBarBriefOffer(offer)
+            guard state.briefOffer?.id == offer.id else { return }
+            state.briefOffer = nil
+            state.briefFailure = nil
+        } catch is CancellationError {
+            return
+        } catch {
+            state.briefFailure = L10n.text(
+                "The brief suggestion could not be dismissed.")
         }
     }
 }

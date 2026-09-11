@@ -1,0 +1,1165 @@
+{
+  "contentSource": "public-synthetic-only",
+  "faultScenarios": [
+    {
+      "domain": "questionDetection",
+      "expectedOutcome": "cancelled",
+      "fault": "cancelBeforeResult",
+      "id": "fault-questiondetection-cancel",
+      "maximumLatePublications": 0
+    },
+    {
+      "domain": "questionDetection",
+      "expectedOutcome": "recovered",
+      "fault": "relaunch",
+      "id": "fault-questiondetection-relaunch",
+      "maximumLatePublications": 0
+    },
+    {
+      "domain": "interview",
+      "expectedOutcome": "cancelled",
+      "fault": "cancelBeforeResult",
+      "id": "fault-interview-cancel",
+      "maximumLatePublications": 0
+    },
+    {
+      "domain": "interview",
+      "expectedOutcome": "recovered",
+      "fault": "relaunch",
+      "id": "fault-interview-relaunch",
+      "maximumLatePublications": 0
+    },
+    {
+      "domain": "rollingSummary",
+      "expectedOutcome": "cancelled",
+      "fault": "cancelBeforeResult",
+      "id": "fault-rollingsummary-cancel",
+      "maximumLatePublications": 0
+    },
+    {
+      "domain": "rollingSummary",
+      "expectedOutcome": "recovered",
+      "fault": "relaunch",
+      "id": "fault-rollingsummary-relaunch",
+      "maximumLatePublications": 0
+    },
+    {
+      "domain": "translation",
+      "expectedOutcome": "cancelled",
+      "fault": "cancelBeforeResult",
+      "id": "fault-translation-cancel",
+      "maximumLatePublications": 0
+    },
+    {
+      "domain": "translation",
+      "expectedOutcome": "recovered",
+      "fault": "relaunch",
+      "id": "fault-translation-relaunch",
+      "maximumLatePublications": 0
+    }
+  ],
+  "frozenAt": "2026-08-29T00:00:00Z",
+  "generation": "public-bilingual-v1",
+  "interviewScenarios": [
+    {
+      "expectedEvidenceIDs": [
+        "387c4521-f682-5d9d-8917-f93bd97e7501",
+        "37b0fcb1-1486-53f3-92eb-afa58cc4d125"
+      ],
+      "expectedQuestionID": "ae674130-bda7-5957-96dd-5986645d115a",
+      "id": "interview-en-current",
+      "segments": [
+        {
+          "channel": "system",
+          "endSeconds": 4,
+          "id": "387c4521-f682-5d9d-8917-f93bd97e7501",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "9a95f66e-6f28-561e-890a-caf81300d366",
+          "startSeconds": 0,
+          "text": "The retry budget is two attempts."
+        },
+        {
+          "channel": "microphone",
+          "endSeconds": 9,
+          "id": "37b0fcb1-1486-53f3-92eb-afa58cc4d125",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "9a95f66e-6f28-561e-890a-caf81300d366",
+          "startSeconds": 5,
+          "text": "We retain the failed receipt locally."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 14,
+          "id": "ae674130-bda7-5957-96dd-5986645d115a",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "9a95f66e-6f28-561e-890a-caf81300d366",
+          "startSeconds": 10,
+          "text": "How would you explain that recovery tradeoff?"
+        }
+      ]
+    },
+    {
+      "expectedEvidenceIDs": [
+        "139f5073-443c-50b6-8df0-074d2d3105c3",
+        "b53845d3-d1ed-5842-a002-aa2a32647b50"
+      ],
+      "expectedQuestionID": "58f49e74-fa59-5164-8602-d73afb039cef",
+      "id": "interview-es-current",
+      "segments": [
+        {
+          "channel": "system",
+          "endSeconds": 4,
+          "id": "139f5073-443c-50b6-8df0-074d2d3105c3",
+          "isFinal": true,
+          "language": "es",
+          "meetingID": "4c8e0def-41f4-5757-823e-25aa1c15e9da",
+          "startSeconds": 0,
+          "text": "El presupuesto permite dos reintentos."
+        },
+        {
+          "channel": "microphone",
+          "endSeconds": 9,
+          "id": "b53845d3-d1ed-5842-a002-aa2a32647b50",
+          "isFinal": true,
+          "language": "es",
+          "meetingID": "4c8e0def-41f4-5757-823e-25aa1c15e9da",
+          "startSeconds": 5,
+          "text": "Conservamos el recibo fallido localmente."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 14,
+          "id": "58f49e74-fa59-5164-8602-d73afb039cef",
+          "isFinal": true,
+          "language": "es",
+          "meetingID": "4c8e0def-41f4-5757-823e-25aa1c15e9da",
+          "startSeconds": 10,
+          "text": "¿Cómo explicarías ese compromiso de recuperación?"
+        }
+      ]
+    },
+    {
+      "expectedEvidenceIDs": [
+        "9428fd30-6de8-5ba5-beb8-6b1ce2ed3e08"
+      ],
+      "expectedQuestionID": "407bb60a-0abb-56cd-81d4-3dcb311c02c5",
+      "id": "interview-code-switch-current",
+      "segments": [
+        {
+          "channel": "system",
+          "endSeconds": 4,
+          "id": "9428fd30-6de8-5ba5-beb8-6b1ce2ed3e08",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "dddbe175-10d0-5924-9210-bc54a0cca90d",
+          "startSeconds": 0,
+          "text": "We keep el receipt local para revisar."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 10,
+          "id": "407bb60a-0abb-56cd-81d4-3dcb311c02c5",
+          "isFinal": true,
+          "language": "es",
+          "meetingID": "dddbe175-10d0-5924-9210-bc54a0cca90d",
+          "startSeconds": 6,
+          "text": "Cómo would you explain the retry tradeoff?"
+        }
+      ]
+    },
+    {
+      "expectedEvidenceIDs": [],
+      "expectedQuestionID": null,
+      "id": "interview-partial-rejected",
+      "segments": [
+        {
+          "channel": "system",
+          "endSeconds": 8,
+          "id": "d0c5a36d-f535-571a-bd9f-7f662066066f",
+          "isFinal": false,
+          "language": "en",
+          "meetingID": "7a815d9f-1ecc-5d0e-a27c-137b8045e035",
+          "startSeconds": 5,
+          "text": "Could you explain the retry tradeoff?"
+        }
+      ]
+    },
+    {
+      "expectedEvidenceIDs": [],
+      "expectedQuestionID": null,
+      "id": "interview-microphone-rejected",
+      "segments": [
+        {
+          "channel": "microphone",
+          "endSeconds": 8,
+          "id": "b1517673-f21c-5b82-9246-dec9926b86a8",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "1628cce3-3ada-5e6b-9d2d-a9ab5da5c23b",
+          "startSeconds": 5,
+          "text": "Could you explain the retry tradeoff?"
+        }
+      ]
+    },
+    {
+      "expectedEvidenceIDs": [],
+      "expectedQuestionID": null,
+      "id": "interview-stale-rejected",
+      "segments": [
+        {
+          "channel": "system",
+          "endSeconds": 4,
+          "id": "5704fe66-1d67-59fa-9f1b-a68e6d2edfee",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "2af7d126-af6d-5262-89c8-9932d178c190",
+          "startSeconds": 0,
+          "text": "Could you explain the retry tradeoff?"
+        },
+        {
+          "channel": "system",
+          "endSeconds": 209,
+          "id": "05ef15c5-53cd-591d-862c-a114f2c49eb7",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "2af7d126-af6d-5262-89c8-9932d178c190",
+          "startSeconds": 205,
+          "text": "The room moved to a different topic."
+        }
+      ]
+    },
+    {
+      "expectedEvidenceIDs": [
+        "0780fff8-68c0-53af-9fb2-ed179f3d20ad"
+      ],
+      "expectedQuestionID": "8ea17be7-8e77-56fa-b179-e7e4741d1b95",
+      "id": "interview-cross-meeting-evidence",
+      "segments": [
+        {
+          "channel": "system",
+          "endSeconds": 3,
+          "id": "a558adc5-6e1b-5bc1-a47c-30b08bd8a389",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "280df9a3-5720-5d19-83ca-16e4b0d7c674",
+          "startSeconds": 0,
+          "text": "This belongs to another meeting."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 7,
+          "id": "0780fff8-68c0-53af-9fb2-ed179f3d20ad",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "f1405a13-1b29-5ae4-86fb-76d485b18c0a",
+          "startSeconds": 4,
+          "text": "The current meeting uses two attempts."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 11,
+          "id": "8ea17be7-8e77-56fa-b179-e7e4741d1b95",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "f1405a13-1b29-5ae4-86fb-76d485b18c0a",
+          "startSeconds": 8,
+          "text": "What retry budget should we explain?"
+        }
+      ]
+    }
+  ],
+  "kind": "live-assist-validation-fixture",
+  "questionSessions": [
+    {
+      "durationSeconds": 1800,
+      "events": [
+        {
+          "channel": "system",
+          "confidence": 0.96,
+          "expectedDecision": "question",
+          "id": "537dc686-2e86-5c8d-8384-2bea35e5b996",
+          "offsetSeconds": 0,
+          "text": "Could you explain why the rollout moved to Friday?"
+        },
+        {
+          "channel": "system",
+          "confidence": 0.94,
+          "expectedDecision": "question",
+          "id": "896a951e-87a4-5b1c-9e83-21ad4cf172aa",
+          "offsetSeconds": 180,
+          "text": "Alex, tell us what changed in the retry policy."
+        },
+        {
+          "channel": "system",
+          "confidence": 0.91,
+          "expectedDecision": "question",
+          "id": "31cd68fe-5ba7-5597-ac68-85a0d7e595e7",
+          "offsetSeconds": 360,
+          "text": "Where should we store the signed receipt"
+        },
+        {
+          "channel": "system",
+          "confidence": 0.95,
+          "expectedDecision": "nonQuestion",
+          "id": "46ac9a65-cd7c-51c7-9a2a-781da6284f34",
+          "offsetSeconds": 540,
+          "text": "The rollout moved to Friday after the review."
+        },
+        {
+          "channel": "system",
+          "confidence": 0.95,
+          "expectedDecision": "nonQuestion",
+          "id": "8c353646-0280-5d0a-811a-79aa03fc4817",
+          "offsetSeconds": 720,
+          "text": "What a strong result we recorded today."
+        },
+        {
+          "channel": "system",
+          "confidence": 0.93,
+          "expectedDecision": "abstain",
+          "id": "a4179651-e9e7-58fa-ba67-af418d4d42b6",
+          "offsetSeconds": 900,
+          "text": "The FAQ heading asks how do we deploy? but nobody asked the room."
+        },
+        {
+          "channel": "system",
+          "confidence": 0.34,
+          "expectedDecision": "abstain",
+          "id": "fb0a7066-8814-5dfc-9e12-bcf25963aed9",
+          "offsetSeconds": 1080,
+          "text": "Could the retry"
+        },
+        {
+          "channel": "microphone",
+          "confidence": 0.98,
+          "expectedDecision": "nonQuestion",
+          "id": "d3771c72-4577-55ab-be98-073a95eb493b",
+          "offsetSeconds": 1260,
+          "text": "Could you send me the report?"
+        }
+      ],
+      "id": "question-session-en",
+      "languageProfile": "en",
+      "ownerName": "Alex Morgan"
+    },
+    {
+      "durationSeconds": 1800,
+      "events": [
+        {
+          "channel": "system",
+          "confidence": 0.96,
+          "expectedDecision": "question",
+          "id": "b7dfd532-8ad8-536d-81b1-0005077746b4",
+          "offsetSeconds": 0,
+          "text": "¿Puedes explicar por qué el despliegue pasó al viernes?"
+        },
+        {
+          "channel": "system",
+          "confidence": 0.94,
+          "expectedDecision": "question",
+          "id": "047a4fd8-1c75-5acd-b360-d4436f9d3945",
+          "offsetSeconds": 180,
+          "text": "Alex, cuéntanos qué cambió en la política de reintentos."
+        },
+        {
+          "channel": "system",
+          "confidence": 0.91,
+          "expectedDecision": "question",
+          "id": "42e1dff0-2719-54de-a177-645d4bc30659",
+          "offsetSeconds": 360,
+          "text": "Dónde guardamos el recibo firmado"
+        },
+        {
+          "channel": "system",
+          "confidence": 0.95,
+          "expectedDecision": "nonQuestion",
+          "id": "a4ec062c-df7e-5b82-b2a6-846dd09ee717",
+          "offsetSeconds": 540,
+          "text": "El despliegue pasó al viernes después de la revisión."
+        },
+        {
+          "channel": "system",
+          "confidence": 0.95,
+          "expectedDecision": "nonQuestion",
+          "id": "85797973-ac82-5b67-ac7a-0162443d26af",
+          "offsetSeconds": 720,
+          "text": "Qué gran resultado registramos hoy."
+        },
+        {
+          "channel": "system",
+          "confidence": 0.93,
+          "expectedDecision": "abstain",
+          "id": "f7d99b51-f63b-5616-929a-e9beccb06139",
+          "offsetSeconds": 900,
+          "text": "El documento dice ¿cómo desplegamos? como título, no como pregunta al grupo."
+        },
+        {
+          "channel": "system",
+          "confidence": 0.34,
+          "expectedDecision": "abstain",
+          "id": "d8785a88-04a4-5b93-b64c-c896ffde9f3b",
+          "offsetSeconds": 1080,
+          "text": "Podría el retry"
+        },
+        {
+          "channel": "microphone",
+          "confidence": 0.98,
+          "expectedDecision": "nonQuestion",
+          "id": "b96c35f9-5f0c-53be-a18c-655faf4af929",
+          "offsetSeconds": 1260,
+          "text": "¿Puedes enviarme el informe?"
+        }
+      ],
+      "id": "question-session-es",
+      "languageProfile": "es",
+      "ownerName": "Alex Morgan"
+    },
+    {
+      "durationSeconds": 1800,
+      "events": [
+        {
+          "channel": "system",
+          "confidence": 0.93,
+          "expectedDecision": "question",
+          "id": "39db15d6-d7d9-5803-9bba-0de9e0745e93",
+          "offsetSeconds": 0,
+          "text": "Can you confirmar cuándo cierra el release?"
+        },
+        {
+          "channel": "system",
+          "confidence": 0.91,
+          "expectedDecision": "question",
+          "id": "2e176cd5-4140-5a2f-891b-919f62896ae8",
+          "offsetSeconds": 180,
+          "text": "Alex, nos dices what changed in la política de retry."
+        },
+        {
+          "channel": "system",
+          "confidence": 0.88,
+          "expectedDecision": "question",
+          "id": "1965ebd4-c453-5b54-ae47-ee4137345805",
+          "offsetSeconds": 360,
+          "text": "Cómo do we recover the pending job"
+        },
+        {
+          "channel": "system",
+          "confidence": 0.94,
+          "expectedDecision": "nonQuestion",
+          "id": "ece7f34d-5c31-5f56-a33b-3790a846b1b2",
+          "offsetSeconds": 540,
+          "text": "The release quedó ready después del smoke test."
+        },
+        {
+          "channel": "system",
+          "confidence": 0.92,
+          "expectedDecision": "nonQuestion",
+          "id": "732e2ec2-8cc2-539a-8c04-04fa2758e871",
+          "offsetSeconds": 720,
+          "text": "What una excelente mejora logramos today."
+        },
+        {
+          "channel": "system",
+          "confidence": 0.9,
+          "expectedDecision": "abstain",
+          "id": "f168169a-22a1-5507-bf08-090f9015c57b",
+          "offsetSeconds": 900,
+          "text": "El ticket copia “why did it fail?” pero nadie pregunta ahora."
+        },
+        {
+          "channel": "system",
+          "confidence": 0.35,
+          "expectedDecision": "abstain",
+          "id": "edfc7467-cb3e-5fda-b057-51b84bdfc511",
+          "offsetSeconds": 1080,
+          "text": "Could we tal vez"
+        },
+        {
+          "channel": "microphone",
+          "confidence": 0.97,
+          "expectedDecision": "nonQuestion",
+          "id": "06e20440-8a80-5146-8335-fe4cd304764b",
+          "offsetSeconds": 1260,
+          "text": "Can you revisar mi nota?"
+        }
+      ],
+      "id": "question-session-codeswitch",
+      "languageProfile": "codeSwitch",
+      "ownerName": "Alex Morgan"
+    },
+    {
+      "durationSeconds": 1800,
+      "events": [
+        {
+          "channel": "system",
+          "confidence": 0.67,
+          "expectedDecision": "question",
+          "id": "36865543-84b8-546c-9513-56b68b8935f5",
+          "offsetSeconds": 0,
+          "text": "can yu explain whi the retri queue stopped"
+        },
+        {
+          "channel": "system",
+          "confidence": 0.64,
+          "expectedDecision": "question",
+          "id": "c178b94d-6ea8-57d8-9905-216f7af6e87d",
+          "offsetSeconds": 180,
+          "text": "Alex tell us bout the deploy failur"
+        },
+        {
+          "channel": "system",
+          "confidence": 0.61,
+          "expectedDecision": "question",
+          "id": "95191a12-592a-5fc7-8999-9e2326c909dc",
+          "offsetSeconds": 360,
+          "text": "wher shud we put the signed recipt"
+        },
+        {
+          "channel": "system",
+          "confidence": 0.65,
+          "expectedDecision": "nonQuestion",
+          "id": "adcd4814-9c4d-538f-b3a5-b9c4baeb111c",
+          "offsetSeconds": 540,
+          "text": "the retri queue stopd after the deploy"
+        },
+        {
+          "channel": "system",
+          "confidence": 0.66,
+          "expectedDecision": "nonQuestion",
+          "id": "a4b47f8d-5bc6-5e4f-959d-d96fa54249f9",
+          "offsetSeconds": 720,
+          "text": "what a gud result we got today"
+        },
+        {
+          "channel": "system",
+          "confidence": 0.18,
+          "expectedDecision": "abstain",
+          "id": "e88c5dca-5f58-5226-9aae-0391aada3c47",
+          "offsetSeconds": 900,
+          "text": "uh what no"
+        },
+        {
+          "channel": "system",
+          "confidence": 0.3,
+          "expectedDecision": "abstain",
+          "id": "c9fbdce5-bafb-5ca8-a811-6582c52257ec",
+          "offsetSeconds": 1080,
+          "text": "can the"
+        },
+        {
+          "channel": "microphone",
+          "confidence": 0.62,
+          "expectedDecision": "nonQuestion",
+          "id": "d1791049-f117-5e5a-aa2c-f20c017f1b06",
+          "offsetSeconds": 1260,
+          "text": "can yu send the log"
+        }
+      ],
+      "id": "question-session-noisyasr",
+      "languageProfile": "noisyASR",
+      "ownerName": "Alex Morgan"
+    }
+  ],
+  "rollingSummaryScenarios": [
+    {
+      "expectedBacklog": false,
+      "expectedSelectedIDs": [
+        "f953d5cf-0d48-5832-875f-28ef2a41b649",
+        "d5065216-4889-56a2-a2f2-e7be5d38c863",
+        "30137f8c-ce11-5560-9ff5-2c285068e2d0"
+      ],
+      "id": "summary-en-incremental",
+      "language": "en",
+      "maximumCharacters": 6000,
+      "maximumRows": 32,
+      "referenceSummary": "The retry budget is two attempts. Failures keep a local receipt. The release review is Friday.",
+      "requiredFacts": [
+        {
+          "id": "summary-en-incremental-fact-0",
+          "sourceSegmentIDs": [
+            "f953d5cf-0d48-5832-875f-28ef2a41b649"
+          ],
+          "text": "The retry budget is two attempts."
+        },
+        {
+          "id": "summary-en-incremental-fact-1",
+          "sourceSegmentIDs": [
+            "d5065216-4889-56a2-a2f2-e7be5d38c863"
+          ],
+          "text": "Failures keep a local receipt."
+        },
+        {
+          "id": "summary-en-incremental-fact-2",
+          "sourceSegmentIDs": [
+            "30137f8c-ce11-5560-9ff5-2c285068e2d0"
+          ],
+          "text": "The release review is Friday."
+        }
+      ],
+      "segments": [
+        {
+          "channel": "system",
+          "endSeconds": 4,
+          "id": "f953d5cf-0d48-5832-875f-28ef2a41b649",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "e577fe39-b711-532e-a051-b522b2b1c325",
+          "startSeconds": 0,
+          "text": "The retry budget is two attempts."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 9,
+          "id": "d5065216-4889-56a2-a2f2-e7be5d38c863",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "e577fe39-b711-532e-a051-b522b2b1c325",
+          "startSeconds": 5,
+          "text": "Failures keep a local receipt."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 14,
+          "id": "30137f8c-ce11-5560-9ff5-2c285068e2d0",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "e577fe39-b711-532e-a051-b522b2b1c325",
+          "startSeconds": 10,
+          "text": "The release review is Friday."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 19,
+          "id": "596ceb0c-b932-55de-a1ed-d7b67a6825dc",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "e577fe39-b711-532e-a051-b522b2b1c325",
+          "startSeconds": 15,
+          "text": "This open row is still growing"
+        }
+      ],
+      "summarizedIDs": []
+    },
+    {
+      "expectedBacklog": false,
+      "expectedSelectedIDs": [
+        "9b8964b7-6e68-5725-b507-6e365a4f0fa2",
+        "3ab14bd5-074d-53f6-8a1c-30f232d9b5e3",
+        "ec6e108e-7ca2-5711-823e-c45c7b5aed14"
+      ],
+      "id": "summary-es-incremental",
+      "language": "es",
+      "maximumCharacters": 6000,
+      "maximumRows": 32,
+      "referenceSummary": "El presupuesto permite dos reintentos. Los fallos conservan un recibo local. La revisión de salida es el viernes.",
+      "requiredFacts": [
+        {
+          "id": "summary-es-incremental-fact-0",
+          "sourceSegmentIDs": [
+            "9b8964b7-6e68-5725-b507-6e365a4f0fa2"
+          ],
+          "text": "El presupuesto permite dos reintentos."
+        },
+        {
+          "id": "summary-es-incremental-fact-1",
+          "sourceSegmentIDs": [
+            "3ab14bd5-074d-53f6-8a1c-30f232d9b5e3"
+          ],
+          "text": "Los fallos conservan un recibo local."
+        },
+        {
+          "id": "summary-es-incremental-fact-2",
+          "sourceSegmentIDs": [
+            "ec6e108e-7ca2-5711-823e-c45c7b5aed14"
+          ],
+          "text": "La revisión de salida es el viernes."
+        }
+      ],
+      "segments": [
+        {
+          "channel": "system",
+          "endSeconds": 4,
+          "id": "9b8964b7-6e68-5725-b507-6e365a4f0fa2",
+          "isFinal": true,
+          "language": "es",
+          "meetingID": "f2cfba5b-3298-5586-8203-ec0f200a1d39",
+          "startSeconds": 0,
+          "text": "El presupuesto permite dos reintentos."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 9,
+          "id": "3ab14bd5-074d-53f6-8a1c-30f232d9b5e3",
+          "isFinal": true,
+          "language": "es",
+          "meetingID": "f2cfba5b-3298-5586-8203-ec0f200a1d39",
+          "startSeconds": 5,
+          "text": "Los fallos conservan un recibo local."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 14,
+          "id": "ec6e108e-7ca2-5711-823e-c45c7b5aed14",
+          "isFinal": true,
+          "language": "es",
+          "meetingID": "f2cfba5b-3298-5586-8203-ec0f200a1d39",
+          "startSeconds": 10,
+          "text": "La revisión de salida es el viernes."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 19,
+          "id": "a48fb1b7-1957-5aab-a174-7bff111dca22",
+          "isFinal": true,
+          "language": "es",
+          "meetingID": "f2cfba5b-3298-5586-8203-ec0f200a1d39",
+          "startSeconds": 15,
+          "text": "Esta fila abierta sigue creciendo"
+        }
+      ],
+      "summarizedIDs": []
+    },
+    {
+      "expectedBacklog": false,
+      "expectedSelectedIDs": [
+        "dfbf5aa9-2756-5f75-b839-a9f570af9ff7",
+        "48eccae6-c9b2-51d6-af92-c084338dcf9d",
+        "a571076c-9ea0-562b-bacc-5f444ebb8321"
+      ],
+      "id": "summary-code-switch",
+      "language": "en",
+      "maximumCharacters": 6000,
+      "maximumRows": 32,
+      "referenceSummary": "The retry budget queda en dos attempts. El receipt stays local after failure. La review final is Friday.",
+      "requiredFacts": [
+        {
+          "id": "summary-code-switch-fact-0",
+          "sourceSegmentIDs": [
+            "dfbf5aa9-2756-5f75-b839-a9f570af9ff7"
+          ],
+          "text": "The retry budget queda en dos attempts."
+        },
+        {
+          "id": "summary-code-switch-fact-1",
+          "sourceSegmentIDs": [
+            "48eccae6-c9b2-51d6-af92-c084338dcf9d"
+          ],
+          "text": "El receipt stays local after failure."
+        },
+        {
+          "id": "summary-code-switch-fact-2",
+          "sourceSegmentIDs": [
+            "a571076c-9ea0-562b-bacc-5f444ebb8321"
+          ],
+          "text": "La review final is Friday."
+        }
+      ],
+      "segments": [
+        {
+          "channel": "system",
+          "endSeconds": 4,
+          "id": "dfbf5aa9-2756-5f75-b839-a9f570af9ff7",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "557d6b54-384d-5fcc-ace4-d0100f0e9a0a",
+          "startSeconds": 0,
+          "text": "The retry budget queda en dos attempts."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 9,
+          "id": "48eccae6-c9b2-51d6-af92-c084338dcf9d",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "557d6b54-384d-5fcc-ace4-d0100f0e9a0a",
+          "startSeconds": 5,
+          "text": "El receipt stays local after failure."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 14,
+          "id": "a571076c-9ea0-562b-bacc-5f444ebb8321",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "557d6b54-384d-5fcc-ace4-d0100f0e9a0a",
+          "startSeconds": 10,
+          "text": "La review final is Friday."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 19,
+          "id": "f21008fc-2b6b-5385-b267-992e930ca7ac",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "557d6b54-384d-5fcc-ace4-d0100f0e9a0a",
+          "startSeconds": 15,
+          "text": "Open partial row"
+        }
+      ],
+      "summarizedIDs": []
+    },
+    {
+      "expectedBacklog": true,
+      "expectedSelectedIDs": [
+        "ffb67510-368e-5289-a2ec-ee676aa74dd5"
+      ],
+      "id": "summary-character-bound",
+      "language": "en",
+      "maximumCharacters": 100,
+      "maximumRows": 32,
+      "referenceSummary": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+      "requiredFacts": [
+        {
+          "id": "summary-character-bound-fact-0",
+          "sourceSegmentIDs": [
+            "ffb67510-368e-5289-a2ec-ee676aa74dd5"
+          ],
+          "text": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        {
+          "id": "summary-character-bound-fact-1",
+          "sourceSegmentIDs": [
+            "45050566-3b50-54bb-b07b-09fab8dd5317"
+          ],
+          "text": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+        }
+      ],
+      "segments": [
+        {
+          "channel": "system",
+          "endSeconds": 4,
+          "id": "ffb67510-368e-5289-a2ec-ee676aa74dd5",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "1850aa0b-ff8d-5615-8d5f-2aff543933db",
+          "startSeconds": 0,
+          "text": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        {
+          "channel": "system",
+          "endSeconds": 9,
+          "id": "45050566-3b50-54bb-b07b-09fab8dd5317",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "1850aa0b-ff8d-5615-8d5f-2aff543933db",
+          "startSeconds": 5,
+          "text": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+        },
+        {
+          "channel": "system",
+          "endSeconds": 14,
+          "id": "bba339f3-fa72-5e42-b246-4e1019b43450",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "1850aa0b-ff8d-5615-8d5f-2aff543933db",
+          "startSeconds": 10,
+          "text": "CCCCCCCCCCCCCCCCCCCC"
+        }
+      ],
+      "summarizedIDs": []
+    },
+    {
+      "expectedBacklog": true,
+      "expectedSelectedIDs": [
+        "ff76f6c7-8536-51d2-8ee7-976e3fad62c9",
+        "2d034fb4-104a-580f-9b27-bd475394ceec"
+      ],
+      "id": "summary-row-bound",
+      "language": "es",
+      "maximumCharacters": 6000,
+      "maximumRows": 2,
+      "referenceSummary": "Uno Dos Tres Cuatro",
+      "requiredFacts": [
+        {
+          "id": "summary-row-bound-fact-0",
+          "sourceSegmentIDs": [
+            "ff76f6c7-8536-51d2-8ee7-976e3fad62c9"
+          ],
+          "text": "Uno"
+        },
+        {
+          "id": "summary-row-bound-fact-1",
+          "sourceSegmentIDs": [
+            "2d034fb4-104a-580f-9b27-bd475394ceec"
+          ],
+          "text": "Dos"
+        },
+        {
+          "id": "summary-row-bound-fact-2",
+          "sourceSegmentIDs": [
+            "e65600fd-1caa-5856-a08f-6f059a68d432"
+          ],
+          "text": "Tres"
+        },
+        {
+          "id": "summary-row-bound-fact-3",
+          "sourceSegmentIDs": [
+            "b6ecae30-24a4-5bd0-88e9-3368051735fa"
+          ],
+          "text": "Cuatro"
+        }
+      ],
+      "segments": [
+        {
+          "channel": "system",
+          "endSeconds": 4,
+          "id": "ff76f6c7-8536-51d2-8ee7-976e3fad62c9",
+          "isFinal": true,
+          "language": "es",
+          "meetingID": "4ab8407d-2c31-5d3c-abda-854551043c51",
+          "startSeconds": 0,
+          "text": "Uno"
+        },
+        {
+          "channel": "system",
+          "endSeconds": 9,
+          "id": "2d034fb4-104a-580f-9b27-bd475394ceec",
+          "isFinal": true,
+          "language": "es",
+          "meetingID": "4ab8407d-2c31-5d3c-abda-854551043c51",
+          "startSeconds": 5,
+          "text": "Dos"
+        },
+        {
+          "channel": "system",
+          "endSeconds": 14,
+          "id": "e65600fd-1caa-5856-a08f-6f059a68d432",
+          "isFinal": true,
+          "language": "es",
+          "meetingID": "4ab8407d-2c31-5d3c-abda-854551043c51",
+          "startSeconds": 10,
+          "text": "Tres"
+        },
+        {
+          "channel": "system",
+          "endSeconds": 19,
+          "id": "b6ecae30-24a4-5bd0-88e9-3368051735fa",
+          "isFinal": true,
+          "language": "es",
+          "meetingID": "4ab8407d-2c31-5d3c-abda-854551043c51",
+          "startSeconds": 15,
+          "text": "Cuatro"
+        },
+        {
+          "channel": "system",
+          "endSeconds": 24,
+          "id": "b341b023-6c65-5e42-b04e-47dae0fb2921",
+          "isFinal": true,
+          "language": "es",
+          "meetingID": "4ab8407d-2c31-5d3c-abda-854551043c51",
+          "startSeconds": 20,
+          "text": "Abierta"
+        }
+      ],
+      "summarizedIDs": []
+    }
+  ],
+  "schemaVersion": 1,
+  "translationScenarios": [
+    {
+      "expectedPair": {
+        "source": "en",
+        "target": "es"
+      },
+      "expectedPendingIDs": [
+        "8421d21c-014c-51a4-bc7e-d6d808f27f9a",
+        "151cbc78-bec9-5c32-bc54-c5ace7bf675f"
+      ],
+      "id": "translation-en-to-es",
+      "segments": [
+        {
+          "channel": "system",
+          "endSeconds": 4,
+          "id": "8421d21c-014c-51a4-bc7e-d6d808f27f9a",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "a695daad-1034-5572-a20e-b598ca652b38",
+          "startSeconds": 0,
+          "text": "The retry budget is two attempts."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 9,
+          "id": "151cbc78-bec9-5c32-bc54-c5ace7bf675f",
+          "isFinal": false,
+          "language": "en",
+          "meetingID": "a695daad-1034-5572-a20e-b598ca652b38",
+          "startSeconds": 5,
+          "text": "This open caption is long enough to translate."
+        }
+      ],
+      "targetLanguage": "es",
+      "translatedSourceTexts": {},
+      "unsupportedIDs": []
+    },
+    {
+      "expectedPair": {
+        "source": "es",
+        "target": "en"
+      },
+      "expectedPendingIDs": [
+        "afc779af-d766-5964-89e5-3cfed471065a",
+        "9f814a40-3654-5058-b0ed-55c916c03148"
+      ],
+      "id": "translation-es-to-en",
+      "segments": [
+        {
+          "channel": "system",
+          "endSeconds": 4,
+          "id": "afc779af-d766-5964-89e5-3cfed471065a",
+          "isFinal": true,
+          "language": "es",
+          "meetingID": "bef93664-cace-5008-b97c-8a7ad3821610",
+          "startSeconds": 0,
+          "text": "El presupuesto permite dos reintentos."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 9,
+          "id": "9f814a40-3654-5058-b0ed-55c916c03148",
+          "isFinal": false,
+          "language": "es",
+          "meetingID": "bef93664-cace-5008-b97c-8a7ad3821610",
+          "startSeconds": 5,
+          "text": "Esta fila abierta ya tiene suficiente evidencia."
+        }
+      ],
+      "targetLanguage": "en",
+      "translatedSourceTexts": {},
+      "unsupportedIDs": []
+    },
+    {
+      "expectedPair": null,
+      "expectedPendingIDs": [],
+      "id": "translation-target-language-skipped",
+      "segments": [
+        {
+          "channel": "system",
+          "endSeconds": 4,
+          "id": "ab5bc1b0-5131-5e2c-8413-9e5a95fcf87a",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "40eeb5c4-2997-5517-8a5f-07d4fb7efca2",
+          "startSeconds": 0,
+          "text": "The receipt stays local."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 9,
+          "id": "9e5a7fc7-015e-5630-ba1f-6d478a77656a",
+          "isFinal": false,
+          "language": "en",
+          "meetingID": "40eeb5c4-2997-5517-8a5f-07d4fb7efca2",
+          "startSeconds": 5,
+          "text": "The open row is already English."
+        }
+      ],
+      "targetLanguage": "en",
+      "translatedSourceTexts": {},
+      "unsupportedIDs": []
+    },
+    {
+      "expectedPair": null,
+      "expectedPendingIDs": [],
+      "id": "translation-unsupported-skipped",
+      "segments": [
+        {
+          "channel": "system",
+          "endSeconds": 4,
+          "id": "90a7428b-e61f-527d-a828-5460a8a4c1c4",
+          "isFinal": true,
+          "language": "es",
+          "meetingID": "6935b3e4-e881-5952-abc7-4006ef6d5a68",
+          "startSeconds": 0,
+          "text": "El recibo permanece local."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 9,
+          "id": "f692b569-6b53-5a69-9d87-4f6e8a9d3fa4",
+          "isFinal": false,
+          "language": "en",
+          "meetingID": "6935b3e4-e881-5952-abc7-4006ef6d5a68",
+          "startSeconds": 5,
+          "text": "Fila abierta en inglés."
+        }
+      ],
+      "targetLanguage": "en",
+      "translatedSourceTexts": {},
+      "unsupportedIDs": [
+        "90a7428b-e61f-527d-a828-5460a8a4c1c4"
+      ]
+    },
+    {
+      "expectedPair": {
+        "source": "en",
+        "target": "es"
+      },
+      "expectedPendingIDs": [
+        "b8709cf9-eca5-5785-89cf-8f5252cde41c"
+      ],
+      "id": "translation-revision-refresh",
+      "segments": [
+        {
+          "channel": "system",
+          "endSeconds": 4,
+          "id": "b8709cf9-eca5-5785-89cf-8f5252cde41c",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "ecace87b-1539-5441-84ea-4e9afda0c95f",
+          "startSeconds": 0,
+          "text": "The retry budget is now two attempts."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 9,
+          "id": "2478b76a-875d-5b9f-a1ac-ad3d88712114",
+          "isFinal": false,
+          "language": "es",
+          "meetingID": "ecace87b-1539-5441-84ea-4e9afda0c95f",
+          "startSeconds": 5,
+          "text": "Open row already target language."
+        }
+      ],
+      "targetLanguage": "es",
+      "translatedSourceTexts": {
+        "b8709cf9-eca5-5785-89cf-8f5252cde41c": "The retry budget was one attempt."
+      },
+      "unsupportedIDs": []
+    },
+    {
+      "expectedPair": null,
+      "expectedPendingIDs": [],
+      "id": "translation-current-revision-skipped",
+      "segments": [
+        {
+          "channel": "system",
+          "endSeconds": 4,
+          "id": "7a8d0b63-b566-5948-986d-eae0d97e7ddb",
+          "isFinal": true,
+          "language": "en",
+          "meetingID": "421dbfdd-0945-559f-8a40-d2981d7c4e31",
+          "startSeconds": 0,
+          "text": "The retry budget is two attempts."
+        },
+        {
+          "channel": "system",
+          "endSeconds": 9,
+          "id": "c09b1a7f-4dc5-57aa-9ea5-64c1a9dfbdad",
+          "isFinal": false,
+          "language": "es",
+          "meetingID": "421dbfdd-0945-559f-8a40-d2981d7c4e31",
+          "startSeconds": 5,
+          "text": "Open row already target language."
+        }
+      ],
+      "targetLanguage": "es",
+      "translatedSourceTexts": {
+        "7a8d0b63-b566-5948-986d-eae0d97e7ddb": "The retry budget is two attempts."
+      },
+      "unsupportedIDs": []
+    }
+  ]
+}

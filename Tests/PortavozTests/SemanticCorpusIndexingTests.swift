@@ -1,0 +1,469 @@
+import ApplicationKit
+import Foundation
+import PortavozCore
+@testable import StorageKit
+import XCTest
+
+final class SemanticCorpusIndexingTests: XCTestCase {
+    func testCompleteIndexingDrainsBatchesExcludesMicroSegmentsAndEmitsTelemetry() async throws {
+        let (store, segments) = try await seededStore(texts: [
+            "Background indexing must yield while an active call is recording.",
+            "Exact search remains available when semantic assets are unavailable.",
+            "short",
+        ])
+        let recorder = ResourceWorkloadEventRecorder()
+        let operation = IndexSemanticCorpus(
+            store: store,
+            telemetry: ResourceWorkloadTelemetry(receiver: recorder.receive))
+
+        let result = try await operation.all(
+            using: DeterministicSemanticEmbedder(),
+            batchSize: 2)
+
+        XCTAssertEqual(
+            result,
+            SemanticCorpusIndexingResult(
+                embeddedSegments: 2,
+                excludedSegments: 1))
+        let remainingSegments = try await store.segmentsNeedingEmbeddings()
+        XCTAssertTrue(remainingSegments.isEmpty)
+        let hits = try await store.searchSemantic([1, 0], limit: 4)
+        XCTAssertEqual(Set(hits.map(\.segmentID)), Set(segments.prefix(2).map(\.id)))
+        assertCompletedIndexingSpan(recorder.events)
+    }
+
+    func testNextBatchLeavesRemainingCorpusForLaterMaintenance() async throws {
+        let (store, _) = try await seededStore(texts: [
+            "First complete semantic passage for the bounded maintenance batch.",
+            "Second complete semantic passage for the bounded maintenance batch.",
+            "Third complete semantic passage remains for a later maintenance pass.",
+        ])
+        let operation = IndexSemanticCorpus(store: store)
+
+        let result = try await operation.nextBatch(
+            using: DeterministicSemanticEmbedder(),
+            limit: 2)
+
+        XCTAssertEqual(result.embeddedSegments, 2)
+        XCTAssertEqual(result.excludedSegments, 0)
+        let remainingSegments = try await store.segmentsNeedingEmbeddings()
+        XCTAssertEqual(remainingSegments.count, 1)
+    }
+
+    func testPolicyPauseAtAdmissionLeavesTheDurableCursorUntouched() async throws {
+        let (store, _) = try await seededStore(texts: [
+            "First semantic passage must remain pending during active capture.",
+            "Second semantic passage must remain pending during active capture.",
+        ])
+        let embedder = CountingSemanticEmbedder()
+        let operation = IndexSemanticCorpus(
+            store: store,
+            maintenanceGate: DurableMaintenanceGate { _, _ in .pause })
+
+        let result = try await operation.all(
+            using: embedder,
+            batchSize: 1)
+        let embedderCallCount = await embedder.callCount
+        let remainingSegments = try await store.segmentsNeedingEmbeddings()
+
+        XCTAssertEqual(result, .paused)
+        XCTAssertEqual(embedderCallCount, 0)
+        XCTAssertEqual(remainingSegments.count, 2)
+    }
+
+    func testCheckpointPauseCommitsOneBatchAndLaterPassResumesFromMissingRows() async throws {
+        let (store, _) = try await seededStore(texts: [
+            "First semantic passage belongs to the durable committed checkpoint.",
+            "Second semantic passage belongs to the durable committed checkpoint.",
+            "Third semantic passage remains owned by the database retry cursor.",
+        ])
+        let pausedOperation = IndexSemanticCorpus(
+            store: store,
+            maintenanceGate: DurableMaintenanceGate { _, phase in
+                phase == .admission ? .proceed : .pause
+            })
+
+        let paused = try await pausedOperation.all(
+            using: DeterministicSemanticEmbedder(),
+            batchSize: 2)
+        let remainingAfterPause =
+            try await store.segmentsNeedingEmbeddings()
+
+        XCTAssertEqual(
+            paused,
+            SemanticCorpusIndexingResult(
+                embeddedSegments: 2,
+                excludedSegments: 0,
+                pausedByPolicy: true))
+        XCTAssertEqual(remainingAfterPause.count, 1)
+
+        let resumed = try await IndexSemanticCorpus(store: store).all(
+            using: DeterministicSemanticEmbedder(),
+            batchSize: 2)
+        let remainingAfterResume =
+            try await store.segmentsNeedingEmbeddings()
+
+        XCTAssertEqual(
+            resumed,
+            SemanticCorpusIndexingResult(
+                embeddedSegments: 1,
+                excludedSegments: 0))
+        XCTAssertTrue(remainingAfterResume.isEmpty)
+    }
+
+    func testVectorCountMismatchFailsBeforePublishingEmbeddings() async throws {
+        let (store, _) = try await seededStore(texts: [
+            "This complete semantic passage requires exactly one returned vector.",
+        ])
+        let recorder = ResourceWorkloadEventRecorder()
+        let operation = IndexSemanticCorpus(
+            store: store,
+            telemetry: ResourceWorkloadTelemetry(receiver: recorder.receive))
+
+        do {
+            _ = try await operation.all(
+                using: WrongCountSemanticEmbedder())
+            XCTFail("Expected vector-count mismatch")
+        } catch {
+            XCTAssertEqual(
+                error as? SemanticCorpusIndexingError,
+                .vectorCountMismatch(expected: 1, actual: 0))
+        }
+
+        let remainingSegments = try await store.segmentsNeedingEmbeddings()
+        XCTAssertEqual(remainingSegments.count, 1)
+        guard case .finished(_, let outcome) = recorder.events.last else {
+            return XCTFail("Expected terminal indexing telemetry")
+        }
+        XCTAssertEqual(outcome, .failed)
+    }
+
+    func testConcurrentTranscriptEditSkipsStaleVectorAndResumesFromCurrentRow() async throws {
+        let (store, segments) = try await seededStore(texts: [
+            "The initial semantic source will be corrected during embedding.",
+        ])
+        var correctedDraft = segments[0]
+        correctedDraft.text = "The corrected semantic source remains on the durable cursor."
+        let corrected = correctedDraft
+        let operation = IndexSemanticCorpus(store: store)
+
+        let stalePass = try await operation.nextBatch(
+            using: MutatingSemanticEmbedder {
+                try await store.save([corrected])
+            },
+            limit: 1)
+
+        XCTAssertEqual(
+            stalePass,
+            SemanticCorpusIndexingResult(
+                embeddedSegments: 0,
+                excludedSegments: 0,
+                skippedSegments: 1))
+        let pendingAfterEdit = try await store.segmentsNeedingEmbeddings()
+        let staleHits = try await store.searchSemantic([1, 0])
+        XCTAssertEqual(pendingAfterEdit.map(\.text), [corrected.text])
+        XCTAssertTrue(staleHits.isEmpty)
+
+        let resumed = try await operation.nextBatch(
+            using: DeterministicSemanticEmbedder(),
+            limit: 1)
+
+        let pendingAfterResume = try await store.segmentsNeedingEmbeddings()
+        XCTAssertEqual(resumed.embeddedSegments, 1)
+        XCTAssertTrue(pendingAfterResume.isEmpty)
+    }
+
+    func testBackgroundMaintenanceIndexesCorrectedTextAndRestoreReusesAcceptedVector() async throws {
+        let acceptedText = "The release remains scheduled for Friday afternoon."
+        let correctedText = "The release now moves to Monday morning after review."
+        let (store, segments) = try await seededStore(texts: [acceptedText])
+        let operation = IndexSemanticCorpus(store: store)
+        _ = try await operation.all(using: DeterministicSemanticEmbedder())
+        let segment = try XCTUnwrap(segments.first)
+        let correction = TranscriptCorrectionEvent(
+            meetingID: segment.meetingID,
+            baseTranscriptRevision: 0,
+            targetSegmentIDs: [segment.id],
+            kind: .replaceText(text: correctedText, language: "en"),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_700_000_100))
+        _ = try await store.appendTranscriptCorrection(correction)
+
+        let requiresCorrectionIndex = try await store.semanticIndexRequiresMaintenance(
+            for: semanticTestProfile())
+        let indexed = try await operation.nextBatch(
+            using: DeterministicSemanticEmbedder(),
+            limit: 1)
+        let correctedHits = try await store.searchSemantic([1, 0], limit: 1)
+        let pendingAfterCorrection = try await store.segmentsNeedingEmbeddings()
+        XCTAssertTrue(requiresCorrectionIndex)
+        XCTAssertEqual(indexed.embeddedSegments, 1)
+        XCTAssertEqual(correctedHits.map(\.text), [correctedText])
+        XCTAssertTrue(pendingAfterCorrection.isEmpty)
+
+        let restore = TranscriptCorrectionEvent(
+            meetingID: segment.meetingID,
+            baseTranscriptRevision: 0,
+            targetSegmentIDs: [segment.id],
+            kind: .restore,
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_700_000_101),
+            supersedesCorrectionID: correction.id)
+        _ = try await store.appendTranscriptCorrection(restore)
+
+        let requiresRestoreIndex = try await store.semanticIndexRequiresMaintenance(
+            for: semanticTestProfile())
+        let restoredHits = try await store.searchSemantic([1, 0], limit: 1)
+        XCTAssertFalse(requiresRestoreIndex)
+        XCTAssertEqual(restoredHits.map(\.text), [acceptedText])
+    }
+
+    func testBackgroundMaintenanceIndexesMergedResultWithAcceptedProvenance() async throws {
+        let (store, segments) = try await seededStore(texts: [
+            "The launch remains scheduled for Friday afternoon.",
+            "The review follows on Monday morning."
+        ])
+        let operation = IndexSemanticCorpus(store: store)
+        _ = try await operation.all(using: DeterministicSemanticEmbedder())
+        let merge = TranscriptCorrectionEvent(
+            meetingID: segments[0].meetingID,
+            baseTranscriptRevision: 0,
+            targetSegmentIDs: segments.map(\.id),
+            kind: .merge(replacementText: nil, language: nil),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_700_000_110))
+        _ = try await store.appendTranscriptCorrection(merge)
+
+        let candidates = try await store.segmentsNeedingEmbeddings()
+        let indexed = try await operation.nextBatch(
+            using: DeterministicSemanticEmbedder(),
+            limit: 1)
+        let hits = try await store.searchSemantic([1, 0], limit: 1)
+
+        XCTAssertEqual(candidates.map(\.id), [merge.id])
+        XCTAssertEqual(candidates.map(\.source), [
+            .structural(correctionID: merge.id)
+        ])
+        XCTAssertEqual(indexed.embeddedSegments, 1)
+        XCTAssertEqual(hits.map(\.resultID), [merge.id])
+        XCTAssertEqual(hits.first?.sourceSegmentIDs, segments.map(\.id))
+
+        // A disposable refresh must retain the exact structural vector.
+        try await store.database.write { database in
+            try MeetingStore.refreshTranscriptCorrectionSearchProjection(
+                meetingID: segments[0].meetingID,
+                in: database)
+        }
+        let pendingAfterRefresh = try await store.segmentsNeedingEmbeddings()
+        XCTAssertTrue(pendingAfterRefresh.isEmpty)
+    }
+
+    func testSplitCandidatesPublishIndependentlyAndRestoreRejectsStalePart() async throws {
+        let (store, segments) = try await seededStore(texts: [
+            "The launch remains scheduled after the final review."
+        ])
+        let source = try XCTUnwrap(segments.first)
+        let firstPartID = UUID()
+        let secondPartID = UUID()
+        let split = TranscriptCorrectionEvent(
+            meetingID: source.meetingID,
+            baseTranscriptRevision: 0,
+            targetSegmentIDs: [source.id],
+            kind: .split([
+                TranscriptCorrectionPart(
+                    id: firstPartID,
+                    text: "The launch remains scheduled",
+                    speakerID: nil,
+                    language: "en",
+                    startTime: 0,
+                    endTime: 2),
+                TranscriptCorrectionPart(
+                    id: secondPartID,
+                    text: "after the final review",
+                    speakerID: nil,
+                    language: "en",
+                    startTime: 2,
+                    endTime: 4)
+            ]),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_700_000_120))
+        _ = try await store.appendTranscriptCorrection(split)
+        let candidates = try await store.segmentsNeedingEmbeddings()
+
+        XCTAssertEqual(candidates.map(\.id), [firstPartID, secondPartID])
+        XCTAssertEqual(candidates.map(\.source), [
+            .structural(correctionID: split.id),
+            .structural(correctionID: split.id)
+        ])
+
+        let restore = TranscriptCorrectionEvent(
+            meetingID: source.meetingID,
+            baseTranscriptRevision: 0,
+            targetSegmentIDs: [source.id],
+            kind: .restore,
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_700_000_121),
+            supersedesCorrectionID: split.id)
+        _ = try await store.appendTranscriptCorrection(restore)
+        let stalePublication = try await store.storeEmbeddings(
+            Dictionary(uniqueKeysWithValues: candidates.map { ($0.id, [Float(1), 0]) }),
+            for: candidates)
+
+        XCTAssertTrue(stalePublication.publishedSegmentIDs.isEmpty)
+        XCTAssertEqual(
+            stalePublication.skippedSegmentIDs,
+            Set([firstPartID, secondPartID]))
+    }
+
+    func testProfileChangeInvalidatesAndRebuildsTheCompleteCorpus() async throws {
+        let (store, segments) = try await seededStore(texts: [
+            "The first semantic source must move into the new vector space.",
+            "The second semantic source must move into the new vector space.",
+        ])
+        let firstProfile = semanticTestProfile(modelRevision: 1)
+        let secondProfile = semanticTestProfile(modelRevision: 2)
+        let operation = IndexSemanticCorpus(store: store)
+
+        _ = try await operation.all(
+            using: ProfiledSemanticEmbedder(profile: firstProfile))
+        let initialHits = try await store.searchSemantic(
+            [1, 0],
+            profile: firstProfile)
+        XCTAssertEqual(initialHits.count, segments.count)
+
+        let rebuilt = try await operation.all(
+            using: ProfiledSemanticEmbedder(profile: secondProfile))
+        let staleHits = try await store.searchSemantic(
+            [1, 0],
+            profile: firstProfile)
+        let rebuiltHits = try await store.searchSemantic(
+            [1, 0],
+            profile: secondProfile)
+        let requiresMaintenance = try await store.semanticIndexRequiresMaintenance(
+            for: secondProfile)
+
+        XCTAssertEqual(rebuilt.invalidatedSegments, segments.count)
+        XCTAssertEqual(rebuilt.embeddedSegments, segments.count)
+        XCTAssertTrue(staleHits.isEmpty)
+        XCTAssertEqual(rebuiltHits.count, segments.count)
+        XCTAssertFalse(requiresMaintenance)
+    }
+
+    func testInvalidProfileFailsBeforeMutatingTheDurableCursor() async throws {
+        let (store, _) = try await seededStore(texts: [
+            "This source must remain pending when compatibility identity is invalid.",
+        ])
+        let invalidProfile = SemanticEmbeddingProfile(
+            modelIdentifier: "",
+            modelRevision: 1,
+            vectorDimension: 2,
+            pipelineIdentifier: "test",
+            pipelineRevision: 1,
+            vectorSchemaVersion: 1)
+
+        do {
+            _ = try await IndexSemanticCorpus(store: store).all(
+                using: ProfiledSemanticEmbedder(profile: invalidProfile))
+            XCTFail("Expected invalid semantic profile")
+        } catch {
+            XCTAssertEqual(
+                error as? SemanticCorpusIndexingError,
+                .invalidProfile)
+        }
+
+        let pending = try await store.segmentsNeedingEmbeddings()
+        XCTAssertEqual(pending.count, 1)
+    }
+
+    private func seededStore(
+        texts: [String]
+    ) async throws -> (MeetingStore, [TranscriptSegment]) {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(
+            title: "Semantic indexing fixture",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000))
+        try await store.save(meeting)
+        let segments = texts.enumerated().map { index, text in
+            TranscriptSegment(
+                meetingID: meeting.id,
+                channel: .system,
+                text: text,
+                startTime: TimeInterval(index * 5),
+                endTime: TimeInterval(index * 5 + 4),
+                isFinal: true)
+        }
+        try await store.save(segments)
+        return (store, segments)
+    }
+
+    private func assertCompletedIndexingSpan(
+        _ events: [ResourceWorkloadEvent]
+    ) {
+        guard case .started(let started) = events.first,
+              case .finished(let finished, let outcome) = events.last
+        else {
+            return XCTFail("Expected one matched indexing span")
+        }
+        XCTAssertEqual(events.count, 2)
+        XCTAssertEqual(started, finished)
+        XCTAssertEqual(
+            started.descriptor,
+            ResourceWorkloadDescriptor(
+                workloadClass: .maintenance,
+                kind: .searchIndex,
+                operation: .execute))
+        XCTAssertEqual(outcome, .completed)
+    }
+}
+
+private actor DeterministicSemanticEmbedder: SemanticTextEmbedding {
+    func vectors(for texts: [String]) -> [[Float]] {
+        texts.enumerated().map { index, _ in
+            index.isMultiple(of: 2) ? [1, 0] : [0, 1]
+        }
+    }
+}
+
+private actor WrongCountSemanticEmbedder: SemanticTextEmbedding {
+    func vectors(for _: [String]) -> [[Float]] {
+        []
+    }
+}
+
+private actor CountingSemanticEmbedder: SemanticTextEmbedding {
+    private(set) var callCount = 0
+
+    func vectors(for texts: [String]) -> [[Float]] {
+        callCount += 1
+        return texts.map { _ in [1, 0] }
+    }
+}
+
+private struct MutatingSemanticEmbedder: SemanticTextEmbedding {
+    let mutation: @Sendable () async throws -> Void
+
+    init(mutation: @escaping @Sendable () async throws -> Void) {
+        self.mutation = mutation
+    }
+
+    func vectors(for texts: [String]) async throws -> [[Float]] {
+        try await mutation()
+        return texts.map { _ in [1, 0] }
+    }
+}
+
+private actor ProfiledSemanticEmbedder: SemanticTextEmbedding {
+    let profile: SemanticEmbeddingProfile
+
+    init(profile: SemanticEmbeddingProfile) {
+        self.profile = profile
+    }
+
+    func semanticEmbeddingProfile() -> SemanticEmbeddingProfile {
+        profile
+    }
+
+    func vectors(for texts: [String]) -> [[Float]] {
+        texts.map { _ in [1, 0] }
+    }
+}

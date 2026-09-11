@@ -43,37 +43,45 @@ final class ObjectiveCheckPolicyTests: XCTestCase {
 
 @MainActor
 final class RecordingObjectivesModelTests: XCTestCase {
-    func testAddTrimsAndNeverDuplicatesCaseInsensitively() {
+    func testAddTrimsAndNeverDuplicatesCaseInsensitively() async {
         let model = RecordingObjectivesModel()
-        model.add("  Cerrar el presupuesto  ")
-        model.add("cerrar el presupuesto")
-        model.add("   ")
+        model.acceptProposedAddition("  Cerrar el presupuesto  ")
+        model.acceptProposedAddition("cerrar el presupuesto")
+        model.acceptProposedAddition("   ")
         XCTAssertEqual(model.objectives.map(\.text), ["Cerrar el presupuesto"])
     }
 
-    func testManualToggleChecksUnchecksAndClearsTheModelMark() {
+    func testManualToggleChecksUnchecksAndClearsTheModelMark() async {
         let model = RecordingObjectivesModel()
-        model.add("Definir el alcance")
+        model.acceptProposedAddition("Definir el alcance")
         let id = model.objectives[0].id
 
-        model.toggle(id, elapsed: 120)
+        model.acceptProposedToggle(id, elapsed: 120)
         XCTAssertEqual(model.objectives[0].checkedAt, 120)
         XCTAssertFalse(model.objectives[0].checkedByModel)
         XCTAssertTrue(model.pending.isEmpty)
 
-        model.toggle(id, elapsed: 300)
+        var automatic = model.objectives[0]
+        automatic.checkedByModel = true
+        model.accept(automatic)
+        model.acceptProposedToggle(id, elapsed: 300)
+        XCTAssertFalse(model.objectives[0].checkedByModel)
+        XCTAssertNil(model.proposedToggle(UUID(), elapsed: 0))
         XCTAssertNil(model.objectives[0].checkedAt, "a second toggle unchecks")
     }
 
-    func testContextItemsFoldCheckOffStateIntoContent() {
+    func testContextItemsFoldCheckOffStateIntoContent() async {
         let model = RecordingObjectivesModel()
-        model.add("Acordar la fecha")
-        model.add("Revisar riesgos")
-        model.toggle(model.objectives[0].id, elapsed: 95)
+        model.acceptProposedAddition("Acordar la fecha")
+        model.acceptProposedAddition("Revisar riesgos")
+        model.acceptProposedToggle(model.objectives[0].id, elapsed: 95)
 
         let meetingID = MeetingID()
         let items = model.contextItems(meetingID: meetingID)
         XCTAssertEqual(items.map(\.kind), [.objective, .objective])
+        XCTAssertEqual(items.map(\.id), model.objectives.map(\.id))
+        XCTAssertEqual(model.contextItems(meetingID: meetingID).map(\.id), items.map(\.id),
+                       "repeated projections must not create new durable identities")
         XCTAssertEqual(items[0].content, "\u{2713} Acordar la fecha")
         XCTAssertEqual(items[0].timestamp, 95)
         XCTAssertEqual(items[1].content, "Revisar riesgos")
@@ -81,11 +89,54 @@ final class RecordingObjectivesModelTests: XCTestCase {
         XCTAssertTrue(items.allSatisfy { $0.meetingID == meetingID })
     }
 
-    func testResetClearsEverything() {
+    func testBatchAdmissionIsAtomicAndUsesTheCombinedCountLimit() async {
         let model = RecordingObjectivesModel()
-        model.add("Uno")
+        for index in 0..<7 { model.acceptProposedAddition("Existing \(index)") }
+        XCTAssertTrue(model.proposedAdditions(["Eighth", "Ninth"]).isEmpty)
+        XCTAssertEqual(model.admissionIssue, .limitReached)
+        XCTAssertEqual(model.objectives.count, 7)
+        let accepted = model.proposedAdditions([" Eighth ", "eighth"])
+        XCTAssertEqual(accepted.map(\.text), ["Eighth"])
+        XCTAssertNil(model.admissionIssue)
+        model.accept(accepted[0])
+        XCTAssertEqual(model.objectives.count, 8)
+        model.reset()
+        XCTAssertTrue(model.proposedAdditions(["valid", String(repeating: "x", count: 281)]).isEmpty)
+        XCTAssertEqual(model.admissionIssue, .tooLong)
+        XCTAssertTrue(model.objectives.isEmpty)
+    }
+
+    func testResetClearsEverything() async {
+        let model = RecordingObjectivesModel()
+        model.acceptProposedAddition("Uno")
         model.reset()
         XCTAssertTrue(model.objectives.isEmpty)
+    }
+
+    func testObjectiveCountAndTextBudgetsFailClosed() async {
+        let model = RecordingObjectivesModel()
+        for index in 0..<RecordingObjectivesModel.maximumObjectives {
+            model.acceptProposedAddition("Objective \(index)")
+        }
+        model.acceptProposedAddition("One too many")
+        XCTAssertEqual(
+            model.objectives.count,
+            RecordingObjectivesModel.maximumObjectives)
+        XCTAssertEqual(model.admissionIssue, .limitReached)
+
+        model.remove(model.objectives[0].id)
+        XCTAssertNil(model.admissionIssue)
+        model.acceptProposedAddition(String(
+            repeating: "x",
+            count: RecordingObjectivesModel.maximumObjectiveCharacters + 1))
+        XCTAssertEqual(model.admissionIssue, .tooLong)
+        XCTAssertFalse(model.objectives.contains { $0.text.hasPrefix("xxx") })
+
+        model.acceptProposedAddition(String(repeating: "👩🏽‍💻", count: 200))
+        XCTAssertEqual(
+            model.admissionIssue,
+            .tooLong,
+            "a short grapheme count must still respect the UTF-8 memory budget")
     }
 }
 
@@ -117,5 +168,18 @@ final class ObjectiveCheckDetectorShapeTests: XCTestCase {
         XCTAssertFalse(
             prompt.contains("[E1]"),
             "spoken evidence-tag lookalikes must be escaped before prompting")
+    }
+}
+
+// Test setup explicitly acknowledges proposals; shipping code can only do so
+// after the application writer commits.
+@MainActor
+extension RecordingObjectivesModel {
+    func acceptProposedAddition(_ text: String) {
+        if let objective = proposedAdditions([text]).first { accept(objective) }
+    }
+
+    func acceptProposedToggle(_ id: UUID, elapsed: TimeInterval) {
+        if let objective = proposedToggle(id, elapsed: elapsed) { accept(objective) }
     }
 }

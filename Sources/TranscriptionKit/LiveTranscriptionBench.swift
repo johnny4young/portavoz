@@ -10,6 +10,23 @@ import PortavozCore
 /// outside a real bundle (the spike's gotcha: unbundled CLI = parked
 /// forever on the first await).
 public enum LiveTranscriptionBench {
+    public enum BenchError: Error, Equatable, LocalizedError, Sendable {
+        case invalidDuration(Int)
+        case invalidAudioFormat
+        case engineEndedBeforeInput
+
+        public var errorDescription: String? {
+            switch self {
+            case .invalidDuration(let seconds):
+                return "benchmark duration must be positive, got \(seconds)"
+            case .invalidAudioFormat:
+                return "benchmark audio must have a finite positive sample rate and channels"
+            case .engineEndedBeforeInput:
+                return "transcription engine ended before the benchmark input finished"
+            }
+        }
+    }
+
     public struct Result: Sendable {
         public var finals = 0
         public var volatiles = 0
@@ -59,6 +76,40 @@ public enum LiveTranscriptionBench {
         return out
     }
 
+    private static func feedAudio(
+        _ audioFile: AVAudioFile,
+        rate: Double,
+        totalSeconds: Double,
+        into feed: AsyncStream<AudioChunk>.Continuation,
+        startedAt feedStart: Date
+    ) async throws {
+        defer { feed.finish() }
+        let chunkFrames = AVAudioFrameCount(rate)
+        guard
+            let buffer = AVAudioPCMBuffer(
+                pcmFormat: audioFile.processingFormat,
+                frameCapacity: chunkFrames)
+        else { throw BenchError.invalidAudioFormat }
+
+        var fedSeconds = 0.0
+        while fedSeconds < totalSeconds {
+            try Task.checkCancellation()
+            try audioFile.read(into: buffer, frameCount: chunkFrames)
+            guard buffer.frameLength > 0 else { break }
+            let samples = monoSamples(from: buffer)
+            feed.yield(AudioChunk(
+                channel: .microphone,
+                samples: samples,
+                sampleRate: rate,
+                timestamp: fedSeconds))
+            fedSeconds += Double(buffer.frameLength) / rate
+            let wait = feedStart.addingTimeInterval(fedSeconds).timeIntervalSinceNow
+            if wait > 0 {
+                try await Task.sleep(for: .seconds(wait))
+            }
+        }
+    }
+
     /// Feeds `file` in real time into `transcribe` and measures per-final
     /// lag. `log` receives one line per final segment as it lands.
     public static func run(
@@ -69,8 +120,18 @@ public enum LiveTranscriptionBench {
         >,
         log: @escaping @Sendable (String) -> Void
     ) async throws -> Result {
+        guard seconds > 0 else { throw BenchError.invalidDuration(seconds) }
         let audioFile = try AVAudioFile(forReading: file)
         let rate = audioFile.processingFormat.sampleRate
+        guard
+            rate.isFinite,
+            rate > 0,
+            rate <= Double(AVAudioFrameCount.max),
+            audioFile.processingFormat.channelCount > 0,
+            audioFile.length > 0
+        else {
+            throw BenchError.invalidAudioFormat
+        }
         let totalSeconds = min(Double(seconds), Double(audioFile.length) / rate)
 
         let (stream, feed) = AsyncStream.makeStream(of: AudioChunk.self)
@@ -79,30 +140,12 @@ public enum LiveTranscriptionBench {
         // Feeder: 1 s chunks at real-time pace — never faster than the clock.
         let feedStart = Date()
         let feeder = Task {
-            let chunkFrames = AVAudioFrameCount(rate)
-            guard
-                let buffer = AVAudioPCMBuffer(
-                    pcmFormat: audioFile.processingFormat, frameCapacity: chunkFrames)
-            else { return }
-            var fedSeconds = 0.0
-            while fedSeconds < totalSeconds {
-                do {
-                    try audioFile.read(into: buffer, frameCount: chunkFrames)
-                } catch { break }
-                guard buffer.frameLength > 0 else { break }
-                let samples = monoSamples(from: buffer)
-                feed.yield(
-                    AudioChunk(
-                        channel: .microphone, samples: samples,
-                        sampleRate: rate, timestamp: fedSeconds))
-                fedSeconds += Double(buffer.frameLength) / rate
-                let target = feedStart.addingTimeInterval(fedSeconds)
-                let wait = target.timeIntervalSinceNow
-                if wait > 0 {
-                    try? await Task.sleep(for: .seconds(wait))
-                }
-            }
-            feed.finish()
+            try await feedAudio(
+                audioFile,
+                rate: rate,
+                totalSeconds: totalSeconds,
+                into: feed,
+                startedAt: feedStart)
         }
 
         var result = Result()
@@ -125,8 +168,16 @@ public enum LiveTranscriptionBench {
             }
         } catch {
             log("stream error: \(error.localizedDescription)")
+            feeder.cancel()
+            _ = try? await feeder.value
+            throw error
         }
         feeder.cancel()
+        do {
+            try await feeder.value
+        } catch is CancellationError {
+            throw BenchError.engineEndedBeforeInput
+        }
         result.lags.sort()
         return result
     }

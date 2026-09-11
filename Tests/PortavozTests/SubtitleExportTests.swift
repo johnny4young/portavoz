@@ -139,4 +139,57 @@ final class SubtitleExportTests: XCTestCase {
         XCTAssertTrue(rendered.contains("00:00:00.000 --> 00:00:01.500"))
         XCTAssertFalse(rendered.contains(","), "VTT rejects comma separators")
     }
+
+    func testCorrectionProvenanceMarksCuesWithoutBreakingSRTGrammar() throws {
+        let accepted = segment("accepted words", start: 0, end: 1)
+        let corrected = segment("corrected words", start: 1, end: 2)
+        let revision = try XCTUnwrap(TranscriptCorrectionRevision(
+            rawValue: String(repeating: "a", count: 64)))
+        let provenance = TranscriptCorrectionExportProvenance(
+            baseTranscriptRevision: 4,
+            correctionRevision: revision,
+            activeCorrectionIDs: [UUID()],
+            sourceSegmentIDsByExportedSegmentID: [corrected.id: [accepted.id]])
+
+        let rendered = SubtitleExport.render(
+            .srt,
+            segments: [accepted, corrected],
+            speakers: [],
+            correctionProvenance: provenance)
+
+        XCTAssertTrue(
+            rendered.hasPrefix("1\n00:00:00,000 --> 00:00:01,000\naccepted words"),
+            "SRT must begin with a numbered cue, never a non-standard NOTE block")
+        XCTAssertTrue(rendered.contains("[Corrected] corrected words"))
+        XCTAssertFalse(rendered.contains("NOTE Portavoz"))
+        XCTAssertEqual(
+            SubtitleExport.cues(
+                segments: [accepted, corrected],
+                speakers: [],
+                correctedSegmentIDs: Set([corrected.id])).count,
+            2,
+            "accepted and corrected rows must not merge into one ambiguous cue")
+    }
+
+    func testVTTIncludesPortableCorrectionNoteAndVisibleCueMarker() throws {
+        let corrected = segment("texto corregido", start: 2, end: 4)
+        let revision = try XCTUnwrap(TranscriptCorrectionRevision(
+            rawValue: String(repeating: "b", count: 64)))
+        let provenance = TranscriptCorrectionExportProvenance(
+            baseTranscriptRevision: 7,
+            correctionRevision: revision,
+            activeCorrectionIDs: [UUID(), UUID()],
+            sourceSegmentIDsByExportedSegmentID: [corrected.id: [corrected.id]])
+
+        let rendered = SubtitleExport.render(
+            .vtt,
+            segments: [corrected],
+            speakers: [],
+            correctionProvenance: provenance)
+
+        XCTAssertTrue(rendered.hasPrefix("WEBVTT\n\nNOTE Portavoz"))
+        XCTAssertTrue(rendered.contains("Accepted transcript revision: 7"))
+        XCTAssertTrue(rendered.contains("Applied corrections: 2"))
+        XCTAssertTrue(rendered.contains("[Corrected] texto corregido"))
+    }
 }

@@ -22,9 +22,56 @@ public enum Waveform {
     /// Pure and synchronous — a long meeting reads a lot of frames, so call
     /// it from a background task. Returns `[]` when nothing is readable.
     public static func generate(micFile: URL?, systemFile: URL?, buckets: Int) -> [Bucket] {
+        generate(
+            micFile: micFile,
+            systemFile: systemFile,
+            buckets: buckets,
+            cancellationCheck: {})
+    }
+
+    /// Task-scoped generation for interactive presentation. Cancellation of
+    /// the caller stops the detached file reader at the next bounded chunk;
+    /// finalized source audio is read-only and remains the authoritative
+    /// evidence.
+    public static func generateCancellable(
+        micFile: URL?,
+        systemFile: URL?,
+        buckets: Int
+    ) async throws -> [Bucket] {
+        try Task.checkCancellation()
+        let worker = Task.detached(priority: .userInitiated) {
+            try generate(
+                micFile: micFile,
+                systemFile: systemFile,
+                buckets: buckets,
+                cancellationCheck: { try Task.checkCancellation() })
+        }
+        return try await withTaskCancellationHandler {
+            try await worker.value
+        } onCancel: {
+            worker.cancel()
+        }
+    }
+
+    /// Internal deterministic seam used to prove cancellation between bounded
+    /// reads without relying on timing in tests.
+    static func generate(
+        micFile: URL?,
+        systemFile: URL?,
+        buckets: Int,
+        cancellationCheck: () throws -> Void
+    ) rethrows -> [Bucket] {
+        try cancellationCheck()
         guard buckets > 0 else { return [] }
-        let mic = envelope(of: micFile, buckets: buckets)
-        let system = envelope(of: systemFile, buckets: buckets)
+        let mic = try envelope(
+            of: micFile,
+            buckets: buckets,
+            cancellationCheck: cancellationCheck)
+        let system = try envelope(
+            of: systemFile,
+            buckets: buckets,
+            cancellationCheck: cancellationCheck)
+        try cancellationCheck()
         guard !mic.isEmpty || !system.isEmpty else { return [] }
 
         var raw = [(amplitude: Float, micDominant: Bool)](
@@ -72,7 +119,12 @@ public enum Waveform {
     }
 
     /// Per-bucket peak amplitude of one file (empty when unreadable).
-    private static func envelope(of url: URL?, buckets: Int) -> [Float] {
+    private static func envelope(
+        of url: URL?,
+        buckets: Int,
+        cancellationCheck: () throws -> Void
+    ) rethrows -> [Float] {
+        try cancellationCheck()
         guard let url, let file = try? AVAudioFile(forReading: url) else { return [] }
         let total = file.length
         guard total > 0 else { return [] }
@@ -87,7 +139,9 @@ public enum Waveform {
 
         var frameIndex = 0
         while file.framePosition < total {
+            try cancellationCheck()
             do { try file.read(into: buffer) } catch { break }
+            try cancellationCheck()
             let count = Int(buffer.frameLength)
             guard count > 0, let channelData = buffer.floatChannelData else { break }
             let channels = Int(buffer.format.channelCount)

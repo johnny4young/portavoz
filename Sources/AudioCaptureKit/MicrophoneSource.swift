@@ -2,14 +2,34 @@ import AudioToolbox
 import AVFAudio
 import Foundation
 import PortavozCore
+import os
 
 enum AudioInputFormatPolicy {
     static func isUsable(sampleRate: Double, channelCount: AVAudioChannelCount) -> Bool {
-        sampleRate.isFinite && sampleRate > 0 && channelCount > 0
+        CapturePCMGeometry.isUsable(sampleRate: sampleRate) && channelCount > 0
     }
 
     static func isUsable(_ format: AVAudioFormat) -> Bool {
         isUsable(sampleRate: format.sampleRate, channelCount: format.channelCount)
+    }
+}
+
+/// Input taps observe the hardware route instead of attempting to configure it.
+///
+/// A route can change between reading `outputFormat` and installing a tap.
+/// Passing that earlier format back to AVFAudio can therefore raise an
+/// Objective-C format-mismatch exception. A nil requested format leaves the
+/// bus untouched; each delivered buffer is then resampled from its actual rate.
+enum AudioInputTapPolicy {
+    static var requestedFormat: AVAudioFormat? {
+        nil
+    }
+
+    static func sourceSampleRate(for bufferFormat: AVAudioFormat) -> Double? {
+        guard AudioInputFormatPolicy.isUsable(bufferFormat) else {
+            return nil
+        }
+        return bufferFormat.sampleRate
     }
 }
 
@@ -32,16 +52,35 @@ enum AudioInputFormatPolicy {
 /// `@unchecked Sendable`: the engine and continuation are mutated only from
 /// `start()`/`stop()` and the serial `restartQueue`; the tap block runs
 /// serialized on the render thread and closes over its own continuation.
-public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
+public final class MicrophoneSource: CaptureReportingSource, @unchecked Sendable {
     public let channel: AudioChannel = .microphone
 
-    private let engine = AVAudioEngine()
+    private var engine = AVAudioEngine()
     private let clock = HostClock()
     private let deviceIdentifier: String?
     private let voiceProcessing: Bool
     private let restartQueue = DispatchQueue(label: "app.portavoz.mic-restart")
-    private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
+    private let delivery = CaptureDeliveryBuffer(channel: .microphone)
+    private var continuation: CaptureDeliveryBuffer?
+    private let failureHandler = OSAllocatedUnfairLock<(@Sendable () -> Void)?>(initialState: nil)
+
+    public var captureReport: CaptureChannelReport { delivery.report() }
+
+    public func setCaptureFailureHandler(_ handler: @escaping @Sendable () -> Void) {
+        failureHandler.withLock { $0 = handler }
+    }
+
+    private func observeDeliveryFailure() {
+        delivery.setFailureHandler { [weak self] in
+            guard let self else { return }
+            self.failureHandler.withLock { $0 }?()
+            // Never mutate the hardware graph from its realtime callback.
+            self.restartQueue.async { [weak self] in self?.teardown() }
+        }
+    }
     private var observer: (any NSObjectProtocol)?
+    private var tapInstalled = false
+    private var routeTransitions = AudioRouteTransitionGate()
     /// Rate of the first device; the stream promises this rate for its whole
     /// life, so replacement devices get resampled to it. Written once.
     private var streamSampleRate: Double = 0
@@ -49,6 +88,9 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
     /// change. Touched from the render thread and the restart queue.
     private let deliveredLock = NSLock()
     private var samplesDelivered = 0
+    /// Phase carries across callbacks so a rate-mismatched device does not
+    /// drift into a half-second silence pad. Guarded by `deliveredLock`.
+    private var resampler = LinearResampler()
     /// When muted, the tap yields silence instead of the captured samples —
     /// so Portavoz stops recording/transcribing YOUR voice while the meeting
     /// app keeps its own mic (this mutes the app, not the system input). The
@@ -88,7 +130,7 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
     /// `start()` does the full setup itself when the engine isn't warm.
     public func warmUp() async {
         restartQueue.sync {
-            guard continuation == nil, !engine.isRunning else { return }
+            guard delivery.isAccepting, continuation == nil, !engine.isRunning else { return }
             try? applyPinnedDeviceIfNeeded(required: false)
             applyVoiceProcessingIfEnabled()
             // AVAudioEngine.prepare() can raise an Objective-C exception
@@ -107,6 +149,9 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
 
     public func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
         try restartQueue.sync {
+            guard delivery.isAccepting, continuation == nil else {
+                throw CaptureDeliveryFailure(cause: .sourceFailed)
+            }
             let input = engine.inputNode
             if !engine.isRunning {
                 // Cold start; a warm engine already has device policy applied.
@@ -119,18 +164,13 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
                 throw AudioCaptureError.noInputDevice
             }
 
-            let (stream, continuation) = AsyncThrowingStream<AudioChunk, Error>.makeStream()
+            observeDeliveryFailure()
+            let stream = delivery.stream()
+            let continuation = delivery
             self.continuation = continuation
             streamSampleRate = format.sampleRate
+            routeTransitions.activate()
             installTap()
-
-            observer = NotificationCenter.default.addObserver(
-                forName: .AVAudioEngineConfigurationChange,
-                object: engine,
-                queue: nil
-            ) { [weak self] _ in
-                self?.scheduleRestart()
-            }
 
             if !engine.isRunning {
                 engine.prepare()
@@ -141,6 +181,7 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
                     throw error
                 }
             }
+            installConfigurationObserver()
             return stream
         }
     }
@@ -167,26 +208,52 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
 
     /// Must run on `restartQueue` (or before the stream exists, in `start`).
     private func teardown() {
+        routeTransitions.deactivate()
+        discardCurrentEngine()
+        continuation?.finish()
+        continuation = nil
+        failureHandler.withLock { $0 = nil }
+    }
+
+    /// Stops and detaches the current graph without ending the capture stream.
+    /// Must run on `restartQueue`.
+    private func discardCurrentEngine() {
         if let observer {
             NotificationCenter.default.removeObserver(observer)
         }
         observer = nil
-        engine.inputNode.removeTap(onBus: 0)
         engine.stop()
-        continuation?.finish()
-        continuation = nil
+        if tapInstalled {
+            engine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
+        }
+    }
+
+    private func installConfigurationObserver() {
+        let observedEngine = engine
+        observer = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: observedEngine,
+            queue: nil
+        ) { [weak self] _ in
+            self?.requestRestart()
+        }
     }
 
     /// Installs the tap at the CURRENT device format, resampling to the
     /// stream's original rate when they differ, and padding any capture gap
     /// (device switch downtime) with silence to keep the timeline aligned.
     private func installTap() {
+        // A replacement device starts a new stream: the carried sample belongs
+        // to the retired device, on the far side of the silence pad, and the
+        // carried phase is expressed in the old device's frames. Interpolating
+        // across that boundary blends two unrelated streams.
+        deliveredLock.lock()
+        resampler.reset()
+        deliveredLock.unlock()
         let input = engine.inputNode
-        let format = input.outputFormat(forBus: 0)
-        let native = format.sampleRate
         let target = streamSampleRate
         guard
-            AudioInputFormatPolicy.isUsable(format),
             target.isFinite,
             target > 0,
             let continuation
@@ -194,62 +261,111 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
             return
         }
 
+        input.installTap(
+            onBus: 0,
+            bufferSize: 4096,
+            format: AudioInputTapPolicy.requestedFormat,
+            block: makeInputTap(target: target, continuation: continuation))
+        tapInstalled = true
+    }
+
+    /// The exact native callback, independent of graph installation so format
+    /// transitions can be exercised with real PCM buffers without microphone access.
+    func makeInputTap(target: Double, continuation: CaptureDeliveryBuffer) -> AVAudioNodeTapBlock {
         let clock = clock
-        input.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] buffer, when in
-            guard let self else { return }
-            var samples = Downmix.mono(from: buffer)
-            guard !samples.isEmpty else { return }
-            // Muted for Portavoz: write silence, so YOUR voice isn't recorded
-            // or transcribed while the file/timeline stays aligned.
-            if self.isMuted {
-                samples = [Float](repeating: 0, count: samples.count)
+        return { [weak self] buffer, when in
+            guard let self, continuation.isAccepting else { return }
+            guard let native = AudioInputTapPolicy.sourceSampleRate(
+                for: buffer.format
+            ) else {
+                return
             }
-            if native != target {
-                samples = Resample.linear(samples, from: native, to: target)
+            var samples: [Float]
+            let elapsed: TimeInterval
+            let plan: CapturePCMGeometry.Delivery
+            do {
+                samples = try Downmix.mono(from: buffer) { frames in
+                    try continuation.admitNativeFrames(frames, sourceRate: native, targetRate: target)
+                }
+                guard !samples.isEmpty else { return }
+                elapsed = clock.elapsed(hostTime: when.hostTime)
+                // Local mute preserves the raw file's timeline, not the call's input.
+                let muted = self.isMuted
+                if muted { samples = [Float](repeating: 0, count: samples.count) }
+                samples = try self.resampled(samples, from: native, to: target, muted: muted)
+                plan = try CapturePCMGeometry.delivery(
+                    elapsed: elapsed, sampleRate: target,
+                    delivered: self.deliveredSnapshot(), incoming: samples.count)
+            } catch Downmix.InputError.unavailable {
+                // Disabled native input keeps its stream/route recovery alive.
+                return
+            } catch let failure as CaptureDeliveryFailure {
+                continuation.finish(failure: failure.cause)
+                return
+            } catch {
+                continuation.finish(failure: .invalidFormat)
+                return
             }
-            let elapsed = clock.elapsed(hostTime: when.hostTime)
-            let expected = Int(elapsed * target)
-            let delivered = self.deliveredSnapshot()
-            let gap = expected - delivered
-            if gap > Int(target / 2) {
-                continuation.yield(AudioChunk(
-                    channel: .microphone,
-                    samples: [Float](repeating: 0, count: gap),
-                    sampleRate: target,
-                    timestamp: Double(delivered) / target
-                ))
-                self.addDelivered(gap)
+            if continuation.append(samples: samples, rate: target, timestamp: elapsed, plan: plan) {
+                self.setDelivered(plan.deliveredFrameCount)
             }
-            continuation.yield(AudioChunk(
-                channel: .microphone,
-                samples: samples,
-                sampleRate: target,
-                timestamp: elapsed
-            ))
-            self.addDelivered(samples.count)
         }
     }
 
     /// A configuration change means the engine stopped (device switched or
-    /// disappeared). Reinstall and restart; if no usable input exists yet,
-    /// retry shortly — when one returns, the tap's gap padding covers the
-    /// downtime.
-    private func scheduleRestart(delay: TimeInterval = 0) {
+    /// disappeared). The notification is delivered on AVFAudio's internal
+    /// queue, so only enqueue a generation-fenced handoff here. A fresh engine
+    /// owns exactly one tap and avoids AVFAudio's process-terminating
+    /// "one tap per bus" precondition when route notifications arrive in a
+    /// burst. Gap padding covers the handoff downtime.
+    private func requestRestart() {
+        restartQueue.async { [weak self] in
+            guard let self, let ticket = self.routeTransitions.request() else {
+                return
+            }
+            self.scheduleRestart(
+                ticket: ticket,
+                delay: AudioRouteTransitionTiming.settleDelay
+            )
+        }
+    }
+
+    private func scheduleRestart(
+        ticket: AudioRouteTransitionGate.Ticket,
+        delay: TimeInterval
+    ) {
         restartQueue.asyncAfter(deadline: .now() + delay) { [weak self] in
-            guard let self, self.continuation != nil else { return }
-            let input = self.engine.inputNode
-            input.removeTap(onBus: 0)
+            guard
+                let self,
+                self.continuation != nil,
+                self.routeTransitions.admits(ticket)
+            else {
+                return
+            }
+
+            self.discardCurrentEngine()
+            self.engine = AVAudioEngine()
             try? self.applyPinnedDeviceIfNeeded(required: false)
+            self.applyVoiceProcessingIfEnabled()
+            let input = self.engine.inputNode
             guard AudioInputFormatPolicy.isUsable(input.outputFormat(forBus: 0)) else {
-                self.scheduleRestart(delay: 0.5)
+                self.scheduleRestart(
+                    ticket: ticket,
+                    delay: AudioRouteTransitionTiming.retryDelay
+                )
                 return
             }
             self.installTap()
             self.engine.prepare()
             do {
                 try self.engine.start()
+                self.installConfigurationObserver()
             } catch {
-                self.scheduleRestart(delay: 0.5)
+                self.discardCurrentEngine()
+                self.scheduleRestart(
+                    ticket: ticket,
+                    delay: AudioRouteTransitionTiming.retryDelay
+                )
             }
         }
     }
@@ -288,15 +404,27 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
         #endif
     }
 
+    private func resampled(
+        _ samples: [Float],
+        from source: Double,
+        to target: Double,
+        muted: Bool
+    ) throws -> [Float] {
+        deliveredLock.lock()
+        defer { deliveredLock.unlock() }
+        if muted { resampler.discardCarriedSample() }
+        return try resampler.resample(samples, from: source, to: target)
+    }
+
     private func deliveredSnapshot() -> Int {
         deliveredLock.lock()
         defer { deliveredLock.unlock() }
         return samplesDelivered
     }
 
-    private func addDelivered(_ count: Int) {
+    private func setDelivered(_ count: Int) {
         deliveredLock.lock()
         defer { deliveredLock.unlock() }
-        samplesDelivered += count
+        samplesDelivered = count
     }
 }

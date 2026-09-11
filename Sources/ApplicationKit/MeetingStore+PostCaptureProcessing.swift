@@ -31,6 +31,17 @@ extension MeetingStore: PostCaptureProcessingStore {
             at: timestamp)
     }
 
+    public func suspendPostCaptureJob(
+        _ id: ProcessingJobID,
+        owner: String,
+        at timestamp: Date
+    ) async throws {
+        _ = try await suspendProcessingJob(
+            id,
+            owner: owner,
+            at: timestamp)
+    }
+
     public func postCaptureDetail(_ meetingID: MeetingID) async throws -> MeetingDetail? {
         try await detail(meetingID)
     }
@@ -109,12 +120,14 @@ extension MeetingStore: PostCaptureProcessingStore {
         _ jobID: ProcessingJobID,
         owner: String,
         reason: ProcessingJobFailure,
+        enqueue replacements: [ProcessingJobRequest],
         at timestamp: Date
-    ) async throws {
-        _ = try await cancelProcessingJob(
+    ) async throws -> ProcessingJobCancellation {
+        try await cancelProcessingJob(
             jobID,
             owner: owner,
             reason: reason,
+            enqueue: replacements,
             at: timestamp)
     }
 

@@ -19,28 +19,37 @@ enum DiarizeCommand {
         var modelsDir: String?
         var threshold = platform.defaultClusteringThreshold
 
-        var index = 0
-        while index < arguments.count {
-            switch arguments[index] {
-            case "--file":
+        do {
+            var index = 0
+            while index < arguments.count {
+                switch arguments[index] {
+                case "--file":
+                    file = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--file")
+                case "--threshold":
+                    threshold = try CLIOptionValue.finiteFloat(
+                        arguments,
+                        index: &index,
+                        option: "--threshold",
+                        expected: "a finite number greater than 0 and less than 1",
+                        accepting: CLIOptionBounds.acceptsDiarizationThreshold)
+                case "--attribute":
+                    attribute = true
+                case "--language":
+                    language = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--language")
+                case "--models-dir":
+                    modelsDir = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--models-dir")
+                default:
+                    print("Unknown option: \(arguments[index])")
+                    return
+                }
                 index += 1
-                if index < arguments.count { file = arguments[index] }
-            case "--threshold":
-                index += 1
-                if index < arguments.count { threshold = Float(arguments[index]) ?? threshold }
-            case "--attribute":
-                attribute = true
-            case "--language":
-                index += 1
-                if index < arguments.count { language = arguments[index] }
-            case "--models-dir":
-                index += 1
-                if index < arguments.count { modelsDir = arguments[index] }
-            default:
-                print("Unknown option: \(arguments[index])")
-                return
             }
-            index += 1
+        } catch {
+            print("error: \(error.localizedDescription)")
+            return
         }
 
         guard let file else {

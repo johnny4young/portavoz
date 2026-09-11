@@ -1,4 +1,5 @@
 import Foundation
+import PortavozCore
 import StorageKit
 
 public struct CloudMeetingSyncAccountIdentity: Equatable, Sendable {
@@ -54,7 +55,9 @@ public actor CloudMeetingSyncLifecycle {
         meetingStore: MeetingStore,
         transportStore: CloudMeetingSyncStateStore,
         localDeviceID: UUID,
-        platform: any CloudMeetingSyncPlatform
+        platform: any CloudMeetingSyncPlatform,
+        initialSeedBatchSize: Int = 100,
+        maintenanceGate: DurableMaintenanceGate = .unrestricted
     ) {
         self.meetingStore = meetingStore
         self.transportStore = transportStore
@@ -62,7 +65,9 @@ public actor CloudMeetingSyncLifecycle {
         let coordinator = CloudMeetingSyncCoordinator(
             meetingStore: meetingStore,
             transportStore: transportStore,
-            localDeviceID: localDeviceID)
+            localDeviceID: localDeviceID,
+            initialSeedBatchSize: initialSeedBatchSize,
+            maintenanceGate: maintenanceGate)
         self.coordinator = coordinator
         delegate = CloudMeetingSyncEngineDelegate(
             coordinator: coordinator,
@@ -260,6 +265,15 @@ private extension CloudMeetingSyncLifecycle {
     func performSync() async -> CloudMeetingSyncStatus {
         let snapshot = await transportStore.currentSnapshot()
         guard snapshot.isTransportReady else { return await currentStatus() }
+        do {
+            if case .paused = try await coordinator.prepareInitialSeed() {
+                lifecycleFailure = nil
+                return await currentStatus()
+            }
+        } catch {
+            lifecycleFailure = .journalUnavailable
+            return await currentStatus()
+        }
         do {
             if driver == nil {
                 driver = try await platform.makeDriver(delegate: delegate)

@@ -1,0 +1,24 @@
+{
+  "buildConfiguration": "release",
+  "canonicalScales": [
+    1000,
+    10000,
+    50000,
+    100000
+  ],
+  "dimension": 512,
+  "fixtureVersion": "synthetic-exact-path-v1",
+  "hostReceiptSchemaVersion": 2,
+  "maximumTimingP95ToP50Ratio": 1.25,
+  "measurementPolicyVersion": "alternating-query-order-v1",
+  "minimumStableObservations": 3,
+  "queryCount": 8,
+  "resultLimit": 10,
+  "runsPerQuery": 5,
+  "schemaVersion": 1,
+  "stabilityPolicyVersion": "nearest-rank-p95-p50-v1",
+  "supportedOperatingSystemMajors": [
+    15,
+    26
+  ]
+}

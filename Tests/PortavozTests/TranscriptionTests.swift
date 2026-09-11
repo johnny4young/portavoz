@@ -59,6 +59,31 @@ final class ModelCatalogTests: XCTestCase {
         XCTAssertNil(ModelCatalog.recommended(for: .summarization))
     }
 
+    func testMLXLiveSummaryChallengersArePinnedAndNonServing() {
+        let challengers = [
+            ModelCatalog.mlxQwen35Point8BChallenger,
+            ModelCatalog.mlxQwen35TwoBChallenger,
+        ]
+        XCTAssertNil(ModelCatalog.recommended(for: .summarization))
+        XCTAssertLessThan(challengers[0].totalSizeBytes, 700_000_000)
+        XCTAssertGreaterThan(challengers[1].totalSizeBytes, 1_700_000_000)
+        XCTAssertLessThan(challengers[1].totalSizeBytes, 1_800_000_000)
+
+        for model in challengers {
+            XCTAssertEqual(model.license, "Apache-2.0")
+            XCTAssertEqual(model.artifacts.count, 10)
+            XCTAssertTrue(model.id.hasSuffix("-challenger"))
+            XCTAssertTrue(model.resolveBase.absoluteString.contains(model.revision))
+            for artifact in model.artifacts {
+                XCTAssertEqual(artifact.sha256.count, 64)
+                XCTAssertTrue(artifact.sha256.allSatisfy {
+                    $0.isHexDigit && (!$0.isLetter || $0.isLowercase)
+                })
+                XCTAssertGreaterThan(artifact.sizeBytes, 0)
+            }
+        }
+    }
+
     func testWhisperDescriptorsAreWellFormed() {
         let model = ModelCatalog.whisperLargeV3Turbo
         XCTAssertEqual(model.artifacts.count, 24)
@@ -494,64 +519,6 @@ final class ModelStoreTests: XCTestCase {
             license: "MIT"
         )
         return (descriptor, source)
-    }
-}
-
-// MARK: - Scheduler
-
-final class TranscriptionSchedulerTests: XCTestCase {
-    /// D7: a live job must complete while a batch job is still holding the
-    /// batch slot. If live were queued behind batch this test would hang.
-    func testLiveNeverWaitsForBatch() async throws {
-        let scheduler = TranscriptionScheduler()
-        let gate = Gate()
-
-        let batch = Task {
-            try await scheduler.batch {
-                await gate.wait()
-                return "batch"
-            }
-        }
-        try await Task.sleep(nanoseconds: 50_000_000)  // let batch take the slot
-
-        let live = await scheduler.live { "live" }
-        XCTAssertEqual(live, "live")
-
-        await gate.open()
-        let batchResult = try await batch.value
-        XCTAssertEqual(batchResult, "batch")
-    }
-
-    func testBatchSlotIsSerialFIFO() async throws {
-        let scheduler = TranscriptionScheduler()
-        let gate = Gate()
-        let log = Recorder()
-
-        let first = Task {
-            try await scheduler.batch {
-                await gate.wait()
-                await log.add("first-end")
-            }
-        }
-        try await Task.sleep(nanoseconds: 50_000_000)
-
-        let second = Task {
-            try await scheduler.batch {
-                await log.add("second-start")
-            }
-        }
-        try await Task.sleep(nanoseconds: 100_000_000)
-
-        // Second must still be queued: the slot is held by first.
-        let before = await log.events
-        XCTAssertTrue(before.isEmpty)
-
-        await gate.open()
-        _ = try await first.value
-        _ = try await second.value
-
-        let events = await log.events
-        XCTAssertEqual(events, ["first-end", "second-start"])
     }
 }
 

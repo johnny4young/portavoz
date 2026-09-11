@@ -74,10 +74,19 @@ public protocol SummaryRegenerationPreferences: Sendable {
 public struct SummaryRegenerationSnapshot: Sendable {
     public let draft: SummaryDraft
     public let version: Int
+    public let transcriptSource: TranscriptRevisionArtifactSource
+    public let correctionSource: TranscriptCorrectionArtifactSource
 
-    public init(draft: SummaryDraft, version: Int) {
+    public init(
+        draft: SummaryDraft,
+        version: Int,
+        transcriptSource: TranscriptRevisionArtifactSource = .legacy,
+        correctionSource: TranscriptCorrectionArtifactSource = .legacyAccepted
+    ) {
         self.draft = draft
         self.version = version
+        self.transcriptSource = transcriptSource
+        self.correctionSource = correctionSource
     }
 }
 
@@ -88,7 +97,9 @@ public protocol SummaryRegenerationStore: Sendable {
         _ meetingID: MeetingID,
         recipeID: String,
         fingerprint: String,
-        language: String?
+        language: String?,
+        sourceTranscriptRevision: Int,
+        sourceCorrectionRevision: TranscriptCorrectionRevision
     ) async throws -> SummaryRegenerationSnapshot?
     func saveRegeneratedSummary(
         _ draft: SummaryDraft,
@@ -106,7 +117,9 @@ extension MeetingStore: SummaryRegenerationStore {
         _ meetingID: MeetingID,
         recipeID: String,
         fingerprint: String,
-        language: String?
+        language: String?,
+        sourceTranscriptRevision: Int,
+        sourceCorrectionRevision: TranscriptCorrectionRevision
     ) async throws -> SummaryRegenerationSnapshot? {
         guard let stored = try await latestSummary(
             meetingID,
@@ -114,7 +127,23 @@ extension MeetingStore: SummaryRegenerationStore {
             fingerprint: fingerprint,
             language: language)
         else { return nil }
-        return SummaryRegenerationSnapshot(draft: stored.draft, version: stored.version)
+        let run = try await generationRun(
+            forSummary: meetingID,
+            recipeID: recipeID,
+            version: stored.version)
+        guard let run else { return nil }
+        let allowsLegacyTranscript = sourceCorrectionRevision.isAccepted
+            && sourceTranscriptRevision == 0
+        guard run.transcriptRevisionSource.matches(
+            sourceTranscriptRevision,
+            allowsLegacy: allowsLegacyTranscript),
+            run.transcriptCorrectionSource.matches(sourceCorrectionRevision)
+        else { return nil }
+        return SummaryRegenerationSnapshot(
+            draft: stored.draft,
+            version: stored.version,
+            transcriptSource: run.transcriptRevisionSource,
+            correctionSource: run.transcriptCorrectionSource)
     }
 
     public func saveRegeneratedSummary(
@@ -136,6 +165,9 @@ public struct RegenerateSummaryRequest: Sendable {
     public let recipe: Recipe
     public let targetLanguage: String
     public let providerOverride: SummaryEngine?
+    public let sourceTranscriptRevision: Int
+    public let sourceCorrectionRevision: TranscriptCorrectionRevision
+    public let evidenceSourceIDsByGeneratedID: [UUID: [UUID]]
 
     public init(
         meetingID: MeetingID,
@@ -143,7 +175,10 @@ public struct RegenerateSummaryRequest: Sendable {
         speakers: [Speaker],
         recipe: Recipe,
         targetLanguage: String,
-        providerOverride: SummaryEngine? = nil
+        sourceTranscriptRevision: Int,
+        sourceCorrectionRevision: TranscriptCorrectionRevision,
+        providerOverride: SummaryEngine? = nil,
+        evidenceSourceIDsByGeneratedID: [UUID: [UUID]] = [:]
     ) {
         self.meetingID = meetingID
         self.segments = segments
@@ -151,6 +186,9 @@ public struct RegenerateSummaryRequest: Sendable {
         self.recipe = recipe
         self.targetLanguage = targetLanguage
         self.providerOverride = providerOverride
+        self.sourceTranscriptRevision = sourceTranscriptRevision
+        self.sourceCorrectionRevision = sourceCorrectionRevision
+        self.evidenceSourceIDsByGeneratedID = evidenceSourceIDsByGeneratedID
     }
 }
 
@@ -213,12 +251,14 @@ public struct RegenerateSummary: ApplicationUseCase {
                 return await generate(
                     summaryRequest,
                     fingerprint: fingerprint,
-                    with: provider)
+                    with: provider,
+                    provenance: request)
             case .fingerprintCacheAndTranslationPivot:
                 return await regenerateWithReuse(
                     summaryRequest,
                     fingerprint: fingerprint,
-                    provider: provider)
+                    provider: provider,
+                    provenance: request)
             }
         }
     }
@@ -226,36 +266,43 @@ public struct RegenerateSummary: ApplicationUseCase {
     private func regenerateWithReuse(
         _ request: SummaryRequest,
         fingerprint: String,
-        provider: any SummaryRegenerationProvider
+        provider: any SummaryRegenerationProvider,
+        provenance: RegenerateSummaryRequest
     ) async -> SummaryRegenerationResult {
         if let exact = try? await store.regenerationSummary(
             request.meetingID,
             recipeID: request.recipe.id,
             fingerprint: fingerprint,
-            language: request.targetLanguage) {
+            language: request.targetLanguage,
+            sourceTranscriptRevision: provenance.sourceTranscriptRevision,
+            sourceCorrectionRevision: provenance.sourceCorrectionRevision) {
             return .unchanged(version: exact.version)
         }
         if let pivot = try? await store.regenerationSummary(
             request.meetingID,
             recipeID: request.recipe.id,
             fingerprint: fingerprint,
-            language: nil) {
+            language: nil,
+            sourceTranscriptRevision: provenance.sourceTranscriptRevision,
+            sourceCorrectionRevision: provenance.sourceCorrectionRevision) {
             let attempt = generationAttempt(
                 request: request,
                 provider: provider,
                 operation: .translatePivot,
-                fingerprint: fingerprint)
+                fingerprint: fingerprint,
+                provenance: provenance)
             do {
                 let translated = try await provider.translate(
                     pivot.draft,
                     to: request.targetLanguage,
                     glossary: request.glossary)
+                let projected = projectedDraft(translated, provenance: provenance)
                 let run = generationRun(
                     attempt: attempt,
                     outcome: .succeeded,
-                    draft: translated)
+                    draft: projected)
                 return .completed(
-                    persisted: await persist(translated, generationRun: run))
+                    persisted: await persist(projected, generationRun: run))
             } catch {
                 await persistFailedRun(attempt: attempt, error: error)
             }
@@ -263,26 +310,30 @@ public struct RegenerateSummary: ApplicationUseCase {
         return await generate(
             request,
             fingerprint: fingerprint,
-            with: provider)
+            with: provider,
+            provenance: provenance)
     }
 
     private func generate(
         _ request: SummaryRequest,
         fingerprint: String,
-        with provider: any SummaryRegenerationProvider
+        with provider: any SummaryRegenerationProvider,
+        provenance: RegenerateSummaryRequest
     ) async -> SummaryRegenerationResult {
         let attempt = generationAttempt(
             request: request,
             provider: provider,
             operation: .regenerate,
-            fingerprint: fingerprint)
+            fingerprint: fingerprint,
+            provenance: provenance)
         do {
             let draft = try await provider.summarize(request)
+            let projected = projectedDraft(draft, provenance: provenance)
             let run = generationRun(
                 attempt: attempt,
                 outcome: .succeeded,
-                draft: draft)
-            return .completed(persisted: await persist(draft, generationRun: run))
+                draft: projected)
+            return .completed(persisted: await persist(projected, generationRun: run))
         } catch {
             await persistFailedRun(attempt: attempt, error: error)
             return .generationFailed(provider.failurePresentation)
@@ -307,7 +358,8 @@ public struct RegenerateSummary: ApplicationUseCase {
         request: SummaryRequest,
         provider: any SummaryRegenerationProvider,
         operation: Operation,
-        fingerprint: String
+        fingerprint: String,
+        provenance: RegenerateSummaryRequest
     ) -> GenerationAttempt {
         GenerationAttempt(
             request: request,
@@ -317,6 +369,8 @@ public struct RegenerateSummary: ApplicationUseCase {
             reusePolicy: provider.reusePolicy,
             operation: operation,
             fingerprint: fingerprint,
+            sourceTranscriptRevision: provenance.sourceTranscriptRevision,
+            sourceCorrectionRevision: provenance.sourceCorrectionRevision,
             startedAt: now())
     }
 
@@ -350,6 +404,8 @@ public struct RegenerateSummary: ApplicationUseCase {
                 "operation": attempt.operation.rawValue,
                 "recipeID": attempt.request.recipe.id,
                 "reusePolicy": attempt.reusePolicy.rawValue,
+                "sourceCorrectionRevision": attempt.sourceCorrectionRevision.rawValue,
+                "sourceTranscriptRevision": attempt.sourceTranscriptRevision,
                 "workflow": "manual-regeneration"
             ]),
             outputLanguage: attempt.request.targetLanguage,
@@ -387,6 +443,20 @@ public struct RegenerateSummary: ApplicationUseCase {
         let reusePolicy: SummaryRegenerationReusePolicy
         let operation: Operation
         let fingerprint: String
+        let sourceTranscriptRevision: Int
+        let sourceCorrectionRevision: TranscriptCorrectionRevision
         let startedAt: Date
+    }
+
+    private func projectedDraft(
+        _ draft: SummaryDraft,
+        provenance: RegenerateSummaryRequest
+    ) -> SummaryDraft {
+        MeetingTranscriptGenerationMaterial(
+            segments: provenance.segments,
+            sourceSegmentIDsByGeneratedID: provenance.evidenceSourceIDsByGeneratedID,
+            baseTranscriptRevision: provenance.sourceTranscriptRevision,
+            correctionRevision: provenance.sourceCorrectionRevision)
+            .projectingEvidence(in: draft)
     }
 }

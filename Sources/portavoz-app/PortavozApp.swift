@@ -5,11 +5,19 @@ import SwiftUI
 @main
 struct PortavozApp: App {
     @NSApplicationDelegateAdaptor(PortavozAppDelegate.self) private var appDelegate
-    @State private var services = AppServices()
+    @State private var launch: AppLaunchModel
+    @AppStorage("menuBarEnabled") private var menuBarEnabled = true
+    private let runsIsolatedBenchmark: Bool
 
     init() {
-        PortavozAppDelegate.services = services
         let process = ProcessInfo.processInfo
+        runsIsolatedBenchmark = BenchMode.runsIsolatedBenchmark(
+            arguments: process.arguments)
+        ProductionSyncProcessWatchdog.runIfRequested(
+            arguments: process.arguments)
+        BenchResourceProcessWatchdog.runIfRequested(
+            arguments: process.arguments)
+        BenchResourceLaunchProbe.runIfRequested(arguments: process.arguments)
         if process.arguments.contains("-reset-app-language")
             || process.environment["PORTAVOZ_RESET_APP_LANGUAGE"] == "1" {
             UserDefaults.standard.removeObject(forKey: AppLanguage.storageKey)
@@ -22,63 +30,60 @@ struct PortavozApp: App {
             PortavozAppIntentBridge.requestStartRecording()
         }
 
-        // Hidden bench mode (M12): "--bench-live <file>" runs the
-        // SpeechAnalyzer harness inside the bundle and exits.
+        // These two hidden modes do not require the application database.
         BenchMode.runIfRequested()
         BenchMode.runMLXSmokeIfRequested()
-        // Driven from init, not a view .task: a headless launch (open -n
-        // from a script) may never mount the window, and the T4 RAM bench
-        // must still run.
-        BenchMode.runRecordBenchIfRequested(services: services, recording: services.recording)
-        // Recovery belongs to process launch, not a window: interrupted audio
-        // and expired leases are reconciled even when only the menu bar opens.
-        let appServices = services
-        Task { @MainActor in
-            await appServices.meetingSync.start()
-        }
-        Task { @MainActor in
-            await RecordingRecoveryCoordinator.runIfNeeded(services: appServices)
-            await PostCaptureProcessingCoordinator.resumeAfterRecovery(
-                services: appServices)
-            // Optional local-provider discovery must never delay recovery of
-            // finalized audio or resumption of its durable transcript work.
-            await appServices.configureInitialSummaryProviderIfNeeded()
-        }
-        // Global feature, not a window feature: ⌥⌘D must work even with
-        // the library window closed.
-        services.dictation.syncHotkey(services: services)
-        services.dictation.syncMousePTT(services: services)
+
+        let launch = AppLaunchModel(
+            arguments: process.arguments,
+            environment: process.environment)
+        _launch = State(initialValue: launch)
+        ProductionSyncQualificationRunner.runIfRequested()
+        launch.activateReadyServicesIfNeeded()
     }
 
-    @AppStorage("menuBarEnabled") private var menuBarEnabled = true
-
     var body: some Scene {
-        WindowGroup(id: "main") {
-            ContentView(services: services)
-                .portavozLocalized()
-                .environment(services)
-                .frame(minWidth: 900, minHeight: 560)
-                .tint(PVDesign.accent)
+        WindowGroup(
+            id: "main",
+            for: MainWindowIdentity.self
+        ) { _ in
+            if runsIsolatedBenchmark {
+                // The benchmark runner is activated from AppLaunchModel.init
+                // and owns the process until it exits. Do not mount product
+                // views: their view-scoped tasks and observation updates would
+                // become uncontracted work inside resource measurements.
+                EmptyView()
+            } else {
+                AppLaunchRootView(model: launch)
+                    .portavozLocalized()
+                    .frame(minWidth: 900, minHeight: 560)
+                    .tint(PVDesign.accent)
+            }
+        } defaultValue: {
+            .primary
         }
         .commands {
-            CheckForUpdatesCommand()
-            CommandGroup(after: .newItem) {
-                Button("Ask your week…") {
-                    services.palette.toggle()
+            if !runsIsolatedBenchmark {
+                CheckForUpdatesCommand()
+                if let services = launch.services {
+                    CommandGroup(after: .newItem) {
+                        Button("Ask your week…") {
+                            services.palette.toggle()
+                        }
+                        .keyboardShortcut("k")
+                    }
                 }
-                .keyboardShortcut("k")
             }
         }
-        MenuBarExtra(isInserted: $menuBarEnabled) {
-            MenuBarContent(model: services.makeMenuBarModel())
+        MenuBarExtra(isInserted: runsIsolatedBenchmark
+            ? .constant(false)
+            : $menuBarEnabled
+        ) {
+            AppLaunchMenuBarContent(model: launch)
                 .portavozLocalized()
-                .environment(services)
                 .tint(PVDesign.accent)
         } label: {
-            // «La P que habla» as a template image at rest; the red dot
-            // while a meeting records — the glanceable "am I recording?"
-            // answer. (The DS's pulsing-stem idea stays a web flourish.)
-            if services.recording.phase == .recording {
+            if launch.services?.recording.phase == .recording {
                 Image(systemName: "record.circle.fill")
             } else if let icon = MenuBarIcon.image {
                 Image(nsImage: icon)
@@ -88,10 +93,85 @@ struct PortavozApp: App {
         }
         .menuBarExtraStyle(.window)
         Settings {
+            if runsIsolatedBenchmark {
+                EmptyView()
+            } else {
+                AppLaunchSettingsRoot(model: launch)
+                    .portavozLocalized()
+                    .tint(PVDesign.accent)
+            }
+        }
+    }
+}
+
+private struct AppLaunchRootView: View {
+    let model: AppLaunchModel
+
+    var body: some View {
+        switch model.phase {
+        case .opening:
+            AppLaunchOpeningView()
+        case let .ready(services):
+            if presentsMenuBarUITestFixture {
+                MenuBarContent(model: services.makeMenuBarModel())
+                    .environment(services)
+                    .task { await services.seedDemoIfRequested() }
+            } else {
+                ContentView(services: services)
+                    .environment(services)
+            }
+        case .databaseUnavailable:
+            AppLaunchRecoveryView(model: model)
+        }
+    }
+
+    /// XCUITest cannot deterministically open a MenuBarExtra window across
+    /// macOS versions. Mount the exact production content/model in the
+    /// disposable main test window; neither flag alone can affect production.
+    private var presentsMenuBarUITestFixture: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("-use-temp-store")
+            && arguments.contains("-show-menu-bar-content")
+    }
+}
+
+private struct AppLaunchSettingsRoot: View {
+    let model: AppLaunchModel
+
+    var body: some View {
+        switch model.phase {
+        case .opening:
+            AppLaunchOpeningView()
+                .frame(minWidth: 560, minHeight: 360)
+        case let .ready(services):
             SettingsView()
-                .portavozLocalized()
                 .environment(services)
-                .tint(PVDesign.accent)
+        case .databaseUnavailable:
+            AppLaunchRecoveryView(model: model)
+                .frame(minWidth: 760, minHeight: 500)
+        }
+    }
+}
+
+private struct AppLaunchMenuBarContent: View {
+    let model: AppLaunchModel
+
+    var body: some View {
+        switch model.phase {
+        case .opening:
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Opening your library…")
+            }
+            .padding()
+        case let .ready(services):
+            MenuBarContent(model: services.makeMenuBarModel())
+                .environment(services)
+        case .databaseUnavailable:
+            Label(
+                "Library unavailable — open Portavoz to recover",
+                systemImage: "externaldrive.badge.exclamationmark")
+                .padding()
         }
     }
 }

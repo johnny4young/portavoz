@@ -23,10 +23,9 @@ private struct AppRecoverInterruptedMeetingsActivity:
     let recording: RecordingController
 
     func recordingPipelineIsActive() async -> Bool {
-        switch recording.phase {
-        case .preparing, .recording, .processing: true
-        case .idle, .done, .failed: false
-        }
+        // A stopped capture with a failed input commit is still owned by the
+        // recording controller; recovery must not retire its retryable shell.
+        recording.canReturnToLiveSession
     }
 }
 

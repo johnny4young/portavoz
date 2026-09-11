@@ -16,14 +16,47 @@ what resource budget each component has**.
 
 D11 conclusion (unchanged): the iPhone is an **in-person recorder + companion**. Everything else is product honesty.
 
-## What builds today and what must be changed (M14a)
+## What compiles today and what still requires a real app (M14a)
 
-- `Package.swift` already declares `.iOS(.v17)`. Audit by Kit:
-  - **PortavozCore, StorageKit, IntelligenceKit, IntegrationsKit**: portable as-is (GRDB, FM, and NLContextualEmbedding exist on iOS; FM requires iOS 26). Timestamped context remains represented by Core's `ContextItem`; it does not require a separate package target.
-  - **AudioCaptureKit**: `ProcessTapSource` is macOS-only (already behind `#if os(macOS)`); `MicrophoneSource` needs an iOS branch: `AVAudioSession` (category `.playAndRecord`, mode `.measurement` or `.voiceChat` for AEC — on iOS, voice processing comes from the session mode), interruptions (incoming call → pause + silence gap, the same machinery used for macOS device changes applies), Bluetooth path: `AVAudioSession.CategoryOptions.bluetoothHighQualityRecording` **verified (iOS 26)** with caveats — works only with the session's default mode (does it conflict with AEC mode? validate), adds input latency (not for live captions with AirPods), requires compatible AirPods (checkable at runtime), and **is not supported in the EU** — always pair it with `allowBluetoothHFP` as a fallback.
-  - **TranscriptionKit**: Parakeet TDT v3 int8 (~483 MB) runs on the ANE in iPhone 12+ (FluidAudio supports iOS). **Whisper large-v3-turbo fp16 (1.6 GB) does NOT reasonably fit on iPhone** → verified options: argmax's quantized `large-v3-v20240930_626MB` (recommended for multilingual use), `SpeechAnalyzer` (iOS 26, free, es_MX/es_US supported, whisper-base/small-class quality — sufficient for mobile), or defer to the Mac via sync ("refine where there are watts").
-  - **DiarizationKit**: pyannote+WeSpeaker (~14 MB) runs on iOS without difficulty. The voiceprint is NEVER synced (D8): it is re-enrolled per device.
-- **The iOS app requires an Xcode project** (end of the D20-SPM-only era): iOS app target + extensions (share, experimental broadcast, widgets/Live Activity). The SPM package remains the sole source of the Kits.
+`Package.swift` declares `.iOS(.v17)`, and D438 now makes that declaration a
+real compiler contract rather than documentation. `scripts/check-ios-portability.sh`
+resolves the installed iPhone Simulator SDK and sequentially cross-builds the
+following targets for `arm64-apple-ios17.0-simulator` in one scratch graph:
+
+- **PortavozCore**: verified. It includes the portable meeting/evidence values,
+  deterministic commitment replica merge, and deferred-Mac-work contract.
+- **StorageKit**: verified. Its default SQLite URL uses the platform Application
+  Support container rather than a macOS home-directory fallback.
+- **ApplicationKit**: verified with its full dependency graph, including
+  ModelStoreKit, TranscriptionKit, DiarizationKit, IntelligenceKit,
+  AudioPlaybackKit, and StorageKit. Foundation Models providers and generated
+  response types declare both macOS 26 and iOS 26 availability; module presence
+  alone is not treated as a deployment-version guard.
+- **IntegrationsKit**: verified, including the transport-neutral sync codec and
+  CKSyncEngine types. The current `SecTask` signed-entitlement probe is
+  deliberately macOS-only; iOS returns capability unavailable until a real
+  signed iOS app adapter exists. A compiler pass is not CloudKit runtime proof.
+
+The default model, database, and voiceprint roots now all use
+`URL.applicationSupportDirectory`, which preserves the released macOS paths and
+maps an eventual iOS app into its own container. This says nothing about model
+runtime quality, memory, thermal cost, background execution, Keychain access,
+or signed-container behavior.
+
+Still outside the compiler ratchet:
+
+- **AudioCaptureKit mobile composition**: `ProcessTapSource` remains macOS-only.
+  `MicrophoneSource` needs an iOS `AVAudioSession` owner with explicit category,
+  mode, route, interruption, media-services-reset, background-expiry, and
+  Bluetooth policy. Live captions must degrade before durable audio capture.
+- **Mobile model admission**: Parakeet, compact Whisper/SpeechAnalyzer, and
+  diarization must pass installed-asset latency, memory, energy, thermal,
+  cancellation, and relaunch measurements on supported physical devices.
+  The 1.6 GB desktop Whisper model is not a default iPhone plan.
+- **Executable composition**: there is no iOS app target, scene, entitlement,
+  provisioning profile, push registration, microphone runtime, UI test host,
+  or App Store artifact yet. The iOS app requires an Xcode project while SPM
+  remains the sole source of the Kits.
 
 ## Budgets by device (to be validated in M14a with mobile `bench`)
 
@@ -101,10 +134,28 @@ a field gate, not a unit-test claim.
   opt-in; one process model owns content-free wakes; six truthful phases and
   explicit enable/manual sync/retry/seed/pause/remove actions are bilingual
   (D97).
-- **6D next — iOS in-person recorder shell:** add the Xcode target and reuse the
-  codec/lifecycle without importing macOS call-capture assumptions. Keep voice
-  enrollment device-local and validate mobile thermal, battery, background-
-  audio, interruption, and profile/push behavior on real hardware.
+- **Shared readiness complete (D438):** the four shared targets cross-build for
+  iOS 17; compatible commitment histories have a deterministic replica merge;
+  and future refine/diarization/summary handoff has a versioned content-free
+  request plus one-owner lease/CAS state machine. None is composed into an iOS
+  app, meeting CloudKit replica, worker, or UI yet.
+- **Next — read-only continuity shell:** add the signed Xcode target and first
+  prove account-scoped text-only meeting reads, explicit sync status, offline
+  cache, relaunch, conflict disclosure, and correction/commitment review over
+  public bilingual seed data. Do not start capture in the first slice.
+- **Then — in-person microphone capture:** add the `AVAudioSession` owner and
+  durable mic-first recording lifecycle without importing macOS call-capture
+  assumptions. Validate interruption, route change, media-services reset,
+  background expiry, low disk, memory pressure, battery, and thermal behavior
+  before enabling local live models by device tier.
+- **Then — notes/review/corrections/commitments:** reuse exact typed local truth
+  and evidence navigation before introducing mobile generation. Voice
+  enrollment remains device-local.
+- **Then — explicit heavy-work handoff:** persist and transport D438's
+  content-free request/snapshot only after text sync is field-proven. A Mac
+  claims one expiring opaque lease, and result publication rechecks the exact
+  source revision and fingerprint. Audio transfer, if ever added, needs a
+  separate per-meeting consent/size/deletion/retry contract.
 - **Encryption:** use encrypted record values for content fields. Do not claim
   end-to-end guarantees beyond the user's actual iCloud/Advanced Data
   Protection configuration.
@@ -113,13 +164,76 @@ a field gate, not a unit-test claim.
   race without purging. 6B2 durably stages deferred fetches, classifies
   server-record conflicts, protects newer generations from late callbacks, and
   treats physical CKRecord deletion as metadata-only. Broad field-level
-  last-writer-wins is not the contract.
+  last-writer-wins is not the contract. D438's commitment merge performs
+  canonical append-only union only when shared identities are immutable and the
+  combined lifecycle replays; otherwise it returns an explicit conflict. The
+  current meeting replica still excludes commitment envelopes.
 - **Audio:** never part of initial sync. A later per-meeting CKAsset opt-in has
   its own size, retry, deletion, and consent contract.
 - **Voiceprint, canonical person links, secrets, and keys: never** (D8/D21/D92–D97).
 - **Later Apuntador control:** an ephemeral CloudKit command record may control
   Mac recording only after private data sync is field-proven; it is not part of
   6B and requires explicit device trust and replay protection.
+
+## Frozen heavy-work handoff contract (D438)
+
+The implemented Core contract is deliberately smaller than a transport:
+
+- operations are closed to `refine`, `diarization`, and `summary`;
+- the stable idempotency key covers meeting, kind, transcript revision, and one
+  lowercase SHA-256 input fingerprint, so different mobile request UUIDs for
+  the same exact material converge without copying content;
+- snapshots are format-versioned and compare-and-swap revisioned;
+- one opaque Mac/device UUID and lease token own an attempt, renewal is capped
+  to 15 minutes at a time, expired work may be reclaimed, and attempts stop at
+  three;
+- claim/start/renew/succeed/fail/cancel/supersede replays are exact and
+  idempotent, while stale revisions, owners, leases, source revisions, or input
+  fingerprints fail closed;
+- snapshots retain only content-free result fingerprints and bounded typed
+  failure codes. They have no audio, transcript, path, prompt, provider, model,
+  credential, or generated-result field.
+
+The contract has unit and strict-codec coverage but no persistence adapter,
+CloudKit record, scheduler, Mac worker, iOS requester, or user-visible status.
+Those are later implementation work, not hidden completion.
+
+## Autonomous validation matrix for the mobile phase
+
+Routine validation must not require private meetings or repeated user labor.
+Every future slice starts from public/synthetic bilingual fixtures and a
+deterministic seed mode, then adds physical evidence only where simulation
+cannot establish truth.
+
+| Boundary | Autonomous/repeatable gate | Irreducible field gate |
+|---|---|---|
+| Text continuity | EN/ES meetings, notes, corrections, commitments, conflicts, tombstones, offline/relaunch, corruption, and stale-generation fixtures with ground truth | Two physical devices/accounts only when account or push behavior is under test |
+| Full UI journeys | Real-app iOS XCUITest over an atomic seed snapshot for first launch, read-only continuity, offline recovery, review/correction, and explicit handoff status | VoiceOver/Voice Control exploratory qualification on each supported physical OS |
+| Capture | Deterministic injected audio, interruption/route/reset/background-expiry state tests, long synthetic recording, low-disk and cancellation faults | Real microphone/TCC, incoming-call interruption, Bluetooth/AirPods routes, lock screen, background time, and hardware media-services reset |
+| Models | Installed-asset lanes over public bilingual audio/transcript ground truth, with content-free latency/quality/memory receipts and no transcript logs | Device-specific ANE/GPU/thermal/energy behavior and Apple Intelligence availability |
+| Handoff | Duplicate request/claim, lease expiry, retry cap, cancellation, supersession, stale-result, offline, slow sync, relaunch, corruption, and two-Mac contention fixtures | Signed production CloudKit, real push/account transitions, and actual two-device convergence |
+| Resource safety | Performance, allocations, memory warnings, stress, structured-cancellation, and no-crash loops with numeric budgets | Battery drain, thermal throttling, background survival, and Instruments leak review on supported hardware |
+
+Release admission remains strict: simulator/package/XCUITest evidence cannot
+certify permissions, interactive AI setup, external accounts, notarization/App
+Store distribution, physical Sequoia/Tahoe companions, VoiceOver/Voice Control,
+or 30-day no-loss field evidence.
+
+## iPad and Watch feasibility, not promises
+
+- **iPad captions overlay:** first prototype only with
+  `AVPictureInPictureController.ContentSource` and an
+  `AVSampleBufferDisplayLayer`-backed caption renderer over Portavoz-owned
+  in-person capture. It must prove App Review compatibility, legibility,
+  bounded frame/memory use, background behavior, and no implication that iPad
+  can capture another app's call audio. A floating Zoom-overlay claim is not
+  admitted by a local prototype.
+- **Watch “you were asked”:** treat the alert as a content-minimized
+  notification/WatchConnectivity delivery problem after phone-side directed-
+  question evidence exists. Do not promise arbitrary background execution or
+  rely on `WKInterfaceDevice.play` as a background wake mechanism. Validate
+  duplicate delivery, stale meeting/question rejection, privacy on the wrist,
+  offline queueing, battery, haptic usefulness, and paired-device relaunch.
 
 ## Live Activity + Dynamic Island (M14c)
 

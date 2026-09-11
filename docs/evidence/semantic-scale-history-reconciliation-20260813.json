@@ -1,0 +1,49 @@
+{
+  "decisionAuthority": "none",
+  "generatedAt": "2026-08-13T08:24:45Z",
+  "identitySHA256": null,
+  "kind": "semantic-scale-comparison",
+  "observations": [
+    {
+      "cpuP95Milliseconds": 91.25691666666667,
+      "missingComparabilityFields": [
+        "binary",
+        "checkpoints[].stageTimings",
+        "configuration.queryVariants",
+        "fixture",
+        "queryPack",
+        "semanticAssets",
+        "semanticProfile",
+        "source",
+        "stagePolicy",
+        "toolchain"
+      ],
+      "schemaVersion": 1,
+      "totalSegments": 100000,
+      "wallP95Milliseconds": 90.218417
+    },
+    {
+      "cpuP95Milliseconds": 94.251875,
+      "missingComparabilityFields": [
+        "binary",
+        "checkpoints[].stageTimings",
+        "configuration.queryVariants",
+        "fixture",
+        "queryPack",
+        "semanticAssets",
+        "semanticProfile",
+        "source",
+        "stagePolicy"
+      ],
+      "schemaVersion": 1,
+      "totalSegments": 100000,
+      "wallP95Milliseconds": 92.849542
+    }
+  ],
+  "outcome": "not-comparable",
+  "p95AcrossObservations": null,
+  "reasons": [
+    "legacy-schema-lacks-comparability-identity"
+  ],
+  "schemaVersion": 1
+}

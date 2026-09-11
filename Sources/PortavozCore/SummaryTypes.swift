@@ -397,7 +397,6 @@ public struct TranscriptEvidenceResolution: Sendable {
 
 /// Backward-compatible summary vocabulary for the shared transcript-evidence
 /// resolver. Companion cards use the neutral names directly.
-public typealias SummaryClaimEvidenceStatus = TranscriptEvidenceStatus
 public typealias SummaryClaimEvidenceResolution = TranscriptEvidenceResolution
 
 extension SummaryClaim {
@@ -461,7 +460,11 @@ func resolveTranscriptEvidence(
     guard unavailableEvidenceCount == 0, !evidenceSegmentIDs.isEmpty else {
         return TranscriptEvidenceResolution(status: .unavailable)
     }
-    let byID = Dictionary(uniqueKeysWithValues: segments.map { ($0.id, $0) })
+    let grouped = Dictionary(grouping: segments, by: \.id)
+    guard grouped.values.allSatisfy({ $0.count == 1 }) else {
+        return TranscriptEvidenceResolution(status: .unavailable)
+    }
+    let byID = grouped.compactMapValues(\.first)
     let resolved = evidenceSegmentIDs.compactMap { byID[$0] }
     guard resolved.count == evidenceSegmentIDs.count else {
         return TranscriptEvidenceResolution(status: .unavailable)

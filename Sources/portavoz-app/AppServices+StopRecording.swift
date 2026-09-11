@@ -11,7 +11,8 @@ extension AppServices {
         StopRecording(
             audioFiles: AppStopRecordingAudioFiles(root: Self.audioRoot),
             store: store,
-            lifecycle: AppStopRecordingLifecycle(services: self))
+            lifecycle: AppStopRecordingLifecycle(services: self),
+            telemetry: workloadTelemetry)
     }
 }
 
@@ -34,7 +35,8 @@ extension StopRecordingCapture {
                     peakDBFS: $0.peakDBFS,
                     rmsDBFS: $0.rmsDBFS)
             },
-            transcriptRequiresRecovery: transcriptRequiresRecovery)
+            transcriptRequiresRecovery: transcriptRequiresRecovery,
+            captureReport: summary.captureReport)
     }
 }
 

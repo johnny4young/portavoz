@@ -60,7 +60,7 @@ struct MeetingHealthView: View {
                 }
             }
             .frame(height: 8)
-            Text(minutes(stat.speechSeconds) + " · \(Int((stat.share * 100).rounded()))%")
+            Text(ClockFormat.mmss(stat.speechSeconds, paddedMinutes: false) + " · \(Int((stat.share * 100).rounded()))%")
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
                 .frame(width: 96, alignment: .leading)
@@ -93,8 +93,4 @@ struct MeetingHealthView: View {
         .background(.quaternary.opacity(0.6), in: Capsule())
     }
 
-    private func minutes(_ seconds: TimeInterval) -> String {
-        let total = max(0, Int(seconds.rounded()))
-        return String(format: "%d:%02d", total / 60, total % 60)
-    }
 }

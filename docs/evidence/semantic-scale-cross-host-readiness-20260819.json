@@ -1,0 +1,2672 @@
+{
+  "authority": {
+    "answerQuality": "none",
+    "crossHostBudget": "none",
+    "crossHostRegression": "none",
+    "engineSelection": "none",
+    "perReceiptCurrentControlBudget": "one-host-current-control",
+    "retrievalQuality": "none"
+  },
+  "comparability": {
+    "binaryIdentityPolicy": "per-host-release-binary",
+    "hostIdentityPolicy": "required-profile-hosts-may-differ",
+    "workloadIdentityPayload": {
+      "buildConfiguration": "release",
+      "configuration": {
+        "embeddingDimension": 512,
+        "measurementRuns": 20,
+        "queryVariants": 1,
+        "resultLimit": 12,
+        "segmentsPerMeeting": 200,
+        "warmupRuns": 2
+      },
+      "fixture": {
+        "contentSource": "synthetic-only",
+        "ephemeralIdentityPolicy": "excluded-from-comparison-v1",
+        "transcriptGenerator": "ordinal-placeholder-v1",
+        "userLibraryAccess": "none",
+        "vectorGenerator": "lcg-normalized-float32-v1",
+        "version": "semantic-scale-synthetic-v1"
+      },
+      "queryPack": {
+        "queryVariants": 1,
+        "resultLimit": 12,
+        "selectionPolicy": "midpoint-consecutive-wrap-v1",
+        "version": "semantic-present-vector-queries-v1"
+      },
+      "scales": [
+        1000,
+        10000,
+        50000,
+        100000
+      ],
+      "semanticAssets": {
+        "availability": "installed",
+        "downloadPolicy": "never",
+        "provider": "apple-natural-language",
+        "script": "latin",
+        "usedByMeasuredVectors": false
+      },
+      "semanticProfile": {
+        "fingerprint": "3f1d0f9a22778a3d42688bf643caa0ad734ff9fa40a52b15d157f8494b507b3e",
+        "modelIdentifier": "5C45D94E-BAB4-4927-94B6-8B5745C46289",
+        "modelRevision": 1,
+        "pipelineIdentifier": "token-mean-pooling-l2",
+        "pipelineRevision": 1,
+        "vectorDimension": 512,
+        "vectorSchemaVersion": 1
+      },
+      "source": {
+        "commit": "be3eb2614f194fbf58933e8dd81bcc056121e1ab",
+        "worktreeClean": true,
+        "worktreeStateSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stagePolicy": {
+        "percentile": "nearest-rank-v1",
+        "processCPU": "rusage-user-plus-system",
+        "version": "semantic-scale-stages-v1",
+        "wallClock": "continuous-clock"
+      },
+      "toolchain": {
+        "swift": "6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)",
+        "xcode": "Xcode 26.6",
+        "xcodeBuild": "17F113"
+      }
+    },
+    "workloadIdentitySHA256": "fad054c51c6fe77b6676901a6ea068bcedef0e6f9df3783ad88c2fade43617b4"
+  },
+  "coverage": {
+    "complete": false,
+    "observedReceiptCount": 1,
+    "operatingSystems": [
+      {
+        "family": "sequoia",
+        "majorVersion": 15,
+        "state": "missing"
+      },
+      {
+        "family": "tahoe",
+        "majorVersion": 26,
+        "state": "present"
+      }
+    ],
+    "profiles": [
+      {
+        "operatingSystemMajor": null,
+        "profile": "memory-8gb",
+        "receiptSHA256": null,
+        "state": "missing"
+      },
+      {
+        "operatingSystemMajor": null,
+        "profile": "memory-16gb",
+        "receiptSHA256": null,
+        "state": "missing"
+      },
+      {
+        "operatingSystemMajor": 26,
+        "profile": "reference",
+        "receiptSHA256": "5bc54f7099773ba962bb67c1bac998721b6de0cf89a9544af74ee91abccfb625",
+        "state": "current-control-budget-pass"
+      }
+    ],
+    "requiredReceiptCount": 3
+  },
+  "generatedAt": "2026-08-19T00:00:00Z",
+  "kind": "semantic-scale-cross-host-matrix",
+  "matrixSHA256": "169380b72c82ab6a3f0ca3d9e25fc0bd0c53759589e6219aedd7c81c9ca41cea",
+  "outcome": "incomplete-required-matrix",
+  "policy": {
+    "acceptedReceiptKind": "semantic-scale-control-baseline",
+    "acceptedReceiptScope": "canonical-current-control",
+    "budgetMaximumMilliseconds": 100.0,
+    "budgetSegments": 100000,
+    "hostSwiftTargetPolicy": "matching-host-architecture-and-os-major-v1",
+    "requiredOperatingSystems": [
+      {
+        "family": "sequoia",
+        "majorVersion": 15
+      },
+      {
+        "family": "tahoe",
+        "majorVersion": 26
+      }
+    ],
+    "requiredProfiles": [
+      {
+        "id": "memory-8gb",
+        "maximumPhysicalMemoryBytes": 10737418240,
+        "minimumPhysicalMemoryBytes": 7516192768
+      },
+      {
+        "id": "memory-16gb",
+        "maximumPhysicalMemoryBytes": 19327352832,
+        "minimumPhysicalMemoryBytes": 15032385536
+      },
+      {
+        "id": "reference",
+        "maximumPhysicalMemoryBytes": null,
+        "minimumPhysicalMemoryBytes": 34359738368
+      }
+    ],
+    "requiredReceiptCount": 3,
+    "version": "semantic-cross-host-current-control-v1"
+  },
+  "reasons": [
+    "missing-profile:memory-8gb",
+    "missing-profile:memory-16gb",
+    "missing-operating-system:sequoia"
+  ],
+  "receipts": [
+    {
+      "authority": {
+        "answerQuality": "none",
+        "crossHost": "none",
+        "currentControlBudget": "one-host-current-control",
+        "engineSelection": "none",
+        "retrievalQuality": "none"
+      },
+      "checkpoints": [
+        {
+          "budget": {
+            "cpuP95Milliseconds": null,
+            "maximumMilliseconds": null,
+            "status": "not-applicable",
+            "wallP95Milliseconds": null
+          },
+          "databaseBytes": {
+            "maximum": 5885952,
+            "minimum": 5885952,
+            "p50": 5885952,
+            "p95": 5885952,
+            "sampleCount": 3
+          },
+          "firstQueryIndex": 500,
+          "footprint": {
+            "baselinePhysicalFootprint": {
+              "maximumBytes": {
+                "maximum": 9568952,
+                "minimum": 9503416,
+                "p50": 9536184,
+                "p95": 9568952,
+                "sampleCount": 3
+              },
+              "observations": [
+                {
+                  "maximumBytes": 9503416,
+                  "p50Bytes": 9503416,
+                  "p95Bytes": 9503416
+                },
+                {
+                  "maximumBytes": 9536184,
+                  "p50Bytes": 9536184,
+                  "p95Bytes": 9536184
+                },
+                {
+                  "maximumBytes": 9568952,
+                  "p50Bytes": 9552568,
+                  "p95Bytes": 9568952
+                }
+              ],
+              "p50Bytes": {
+                "maximum": 9552568,
+                "minimum": 9503416,
+                "p50": 9536184,
+                "p95": 9552568,
+                "sampleCount": 3
+              },
+              "p95Bytes": {
+                "maximum": 9568952,
+                "minimum": 9503416,
+                "p50": 9536184,
+                "p95": 9568952,
+                "sampleCount": 3
+              },
+              "sampleCountPerObservation": 20
+            },
+            "endingPhysicalFootprint": {
+              "maximumBytes": {
+                "maximum": 9568952,
+                "minimum": 9503416,
+                "p50": 9536184,
+                "p95": 9568952,
+                "sampleCount": 3
+              },
+              "observations": [
+                {
+                  "maximumBytes": 9503416,
+                  "p50Bytes": 9503416,
+                  "p95Bytes": 9503416
+                },
+                {
+                  "maximumBytes": 9536184,
+                  "p50Bytes": 9536184,
+                  "p95Bytes": 9536184
+                },
+                {
+                  "maximumBytes": 9568952,
+                  "p50Bytes": 9568952,
+                  "p95Bytes": 9568952
+                }
+              ],
+              "p50Bytes": {
+                "maximum": 9568952,
+                "minimum": 9503416,
+                "p50": 9536184,
+                "p95": 9568952,
+                "sampleCount": 3
+              },
+              "p95Bytes": {
+                "maximum": 9568952,
+                "minimum": 9503416,
+                "p50": 9536184,
+                "p95": 9568952,
+                "sampleCount": 3
+              },
+              "sampleCountPerObservation": 20
+            },
+            "incrementalPeakPhysicalFootprint": {
+              "maximumBytes": {
+                "maximum": 49152,
+                "minimum": 16384,
+                "p50": 32768,
+                "p95": 49152,
+                "sampleCount": 3
+              },
+              "observations": [
+                {
+                  "maximumBytes": 49152,
+                  "p50Bytes": 0,
+                  "p95Bytes": 16384
+                },
+                {
+                  "maximumBytes": 16384,
+                  "p50Bytes": 0,
+                  "p95Bytes": 16384
+                },
+                {
+                  "maximumBytes": 32768,
+                  "p50Bytes": 0,
+                  "p95Bytes": 16384
+                }
+              ],
+              "p50Bytes": {
+                "maximum": 0,
+                "minimum": 0,
+                "p50": 0,
+                "p95": 0,
+                "sampleCount": 3
+              },
+              "p95Bytes": {
+                "maximum": 16384,
+                "minimum": 16384,
+                "p50": 16384,
+                "p95": 16384,
+                "sampleCount": 3
+              },
+              "sampleCountPerObservation": 20
+            },
+            "peakPhysicalFootprint": {
+              "maximumBytes": {
+                "maximum": 9568952,
+                "minimum": 9503416,
+                "p50": 9536184,
+                "p95": 9568952,
+                "sampleCount": 3
+              },
+              "observations": [
+                {
+                  "maximumBytes": 9503416,
+                  "p50Bytes": 9503416,
+                  "p95Bytes": 9503416
+                },
+                {
+                  "maximumBytes": 9536184,
+                  "p50Bytes": 9536184,
+                  "p95Bytes": 9536184
+                },
+                {
+                  "maximumBytes": 9568952,
+                  "p50Bytes": 9568952,
+                  "p95Bytes": 9568952
+                }
+              ],
+              "p50Bytes": {
+                "maximum": 9568952,
+                "minimum": 9503416,
+                "p50": 9536184,
+                "p95": 9568952,
+                "sampleCount": 3
+              },
+              "p95Bytes": {
+                "maximum": 9568952,
+                "minimum": 9503416,
+                "p50": 9536184,
+                "p95": 9568952,
+                "sampleCount": 3
+              },
+              "sampleCountPerObservation": 20
+            }
+          },
+          "measuredQueryStability": {
+            "cpuAcrossObservationRatio": 1.0460324419114424,
+            "cpuMaximumWithinObservationRatio": 1.1121382792775298,
+            "maximumAllowedRatio": 1.25,
+            "state": "stable",
+            "wallAcrossObservationRatio": 1.0407149093103205,
+            "wallMaximumWithinObservationRatio": 1.1128910383786705
+          },
+          "meetingCount": 5,
+          "rawEmbeddingBytes": 2048000,
+          "resultCount": 12,
+          "stageTimings": {
+            "corpusSeed": {
+              "processCPUTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0505593066709225,
+                "maximumMilliseconds": {
+                  "maximum": 183.22270833333334,
+                  "minimum": 174.40491666666665,
+                  "p50": 179.95370833333334,
+                  "p95": 183.22270833333334,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 174.40491666666665,
+                    "p50Milliseconds": 174.40491666666665,
+                    "p95Milliseconds": 174.40491666666665
+                  },
+                  {
+                    "maximumMilliseconds": 183.22270833333334,
+                    "p50Milliseconds": 183.22270833333334,
+                    "p95Milliseconds": 183.22270833333334
+                  },
+                  {
+                    "maximumMilliseconds": 179.95370833333334,
+                    "p50Milliseconds": 179.95370833333334,
+                    "p95Milliseconds": 179.95370833333334
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 183.22270833333334,
+                  "minimum": 174.40491666666665,
+                  "p50": 179.95370833333334,
+                  "p95": 183.22270833333334,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 183.22270833333334,
+                  "minimum": 174.40491666666665,
+                  "p50": 179.95370833333334,
+                  "p95": 183.22270833333334,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0,
+                  "minimum": 1.0,
+                  "p50": 1.0,
+                  "p95": 1.0,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 1
+              },
+              "wallTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.163697633050875,
+                "maximumMilliseconds": {
+                  "maximum": 208.125625,
+                  "minimum": 178.848542,
+                  "p50": 184.065583,
+                  "p95": 208.125625,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 178.848542,
+                    "p50Milliseconds": 178.848542,
+                    "p95Milliseconds": 178.848542
+                  },
+                  {
+                    "maximumMilliseconds": 208.125625,
+                    "p50Milliseconds": 208.125625,
+                    "p95Milliseconds": 208.125625
+                  },
+                  {
+                    "maximumMilliseconds": 184.065583,
+                    "p50Milliseconds": 184.065583,
+                    "p95Milliseconds": 184.065583
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 208.125625,
+                  "minimum": 178.848542,
+                  "p50": 184.065583,
+                  "p95": 208.125625,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 208.125625,
+                  "minimum": 178.848542,
+                  "p50": 184.065583,
+                  "p95": 208.125625,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0,
+                  "minimum": 1.0,
+                  "p50": 1.0,
+                  "p95": 1.0,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 1
+              }
+            },
+            "measuredQueries": {
+              "processCPUTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0460324419114424,
+                "maximumMilliseconds": {
+                  "maximum": 1.247125,
+                  "minimum": 1.15825,
+                  "p50": 1.232125,
+                  "p95": 1.247125,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 1.15825,
+                    "p50Milliseconds": 1.0432916666666667,
+                    "p95Milliseconds": 1.1405
+                  },
+                  {
+                    "maximumMilliseconds": 1.247125,
+                    "p50Milliseconds": 1.0727083333333332,
+                    "p95Milliseconds": 1.193
+                  },
+                  {
+                    "maximumMilliseconds": 1.232125,
+                    "p50Milliseconds": 1.0517916666666667,
+                    "p95Milliseconds": 1.1441666666666668
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 1.0727083333333332,
+                  "minimum": 1.0432916666666667,
+                  "p50": 1.0517916666666667,
+                  "p95": 1.0727083333333332,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 1.193,
+                  "minimum": 1.1405,
+                  "p50": 1.1441666666666668,
+                  "p95": 1.193,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.1121382792775298,
+                  "minimum": 1.087826328090956,
+                  "p50": 1.0931746475498223,
+                  "p95": 1.1121382792775298,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 20
+              },
+              "wallTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0407149093103205,
+                "maximumMilliseconds": {
+                  "maximum": 1.225583,
+                  "minimum": 1.134708,
+                  "p50": 1.208042,
+                  "p95": 1.225583,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 1.134708,
+                    "p50Milliseconds": 1.028,
+                    "p95Milliseconds": 1.123667
+                  },
+                  {
+                    "maximumMilliseconds": 1.225583,
+                    "p50Milliseconds": 1.050792,
+                    "p95Milliseconds": 1.169417
+                  },
+                  {
+                    "maximumMilliseconds": 1.208042,
+                    "p50Milliseconds": 1.037625,
+                    "p95Milliseconds": 1.12825
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 1.050792,
+                  "minimum": 1.028,
+                  "p50": 1.037625,
+                  "p95": 1.050792,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 1.169417,
+                  "minimum": 1.123667,
+                  "p50": 1.12825,
+                  "p95": 1.169417,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.1128910383786705,
+                  "minimum": 1.0873388748343573,
+                  "p50": 1.0930612840466924,
+                  "p95": 1.1128910383786705,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 20
+              }
+            },
+            "storeOpen": {
+              "processCPUTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0319835014883398,
+                "maximumMilliseconds": {
+                  "maximum": 64.61425,
+                  "minimum": 62.61170833333333,
+                  "p50": 63.471041666666665,
+                  "p95": 64.61425,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 62.61170833333333,
+                    "p50Milliseconds": 62.61170833333333,
+                    "p95Milliseconds": 62.61170833333333
+                  },
+                  {
+                    "maximumMilliseconds": 64.61425,
+                    "p50Milliseconds": 64.61425,
+                    "p95Milliseconds": 64.61425
+                  },
+                  {
+                    "maximumMilliseconds": 63.471041666666665,
+                    "p50Milliseconds": 63.471041666666665,
+                    "p95Milliseconds": 63.471041666666665
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 64.61425,
+                  "minimum": 62.61170833333333,
+                  "p50": 63.471041666666665,
+                  "p95": 64.61425,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 64.61425,
+                  "minimum": 62.61170833333333,
+                  "p50": 63.471041666666665,
+                  "p95": 64.61425,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0,
+                  "minimum": 1.0,
+                  "p50": 1.0,
+                  "p95": 1.0,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 1
+              },
+              "wallTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0323570393331718,
+                "maximumMilliseconds": {
+                  "maximum": 67.738709,
+                  "minimum": 65.615583,
+                  "p50": 66.330959,
+                  "p95": 67.738709,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 65.615583,
+                    "p50Milliseconds": 65.615583,
+                    "p95Milliseconds": 65.615583
+                  },
+                  {
+                    "maximumMilliseconds": 67.738709,
+                    "p50Milliseconds": 67.738709,
+                    "p95Milliseconds": 67.738709
+                  },
+                  {
+                    "maximumMilliseconds": 66.330959,
+                    "p50Milliseconds": 66.330959,
+                    "p95Milliseconds": 66.330959
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 67.738709,
+                  "minimum": 65.615583,
+                  "p50": 66.330959,
+                  "p95": 67.738709,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 67.738709,
+                  "minimum": 65.615583,
+                  "p50": 66.330959,
+                  "p95": 67.738709,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0,
+                  "minimum": 1.0,
+                  "p50": 1.0,
+                  "p95": 1.0,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 1
+              }
+            },
+            "warmupQueries": {
+              "processCPUTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.3763783462968169,
+                "maximumMilliseconds": {
+                  "maximum": 1.8359166666666666,
+                  "minimum": 1.333875,
+                  "p50": 1.3817916666666668,
+                  "p95": 1.8359166666666666,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 1.8359166666666666,
+                    "p50Milliseconds": 1.1615,
+                    "p95Milliseconds": 1.8359166666666666
+                  },
+                  {
+                    "maximumMilliseconds": 1.3817916666666668,
+                    "p50Milliseconds": 1.1025833333333332,
+                    "p95Milliseconds": 1.3817916666666668
+                  },
+                  {
+                    "maximumMilliseconds": 1.333875,
+                    "p50Milliseconds": 1.1051666666666669,
+                    "p95Milliseconds": 1.333875
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 1.1615,
+                  "minimum": 1.1025833333333332,
+                  "p50": 1.1051666666666669,
+                  "p95": 1.1615,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 1.8359166666666666,
+                  "minimum": 1.333875,
+                  "p50": 1.3817916666666668,
+                  "p95": 1.8359166666666666,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.580642846893385,
+                  "minimum": 1.206944653898356,
+                  "p50": 1.2532310482956694,
+                  "p95": 1.580642846893385,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 2
+              },
+              "wallTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.3891614993399495,
+                "maximumMilliseconds": {
+                  "maximum": 1.848917,
+                  "minimum": 1.330959,
+                  "p50": 1.375625,
+                  "p95": 1.848917,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 1.848917,
+                    "p50Milliseconds": 1.157917,
+                    "p95Milliseconds": 1.848917
+                  },
+                  {
+                    "maximumMilliseconds": 1.375625,
+                    "p50Milliseconds": 1.100542,
+                    "p95Milliseconds": 1.375625
+                  },
+                  {
+                    "maximumMilliseconds": 1.330959,
+                    "p50Milliseconds": 1.101209,
+                    "p95Milliseconds": 1.330959
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 1.157917,
+                  "minimum": 1.100542,
+                  "p50": 1.101209,
+                  "p95": 1.157917,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 1.848917,
+                  "minimum": 1.330959,
+                  "p50": 1.375625,
+                  "p95": 1.848917,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.596761253181359,
+                  "minimum": 1.2086343282701102,
+                  "p50": 1.2499522962322203,
+                  "p95": 1.596761253181359,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 2
+              }
+            }
+          },
+          "totalSegments": 1000
+        },
+        {
+          "budget": {
+            "cpuP95Milliseconds": null,
+            "maximumMilliseconds": null,
+            "status": "not-applicable",
+            "wallP95Milliseconds": null
+          },
+          "databaseBytes": {
+            "maximum": 44621824,
+            "minimum": 44589056,
+            "p50": 44617728,
+            "p95": 44621824,
+            "sampleCount": 3
+          },
+          "firstQueryIndex": 5000,
+          "footprint": {
+            "baselinePhysicalFootprint": {
+              "maximumBytes": {
+                "maximum": 10175208,
+                "minimum": 9962216,
+                "p50": 10109696,
+                "p95": 10175208,
+                "sampleCount": 3
+              },
+              "observations": [
+                {
+                  "maximumBytes": 10109696,
+                  "p50Bytes": 10076928,
+                  "p95Bytes": 10109696
+                },
+                {
+                  "maximumBytes": 9962216,
+                  "p50Bytes": 9962216,
+                  "p95Bytes": 9962216
+                },
+                {
+                  "maximumBytes": 10175208,
+                  "p50Bytes": 10175208,
+                  "p95Bytes": 10175208
+                }
+              ],
+              "p50Bytes": {
+                "maximum": 10175208,
+                "minimum": 9962216,
+                "p50": 10076928,
+                "p95": 10175208,
+                "sampleCount": 3
+              },
+              "p95Bytes": {
+                "maximum": 10175208,
+                "minimum": 9962216,
+                "p50": 10109696,
+                "p95": 10175208,
+                "sampleCount": 3
+              },
+              "sampleCountPerObservation": 20
+            },
+            "endingPhysicalFootprint": {
+              "maximumBytes": {
+                "maximum": 10175208,
+                "minimum": 9962216,
+                "p50": 10109696,
+                "p95": 10175208,
+                "sampleCount": 3
+              },
+              "observations": [
+                {
+                  "maximumBytes": 10109696,
+                  "p50Bytes": 10109696,
+                  "p95Bytes": 10109696
+                },
+                {
+                  "maximumBytes": 9962216,
+                  "p50Bytes": 9962216,
+                  "p95Bytes": 9962216
+                },
+                {
+                  "maximumBytes": 10175208,
+                  "p50Bytes": 10175208,
+                  "p95Bytes": 10175208
+                }
+              ],
+              "p50Bytes": {
+                "maximum": 10175208,
+                "minimum": 9962216,
+                "p50": 10109696,
+                "p95": 10175208,
+                "sampleCount": 3
+              },
+              "p95Bytes": {
+                "maximum": 10175208,
+                "minimum": 9962216,
+                "p50": 10109696,
+                "p95": 10175208,
+                "sampleCount": 3
+              },
+              "sampleCountPerObservation": 20
+            },
+            "incrementalPeakPhysicalFootprint": {
+              "maximumBytes": {
+                "maximum": 196608,
+                "minimum": 163840,
+                "p50": 163840,
+                "p95": 196608,
+                "sampleCount": 3
+              },
+              "observations": [
+                {
+                  "maximumBytes": 196608,
+                  "p50Bytes": 147456,
+                  "p95Bytes": 180224
+                },
+                {
+                  "maximumBytes": 163840,
+                  "p50Bytes": 147456,
+                  "p95Bytes": 147456
+                },
+                {
+                  "maximumBytes": 163840,
+                  "p50Bytes": 147456,
+                  "p95Bytes": 147456
+                }
+              ],
+              "p50Bytes": {
+                "maximum": 147456,
+                "minimum": 147456,
+                "p50": 147456,
+                "p95": 147456,
+                "sampleCount": 3
+              },
+              "p95Bytes": {
+                "maximum": 180224,
+                "minimum": 147456,
+                "p50": 147456,
+                "p95": 180224,
+                "sampleCount": 3
+              },
+              "sampleCountPerObservation": 20
+            },
+            "peakPhysicalFootprint": {
+              "maximumBytes": {
+                "maximum": 10322664,
+                "minimum": 10109672,
+                "p50": 10257152,
+                "p95": 10322664,
+                "sampleCount": 3
+              },
+              "observations": [
+                {
+                  "maximumBytes": 10257152,
+                  "p50Bytes": 10257152,
+                  "p95Bytes": 10257152
+                },
+                {
+                  "maximumBytes": 10109672,
+                  "p50Bytes": 10109672,
+                  "p95Bytes": 10109672
+                },
+                {
+                  "maximumBytes": 10322664,
+                  "p50Bytes": 10322664,
+                  "p95Bytes": 10322664
+                }
+              ],
+              "p50Bytes": {
+                "maximum": 10322664,
+                "minimum": 10109672,
+                "p50": 10257152,
+                "p95": 10322664,
+                "sampleCount": 3
+              },
+              "p95Bytes": {
+                "maximum": 10322664,
+                "minimum": 10109672,
+                "p50": 10257152,
+                "p95": 10322664,
+                "sampleCount": 3
+              },
+              "sampleCountPerObservation": 20
+            }
+          },
+          "measuredQueryStability": {
+            "cpuAcrossObservationRatio": 1.025244871122014,
+            "cpuMaximumWithinObservationRatio": 1.0356638649455243,
+            "maximumAllowedRatio": 1.25,
+            "state": "stable",
+            "wallAcrossObservationRatio": 1.019070508154357,
+            "wallMaximumWithinObservationRatio": 1.0277315401179754
+          },
+          "meetingCount": 50,
+          "rawEmbeddingBytes": 20480000,
+          "resultCount": 12,
+          "stageTimings": {
+            "corpusSeed": {
+              "processCPUTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.043471301476986,
+                "maximumMilliseconds": {
+                  "maximum": 1929.3539583333334,
+                  "minimum": 1848.9765416666667,
+                  "p50": 1880.88175,
+                  "p95": 1929.3539583333334,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 1848.9765416666667,
+                    "p50Milliseconds": 1848.9765416666667,
+                    "p95Milliseconds": 1848.9765416666667
+                  },
+                  {
+                    "maximumMilliseconds": 1880.88175,
+                    "p50Milliseconds": 1880.88175,
+                    "p95Milliseconds": 1880.88175
+                  },
+                  {
+                    "maximumMilliseconds": 1929.3539583333334,
+                    "p50Milliseconds": 1929.3539583333334,
+                    "p95Milliseconds": 1929.3539583333334
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 1929.3539583333334,
+                  "minimum": 1848.9765416666667,
+                  "p50": 1880.88175,
+                  "p95": 1929.3539583333334,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 1929.3539583333334,
+                  "minimum": 1848.9765416666667,
+                  "p50": 1880.88175,
+                  "p95": 1929.3539583333334,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0,
+                  "minimum": 1.0,
+                  "p50": 1.0,
+                  "p95": 1.0,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 1
+              },
+              "wallTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.1319621014618757,
+                "maximumMilliseconds": {
+                  "maximum": 2205.171125,
+                  "minimum": 1948.09625,
+                  "p50": 1988.9982089999999,
+                  "p95": 2205.171125,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 1948.09625,
+                    "p50Milliseconds": 1948.09625,
+                    "p95Milliseconds": 1948.09625
+                  },
+                  {
+                    "maximumMilliseconds": 1988.9982089999999,
+                    "p50Milliseconds": 1988.9982089999999,
+                    "p95Milliseconds": 1988.9982089999999
+                  },
+                  {
+                    "maximumMilliseconds": 2205.171125,
+                    "p50Milliseconds": 2205.171125,
+                    "p95Milliseconds": 2205.171125
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 2205.171125,
+                  "minimum": 1948.09625,
+                  "p50": 1988.9982089999999,
+                  "p95": 2205.171125,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 2205.171125,
+                  "minimum": 1948.09625,
+                  "p50": 1988.9982089999999,
+                  "p95": 2205.171125,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0,
+                  "minimum": 1.0,
+                  "p50": 1.0,
+                  "p95": 1.0,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 1
+              }
+            },
+            "measuredQueries": {
+              "processCPUTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.025244871122014,
+                "maximumMilliseconds": {
+                  "maximum": 7.974041666666667,
+                  "minimum": 7.093833333333333,
+                  "p50": 7.1665,
+                  "p95": 7.974041666666667,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 7.093833333333333,
+                    "p50Milliseconds": 6.85975,
+                    "p95Milliseconds": 7.065791666666667
+                  },
+                  {
+                    "maximumMilliseconds": 7.974041666666667,
+                    "p50Milliseconds": 6.994708333333333,
+                    "p95Milliseconds": 7.244166666666667
+                  },
+                  {
+                    "maximumMilliseconds": 7.1665,
+                    "p50Milliseconds": 7.000541666666667,
+                    "p95Milliseconds": 7.1401666666666666
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 7.000541666666667,
+                  "minimum": 6.85975,
+                  "p50": 6.994708333333333,
+                  "p95": 7.000541666666667,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 7.244166666666667,
+                  "minimum": 7.065791666666667,
+                  "p50": 7.1401666666666666,
+                  "p95": 7.244166666666667,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0356638649455243,
+                  "minimum": 1.0199448852172153,
+                  "p50": 1.03003632299525,
+                  "p95": 1.0356638649455243,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 20
+              },
+              "wallTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.019070508154357,
+                "maximumMilliseconds": {
+                  "maximum": 7.823292,
+                  "minimum": 6.9905,
+                  "p50": 7.060292,
+                  "p95": 7.823292,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 6.9905,
+                    "p50Milliseconds": 6.783792,
+                    "p95Milliseconds": 6.971917
+                  },
+                  {
+                    "maximumMilliseconds": 7.823292,
+                    "p50Milliseconds": 6.917417,
+                    "p95Milliseconds": 7.104875
+                  },
+                  {
+                    "maximumMilliseconds": 7.060292,
+                    "p50Milliseconds": 6.9335,
+                    "p95Milliseconds": 7.037875
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 6.9335,
+                  "minimum": 6.783792,
+                  "p50": 6.917417,
+                  "p95": 6.9335,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 7.104875,
+                  "minimum": 6.971917,
+                  "p50": 7.037875,
+                  "p95": 7.104875,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0277315401179754,
+                  "minimum": 1.01505372467008,
+                  "p50": 1.0270994216482827,
+                  "p95": 1.0277315401179754,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 20
+              }
+            },
+            "storeOpen": {
+              "processCPUTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0304719076699431,
+                "maximumMilliseconds": {
+                  "maximum": 63.207,
+                  "minimum": 61.337916666666665,
+                  "p50": 62.88729166666666,
+                  "p95": 63.207,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 61.337916666666665,
+                    "p50Milliseconds": 61.337916666666665,
+                    "p95Milliseconds": 61.337916666666665
+                  },
+                  {
+                    "maximumMilliseconds": 63.207,
+                    "p50Milliseconds": 63.207,
+                    "p95Milliseconds": 63.207
+                  },
+                  {
+                    "maximumMilliseconds": 62.88729166666666,
+                    "p50Milliseconds": 62.88729166666666,
+                    "p95Milliseconds": 62.88729166666666
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 63.207,
+                  "minimum": 61.337916666666665,
+                  "p50": 62.88729166666666,
+                  "p95": 63.207,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 63.207,
+                  "minimum": 61.337916666666665,
+                  "p50": 62.88729166666666,
+                  "p95": 63.207,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0,
+                  "minimum": 1.0,
+                  "p50": 1.0,
+                  "p95": 1.0,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 1
+              },
+              "wallTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0139096853741618,
+                "maximumMilliseconds": {
+                  "maximum": 65.827917,
+                  "minimum": 64.924833,
+                  "p50": 65.53875,
+                  "p95": 65.827917,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 64.924833,
+                    "p50Milliseconds": 64.924833,
+                    "p95Milliseconds": 64.924833
+                  },
+                  {
+                    "maximumMilliseconds": 65.827917,
+                    "p50Milliseconds": 65.827917,
+                    "p95Milliseconds": 65.827917
+                  },
+                  {
+                    "maximumMilliseconds": 65.53875,
+                    "p50Milliseconds": 65.53875,
+                    "p95Milliseconds": 65.53875
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 65.827917,
+                  "minimum": 64.924833,
+                  "p50": 65.53875,
+                  "p95": 65.827917,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 65.827917,
+                  "minimum": 64.924833,
+                  "p50": 65.53875,
+                  "p95": 65.827917,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0,
+                  "minimum": 1.0,
+                  "p50": 1.0,
+                  "p95": 1.0,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 1
+              }
+            },
+            "warmupQueries": {
+              "processCPUTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0577126731232287,
+                "maximumMilliseconds": {
+                  "maximum": 7.44925,
+                  "minimum": 7.042791666666667,
+                  "p50": 7.28525,
+                  "p95": 7.44925,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 7.042791666666667,
+                    "p50Milliseconds": 6.886125,
+                    "p95Milliseconds": 7.042791666666667
+                  },
+                  {
+                    "maximumMilliseconds": 7.44925,
+                    "p50Milliseconds": 7.064833333333333,
+                    "p95Milliseconds": 7.44925
+                  },
+                  {
+                    "maximumMilliseconds": 7.28525,
+                    "p50Milliseconds": 6.978041666666667,
+                    "p95Milliseconds": 7.28525
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 7.064833333333333,
+                  "minimum": 6.886125,
+                  "p50": 6.978041666666667,
+                  "p95": 7.064833333333333,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 7.44925,
+                  "minimum": 7.042791666666667,
+                  "p50": 7.28525,
+                  "p95": 7.44925,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0544127014083844,
+                  "minimum": 1.022751063430691,
+                  "p50": 1.0440250070160562,
+                  "p95": 1.0544127014083844,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 2
+              },
+              "wallTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0630585729354172,
+                "maximumMilliseconds": {
+                  "maximum": 7.480167,
+                  "minimum": 7.036458,
+                  "p50": 7.299125,
+                  "p95": 7.480167,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 7.036458,
+                    "p50Milliseconds": 6.884,
+                    "p95Milliseconds": 7.036458
+                  },
+                  {
+                    "maximumMilliseconds": 7.480167,
+                    "p50Milliseconds": 7.079125,
+                    "p95Milliseconds": 7.480167
+                  },
+                  {
+                    "maximumMilliseconds": 7.299125,
+                    "p50Milliseconds": 7.000041,
+                    "p95Milliseconds": 7.299125
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 7.079125,
+                  "minimum": 6.884,
+                  "p50": 7.000041,
+                  "p95": 7.079125,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 7.480167,
+                  "minimum": 7.036458,
+                  "p50": 7.299125,
+                  "p95": 7.480167,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.056651351685413,
+                  "minimum": 1.0221467170249854,
+                  "p50": 1.0427260354617922,
+                  "p95": 1.056651351685413,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 2
+              }
+            }
+          },
+          "totalSegments": 10000
+        },
+        {
+          "budget": {
+            "cpuP95Milliseconds": null,
+            "maximumMilliseconds": null,
+            "status": "not-applicable",
+            "wallP95Milliseconds": null
+          },
+          "databaseBytes": {
+            "maximum": 216965120,
+            "minimum": 216936448,
+            "p50": 216944640,
+            "p95": 216965120,
+            "sampleCount": 3
+          },
+          "firstQueryIndex": 25000,
+          "footprint": {
+            "baselinePhysicalFootprint": {
+              "maximumBytes": {
+                "maximum": 10568592,
+                "minimum": 10355600,
+                "p50": 10453856,
+                "p95": 10568592,
+                "sampleCount": 3
+              },
+              "observations": [
+                {
+                  "maximumBytes": 10568592,
+                  "p50Bytes": 10568592,
+                  "p95Bytes": 10568592
+                },
+                {
+                  "maximumBytes": 10453856,
+                  "p50Bytes": 10437472,
+                  "p95Bytes": 10453856
+                },
+                {
+                  "maximumBytes": 10355600,
+                  "p50Bytes": 10355600,
+                  "p95Bytes": 10355600
+                }
+              ],
+              "p50Bytes": {
+                "maximum": 10568592,
+                "minimum": 10355600,
+                "p50": 10437472,
+                "p95": 10568592,
+                "sampleCount": 3
+              },
+              "p95Bytes": {
+                "maximum": 10568592,
+                "minimum": 10355600,
+                "p50": 10453856,
+                "p95": 10568592,
+                "sampleCount": 3
+              },
+              "sampleCountPerObservation": 20
+            },
+            "endingPhysicalFootprint": {
+              "maximumBytes": {
+                "maximum": 10568592,
+                "minimum": 10371984,
+                "p50": 10453856,
+                "p95": 10568592,
+                "sampleCount": 3
+              },
+              "observations": [
+                {
+                  "maximumBytes": 10568592,
+                  "p50Bytes": 10568592,
+                  "p95Bytes": 10568592
+                },
+                {
+                  "maximumBytes": 10453856,
+                  "p50Bytes": 10453856,
+                  "p95Bytes": 10453856
+                },
+                {
+                  "maximumBytes": 10371984,
+                  "p50Bytes": 10355600,
+                  "p95Bytes": 10355600
+                }
+              ],
+              "p50Bytes": {
+                "maximum": 10568592,
+                "minimum": 10355600,
+                "p50": 10453856,
+                "p95": 10568592,
+                "sampleCount": 3
+              },
+              "p95Bytes": {
+                "maximum": 10568592,
+                "minimum": 10355600,
+                "p50": 10453856,
+                "p95": 10568592,
+                "sampleCount": 3
+              },
+              "sampleCountPerObservation": 20
+            },
+            "incrementalPeakPhysicalFootprint": {
+              "maximumBytes": {
+                "maximum": 262144,
+                "minimum": 163840,
+                "p50": 163840,
+                "p95": 262144,
+                "sampleCount": 3
+              },
+              "observations": [
+                {
+                  "maximumBytes": 262144,
+                  "p50Bytes": 147456,
+                  "p95Bytes": 196608
+                },
+                {
+                  "maximumBytes": 163840,
+                  "p50Bytes": 147456,
+                  "p95Bytes": 163840
+                },
+                {
+                  "maximumBytes": 163840,
+                  "p50Bytes": 147456,
+                  "p95Bytes": 163840
+                }
+              ],
+              "p50Bytes": {
+                "maximum": 147456,
+                "minimum": 147456,
+                "p50": 147456,
+                "p95": 147456,
+                "sampleCount": 3
+              },
+              "p95Bytes": {
+                "maximum": 196608,
+                "minimum": 163840,
+                "p50": 163840,
+                "p95": 196608,
+                "sampleCount": 3
+              },
+              "sampleCountPerObservation": 20
+            },
+            "peakPhysicalFootprint": {
+              "maximumBytes": {
+                "maximum": 10797968,
+                "minimum": 10519440,
+                "p50": 10601312,
+                "p95": 10797968,
+                "sampleCount": 3
+              },
+              "observations": [
+                {
+                  "maximumBytes": 10797968,
+                  "p50Bytes": 10716048,
+                  "p95Bytes": 10716048
+                },
+                {
+                  "maximumBytes": 10601312,
+                  "p50Bytes": 10601312,
+                  "p95Bytes": 10601312
+                },
+                {
+                  "maximumBytes": 10519440,
+                  "p50Bytes": 10503056,
+                  "p95Bytes": 10503056
+                }
+              ],
+              "p50Bytes": {
+                "maximum": 10716048,
+                "minimum": 10503056,
+                "p50": 10601312,
+                "p95": 10716048,
+                "sampleCount": 3
+              },
+              "p95Bytes": {
+                "maximum": 10716048,
+                "minimum": 10503056,
+                "p50": 10601312,
+                "p95": 10716048,
+                "sampleCount": 3
+              },
+              "sampleCountPerObservation": 20
+            }
+          },
+          "measuredQueryStability": {
+            "cpuAcrossObservationRatio": 1.0449157556713409,
+            "cpuMaximumWithinObservationRatio": 1.042663640063513,
+            "maximumAllowedRatio": 1.25,
+            "state": "stable",
+            "wallAcrossObservationRatio": 1.041627187084799,
+            "wallMaximumWithinObservationRatio": 1.0356725713988415
+          },
+          "meetingCount": 250,
+          "rawEmbeddingBytes": 102400000,
+          "resultCount": 12,
+          "stageTimings": {
+            "corpusSeed": {
+              "processCPUTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0361028630304743,
+                "maximumMilliseconds": {
+                  "maximum": 10670.170166666667,
+                  "minimum": 10298.369541666667,
+                  "p50": 10589.960125,
+                  "p95": 10670.170166666667,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 10298.369541666667,
+                    "p50Milliseconds": 10298.369541666667,
+                    "p95Milliseconds": 10298.369541666667
+                  },
+                  {
+                    "maximumMilliseconds": 10670.170166666667,
+                    "p50Milliseconds": 10670.170166666667,
+                    "p95Milliseconds": 10670.170166666667
+                  },
+                  {
+                    "maximumMilliseconds": 10589.960125,
+                    "p50Milliseconds": 10589.960125,
+                    "p95Milliseconds": 10589.960125
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 10670.170166666667,
+                  "minimum": 10298.369541666667,
+                  "p50": 10589.960125,
+                  "p95": 10670.170166666667,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 10670.170166666667,
+                  "minimum": 10298.369541666667,
+                  "p50": 10589.960125,
+                  "p95": 10670.170166666667,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0,
+                  "minimum": 1.0,
+                  "p50": 1.0,
+                  "p95": 1.0,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 1
+              },
+              "wallTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0612323228934588,
+                "maximumMilliseconds": {
+                  "maximum": 11883.051125,
+                  "minimum": 11197.407833,
+                  "p50": 11600.223959,
+                  "p95": 11883.051125,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 11197.407833,
+                    "p50Milliseconds": 11197.407833,
+                    "p95Milliseconds": 11197.407833
+                  },
+                  {
+                    "maximumMilliseconds": 11883.051125,
+                    "p50Milliseconds": 11883.051125,
+                    "p95Milliseconds": 11883.051125
+                  },
+                  {
+                    "maximumMilliseconds": 11600.223959,
+                    "p50Milliseconds": 11600.223959,
+                    "p95Milliseconds": 11600.223959
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 11883.051125,
+                  "minimum": 11197.407833,
+                  "p50": 11600.223959,
+                  "p95": 11883.051125,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 11883.051125,
+                  "minimum": 11197.407833,
+                  "p50": 11600.223959,
+                  "p95": 11883.051125,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0,
+                  "minimum": 1.0,
+                  "p50": 1.0,
+                  "p95": 1.0,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 1
+              }
+            },
+            "measuredQueries": {
+              "processCPUTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0449157556713409,
+                "maximumMilliseconds": {
+                  "maximum": 38.01533333333334,
+                  "minimum": 36.33504166666666,
+                  "p50": 37.938916666666664,
+                  "p95": 38.01533333333334,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 36.33504166666666,
+                    "p50Milliseconds": 35.461375,
+                    "p95Milliseconds": 36.29045833333333
+                  },
+                  {
+                    "maximumMilliseconds": 38.01533333333334,
+                    "p50Milliseconds": 35.635666666666665,
+                    "p95Milliseconds": 36.266041666666666
+                  },
+                  {
+                    "maximumMilliseconds": 37.938916666666664,
+                    "p50Milliseconds": 36.344375,
+                    "p95Milliseconds": 37.894958333333335
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 36.344375,
+                  "minimum": 35.461375,
+                  "p50": 35.635666666666665,
+                  "p95": 36.344375,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 37.894958333333335,
+                  "minimum": 36.266041666666666,
+                  "p50": 36.29045833333333,
+                  "p95": 37.894958333333335,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.042663640063513,
+                  "minimum": 1.0176894403547008,
+                  "p50": 1.0233798980815982,
+                  "p95": 1.042663640063513,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 20
+              },
+              "wallTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.041627187084799,
+                "maximumMilliseconds": {
+                  "maximum": 37.226209,
+                  "minimum": 35.873167,
+                  "p50": 37.225792,
+                  "p95": 37.226209,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 35.873167,
+                    "p50Milliseconds": 35.032084,
+                    "p95Milliseconds": 35.698833
+                  },
+                  {
+                    "maximumMilliseconds": 37.225792,
+                    "p50Milliseconds": 35.183333,
+                    "p95Milliseconds": 35.812792
+                  },
+                  {
+                    "maximumMilliseconds": 37.226209,
+                    "p50Milliseconds": 35.904084,
+                    "p95Milliseconds": 37.184875
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 35.904084,
+                  "minimum": 35.032084,
+                  "p50": 35.183333,
+                  "p95": 35.904084,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 37.184875,
+                  "minimum": 35.698833,
+                  "p50": 35.812792,
+                  "p95": 37.184875,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0356725713988415,
+                  "minimum": 1.0178908291605007,
+                  "p50": 1.0190325245851775,
+                  "p95": 1.0356725713988415,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 20
+              }
+            },
+            "storeOpen": {
+              "processCPUTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.1301317268267241,
+                "maximumMilliseconds": {
+                  "maximum": 68.252375,
+                  "minimum": 60.39329166666666,
+                  "p50": 64.34891666666667,
+                  "p95": 68.252375,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 60.39329166666666,
+                    "p50Milliseconds": 60.39329166666666,
+                    "p95Milliseconds": 60.39329166666666
+                  },
+                  {
+                    "maximumMilliseconds": 64.34891666666667,
+                    "p50Milliseconds": 64.34891666666667,
+                    "p95Milliseconds": 64.34891666666667
+                  },
+                  {
+                    "maximumMilliseconds": 68.252375,
+                    "p50Milliseconds": 68.252375,
+                    "p95Milliseconds": 68.252375
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 68.252375,
+                  "minimum": 60.39329166666666,
+                  "p50": 64.34891666666667,
+                  "p95": 68.252375,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 68.252375,
+                  "minimum": 60.39329166666666,
+                  "p50": 64.34891666666667,
+                  "p95": 68.252375,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0,
+                  "minimum": 1.0,
+                  "p50": 1.0,
+                  "p95": 1.0,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 1
+              },
+              "wallTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0984966062366548,
+                "maximumMilliseconds": {
+                  "maximum": 71.189583,
+                  "minimum": 64.806375,
+                  "p50": 67.052375,
+                  "p95": 71.189583,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 64.806375,
+                    "p50Milliseconds": 64.806375,
+                    "p95Milliseconds": 64.806375
+                  },
+                  {
+                    "maximumMilliseconds": 67.052375,
+                    "p50Milliseconds": 67.052375,
+                    "p95Milliseconds": 67.052375
+                  },
+                  {
+                    "maximumMilliseconds": 71.189583,
+                    "p50Milliseconds": 71.189583,
+                    "p95Milliseconds": 71.189583
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 71.189583,
+                  "minimum": 64.806375,
+                  "p50": 67.052375,
+                  "p95": 71.189583,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 71.189583,
+                  "minimum": 64.806375,
+                  "p50": 67.052375,
+                  "p95": 71.189583,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0,
+                  "minimum": 1.0,
+                  "p50": 1.0,
+                  "p95": 1.0,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 1
+              }
+            },
+            "warmupQueries": {
+              "processCPUTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0374942241196015,
+                "maximumMilliseconds": {
+                  "maximum": 36.392833333333336,
+                  "minimum": 35.077625,
+                  "p50": 35.99766666666667,
+                  "p95": 36.392833333333336,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 35.077625,
+                    "p50Milliseconds": 34.950625,
+                    "p95Milliseconds": 35.077625
+                  },
+                  {
+                    "maximumMilliseconds": 35.99766666666667,
+                    "p50Milliseconds": 35.354875,
+                    "p95Milliseconds": 35.99766666666667
+                  },
+                  {
+                    "maximumMilliseconds": 36.392833333333336,
+                    "p50Milliseconds": 36.02645833333334,
+                    "p95Milliseconds": 36.392833333333336
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 36.02645833333334,
+                  "minimum": 34.950625,
+                  "p50": 35.354875,
+                  "p95": 36.02645833333334,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 36.392833333333336,
+                  "minimum": 35.077625,
+                  "p50": 35.99766666666667,
+                  "p95": 36.392833333333336,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0181811324935153,
+                  "minimum": 1.0036336975375975,
+                  "p50": 1.0101696091414296,
+                  "p95": 1.0181811324935153,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 2
+              },
+              "wallTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0369115065509797,
+                "maximumMilliseconds": {
+                  "maximum": 36.390625,
+                  "minimum": 35.095208,
+                  "p50": 36.026709,
+                  "p95": 36.390625,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 35.095208,
+                    "p50Milliseconds": 34.988959,
+                    "p95Milliseconds": 35.095208
+                  },
+                  {
+                    "maximumMilliseconds": 36.026709,
+                    "p50Milliseconds": 35.379625,
+                    "p95Milliseconds": 36.026709
+                  },
+                  {
+                    "maximumMilliseconds": 36.390625,
+                    "p50Milliseconds": 36.022916,
+                    "p95Milliseconds": 36.390625
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 36.022916,
+                  "minimum": 34.988959,
+                  "p50": 35.379625,
+                  "p95": 36.022916,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 36.390625,
+                  "minimum": 35.095208,
+                  "p50": 36.026709,
+                  "p95": 36.390625,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0182897359709155,
+                  "minimum": 1.0030366436452138,
+                  "p50": 1.0102076411582004,
+                  "p95": 1.0182897359709155,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 2
+              }
+            }
+          },
+          "totalSegments": 50000
+        },
+        {
+          "budget": {
+            "cpuP95Milliseconds": 74.503375,
+            "maximumMilliseconds": 100.0,
+            "status": "pass",
+            "wallP95Milliseconds": 73.921125
+          },
+          "databaseBytes": {
+            "maximum": 432500736,
+            "minimum": 432463872,
+            "p50": 432480256,
+            "p95": 432500736,
+            "sampleCount": 3
+          },
+          "firstQueryIndex": 50000,
+          "footprint": {
+            "baselinePhysicalFootprint": {
+              "maximumBytes": {
+                "maximum": 10667016,
+                "minimum": 9962528,
+                "p50": 10470432,
+                "p95": 10667016,
+                "sampleCount": 3
+              },
+              "observations": [
+                {
+                  "maximumBytes": 10667016,
+                  "p50Bytes": 10667016,
+                  "p95Bytes": 10667016
+                },
+                {
+                  "maximumBytes": 10470432,
+                  "p50Bytes": 10437664,
+                  "p95Bytes": 10470432
+                },
+                {
+                  "maximumBytes": 9962528,
+                  "p50Bytes": 9946144,
+                  "p95Bytes": 9962528
+                }
+              ],
+              "p50Bytes": {
+                "maximum": 10667016,
+                "minimum": 9946144,
+                "p50": 10437664,
+                "p95": 10667016,
+                "sampleCount": 3
+              },
+              "p95Bytes": {
+                "maximum": 10667016,
+                "minimum": 9962528,
+                "p50": 10470432,
+                "p95": 10667016,
+                "sampleCount": 3
+              },
+              "sampleCountPerObservation": 20
+            },
+            "endingPhysicalFootprint": {
+              "maximumBytes": {
+                "maximum": 10667016,
+                "minimum": 9962528,
+                "p50": 10470432,
+                "p95": 10667016,
+                "sampleCount": 3
+              },
+              "observations": [
+                {
+                  "maximumBytes": 10667016,
+                  "p50Bytes": 10667016,
+                  "p95Bytes": 10667016
+                },
+                {
+                  "maximumBytes": 10470432,
+                  "p50Bytes": 10437664,
+                  "p95Bytes": 10470432
+                },
+                {
+                  "maximumBytes": 9962528,
+                  "p50Bytes": 9946144,
+                  "p95Bytes": 9962528
+                }
+              ],
+              "p50Bytes": {
+                "maximum": 10667016,
+                "minimum": 9946144,
+                "p50": 10437664,
+                "p95": 10667016,
+                "sampleCount": 3
+              },
+              "p95Bytes": {
+                "maximum": 10667016,
+                "minimum": 9962528,
+                "p50": 10470432,
+                "p95": 10667016,
+                "sampleCount": 3
+              },
+              "sampleCountPerObservation": 20
+            },
+            "incrementalPeakPhysicalFootprint": {
+              "maximumBytes": {
+                "maximum": 196608,
+                "minimum": 163840,
+                "p50": 163840,
+                "p95": 196608,
+                "sampleCount": 3
+              },
+              "observations": [
+                {
+                  "maximumBytes": 196608,
+                  "p50Bytes": 147456,
+                  "p95Bytes": 163840
+                },
+                {
+                  "maximumBytes": 163840,
+                  "p50Bytes": 147456,
+                  "p95Bytes": 163840
+                },
+                {
+                  "maximumBytes": 163840,
+                  "p50Bytes": 147456,
+                  "p95Bytes": 163840
+                }
+              ],
+              "p50Bytes": {
+                "maximum": 147456,
+                "minimum": 147456,
+                "p50": 147456,
+                "p95": 147456,
+                "sampleCount": 3
+              },
+              "p95Bytes": {
+                "maximum": 163840,
+                "minimum": 163840,
+                "p50": 163840,
+                "p95": 163840,
+                "sampleCount": 3
+              },
+              "sampleCountPerObservation": 20
+            },
+            "peakPhysicalFootprint": {
+              "maximumBytes": {
+                "maximum": 10814472,
+                "minimum": 10109984,
+                "p50": 10617888,
+                "p95": 10814472,
+                "sampleCount": 3
+              },
+              "observations": [
+                {
+                  "maximumBytes": 10814472,
+                  "p50Bytes": 10814472,
+                  "p95Bytes": 10814472
+                },
+                {
+                  "maximumBytes": 10617888,
+                  "p50Bytes": 10585120,
+                  "p95Bytes": 10617888
+                },
+                {
+                  "maximumBytes": 10109984,
+                  "p50Bytes": 10093600,
+                  "p95Bytes": 10109984
+                }
+              ],
+              "p50Bytes": {
+                "maximum": 10814472,
+                "minimum": 10093600,
+                "p50": 10585120,
+                "p95": 10814472,
+                "sampleCount": 3
+              },
+              "p95Bytes": {
+                "maximum": 10814472,
+                "minimum": 10109984,
+                "p50": 10617888,
+                "p95": 10814472,
+                "sampleCount": 3
+              },
+              "sampleCountPerObservation": 20
+            }
+          },
+          "measuredQueryStability": {
+            "cpuAcrossObservationRatio": 1.0332628535138881,
+            "cpuMaximumWithinObservationRatio": 1.0251741083023302,
+            "maximumAllowedRatio": 1.25,
+            "state": "stable",
+            "wallAcrossObservationRatio": 1.0383237759462867,
+            "wallMaximumWithinObservationRatio": 1.0276379664299475
+          },
+          "meetingCount": 500,
+          "rawEmbeddingBytes": 204800000,
+          "resultCount": 12,
+          "stageTimings": {
+            "corpusSeed": {
+              "processCPUTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0284539786575742,
+                "maximumMilliseconds": {
+                  "maximum": 24850.684583333332,
+                  "minimum": 24163.14691666667,
+                  "p50": 24408.067208333334,
+                  "p95": 24850.684583333332,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 24163.14691666667,
+                    "p50Milliseconds": 24163.14691666667,
+                    "p95Milliseconds": 24163.14691666667
+                  },
+                  {
+                    "maximumMilliseconds": 24408.067208333334,
+                    "p50Milliseconds": 24408.067208333334,
+                    "p95Milliseconds": 24408.067208333334
+                  },
+                  {
+                    "maximumMilliseconds": 24850.684583333332,
+                    "p50Milliseconds": 24850.684583333332,
+                    "p95Milliseconds": 24850.684583333332
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 24850.684583333332,
+                  "minimum": 24163.14691666667,
+                  "p50": 24408.067208333334,
+                  "p95": 24850.684583333332,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 24850.684583333332,
+                  "minimum": 24163.14691666667,
+                  "p50": 24408.067208333334,
+                  "p95": 24850.684583333332,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0,
+                  "minimum": 1.0,
+                  "p50": 1.0,
+                  "p95": 1.0,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 1
+              },
+              "wallTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.4126904238083415,
+                "maximumMilliseconds": {
+                  "maximum": 37157.182625,
+                  "minimum": 26302.424083,
+                  "p50": 26801.572,
+                  "p95": 37157.182625,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 26302.424083,
+                    "p50Milliseconds": 26302.424083,
+                    "p95Milliseconds": 26302.424083
+                  },
+                  {
+                    "maximumMilliseconds": 26801.572,
+                    "p50Milliseconds": 26801.572,
+                    "p95Milliseconds": 26801.572
+                  },
+                  {
+                    "maximumMilliseconds": 37157.182625,
+                    "p50Milliseconds": 37157.182625,
+                    "p95Milliseconds": 37157.182625
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 37157.182625,
+                  "minimum": 26302.424083,
+                  "p50": 26801.572,
+                  "p95": 37157.182625,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 37157.182625,
+                  "minimum": 26302.424083,
+                  "p50": 26801.572,
+                  "p95": 37157.182625,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0,
+                  "minimum": 1.0,
+                  "p50": 1.0,
+                  "p95": 1.0,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 1
+              }
+            },
+            "measuredQueries": {
+              "processCPUTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0332628535138881,
+                "maximumMilliseconds": {
+                  "maximum": 74.89908333333332,
+                  "minimum": 72.25925,
+                  "p50": 74.264,
+                  "p95": 74.89908333333332,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 74.89908333333332,
+                    "p50Milliseconds": 72.673875,
+                    "p95Milliseconds": 74.503375
+                  },
+                  {
+                    "maximumMilliseconds": 74.264,
+                    "p50Milliseconds": 72.20291666666667,
+                    "p95Milliseconds": 73.61341666666667
+                  },
+                  {
+                    "maximumMilliseconds": 72.25925,
+                    "p50Milliseconds": 71.16483333333333,
+                    "p95Milliseconds": 72.10495833333333
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 72.673875,
+                  "minimum": 71.16483333333333,
+                  "p50": 72.20291666666667,
+                  "p95": 72.673875,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 74.503375,
+                  "minimum": 72.10495833333333,
+                  "p50": 73.61341666666667,
+                  "p95": 74.503375,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0251741083023302,
+                  "minimum": 1.013210527671673,
+                  "p50": 1.0195352219150888,
+                  "p95": 1.0251741083023302,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 20
+              },
+              "wallTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0383237759462867,
+                "maximumMilliseconds": {
+                  "maximum": 74.399458,
+                  "minimum": 71.28825,
+                  "p50": 73.071542,
+                  "p95": 74.399458,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 74.399458,
+                    "p50Milliseconds": 71.933042,
+                    "p95Milliseconds": 73.921125
+                  },
+                  {
+                    "maximumMilliseconds": 73.071542,
+                    "p50Milliseconds": 71.2145,
+                    "p95Milliseconds": 72.503083
+                  },
+                  {
+                    "maximumMilliseconds": 71.28825,
+                    "p50Milliseconds": 70.326875,
+                    "p95Milliseconds": 71.19275
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 71.933042,
+                  "minimum": 70.326875,
+                  "p50": 71.2145,
+                  "p95": 71.933042,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 73.921125,
+                  "minimum": 71.19275,
+                  "p50": 72.503083,
+                  "p95": 73.921125,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0276379664299475,
+                  "minimum": 1.012312149516099,
+                  "p50": 1.018094390889496,
+                  "p95": 1.0276379664299475,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 20
+              }
+            },
+            "storeOpen": {
+              "processCPUTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0746876743590212,
+                "maximumMilliseconds": {
+                  "maximum": 65.89004166666666,
+                  "minimum": 61.310875,
+                  "p50": 64.426375,
+                  "p95": 65.89004166666666,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 61.310875,
+                    "p50Milliseconds": 61.310875,
+                    "p95Milliseconds": 61.310875
+                  },
+                  {
+                    "maximumMilliseconds": 65.89004166666666,
+                    "p50Milliseconds": 65.89004166666666,
+                    "p95Milliseconds": 65.89004166666666
+                  },
+                  {
+                    "maximumMilliseconds": 64.426375,
+                    "p50Milliseconds": 64.426375,
+                    "p95Milliseconds": 64.426375
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 65.89004166666666,
+                  "minimum": 61.310875,
+                  "p50": 64.426375,
+                  "p95": 65.89004166666666,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 65.89004166666666,
+                  "minimum": 61.310875,
+                  "p50": 64.426375,
+                  "p95": 65.89004166666666,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0,
+                  "minimum": 1.0,
+                  "p50": 1.0,
+                  "p95": 1.0,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 1
+              },
+              "wallTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0376495965033443,
+                "maximumMilliseconds": {
+                  "maximum": 68.550375,
+                  "minimum": 66.063125,
+                  "p50": 68.3875,
+                  "p95": 68.550375,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 66.063125,
+                    "p50Milliseconds": 66.063125,
+                    "p95Milliseconds": 66.063125
+                  },
+                  {
+                    "maximumMilliseconds": 68.550375,
+                    "p50Milliseconds": 68.550375,
+                    "p95Milliseconds": 68.550375
+                  },
+                  {
+                    "maximumMilliseconds": 68.3875,
+                    "p50Milliseconds": 68.3875,
+                    "p95Milliseconds": 68.3875
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 68.550375,
+                  "minimum": 66.063125,
+                  "p50": 68.3875,
+                  "p95": 68.550375,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 68.550375,
+                  "minimum": 66.063125,
+                  "p50": 68.3875,
+                  "p95": 68.550375,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0,
+                  "minimum": 1.0,
+                  "p50": 1.0,
+                  "p95": 1.0,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 1
+              }
+            },
+            "warmupQueries": {
+              "processCPUTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0135149703879525,
+                "maximumMilliseconds": {
+                  "maximum": 71.683,
+                  "minimum": 70.727125,
+                  "p50": 70.90095833333334,
+                  "p95": 71.683,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 71.683,
+                    "p50Milliseconds": 71.32666666666667,
+                    "p95Milliseconds": 71.683
+                  },
+                  {
+                    "maximumMilliseconds": 70.727125,
+                    "p50Milliseconds": 70.024875,
+                    "p95Milliseconds": 70.727125
+                  },
+                  {
+                    "maximumMilliseconds": 70.90095833333334,
+                    "p50Milliseconds": 70.6065,
+                    "p95Milliseconds": 70.90095833333334
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 71.32666666666667,
+                  "minimum": 70.024875,
+                  "p50": 70.6065,
+                  "p95": 71.32666666666667,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 71.683,
+                  "minimum": 70.727125,
+                  "p50": 70.90095833333334,
+                  "p95": 71.683,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0100285791299164,
+                  "minimum": 1.0041704139609433,
+                  "p50": 1.0049957939994392,
+                  "p95": 1.0100285791299164,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 2
+              },
+              "wallTime": {
+                "acrossObservationP95MaximumToMinimumRatio": 1.0131327866950988,
+                "maximumMilliseconds": {
+                  "maximum": 71.729084,
+                  "minimum": 70.799292,
+                  "p50": 70.927917,
+                  "p95": 71.729084,
+                  "sampleCount": 3
+                },
+                "observations": [
+                  {
+                    "maximumMilliseconds": 71.729084,
+                    "p50Milliseconds": 71.401916,
+                    "p95Milliseconds": 71.729084
+                  },
+                  {
+                    "maximumMilliseconds": 70.799292,
+                    "p50Milliseconds": 70.063042,
+                    "p95Milliseconds": 70.799292
+                  },
+                  {
+                    "maximumMilliseconds": 70.927917,
+                    "p50Milliseconds": 70.672042,
+                    "p95Milliseconds": 70.927917
+                  }
+                ],
+                "p50Milliseconds": {
+                  "maximum": 71.401916,
+                  "minimum": 70.063042,
+                  "p50": 70.672042,
+                  "p95": 71.401916,
+                  "sampleCount": 3
+                },
+                "p95Milliseconds": {
+                  "maximum": 71.729084,
+                  "minimum": 70.799292,
+                  "p50": 70.927917,
+                  "p95": 71.729084,
+                  "sampleCount": 3
+                },
+                "p95ToP50Ratio": {
+                  "maximum": 1.0105083932838657,
+                  "minimum": 1.0036205972370231,
+                  "p50": 1.0045820619155374,
+                  "p95": 1.0105083932838657,
+                  "sampleCount": 3
+                },
+                "sampleCountPerObservation": 2
+              }
+            }
+          },
+          "totalSegments": 100000
+        }
+      ],
+      "collection": {
+        "finishedAt": "2026-08-13T09:56:49.803635Z",
+        "measurementSHA256": [
+          "7250db9cc0271f1c0525a372114f18b018c51864ea543865dfe08ad85cb85494",
+          "4f2e75dd4d622e2e82b9f7703ffbdf5cd31946703fcc84fe32fef6b0a7051655",
+          "b0950087f9154b3377f1b5c2423eeadc02c55a7af51af368607d1071845a9e1f"
+        ],
+        "observationCount": 3,
+        "observationSHA256": [
+          "6cb3a489a89f39f834d65aeb1028e8ab46ea24e52b519006bd82ecac232301d1",
+          "86ea01c7b6ba5d9a326e93de50d82ca7a663950ff618956abe9d73a1cbaaa8bc",
+          "df61eb49a1fa12ddb76cd05b2be45c277041759393f4d3bb260234b9d928e1c0"
+        ],
+        "startedAt": "2026-08-13T09:53:31.159360Z"
+      },
+      "generatedAt": "2026-08-13T10:04:30Z",
+      "identity": {
+        "payload": {
+          "binary": {
+            "sha256": "d350da5747e8fe32521191065a5793520c8f175d3a2e2378e3057a034318ecd9",
+            "sizeBytes": 83522448
+          },
+          "buildConfiguration": "release",
+          "configuration": {
+            "embeddingDimension": 512,
+            "measurementRuns": 20,
+            "queryVariants": 1,
+            "resultLimit": 12,
+            "segmentsPerMeeting": 200,
+            "warmupRuns": 2
+          },
+          "fixture": {
+            "contentSource": "synthetic-only",
+            "ephemeralIdentityPolicy": "excluded-from-comparison-v1",
+            "transcriptGenerator": "ordinal-placeholder-v1",
+            "userLibraryAccess": "none",
+            "vectorGenerator": "lcg-normalized-float32-v1",
+            "version": "semantic-scale-synthetic-v1"
+          },
+          "host": {
+            "architecture": "arm64",
+            "hardwareModel": "Mac16,6",
+            "operatingSystem": "Version 26.5.2 (Build 25F84)",
+            "operatingSystemBuild": "25F84",
+            "physicalMemoryBytes": 38654705664,
+            "processorCount": 14
+          },
+          "queryPack": {
+            "queryVariants": 1,
+            "resultLimit": 12,
+            "selectionPolicy": "midpoint-consecutive-wrap-v1",
+            "version": "semantic-present-vector-queries-v1"
+          },
+          "scales": [
+            1000,
+            10000,
+            50000,
+            100000
+          ],
+          "semanticAssets": {
+            "availability": "installed",
+            "downloadPolicy": "never",
+            "provider": "apple-natural-language",
+            "script": "latin",
+            "usedByMeasuredVectors": false
+          },
+          "semanticProfile": {
+            "fingerprint": "3f1d0f9a22778a3d42688bf643caa0ad734ff9fa40a52b15d157f8494b507b3e",
+            "modelIdentifier": "5C45D94E-BAB4-4927-94B6-8B5745C46289",
+            "modelRevision": 1,
+            "pipelineIdentifier": "token-mean-pooling-l2",
+            "pipelineRevision": 1,
+            "vectorDimension": 512,
+            "vectorSchemaVersion": 1
+          },
+          "source": {
+            "commit": "be3eb2614f194fbf58933e8dd81bcc056121e1ab",
+            "worktreeClean": true,
+            "worktreeStateSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "stagePolicy": {
+            "percentile": "nearest-rank-v1",
+            "processCPU": "rusage-user-plus-system",
+            "version": "semantic-scale-stages-v1",
+            "wallClock": "continuous-clock"
+          },
+          "toolchain": {
+            "swift": "6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)",
+            "target": "arm64-apple-macosx26.0",
+            "xcode": "Xcode 26.6",
+            "xcodeBuild": "17F113"
+          }
+        },
+        "sha256": "27797678e2048900ac3b3b25b329826a18e947bcb54882fb8bb599a5ca33b0e7"
+      },
+      "kind": "semantic-scale-control-baseline",
+      "outcome": "current-control-budget-pass",
+      "policy": {
+        "budgetMaximumMilliseconds": 100.0,
+        "budgetSegments": 100000,
+        "diagnosticStages": [
+          "storeOpen",
+          "corpusSeed",
+          "warmupQueries"
+        ],
+        "evaluatedStage": "measuredQueries",
+        "maximumTimingRatio": 1.25,
+        "requiredObservations": 3,
+        "version": "semantic-measured-query-stability-v1"
+      },
+      "reasons": [],
+      "receiptSHA256": "5bc54f7099773ba962bb67c1bac998721b6de0cf89a9544af74ee91abccfb625",
+      "schemaVersion": 1,
+      "scope": "canonical-current-control"
+    }
+  ],
+  "schemaVersion": 1
+}

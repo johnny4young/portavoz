@@ -143,11 +143,22 @@ public struct PrepareMeetingPlaybackRequest: Sendable {
     public init(
         relativeAudioDirectory: String,
         segments: [TranscriptSegment],
-        waveformBucketCount: Int = 600
+        waveformBucketCount: Int = MeetingWaveformDeliveryPolicy.defaultBucketCount
     ) {
         self.relativeAudioDirectory = relativeAudioDirectory
         self.segments = segments
         self.waveformBucketCount = waveformBucketCount
+    }
+}
+
+/// Fixed presentation budget for a waveform snapshot. It limits derived UI
+/// state only; generation still reads the complete finalized channel files.
+public enum MeetingWaveformDeliveryPolicy {
+    public static let defaultBucketCount = 600
+    public static let maximumBucketCount = 2_000
+
+    public static func admittedBucketCount(for requestedCount: Int) -> Int {
+        min(maximumBucketCount, max(1, requestedCount))
     }
 }
 
@@ -171,9 +182,14 @@ public struct PreparedMeetingPlayback: Sendable {
 /// and configures skip-silence and only-my-voice ranges as one workflow.
 public struct PrepareMeetingPlayback: ApplicationUseCase {
     private let resolver: any MeetingAudioChannelResolving
+    private let telemetry: ResourceWorkloadTelemetry
 
-    public init(resolver: any MeetingAudioChannelResolving) {
+    public init(
+        resolver: any MeetingAudioChannelResolving,
+        telemetry: ResourceWorkloadTelemetry = .disabled
+    ) {
         self.resolver = resolver
+        self.telemetry = telemetry
     }
 
     public func execute(
@@ -199,13 +215,19 @@ public struct PrepareMeetingPlayback: ApplicationUseCase {
         }
 
         do {
-            let bucketCount = min(2_000, max(1, request.waveformBucketCount))
-            let capabilityBuckets = await Task.detached(priority: .userInitiated) {
-                Waveform.generate(
+            let bucketCount = MeetingWaveformDeliveryPolicy.admittedBucketCount(
+                for: request.waveformBucketCount)
+            let capabilityBuckets = try await telemetry.measure(
+                ResourceWorkloadDescriptor(
+                    workloadClass: .userInitiated,
+                    kind: .waveform,
+                    operation: .execute)
+            ) {
+                try await Waveform.generateCancellable(
                     micFile: channels.microphone,
                     systemFile: channels.system,
                     buckets: bucketCount)
-            }.value
+            }
             try Task.checkCancellation()
             let duration = await player.duration
             await player.setSilentRanges(
@@ -256,13 +278,16 @@ public protocol MeetingAudioCompressing: Sendable {
 public struct CompressMeetingAudio: ApplicationUseCase {
     private let resolver: any MeetingAudioChannelResolving
     private let compressor: any MeetingAudioCompressing
+    private let telemetry: ResourceWorkloadTelemetry
 
     public init(
         resolver: any MeetingAudioChannelResolving,
-        compressor: any MeetingAudioCompressing
+        compressor: any MeetingAudioCompressing,
+        telemetry: ResourceWorkloadTelemetry = .disabled
     ) {
         self.resolver = resolver
         self.compressor = compressor
+        self.telemetry = telemetry
     }
 
     public func execute(
@@ -274,7 +299,14 @@ public struct CompressMeetingAudio: ApplicationUseCase {
         let raw = channels.files.filter { $0.pathExtension.lowercased() != "m4a" }
         guard !raw.isEmpty else { return MeetingAudioCompressionResult(bytesFreed: 0) }
         let before = compressor.totalBytes(of: channels.files)
-        let replacements = try await compressor.compress(raw)
+        let replacements = try await telemetry.measure(
+            ResourceWorkloadDescriptor(
+                workloadClass: .userInitiated,
+                kind: .mediaExport,
+                operation: .execute)
+        ) {
+            try await compressor.compress(raw)
+        }
         // The transcode has crossed its irreversible publication boundary.
         // Cancellation must not turn a successful compression into a visible
         // failure or prevent the route from rebuilding with canonical files.
@@ -313,9 +345,14 @@ public struct ExportMeetingAudioClipRequest: Sendable {
 /// never leave clip export pointing at stale raw files.
 public struct ExportMeetingAudioClip: ApplicationUseCase {
     private let resolver: any MeetingAudioChannelResolving
+    private let telemetry: ResourceWorkloadTelemetry
 
-    public init(resolver: any MeetingAudioChannelResolving) {
+    public init(
+        resolver: any MeetingAudioChannelResolving,
+        telemetry: ResourceWorkloadTelemetry = .disabled
+    ) {
         self.resolver = resolver
+        self.telemetry = telemetry
     }
 
     public func execute(_ request: ExportMeetingAudioClipRequest) async throws {
@@ -327,12 +364,19 @@ public struct ExportMeetingAudioClip: ApplicationUseCase {
                 .filter { $0.channel == .microphone && $0.endTime > $0.startTime }
                 .map { $0.startTime...$0.endTime },
             margin: 0.12)
-        try await AudioClipExporter.export(
-            systemFile: channels.system,
-            microphoneFile: channels.microphone,
-            microphoneAudibleRanges: localVoiceRanges,
-            clearPlayback: request.clearPlayback,
-            range: request.range,
-            to: request.destination)
+        try await telemetry.measure(
+            ResourceWorkloadDescriptor(
+                workloadClass: .userInitiated,
+                kind: .mediaExport,
+                operation: .execute)
+        ) {
+            try await AudioClipExporter.export(
+                systemFile: channels.system,
+                microphoneFile: channels.microphone,
+                microphoneAudibleRanges: localVoiceRanges,
+                clearPlayback: request.clearPlayback,
+                range: request.range,
+                to: request.destination)
+        }
     }
 }

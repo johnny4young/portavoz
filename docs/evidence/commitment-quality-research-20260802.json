@@ -1,0 +1,191 @@
+{
+  "comparison": {
+    "leftAdapter": "research-deterministic-v1",
+    "metricDeltaRightMinusLeft": {
+      "candidateF1": -0.310345,
+      "candidatePrecision": -0.411765,
+      "candidateRecall": -0.166667,
+      "deadlineExactRate": -0.2,
+      "deadlineFalsePositiveRate": 0.157895,
+      "evidenceExactRate": -0.166667,
+      "falsePositiveRate": 0.194444,
+      "ownerExactRate": 0.0,
+      "ownerFalsePositiveRate": 0.179487,
+      "unsupportedCandidateRate": 0.0
+    },
+    "productDecision": "not-evaluated",
+    "rightAdapter": "loopback-openai-compatible-v1",
+    "winner": "not-evaluated"
+  },
+  "contentSource": "public-synthetic-only",
+  "control": {
+    "adapter": "research-deterministic-v1",
+    "byLabel": {
+      "commitment": {
+        "candidateRecall": 1.0,
+        "caseCount": 12,
+        "falsePositiveRate": null
+      },
+      "hypothetical": {
+        "candidateRecall": null,
+        "caseCount": 9,
+        "falsePositiveRate": 0.0
+      },
+      "question": {
+        "candidateRecall": null,
+        "caseCount": 9,
+        "falsePositiveRate": 0.0
+      },
+      "status-report": {
+        "candidateRecall": null,
+        "caseCount": 9,
+        "falsePositiveRate": 0.0
+      },
+      "suggestion": {
+        "candidateRecall": null,
+        "caseCount": 9,
+        "falsePositiveRate": 0.0
+      }
+    },
+    "byLanguage": {
+      "en": {
+        "candidateRecall": 1.0,
+        "caseCount": 16,
+        "falsePositiveRate": 0.0
+      },
+      "es": {
+        "candidateRecall": 1.0,
+        "caseCount": 16,
+        "falsePositiveRate": 0.0
+      },
+      "mixed": {
+        "candidateRecall": 1.0,
+        "caseCount": 16,
+        "falsePositiveRate": 0.0
+      }
+    },
+    "counts": {
+      "caseCount": 48,
+      "deadlineFalsePositive": 0,
+      "falseNegative": 0,
+      "falsePositive": 0,
+      "negativeCount": 36,
+      "ownerFalsePositive": 0,
+      "positiveCount": 12,
+      "trueNegative": 36,
+      "truePositive": 12,
+      "unsupportedCandidate": 0
+    },
+    "elapsedMilliseconds": null,
+    "fixtureGeneration": "public-synthetic-v1",
+    "fixtureSHA256": "eb8b2c98dd6efee2b90d6a8333bc997f733cd51aa970b9f3ffd764f96bd1c6e0",
+    "kind": "commitment-quality-scorecard",
+    "metrics": {
+      "candidateF1": 1.0,
+      "candidatePrecision": 1.0,
+      "candidateRecall": 1.0,
+      "deadlineExactRate": 1.0,
+      "deadlineFalsePositiveRate": 0.0,
+      "evidenceExactRate": 1.0,
+      "falsePositiveRate": 0.0,
+      "ownerExactRate": 1.0,
+      "ownerFalsePositiveRate": 0.0,
+      "unsupportedCandidateRate": 0.0
+    },
+    "model": null,
+    "productDecision": "not-evaluated",
+    "qualityDecision": "review-required",
+    "schemaVersion": 1
+  },
+  "fixtureGeneration": "public-synthetic-v1",
+  "fixtureSHA256": "eb8b2c98dd6efee2b90d6a8333bc997f733cd51aa970b9f3ffd764f96bd1c6e0",
+  "host": {
+    "architecture": "arm64",
+    "operatingSystem": "macOS-26.5.2-arm64-arm-64bit-Mach-O"
+  },
+  "kind": "commitment-quality-research-observation",
+  "localModel": {
+    "adapter": "loopback-openai-compatible-v1",
+    "byLabel": {
+      "commitment": {
+        "candidateRecall": 0.833333,
+        "caseCount": 12,
+        "falsePositiveRate": null
+      },
+      "hypothetical": {
+        "candidateRecall": null,
+        "caseCount": 9,
+        "falsePositiveRate": 0.222222
+      },
+      "question": {
+        "candidateRecall": null,
+        "caseCount": 9,
+        "falsePositiveRate": 0.333333
+      },
+      "status-report": {
+        "candidateRecall": null,
+        "caseCount": 9,
+        "falsePositiveRate": 0.222222
+      },
+      "suggestion": {
+        "candidateRecall": null,
+        "caseCount": 9,
+        "falsePositiveRate": 0.0
+      }
+    },
+    "byLanguage": {
+      "en": {
+        "candidateRecall": 1.0,
+        "caseCount": 16,
+        "falsePositiveRate": 0.083333
+      },
+      "es": {
+        "candidateRecall": 0.75,
+        "caseCount": 16,
+        "falsePositiveRate": 0.166667
+      },
+      "mixed": {
+        "candidateRecall": 0.75,
+        "caseCount": 16,
+        "falsePositiveRate": 0.333333
+      }
+    },
+    "counts": {
+      "caseCount": 48,
+      "deadlineFalsePositive": 6,
+      "falseNegative": 2,
+      "falsePositive": 7,
+      "negativeCount": 36,
+      "ownerFalsePositive": 7,
+      "positiveCount": 12,
+      "trueNegative": 29,
+      "truePositive": 10,
+      "unsupportedCandidate": 0
+    },
+    "elapsedMilliseconds": 45972.862,
+    "fixtureGeneration": "public-synthetic-v1",
+    "fixtureSHA256": "eb8b2c98dd6efee2b90d6a8333bc997f733cd51aa970b9f3ffd764f96bd1c6e0",
+    "kind": "commitment-quality-scorecard",
+    "metrics": {
+      "candidateF1": 0.689655,
+      "candidatePrecision": 0.588235,
+      "candidateRecall": 0.833333,
+      "deadlineExactRate": 0.8,
+      "deadlineFalsePositiveRate": 0.157895,
+      "evidenceExactRate": 0.833333,
+      "falsePositiveRate": 0.194444,
+      "ownerExactRate": 1.0,
+      "ownerFalsePositiveRate": 0.179487,
+      "unsupportedCandidateRate": 0.0
+    },
+    "model": "qwen3-coder:latest",
+    "productDecision": "not-evaluated",
+    "qualityDecision": "review-required",
+    "schemaVersion": 1
+  },
+  "productDecision": "not-evaluated",
+  "qualityDecision": "review-required",
+  "retention": "aggregate-only; private per-case observations are not tracked",
+  "schemaVersion": 1,
+  "sourceState": "uncommitted-development"
+}

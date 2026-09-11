@@ -227,6 +227,22 @@ final class StartRecordingUseCaseTests: XCTestCase {
         XCTAssertEqual(invalidations, 1)
     }
 
+    func testExecutionEmitsOneRecordingCriticalWorkload() async {
+        let fixture = StartRecordingFixture()
+        let dependencies = StartRecordingDependencies(preferences: fixture.preferences)
+        let recorder = ResourceWorkloadEventRecorder()
+
+        let result = await fixture.useCase(
+            dependencies,
+            telemetry: ResourceWorkloadTelemetry(receiver: recorder.receive)
+        ).execute(StartRecordingRequest())
+
+        guard case .started = result else {
+            return XCTFail("fixture should start")
+        }
+        assertRecordingCriticalWorkload(recorder.events)
+    }
+
     func testRealStoreAdapterAtomicallyReservesShellAndAssetsBeforeStart() async throws {
         let fixture = StartRecordingFixture()
         let store = try MeetingStore.inMemory()
@@ -255,6 +271,23 @@ final class StartRecordingUseCaseTests: XCTestCase {
     }
 }
 
+func assertRecordingCriticalWorkload(_ events: [ResourceWorkloadEvent]) {
+    guard case .started(let started) = events.first,
+          case .finished(let finished, let outcome) = events.last
+    else {
+        return XCTFail("Expected one matched recording-critical workload")
+    }
+    XCTAssertEqual(events.count, 2)
+    XCTAssertEqual(started, finished)
+    XCTAssertEqual(
+        started.descriptor,
+        ResourceWorkloadDescriptor(
+            workloadClass: .recordingCritical,
+            kind: .audioCapture,
+            operation: .execute))
+    XCTAssertEqual(outcome, .completed)
+}
+
 private struct StartRecordingFixture {
     let meetingID = MeetingID(rawValue: UUID(
         uuidString: "91919191-9191-9191-9191-919191919191")!)
@@ -275,7 +308,10 @@ private struct StartRecordingFixture {
             captureMode: .meetingApps)
     }
 
-    func useCase(_ dependencies: StartRecordingDependencies) -> StartRecording {
+    func useCase(
+        _ dependencies: StartRecordingDependencies,
+        telemetry: ResourceWorkloadTelemetry = .disabled
+    ) -> StartRecording {
         StartRecording(
             preferences: dependencies,
             audioFiles: dependencies,
@@ -283,7 +319,8 @@ private struct StartRecordingFixture {
             runtime: dependencies,
             makeMeetingID: { meetingID },
             now: { now },
-            calendar: calendar)
+            calendar: calendar,
+            telemetry: telemetry)
     }
 }
 

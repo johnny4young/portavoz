@@ -58,7 +58,10 @@ public struct LibraryTrashItem: Sendable, Identifiable {
 public struct LibrarySearchHit: Sendable, Identifiable {
     public let meetingID: MeetingID
     public let meetingTitle: String
+    /// Stable visible retrieval-unit identity (accepted segment, split part,
+    /// or merge correction).
     public let segmentID: UUID
+    public let sourceSegmentIDs: [UUID]
     public let snippet: String
     public let startTime: TimeInterval
     public var id: UUID { segmentID }
@@ -67,12 +70,14 @@ public struct LibrarySearchHit: Sendable, Identifiable {
         meetingID: MeetingID,
         meetingTitle: String,
         segmentID: UUID,
+        sourceSegmentIDs: [UUID]? = nil,
         snippet: String,
         startTime: TimeInterval
     ) {
         self.meetingID = meetingID
         self.meetingTitle = meetingTitle
         self.segmentID = segmentID
+        self.sourceSegmentIDs = sourceSegmentIDs ?? [segmentID]
         self.snippet = snippet
         self.startTime = startTime
     }

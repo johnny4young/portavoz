@@ -17,6 +17,9 @@ enum RecordingRecoveryCoordinator {
         let arguments = ProcessInfo.processInfo.arguments
         guard !arguments.contains(where: { $0.hasPrefix("--bench") }) else { return }
         defer { markUITestRecoveryReadyIfRequested(arguments: arguments) }
+        let workToken = services.backgroundWork.begin(
+            .recovery,
+            stage: .recoveringRecordings)
 
         do {
             try await seedFixtureIfRequested(
@@ -28,9 +31,10 @@ enum RecordingRecoveryCoordinator {
 
         let result = await services.recoverInterruptedMeetings.execute(
             RecoverInterruptedMeetingsRequest())
+        services.backgroundWork.finishRecovery(workToken, result: result)
         log(result.issues)
         if result.libraryInvalidationRequired {
-            services.requestSpotlightReindex()
+            services.requestSearchReconciliation()
         }
     }
 

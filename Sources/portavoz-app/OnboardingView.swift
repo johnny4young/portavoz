@@ -35,6 +35,11 @@ struct OnboardingView: View {
             providerRecommendation = await services
                 .discoverLocalSummaryProviders().recommendation
         }
+        .onChange(of: step) { previous, current in
+            if previous == 0, current != 0 {
+                listen.cancel()
+            }
+        }
         .onDisappear { listen.cancel() }
     }
 
@@ -280,13 +285,6 @@ struct OnboardingView: View {
         .background(.bar)
     }
 
-    private func bullet(_ icon: String, _ text: LocalizedStringKey) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: icon).foregroundStyle(PVDesign.accent).frame(width: 22)
-            Text(text)
-        }
-    }
-
     private func permissionRow(
         icon: String, title: String, detail: String,
         done: Bool, action: (() -> Void)?, actionLabel: String
@@ -335,9 +333,10 @@ struct OnboardingView: View {
         }
     }
 
-    /// Voiceprint enrollment → saved; the diarizer reloads with it on the next
-    /// recording. `reusingFirstListen` skips the second recording and derives
-    /// the print from the 10 s the user already spoke in step 0 (6a-4).
+    /// Voiceprint enrollment → saved; each fresh diarization session samples
+    /// it without reloading the reusable Core ML weights. `reusingFirstListen`
+    /// skips the second recording and derives the print from the 10 s the user
+    /// already spoke in step 0 (6a-4).
     private func enrollVoice(reusingFirstListen: Bool) {
         enrolling = true
         enrollMessage = nil

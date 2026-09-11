@@ -5,7 +5,7 @@ import XCTest
 /// heatmap, computed locally from the seeded library.
 final class InsightsUITests: PortavozUITestCase {
     @MainActor
-    func testInsightsRendersHeatmap() {
+    func testInsightsShowsCompleteLocalDashboard() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         // Keep the retained evidence independent of the user's persisted picker choice.
         app.launchArguments += ["-insightsScope", "week"]
@@ -16,11 +16,11 @@ final class InsightsUITests: PortavozUITestCase {
             app.waitForSeededLibraryToSettle(),
             "the seeded library must settle before navigating away")
         let insights = app.buttons["library-insights-button"]
-        XCTAssertTrue(insights.waitForExistence(timeout: 15), "the library must offer Insights")
+        XCTAssertTrue(insights.waitForExistenceFast(timeout: 15), "the library must offer Insights")
         insights.click()
 
         XCTAssertTrue(
-            app.control(withIdentifier: "insights-title").waitForExistence(timeout: 10),
+            app.control(withIdentifier: "insights-title").waitForExistenceFast(timeout: 10),
             "Insights must render its title")
         XCTAssertTrue(
             app.control(withIdentifier: "insights-heatmap").exists,
@@ -33,27 +33,12 @@ final class InsightsUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "insights-balance").exists,
             "Insights must show the talk-balance tile")
-        attachScreenshot(of: app, named: "band-2p-insights")
-    }
-
-    @MainActor
-    func testInsightsShowsWhoYouTalkWith() {
-        let app = XCUIApplication.portavoz(seedDemo: true)
-        app.launchPortavoz()
-        defer { app.terminate() }
-
         XCTAssertTrue(
-            app.waitForSeededLibraryToSettle(),
-            "the seeded library must settle before navigating away")
-        let insights = app.buttons["library-insights-button"]
-        XCTAssertTrue(insights.waitForExistence(timeout: 15))
-        insights.click()
-        XCTAssertTrue(
-            app.control(withIdentifier: "insights-participants").waitForExistence(timeout: 10),
+            app.control(withIdentifier: "insights-participants").exists,
             "Insights must show the 'who you talk with' panel (3a)")
-        // The seeded named participant (Ana) gets a participation bar.
         XCTAssertTrue(
             app.control(withIdentifier: "insights-participant-Ana").exists,
             "each named participant must get an amber/violet participation bar")
+        attachScreenshot(of: app, named: "band-2p-insights")
     }
 }

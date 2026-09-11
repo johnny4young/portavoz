@@ -28,7 +28,16 @@ extension AppServices {
         progress: @escaping @MainActor (RecordingStorageProgress) -> Void
     ) async throws -> (location: RecordingStorageLocation, recordingCount: Int) {
         let result = try await ManageRecordingStorage(
-            storage: AppRecordingStorageManager()
+            // Settings is a separate scene with no recording-phase gate, so
+            // the move is reachable mid-capture. Moving a live meeting's
+            // directory across volumes copies and then unlinks it underneath
+            // the open writers, so the phase gate below is backed by an
+            // explicit reservation sampled just before the first rename.
+            storage: AppRecordingStorageManager(
+                reservedDirectoryNames: { [recording] in
+                    await MainActor.run { recording.reservedAudioDirectoryNames }
+                }),
+            activity: AppRecordingStorageActivity(recording: recording)
         ).execute(ManageRecordingStorageRequest(
             action: .move(to: destination),
             progress: { update in
@@ -41,31 +50,40 @@ extension AppServices {
     }
 
     func rememberedVoiceSummaries() async throws -> [RememberedVoiceSummary] {
+        let arguments = ProcessInfo.processInfo.arguments
+        let usesTemporaryStore = arguments.contains("-use-temp-store")
         let result = try await ManageRememberedVoices(
             catalog: AppRememberedVoiceCatalog(
                 gallery: voiceGallery,
-                usesTemporaryStore: ProcessInfo.processInfo.arguments
-                    .contains("-use-temp-store"))
+                usesTemporaryStore: usesTemporaryStore,
+                simulateUnavailable: usesTemporaryStore
+                    && arguments.contains("-simulate-voice-storage-unavailable"))
         ).execute(.list)
         guard case .voices(let voices) = result else { return [] }
         return voices
     }
 
     func removeRememberedVoice(id: UUID) async throws {
+        let arguments = ProcessInfo.processInfo.arguments
+        let usesTemporaryStore = arguments.contains("-use-temp-store")
         _ = try await ManageRememberedVoices(
             catalog: AppRememberedVoiceCatalog(
                 gallery: voiceGallery,
-                usesTemporaryStore: ProcessInfo.processInfo.arguments
-                    .contains("-use-temp-store"))
+                usesTemporaryStore: usesTemporaryStore,
+                simulateUnavailable: usesTemporaryStore
+                    && arguments.contains("-simulate-voice-storage-unavailable"))
         ).execute(.remove(id))
     }
 
     func removeAllRememberedVoices() async throws {
+        let arguments = ProcessInfo.processInfo.arguments
+        let usesTemporaryStore = arguments.contains("-use-temp-store")
         _ = try await ManageRememberedVoices(
             catalog: AppRememberedVoiceCatalog(
                 gallery: voiceGallery,
-                usesTemporaryStore: ProcessInfo.processInfo.arguments
-                    .contains("-use-temp-store"))
+                usesTemporaryStore: usesTemporaryStore,
+                simulateUnavailable: usesTemporaryStore
+                    && arguments.contains("-simulate-voice-storage-unavailable"))
         ).execute(.removeAll)
     }
 }
@@ -80,8 +98,35 @@ private struct AppAudioInputListing: AudioInputListing {
     }
 }
 
+@MainActor
+private struct AppRecordingStorageActivity: RecordingStorageActivity {
+    let recording: RecordingController
+
+    /// `processing` counts as busy: post-capture workers still read the
+    /// meeting's audio, and publication resolves paths under the current root.
+    func recordingStorageIsBusy() async -> Bool {
+        switch recording.phase {
+        case .preparing, .recording, .processing: true
+        case .idle, .done, .failed: false
+        }
+    }
+}
+
 private struct AppRecordingStorageManager: RecordingStorageManaging {
     private let location = RecordingsLocation.shared
+
+    /// Directory names that must stay where they are because their writers are
+    /// live. `ManageRecordingStorage` samples the recording phase once before
+    /// the move; sampling again here, immediately before the first rename,
+    /// narrows the window in which a capture started after that check could
+    /// have its directory moved out from under it.
+    private let reservedDirectoryNames: @Sendable () async -> Set<String>
+
+    init(
+        reservedDirectoryNames: @escaping @Sendable () async -> Set<String> = { [] }
+    ) {
+        self.reservedDirectoryNames = reservedDirectoryNames
+    }
 
     func recordingStorageLocation() async -> RecordingStorageLocation {
         RecordingStorageLocation(
@@ -96,6 +141,7 @@ private struct AppRecordingStorageManager: RecordingStorageManaging {
     ) async throws -> Int {
         let origin = location.currentRoot()
         let resolvedDestination = destination ?? location.defaultRoot
+        let reserved = await reservedDirectoryNames()
         let (updates, continuation) = AsyncStream<RecordingStorageProgress>.makeStream()
         let progressTask = Task {
             for await update in updates {
@@ -104,7 +150,11 @@ private struct AppRecordingStorageManager: RecordingStorageManaging {
         }
         do {
             let moved = try await Task.detached(priority: .userInitiated) {
-                try location.migrateAudio(from: origin, to: resolvedDestination) { completed, total in
+                try location.migrateAudio(
+                    from: origin,
+                    to: resolvedDestination,
+                    skipping: reserved
+                ) { completed, total in
                     continuation.yield(RecordingStorageProgress(
                         completed: completed,
                         total: total))
@@ -117,6 +167,15 @@ private struct AppRecordingStorageManager: RecordingStorageManaging {
         } catch {
             continuation.finish()
             await progressTask.value
+            // Translated here rather than leaked upward: presentation reads
+            // ApplicationKit errors, and a bare StorageKit error would render
+            // as an opaque description under a "nothing was lost" message that
+            // is false for exactly this case.
+            if case RecordingsMigrationError.stranded(let count, let at, _) = error {
+                throw ManageRecordingStorageError.recordingsStranded(
+                    count: count,
+                    path: at.path)
+            }
             throw error
         }
     }
@@ -125,8 +184,12 @@ private struct AppRecordingStorageManager: RecordingStorageManaging {
 private struct AppRememberedVoiceCatalog: RememberedVoiceCatalogManaging {
     let gallery: VoiceGallery
     let usesTemporaryStore: Bool
+    let simulateUnavailable: Bool
 
     func rememberedVoiceSummaries() async throws -> [RememberedVoiceSummary] {
+        if simulateUnavailable {
+            throw VoiceprintStore.VoiceprintError.missingKey
+        }
         guard !usesTemporaryStore else { return [] }
         return try await Task.detached(priority: .utility) {
             try gallery.voices().map {

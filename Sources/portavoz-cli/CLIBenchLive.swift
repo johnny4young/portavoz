@@ -3,7 +3,8 @@ import ModelStoreKit
 import PortavozCore
 import TranscriptionKit
 
-/// `portavoz-cli bench-live --file <wav|caf> [--engine parakeet|speech]
+/// `portavoz-cli bench-live --file <wav|caf>
+///                          [--engine parakeet|speech|nemotron-latin-1120]
 ///                          [--seconds N] [--language es] [--vocab "a,b"]
 ///                          [--models-dir <dir>] [--reference <txt>]
 ///                          [--output <json>]`
@@ -20,7 +21,7 @@ enum BenchLiveCommand {
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func run(_ arguments: [String]) async {
         var file: String?
-        var engineName = "parakeet"
+        var engineName = BenchLiveEngineChoice.parakeet.rawValue
         var seconds = 60
         var language: String?
         var vocabulary: [String] = []
@@ -28,48 +29,69 @@ enum BenchLiveCommand {
         var referencePath: String?
         var outputPath: String?
 
-        var index = 0
-        while index < arguments.count {
-            switch arguments[index] {
-            case "--file":
-                index += 1
-                if index < arguments.count { file = arguments[index] }
-            case "--engine":
-                index += 1
-                if index < arguments.count { engineName = arguments[index] }
-            case "--seconds":
-                index += 1
-                if index < arguments.count { seconds = Int(arguments[index]) ?? seconds }
-            case "--language":
-                index += 1
-                if index < arguments.count { language = arguments[index] }
-            case "--vocab":
-                index += 1
-                if index < arguments.count {
-                    vocabulary = VocabularyPrompt.parse(arguments[index])
+        do {
+            var index = 0
+            while index < arguments.count {
+                switch arguments[index] {
+                case "--file":
+                    file = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--file")
+                case "--engine":
+                    engineName = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--engine")
+                case "--seconds":
+                    seconds = try CLIOptionValue.integer(
+                        arguments,
+                        index: &index,
+                        option: "--seconds",
+                        range: CLIOptionBounds.durationSeconds)
+                case "--language":
+                    language = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--language")
+                case "--vocab":
+                    let raw = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--vocab")
+                    vocabulary = VocabularyPrompt.parse(raw)
+                case "--models-dir":
+                    modelsDir = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--models-dir")
+                case "--reference":
+                    referencePath = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--reference")
+                case "--output":
+                    outputPath = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--output")
+                default:
+                    print("Unknown option: \(arguments[index])")
+                    return
                 }
-            case "--models-dir":
                 index += 1
-                if index < arguments.count { modelsDir = arguments[index] }
-            case "--reference":
-                index += 1
-                if index < arguments.count { referencePath = arguments[index] }
-            case "--output":
-                index += 1
-                if index < arguments.count { outputPath = arguments[index] }
-            default:
-                print("Unknown option: \(arguments[index])")
-                return
             }
-            index += 1
+        } catch {
+            print("error: \(error.localizedDescription)")
+            return
         }
 
         guard let file else {
             print(
                 // One-line usage text.
                 // swiftlint:disable:next line_length
-                "Usage: portavoz-cli bench-live --file <wav|caf> [--engine parakeet|speech] [--seconds N] [--language es] [--vocab \"a,b\"] [--reference <txt>] [--output <json>]"
+                "Usage: portavoz-cli bench-live --file <wav|caf> [--engine parakeet|speech|nemotron-latin-1120] [--seconds N] [--language es] [--vocab \"a,b\"] [--reference <txt>] [--output <json>]"
             )
+            return
+        }
+
+        guard let engineChoice = BenchLiveEngineChoice(rawValue: engineName) else {
+            print("error: unknown engine \(engineName) (\(BenchLiveEngineChoice.usage))")
+            return
+        }
+        guard FileManager.default.isReadableFile(atPath: file) else {
+            print("error: input audio is not readable: \(file)")
+            return
+        }
+        if let referencePath,
+            !FileManager.default.isReadableFile(atPath: referencePath) {
+            print("error: reference transcript is not readable: \(referencePath)")
             return
         }
 
@@ -78,15 +100,15 @@ enum BenchLiveCommand {
             print("bench-live · \(engineName) · \(seconds)s de \(file)")
 
             let result: LiveTranscriptionBench.Result
-            switch engineName {
-            case "parakeet":
+            switch engineChoice {
+            case .parakeet:
                 let store = CLISupport.modelStore(fromModelsDir: modelsDir)
                 let engine = try await CLISupport.loadEngine(store: store)
                 result = try await LiveTranscriptionBench.run(
                     file: URL(fileURLWithPath: file), seconds: seconds,
                     transcribe: { engine.transcribe($0, hints: hints) },
                     log: { print($0) })
-            case "speech":
+            case .speech:
                 guard #available(macOS 26.0, *) else {
                     print("error: --engine speech requiere macOS 26")
                     return
@@ -104,9 +126,15 @@ enum BenchLiveCommand {
                         SpeechAnalyzerEngine().transcribe($0, hints: hints, locale: locale)
                     },
                     log: { print($0) })
-            default:
-                print("error: engine desconocido \(engineName) (parakeet|speech)")
-                return
+            case .nemotronLatin1120:
+                _ = try NemotronLatin1120Engine.validate(hints: hints)
+                let store = CLISupport.modelStore(fromModelsDir: modelsDir)
+                let engine = try await CLISupport.loadNemotronResearchEngine(
+                    store: store)
+                result = try await LiveTranscriptionBench.run(
+                    file: URL(fileURLWithPath: file), seconds: seconds,
+                    transcribe: { engine.transcribe($0, hints: hints) },
+                    log: { print($0) })
             }
 
             print("")
@@ -179,5 +207,15 @@ enum BenchLiveCommand {
         let data = try JSONSerialization.data(
             withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])
         try data.write(to: URL(fileURLWithPath: path))
+    }
+}
+
+enum BenchLiveEngineChoice: String, CaseIterable {
+    case parakeet
+    case speech
+    case nemotronLatin1120 = "nemotron-latin-1120"
+
+    static var usage: String {
+        allCases.map(\.rawValue).joined(separator: "|")
     }
 }

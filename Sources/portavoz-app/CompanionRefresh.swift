@@ -1,3 +1,4 @@
+import ApplicationKit
 import Foundation
 import IntegrationsKit
 import IntelligenceKit
@@ -34,29 +35,30 @@ enum CompanionRefresh {
         }
     }
 
-    /// Runs the Companion over `segments` and returns the fresh cards. Never
-    /// throws — a per-turn model failure just skips that card. The caller
-    /// decides whether to persist (it keeps the old snapshot when this comes
-    /// back empty, so a hiccup never wipes good cards).
+    /// Runs the Companion over one accepted or corrected transcript projection
+    /// and returns fresh cards. Generated row identities are retained for the
+    /// model operation, then projected to immutable accepted IDs by the shared
+    /// provenance factory. Never throws: callers preserve the old snapshot
+    /// when the pass is incomplete.
     @MainActor
     static func regenerate(
-        from segments: [TranscriptSegment],
+        from material: MeetingTranscriptGenerationMaterial,
         meetingID: MeetingID,
-        transcriptRevision: Int,
+        workflow: CompanionGenerationWorkflow,
         byok: CompanionBYOKClient?
     ) async -> Result {
         let ownerName = RecordingController.companionOwnerName()
         let companion = ProvenanceCompanion(
             byok: byok,
             egressConsentSource: .companionBYOKSettings)
-        let ordered = segments
+        let ordered = material.segments
             .filter { $0.endTime > $0.startTime && !$0.text.isEmpty }
             .sorted { $0.startTime < $1.startTime }
 
         var artifacts: [CompanionGenerationArtifact] = []
         var terminalRuns: [GenerationRun] = []
         var completed = true
-        for turn in participantTurns(ordered) {
+        turnLoop: for turn in participantTurns(ordered) {
             if Task.isCancelled {
                 completed = false
                 break
@@ -71,33 +73,32 @@ enum CompanionRefresh {
             // Context = the last lines from BOTH sides before the question, so
             // an answer already given in the room ("The endpoint is …") is
             // found, not hedged away as "not in the context".
-            let passages = recentPassages(
+            let passages = CompanionTranscriptContext.recentPassages(
                 before: turn.startTime,
                 from: ordered,
                 meetingID: meetingID)
             let result = await companion.generate(CompanionGenerationRequest(
                 meetingID: meetingID,
-                sourceTranscriptRevision: transcriptRevision,
-                workflow: .postRefine,
+                sourceTranscriptRevision: material.baseTranscriptRevision,
+                sourceCorrectionRevision: material.correctionRevision,
+                workflow: workflow,
                 candidate: turn.text,
                 questionSegmentIDs: turn.segmentIDs,
                 recentTranscript: passages,
+                evidenceSourceIDsByGeneratedID: material.sourceSegmentIDsByGeneratedID,
                 ownerName: ownerName,
                 outputLanguage: turn.language,
                 askedAt: turn.startTime))
             switch result {
             case .artifact(let artifact):
-                if !artifacts.contains(where: {
-                    $0.card.question == artifact.card.question
-                }) {
-                    artifacts.append(artifact)
-                }
+                admit(artifact, into: &artifacts)
             case .terminal(let run):
                 terminalRuns.append(run)
                 completed = false
-                if run.outcome == .cancelled { break }
+                if run.outcome == .cancelled { break turnLoop }
             case .unavailable:
                 completed = false
+                break turnLoop
             case .noAttempt, .noArtifact:
                 break
             }
@@ -108,13 +109,45 @@ enum CompanionRefresh {
             completed: completed)
     }
 
-    private static func recentPassages(
+    private static func admit(
+        _ artifact: CompanionGenerationArtifact,
+        into artifacts: inout [CompanionGenerationArtifact]
+    ) {
+        switch CompanionCardAdmission.decision(
+            existing: artifacts.map(\.card),
+            candidate: artifact.card
+        ) {
+        case .append:
+            artifacts.append(artifact)
+        case .replace(let index):
+            artifacts[index] = artifact
+        case .reject:
+            break
+        }
+    }
+
+}
+
+enum CompanionTranscriptContext {
+    /// Returns the bounded prefix immediately before one question. The input
+    /// is already start-time sorted by the refresh pipeline, so a lower-bound
+    /// search avoids rescanning a long meeting for every eligible question.
+    static func recentPassages(
         before startTime: TimeInterval,
         from ordered: [TranscriptSegment],
         meetingID: MeetingID
     ) -> [RAGPassage] {
-        ordered
-            .filter { $0.startTime < startTime }
+        var lowerBound = 0
+        var upperBound = ordered.count
+        while lowerBound < upperBound {
+            let midpoint = lowerBound + (upperBound - lowerBound) / 2
+            if ordered[midpoint].startTime < startTime {
+                lowerBound = midpoint + 1
+            } else {
+                upperBound = midpoint
+            }
+        }
+        return ordered[..<lowerBound]
             .suffix(14)
             .map { segment in
                 RAGPassage(
@@ -125,6 +158,11 @@ enum CompanionRefresh {
                     text: (segment.channel == .microphone ? "Me: " : "Them: ") + segment.text)
             }
     }
+
+}
+
+@available(macOS 26.0, *)
+private extension CompanionRefresh {
 
     /// Coalesces the participants' (system-channel) segments into interventions:
     /// a run of the same speaker with no long gap becomes one turn, so the

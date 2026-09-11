@@ -1,0 +1,268 @@
+{
+  "schemaVersion": 1,
+  "kind": "production-sync-qualification-contract",
+  "scope": "production-sync",
+  "proof": "admission",
+  "corpus": {
+    "schemaVersion": 1,
+    "sha256": "4892265a8933b573d65de315d5103bac2b2e2ee5a389597ec6f0261f790991fa",
+    "languages": [
+      "en",
+      "es"
+    ]
+  },
+  "roles": [
+    "a",
+    "b"
+  ],
+  "stages": [
+    {
+      "id": "prepare-existing",
+      "role": "a",
+      "roleSequence": 1,
+      "requires": [],
+      "externalAction": "none"
+    },
+    {
+      "id": "enable",
+      "role": "a",
+      "roleSequence": 2,
+      "requires": [
+        "a.prepare-existing"
+      ],
+      "externalAction": "none"
+    },
+    {
+      "id": "enable",
+      "role": "b",
+      "roleSequence": 1,
+      "requires": [],
+      "externalAction": "none"
+    },
+    {
+      "id": "include-existing",
+      "role": "a",
+      "roleSequence": 3,
+      "requires": [
+        "a.enable",
+        "b.enable"
+      ],
+      "externalAction": "none"
+    },
+    {
+      "id": "receive-existing",
+      "role": "b",
+      "roleSequence": 2,
+      "requires": [
+        "a.include-existing"
+      ],
+      "externalAction": "none"
+    },
+    {
+      "id": "edit-a",
+      "role": "a",
+      "roleSequence": 4,
+      "requires": [
+        "b.receive-existing"
+      ],
+      "externalAction": "none"
+    },
+    {
+      "id": "receive-a-edit",
+      "role": "b",
+      "roleSequence": 3,
+      "requires": [
+        "a.edit-a"
+      ],
+      "externalAction": "none"
+    },
+    {
+      "id": "edit-b",
+      "role": "b",
+      "roleSequence": 4,
+      "requires": [
+        "b.receive-a-edit"
+      ],
+      "externalAction": "none"
+    },
+    {
+      "id": "receive-b-edit",
+      "role": "a",
+      "roleSequence": 5,
+      "requires": [
+        "b.edit-b"
+      ],
+      "externalAction": "none"
+    },
+    {
+      "id": "offline-prepare",
+      "role": "a",
+      "roleSequence": 6,
+      "requires": [
+        "a.receive-b-edit"
+      ],
+      "externalAction": "none"
+    },
+    {
+      "id": "offline-attempt",
+      "role": "a",
+      "roleSequence": 7,
+      "requires": [
+        "a.offline-prepare"
+      ],
+      "externalAction": "disable-network"
+    },
+    {
+      "id": "retry-relaunch",
+      "role": "a",
+      "roleSequence": 8,
+      "requires": [
+        "a.offline-attempt"
+      ],
+      "externalAction": "restore-network"
+    },
+    {
+      "id": "receive-retry",
+      "role": "b",
+      "roleSequence": 5,
+      "requires": [
+        "a.retry-relaunch"
+      ],
+      "externalAction": "none"
+    },
+    {
+      "id": "push-source",
+      "role": "a",
+      "roleSequence": 9,
+      "requires": [
+        "b.receive-retry"
+      ],
+      "externalAction": "none",
+      "requiresLiveStage": "b.await-push"
+    },
+    {
+      "id": "await-push",
+      "role": "b",
+      "roleSequence": 6,
+      "requires": [
+        "b.receive-retry"
+      ],
+      "externalAction": "none"
+    },
+    {
+      "id": "delete-tombstone",
+      "role": "b",
+      "roleSequence": 7,
+      "requires": [
+        "b.await-push"
+      ],
+      "externalAction": "none"
+    },
+    {
+      "id": "receive-tombstone",
+      "role": "a",
+      "roleSequence": 10,
+      "requires": [
+        "b.delete-tombstone"
+      ],
+      "externalAction": "none"
+    },
+    {
+      "id": "observe-signout",
+      "role": "a",
+      "roleSequence": 11,
+      "requires": [
+        "a.receive-tombstone"
+      ],
+      "externalAction": "sign-out-original-account"
+    },
+    {
+      "id": "resume-signin",
+      "role": "a",
+      "roleSequence": 12,
+      "requires": [
+        "a.observe-signout"
+      ],
+      "externalAction": "sign-in-original-account"
+    },
+    {
+      "id": "observe-account-switch",
+      "role": "a",
+      "roleSequence": 13,
+      "requires": [
+        "a.resume-signin"
+      ],
+      "externalAction": "switch-to-secondary-account"
+    },
+    {
+      "id": "enable-switched-account",
+      "role": "a",
+      "roleSequence": 14,
+      "requires": [
+        "a.observe-account-switch"
+      ],
+      "externalAction": "none"
+    },
+    {
+      "id": "observe-account-restore",
+      "role": "a",
+      "roleSequence": 15,
+      "requires": [
+        "a.enable-switched-account"
+      ],
+      "externalAction": "restore-original-account"
+    },
+    {
+      "id": "enable-restored-account",
+      "role": "a",
+      "roleSequence": 16,
+      "requires": [
+        "a.observe-account-restore"
+      ],
+      "externalAction": "none"
+    },
+    {
+      "id": "pause",
+      "role": "a",
+      "roleSequence": 17,
+      "requires": [
+        "a.enable-restored-account"
+      ],
+      "externalAction": "none"
+    },
+    {
+      "id": "remove-device",
+      "role": "a",
+      "roleSequence": 18,
+      "requires": [
+        "a.pause"
+      ],
+      "externalAction": "none"
+    },
+    {
+      "id": "pause",
+      "role": "b",
+      "roleSequence": 8,
+      "requires": [
+        "a.remove-device",
+        "b.delete-tombstone"
+      ],
+      "externalAction": "none"
+    },
+    {
+      "id": "remove-device",
+      "role": "b",
+      "roleSequence": 9,
+      "requires": [
+        "b.pause"
+      ],
+      "externalAction": "none"
+    }
+  ],
+  "limits": {
+    "maximumReceiptBytes": 65536,
+    "maximumPushWakes": 10,
+    "defaultStageTimeoutSeconds": 300,
+    "pushStageTimeoutSeconds": 900
+  }
+}

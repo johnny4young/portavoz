@@ -1,6 +1,6 @@
 import Foundation
 
-/// Deterministic, offline query expansion for the instant Library search.
+/// Deterministic, offline query expansion for instant exact-search surfaces.
 ///
 /// Ask can use semantic retrieval and Foundation Models when available, but
 /// the sidebar must remain fast on every supported Mac. This compact lexicon

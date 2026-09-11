@@ -1,0 +1,3252 @@
+{
+  "schemaVersion": 2,
+  "kind": "meeting-detail-interaction-baseline",
+  "requiredLocales": [
+    "en",
+    "es"
+  ],
+  "interactionSources": [
+    "Sources/portavoz-app/AutoSelectTextField.swift",
+    "Sources/portavoz-app/ChipLabel.swift",
+    "Sources/portavoz-app/CustomStructureSheet.swift",
+    "Sources/portavoz-app/DecisionConfirmSheet.swift",
+    "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+    "Sources/portavoz-app/MeetingActionItemsView.swift",
+    "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+    "Sources/portavoz-app/MeetingDetailActionSection.swift",
+    "Sources/portavoz-app/MeetingDetailCoordinator+Commitments.swift",
+    "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
+    "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift",
+    "Sources/portavoz-app/MeetingDetailCoordinator+Skills.swift",
+    "Sources/portavoz-app/MeetingDetailCoordinator.swift",
+    "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+    "Sources/portavoz-app/MeetingDetailFlowState.swift",
+    "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+    "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+    "Sources/portavoz-app/MeetingDetailPlaybackNavigation.swift",
+    "Sources/portavoz-app/MeetingDetailPlayerSection.swift",
+    "Sources/portavoz-app/MeetingDetailRailSection.swift",
+    "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift",
+    "Sources/portavoz-app/MeetingDetailScene.swift",
+    "Sources/portavoz-app/MeetingDetailSummaryPlaceholder.swift",
+    "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+    "Sources/portavoz-app/MeetingDetailView.swift",
+    "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+    "Sources/portavoz-app/SkillConfirmSheet.swift",
+    "Sources/portavoz-app/SkillOfferBanner.swift",
+    "Sources/portavoz-app/MeetingHealthView.swift",
+    "Sources/portavoz-app/MeetingPlayerBar.swift",
+    "Sources/portavoz-app/MeetingRecapSheet.swift",
+    "Sources/portavoz-app/MeetingTranscriptSection.swift",
+    "Sources/portavoz-app/MirrorCard.swift",
+    "Sources/portavoz-app/SpeakerPill.swift",
+    "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+    "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+    "Sources/portavoz-app/TranscriptSegmentsView.swift",
+    "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift"
+  ],
+  "interactionSignals": [
+    {
+      "path": "Sources/portavoz-app/AutoSelectTextField.swift",
+      "category": "control",
+      "source": "init(_ parent: AutoSelectTextField) { self.parent = parent }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/AutoSelectTextField.swift",
+      "category": "control",
+      "source": "private let parent: AutoSelectTextField",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/AutoSelectTextField.swift",
+      "category": "control",
+      "source": "struct AutoSelectTextField: NSViewRepresentable {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/AutoSelectTextField.swift",
+      "category": "identifier",
+      "source": "field.setAccessibilityIdentifier(\"meeting-rename-field\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/ChipLabel.swift",
+      "category": "control",
+      "source": "Button(action: accept) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/ChipLabel.swift",
+      "category": "control",
+      "source": "Button(action: dismiss) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/ChipLabel.swift",
+      "category": "control",
+      "source": "struct DismissibleSuggestionChip: View {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/ChipLabel.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(acceptAccessibilityIdentifier)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/ChipLabel.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(dismissAccessibilityIdentifier)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/CustomStructureSheet.swift",
+      "category": "control",
+      "source": "Button(\"Cancel\") { dismiss() }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/CustomStructureSheet.swift",
+      "category": "control",
+      "source": "Button(\"Save\") { save() }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/CustomStructureSheet.swift",
+      "category": "control",
+      "source": "TextEditor(text: $sectionsText)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/CustomStructureSheet.swift",
+      "category": "control",
+      "source": "TextField(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/CustomStructureSheet.swift",
+      "category": "control",
+      "source": "TextField(\"Name\", text: $name, prompt: Text(\"Hangout\"))",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/CustomStructureSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"structure-name\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/CustomStructureSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"structure-sections\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/CustomStructureSheet.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.cancelAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/CustomStructureSheet.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.defaultAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/CustomStructureSheet.swift",
+      "category": "state",
+      "source": "@State private var instructions: String",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/CustomStructureSheet.swift",
+      "category": "state",
+      "source": "@State private var name: String",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/CustomStructureSheet.swift",
+      "category": "state",
+      "source": "@State private var sectionsText: String",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Cancel\"), action: dismiss)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "control",
+      "source": "Button(topic.preferredLabel) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "control",
+      "source": "TextField(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"decision-confirm-sheet\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"decision-confirm-statement\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"decision-confirm-submit\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"decision-confirm-topic-field\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.cancelAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.defaultAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "state",
+      "source": "@State private var confirming = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "state",
+      "source": "@State private var topicLabel = \"\"",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "control",
+      "source": "Button(\"Back\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Cancel\"), action: dismiss)",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Copy link\")) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Done\"), action: dismiss)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Open\")) { openURL(outputURL) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "control",
+      "source": "TextField(\"owner/name\", text: $repository)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-action-item\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-back\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-boundary\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-cancel\")",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-citation-\\(index)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-confirm\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-error\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-preview-body\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-preview-repository\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-preview-title\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-repository\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-result-copy\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-result-dismiss\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-result-message\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-result-open\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-result-title\")",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-result-url\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-review\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-sheet\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.cancelAction)",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.defaultAction)",
+      "occurrences": 3
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "state",
+      "source": "@State private var completion:",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "state",
+      "source": "@State private var draft: GitHubIssueDraft?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "state",
+      "source": "@State private var failure: String?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "state",
+      "source": "@State private var isConfirming = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "state",
+      "source": "@State private var isPreparing = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "state",
+      "source": "@State private var proposalID: UUID?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "state",
+      "source": "@State private var proposedAt: Date?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "state",
+      "source": "@State private var repository = \"\"",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "control",
+      "source": "Button(\"Create GitHub issue\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "control",
+      "source": "Toggle(isOn: actionItemBinding(item)) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"action-item-\\(item.id.uuidString)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "Button(\"Cancel\") { cancel() }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "Button(\"Confirm\") { save() }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "Button(\"Dismiss\", role: .destructive) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "Button(\"Next week\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "Button(\"Review and confirm…\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "Button(\"Tomorrow\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "Menu(\"Review later\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "Picker(\"Owner\", selection: $assignee) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "TextField(\"Commitment\", text: $title)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "Toggle(\"Add due date\", isOn: $includesDueDate)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-\\(candidate.id.uuidString)-defer\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-\\(candidate.id.uuidString)-defer-tomorrow\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-\\(candidate.id.uuidString)-defer-week\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-\\(candidate.id.uuidString)-dismiss\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-\\(candidate.id.uuidString)-review\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-candidate-\\(candidate.id.uuidString)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-editor\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-editor-confirm\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-editor-due-date\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-editor-due-toggle\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-editor-owner\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-editor-title\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-owner-me\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-owner-unassigned\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-commitment-inbox\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-commitment-inbox-title\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.cancelAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.defaultAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "presentation",
+      "source": ".sheet(item: $editingCandidate) { candidate in",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "state",
+      "source": "@State private var assignee: CommitmentAssignee",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "state",
+      "source": "@State private var dueAt: Date",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "state",
+      "source": "@State private var editingCandidate: CommitmentInboxCandidate?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "state",
+      "source": "@State private var includesDueDate: Bool",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "state",
+      "source": "@State private var isSaving = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "state",
+      "source": "@State private var processingID: UUID?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "state",
+      "source": "@State private var title: String",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Export Markdown…\") { actions.export(.markdown) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Export PDF…\") { actions.export(.pdf) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Export meeting file (.portavoz)…\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Export meeting file with audio…\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Export subtitles (SRT)…\") { actions.export(.srt) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Export subtitles (VTT)…\") { actions.export(.vtt) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Publish as Gist…\") { actions.export(.gist) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Re-transcribe in English\", action: actions.startEnglishRefine)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Re-transcribe in Spanish\", action: actions.startSpanishRefine)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Share a recap…\") { actions.export(.recap) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(role: .destructive, action: actions.cancelRefine) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(role: .destructive, action: actions.deleteMeeting) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Menu {",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Toggle(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-actions\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-export-menu\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-export-srt\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-export-vtt\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-refine\")",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-share-recap\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
+      "category": "presentation",
+      "source": "createStructure: { flow.sheet = .newStructure },",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
+      "category": "presentation",
+      "source": "flow.alert = .failure(L10n.text(\"Could not encode the meeting file.\"))",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
+      "category": "presentation",
+      "source": "flow.alert = .failure(message)",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
+      "category": "presentation",
+      "source": "flow.alert = .gistPublished(url)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
+      "category": "presentation",
+      "source": "flow.alert = .summaryNotice(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
+      "category": "presentation",
+      "source": "flow.alert = .summarySetup(.appleRequiresMacOS26)",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
+      "category": "presentation",
+      "source": "flow.alert = .summarySetup(.appleUnavailable(reason))",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
+      "category": "presentation",
+      "source": "flow.alert = .summarySetup(.localEngineFailed)",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
+      "category": "presentation",
+      "source": "flow.alert = .summarySetup(.mlxModelNotDownloaded)",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
+      "category": "presentation",
+      "source": "flow.alert = .summarySetup(.ollamaModelNotSelected)",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
+      "category": "presentation",
+      "source": "flow.sheet = .confirmDecision",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
+      "category": "presentation",
+      "source": "flow.sheet = .recap",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift",
+      "category": "presentation",
+      "source": "flow.alert = .failure(L10n.text(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift",
+      "category": "presentation",
+      "source": "flow.alert = .failure(message)",
+      "occurrences": 4
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift",
+      "category": "presentation",
+      "source": "flow.alert = nil",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift",
+      "category": "presentation",
+      "source": "flow.sheet = nil",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Skills.swift",
+      "category": "presentation",
+      "source": "flow.sheet = .confirmSkill",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Skills.swift",
+      "category": "presentation",
+      "source": "flow.sheet = .githubIssueSkill",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator.swift",
+      "category": "navigation",
+      "source": "NSWorkspace.shared.open(url)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "control",
+      "source": "AutoSelectTextField(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "control",
+      "source": "Button(\"Cancel\") { flow.sheet = nil }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "control",
+      "source": "Button(\"Cancel\", role: .cancel) {}",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "control",
+      "source": "Button(\"Copy link\") { actions.copyText(url.absoluteString) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "control",
+      "source": "Button(\"Not now\", role: .cancel) {}",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "control",
+      "source": "Button(\"OK\", role: .cancel) {}",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "control",
+      "source": "Button(\"Open Intelligence Settings\", action: actions.openIntelligenceSettings)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "control",
+      "source": "Button(\"Open\") { actions.openURL(url) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "control",
+      "source": "Button(\"Publish secret gist\", action: actions.publishGist)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "control",
+      "source": "Button(\"Save\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "control",
+      "source": "Button(\"Save\") { actions.renameMeeting(flow.renameMeetingTitle) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Cancel\"), role: .cancel) {}",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Create a separate person\")) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "control",
+      "source": "Button(personCandidateLabel(person, index: index)) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "control",
+      "source": "TextField(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-summary-not-now\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-summary-open-settings\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"gist-result-copy-link\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"gist-result-dismiss\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"gist-result-open-link\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"person-create-distinct\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"person-link-cancel\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"person-link-existing-\\(index)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"speaker-name-field\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"speaker-rename-save\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-unavailable\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.cancelAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.defaultAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "presentation",
+      "source": ".alert(alertTitle, isPresented: alertBinding) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "presentation",
+      "source": ".confirmationDialog(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "presentation",
+      "source": ".fileExporter(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "presentation",
+      "source": ".sheet(isPresented: mirrorBinding) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "presentation",
+      "source": ".sheet(isPresented: refineDraftBinding) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "presentation",
+      "source": ".sheet(item: sheetRouteBinding) { route in",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "presentation",
+      "source": "Binding(get: { flow.alert != nil }, set: { if !$0 { flow.alert = nil } })",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "presentation",
+      "source": "Binding(get: { flow.sheet }, set: { flow.sheet = $0 })",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "presentation",
+      "source": "Button(\"Cancel\") { flow.sheet = nil }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "presentation",
+      "source": "dismiss: { flow.sheet = nil })",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "presentation",
+      "source": "flow.sheet = nil",
+      "occurrences": 3
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "presentation",
+      "source": "switch flow.alert {",
+      "occurrences": 3
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Remember\"), action: accept)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+      "category": "control",
+      "source": "Button(action: actions.renameMeeting) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+      "category": "control",
+      "source": "Button(action: actions.suggestNames) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+      "category": "control",
+      "source": "Button(action: dismiss) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+      "category": "control",
+      "source": "DismissibleSuggestionChip(",
+      "occurrences": 3
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+      "category": "control",
+      "source": "SpeakerPill(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-header-section\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-suggest-names\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(presentation.acceptIdentifier)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(presentation.dismissIdentifier)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+      "category": "control",
+      "source": "Button(\"English\") { actions.enhance(.english, alternate.engine) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+      "category": "control",
+      "source": "Button(\"Enhance in English\") { actions.enhance(.english, nil) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+      "category": "control",
+      "source": "Button(\"Enhance in Spanish\") { actions.enhance(.spanish, nil) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+      "category": "control",
+      "source": "Button(\"Español\") { actions.enhance(.spanish, alternate.engine) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+      "category": "control",
+      "source": "Menu {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+      "category": "control",
+      "source": "Menu(alternate.label) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-enhance-notes\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-notes-section\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-notes-title\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailPlaybackNavigation.swift",
+      "category": "navigation",
+      "source": "player.seek(to: player.duration * fraction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailPlaybackNavigation.swift",
+      "category": "navigation",
+      "source": "player.seek(to: seconds)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailPlaybackNavigation.swift",
+      "category": "navigation",
+      "source": "player.seek(to: target)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailPlayerSection.swift",
+      "category": "control",
+      "source": "Button(action: actions.compressAudio) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailPlayerSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-compress-audio\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailPlayerSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-player-section\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "control",
+      "source": "Button { actions.copyAnswer(card.answer) } label: {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "control",
+      "source": "Button { actions.seekAndPlay(card.askedAt) } label: {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "control",
+      "source": "Button(action: actions.refresh) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"apuntador-card-\\(Int(card.askedAt))\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"apuntador-card-\\(card.id.uuidString)-stale\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-apuntador\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-apuntador-refresh\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-apuntador-section\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-secondary-rail\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift",
+      "category": "control",
+      "source": "Button(\"Apply\") { actions.apply(draft) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift",
+      "category": "control",
+      "source": "Button(\"Discard\", role: .cancel, action: actions.discard)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-refine-review\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailScene.swift",
+      "category": "navigation",
+      "source": "@Environment(\\.openSettings) private var openSettings",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailScene.swift",
+      "category": "navigation",
+      "source": "let openSettings: @MainActor (SettingsCategory) -> Void",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailScene.swift",
+      "category": "navigation",
+      "source": "openSettings()",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailScene.swift",
+      "category": "navigation",
+      "source": "openSettings: { category in",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailScene.swift",
+      "category": "navigation",
+      "source": "route = .insights",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailScene.swift",
+      "category": "navigation",
+      "source": "route = nil",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailScene.swift",
+      "category": "state",
+      "source": "@AppStorage(\"mirrorAfterMeeting\") private var mirrorAfterMeeting = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailScene.swift",
+      "category": "state",
+      "source": "@State private var flow = MeetingDetailFlowState()",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailScene.swift",
+      "category": "state",
+      "source": "@State private var model: MeetingDetailModel",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailSummaryPlaceholder.swift",
+      "category": "control",
+      "source": "Button(action: generate) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailSummaryPlaceholder.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-generate-summary\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailSummaryPlaceholder.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-summary-abandoned\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+      "category": "control",
+      "source": "Button(\"Open support diagnostics\", action: actions.openSupportDiagnostics)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+      "category": "control",
+      "source": "Button(\"Refine saved audio\", action: actions.refineSavedAudio)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-open-support-diagnostics\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-privacy-receipt\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-privacy-receipt-sync\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-processing-status\")",
+      "occurrences": 3
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-recover-with-refine\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-retry-processing\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-trust-section\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"privacy-remote-event-\\(index)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-receipt-\\(receipt.skillID)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+      "category": "state",
+      "source": "@State private var retryingProcessing = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "navigation",
+      "source": "openIntelligenceSettings: { sceneActions.openSettings(.intelligence) },",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "navigation",
+      "source": "openSupportDiagnostics: { sceneActions.openSettings(.data) },",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "state",
+      "source": "@State private var playbackNavigation = MeetingDetailPlaybackNavigation()",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "Button(\"Copy as Markdown\") { actions.copy(.markdown) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "Button(\"Copy as plain text\") { actions.copy(.plainText) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "Button(\"Copy for Slack\") { actions.copy(.slack) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "Button(\"English\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "Button(\"Español\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "Button(\"New structure…\", action: actions.createStructure)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "Button(\"Regenerate in English\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "Button(\"Regenerate in Spanish\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "Button(\"Regenerate\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "Button(L10n.format(\"Remove topic “%@”\", link.label)) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "Button(clock(segment.startTime)) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "DismissibleSuggestionChip(",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "Menu {",
+      "occurrences": 3
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "Menu(\"Structure\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "Menu(alternate.label) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "return Button {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"\\(identifier)-confirm\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"\\(identifier)-confirmed\")",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"\\(sourceIdentifier)-\\(index)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-generated-document\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-regenerate-menu\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-stale-summary\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-stale-summary-regenerate\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-structure-\\(recipe.id)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-structure-menu\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"summary-badge\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(staleIdentifier)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(tag == 1000 ? \"summary-tab-todos\" : \"summary-tab-\\(tag)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(unavailableIdentifier)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "state",
+      "source": "@State private var tabSelection = 0",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingHealthView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-meeting-health\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 5
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "control",
+      "source": "Button(\"OK\", role: .cancel) {}",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "control",
+      "source": "DragGesture(minimumDistance: 0).onChanged { value in",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "control",
+      "source": "Slider(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "control",
+      "source": "Toggle(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "control",
+      "source": "Toggle(isOn: Binding(get: { player.onlyMyVoice }, set: { player.onlyMyVoice = $0 })) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "control",
+      "source": "Toggle(isOn: Binding(get: { player.skipSilence }, set: { player.skipSilence = $0 })) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"clip-export\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"clip-mark-end\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"clip-mark-start\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"player-clear-playback\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"player-current-time\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"player-only-my-voice\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"player-play-pause\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "navigation",
+      "source": "NSWorkspace.shared.activateFileViewerSelecting([url])",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "navigation",
+      "source": "let onSeek: (Double) -> Void",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "navigation",
+      "source": "onSeek: { player.seek(to: $0 * player.duration) })",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "navigation",
+      "source": "value: Binding(get: { player.currentTime }, set: { player.seek(to: $0) }),",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "presentation",
+      "source": ".alert(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "state",
+      "source": "@State private var exportError: String?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "state",
+      "source": "@State private var exporting = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "control",
+      "source": "Button(\"Copy\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "control",
+      "source": "Button(\"Done\", action: dismiss)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "control",
+      "source": "Button(\"Redraft\") { redraft(force: true) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "control",
+      "source": "Picker(\"As\", selection: $channel) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "control",
+      "source": "Picker(\"For\", selection: $audience) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "control",
+      "source": "TextEditor(text: $text)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "control",
+      "source": "TextField(\"Subject\", text: $subject)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"recap-audience\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"recap-body\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"recap-channel\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"recap-copy\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"recap-done\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"recap-privacy-note\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"recap-redraft\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"recap-share\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"recap-subject\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"recap-title\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.defaultAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "state",
+      "source": "@State private var audience: RecapAudience = .everyone",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "state",
+      "source": "@State private var channel: RecapChannel = .email",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "state",
+      "source": "@State private var generatedText: String",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "state",
+      "source": "@State private var hasPendingChoices = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "state",
+      "source": "@State private var subject: String",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+      "category": "state",
+      "source": "@State private var text: String",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"chapter-\\(Int(chapter.startTime))\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-chapters\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-transcript-section\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-transcript-title\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-hidden-lines\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "navigation",
+      "source": "onSeek: actions.seekAndPlay,",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "presentation",
+      "source": ".sheet(isPresented: $showingHiddenLines) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "state",
+      "source": "@State private var showingHiddenLines = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MirrorCard.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MirrorCard.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Don’t show after each meeting\")) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MirrorCard.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"mirror-card\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Cancel\"), action: dismiss)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Copy link\")) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Done\"), action: dismiss)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Open\")) { openURL(outputURL) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"gist-result-copy-link\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"gist-result-dismiss\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"gist-result-message\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"gist-result-open-link\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"gist-result-title\")",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"gist-result-url\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-cancel\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-email-boundary\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-email-recipient-policy\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-error\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-gist-boundary\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-gist-destination\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-preview-body\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-preview-destination\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-preview-subject\")",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-sheet\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-submit\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": "textView.setAccessibilityIdentifier(\"skill-confirm-preview-body\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.cancelAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.defaultAction)",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "state",
+      "source": "@State private var completion: MeetingDetailFlowState.SkillConfirmationResult?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "state",
+      "source": "@State private var failure: String?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "state",
+      "source": "@State private var running = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillOfferBanner.swift",
+      "category": "control",
+      "source": "Button(dismissTitle(for: offer)) { dismiss(offer) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillOfferBanner.swift",
+      "category": "control",
+      "source": "Button(openTitle(for: offer)) { open(offer) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillOfferBanner.swift",
+      "category": "control",
+      "source": "Menu {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillOfferBanner.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/SkillOfferBanner.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-offer-menu\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SpeakerPill.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SpeakerPill.swift",
+      "category": "control",
+      "source": "struct SpeakerPill: View {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SpeakerPill.swift",
+      "category": "identifier",
+      "source": "pill.accessibilityIdentifier(accessibilityIdentifier)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "control",
+      "source": "Button(\"Cancel\", role: .cancel) { dismiss() }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "control",
+      "source": "Button(\"Clear\") { persist(nil) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "control",
+      "source": "Button(\"Save correction\") { persist() }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "control",
+      "source": "Button(L10n.text(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "control",
+      "source": "Button(L10n.text(isUnsupported ? \"Unsupported\" : \"Mark unsupported\")) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "control",
+      "source": "TextEditor(text: $text)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"summary-feedback-clear\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"summary-feedback-correction\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"summary-feedback-correction-text\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"summary-feedback-correction-value\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"summary-feedback-save\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"summary-feedback-status\")",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"summary-feedback-unsupported\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.cancelAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.defaultAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "presentation",
+      "source": ".sheet(isPresented: $showingCorrection) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "state",
+      "source": "@State private var errorMessage: String?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "state",
+      "source": "@State private var saving = false",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "state",
+      "source": "@State private var showingCorrection = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "state",
+      "source": "@State private var text: String",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(\"Cancel\", role: .cancel) { dismiss() }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(\"Save correction\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(\"Undo correction\", role: .destructive) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "control",
+      "source": "Picker(\"Correct speaker\", selection: $speakerID) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "control",
+      "source": "TextEditor(text: $text)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-cancel\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-editor\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-error\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-history\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-mode-guidance\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-original-evidence\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-progress\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-save\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-speaker\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-text\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-undo\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.cancelAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.defaultAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "state",
+      "source": "@FocusState private var textEditorFocused: Bool",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var isSaving = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var operationError: String?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var speakerID: SpeakerID?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var text: String",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+      "category": "control",
+      "source": "SpeakerPill(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-transcript-scroll\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-segment-\\(row.id.uuidString)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(correctionIdentifier(for: row))",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+      "category": "navigation",
+      "source": "let onSeek: (TimeInterval) -> Void",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+      "category": "navigation",
+      "source": "onSeek: onSeek,",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+      "category": "state",
+      "source": "@State private var didStartPerformanceScroll = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(\"Back\") { draft = nil }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(\"Close\") { dismiss() }",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(\"Hide as noise…\", role: .destructive) { draft = .suppress }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(\"Restore\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(\"Split line…\") { draft = .split }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(\"Undo structural correction\", role: .destructive) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(confirmTitle) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "Slider(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "TextField(\"First line\", text: $firstText, axis: .vertical)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "TextField(\"Second line\", text: $secondText, axis: .vertical)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-hidden-lines-sheet\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-hidden-restore-\\(context.id.uuidString)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-cancel\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-close\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-confirm\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-controls\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-editor\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-error\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-guidance\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-merge-\\(candidate.id.uuidString)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-original-evidence\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-split\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-split-first\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-split-second\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-split-time\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-suppress\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-undo\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.cancelAction)",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var draft: TranscriptStructuralDraft?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var firstText: String",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var isSaving = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var operationError: String?",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var restoringID: UUID?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var secondText: String",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var splitTime: TimeInterval",
+      "occurrences": 1
+    }
+  ],
+  "featureOwnership": [
+    {
+      "feature": "commitment-confirmation",
+      "tests": [
+        "testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+          "anchor": "\"detail-commitment-inbox\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingDetailCoordinator+Commitments.swift",
+          "anchor": "func confirmCommitment("
+        }
+      ],
+      "screenshots": [
+        "meeting-detail-commitment-inbox",
+        "meeting-detail-commitment-self-assignment"
+      ]
+    },
+    {
+      "feature": "decision-confirmation",
+      "tests": [
+        "testDecisionCanBeConfirmedAboutATopic"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+          "anchor": "\"decision-confirm-sheet\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+          "anchor": "\"\\(identifier)-confirmed\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+          "anchor": "\"\\(identifier)-retract-\\(link.id.rawValue.uuidString)\""
+        }
+      ],
+      "screenshots": [
+        "meeting-detail-decision-confirmed",
+        "meeting-detail-decision-topic-retracted"
+      ]
+    },
+    {
+      "feature": "detail-scale",
+      "tests": [
+        "testFiveThousandSegmentDetailRendersFromDisposableScaleFixture",
+        "testTwentyThousandSegmentDetailRendersFromDisposableScaleFixture"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+          "anchor": "\"detail-transcript-title\""
+        }
+      ],
+      "screenshots": [
+        "meeting-detail-scale-5000-segments"
+      ]
+    },
+    {
+      "feature": "dismissible-suggestions-and-feedback",
+      "tests": [
+        "testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix",
+        "testSummaryFeedbackIsExplicitReversibleAndLocal"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/ChipLabel.swift",
+          "anchor": "DismissibleSuggestionChip"
+        },
+        {
+          "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+          "anchor": "\"summary-feedback-correction\""
+        }
+      ],
+      "screenshots": [
+        "dismissible-ai-suggestions-and-clear-playback",
+        "meeting-detail-summary-feedback"
+      ]
+    },
+    {
+      "feature": "evidence-navigation",
+      "tests": [
+        "testEvidenceSourcesJumpToTheirExactTranscriptAndAudio"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MeetingDetailPlaybackNavigation.swift",
+          "anchor": "transcript.reveal("
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+          "anchor": "\"detail-apuntador-section\""
+        }
+      ],
+      "screenshots": [
+        "meeting-detail-action-item-evidence",
+        "meeting-detail-apuntador-evidence",
+        "meeting-detail-decision-evidence",
+        "meeting-detail-summary-evidence"
+      ]
+    },
+    {
+      "feature": "exports",
+      "tests": [
+        "testExportMenuOffersSubtitleFormats"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+          "anchor": "\"detail-export-menu\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
+          "anchor": "func handleExportAction("
+        }
+      ],
+      "screenshots": [
+        "meeting-detail-correction-aware-export"
+      ]
+    },
+    {
+      "feature": "notes-and-recap",
+      "tests": [
+        "testRecapSheetDraftsFromTheSummaryWithoutTheTranscript"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
+          "anchor": "\"recap-title\""
+        }
+      ],
+      "screenshots": [
+        "meeting-detail-share-recap"
+      ]
+    },
+    {
+      "feature": "playback-and-clips",
+      "tests": [
+        "testClipMarkingRevealsExport",
+        "testPlayerExposesSkipAndOnlyMyVoice"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MeetingDetailPlayerSection.swift",
+          "anchor": "\"detail-player-section\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+          "anchor": "\"clip-export\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+          "anchor": "\"player-play-pause\""
+        }
+      ],
+      "screenshots": [
+        "meeting-detail-waveform"
+      ]
+    },
+    {
+      "feature": "processing-and-refine",
+      "tests": [
+        "testAbandonedAutomaticSummarySaysSoBesideGeneration",
+        "testFailedDurableProcessingOffersOneRecoveryAction",
+        "testRunningRefineCanBeCanceledWithoutChangingTheTranscript"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+          "anchor": "\"detail-refine\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift",
+          "anchor": "\"detail-refine-review\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingDetailSummaryPlaceholder.swift",
+          "anchor": "\"detail-summary-abandoned\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+          "anchor": "\"detail-recover-with-refine\""
+        }
+      ],
+      "screenshots": [
+        "meeting-detail-abandoned-summary",
+        "meeting-detail-processing-recovery"
+      ]
+    },
+    {
+      "feature": "review-surfaces",
+      "tests": [
+        "testMeetingReviewSurfacesRemainCompleteAndActionable"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+          "anchor": "\"detail-enhance-notes\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+          "anchor": "\"detail-secondary-rail\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+          "anchor": "\"detail-generated-document\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingHealthView.swift",
+          "anchor": "\"detail-meeting-health\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+          "anchor": "\"detail-chapters\""
+        }
+      ],
+      "screenshots": [
+        "meeting-detail-generated-document",
+        "meeting-detail-my-notes",
+        "meeting-detail-privacy-receipt",
+        "meeting-detail-transcript-navigation"
+      ]
+    },
+    {
+      "feature": "right-rail-and-mirror",
+      "tests": [
+        "testFreshQualifyingMeetingShowsThePostMeetingMirror"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MirrorCard.swift",
+          "anchor": "\"mirror-card\""
+        }
+      ],
+      "screenshots": [
+        "meeting-detail-post-meeting-mirror"
+      ]
+    },
+    {
+      "feature": "skill-proposals",
+      "tests": [
+        "testEmailRecapSkillPreviewsAndHandsOffWithoutSending",
+        "testFailedSkillEffectRetriesItsOriginalProposal",
+        "testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument",
+        "testSkillProposalJourneyFromBannerToReceipt"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+          "anchor": "\"github-issue-sheet\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+          "anchor": "\"action-item-\\(item.id.uuidString)-github\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+          "anchor": "\"skill-receipt-\\(receipt.skillID)\""
+        },
+        {
+          "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+          "anchor": "\"skill-confirm-sheet\""
+        },
+        {
+          "path": "Sources/portavoz-app/SkillOfferBanner.swift",
+          "anchor": "\"skill-offer-menu\""
+        }
+      ],
+      "screenshots": [
+        "meeting-detail-email-recap-handoff",
+        "meeting-detail-github-issue-receipts",
+        "meeting-detail-skill-receipt",
+        "meeting-detail-skill-retry-receipt"
+      ]
+    },
+    {
+      "feature": "speaker-identity",
+      "tests": [
+        "testNamedSpeakerCanBeRememberedAsCanonicalPerson",
+        "testUnnamedSpeakerOffersExplicitNameSuggestions"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift",
+          "anchor": "func acceptNameSuggestion("
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+          "anchor": "\"detail-suggest-names\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+          "anchor": "\"person-remember-offer\""
+        }
+      ],
+      "screenshots": [
+        "meeting-detail-confirmed-person-memory",
+        "meeting-name-suggestions"
+      ]
+    },
+    {
+      "feature": "summary-and-structures",
+      "tests": [
+        "testMostRecentRecipeRemainsVisibleAfterReload",
+        "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador",
+        "testStructureMenuOffersSeededTemplates"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MeetingDetailSummaryPlaceholder.swift",
+          "anchor": "\"detail-generate-summary\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+          "anchor": "\"detail-structure-menu\""
+        }
+      ],
+      "screenshots": [
+        "sequoia-apuntador-requirements",
+        "sequoia-summary-actionable-settings"
+      ]
+    },
+    {
+      "feature": "transcript-corrections",
+      "tests": [
+        "testCorrectedTranscriptMarksDerivedArtifactsStale",
+        "testExplicitApuntadorRefreshUsesCorrectedTranscript",
+        "testSequoiaApuntadorRefreshPreservesStaleAnswers",
+        "testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo",
+        "testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+          "anchor": "\"detail-apuntador-refresh\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+          "anchor": "\"detail-stale-summary-regenerate\""
+        },
+        {
+          "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+          "anchor": "\"transcript-correction-original-evidence\""
+        },
+        {
+          "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+          "anchor": "\"transcript-correct-\\(sourceID.uuidString)\""
+        },
+        {
+          "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+          "anchor": "\"transcript-structure-original-evidence\""
+        }
+      ],
+      "screenshots": [
+        "meeting-detail-apuntador-refreshed",
+        "meeting-detail-stale-derived-artifacts",
+        "transcript-correction-original-evidence",
+        "transcript-structural-correction-evidence",
+        "transcript-structural-split-evidence"
+      ]
+    }
+  ],
+  "performanceEvidence": [
+    {
+      "path": "docs/evidence/meeting-detail-performance-baseline-20260801.json",
+      "sha256": "69ed6048f597585bc0d3221cda9eed0f56d2a26a438d0e2b0604f90360bbbf71"
+    },
+    {
+      "path": "scripts/meeting_detail_performance.py",
+      "sha256": "fed630df24418908286118fe8a2ba142b84dfbb03a3e331ea61160a1f38be88b"
+    },
+    {
+      "path": "scripts/run-detail-ui-baseline.sh",
+      "sha256": "2451152802c1c460870db92b876417989c8b25480127348222e801ee57a59640"
+    }
+  ],
+  "performanceMeasurementLimitations": [
+    "SwiftUI body invalidation rows depend on xctrace toolchain availability; a missing export is recorded as unavailable and never interpreted as zero."
+  ]
+}

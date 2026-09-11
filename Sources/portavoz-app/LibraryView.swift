@@ -24,7 +24,7 @@ struct LibraryView: View {
     private var state: LibraryModel.State { model.state }
 
     /// The sidebar List owns meeting selection only. `route` also represents
-    /// Ask, Insights, and Recording; binding the List directly to that broader
+    /// Ask, Insights, Radar, and Recording; binding the List directly to that broader
     /// state lets a transient list refresh write `nil` and dismiss those
     /// destinations. Ignore those native deselection writes while explicit
     /// navigation and deletion continue to own the full route.
@@ -46,33 +46,22 @@ struct LibraryView: View {
                 .padding(.horizontal, 12)
                 .padding(.top, 12)
 
+            LibraryNavigationControls(
+                route: route,
+                importing: state.importStatus != nil,
+                onImport: chooseAudioToImport,
+                onNavigate: { route = $0 })
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+
             if let importStatus = state.importStatus {
-                HStack(spacing: 6) {
-                    ProgressView().controlSize(.small)
-                    Text(importStatus).font(.caption).foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
-            } else {
-                HStack(spacing: 6) {
-                    actionChip(
-                        "Import", systemImage: "square.and.arrow.down",
-                        id: "library-import-audio-button",
-                        help: "Transcribe an audio file (.m4a, .wav, .mp3) as a new meeting"
-                    ) { chooseAudioToImport() }
-                    actionChip(
-                        "Ask", systemImage: "bubble.left.and.text.bubble.right",
-                        id: "library-ask-button", active: route == .ask,
-                        help: "Natural-language questions over every meeting, answered on your Mac"
-                    ) { route = .ask }
-                    actionChip(
-                        "Insights", systemImage: "chart.bar.xaxis",
-                        id: "library-insights-button", active: route == .insights,
-                        help: "Totals, cadence, people and commitments — computed on your Mac"
-                    ) { route = .insights }
-                }
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
+                Text(importStatus)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 6)
+                    .accessibilityIdentifier("library-import-status")
             }
 
             if state.offerCalendar {
@@ -104,7 +93,7 @@ struct LibraryView: View {
                             } label: {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(hit.snippet).lineLimit(2)
-                                    Text("\(hit.meetingTitle) · \(timestamp(hit.startTime))")
+                                    Text("\(hit.meetingTitle) · \(ClockFormat.mmss(hit.startTime))")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -301,11 +290,6 @@ struct LibraryView: View {
         perform(.importFile(url))
     }
 
-    private func timestamp(_ seconds: TimeInterval) -> String {
-        let total = max(0, Int(seconds.rounded()))
-        return String(format: "%02d:%02d", total / 60, total % 60)
-    }
-
     private func perform(_ action: LibraryModel.Action) {
         Task {
             let effect = await model.send(action)
@@ -359,38 +343,18 @@ extension LibraryView {
             .map { (key: $0.0, title: $0.1, meetings: $0.2) }
     }
 
-    /// The selected meeting's row fill: the DS aurora gradient. Unselected
-    /// rows stay clear so the sidebar material shows through.
-    @ViewBuilder
-    private func meetingRowBackground(_ selected: Bool) -> some View {
-        if selected {
-            RoundedRectangle(cornerRadius: 6)
-                .fill(LinearGradient(
-                    colors: [PVDesign.accent, PVDesign.brandViolet],
-                    startPoint: .topLeading, endPoint: .bottomTrailing))
-                .padding(.horizontal, 6)
-        } else {
-            Color.clear
-        }
-    }
-
-    /// One meeting row: title, date, and its voice-mix bar. The selected
-    /// row wears the DS's indigo→violet gradient (not the user's system
-    /// accent — the DS's stance on the accent debt), painted as the row
-    /// background so it wins over the native sidebar highlight.
+    /// Native sidebar selection owns contrast, focus and inactive-window styling.
+    /// The voice mix remains a separate, meaningful recording cue.
     private func meetingRow(_ meeting: Meeting) -> some View {
-        let selected = route == .meeting(meeting.id)
-        return VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 3) {
             Text(meeting.title).lineLimit(1)
-                .foregroundStyle(selected ? Color.white : .primary)
             Text(meeting.startedAt.formatted(date: .abbreviated, time: .shortened))
                 .font(.caption)
-                .foregroundStyle(selected ? Color.white.opacity(0.75) : .secondary)
+                .foregroundStyle(.secondary)
             if let mix = state.voiceMixes[meeting.id] {
                 VoiceMixBar(slices: mix, colorScheme: colorScheme)
             }
         }
-        .listRowBackground(meetingRowBackground(selected))
         .tag(Route.meeting(meeting.id))
         .accessibilityIdentifier("library-meeting-\(meeting.id.rawValue.uuidString)")
         .contextMenu {
@@ -438,7 +402,7 @@ extension LibraryView {
                     colors: [PVDesign.accent, PVDesign.brandViolet],
                     startPoint: .topLeading, endPoint: .bottomTrailing),
                 in: RoundedRectangle(cornerRadius: 10))
-            .shadow(color: PVDesign.brandViolet.opacity(0.4), radius: 8, y: 3)
+            .shadow(color: PVDesign.brandViolet.opacity(0.18), radius: 3, y: 1)
         }
         .buttonStyle(.plain)
         .keyboardShortcut("n")
@@ -451,30 +415,7 @@ extension LibraryView {
             : L10n.text("Start a new recording"))
     }
 
-    /// One of the vertical action chips (Import / Ask / Insights): a stacked
-    /// icon + label that lights up when its route is active.
-    private func actionChip(
-        _ title: LocalizedStringKey, systemImage: String, id: String,
-        active: Bool = false, help: String, action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            VStack(spacing: 5) {
-                Image(systemName: systemImage).font(.system(size: 14))
-                Text(title).font(.system(size: 10, weight: .semibold))
-            }
-            .foregroundStyle(active ? PVDesign.accent : .secondary)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 9)
-            .background(
-                (active ? PVDesign.accent.opacity(0.16) : Color.secondary.opacity(0.10)),
-                in: RoundedRectangle(cornerRadius: 9))
-        }
-        .buttonStyle(.plain)
-        .help(help)
-        .accessibilityIdentifier(id)
-    }
-
-    /// Search field with a ⌘K keycap — the palette is one shortcut away.
+    /// Library filtering stays distinct from the global Command-K palette.
     private var searchField: some View {
         HStack(spacing: 7) {
             Image(systemName: "magnifyingglass")
@@ -486,12 +427,6 @@ extension LibraryView {
                 .textFieldStyle(.plain)
                 .accessibilityIdentifier("library-search-field")
                 .task(id: state.query) { _ = await model.send(.observeSearch) }
-            Text(verbatim: "⌘K")
-                .font(.system(size: 9, design: .monospaced))
-                .foregroundStyle(.tertiary)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 3)
-                .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 4))
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 6)
@@ -502,7 +437,9 @@ extension LibraryView {
     /// core claim, always in view.
     private var localFooter: some View {
         HStack(spacing: 7) {
-            Circle().fill(.green).frame(width: 7, height: 7)
+            Image(systemName: "lock.shield")
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
             Text("Local-first · transfers require opt-in")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
