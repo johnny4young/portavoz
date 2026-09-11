@@ -755,7 +755,11 @@ def validated_performance_ledger(
         load_json(path, "performance ledger"),
         "performance ledger",
         ("schemaVersion", "authority", "metrics", "summary"),
-        ("generatedAt", "host", "toolchain", "comparability"),
+        # `authorityReason` is written by perf_ledger only on a ledger that is
+        # NOT authoritative, to say why. Omitting it here made every such
+        # ledger fail one line early as "forbidden keys", hiding the reason
+        # the operator needs (a busy host, mixed hosts) behind a schema error.
+        ("generatedAt", "host", "toolchain", "comparability", "authorityReason"),
     )
     exact_schema_version(
         ledger["schemaVersion"],
@@ -763,7 +767,16 @@ def validated_performance_ledger(
         "performance ledger.schemaVersion",
     )
     if ledger["authority"] != "authoritative":
-        raise CandidateAutomationError("performance ledger is not authoritative")
+        reason = ledger.get("authorityReason")
+        detail = f": {reason}" if isinstance(reason, str) and reason else ""
+        raise CandidateAutomationError(
+            f"performance ledger is not authoritative{detail}"
+        )
+    if "authorityReason" in ledger:
+        raise CandidateAutomationError(
+            "performance ledger: an authoritative ledger must not carry an "
+            "authorityReason"
+        )
     if not isinstance(ledger.get("host"), dict) or not ledger["host"]:
         raise CandidateAutomationError("performance ledger has no host identity")
     if not isinstance(ledger.get("toolchain"), dict) or not ledger["toolchain"]:

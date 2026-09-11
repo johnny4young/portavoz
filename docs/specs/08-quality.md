@@ -2981,6 +2981,12 @@ synthetic three-hour capture, seven upgrade/recovery classes, and the complete
 bilingual real-app XCUITest catalog. It has no arbitrary proof
 recorder; only the successful in-process sequence writes the schema-1
 `candidate-automation` qualification receipt with mode 0600.
+A performance ledger that `perf_ledger` did not make authoritative carries an
+`authorityReason` naming why (a busy host, mixed hosts, missing metadata); the
+validator admits that key and repeats the reason in its "not authoritative"
+error, and rejects the key on a ledger that claims authority. Until September
+2026 the key was absent from the validator's allowlist, so every non-authoritative
+confirmation run failed one line early as a schema error that hid the cause.
 
 The model lane renders
 `Fixtures/CandidateAutomation/public-model-lane-en-v1.txt` as one Samantha
