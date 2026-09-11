@@ -343,15 +343,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id(
             "SkillsSettingsUITests",
-            "testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
             "testSkillActivityHidesExpansionWhenExactlyOnePageExists",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testSkillActivityRefreshPreservesTheExpandedCurrentScope",
         ),
         test_id(
             "SkillsSettingsUITests",
@@ -507,6 +499,8 @@ APUNTADOR_LEAK_UI_FEATURES = frozenset({
 })
 
 RETIRED_DUPLICATE_TESTS = frozenset({
+    test_id("SkillsSettingsUITests", "testSkillActivityRefreshPreservesTheExpandedCurrentScope"),
+    test_id("SkillsSettingsUITests", "testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest"),
     test_id("InsightsUITests", "testInsightsRendersHeatmap"),
     test_id("InsightsUITests", "testInsightsShowsWhoYouTalkWith"),
     test_id("OnboardingUITests", "testOpensOnTheFirstListenStep"),

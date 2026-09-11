@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 118
+    "expectedCaseCount": 116
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -125,10 +125,8 @@
     "SkillsSettingsUITests/testProposedSkillReviewReturnsToItsMeetingWithoutRunning()": 22.761,
     "SkillsSettingsUITests/testRecoverableFailedSkillReturnsToItsMeetingWithoutRunning()": 25.846,
     "SkillsSettingsUITests/testSameSkillProposalsHaveDistinctAccessibleActions()": 20.0,
-    "SkillsSettingsUITests/testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest()": 21.198,
     "SkillsSettingsUITests/testSkillActivityFiltersByUpdatePeriodAndResetsExpansion()": 121.312,
     "SkillsSettingsUITests/testSkillActivityHidesExpansionWhenExactlyOnePageExists()": 20.0,
-    "SkillsSettingsUITests/testSkillActivityRefreshPreservesTheExpandedCurrentScope()": 40.578,
     "SkillsSettingsUITests/testSkillActivityScopeFailureDoesNotInventRowsOrDisableVerifiedPolicy()": 20.071,
     "SkillsSettingsUITests/testSkillActivityTransitionsHideStaleRowsAndKeepVerifiedControlsUsable()": 55.834,
     "SkillsSettingsUITests/testSkillProposalFailureDoesNotInventOffersOrDisableVerifiedPolicy()": 20.0,

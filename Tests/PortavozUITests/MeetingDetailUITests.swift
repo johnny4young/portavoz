@@ -89,25 +89,31 @@ final class MeetingDetailUITests: PortavozUITestCase {
     private func resetEvidenceNavigation(
         chapter: XCUIElement,
         playbackToggle: XCUIElement,
-        citedRow: XCUIElement,
-        currentTime: XCUIElement
-    ) {
-        XCTAssertTrue(
-            chapter.waitForHittable(timeout: 5),
-            "the stable opening chapter must be actionable before resetting evidence")
+        in app: XCUIApplication
+    ) throws {
+        XCTAssertTrue(chapter.waitForHittable(timeout: 5))
         chapter.click()
-        XCTAssertTrue(
-            playbackToggle.waitForHittable(timeout: 5),
-            "playback must expose its stable toggle after the reset seek")
+        XCTAssertTrue(playbackToggle.waitForHittable(timeout: 5))
         playbackToggle.click()
         XCTAssertTrue(
-            currentTime.waitForValueOtherThan("0:03", timeout: 5),
-            "the reset must visibly leave the shared evidence timestamp")
-        XCTAssertTrue(
-            waitForUITestCondition(timeout: 5) {
-                citedRow.exists && !citedRow.isSelected
-            },
-            "the reset must visibly deselect the shared evidence row")
+            try waitForEvidenceNavigation(in: app, selected: false),
+            "reset must leave the cited timestamp AND deselect the source row")
+    }
+
+    @MainActor
+    private func waitForEvidenceNavigation(
+        in app: XCUIApplication,
+        selected: Bool
+    ) throws -> Bool {
+        try waitForUITestCondition(timeout: 5) {
+            let snapshot = try app.windows["main-AppWindow-1"].snapshot()
+            let rows = snapshotMatches(
+                "transcript-segment-B5B00000-0000-4000-8000-000000000002", in: snapshot)
+            let clocks = snapshotMatches("player-current-time", in: snapshot)
+            guard rows.count == 1, clocks.count == 1,
+                  let time = clocks[0].value as? String, !time.isEmpty else { return false }
+            return rows[0].isSelected == selected && ((time == "0:03") == selected)
+        }
     }
 
     /// Launches the app on the seeded meeting with isolated audio. Point
@@ -798,7 +804,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testEvidenceSourcesJumpToTheirExactTranscriptAndAudio() {
+    func testEvidenceSourcesJumpToTheirExactTranscriptAndAudio() throws {
         let app = launchOnSeededMeeting()
         defer { app.terminate() }
 
@@ -823,19 +829,15 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             citedRow.waitForExistenceFast(timeout: 5),
             "source navigation must focus the exact persisted transcript segment")
-        XCTAssertTrue(citedRow.waitForSelection(timeout: 5))
-
-        let currentTime = app.control(withIdentifier: "player-current-time")
-        XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 5))
+        XCTAssertTrue(try waitForEvidenceNavigation(in: app, selected: true))
         attachScreenshot(of: app, named: "meeting-detail-summary-evidence")
 
         let resetChapter = app.control(withIdentifier: "chapter-0")
         let playbackToggle = app.control(withIdentifier: "player-play-pause")
-        resetEvidenceNavigation(
+        try resetEvidenceNavigation(
             chapter: resetChapter,
             playbackToggle: playbackToggle,
-            citedRow: citedRow,
-            currentTime: currentTime)
+            in: app)
 
         let decisions = app.control(withIdentifier: "summary-tab-1")
         XCTAssertTrue(decisions.waitForExistenceFast(timeout: 10))
@@ -850,15 +852,13 @@ final class MeetingDetailUITests: PortavozUITestCase {
             decisionSource.value as? String,
             "El rollout del modelo queda para el viernes.")
         decisionSource.click()
-        XCTAssertTrue(citedRow.waitForSelection(timeout: 5))
-        XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 5))
+        XCTAssertTrue(try waitForEvidenceNavigation(in: app, selected: true))
         attachScreenshot(of: app, named: "meeting-detail-decision-evidence")
 
-        resetEvidenceNavigation(
+        try resetEvidenceNavigation(
             chapter: resetChapter,
             playbackToggle: playbackToggle,
-            citedRow: citedRow,
-            currentTime: currentTime)
+            in: app)
 
         let todos = app.control(withIdentifier: "summary-tab-todos")
         XCTAssertTrue(todos.waitForExistenceFast(timeout: 10))
@@ -874,15 +874,13 @@ final class MeetingDetailUITests: PortavozUITestCase {
             actionItemSource.value as? String,
             "El rollout del modelo queda para el viernes.")
         actionItemSource.click()
-        XCTAssertTrue(citedRow.waitForSelection(timeout: 5))
-        XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 5))
+        XCTAssertTrue(try waitForEvidenceNavigation(in: app, selected: true))
         attachScreenshot(of: app, named: "meeting-detail-action-item-evidence")
 
-        resetEvidenceNavigation(
+        try resetEvidenceNavigation(
             chapter: resetChapter,
             playbackToggle: playbackToggle,
-            citedRow: citedRow,
-            currentTime: currentTime)
+            in: app)
 
         XCTAssertTrue(
             app.control(withIdentifier: "detail-apuntador-section")
@@ -899,8 +897,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             apuntadorSource.value as? String,
             "El rollout del modelo queda para el viernes.")
         apuntadorSource.click()
-        XCTAssertTrue(citedRow.waitForSelection(timeout: 5))
-        XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 5))
+        XCTAssertTrue(try waitForEvidenceNavigation(in: app, selected: true))
         attachScreenshot(of: app, named: "meeting-detail-apuntador-evidence")
     }
 
@@ -1089,6 +1086,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         let menu = app.control(withIdentifier: "skill-offer-menu")
+        XCTAssertTrue(menu.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(menu.waitForStableFrame(timeout: 10))
         menu.click()
         let email = app.menuItems["skill-offer-email-recap-draft"]
@@ -1182,6 +1180,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         let menu = app.control(withIdentifier: "skill-offer-menu")
+        XCTAssertTrue(menu.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(menu.waitForStableFrame(timeout: 10))
         menu.click()
         let gist = app.menuItems["skill-offer-secret-gist-publish"]
@@ -1193,18 +1192,14 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
         let sheet = app.control(withIdentifier: "skill-confirm-sheet")
         XCTAssertTrue(sheet.waitForExistenceFast(timeout: 5))
-        let destination = app.control(
-            withIdentifier: "skill-confirm-gist-destination")
-        let body = app.control(withIdentifier: "skill-confirm-preview-body")
         let boundary = app.control(
             withIdentifier: "skill-confirm-gist-boundary")
-        XCTAssertTrue(destination.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(body.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(boundary.waitForExistenceFast(timeout: 5))
-        let destinationText = try accessibleText(of: destination)
+        let preview = try sheet.snapshot()
+        let destinationText = try accessibleText("skill-confirm-gist-destination", in: preview)
         XCTAssertTrue(destinationText.contains("test-meeting.md"))
         XCTAssertTrue(destinationText.contains("api.github.com"))
-        let bodyText = try accessibleText(of: body)
+        let bodyText = try accessibleText("skill-confirm-preview-body", in: preview)
         XCTAssertTrue(bodyText.contains("# Test meeting"))
         XCTAssertTrue(
             bodyText.contains("El rollout del modelo queda para el viernes."),
@@ -1213,7 +1208,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             ? "Cualquier persona con el enlace puede leerlo."
             : "Anyone with the link can read it."
         XCTAssertTrue(
-            try accessibleText(of: boundary).contains(expectedBoundary),
+            try accessibleText("skill-confirm-gist-boundary", in: preview).contains(expectedBoundary),
             "the remote audience boundary must be explicit")
 
         let submit = app.buttons["skill-confirm-submit"]
@@ -1279,23 +1274,16 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(reviewIssue.waitForHittable(timeout: 5))
         reviewIssue.click()
 
-        let issueDestination = app.control(
-            withIdentifier: "github-issue-preview-repository")
-        let issueTitle = app.control(
-            withIdentifier: "github-issue-preview-title")
-        let issueBody = app.control(
-            withIdentifier: "github-issue-preview-body")
-        let issueCitation = app.control(
-            withIdentifier: "github-issue-citation-0")
         let issueBoundary = app.control(
             withIdentifier: "github-issue-boundary")
         XCTAssertTrue(issueBoundary.waitForExistenceFast(timeout: 5))
-        let issueDestinationText = try accessibleText(of: issueDestination)
-        let issueBodyText = try accessibleText(of: issueBody)
-        let issueCitationText = try accessibleText(of: issueCitation)
+        let issuePreview = try issueSheet.snapshot()
+        let issueDestinationText = try accessibleText("github-issue-preview-repository", in: issuePreview)
+        let issueBodyText = try accessibleText("github-issue-preview-body", in: issuePreview)
+        let issueCitationText = try accessibleText("github-issue-citation-0", in: issuePreview)
         XCTAssertTrue(issueDestinationText.contains("portavoz/demo"))
         XCTAssertTrue(issueDestinationText.contains("api.github.com"))
-        XCTAssertTrue(try accessibleText(of: issueTitle).contains("Prepare the rollout"))
+        XCTAssertTrue(try accessibleText("github-issue-preview-title", in: issuePreview).contains("Prepare the rollout"))
         XCTAssertTrue(issueBodyText.contains("Test meeting"))
         XCTAssertTrue(issueBodyText.contains("Ana"))
         XCTAssertTrue(issueBodyText.contains(
@@ -1307,7 +1295,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             ? "crea un issue"
             : "creates one issue"
         XCTAssertTrue(
-            try accessibleText(of: issueBoundary)
+            try accessibleText("github-issue-boundary", in: issuePreview)
                 .localizedCaseInsensitiveContains(expectedIssueBoundary))
 
         let createIssue = app.buttons["github-issue-confirm"]
@@ -1372,6 +1360,34 @@ final class MeetingDetailUITests: PortavozUITestCase {
             .joined(separator: " ")
     }
 
+    @MainActor
+    private func snapshotMatches(
+        _ identifier: String,
+        in snapshot: any XCUIElementSnapshot
+    ) -> [any XCUIElementSnapshot] {
+        var pending = [snapshot]
+        var matches: [any XCUIElementSnapshot] = []
+        while let node = pending.popLast() {
+            if node.identifier == identifier { matches.append(node) }
+            pending.append(contentsOf: node.children)
+        }
+        return matches
+    }
+
+    @MainActor
+    private func accessibleText(
+        _ identifier: String,
+        in snapshot: any XCUIElementSnapshot
+    ) throws -> String {
+        let matches = snapshotMatches(identifier, in: snapshot)
+        XCTAssertEqual(matches.count, 1, "expected exactly one \(identifier) in this observation")
+        let element = try XCTUnwrap(matches.first)
+        return [element.label, element.value as? String]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
     /// D321 — a failed effect keeps the sheet and retries the original durable
     /// proposal. A fresh proposal UUID would collide with the claimed
     /// idempotency key, so this real-app journey fails against the old wiring.
@@ -1381,6 +1397,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         let menu = app.control(withIdentifier: "skill-offer-menu")
+        XCTAssertTrue(menu.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(menu.waitForStableFrame(timeout: 10))
         menu.click()
         let recap = app.menuItems["skill-offer-recap-draft"]

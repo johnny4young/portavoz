@@ -1017,6 +1017,31 @@ class UITestScopeTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "known duplicate tests returned"):
                 ui_scope.validate_catalog(root, runtime_budget_required=False)
 
+    def test_consolidated_receipt_duplicates_cannot_return_even_with_valid_scopes(self):
+        for method in (
+            "testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest",
+            "testSkillActivityRefreshPreservesTheExpandedCurrentScope",
+        ):
+            with self.subTest(method=method):
+                selector = ui_scope.test_id("SkillsSettingsUITests", method)
+                temporary, root = self.minimal_catalog_root(method)
+                with temporary:
+                    source = root / "Tests/PortavozUITests/InsightsUITests.swift"
+                    source.write_text(source.read_text().replace(
+                        "class InsightsUITests", "class SkillsSettingsUITests"))
+                    source.rename(source.with_name("SkillsSettingsUITests.swift"))
+                    with mock.patch.multiple(
+                        ui_scope,
+                        FEATURE_TESTS={"insights": (selector,)},
+                        ALL_TESTS=(selector,),
+                        ALL_FEATURES=frozenset({"insights"}),
+                        FEATURE_SOURCE_SENTINELS={
+                            "insights": "Sources/portavoz-app/InsightsView.swift"
+                        },
+                    ):
+                        with self.assertRaisesRegex(RuntimeError, "known duplicate tests returned"):
+                            ui_scope.validate_catalog(root, runtime_budget_required=False)
+
     def test_catalog_policy_rejects_duplicate_selectors_inside_scope(self):
         scoped = ui_scope.test_id("InsightsUITests", "testScoped")
         temporary, root = self.minimal_catalog_root("testScoped")

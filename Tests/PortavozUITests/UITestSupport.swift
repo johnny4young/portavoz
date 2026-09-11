@@ -16,9 +16,9 @@ class PortavozUITestCase: XCTestCase {}
 func waitForUITestCondition(
     timeout: TimeInterval,
     pollInterval: TimeInterval = 0.05,
-    _ condition: () -> Bool
-) -> Bool {
-    if condition() { return true }
+    _ condition: () throws -> Bool
+) rethrows -> Bool {
+    if try condition() { return true }
     let deadline = Date().addingTimeInterval(timeout)
     while Date() < deadline {
         let nextProbe = min(deadline, Date().addingTimeInterval(pollInterval))
@@ -26,7 +26,7 @@ func waitForUITestCondition(
         // a requested polling interval into an unbounded AX-query loop. Keep
         // servicing the default run loop until the actual probe boundary.
         RunLoop.current.run(until: nextProbe)
-        if condition() { return true }
+        if try condition() { return true }
     }
     return false
 }

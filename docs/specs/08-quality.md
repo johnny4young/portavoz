@@ -7519,3 +7519,36 @@ Stop is not timing or product qualification. The held-write UI journey uses a
 no-audio fixture and proves ordered finalization; populated snapshot preservation
 is separate storage/application evidence, not an assertion that this fixture
 published audio.
+
+### Receipt journey consolidation and fallible UI observations
+
+One Skills activity journey owns Recent's initial 20-row window and explicit
+25-row expansion, Waiting's separately expanded refresh, and the existing
+period/Skill filtering and expansion resets. The refresh still exposes loading,
+hides stale rows, and preserves the 50-row bound. Both earlier screenshots and
+all localized limit assertions remain. The independent exactly-20-row fixture
+still proves that no nonexistent next page is offered. The two superseded
+journey selectors are retired by the catalogue's duplicate policy; no surviving
+per-case or full-suite budget increases.
+
+Skills label/value/title and toggle checks read an atomic accessibility snapshot
+per observation rather than resolving each attribute separately. Snapshot
+failures propagate to XCTest through the throwing predicate waiter, never an
+empty or stale fallback. Evidence-navigation resets likewise require a real
+nonempty changed player timestamp and a deselected source row before testing the
+next source action. Deferred offer menus first poll existence, avoiding XCTest's
+implicit lookup retry before the unchanged hittability/layout-stability proof.
+These are test execution changes, not product behavior or a waiver of bilingual
+qualification.
+The navigation pair (source selection plus player clock) and each GitHub preview
+are checked from one hierarchical snapshot per phase, never across a gesture.
+Exact identifiers must be unique; missing preview fields fail rather than yield
+empty text. Skills scrolling also reads each target frame from one fallible
+snapshot; a missing target is a test failure, not an ignored boolean result.
+Recent expansion is not handshake-gated: the fixture gates non-Recent reads only.
+The architecture test no longer pins sequential attribute-read spelling or exact
+nonthrowing call formatting for these helpers. The real-app assertions own the
+observed state; catalogue ownership, retired-journey rejection, bounded scrolling,
+unchanged runtime budgets and screenshot roles remain enforced. A tooling test
+attempts to restore either retired receipt journey with an otherwise valid scope
+and confirms that the actual duplicate policy rejects it.

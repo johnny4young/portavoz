@@ -45,6 +45,12 @@ must retain explicit failure, deadline/cancellation behavior, captured audio and
 accepted input, and validate SQLite/volume differences; do not mask all I/O
 errors or introduce unbounded retries. Copy a library for intrusive diagnostics.
 
+Distinct app bundle identities do not establish library isolation: production-mode
+Dev and release composition both select the same default database URL. The
+single-owner assumption is not a cross-process recovery lease. Side-by-side
+validation must use separate disposable copies; concurrent production owners and
+their recovery interaction are not qualified by the single-process tests.
+
 ### Source-size and lexical reuse boundaries
 
 The 2,400-line test-file check is a file readability limit, not a limit on an
