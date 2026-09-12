@@ -37,14 +37,15 @@ struct TranscriptArtifactEnvelope {
 
 extension MeetingStore {
     static func validateTranscriptArtifact(
-        _ artifact: TranscriptArtifactEnvelope
+        _ artifact: TranscriptArtifactEnvelope,
+        allowingEmptyTranscript: Bool = false
     ) throws {
         let speakerIDs = Set(artifact.speakers.map(\.id))
         let segmentIDs = Set(artifact.segments.map(\.id))
         guard isCanonical(artifact.inputFingerprint),
             artifact.sourceTranscriptRevision >= 0,
             artifact.language.map(isCanonical) ?? true,
-            !artifact.segments.isEmpty,
+            allowingEmptyTranscript || !artifact.segments.isEmpty,
             speakerIDs.count == artifact.speakers.count,
             segmentIDs.count == artifact.segments.count,
             artifact.speakers.allSatisfy({ speaker in

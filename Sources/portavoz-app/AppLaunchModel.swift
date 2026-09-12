@@ -191,6 +191,7 @@ final class AppLaunchModel {
         }
         Task { @MainActor in
             await RecordingRecoveryCoordinator.runIfNeeded(services: services)
+            services.audioImports.start()
             await PostCaptureProcessingCoordinator.resumeAfterRecovery(
                 services: services)
             services.backgroundWork.installUITestFixtureIfRequested(

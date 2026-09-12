@@ -173,15 +173,15 @@ private struct AppImportMeetingBundleFiles: ImportMeetingBundleFiles {
 extension AppServices {
     /// Permanently removes a trashed meeting: its stored rows (FTS cleans via
     /// triggers) AND its audio folder on disk.
-    func purgeMeeting(
-        meetingID: MeetingID,
-        audioDirectory: String?
-    ) async {
-        let request = PurgeMeetingRequest(
-            meetingID: meetingID,
-            audioDirectory: audioDirectory)
-        _ = try? await meetingPurge.purge(request)
-        requestSearchReconciliation()
+    func purgeMeeting(meetingID: MeetingID) async throws {
+        let request = PurgeMeetingRequest(meetingID: meetingID)
+        defer { requestSearchReconciliation() }
+        do {
+            let result = try await meetingPurge.purge(request)
+            if !result.audioRemovalSucceeded { throw AudioImportQueueError.partialRemoval }
+        } catch AudioImportFileError.acquisitionBusy {
+            throw AudioImportQueueError.busy
+        }
     }
 
     /// Empties tombstones older than 30 days (rows + audio) — called once

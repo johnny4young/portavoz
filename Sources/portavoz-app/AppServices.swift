@@ -203,6 +203,8 @@ final class AppServices {
     /// single scheduled retry wake. The supervisor deduplicates launch and
     /// producer kicks without polling SQLite.
     let postCaptureProcessing: PostCaptureProcessingSupervisor
+    @ObservationIgnored lazy var audioImports = AudioImportQueueModel(client: self)
+    @ObservationIgnored lazy var audioImportUITestFixture = AudioImportUITestFixture.makeIfRequested()
     /// System-wide dictation (⌥⌘D): lives here so the hotkey and its
     /// session survive any window coming and going.
     let dictation = DictationController()

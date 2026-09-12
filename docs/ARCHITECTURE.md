@@ -1331,7 +1331,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 51. Its skill-identity write constraints preserve
+The current schema version is 52. Its skill-identity write constraints preserve
 historical denials rather than rejecting a populated library during upgrade.
 It includes:
 
@@ -6048,3 +6048,41 @@ releases generation, then verifies the final answer and persisted citation.
 This changes only temporary-store fixture composition, not production latency.
 The handshake uses the launch-owned temporary directory and retains cancellation,
 cleanup and the original deadlines. No assertion or runtime budget is removed.
+
+### Pending external-audio import authority
+
+Durable import admission uses the existing meeting and owner-leased processing
+job authority. A local-only input BLOB holds a selected source capability and
+sampled import preferences; Core owns those typed values and ApplicationKit
+retains its existing import preference type alias. The opaque bookmark exception
+is explicitly scoped to unprocessed external input. Audio-directory strings
+remain relative and exported/synced meeting projections receive no bookmark.
+Cancellation retires an incomplete import without advertising it as ready.
+Admission reserves an immutable copy identity and its meeting-relative audio
+location before filesystem acquisition, as recording reservation already does.
+This location alone does not prove the existence or acceptance of bytes.
+Storage can atomically publish that exact copy reference while
+retiring its bookmark, then install required content and job success under the
+same live lease. Explicit retry retains logical identity and owned audio; the
+existing transcript writer and job retry reset are shared rather than copied.
+PlatformKit owns the native bookmark and bounded copy/verification adapter.
+A persistent, content-free native lock excludes concurrent acquisitions through
+fresh owner validation, exact unpublished-stage reclamation and publication.
+Published input is verified, never reclaimed; an expired database lease cannot
+by itself exclude a still-running native writer.
+ApplicationKit serializes durable import attempts, drains heartbeat and execution
+together, and reuses `ImportMeeting` for the model pipeline. Cancellation cleanup
+is independently uncancelled and joined so a cancelled database caller cannot
+leave its lease active. Installation returns the accepted transcript revision
+to summary provenance. Existing purge can therefore remove unpublished staging
+without another queue or database. It re-reads one current tombstone, shares
+native exclusion with restore, and revalidates the cutoff for automatic expiry.
+The native deletion adapter and lock share one sampled audio root. `AppServices` owns one `AudioImportQueueModel` independently of Library windows.
+It admits whole selections atomically, drains serially and schedules a single
+lease-expiry wake instead of polling. The Library renders a twenty-row scoped
+SQLite observation with stable meeting identities, per-file status, cancellation,
+retry and result navigation. Moving the recordings root excludes new admissions
+and requires an empty unfinished queue. A single meeting bundle retains its
+existing import workflow; mixed or multiple bundles reject before partial work.
+Mutation failures are visible and explicitly dismissible; purge no longer hides
+native-exclusion or storage errors.

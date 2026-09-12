@@ -56,6 +56,7 @@ struct ContentView: View {
         NavigationSplitView {
             LibraryView(
                 model: libraryModel,
+                imports: services.audioImports,
                 route: $route,
                 recordingActive: services.recording.canReturnToLiveSession,
                 onReturnToRecording: {

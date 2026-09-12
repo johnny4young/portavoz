@@ -7,6 +7,8 @@ import UniformTypeIdentifiers
 /// Sidebar: record button, full-text search, and the meeting library.
 struct LibraryView: View {
     let model: LibraryModel
+    let imports: AudioImportQueueModel
+    @State private var showsImportQueue = false
     @Binding var route: Route?
     let recordingActive: Bool
     let onReturnToRecording: () -> Void
@@ -63,6 +65,11 @@ struct LibraryView: View {
                     .padding(.top, 6)
                     .accessibilityIdentifier("library-import-status")
             }
+
+            LibraryImportStatusView(
+                imports: imports, actionError: state.lastActionError,
+                onOpen: { showsImportQueue = true },
+                onDismissError: { perform(.dismissActionError) })
 
             if state.offerCalendar {
                 Button {
@@ -189,12 +196,17 @@ struct LibraryView: View {
                 MeetingBriefView(brief: brief, route: $route)
             }
         }
-        // Drop an audio file anywhere on the sidebar to import it.
+        .sheet(isPresented: $showsImportQueue) {
+            AudioImportQueueView(model: imports) { id in
+                route = .meeting(id)
+                showsImportQueue = false
+            }
+        }
+        // Each accepted audio URL is admitted; never silently keep only the first.
         .dropDestination(for: URL.self) { urls, _ in
-            guard state.importStatus == nil,
-                let url = urls.first(where: isAudio)
-            else { return false }
-            importAudio(from: url)
+            let audio = urls.filter(isAudio)
+            guard state.importStatus == nil, !audio.isEmpty else { return false }
+            importAudio(from: audio)
             return true
         }
         .task {
@@ -277,17 +289,17 @@ struct LibraryView: View {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
+        panel.allowsMultipleSelection = true
         panel.allowedContentTypes = Self.importTypes
         panel.prompt = L10n.text("Import")
-        panel.message = L10n.text("Choose an audio file to transcribe, or a .portavoz meeting file")
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        importAudio(from: url)
+        panel.message = L10n.text("Choose audio files to transcribe, or one .portavoz meeting file")
+        guard panel.runModal() == .OK else { return }
+        importAudio(from: panel.urls)
     }
 
-    private func importAudio(from url: URL) {
+    private func importAudio(from urls: [URL]) {
         guard state.importStatus == nil else { return }
-        perform(.importFile(url))
+        perform(.importFiles(urls))
     }
 
     private func perform(_ action: LibraryModel.Action) {
@@ -301,6 +313,8 @@ struct LibraryView: View {
         switch effect {
         case .openMeeting(let id):
             route = .meeting(id)
+        case .showImportQueue:
+            showsImportQueue = true
         case .deletedMeeting(let id):
             if route == .meeting(id) { route = nil }
         case nil:
@@ -364,6 +378,7 @@ extension LibraryView {
             Button("Delete", role: .destructive) {
                 perform(.delete(meeting.id))
             }
+            .accessibilityIdentifier("library-meeting-delete-\(meeting.id.rawValue.uuidString)")
         }
     }
 
