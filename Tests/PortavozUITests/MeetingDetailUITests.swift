@@ -9,8 +9,8 @@ import XCTest
 /// player.
 final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
-    func testFiveThousandSegmentDetailRendersFromDisposableScaleFixture() {
-        let app = XCUIApplication.portavoz(
+    func testFiveThousandSegmentDetailRendersFromDisposableScaleFixture() throws {
+        let app = try XCUIApplication.portavoz(
             seedScale: true,
             scaleSegmentCount: 5_000)
         defer { app.terminate() }
@@ -38,8 +38,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testTwentyThousandSegmentDetailRendersFromDisposableScaleFixture() {
-        let app = XCUIApplication.portavoz(
+    func testTwentyThousandSegmentDetailRendersFromDisposableScaleFixture() throws {
+        let app = try XCUIApplication.portavoz(
             seedScale: true,
             scaleSegmentCount: 20_000,
             scaleAutoSummaryUpdate: true)
@@ -135,8 +135,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
         simulateSkillEffectFailureOnce: Bool = false,
         simulateApuntadorRefreshSuccess: Bool = false,
         summaryEngine: String? = nil
-    ) -> XCUIApplication {
-        let app = XCUIApplication.portavoz(
+    ) throws -> XCUIApplication {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedLatestRecipe: latestRecipe,
             seedRefineRunning: refineRunning,
@@ -163,9 +163,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
         if let summaryEngine {
             app.launchArguments += ["-summaryEngine", summaryEngine]
         }
-        app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] =
-            ProcessInfo.processInfo.environment["PORTAVOZ_TEST_AUDIO_ROOT"]
-            ?? (NSTemporaryDirectory() + "portavoz-uitest-\(UUID().uuidString)")
+        if let audio = ProcessInfo.processInfo.environment["PORTAVOZ_TEST_AUDIO_ROOT"] {
+            app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] = audio
+        }
         app.launchPortavoz()
         XCTAssertTrue(
             app.waitForSeededLibraryToSettle(),
@@ -191,8 +191,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testCorrectedTranscriptMarksDerivedArtifactsStale() {
-        let app = launchOnSeededMeeting(staleDerived: true)
+    func testCorrectedTranscriptMarksDerivedArtifactsStale() throws {
+        let app = try launchOnSeededMeeting(staleDerived: true)
         defer { app.terminate() }
 
         XCTAssertTrue(
@@ -225,8 +225,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testExplicitApuntadorRefreshUsesCorrectedTranscript() {
-        let app = launchOnSeededMeeting(
+    func testExplicitApuntadorRefreshUsesCorrectedTranscript() throws {
+        let app = try launchOnSeededMeeting(
             staleDerived: true,
             simulateApuntadorRefreshSuccess: true)
         defer { app.terminate() }
@@ -257,8 +257,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testSequoiaApuntadorRefreshPreservesStaleAnswers() {
-        let app = launchOnSeededMeeting(
+    func testSequoiaApuntadorRefreshPreservesStaleAnswers() throws {
+        let app = try launchOnSeededMeeting(
             staleDerived: true,
             simulateSequoiaCapabilities: true)
         defer { app.terminate() }
@@ -287,8 +287,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo() {
-        let app = launchOnSeededMeeting()
+    func testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo() throws {
+        let app = try launchOnSeededMeeting()
         defer { app.terminate() }
 
         let correct = app.buttons[
@@ -374,8 +374,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence() {
-        let app = launchOnSeededMeeting()
+    func testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence() throws {
+        let app = try launchOnSeededMeeting()
         defer { app.terminate() }
 
         let sourceID = "B5B00000-0000-4000-8000-000000000002"
@@ -507,8 +507,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testUnnamedSpeakerOffersExplicitNameSuggestions() {
-        let app = launchOnSeededMeeting(unnamedSpeaker: true)
+    func testUnnamedSpeakerOffersExplicitNameSuggestions() throws {
+        let app = try launchOnSeededMeeting(unnamedSpeaker: true)
         defer { app.terminate() }
 
         XCTAssertTrue(
@@ -530,8 +530,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix() {
-        let app = launchOnSeededMeeting(
+    func testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix() throws {
+        let app = try launchOnSeededMeeting(
             unnamedSpeaker: true,
             aiSuggestions: true)
         defer { app.terminate() }
@@ -562,8 +562,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testFailedDurableProcessingOffersOneRecoveryAction() {
-        let app = launchOnSeededMeeting(processingFailure: true)
+    func testFailedDurableProcessingOffersOneRecoveryAction() throws {
+        let app = try launchOnSeededMeeting(processingFailure: true)
         defer { app.terminate() }
 
         XCTAssertTrue(
@@ -583,8 +583,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAbandonedAutomaticSummarySaysSoBesideGeneration() {
-        let app = launchOnSeededMeeting(withoutSummary: true, abandonedSummary: true)
+    func testAbandonedAutomaticSummarySaysSoBesideGeneration() throws {
+        let app = try launchOnSeededMeeting(withoutSummary: true, abandonedSummary: true)
         defer { app.terminate() }
 
         let notice = app.staticTexts["detail-summary-abandoned"]
@@ -602,7 +602,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
     @MainActor
     func testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador() throws {
-        let app = launchOnSeededMeeting(
+        let app = try launchOnSeededMeeting(
             withoutSummary: true,
             simulateSequoiaCapabilities: true,
             summaryEngine: "appleOnDevice")
@@ -665,8 +665,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testMeetingReviewSurfacesRemainCompleteAndActionable() {
-        let app = launchOnSeededMeeting()
+    func testMeetingReviewSurfacesRemainCompleteAndActionable() throws {
+        let app = try launchOnSeededMeeting()
         defer { app.terminate() }
 
         // One launch owns the static review surfaces for this exact seeded
@@ -805,7 +805,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
     @MainActor
     func testEvidenceSourcesJumpToTheirExactTranscriptAndAudio() throws {
-        let app = launchOnSeededMeeting()
+        let app = try launchOnSeededMeeting()
         defer { app.terminate() }
 
         let source = app.control(withIdentifier: "summary-evidence-0")
@@ -906,8 +906,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     /// confirmation lands in the temp store and the badge proves the durable
     /// state round-tripped, not just that a sheet closed.
     @MainActor
-    func testDecisionCanBeConfirmedAboutATopic() {
-        let app = launchOnSeededMeeting()
+    func testDecisionCanBeConfirmedAboutATopic() throws {
+        let app = try launchOnSeededMeeting()
         defer { app.terminate() }
 
         let decisions = app.control(withIdentifier: "summary-tab-1")
@@ -967,8 +967,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     /// deliberately: every stage shares the launch instead of paying one app
     /// start per assertion.
     @MainActor
-    func testSkillProposalJourneyFromBannerToReceipt() {
-        let app = launchOnSeededMeeting()
+    func testSkillProposalJourneyFromBannerToReceipt() throws {
+        let app = try launchOnSeededMeeting()
         defer { app.terminate() }
 
         let menu = app.control(withIdentifier: "skill-offer-menu")
@@ -1082,7 +1082,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString("email-skill-sentinel", forType: .string)
-        let app = launchOnSeededMeeting()
+        let app = try launchOnSeededMeeting()
         defer { app.terminate() }
 
         let menu = app.control(withIdentifier: "skill-offer-menu")
@@ -1176,7 +1176,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
     /// egress receipts without touching Keychain or the network.
     @MainActor
     func testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument() throws {
-        let app = launchOnSeededMeeting()
+        let app = try launchOnSeededMeeting()
         defer { app.terminate() }
 
         let menu = app.control(withIdentifier: "skill-offer-menu")
@@ -1392,8 +1392,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     /// proposal. A fresh proposal UUID would collide with the claimed
     /// idempotency key, so this real-app journey fails against the old wiring.
     @MainActor
-    func testFailedSkillEffectRetriesItsOriginalProposal() {
-        let app = launchOnSeededMeeting(simulateSkillEffectFailureOnce: true)
+    func testFailedSkillEffectRetriesItsOriginalProposal() throws {
+        let app = try launchOnSeededMeeting(simulateSkillEffectFailureOnce: true)
         defer { app.terminate() }
 
         let menu = app.control(withIdentifier: "skill-offer-menu")
@@ -1447,8 +1447,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation() {
-        let app = launchOnSeededMeeting(commitmentInbox: true)
+    func testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation() throws {
+        let app = try launchOnSeededMeeting(commitmentInbox: true)
         defer { app.terminate() }
 
         let candidateID = "B5E00000-0000-4000-8000-000000000001"
@@ -1508,8 +1508,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testSummaryFeedbackIsExplicitReversibleAndLocal() {
-        let app = launchOnSeededMeeting()
+    func testSummaryFeedbackIsExplicitReversibleAndLocal() throws {
+        let app = try launchOnSeededMeeting()
         defer { app.terminate() }
 
         let unsupported = app.control(withIdentifier: "summary-feedback-unsupported")
@@ -1552,8 +1552,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testNamedSpeakerCanBeRememberedAsCanonicalPerson() {
-        let app = launchOnSeededMeeting()
+    func testNamedSpeakerCanBeRememberedAsCanonicalPerson() throws {
+        let app = try launchOnSeededMeeting()
         defer { app.terminate() }
 
         let speaker = app.control(withIdentifier: "cast-speaker-S1")
@@ -1598,8 +1598,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testMostRecentRecipeRemainsVisibleAfterReload() {
-        let app = launchOnSeededMeeting(latestRecipe: true)
+    func testMostRecentRecipeRemainsVisibleAfterReload() throws {
+        let app = try launchOnSeededMeeting(latestRecipe: true)
         defer { app.terminate() }
 
         let badge = app.control(withIdentifier: "summary-badge")
@@ -1617,8 +1617,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testFreshQualifyingMeetingShowsThePostMeetingMirror() {
-        let app = launchOnSeededMeeting(justRecorded: true)
+    func testFreshQualifyingMeetingShowsThePostMeetingMirror() throws {
+        let app = try launchOnSeededMeeting(justRecorded: true)
         defer { app.terminate() }
 
         XCTAssertTrue(
@@ -1628,8 +1628,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testRunningRefineCanBeCanceledWithoutChangingTheTranscript() {
-        let app = launchOnSeededMeeting(refineRunning: true)
+    func testRunningRefineCanBeCanceledWithoutChangingTheTranscript() throws {
+        let app = try launchOnSeededMeeting(refineRunning: true)
         defer { app.terminate() }
 
         XCTAssertTrue(
@@ -1649,8 +1649,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testPlayerExposesSkipAndOnlyMyVoice() {
-        let app = launchOnSeededMeeting()
+    func testPlayerExposesSkipAndOnlyMyVoice() throws {
+        let app = try launchOnSeededMeeting()
         defer { app.terminate() }
 
         let play = app.buttons["player-play-pause"]
@@ -1678,8 +1678,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     /// The export menu is the only path to subtitle files, so both the SRT
     /// and VTT items must exist for a seeded diarized meeting.
     @MainActor
-    func testExportMenuOffersSubtitleFormats() {
-        let app = launchOnSeededMeeting(staleDerived: true)
+    func testExportMenuOffersSubtitleFormats() throws {
+        let app = try launchOnSeededMeeting(staleDerived: true)
         defer { app.terminate() }
 
         XCTAssertTrue(
@@ -1714,8 +1714,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     /// FEATURE-003: the recap opens as an editable draft the user reviews
     /// before choosing a destination — and it never carries the transcript.
     @MainActor
-    func testRecapSheetDraftsFromTheSummaryWithoutTheTranscript() {
-        let app = launchOnSeededMeeting()
+    func testRecapSheetDraftsFromTheSummaryWithoutTheTranscript() throws {
+        let app = try launchOnSeededMeeting()
         defer { app.terminate() }
 
         let menu = app.control(withIdentifier: "detail-export-menu")
@@ -1752,8 +1752,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     /// discovery, postmortem, and retro — with the sections each one
     /// produces visible before generating.
     @MainActor
-    func testStructureMenuOffersSeededTemplates() {
-        let app = launchOnSeededMeeting()
+    func testStructureMenuOffersSeededTemplates() throws {
+        let app = try launchOnSeededMeeting()
         defer { app.terminate() }
 
         let menu = app.control(withIdentifier: "detail-regenerate-menu")
@@ -1791,8 +1791,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     /// playhead by playing, so it doesn't depend on clicking a transcript
     /// line (dimmed/clipped in the focus carousel).
     @MainActor
-    func testClipMarkingRevealsExport() {
-        let app = launchOnSeededMeeting()
+    func testClipMarkingRevealsExport() throws {
+        let app = try launchOnSeededMeeting()
         defer { app.terminate() }
 
         XCTAssertTrue(app.buttons["player-play-pause"].waitForExistenceFast(timeout: 15))

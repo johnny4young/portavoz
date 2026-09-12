@@ -7,19 +7,15 @@ import XCTest
 final class LibraryUITests: PortavozUITestCase {
     @MainActor
     func testDatabaseLaunchFailureOffersSafeRecovery() throws {
-        let scratch = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent(
-                "portavoz-launch-recovery-uitest-\(UUID().uuidString)",
-                isDirectory: true)
+        let scratch = try UITestStorage.makeDirectory()
         let recoveryRoot = scratch.appendingPathComponent("copies", isDirectory: true)
         let databaseURL = scratch.appendingPathComponent("failed.sqlite")
         let diagnosticsURL = scratch.appendingPathComponent("launch-diagnostics.json")
         try FileManager.default.createDirectory(
             at: recoveryRoot,
             withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: scratch) }
 
-        let app = XCUIApplication.portavoz()
+        let app = try XCUIApplication.portavoz()
         app.launchArguments.append("-simulate-database-open-failure")
         app.launchEnvironment["PORTAVOZ_UI_TEST_DATABASE_PATH"] = databaseURL.path
         app.launchEnvironment["PORTAVOZ_UI_TEST_DATABASE_RECOVERY_DIRECTORY"] =
@@ -98,8 +94,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment() {
-        let app = XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
+    func testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -129,8 +125,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testLibraryRendersRecordButtonAndActionChips() {
-        let app = XCUIApplication.portavoz()
+    func testLibraryRendersRecordButtonAndActionChips() throws {
+        let app = try XCUIApplication.portavoz()
         app.launchArguments += ["-AppleInterfaceStyle", "Light"]
         app.launchPortavoz()
         defer { app.terminate() }
@@ -170,8 +166,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testRecordingStartFailureOffersTypedRecovery() {
-        let app = XCUIApplication.portavoz(simulateRecordingStartFailure: true)
+    func testRecordingStartFailureOffersTypedRecovery() throws {
+        let app = try XCUIApplication.portavoz(simulateRecordingStartFailure: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -203,10 +199,8 @@ final class LibraryUITests: PortavozUITestCase {
 
     @MainActor
     func testCaptureFailureSurvivesStopAndRelaunchWithPlayablePrefix() throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let app = XCUIApplication.portavoz()
+        let directory = try UITestStorage.makeDirectory()
+        let app = try XCUIApplication.portavoz()
         app.launchEnvironment["PORTAVOZ_UI_TEST_DATABASE_PATH"] = directory.appendingPathComponent("library.sqlite").path
         app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] = directory.appendingPathComponent("audio").path
         app.launchArguments.append("-simulate-capture-prefix-failure")
@@ -239,8 +233,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testRecordingWarnsWhenRemoteAudioCallbacksStop() {
-        let app = XCUIApplication.portavoz(simulateSystemCaptureStall: true)
+    func testRecordingWarnsWhenRemoteAudioCallbacksStop() throws {
+        let app = try XCUIApplication.portavoz(simulateSystemCaptureStall: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -285,8 +279,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testRecordingWarnsWhenIncomingAudioClips() {
-        let app = XCUIApplication.portavoz(simulateSystemAudioClipping: true)
+    func testRecordingWarnsWhenIncomingAudioClips() throws {
+        let app = try XCUIApplication.portavoz(simulateSystemAudioClipping: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -312,8 +306,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testColdRecordingStartsLiveCaptionsWhenModelBecomesReady() {
-        let app = XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
+    func testColdRecordingStartsLiveCaptionsWhenModelBecomesReady() throws {
+        let app = try XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -351,14 +345,13 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testLiveTranscriptYieldsFollowWhileReadingHistory() {
-        let app = XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
+    func testLiveTranscriptYieldsFollowWhileReadingHistory() throws {
+        let app = try XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
-        let isSpanish = record.label == "Nueva grabación"
         record.click()
 
         XCTAssertTrue(
@@ -424,8 +417,8 @@ final class LibraryUITests: PortavozUITestCase {
     /// One live-assist journey covers objectives, proactive source disclosure,
     /// pause/resume, the next-question action, and measured talk balance.
     @MainActor
-    func testRecordingOffersObjectivesNextQuestionAndTalkBalance() {
-        let app = XCUIApplication.portavoz(
+    func testRecordingOffersObjectivesNextQuestionAndTalkBalance() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             simulateSequoiaCapabilities: true,
             simulateLiveTranscriptBrowsing: true,
@@ -542,8 +535,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testLiveTranslationUsesADistinctLabeledRail() {
-        let app = XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
+    func testLiveTranslationUsesADistinctLabeledRail() throws {
+        let app = try XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
         app.launchArguments.append("-seed-live-translation-ui")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -572,8 +565,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testActiveRecordingRemainsReachableAfterBrowsingTheLibrary() {
-        let app = XCUIApplication.portavoz(
+    func testActiveRecordingRemainsReachableAfterBrowsingTheLibrary() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             simulateLiveTranscriptBrowsing: true)
         app.launchPortavoz()
@@ -612,8 +605,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testSeededMeetingsGroupByRecency() {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+    func testSeededMeetingsGroupByRecency() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -661,7 +654,7 @@ final class LibraryUITests: PortavozUITestCase {
     func testAskConversationAnswersAndSeeksToExactCitation() throws {
         let webFixture = try ApuntadorWebFixtureDescriptor
             .loadFromRunnerEnvironment()
-        let app = XCUIApplication.portavoz(
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             simulateSequoiaCapabilities: true,
             includeWebFixture: true)
@@ -917,8 +910,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence() {
-        let app = XCUIApplication.portavoz(
+    func testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedAskMemory: true)
         app.launchPortavoz()
@@ -970,8 +963,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence() {
-        let app = XCUIApplication.portavoz(
+    func testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedAskMemory: true)
         app.launchPortavoz()
@@ -1025,8 +1018,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence() {
-        let app = XCUIApplication.portavoz(
+    func testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedAskTopicMemory: true)
         app.launchPortavoz()
@@ -1081,8 +1074,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence() {
-        let app = XCUIApplication.portavoz(
+    func testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedAskTopicMemory: true)
         app.launchPortavoz()
@@ -1132,8 +1125,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence() {
-        let app = XCUIApplication.portavoz(
+    func testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedAskTopicMemory: true)
         app.launchPortavoz()
@@ -1189,8 +1182,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence() {
-        let app = XCUIApplication.portavoz(
+    func testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedAskTopicMemory: true)
         app.launchPortavoz()
@@ -1273,8 +1266,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState() {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+    func testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -1334,8 +1327,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testLaunchRecoversInterruptedStagingAudio() {
-        let app = XCUIApplication.portavoz(seedRecovery: true)
+    func testLaunchRecoversInterruptedStagingAudio() throws {
+        let app = try XCUIApplication.portavoz(seedRecovery: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -1356,8 +1349,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testLaunchResumesDurablePostCaptureProcessing() {
-        let app = XCUIApplication.portavoz(seedProcessing: true)
+    func testLaunchResumesDurablePostCaptureProcessing() throws {
+        let app = try XCUIApplication.portavoz(seedProcessing: true)
         app.launchPortavoz()
         defer { app.terminate() }
 

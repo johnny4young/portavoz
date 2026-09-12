@@ -184,7 +184,10 @@ let package = Package(
                 "CSQLiteVecResearch",
                 "SQLiteVecResearchKit",
                 .product(name: "GRDB", package: "GRDB.swift"),
-            ]
+            ],
+            path: "Tests",
+            exclude: ["PortavozUITests", "Tooling"],
+            sources: ["PortavozTests", "Support"]
         ),
     ]
 )

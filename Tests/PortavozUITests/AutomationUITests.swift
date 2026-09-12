@@ -3,18 +3,18 @@ import XCTest
 
 final class AutomationUITests: PortavozUITestCase {
     @MainActor
-    func testAppEntitiesOpenExactVisibleDestinations() {
-        let meetingApp = launchEntityRoute(.meeting)
+    func testAppEntitiesOpenExactVisibleDestinations() throws {
+        let meetingApp = try launchEntityRoute(.meeting)
         assertMeetingEntityRoute(in: meetingApp)
         meetingApp.terminate()
         XCTAssertTrue(meetingApp.wait(for: .notRunning, timeout: 10))
 
-        let personApp = launchEntityRoute(.person)
+        let personApp = try launchEntityRoute(.person)
         assertPersonEntityRoute(in: personApp)
         personApp.terminate()
         XCTAssertTrue(personApp.wait(for: .notRunning, timeout: 10))
 
-        let commitmentApp = launchEntityRoute(.commitment)
+        let commitmentApp = try launchEntityRoute(.commitment)
         defer { commitmentApp.terminate() }
         assertCommitmentEntityRoute(in: commitmentApp)
         attachScreenshot(of: commitmentApp, named: "app-entity-commitment-route")
@@ -76,7 +76,7 @@ final class AutomationUITests: PortavozUITestCase {
 
     @MainActor
     func testRecordingAutomationRoutesStartAndStopThroughVisibleApp() async throws {
-        let app = XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
+        let app = try XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
         app.launchPortavoz()
         defer {
             if app.state != .notRunning {
@@ -112,7 +112,7 @@ final class AutomationUITests: PortavozUITestCase {
             app.wait(for: .notRunning, timeout: 10),
             "the URL-routed process must terminate before the native intent relaunch")
 
-        let intentApp = XCUIApplication.portavoz(
+        let intentApp = try XCUIApplication.portavoz(
             simulateLiveTranscriptionAttach: true,
             simulateAppIntent: true)
         intentApp.launchPortavoz()
@@ -124,7 +124,7 @@ final class AutomationUITests: PortavozUITestCase {
             intentApp.wait(for: .notRunning, timeout: 10),
             "the native Start process must terminate before the Stop proof")
 
-        let stopIntentApp = XCUIApplication.portavoz(
+        let stopIntentApp = try XCUIApplication.portavoz(
             simulateLiveTranscriptionAttach: true,
             simulateAppIntent: true,
             simulateStopAppIntent: true)
@@ -211,8 +211,8 @@ final class AutomationUITests: PortavozUITestCase {
     @MainActor
     private func launchEntityRoute(
         _ route: AutomationEntityUITestRoute
-    ) -> XCUIApplication {
-        let app = XCUIApplication.portavoz(
+    ) throws -> XCUIApplication {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedCommitmentRadar: true,
             simulateAppEntityRoute: route)

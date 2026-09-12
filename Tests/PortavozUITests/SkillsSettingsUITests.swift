@@ -14,7 +14,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testSuggestedActionsExplainReviewFirstSafety() throws {
-        let app = XCUIApplication.portavoz(openSettings: true)
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -27,8 +27,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testSkillsPaneFailsClosedWhenDurablePolicyCannotLoad() {
-        let app = XCUIApplication.portavoz(openSettings: true)
+    func testSkillsPaneFailsClosedWhenDurablePolicyCannotLoad() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-control-unavailable")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -51,8 +51,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testFailedSkillControlMutationReloadsWithoutClosingSettings() {
-        let app = XCUIApplication.portavoz(openSettings: true)
+    func testFailedSkillControlMutationReloadsWithoutClosingSettings() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append(
             "-simulate-skill-control-mutation-unavailable")
         app.launchPortavoz()
@@ -95,7 +95,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testSkillActivityScopeFailureDoesNotInventRowsOrDisableVerifiedPolicy() throws {
-        let app = XCUIApplication.portavoz(openSettings: true)
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-receipt-scope-unavailable")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -133,7 +133,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testSkillActivityTransitionsHideStaleRowsAndKeepVerifiedControlsUsable() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(contentsOf: [
             "-seed-skill-waiting"
         ])
@@ -242,8 +242,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testSameSkillProposalsHaveDistinctAccessibleActions() {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+    func testSameSkillProposalsHaveDistinctAccessibleActions() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-duplicate-skill-proposals")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -259,8 +259,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testSkillActivityHidesExpansionWhenExactlyOnePageExists() {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+    func testSkillActivityHidesExpansionWhenExactlyOnePageExists() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-skill-exact-page-history")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -285,7 +285,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testSkillActivityFiltersByUpdatePeriodAndResetsExpansion() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(contentsOf: [
             "-seed-skill-history",
             "-seed-skill-recent-history"
@@ -501,7 +501,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testSkillProposalFailureDoesNotInventOffersOrDisableVerifiedPolicy() throws {
-        let app = XCUIApplication.portavoz(openSettings: true)
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-proposal-unavailable")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -533,7 +533,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testProposedSkillReviewReturnsToItsMeetingWithoutRunning() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -583,7 +583,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testFailedProposedSkillReviewKeepsTheOfferAndAllowsRetry() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(
             "-simulate-skill-proposal-review-unavailable")
         app.launchPortavoz()
@@ -637,7 +637,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testProposedSkillDismissalRetiresTheDurableOfferEverywhere() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -676,7 +676,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testFailedProposedSkillDismissalKeepsTheOfferAndAllowsRetry() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(
             "-simulate-skill-proposal-dismiss-unavailable")
         app.launchPortavoz()
@@ -727,7 +727,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testWaitingSkillApprovalCanBeRevokedBeforeHandoff() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-skill-waiting")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -760,7 +760,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testFailedWaitingSkillRevocationKeepsTheReceiptAndRetry() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(contentsOf: [
             "-seed-skill-waiting",
             "-simulate-skill-receipt-revoke-unavailable"
@@ -793,7 +793,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testRecoverableFailedSkillReturnsToItsMeetingWithoutRunning() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-skill-failed-recoverable")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -837,7 +837,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testFailedRecoveryResolutionKeepsTheReceiptAndAllowsRetry() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(contentsOf: [
             "-seed-skill-failed-recoverable",
             "-simulate-skill-receipt-recovery-unavailable"
@@ -873,7 +873,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testWaitingReceiptIgnoresUnavailablePolicyAndReviewsSourceWithoutRunning() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(contentsOf: [
             "-seed-skill-waiting",
             "-simulate-skill-receipt-policy-unavailable"
@@ -911,7 +911,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testFailedSourceContextResolutionKeepsReceiptAndAllowsRetry() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(contentsOf: [
             "-seed-skill-waiting",
             "-simulate-skill-receipt-context-unavailable"
@@ -948,7 +948,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testSkillReceiptRestoresKeyboardFocusAndPassesAccessibilityAudit() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-skill-waiting")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -979,7 +979,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testSkillsPaneControlsOffersAndShowsTheConfirmedReceipt() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -1007,7 +1007,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     /// until one verified read replaces it.
     @MainActor
     func testAutomaticBriefCancellationFailureRequiresVerifiedReload() throws {
-        let app = XCUIApplication.portavoz(
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedBrief: true)
         app.launchArguments.append(
@@ -1052,7 +1052,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     /// recovery still enters the production serialized supervisor.
     @MainActor
     func testAutomaticBriefRuleRecoversAndKeepsInspectableHistory() throws {
-        let app = XCUIApplication.portavoz(
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedBrief: true)
         app.launchArguments.append("-simulate-standing-brief-failure-once")

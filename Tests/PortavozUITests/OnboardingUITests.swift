@@ -6,8 +6,8 @@ import XCTest
 /// needs a real microphone, so it's out of XCUITest's reach and never driven.
 final class OnboardingUITests: PortavozUITestCase {
     @MainActor
-    func testAdvancesFromFirstListenToLocalVoiceEnrollment() {
-        let app = XCUIApplication.portavoz(showOnboarding: true)
+    func testAdvancesFromFirstListenToLocalVoiceEnrollment() throws {
+        let app = try XCUIApplication.portavoz(showOnboarding: true)
         app.launchPortavoz()
         defer { app.terminate() }
 

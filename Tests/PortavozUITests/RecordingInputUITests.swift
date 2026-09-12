@@ -5,7 +5,6 @@ final class RecordingInputUITests: PortavozUITestCase {
     @MainActor
     func testAcceptedNotesAndObjectivesSurviveTerminationAndRecovery() throws {
         let fixture = try Fixture()
-        defer { fixture.remove() }
         let app = fixture.app
         try start(fixture)
         let note = "Confirmar responsable antes de publicar"
@@ -53,7 +52,6 @@ final class RecordingInputUITests: PortavozUITestCase {
     @MainActor
     func testFailedWriteRetainsInputAndStopWaitsForAnExplicitRetry() throws {
         let fixture = try Fixture()
-        defer { fixture.remove() }
         try start(fixture)
         let app = fixture.app
         try fixture.failWrites()
@@ -89,7 +87,6 @@ final class RecordingInputUITests: PortavozUITestCase {
     @MainActor
     func testFailedRemovalKeepsTheAcceptedNoteUntilDiscardOrRetry() throws {
         let fixture = try Fixture()
-        defer { fixture.remove() }
         let entered = fixture.root.appendingPathComponent("remove-entered")
         let release = fixture.root.appendingPathComponent("remove-release")
         fixture.app.launchEnvironment["PORTAVOZ_UI_TEST_INPUT_ENTERED_PATH"] = entered.path
@@ -126,7 +123,6 @@ final class RecordingInputUITests: PortavozUITestCase {
     @MainActor
     func testStopDrainsAnAdmittedWriteBeforeFinalizingTheRecording() throws {
         let fixture = try Fixture()
-        defer { fixture.remove() }
         let entered = fixture.root.appendingPathComponent("write-entered")
         let release = fixture.root.appendingPathComponent("write-release")
         fixture.app.launchEnvironment["PORTAVOZ_UI_TEST_INPUT_ENTERED_PATH"] = entered.path
@@ -187,10 +183,9 @@ final class RecordingInputUITests: PortavozUITestCase {
         let app: XCUIApplication
 
         init() throws {
-            root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            root = try UITestStorage.makeDirectory()
             database = root.appendingPathComponent("library.sqlite")
-            app = XCUIApplication.portavoz(seedDemo: false, simulateLiveTranscriptBrowsing: true)
+            app = try XCUIApplication.portavoz(seedDemo: false, simulateLiveTranscriptBrowsing: true)
             app.launchEnvironment["PORTAVOZ_UI_TEST_DATABASE_PATH"] = database.path
             app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] = root.appendingPathComponent("audio").path
         }
@@ -217,9 +212,5 @@ final class RecordingInputUITests: PortavozUITestCase {
             return text
         }
 
-        func remove() {
-            app.terminate()
-            try? FileManager.default.removeItem(at: root)
-        }
     }
 }

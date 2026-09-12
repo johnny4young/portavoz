@@ -6,8 +6,8 @@ final class InterviewAssistUITests: PortavozUITestCase {
     /// pull-only answer, and exact cited source. No private meeting or model
     /// installation is required.
     @MainActor
-    func testInterviewAssistGroundsTheCurrentQuestionInExactEvidence() {
-        let app = XCUIApplication.portavoz(simulateInterviewAssist: true)
+    func testInterviewAssistGroundsTheCurrentQuestionInExactEvidence() throws {
+        let app = try XCUIApplication.portavoz(simulateInterviewAssist: true)
         app.launchPortavoz()
         defer { app.terminate() }
 

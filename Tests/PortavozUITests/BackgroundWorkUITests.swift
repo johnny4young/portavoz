@@ -2,8 +2,8 @@ import XCTest
 
 final class BackgroundWorkUITests: PortavozUITestCase {
     @MainActor
-    func testBackgroundWorkCenterShowsAllOwnersAndRecoversExactFailures() {
-        let app = XCUIApplication.portavoz(seedBackgroundWork: true)
+    func testBackgroundWorkCenterShowsAllOwnersAndRecoversExactFailures() throws {
+        let app = try XCUIApplication.portavoz(seedBackgroundWork: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -91,8 +91,8 @@ final class BackgroundWorkUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testRecordingDefersDerivedWorkAndStopResumesIt() {
-        let app = XCUIApplication.portavoz(
+    func testRecordingDefersDerivedWorkAndStopResumesIt() throws {
+        let app = try XCUIApplication.portavoz(
             enableBackgroundWorkFixture: true,
             simulateSystemCaptureStall: true)
         app.launchPortavoz()

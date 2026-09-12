@@ -6,7 +6,22 @@ import XCTest
 /// This type deliberately installs no interruption monitor. System-owned
 /// privacy or authentication prompts require a user's decision; the read-only
 /// host preflight reports them instead of allowing tests to answer them.
-class PortavozUITestCase: XCTestCase {}
+class PortavozUITestCase: XCTestCase {
+    private let storageOwnerID = UUID()
+
+    override func setUp() async throws {
+        try await super.setUp()
+        let ownerID = storageOwnerID
+        try await MainActor.run { try UITestStorage.begin(ownerID: ownerID) }
+    }
+
+    override func tearDown() async throws {
+        let ownerID = storageOwnerID
+        let cleanup = await MainActor.run { Result { try UITestStorage.end(ownerID: ownerID) } }
+        try await super.tearDown()
+        try cleanup.get()
+    }
+}
 
 /// Evaluate an explicit state predicate without XCTest's one-second polling
 /// floor. The run loop stays live between probes, so asynchronous app and
@@ -111,24 +126,27 @@ extension XCUIApplication {
         openSettings: Bool = false,
         showOnboarding: Bool = false,
         includeWebFixture: Bool = false,
-        launchLocale: String? = UITestLocale.environmentLocale
-    ) -> XCUIApplication {
+        launchLocale: String? = UITestLocale.environmentLocale,
+        makeTemporaryDirectory: @MainActor () throws -> URL = UITestStorage.makeDirectory
+    ) throws -> XCUIApplication {
+        let processTempRoot = try makeTemporaryDirectory()
         let app = XCUIApplication()
+        try UITestStorage.register(app)
         app.launchArguments = ["-NSTreatUnknownArgumentsAsOpen", "NO", "-ApplePersistenceIgnoreState", "YES", "-use-temp-store", "-reset-app-language"]
         if seedDemo {
             app.launchArguments.append("-seed-demo")
             app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] =
-                NSTemporaryDirectory() + "portavoz-seed-ready-\(UUID().uuidString)"
+                processTempRoot.appendingPathComponent("portavoz-seed-ready-\(UUID().uuidString)").path
         }
         if seedShowcase {
             app.launchArguments.append("-seed-showcase")
             app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] =
-                NSTemporaryDirectory() + "portavoz-showcase-ready-\(UUID().uuidString)"
+                processTempRoot.appendingPathComponent("portavoz-showcase-ready-\(UUID().uuidString)").path
         }
         if seedScale {
             app.launchArguments.append("-seed-scale")
             app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] =
-                NSTemporaryDirectory() + "portavoz-scale-ready-\(UUID().uuidString)"
+                processTempRoot.appendingPathComponent("portavoz-scale-ready-\(UUID().uuidString)").path
         }
         if let scaleSegmentCount {
             app.launchArguments += ["-scale-segments", String(scaleSegmentCount)]
@@ -141,7 +159,7 @@ extension XCUIApplication {
         if seedRecovery {
             app.launchArguments.append("-seed-recovery")
             app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] =
-                NSTemporaryDirectory() + "portavoz-recovery-ready-\(UUID().uuidString)"
+                processTempRoot.appendingPathComponent("portavoz-recovery-ready-\(UUID().uuidString)").path
         }
         if seedProcessing { app.launchArguments.append("-seed-processing") }
         if seedProcessingFailure { app.launchArguments.append("-seed-processing-failure") }
@@ -171,19 +189,19 @@ extension XCUIApplication {
             app.launchArguments.append("-simulate-live-transcription-attach")
             let signalID = UUID().uuidString
             app.launchEnvironment["PORTAVOZ_UI_TEST_ATTACH_PREPARING_PATH"] =
-                NSTemporaryDirectory() + "portavoz-attach-preparing-\(signalID)"
+                processTempRoot.appendingPathComponent("portavoz-attach-preparing-\(signalID)").path
             app.launchEnvironment["PORTAVOZ_UI_TEST_ATTACH_CONTINUE_PATH"] =
-                NSTemporaryDirectory() + "portavoz-attach-continue-\(signalID)"
+                processTempRoot.appendingPathComponent("portavoz-attach-continue-\(signalID)").path
         }
         if simulateLiveTranscriptBrowsing {
             app.launchArguments.append("-simulate-live-transcript-browsing")
             let signalID = UUID().uuidString
             app.launchEnvironment["PORTAVOZ_UI_TEST_LIVE_FRONTIER_PATH"] =
-                NSTemporaryDirectory() + "portavoz-live-frontier-\(signalID)"
+                processTempRoot.appendingPathComponent("portavoz-live-frontier-\(signalID)").path
             app.launchEnvironment["PORTAVOZ_UI_TEST_LIVE_RESUME_PATH"] =
-                NSTemporaryDirectory() + "portavoz-live-resume-\(signalID)"
+                processTempRoot.appendingPathComponent("portavoz-live-resume-\(signalID)").path
             app.launchEnvironment["PORTAVOZ_UI_TEST_LIVE_COMPLETE_PATH"] =
-                NSTemporaryDirectory() + "portavoz-live-complete-\(signalID)"
+                processTempRoot.appendingPathComponent("portavoz-live-complete-\(signalID)").path
         }
         if simulateLiveApuntador {
             app.launchArguments.append("-simulate-live-apuntador")
@@ -215,19 +233,13 @@ extension XCUIApplication {
         }
         if openSettings { app.launchArguments.append("-portavoz-open-settings") }
         if showOnboarding { app.launchArguments.append("-show-onboarding") }
-        // AppKit writes ignored-restoration state into TMPDIR. Give every
-        // process a private root so back-to-back launches cannot race the same
-        // bundle-scoped savedState directory after a preceding termination.
-        let processTempRoot = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("portavoz-uitest-process-\(UUID().uuidString)")
-        try? FileManager.default.createDirectory(
-            at: processTempRoot,
-            withIntermediateDirectories: true)
+        // AppKit and fixtures share this app-owned child of the test's
+        // explicit scratch, never a path inside the runner's app container.
         app.launchEnvironment["TMPDIR"] = processTempRoot.path + "/"
-        // Every UI launch gets an isolated audio root by default. Individual
-        // tests may replace it with an explicit scratch copy of real audio.
         app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] =
-            NSTemporaryDirectory() + "portavoz-uitest-\(UUID().uuidString)"
+            processTempRoot.appendingPathComponent("audio", isDirectory: true).path
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DATABASE_PATH"] =
+            processTempRoot.appendingPathComponent("library.sqlite").path
         // The host preflight accepts this exact value only after a local
         // operator has opted into the category-scoped D432 override. Forward
         // that decision to the disposable app process so its test windows can
@@ -309,7 +321,7 @@ extension XCUIApplication {
     /// process from its inventory. Observe the real host state instead of
     /// sleeping on every launch; an already-clear host returns immediately.
     @MainActor
-    private func waitForPortavozProcessExit(timeout: TimeInterval = 10) -> Bool {
+    func waitForPortavozProcessExit(timeout: TimeInterval = 10) -> Bool {
         waitForUITestCondition(timeout: timeout) {
             NSRunningApplication.runningApplications(
                 withBundleIdentifier: "app.portavoz.mac.uitest-host"
