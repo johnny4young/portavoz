@@ -7759,3 +7759,18 @@ Bare application typing and foreground-only typing each have a retained native
 counterexample. All controls and full bilingual product journeys are required
 for this shared-harness change. These public-API observations are point-in-time,
 not an atomic OS input guarantee or permission-dialog certification (D534).
+
+## Host support export coverage
+
+`HostSupportDiagnosticsTests` enters actual temporary `AppServices` export with
+a populated library, checks the closed host field set and rejects meeting text
+or home paths. It exercises a failed process read without inventing zeros or
+consuming a resident runtime lease, decoded invalid CPU/duplicate/negative owner
+evidence at the exporter, legacy environment decoding, and real stable-prefix
+process reads. Another actual export installs the pressure monitor before its
+first event and rejects its nominal policy default as a host measurement. The
+composition/export boundary also admits all known thermal states while omitting
+a future raw state instead of reporting the governor's fair fallback.
+Resource probe tests retain the extended-counter contract.
+The existing redacted-support XCUITest also inspects host JSON and its disclosure;
+synthetic unit cases do not establish physical Sequoia/Tahoe or benchmark timing.

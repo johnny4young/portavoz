@@ -144,6 +144,26 @@ input continuation, cancels and drains that child, and uses one idempotent gate
 for `cancelAndFinishNow()`. No output consumer can leave a feeder reading a live
 `AudioChunk` stream after the analyzer has lost its presentation owner.
 
+### On-demand host support evidence
+
+Support export format 3 extends the existing local save action with a typed
+`SupportHostDiagnostics` snapshot. ApplicationKit serializes closed resource
+states and sanitizes decoded numeric/owner evidence again at the export boundary.
+App composition reads total RAM, thermal state, Low Power Mode and the shared
+model-residency ledger. It does not export the governor's nominal memory-pressure
+default as an observed host fact. Unknown native thermal states stay absent
+rather than inheriting the governor's conservative fallback. No observer, sampler
+loop, scheduler, database or network owner is added.
+
+PlatformKit owns `OwnProcessResourceUsage`: one read of the calling process,
+without process identities or paths. Normal support requests use the stable
+V0 resource prefix; the existing benchmark explicitly requests current extended
+counters through that same bridge and retains failure on unsupported counters.
+CPU time is cumulative process work in seconds, not gesture latency or elapsed
+meeting time. A failed read stays unavailable. Per-family memory remains an
+optional owner measurement; process memory is never apportioned among models.
+Existing capture and durable-processing timings remain separate report fields.
+
 ### Database launch recovery
 
 The macOS composition root is two-stage. `AppLaunchModel` first asks the
