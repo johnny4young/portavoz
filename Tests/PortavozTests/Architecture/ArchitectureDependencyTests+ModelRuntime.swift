@@ -52,7 +52,7 @@ extension ArchitectureDependencyTests {
             of: "Sources/PortavozCore/ResourceModelResidency.swift")
         for required in [
             "public struct ResourceModelResidencyLedger: Equatable, Sendable",
-            "public enum ResourceModelResidencyStatus: String, CaseIterable, Sendable",
+            "public enum ResourceModelResidencyStatus: String, CaseIterable, Codable, Sendable",
             "public let activeUseCount: Int",
             "public mutating func beginLoad(",
             "public mutating func beginUse(",
@@ -122,9 +122,14 @@ extension ArchitectureDependencyTests {
                 "portavoz-app/AppServices+LiveSpeechModels.swift",
                 "portavoz-app/AppServices+MLXModels.swift",
                 "portavoz-app/AppServices+ResourceGovernor.swift",
+                "portavoz-app/AppServices+SupportDiagnostics.swift",
                 "portavoz-app/AppServices+WhisperModels.swift",
             ],
-            "Only runtime adapters and the governor coordinator may report residency")
+            "Residency access belongs to runtime owners, the governor and the read-only support projection")
+        let support = try Self.contents(of: "Sources/portavoz-app/AppServices+SupportDiagnostics.swift")
+        XCTAssertTrue(support.contains("modelResidencyLedger.records"))
+        XCTAssertNil(support.range(of: #"modelResidencyLedger\.(?!records\b)"#, options: .regularExpression),
+                     "Support export may read records, never mutate a residency lease")
 
         XCTAssertEqual(
             try Self.sourceMatches(

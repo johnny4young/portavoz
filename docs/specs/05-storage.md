@@ -1419,9 +1419,14 @@ filesystem paths.
 Before the projection crosses the Store, stable database identities and stored
 fingerprints are one-way hashed, labels/codes/hosts are sanitized, and raw
 prompt/config/metrics/error payloads are omitted. ApplicationKit applies the
-same allowlist again while encoding support format 2 and scopes an otherwise
+same allowlist again while encoding support format 3 and scopes an otherwise
 all-local status to `all-tracked-processing-stayed-on-device` whenever the
 separate sync disclosure records an acknowledged copy (D76/D115/D123).
+
+Support format 3 adds a separately sampled, content-free host environment
+(D520); it does not change this SQLite snapshot, schema or storage authority.
+Process and model-residency measurements are transient and never written into a
+meeting. Missing host fields in older support reports remain absent on decode.
 
 External audio uses the dedicated
 `saveImportedMeeting(_:speakers:segments:)` Unit of Work. It validates the

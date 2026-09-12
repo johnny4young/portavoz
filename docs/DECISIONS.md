@@ -19470,3 +19470,32 @@ recovery, plus real-app acceptance, termination/relaunch, removal failure,
 Library reentry, retry/discard and a held-write Stop handshake. Injected failures
 remain distinct from physical disk failure, and interrupted-process tests do
 not certify hardware power-loss behavior.
+
+
+## D520 — Export host facts on demand through existing support ownership
+
+The support report already projects redacted capture and durable-processing
+facts, but omitted RAM, thermal conditions and current runtime ownership. Reuse
+that explicit local export instead of adding background history or a diagnostic
+service. Format 3 adds a typed host snapshot; older absent host fields remain
+absent. Core resource enums retain their meaning and gain closed Codable forms,
+not model/provider names or content-bearing metadata.
+
+PlatformKit samples only its own process, using the stable V0 counters on the
+deployment floor. The benchmark reuses that bridge with explicitly requested
+current extended counters; it must not substitute zero for missing energy or I/O.
+App composition reads its existing residency ledger. It does not export the
+pressure monitor: that owner publishes a nominal policy default before receiving
+an OS memory event, and an actual export test demonstrated that the default would
+be mislabeled as a host measurement. Unknown reads remain unknown, and duplicate
+or invalid family evidence is omitted instead of inventing an idle runtime.
+Export does not mutate the ledger or storage. Known native thermal states map
+directly to the closed vocabulary; a future state is omitted instead of becoming
+the governor's conservative fair fallback. Both boundaries have call-site tests.
+
+Cumulative CPU seconds, current process footprint and optional per-family
+measurements are distinct facts, not a latency benchmark or summed RAM estimate.
+A failing real AppServices export test first established the missing host object;
+regressions also enter the export sanitizer with malformed decoded observations.
+The real Settings export journey inspects the saved artifact rather than only
+checking the button. No automatic sharing or sampling history is introduced.

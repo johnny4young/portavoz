@@ -6239,6 +6239,16 @@
         }
       }
     },
+    "Host snapshot: RAM, CPU time, thermal state and runtime-family residency. Not a benchmark.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estado del equipo: RAM, tiempo de CPU, estado térmico y residencia de motores. No es un benchmark."
+          }
+        }
+      }
+    },
     "Includes app, macOS, model, audio-channel health and timing, transcript counts, processing, provenance, and privacy-receipt status. Never includes meeting text, generated output, prompts, secrets, checksums, full URLs, or file paths. Nothing is sent automatically.": {
       "localizations": {
         "es": {

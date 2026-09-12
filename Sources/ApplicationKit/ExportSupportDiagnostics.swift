@@ -30,17 +30,20 @@ public struct SupportDiagnosticsEnvironment: Codable, Equatable, Sendable {
     public let buildVersion: String
     public let operatingSystem: String
     public let models: [SupportModelReadiness]
+    public let host: SupportHostDiagnostics?
 
     public init(
         appVersion: String,
         buildVersion: String,
         operatingSystem: String,
-        models: [SupportModelReadiness]
+        models: [SupportModelReadiness],
+        host: SupportHostDiagnostics? = nil
     ) {
         self.appVersion = appVersion
         self.buildVersion = buildVersion
         self.operatingSystem = operatingSystem
         self.models = models
+        self.host = host
     }
 }
 
@@ -195,7 +198,7 @@ public struct SupportDiagnosticsReport: Codable, Equatable, Sendable {
         environment: SupportDiagnosticsEnvironment,
         snapshot: SupportDiagnosticsStorageSnapshot
     ) {
-        formatVersion = 2
+        formatVersion = 3
         self.generatedAt = generatedAt
         self.environment = Self.safe(environment)
         storage = Storage(
@@ -308,7 +311,8 @@ private extension SupportDiagnosticsReport {
                 SupportModelReadiness(
                     capability: safeLabel($0.capability),
                     state: $0.state)
-            })
+            },
+            host: environment.host?.sanitized)
     }
 
     static func safeCode(_ value: String) -> String? {
