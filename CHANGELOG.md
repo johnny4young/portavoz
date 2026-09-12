@@ -4,6 +4,10 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## September 20, 2026
+
+- **📥 Audio import queue** — import multiple files, follow each file’s progress, and cancel or retry without changing your originals.
+
 ## 1.1.0 — September 17, 2026
 
 **Less noise, one place for everything.**

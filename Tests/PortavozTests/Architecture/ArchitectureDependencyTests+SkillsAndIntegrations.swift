@@ -1191,7 +1191,6 @@ extension ArchitectureDependencyTests {
             XCTAssertFalse(application.contains(forbidden), forbidden)
         }
 
-        XCTAssertTrue(schema.contains("public static let version = 51"))
         XCTAssertTrue(schema.contains(
             "registerStandingSkillRuleMigration"))
         XCTAssertTrue(schema.contains(

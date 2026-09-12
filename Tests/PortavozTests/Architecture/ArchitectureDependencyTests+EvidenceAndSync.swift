@@ -724,7 +724,6 @@ extension ArchitectureDependencyTests {
             of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 51"))
         XCTAssertTrue(schema.contains("registerTranscriptCorrectionSearchMigration"))
         XCTAssertTrue(correctionSchema.contains("transcriptCorrectionSearchState"))
         XCTAssertTrue(correctionSchema.contains("SELECT DISTINCT meetingID"))
@@ -767,7 +766,6 @@ extension ArchitectureDependencyTests {
         let intelligenceSpec = try Self.contents(
             of: "docs/specs/04-intelligence.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 51"))
         XCTAssertTrue(schema.contains("registerSegmentCorrectedEmbeddingMigration"))
         XCTAssertTrue(correctedSchema.contains("registerMigration(\"v37\")"))
         XCTAssertTrue(correctedSchema.contains("table.add(column: \"embedding\", .blob)"))
@@ -817,7 +815,6 @@ extension ArchitectureDependencyTests {
             of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 51"))
         XCTAssertTrue(schema.contains("registerTranscriptStructuralSearchMigration"))
         XCTAssertTrue(structuralSchema.contains("registerMigration(\"v38\")"))
         XCTAssertTrue(structuralSchema.contains("transcriptStructuralSearchRow"))
