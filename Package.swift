@@ -25,12 +25,11 @@ let package = Package(
     ],
     dependencies: [
         // Parakeet ASR + pyannote diarization on CoreML/ANE (Apache-2.0).
-        // upToNextMinor on purpose: their public API renames types across
-        // minors (0.12 → 0.15 did). 0.15.5 ships the #732 type-checker fix
-        // we used to pin by revision.
+        // Exact: patch releases also change decoder/caption behavior. An
+        // upgrade requires matched ASR, diarization and resource evidence.
         .package(
             url: "https://github.com/FluidInference/FluidAudio.git",
-            .upToNextMinor(from: "0.15.5")),
+            exact: "0.15.6"),
         // SQLite toolkit (MIT) — D4: GRDB + FTS5, never SwiftData.
         .package(url: "https://github.com/groue/GRDB.swift.git", .upToNextMajor(from: "7.11.1")),
         // Whisper on CoreML (MIT) for the quality re-pass (D7). Pinned
