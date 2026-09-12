@@ -21,17 +21,46 @@ struct HotkeySetting: Equatable {
         label: "⌥⌘D")
 
     static func load(from defaults: UserDefaults = .standard) -> HotkeySetting {
-        guard defaults.object(forKey: keyCodeKey) != nil else { return .default }
-        return HotkeySetting(
-            keyCode: UInt32(defaults.integer(forKey: keyCodeKey)),
-            modifiers: UInt32(defaults.integer(forKey: modifiersKey)),
-            label: defaults.string(forKey: labelKey) ?? HotkeySetting.default.label)
+        restore(from: defaults).setting
+    }
+
+    static func restore(from defaults: UserDefaults = .standard) -> (setting: HotkeySetting, usedFallback: Bool) {
+        let keys = [keyCodeKey, modifiersKey, labelKey]
+        guard keys.contains(where: { defaults.object(forKey: $0) != nil }) else {
+            return (.default, false)
+        }
+        let allowedModifiers = UInt32(cmdKey | optionKey | controlKey | shiftKey)
+        guard let code = storedUInt32(defaults.object(forKey: keyCodeKey)),
+              code <= UInt32(UInt16.max),
+              let modifiers = storedUInt32(defaults.object(forKey: modifiersKey)),
+              modifiers & ~allowedModifiers == 0,
+              modifiers & UInt32(cmdKey | optionKey) != 0,
+              let storedLabel = defaults.object(forKey: labelKey) as? String, storedLabel.count <= 64,
+              let label = displayLabel(keyCode: code, modifiers: modifiers, storedLabel: storedLabel)
+        else { return (.default, true) }
+        return (HotkeySetting(keyCode: code, modifiers: modifiers, label: label), false)
+    }
+
+    private static func storedUInt32(_ value: Any?) -> UInt32? {
+        // UserDefaults.integer coerces malformed types and truncates fractions;
+        // UInt32(integer) then traps for negative or oversized persisted values.
+        guard let number = value as? NSNumber,
+              CFGetTypeID(number) != CFBooleanGetTypeID()
+        else { return nil }
+        return UInt32(number.stringValue)
     }
 
     func save(to defaults: UserDefaults = .standard) {
         defaults.set(Int(keyCode), forKey: Self.keyCodeKey)
         defaults.set(Int(modifiers), forKey: Self.modifiersKey)
         defaults.set(label, forKey: Self.labelKey)
+        // A deliberate edit supersedes startup overrides for this setting.
+        // Keep unrelated command-line/volatile values and their precedence.
+        var overrides = defaults.volatileDomain(forName: UserDefaults.argumentDomain)
+        for key in [Self.keyCodeKey, Self.modifiersKey, Self.labelKey] {
+            overrides.removeValue(forKey: key)
+        }
+        defaults.setVolatileDomain(overrides, forName: UserDefaults.argumentDomain)
     }
 
     /// Builds a setting from a captured key event. nil when the combo has
@@ -41,26 +70,13 @@ struct HotkeySetting: Equatable {
         let flags = event.modifierFlags
         guard flags.contains(.command) || flags.contains(.option) else { return nil }
         var carbon: UInt32 = 0
-        var symbols = ""
-        if flags.contains(.control) {
-            carbon |= UInt32(controlKey)
-            symbols += "⌃"
-        }
-        if flags.contains(.option) {
-            carbon |= UInt32(optionKey)
-            symbols += "⌥"
-        }
-        if flags.contains(.shift) {
-            carbon |= UInt32(shiftKey)
-            symbols += "⇧"
-        }
-        if flags.contains(.command) {
-            carbon |= UInt32(cmdKey)
-            symbols += "⌘"
-        }
-        let key = event.charactersIgnoringModifiers?.uppercased() ?? "?"
-        return HotkeySetting(
-            keyCode: UInt32(event.keyCode), modifiers: carbon, label: symbols + key)
+        if flags.contains(.control) { carbon |= UInt32(controlKey) }
+        if flags.contains(.option) { carbon |= UInt32(optionKey) }
+        if flags.contains(.shift) { carbon |= UInt32(shiftKey) }
+        if flags.contains(.command) { carbon |= UInt32(cmdKey) }
+        let code = UInt32(event.keyCode)
+        let key = specialKeyLabel(code) ?? event.charactersIgnoringModifiers?.uppercased() ?? "?"
+        return HotkeySetting(keyCode: code, modifiers: carbon, label: modifierLabel(carbon) + key)
     }
 }
 
@@ -69,7 +85,7 @@ struct HotkeySetting: Equatable {
 struct HotkeyRecorder: View {
     @State private var recording = false
     @State private var monitor: Any?
-    @State private var label = HotkeySetting.load().label
+    let setting: HotkeySetting
     /// Called with the accepted new setting AFTER it was persisted.
     let onChange: () -> Void
 
@@ -80,7 +96,7 @@ struct HotkeyRecorder: View {
             Button {
                 recording ? stopRecording() : startRecording()
             } label: {
-                Text(recording ? L10n.text("Press keys…") : label)
+                Text(recording ? L10n.text("Press keys…") : setting.label)
                     .font(.body.monospaced())
                     .frame(minWidth: 90)
             }
@@ -99,7 +115,6 @@ struct HotkeyRecorder: View {
                 return nil
             }
             setting.save()
-            label = setting.label
             onChange()
             return nil
         }

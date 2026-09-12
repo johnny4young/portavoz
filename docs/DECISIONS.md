@@ -19470,3 +19470,37 @@ recovery, plus real-app acceptance, termination/relaunch, removal failure,
 Library reentry, retry/discard and a held-write Stop handshake. Injected failures
 remain distinct from physical disk failure, and interrupted-process tests do
 not certify hardware power-loss behavior.
+
+
+## D517 — Make shortcut restoration and registration recoverable
+
+**Date:** 2026-09-11
+
+**Context.** Persisted key integers were coerced through UserDefaults and then
+converted to UInt32, allowing a negative or oversized value to terminate launch.
+A bare saved key bypassed the recorder's modifier rule; its characterization test
+failed on the actual restoration path. Carbon failure silently left an enabled
+feature without a trigger, while Settings always described the default chord.
+
+**Decision.** Validate types and representable bounds before conversion, apply
+the recorder's modifier contract on restoration, and retain existing special-key
+bindings through normalized display glyphs. Absent preferences are normal;
+corrupt preferences use a visible fallback without automatic persistent repair.
+An explicit edit supersedes only the owned three startup overrides as well as
+writing the persisted setting. This is needed because writing a lower-priority
+domain alone cannot repair an active command-line override.
+
+Keep one MainActor observable registration owner under the dictation controller.
+Request exclusive Carbon ownership, expose unavailable state with explicit
+Retry/change/default recovery, unregister before rebind, and fence old callbacks.
+No timer competes for shortcuts and no recovery action starts audio. The view
+observes the current binding rather than caching another label. AppServices
+chooses the real registrar only outside temporary storage; test registration is
+an explicit temporary-composition fixture and never a production controller flag.
+
+**Boundary.** Registration failure does not identify which application or OS
+reservation caused it. Deterministic owner tests and actual Settings journeys
+cover recovery, not all physical keyboard layouts, global Carbon conflicts or
+ASR quality. Tap/hold timing, insertion, dictionary and language behavior remain
+unchanged; registration availability is not a claim that every downstream
+permission or model is ready.

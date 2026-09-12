@@ -7,7 +7,7 @@ import Foundation
 /// permission and only observes). Carbon delivers the event on the main
 /// thread, so the callback hops straight into the main actor.
 @MainActor
-final class GlobalHotkey {
+final class GlobalHotkey: GlobalHotkeyRegistration {
     private var hotKeyRef: EventHotKeyRef?
     private var handlerRef: EventHandlerRef?
     private let onPress: () -> Void
@@ -51,7 +51,8 @@ final class GlobalHotkey {
 
         let hotKeyID = EventHotKeyID(signature: OSType(0x5056_4F5A), id: 1)  // "PVOZ"
         let registerStatus = RegisterEventHotKey(
-            keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
+            keyCode, modifiers, hotKeyID, GetApplicationEventTarget(),
+            UInt32(kEventHotKeyExclusive), &hotKeyRef)
         guard registerStatus == noErr else {
             RemoveEventHandler(handlerRef)
             handlerRef = nil
@@ -72,6 +73,6 @@ final class GlobalHotkey {
 
     // No deinit cleanup: a nonisolated deinit cannot touch the main-actor
     // Carbon refs under Swift 6. Owners call `unregister()` — in this app
-    // the hotkey lives in `DictationController` for the process lifetime,
-    // so a leaked registration is impossible in practice.
+    // `DictationShortcut` retains the process-owned registration and releases
+    // it synchronously before rebinding or disabling global dictation.
 }

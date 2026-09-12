@@ -12,6 +12,16 @@ The Settings journey also checks that localized provider help retains Sequoia
 and Tahoe support plus the selected local engine, rather than stale Apple-only
 live-summary wording.
 
+Shortcut recovery coverage exercises stored preference decoding and the actual
+registration owner: malformed types, integer boundaries, Unicode and legacy
+special keys, failed registration, stale callbacks, rebind and disable. Settings
+journeys use a temporary-store-only rejected/inert registrar, exercise Retry,
+record a new native local key event, repair corrupt startup overrides and revisit
+the pane. They do not claim native Carbon conflict, microphone, ASR or cross-app
+insertion qualification. Global input hooks are absent from ordinary disposable
+launches. Per-journey budgets are declared before execution; adding these cases
+does not relax the full-suite or p95 limits.
+
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
 Supported AppKit-capable CI and release hosts require zero
