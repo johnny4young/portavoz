@@ -7582,3 +7582,18 @@ observed state; catalogue ownership, retired-journey rejection, bounded scrollin
 unchanged runtime budgets and screenshot roles remain enforced. A tooling test
 attempts to restore either retired receipt journey with an otherwise valid scope
 and confirms that the actual duplicate policy rejects it.
+
+## Host support export coverage
+
+`HostSupportDiagnosticsTests` enters actual temporary `AppServices` export with
+a populated library, checks the closed host field set and rejects meeting text
+or home paths. It exercises a failed process read without inventing zeros or
+consuming a resident runtime lease, decoded invalid CPU/duplicate/negative owner
+evidence at the exporter, legacy environment decoding, and real stable-prefix
+process reads. Another actual export installs the pressure monitor before its
+first event and rejects its nominal policy default as a host measurement. The
+composition/export boundary also admits all known thermal states while omitting
+a future raw state instead of reporting the governor's fair fallback.
+Resource probe tests retain the extended-counter contract.
+The existing redacted-support XCUITest also inspects host JSON and its disclosure;
+synthetic unit cases do not establish physical Sequoia/Tahoe or benchmark timing.

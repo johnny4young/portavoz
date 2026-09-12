@@ -159,7 +159,7 @@ final class SupportDiagnosticsTests: XCTestCase {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let report = try decoder.decode(SupportDiagnosticsReport.self, from: data)
-        XCTAssertEqual(report.formatVersion, 2)
+        XCTAssertEqual(report.formatVersion, 3)
         XCTAssertEqual(report.storage.schemaVersion, StorageSchema.version)
         XCTAssertEqual(report.storage.meetingCount, 1)
         XCTAssertTrue(report.meetings[0].reference.hasPrefix("meeting-"))
@@ -246,7 +246,7 @@ final class SupportDiagnosticsTests: XCTestCase {
         XCTAssertEqual(outcome, .completed)
     }
 
-    func testFormatTwoExportRemainsAvailableBeforeAndAfterRefine() async throws {
+    func testSupportExportRemainsAvailableBeforeAndAfterRefine() async throws {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(
             title: "Mixed-language field fixture",
@@ -318,8 +318,8 @@ final class SupportDiagnosticsTests: XCTestCase {
                 generatedAt: Date(timeIntervalSince1970: 1_700_100_200)))
         let after = try decodeSupportReport(afterData)
 
-        XCTAssertEqual(before.formatVersion, 2)
-        XCTAssertEqual(after.formatVersion, 2)
+        XCTAssertEqual(before.formatVersion, 3)
+        XCTAssertEqual(after.formatVersion, 3)
         XCTAssertEqual(before.meetings[0].reference, after.meetings[0].reference)
         XCTAssertEqual(before.meetings[0].transcriptRevision, 0)
         XCTAssertEqual(after.meetings[0].transcriptRevision, 1)

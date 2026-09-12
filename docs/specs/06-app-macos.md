@@ -2460,6 +2460,25 @@ answer, app-panel-only screenshot, and exact three-second citation seek (D100).
 
 `MenuBarExtra(isInserted:)` bound to `@AppStorage("menuBarEnabled")` (toggle in Settings → Menu bar, on by default): template icon `waveform.and.mic` that changes to `record.circle.fill` while recording — the "¿estoy grabando?" at a glance. Menu: Start/Stop (Start fronts the value-scoped primary window via `openWindow(id: "main", value: .primary)` + `pendingRoute = .recording(nil)`; Stop calls shared controller), Dictate (only with dictation enabled), Open Portavoz, Launch at login (`SMAppService.mainApp` — requires /Applications, which is the installation story), Quit. **Architectural precondition**: `RecordingController` moved from `@State` of RecordingView to `AppServices.recording` (shared) — view, HUD and menu bar observe THE SAME session and navigation never can orphan a recording (same fix as RefineService).
 
+## Host support snapshot (D520)
+
+The existing Your-data support-export action adds format-3 `environment.host`:
+physical RAM, optional current process footprint and cumulative CPU seconds,
+optional known thermal state, Low Power Mode, and a canonical
+closed-family residency snapshot. Each family carries lifecycle state, active
+lease count and an optional owner-measured footprint. Export neither acquires nor
+releases runtime leases. Missing process measurements are omitted rather than
+reported as zero. Governor memory pressure is not included: its initial nominal
+policy value is not a sampled host measurement. A future native thermal case is
+omitted, not converted to the governor's conservative fallback. Old reports
+without a host object still decode.
+
+Sampling happens only at the explicit export call site, after readiness reads;
+there is no persistent host history, polling or network transmission. CPU seconds
+are not dictation latency. Existing capture/job timings remain independently
+identified. The disclosure and exported JSON are covered by the actual Settings
+XCUITest in both locales; physical-machine qualification remains separate.
+
 ## Global dictation (Jul 2026)
 
 **Hold-to-talk (Jul 2026)**: `GlobalHotkey` listens to kEventHotKeyPressed AND kEventHotKeyReleased (`GetEventKind` in same handler). Gesture without setting: a TAP (release < 0.5 s) preserves toggle; HOLD combination while speaking and release delivers at release — walkie-talkie. Verified E2E: hold of 2.5 s opens panel on press and closes only on release.

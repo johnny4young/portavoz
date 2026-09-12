@@ -758,7 +758,10 @@ extension ArchitectureDependencyTests {
             of: "packaging/portavoz-local.entitlements")
         let compatibilityRunner = try Self.contents(
             of: "scripts/run-resource-recording-baseline.sh")
-        XCTAssertTrue(nativeProbe.contains("proc_pid_rusage"))
+        let processUsage = try Self.contents(of: "Sources/PlatformKit/OwnProcessResourceUsage.swift")
+        XCTAssertTrue(nativeProbe.contains("OwnProcessResourceUsage.current(extendedCounters: true)"))
+        XCTAssertTrue(processUsage.contains("proc_pid_rusage(getpid(),"))
+        XCTAssertTrue(processUsage.contains("RUSAGE_INFO_CURRENT : RUSAGE_INFO_V0"))
         XCTAssertTrue(syntheticCapture.contains(
             "public-synthetic-dual-channel-v2"))
         XCTAssertTrue(syntheticCapture.contains(
@@ -802,7 +805,8 @@ extension ArchitectureDependencyTests {
             "guard_timeout=$((PROCESS_TIMEOUT + 30))"))
         XCTAssertTrue(runner.contains(
             #"pgrep -f -- "$APP/Contents/MacOS/portavoz-app""#))
-        XCTAssertTrue(nativeProbe.contains("ri_energy_nj"))
+        XCTAssertTrue(processUsage.contains("ri_energy_nj"))
+        XCTAssertTrue(nativeProbe.contains("let energy = usage.energyNanojoules"))
         XCTAssertTrue(nativeProbe.contains(
             "IOPSGetProvidingPowerSourceType"))
         XCTAssertTrue(nativeProbe.contains(".posixPermissions: 0o600"))

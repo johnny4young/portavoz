@@ -236,13 +236,22 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             export.waitForExistenceFast(timeout: 5),
             "the Your-data pane must offer an explicit redacted support export")
+        XCTAssertTrue(app.staticTexts["settings-diagnostics-host-disclosure"].exists)
         export.click()
         XCTAssertTrue(
             app.staticTexts["settings-diagnostics-status"].waitForExistenceFast(timeout: 10),
             "the export must confirm that no meeting content was included")
         XCTAssertTrue(FileManager.default.fileExists(atPath: destination.path))
         let text = try String(contentsOf: destination, encoding: .utf8)
-        XCTAssertTrue(text.contains("\"formatVersion\" : 2"))
+        XCTAssertTrue(text.contains("\"formatVersion\" : 3"))
+        let report = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any])
+        let environment = try XCTUnwrap(report["environment"] as? [String: Any])
+        let host = try XCTUnwrap(environment["host"] as? [String: Any])
+        XCTAssertGreaterThan(try XCTUnwrap(host["physicalMemoryBytes"] as? UInt64), 0)
+        XCTAssertNotNil(host["thermalState"])
+        XCTAssertNotNil(host["processFootprintBytes"])
+        XCTAssertNotNil(host["processCPUSeconds"])
+        XCTAssertEqual((host["modelResidency"] as? [Any])?.count, 5)
         XCTAssertTrue(text.contains("\"audioAssets\""))
         XCTAssertTrue(text.contains("\"transcript\""))
         XCTAssertFalse(text.contains("relativePath"))
