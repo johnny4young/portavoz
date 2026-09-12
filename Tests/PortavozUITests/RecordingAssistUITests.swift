@@ -228,7 +228,11 @@ final class RecordingAssistUITests: PortavozUITestCase {
         // Reaching back for an older card folds the oldest recency-open one,
         // so the panel keeps its size instead of growing.
         let list = app.scrollViews["recording-companion-list"]
-        guard revealCompanionControl(folded, inside: list) else { return }
+        guard folded.revealVertically(in: list, maximumStep: list.frame.height) else {
+            return XCTFail(
+                "Older Companion card was not reachable: control=\(folded.frame), "
+                    + "viewport=\(list.frame), enabled=\(folded.isEnabled)")
+        }
         folded.click()
         XCTAssertTrue(
             app.control(withIdentifier: "recording-companion-card-\(fourthID)")
@@ -242,7 +246,11 @@ final class RecordingAssistUITests: PortavozUITestCase {
         // recency window's own direction is unproven end to end.
         let fold = app.control(withIdentifier: "recording-companion-fold-\(newestID)")
         XCTAssertTrue(fold.exists)
-        guard revealCompanionControl(fold, inside: list) else { return }
+        guard fold.revealVertically(in: list, maximumStep: list.frame.height) else {
+            return XCTFail(
+                "Newest Companion fold was not reachable: control=\(fold.frame), "
+                    + "viewport=\(list.frame), enabled=\(fold.isEnabled)")
+        }
         fold.click()
         XCTAssertTrue(
             app.control(withIdentifier: "recording-companion-folded-\(newestID)")
@@ -279,19 +287,4 @@ final class RecordingAssistUITests: PortavozUITestCase {
             "a dismissed focus card must free the slot")
     }
 
-    @MainActor
-    private func revealCompanionControl(_ control: XCUIElement, inside list: XCUIElement) -> Bool {
-        // Exists does not mean visible: either end of the bounded recency
-        // window can lie outside the list. Implicit diagonal reveal may scroll
-        // the caption surface instead, especially in the taller Spanish UI.
-        if !control.isHittable {
-            let delta = list.frame.midY - control.frame.midY
-            list.scroll(byDeltaX: 0, deltaY: delta)
-        }
-        guard control.waitForHittable(timeout: 3) else {
-            XCTFail("Companion control must be reachable inside its own vertical list: \(control.identifier)")
-            return false
-        }
-        return true
-    }
 }

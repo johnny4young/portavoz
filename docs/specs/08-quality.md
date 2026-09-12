@@ -52,9 +52,14 @@ waiting on it and names the cause when it gives up, so a fixture that lengthens
 the sidebar cannot silently exhaust the timeout of unrelated journeys on a
 hosted window that is shorter than a local display. The bounded-Companion journey explicitly scrolls vertically inside the card list
 before opening an older folded card below the viewport or folding a header
-above it. Both directions derive a vertical-only distance from actual frames
-and require hittability before clicking; implicit offscreen clicks can issue diagonal
-scrolls against the wrong surface. This does not change product scroll position
+above it. Both call sites use the shared `revealVertically(in:)` mechanism:
+bounded vertical steps observe actual frame changes and require stable viewport
+containment and hittability before clicking. Each Companion step is bounded by
+its actual viewport height, not the smaller default stride for dense transcript
+rows. Visibility after one wheel event is not accepted as AX hit ownership; the existing bounded helper handles that
+separate condition instead of introducing another one-shot reveal. Implicit
+offscreen clicks can also issue diagonal scrolls against the wrong surface.
+This does not change product scroll position
 or waive a failed run. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
 Meeting Detail tests. The English and Spanish release gates each cover the full
