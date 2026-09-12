@@ -97,7 +97,7 @@ public enum PortableSettingsValidation {
         guard let data = text.data(using: .utf8),
               let values = try? JSONDecoder().decode([DictationReplacement].self, from: data),
               values.count <= 1_000 else { throw PortableSettingsFailure.invalidValue }
-        let canonical = DictationTextRules.decode(replacements: text)
+        let canonical = DictationTextRules.canonical(values)
         guard canonical.count == values.count else { throw PortableSettingsFailure.invalidValue }
         return canonical
     }

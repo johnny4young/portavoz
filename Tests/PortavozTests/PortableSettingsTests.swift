@@ -155,6 +155,33 @@ final class PortableSettingsTests: XCTestCase {
         XCTAssertEqual(try store.snapshot(), before)
     }
 
+    func testEquivalentCollectionsPreserveLegacyBytesAtTheActualWriteSeam() async throws {
+        let defaults = preferences()
+        let legacy = #"[ { "replacement" : "Don't", "trigger" : "Don\u2019t" }, { "trigger" : "cóndor", "replacement" : "Cóndor" } ]"#
+        defaults.setVolatileDomain([
+            "dictationReplacements": legacy, "customVocabulary": "  Cóndor , Don’t,, C++  ",
+        ], forName: UserDefaults.argumentDomain)
+        let store = AppPortableSettingsStore(defaults: defaults, temporary: true)
+        let before = try store.snapshot()
+        let equivalent = #"[{"trigger":"Don’t","replacement":"Don't"},{"replacement":"Cóndor","trigger":"cóndor"}]"#
+        for incoming in [
+            [PortableSettingsKey.replacements: .text("[]"), .vocabulary: .text("")],
+            [.replacements: .text(equivalent), .vocabulary: .text("cóndor, Don’t, c++")],
+        ] as [[PortableSettingsKey: PortableSettingsValue]] {
+            let review = try PortableSettingsTransfer.review(PortableSettingsTransfer.export(incoming), current: before)
+            XCTAssertTrue(review.changes.isEmpty, "serialization is not a preference change")
+            XCTAssertEqual(try store.apply(review, captureActive: false), 0)
+            XCTAssertEqual(try store.snapshot(), before, "no-op import must not rewrite legacy bytes")
+        }
+        let changed = try PortableSettingsTransfer.export([.replacements: .text(
+            DictationTextRules.encode([.init(trigger: "cóndor", replacement: "Cóndor $1 \\" )]))])
+        let review = try PortableSettingsTransfer.review(changed, current: before)
+        XCTAssertEqual(try store.apply(review, captureActive: false), 1)
+        let rules = DictationTextRules.decode(replacements: defaults.string(forKey: "dictationReplacements") ?? "")
+        XCTAssertEqual(rules, [.init(trigger: "Don’t", replacement: "Don't"),
+                               .init(trigger: "cóndor", replacement: "Cóndor $1 \\")])
+    }
+
     private func preferences() -> UserDefaults {
         let suite = "portable-settings-tests-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

@@ -63,16 +63,20 @@ public enum PortableSettingsTransfer {
         current: [PortableSettingsKey: PortableSettingsValue]
     ) throws {
         if case .text(let new)? = incoming[.replacements], case .text(let old)? = current[.replacements] {
-            let combined = try PortableSettingsValidation.replacements(old)
-                + PortableSettingsValidation.replacements(new)
-            incoming[.replacements] = .text(DictationTextRules.encode(combined))
+            let existing = try PortableSettingsValidation.replacements(old)
+            let combined = try DictationTextRules.canonical(existing + PortableSettingsValidation.replacements(new))
+            // Encoder key order, whitespace and Unicode escapes are not user changes.
+            incoming[.replacements] = .text(combined == existing ? old : DictationTextRules.encode(combined))
         }
         if case .text(let new)? = incoming[.vocabulary], case .text(let old)? = current[.vocabulary] {
             var seen = Set<String>()
-            let terms = VocabularyPrompt.parse(old + "," + new).filter {
+            let existing = VocabularyPrompt.parse(old).filter {
                 seen.insert($0.lowercased()).inserted
             }
-            incoming[.vocabulary] = .text(terms.joined(separator: ", "))
+            let combined = existing + VocabularyPrompt.parse(new).filter {
+                seen.insert($0.lowercased()).inserted
+            }
+            incoming[.vocabulary] = .text(combined == existing ? old : combined.joined(separator: ", "))
         }
     }
 }

@@ -2797,7 +2797,11 @@ user-authored text; this is not a redacted support artifact.
 Preparing a review performs no writes. Incoming vocabulary and replacements
 merge with existing collections; non-conflicting local entries remain and an
 incoming replacement wins only for its matching case-insensitive trigger through
-the existing dictation codec. Other incoming values replace only their own key.
+the existing dictation codec. Ordered normalized rules and merged vocabulary
+terms determine whether a collection changed, not JSON key order, whitespace or
+Unicode escapes. Empty or equivalent imports preserve the original stored text
+and show the no-change status without offering Apply. Other incoming values
+replace only their own key.
 The write adapter rejects a changed portable snapshot or active capture before
 any preference mutation. It preserves unrelated preferences and startup overrides;
 an explicit production import supersedes only its changed keys' overrides.
@@ -2806,6 +2810,12 @@ offers explicit Export/Import preferences actions. Native panels choose one JSON
 document; cancelling file selection performs no write. The review shows full
 current and resulting values, including merged collections. Apply rechecks the
 portable snapshot and recording/dictation activity synchronously at mutation.
+The sidebar observes the app-language preference directly and passes its value
+to shared localization for row titles, hints and category filtering. Prelocalized
+strings do not inherit SwiftUI locale invalidation by themselves. Updating the
+language preserves the current category, query and review rather than remounting
+Settings. The live UI check targets the selected sidebar button, not the General
+pane title that is absent while Your data is open.
 Stale/capture failures keep the review open with an actionable explanation;
 Cancel/Escape discard it. Late file reads cannot reopen a cancelled review.
 

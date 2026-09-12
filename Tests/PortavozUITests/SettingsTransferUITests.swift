@@ -14,6 +14,8 @@ final class SettingsTransferUITests: PortavozUITestCase {
         defer { app.terminate() }
         XCTAssertTrue(app.openSettingsCategory("settings-category-data", revealing: "settings-export-preferences"))
 
+        let dataCategory = app.buttons["settings-category-data"]
+        XCTAssertEqual(dataCategory.label, target == "es" ? "Your data" : "Tus datos")
         let export = app.buttons["settings-export-preferences"]
         XCTAssertTrue(export.exists)
         export.click()
@@ -47,8 +49,9 @@ final class SettingsTransferUITests: PortavozUITestCase {
         XCTAssertTrue(app.staticTexts["settings-preferences-status"].waitForExistenceFast(timeout: 5))
         // The sidebar is already mounted. Reading a fresh export alone cannot
         // prove that existing @AppStorage observers received the actual import.
-        let translatedCategory = target == "es" ? "General e idioma" : "General & language"
-        XCTAssertTrue(app.staticTexts[translatedCategory].waitForExistenceFast(timeout: 5))
+        let translatedCategory = target == "es" ? "Tus datos" : "Your data"
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { dataCategory.label == translatedCategory })
+        XCTAssertTrue(dataCategory.isSelected, "language changes must preserve the current pane")
         try FileManager.default.removeItem(at: output)
         export.click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { FileManager.default.fileExists(atPath: output.path) })
@@ -69,6 +72,9 @@ final class SettingsTransferUITests: PortavozUITestCase {
         let output = directory.appendingPathComponent("output.json")
         try writeSettings(["globalDictationEnabled": true, "vocabulary": "must-not-apply"], to: input)
         let app = application(input: input, output: output)
+        let legacy = #"[ { "replacement" : "Don't", "trigger" : "Don\u2019t" } ]"#
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = String(
+            decoding: try JSONSerialization.data(withJSONObject: ["dictationReplacements": legacy]), as: UTF8.self)
         app.launchPortavoz()
         defer { app.terminate() }
         XCTAssertTrue(app.openSettingsCategory("settings-category-data", revealing: "settings-import-preferences"))
@@ -80,6 +86,17 @@ final class SettingsTransferUITests: PortavozUITestCase {
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { FileManager.default.fileExists(atPath: output.path) })
         XCTAssertEqual(try settings(at: output)["vocabulary"] as? String, "Existing")
         XCTAssertNil(try settings(at: output)["globalDictationEnabled"])
+        XCTAssertEqual(try settings(at: output)["replacements"] as? String, legacy)
+
+        try writeSettings(["replacements": "[]", "vocabulary": ""], to: input)
+        importButton.click()
+        let unchanged = UITestLocale.environmentLocale == "es"
+            ? "No hay ajustes por cambiar. Tus preferencias actuales no han cambiado."
+            : "No settings to change. Your current preferences are unchanged."
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            renderedText(of: app.staticTexts["settings-preferences-status"]) == unchanged
+        })
+        XCTAssertFalse(app.buttons["settings-preferences-apply"].exists)
 
         try writeSettings(["vocabulary": "Recovered"], to: input)
         XCTAssertTrue(importButton.isEnabled)
@@ -93,6 +110,7 @@ final class SettingsTransferUITests: PortavozUITestCase {
         app.buttons["settings-export-preferences"].click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { FileManager.default.fileExists(atPath: output.path) })
         XCTAssertEqual(try settings(at: output)["vocabulary"] as? String, "Existing")
+        XCTAssertEqual(try settings(at: output)["replacements"] as? String, legacy)
     }
 
     @MainActor

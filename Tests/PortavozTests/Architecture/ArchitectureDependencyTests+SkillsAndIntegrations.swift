@@ -2,6 +2,8 @@ import ApplicationKit
 import Foundation
 import XCTest
 
+@testable import portavoz_app
+
 extension ArchitectureDependencyTests {
     func testSkillExecutionAdmitsBeforeItClaimsAndKeepsPlatformOut() throws {
         let policy = try Self.contents(of: "Sources/PortavozCore/Skill.swift")
@@ -511,8 +513,6 @@ extension ArchitectureDependencyTests {
     }
 
     func testSuggestedActionsVocabularyKeepsInternalSkillContractsStable() throws {
-        let categories = try Self.contents(
-            of: "Sources/portavoz-app/SettingsCategories.swift")
         let settings = try Self.contents(
             of: "Sources/portavoz-app/SkillsSettingsSection.swift")
         let proposals = try Self.contents(
@@ -534,13 +534,11 @@ extension ArchitectureDependencyTests {
         let product = try Self.contents(of: "docs/PRODUCT.md")
         let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
 
-        XCTAssertTrue(categories.contains("case skills"))
-        XCTAssertTrue(categories.contains(
-            "case .skills: L10n.text(\"Suggested actions\")"))
-        XCTAssertTrue(categories.contains(
-            "actions suggestions skills automation pause enable receipts"))
-        XCTAssertFalse(categories.contains(
-            "case .skills: L10n.text(\"Skills\")"))
+        XCTAssertEqual(SettingsCategory.skills.rawValue, "skills")
+        XCTAssertEqual(SettingsCategory.skills.titleKey, "Suggested actions")
+        for query in ["actions", "suggestions", "skills", "automation", "pause", "enable", "receipts"] {
+            XCTAssertTrue(SettingsCategory.skills.matches(query, language: .english), query)
+        }
 
         XCTAssertTrue(settings.contains("Section(\"Available actions\")"))
         XCTAssertTrue(settings.contains("Section(\"Suggestions to review\")"))
