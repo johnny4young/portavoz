@@ -19470,3 +19470,23 @@ recovery, plus real-app acceptance, termination/relaunch, removal failure,
 Library reentry, retry/discard and a held-write Stop handshake. Injected failures
 remain distinct from physical disk failure, and interrupted-process tests do
 not certify hardware power-loss behavior.
+
+
+## D516 — Require explicit review for speech-engine patch updates
+
+**Decision.** Pin FluidAudio to exact `0.15.6`, retaining the already checked-in
+revision `4dbf4f9f9a5ff3a53ade848d7ba4e3df13db859b`. This supersedes the minor-range
+requirement in D15: source compatibility is not a guarantee of identical decoder,
+caption or diarization behavior. Keep direct vendor imports in the five existing
+transcription/diarization adapter files and their current package targets.
+
+**Consequences.** An unrelated package refresh cannot admit a FluidAudio patch.
+Engine upgrades require an explicit manifest/resolution change plus matched
+recognition, diarization, latency and memory evidence; an evaluation may reject
+the upgrade. No engine default, window configuration, model weight, download
+consent, import/refine behavior or deployment floor changes with this pin.
+
+**Validation boundary.** Architecture tests check the manifest requirement,
+resolver version/revision, dependency consumers and all production imports.
+SwiftPM's evaluated manifest and the real build verify resolver admission;
+these checks do not independently qualify real-model accuracy or performance.

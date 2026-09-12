@@ -5776,6 +5776,17 @@ or rewrite the host's persistent Apuntador opt-in.
     assertion and is allowed only where the duplicate is genuinely reachable
     and the collision policy is the intended behavior.
 
+## Reviewed speech-engine dependency
+
+The Swift package requires exact FluidAudio 0.15.6. Its vendor types enter only
+through the existing transcription and diarization adapters: `ParakeetEngine`,
+`ParakeetSegmentMapper`, `NemotronLatin1120Engine`, `PyannoteDiarizer` and
+`DiarizationEvaluation`. Core, ApplicationKit and executable presentation consume
+Portavoz contracts instead. The checked-in resolver revision and architectural
+import inventory are tested together; a dependency refresh cannot silently move
+the recognized engine version or spread vendor imports through the application.
+Model artifact hashes and active-use ownership remain separate existing contracts.
+
 ## Runtime composition facts
 
 The following facts are part of the implemented architecture and are not hidden
