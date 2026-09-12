@@ -46,6 +46,23 @@ version or historical test totals independently. Populated file-backed `SkillDis
 exercise actual library-open migration and new-write constraints, while
 `TranscriptCorrectionChainDeletionTests` covers public sync replay, purge,
 reopen and subsequent foreign-key enforcement across distinct meeting chains.
+Durable audio-import tests separately exercise populated migration/admission,
+real temporary-file bookmark/copy/hash behavior and the application worker with
+deterministic model doubles. They include same-length corruption, replaced file
+identity, source rename, cancellation with deliberately late model output,
+uncancelled lease retirement, published-copy retry/reopen without the original,
+language separation and accepted-revision summary provenance. Native acquisition
+tests cover cancellation after copy but before publication, injected SQLite
+publication rejection, and an expired owner still holding its file operation.
+They assert reuse of the one reserved directory, rejection of overlapping native
+acquisition, and lock release after cancellation without sleep-based ordering.
+Actual purge tests cover pending, copied-unpublished and published audio;
+stale restored rows; a still-running native writer; restoration between file and
+database deletion; and restore/re-delete after an expiry snapshot was read.
+Original selected files remain unchanged. These call the real purge/restore use
+cases with SQLite and native exclusion, not only a pure path policy.
+These are not real-ASR or
+XCUITest evidence; the Library queue remains unconnected.
 The shared
 `waitForSeededLibraryToSettle` helper scrolls a sidebar row into view before
 waiting on it and names the cause when it gives up, so a fixture that lengthens
@@ -7582,3 +7599,38 @@ observed state; catalogue ownership, retired-journey rejection, bounded scrollin
 unchanged runtime budgets and screenshot roles remain enforced. A tooling test
 attempts to restore either retired receipt journey with an otherwise valid scope
 and confirms that the actual duplicate policy rejects it.
+
+### Durable audio-import coverage
+
+Real-file/store/controller tests exercise whole-selection admission, bounded
+pagination, cancellation followed by a different file, published-copy resume
+without the source, and single-bundle import parity. Invalid/mixed selections
+must not partially enqueue. Mutation failures require visible dismissible state.
+The real-app import journeys use the native multi-selection picker, SQLite and
+copy/verification code; only the model adapter is replaced, behind both
+`-use-temp-store` and `-audio-import-ui-fixture`. It decodes synthetic PCM and
+returns labeled scripted bilingual text, not measured ASR output. New journeys
+have explicit 30-second budgets before measurement; prior budgets and the full
+bilingual aggregate limit are unchanged. The catalogue owns their import scope.
+
+Native open-panel file selection uses the panel's List view and Select All
+command; read-only filename text fields are not treated as clickable controls.
+The runner owns the synthetic source directory and selects it explicitly. Audio
+destination is a unique `/private/tmp/portavoz-import-owned-*` directory created
+only by the nonsandboxed app, not a write by the sandboxed runner. Supplying
+`TMPDIR` does not itself grant an app access to another app's protected container.
+No test changes TCC grants or runner entitlements.
+
+The cancellation journey rejects one cancel at the app client boundary; the
+running row remains available, dismissal clears feedback, and the next explicit
+cancel and retry complete. A rejected Library deletion likewise preserves its
+row until an explicit successful retry. These two deterministic failures are
+fixture behavior, not SQLite fault qualification; populated storage/application
+tests separately exercise rejected real writes. The fixture requires both
+temporary-store and import-fixture flags. Relaunch terminates after copy
+publication and removes the synthetic original, then advances only the worker's
+injected clock beyond the dead owner's lease. The same meeting is completed
+without reselecting the source. Natural lease timing and ASR quality are not
+claims of that journey. Its database is app-owned under `/private/tmp`, avoiding
+startup reads inside the runner's protected container; tests make no external
+SQL writes or database-polling reads.

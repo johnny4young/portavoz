@@ -378,9 +378,10 @@ contract below: the draft succeeds with honest unattributed system segments.
 ### External audio import (D46)
 
 `ApplicationKit.ImportMeeting` owns the external-file workflow without
-constructing model objects itself. The app processor prepares the shared
-Whisper engine as a required step, reports verified model-download progress,
-loads only pyannote for its separately degradable attribution step, and
+constructing model objects itself. The app processor prepares shared Whisper and
+the first pyannote acquisition as required steps and reports verified model
+download progress. Only the second diarizer preparation and attribution execution
+are degradable under the existing import contract. It
 transcribes the copied system-channel file with the once-sampled
 `TranscriptLanguagePolicy` and vocabulary. Automatic mode leaves the hint nil,
 so a mixed Spanish/English recording keeps each segment's detected language;
@@ -388,6 +389,14 @@ the independently configured summary language never becomes a recognition
 fallback. A required transcription failure rolls back the staged copy before
 the aggregate exists. Once Whisper was prepared, the same idle release policy
 as the released import path is scheduled on every later exit.
+
+The durable-import worker reuses this same pipeline through owned-file/store
+adapters; it does not run an additional live engine. Installation returns the
+accepted transcript revision, which the import summary attempt includes in its
+content-free configuration. A newer transcript or correction can reject that
+summary instead of letting a legacy-zero assumption silently discard every
+summary after durable revision-one completion. Native copy tests do not evaluate
+Whisper recognition or pyannote quality.
 
 ### Meeting refinement (D47)
 

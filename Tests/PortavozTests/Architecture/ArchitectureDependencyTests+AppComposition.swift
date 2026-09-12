@@ -243,12 +243,12 @@ extension ArchitectureDependencyTests {
     func testAppAudioImportEntersThroughApplicationKit() throws {
         let definitions = try Self.sourceMatches(
             under: "Sources/portavoz-app",
-            pattern: #"\bfunc\s+importMeeting\s*\("#)
+            pattern: #"\bfunc\s+makeAudioImportWorker\s*\("#)
 
         XCTAssertEqual(
             definitions,
-            ["AppServices+ImportMeeting.swift"],
-            "Audio import orchestration must not return to AppServices or a view")
+            ["AppServices+ImportMeeting.swift", "AudioImportQueueModel.swift"],
+            "Only composition and its injected port may construct the import worker")
     }
 
     func testAppMeetingRefineEntersThroughApplicationKit() throws {
@@ -1574,7 +1574,7 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(view.contains("services.meetingLifecycle"))
         XCTAssertTrue(storage.contains(
             #".order(Column("startTime"), Column("id"))"#))
-        XCTAssertTrue(schema.contains("public static let version = 51"))
+
         XCTAssertTrue(schema.contains("registerMeetingDetailOrderingMigration"))
         XCTAssertTrue(orderingMigration.contains("registerMigration(\"v49\")"))
         XCTAssertTrue(orderingMigration.contains(

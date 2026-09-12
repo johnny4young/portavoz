@@ -615,3 +615,41 @@ Backend queue backpressure and exception-path cancellation draining remain
 unverified risks, not newly reproduced product defects. Preserve the failed
 receipt and unchanged stability thresholds; do not replace this gap with a
 retry-until-green candidate or a synthetic unit-test claim.
+
+### Multi-file audio import qualification
+
+The Library now admits multiple audio files into the same SQLite job authority,
+with app-owned serial supervision and a paged queue for progress, cancellation,
+retry and explicit result navigation. Storage/native/controller tests cover
+owner-fenced publication, preserved originals, cancellation, retry, and resuming
+a published copy without its source. These are not model-quality measurements.
+
+Real-app picker, pagination, cancellation and retry journeys are being qualified
+with synthetic PCM and a scripted recognition adapter gated by both temporary
+storage and its explicit fixture flag. No successful full bilingual qualification
+is claimed here yet. Physical power loss, removable-volume TCC behavior and
+real-model throughput remain separate evidence. Required Whisper and D46's
+preparation contract are not replaced by live first-pass recovery.
+
+A missing/changed original before copy publication leaves staged bytes intact
+but cannot certify their source. Only published audio resumes without the original.
+Purge and restore share native exclusion and fresh tombstone checks; filesystem
+removal and SQLite purge are still not one crash-atomic transaction.
+
+Native filesystem cancellation is cooperative, not a promise to interrupt a
+kernel call waiting for filesystem access or an OS permission decision. An accepted cancellation
+invalidates the file's durable publication authority immediately; the serial
+supervisor still joins native cleanup before starting another attempt. File-lock
+acquisition is nonblocking, but that does not make directory creation, bookmark
+resolution or file I/O nonblocking. Physical permission/removable-volume behavior
+remains separate from deterministic local-file tests.
+
+Some shared real-app fixtures still use runner-owned audio or database paths.
+On macOS hosts that protect one app's container from another, seed generation
+can wait inside filesystem creation before its journey reaches product actions.
+A full run stopped at that boundary is not successful UI or timing
+qualification. The import journeys separate app-owned destinations from
+explicitly selected runner-owned source audio; changing that one feature's
+fixture does not certify the older cross-process fixtures. Their ownership
+contract needs a separate, complete repair without widening sandbox
+entitlements or dropping their real storage assertions.

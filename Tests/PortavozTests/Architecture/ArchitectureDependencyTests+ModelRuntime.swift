@@ -550,7 +550,10 @@ extension ArchitectureDependencyTests {
             ],
             "Production MLX providers must cross the app-owned runtime client")
         XCTAssertTrue(application.contains("mlxProvider: { [weak self]"))
-        XCTAssertTrue(importAdapter.contains("mlxProvider: { [weak self]"))
+        XCTAssertTrue(importAdapter.contains("resolver: summaryProviderResolver"),
+                      "Import must reuse the shared resolver whose MLX factory crosses the app-owned ledger")
+        XCTAssertFalse(importAdapter.contains("AppSummaryRegenerationProviderResolver("),
+                       "Import must not duplicate the shared provider factory")
         XCTAssertTrue(postCapture.contains("provider: makeMLXSummaryProvider("))
         XCTAssertTrue(services.contains("await releaseMLXRuntime()"))
 

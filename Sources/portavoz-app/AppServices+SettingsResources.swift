@@ -27,6 +27,11 @@ extension AppServices {
         to destination: URL?,
         progress: @escaping @MainActor (RecordingStorageProgress) -> Void
     ) async throws -> (location: RecordingStorageLocation, recordingCount: Int) {
+        try audioImports.beginStorageMove()
+        defer { audioImports.endStorageMove() }
+        guard try await store.audioImportQueuePage(limit: 1).unfinished == 0 else {
+            throw AudioImportQueueError.busy
+        }
         let result = try await ManageRecordingStorage(
             // Settings is a separate scene with no recording-phase gate, so
             // the move is reachable mid-capture. Moving a live meeting's

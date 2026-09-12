@@ -18,9 +18,9 @@ public struct MeetingLifecycleUseCases: Sendable {
     public let delete: DeleteMeeting
     public let restore: RestoreMeeting
 
-    public init(store: any MeetingLifecycleStore) {
+    public init(store: any MeetingLifecycleStore, acquisition: (any AudioImportFiles)? = nil) {
         delete = DeleteMeeting(store: store)
-        restore = RestoreMeeting(store: store)
+        restore = RestoreMeeting(store: store, acquisition: acquisition)
     }
 }
 
@@ -40,12 +40,18 @@ public struct DeleteMeeting: ApplicationUseCase {
 /// Restores a tombstoned meeting and all child projections.
 public struct RestoreMeeting: ApplicationUseCase {
     private let store: any MeetingLifecycleStore
+    private let acquisition: (any AudioImportFiles)?
 
-    public init(store: any MeetingLifecycleStore) {
+    public init(store: any MeetingLifecycleStore, acquisition: (any AudioImportFiles)? = nil) {
         self.store = store
+        self.acquisition = acquisition
     }
 
     public func execute(_ request: MeetingID) async throws {
-        try await store.restore(request)
+        if let acquisition {
+            try await acquisition.withAcquisitionAccess { try await store.restore(request) }
+        } else {
+            try await store.restore(request)
+        }
     }
 }

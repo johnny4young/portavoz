@@ -75,7 +75,7 @@ final class ImportMeetingUseCaseTests: XCTestCase {
         XCTAssertEqual(run.outcome, .succeeded)
         XCTAssertEqual(
             run.configJSON,
-            #"{"operation":"generate","recipeID":"general","workflow":"audio-import"}"#)
+            #"{"operation":"generate","recipeID":"general","sourceTranscriptRevision":0,"workflow":"audio-import"}"#)
         XCTAssertEqual(
             run.metricsJSON,
             #"{"actionItemCount":0,"outputUTF8Bytes":18}"#)
@@ -670,10 +670,11 @@ private actor ImportDependencies:
         _ meeting: Meeting,
         speakers: [Speaker],
         segments: [TranscriptSegment]
-    ) throws {
+    ) throws -> Int {
         events.append("install")
         if failures.contains(.aggregatePersistence) { throw ImportDependencyError() }
         installed = InstalledImport(meeting: meeting, speakers: speakers, segments: segments)
+        return meeting.transcriptRevision
     }
 
     func resolveImportMeetingSummaryProvider()

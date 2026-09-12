@@ -66,6 +66,11 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testSeededMeetingsGroupByRecency"),
         test_id("LibraryUITests", "testActiveRecordingRemainsReachableAfterBrowsingTheLibrary"),
     ),
+    "audio-imports": (
+        test_id("AudioImportUITests", "testMultipleAudioFilesReachPagedQueueAndOpenTheirMeeting"),
+        test_id("AudioImportUITests", "testCancelOneImportContinuesTheNextAndExplicitRetryReusesTheQueue"),
+        test_id("AudioImportUITests", "testRelaunchResumesPublishedAudioWithoutTheSelectedOriginals"),
+    ),
     "meeting-brief": (
         test_id("LibraryUITests", "testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment"),
     ),
@@ -523,6 +528,7 @@ FEATURE_SOURCE_SENTINELS: dict[str, str] = {
     "automation-entry": "Sources/portavoz-app/PortavozAppIntents.swift",
     "home": "Sources/portavoz-app/HomeView.swift",
     "library": "Sources/portavoz-app/LibraryView.swift",
+    "audio-imports": "Sources/portavoz-app/AudioImportQueueView.swift",
     "meeting-brief": "Sources/portavoz-app/MeetingBriefView.swift",
     "menu-bar-brief": "Sources/portavoz-app/MenuBarView.swift",
     "recording-recovery": "Sources/portavoz-app/RecordingView.swift",
@@ -645,6 +651,11 @@ def app_features(filename: str) -> set[str]:
         # Today composes the Library snapshot; its own journeys plus the
         # sidebar canary cover navigation from and back to it.
         return {"home", "library"}
+    if lowered in {
+        "audioimportqueuemodel.swift", "audioimportqueueview.swift", "audioimportqueuepresentation.swift",
+        "libraryimportstatusview.swift", "appservices+audioimportuitestfixture.swift",
+    }:
+        return {"audio-imports", "library"}
     if lowered == "librarynavigationcontrols.swift":
         return {"home", "library"}
     if lowered in {

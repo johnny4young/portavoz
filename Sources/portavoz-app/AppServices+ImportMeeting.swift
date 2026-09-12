@@ -6,127 +6,53 @@ import ModelStoreKit
 import PortavozCore
 import TranscriptionKit
 
-extension AppServices {
-    /// Imports external audio through the Band 2F application boundary while
-    /// retaining the existing Library progress and navigation contract.
-    func importMeeting(
-        from source: URL,
-        progress: @escaping @MainActor @Sendable (String) -> Void
-    ) async throws -> MeetingID {
-        let request = ImportMeetingRequest(
-            sourceURL: source,
-            title: "Imported · " + source.deletingPathExtension().lastPathComponent
-        ) { phase in
-            let message = await Self.localizedImportProgress(phase)
-            await progress(message)
-        }
-        let meetingID = try await importMeetingUseCase(request)
-        requestSearchReconciliation()
-        return meetingID
+extension AppServices: AudioImportQueueClient {
+    func observeAudioImports(offset: Int) -> AsyncThrowingStream<AudioImportQueuePage, Error> {
+        store.observeAudioImportQueue(offset: offset)
     }
 
-    private var importMeetingUseCase: ImportMeeting {
+    func admitAudioImports(_ urls: [URL]) async throws {
+        guard !urls.isEmpty, urls.count <= 1_000 else { throw AudioImportQueueError.selectionLimit }
+        let preferences = audioImportPreferences
+        let files = audioImportFiles
+        var inputs: [AudioImportRequest] = []
+        for url in urls {
+            try Task.checkCancellation()
+            inputs.append(try await files.prepareSelection(
+                url, meetingID: MeetingID(), title: url.deletingPathExtension().lastPathComponent,
+                preferences: preferences))
+        }
+        _ = try await store.enqueueAudioImports(inputs)
+    }
+
+    func makeAudioImportWorker() -> ProcessAudioImports {
+        let fixture = audioImportUITestFixture
+        let summaries: any ImportMeetingSummaryProviderResolver = fixture
+            ?? AppImportMeetingSummaryProviderResolver(resolver: summaryProviderResolver)
+        return ProcessAudioImports(store: store, files: audioImportFiles, makeProcessor: { [weak self] in
+            if let fixture { return fixture }
+            return await AppImportMeetingProcessor(services: self)
+        }, summaries: summaries, now: { Date().addingTimeInterval(fixture?.clockOffset ?? 0) })
+    }
+
+    func nextAudioImportWake() async throws -> Date? {
+        try await store.nextScheduledProcessingDate(kinds: [.audioImport])
+    }
+
+    func cancelAudioImport(_ id: MeetingID) async throws {
+        try await audioImportUITestFixture?.beforeCancellation()
+        _ = try await store.cancelAudioImport(for: id)
+    }
+    func retryAudioImport(_ id: MeetingID) async throws { _ = try await store.retryAudioImport(for: id) }
+    func audioImportWorkFinished() { requestSearchReconciliation() }
+
+    private var audioImportPreferences: ImportMeetingPreferencesSnapshot {
         let localeLanguage = AppLanguage.current.locale.language.languageCode?.identifier
-        let fallbackLanguage = LanguageCode(localeLanguage) ?? .english
-        let sampledPreferences = ImportMeetingPreferencesSnapshot(
+        return ImportMeetingPreferencesSnapshot(
             transcriptLanguage: MeetingLanguagePreferences.transcript(),
             summaryLanguage: MeetingLanguagePreferences.summary(),
-            summaryFallbackLanguage: fallbackLanguage,
-            vocabulary: VocabularyPrompt.parse(
-                UserDefaults.standard.string(forKey: "customVocabulary") ?? ""))
-        let resolver = AppSummaryRegenerationProviderResolver(
-            defaultEngine: summaryEngine,
-            ollamaModel: ollamaModel,
-            mlxModelDirectory: { [modelLifecycle] in
-                await modelLifecycle.installation(for: ModelCatalog.mlxQwen35)?.directory
-            },
-            mlxProvider: { [weak self] directory, priority in
-                guard let self else {
-                    return AppUnavailableSummaryProvider()
-                }
-                return self.makeMLXSummaryProvider(
-                    modelDirectory: directory,
-                    priority: priority)
-            },
-            foundationModelsCapability: foundationModelsCapability,
-            gateway: dataEgressGateway)
-        return ImportMeeting(
-            audioFiles: AppImportMeetingAudioFiles(root: Self.audioRoot),
-            preferences: AppImportMeetingPreferences(snapshot: sampledPreferences),
-            processor: AppImportMeetingProcessor(services: self),
-            store: store,
-            summaryProviders: AppImportMeetingSummaryProviderResolver(
-                resolver: resolver))
-    }
-
-    private static func localizedImportProgress(_ phase: ImportMeetingProgress) -> String {
-        switch phase {
-        case .preparingModels:
-            L10n.text("Preparing models…")
-        case .preparingWhisper(let size, let percent, let isDownloading):
-            if isDownloading {
-                L10n.format("Downloading Whisper (%@)… %d%%", size, percent)
-            } else {
-                L10n.text("Checking Whisper already on this Mac…")
-            }
-        case .transcribing:
-            L10n.text("Transcribing audio (Whisper)…")
-        case .identifyingSpeakers:
-            L10n.text("Identifying speakers…")
-        case .generatingSummary:
-            L10n.text("Generating summary…")
-        }
-    }
-}
-
-private struct AppImportMeetingPreferences: ImportMeetingPreferences {
-    let snapshot: ImportMeetingPreferencesSnapshot
-
-    func importMeetingPreferences() -> ImportMeetingPreferencesSnapshot {
-        snapshot
-    }
-}
-
-private struct AppImportMeetingAudioFiles: ImportMeetingAudioFiles {
-    let root: URL
-
-    func copySystemAudio(
-        from source: URL,
-        meetingID: MeetingID
-    ) async throws -> ImportedMeetingAudio {
-        let root = root
-        return try await Task.detached(priority: .utility) {
-            let relativeDirectory = "Audio/\(meetingID.rawValue.uuidString)"
-            let directory = root.appendingPathComponent(relativeDirectory, isDirectory: true)
-            let fileExtension = source.pathExtension.isEmpty
-                ? "m4a"
-                : source.pathExtension.lowercased()
-            let destination = directory.appendingPathComponent("system.\(fileExtension)")
-            let files = FileManager.default
-            guard !files.fileExists(atPath: directory.path) else {
-                throw AppImportMeetingError.audioDirectoryAlreadyExists(relativeDirectory)
-            }
-            do {
-                try files.createDirectory(at: directory, withIntermediateDirectories: true)
-                try files.copyItem(at: source, to: destination)
-                return ImportedMeetingAudio(
-                    fileURL: destination,
-                    relativeDirectory: relativeDirectory)
-            } catch {
-                try? files.removeItem(at: directory)
-                throw error
-            }
-        }.value
-    }
-
-    func discardImportedAudio(_ audio: ImportedMeetingAudio) async throws {
-        let directory = root.appendingPathComponent(
-            audio.relativeDirectory,
-            isDirectory: true)
-        try await Task.detached(priority: .utility) {
-            guard FileManager.default.fileExists(atPath: directory.path) else { return }
-            try FileManager.default.removeItem(at: directory)
-        }.value
+            summaryFallbackLanguage: LanguageCode(localeLanguage) ?? .english,
+            vocabulary: VocabularyPrompt.parse(UserDefaults.standard.string(forKey: "customVocabulary") ?? ""))
     }
 }
 
@@ -137,7 +63,7 @@ private final class AppImportMeetingProcessor: ImportMeetingProcessor {
     private var diarizationRuntime: AppServices.DiarizationRuntimeLease?
     private var diarizer: PyannoteDiarizer?
 
-    init(services: AppServices) {
+    init(services: AppServices?) {
         self.services = services
     }
 
@@ -252,7 +178,6 @@ private struct AppImportMeetingSummaryProvider: ImportMeetingSummaryProvider {
 }
 
 private enum AppImportMeetingError: Error {
-    case audioDirectoryAlreadyExists(String)
     case servicesUnavailable
     case transcriberUnavailable
     case diarizerUnavailable
