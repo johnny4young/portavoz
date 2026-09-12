@@ -1,5 +1,24 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
+`PortableSettingsTests` exercises the real defaults adapter using private suites,
+including its persistent-write branch and startup-override precedence. Coverage
+includes exclusion of secrets/consents/host bindings, non-destructive vocabulary
+and replacement merge, Unicode and literal replacement syntax, capture beginning
+after preview, concurrent preference edits, replayed approval, future/unknown
+fields, scalar coercion, malformed collections, byte limits and empty imports.
+`PortableSettingsFileTests` reaches actual selected-file IO, including symlinks,
+FIFOs, empty/exact-limit/oversized files, private permissions, replacement and
+cancelled/failed-publication cleanup. `PortableSettingsObservationTests` checks
+real effective-value notifications in temporary and persistent-override branches.
+`SettingsTransferModelTests` reaches the real defaults
+adapter through injected IO for explicit approval, capture/stale rejection,
+cancelled late reads, duplicate actions, empty review and IO errors. The dedicated
+`settings-transfer` XCUITest scope exercises real-app Export → Review → Cancel →
+Import → Apply → Export and verifies an already-mounted localized sidebar, plus
+recovery from a rejected sensitive key. File selection alone is injected; parsing,
+review, defaults mutation and file IO remain real. Native panel interaction and
+physical macOS compatibility are separate from these deterministic journeys.
+
 Library presentation coverage retains the existing catalogue: the entry journey
 asserts full-width, non-overlapping labeled destinations and selected-state
 semantics, captures the light workspace, and enters Ask through its first-action

@@ -19470,3 +19470,26 @@ recovery, plus real-app acceptance, termination/relaunch, removal failure,
 Library reentry, retry/discard and a held-write Stop handshake. Injected failures
 remain distinct from physical disk failure, and interrupted-process tests do
 not certify hardware power-loss behavior.
+
+## D521 — Transfer portable preferences through an explicit review
+
+**Date:** 2026-09-12
+
+A settings export is a user-owned text artifact, not a defaults-domain dump or
+a redacted diagnostic. Keep a versioned semantic allowlist and bounded decoding
+in ApplicationKit. It contains portable language, title, vocabulary and dictation
+text preferences, never credentials, consent, automatic capability activation,
+remote providers, hardware bindings or filesystem destinations. Configure those
+sensitive or host-specific choices explicitly on the destination Mac.
+
+Import prepares an immutable review without changing preferences. Merge local
+vocabulary and deterministic replacements instead of erasing unrelated entries;
+reuse the existing replacement codec so case-insensitive conflicts have the same
+meaning as the editor. Before applying, the MainActor app adapter rechecks the
+portable snapshot and capture admission next to its synchronous writes. A stale
+review must be prepared again, not silently rebased over a newer user choice.
+Only changed keys may supersede their startup overrides. Temporary-store
+composition stays volatile, and the adapter does not claim crash-atomic disk
+durability for UserDefaults. Native adapter tests must cover the persistent
+branch as well as isolated overrides; file and UI call sites require their own
+evidence rather than inheriting a pure codec's green result.
