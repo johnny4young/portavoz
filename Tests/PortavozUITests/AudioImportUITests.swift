@@ -14,21 +14,20 @@ final class AudioImportUITests: PortavozUITestCase {
         chooseAudio(in: folder.appendingPathComponent("selection"), app: app)
         let panel = app.control(withIdentifier: "import-queue-panel")
         XCTAssertTrue(panel.waitForExistenceFast(timeout: 15))
-        let count = app.staticTexts["import-queue-count"]
         let expected = UITestLocale.environmentLocale == "es"
             ? "21 importaciones · 0 sin terminar" : "21 imports · 0 unfinished"
-        XCTAssertTrue(count.waitForLabelOrValue(expected, timeout: 30))
-        let next = app.buttons["import-queue-next"]
-        let previous = app.buttons["import-queue-previous"]
+        XCTAssertTrue(queueCount(expected, in: panel).waitForExistenceFast(timeout: 30))
+        let next = panel.buttons["import-queue-next"]
+        let previous = panel.buttons["import-queue-previous"]
         XCTAssertFalse(previous.isEnabled)
         XCTAssertTrue(next.isEnabled)
         next.click()
         XCTAssertTrue(previous.waitForEnabled(timeout: 5))
         XCTAssertFalse(next.isEnabled)
         previous.click()
-        app.buttons["import-queue-close"].click()
+        panel.buttons["import-queue-close"].click()
         app.buttons["library-import-queue-open"].click()
-        let open = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "import-queue-open-")).firstMatch
+        let open = panel.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "import-queue-open-")).firstMatch
         XCTAssertTrue(open.waitForExistenceFast(timeout: 5))
         open.click()
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "No envíes 2.")).firstMatch
@@ -45,28 +44,30 @@ final class AudioImportUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
         chooseAudio(in: folder.appendingPathComponent("selection"), app: app)
-        let state = app.staticTexts.matching(NSPredicate(
+        let panel = app.control(withIdentifier: "import-queue-panel")
+        XCTAssertTrue(panel.waitForExistenceFast(timeout: 15))
+        let state = panel.staticTexts.matching(NSPredicate(
             format: "identifier BEGINSWITH %@ AND (value == %@ OR value == %@)",
             "import-queue-state-", "Transcribing…", "Transcribiendo…")).firstMatch
         XCTAssertTrue(state.waitForExistenceFast(timeout: 15))
         let id = String(state.identifier.dropFirst("import-queue-state-".count))
-        let cancel = app.buttons["import-queue-cancel-\(id)"]
+        let cancel = panel.buttons["import-queue-cancel-\(id)"]
         cancel.click()
-        let error = app.staticTexts["import-queue-error"]
+        let error = panel.staticTexts["import-queue-error"]
         XCTAssertTrue(error.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(cancel.exists, "a rejected cancel must not retire the active job")
-        app.buttons["import-queue-error-dismiss"].click()
+        panel.buttons["import-queue-error-dismiss"].click()
         XCTAssertTrue(error.waitForDisappearance(timeout: 3))
         cancel.click()
-        let retry = app.buttons["import-queue-retry-\(id)"]
+        let retry = panel.buttons["import-queue-retry-\(id)"]
         XCTAssertTrue(retry.waitForExistenceFast(timeout: 10))
-        let other = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "import-queue-open-")).firstMatch
+        let other = panel.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "import-queue-open-")).firstMatch
         XCTAssertTrue(other.waitForExistenceFast(timeout: 10))
         retry.click()
-        XCTAssertTrue(app.buttons["import-queue-open-\(id)"].waitForExistenceFast(timeout: 15))
+        XCTAssertTrue(panel.buttons["import-queue-open-\(id)"].waitForExistenceFast(timeout: 15))
         XCTAssertFalse(retry.exists)
-        XCTAssertFalse(app.staticTexts["import-queue-error"].exists)
-        app.buttons["import-queue-close"].click()
+        XCTAssertFalse(panel.staticTexts["import-queue-error"].exists)
+        panel.buttons["import-queue-close"].click()
         verifyRejectedLibraryDeletion(id: id, app: app)
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: folder.appendingPathComponent("selection").path).count, 2)
     }
@@ -79,7 +80,9 @@ final class AudioImportUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
         chooseAudio(in: folder.appendingPathComponent("selection"), app: app)
-        let state = app.staticTexts.matching(NSPredicate(
+        let panel = app.control(withIdentifier: "import-queue-panel")
+        XCTAssertTrue(panel.waitForExistenceFast(timeout: 15))
+        let state = panel.staticTexts.matching(NSPredicate(
             format: "identifier BEGINSWITH %@ AND (value == %@ OR value == %@)",
             "import-queue-state-", "Transcribing…", "Transcribiendo…")).firstMatch
         XCTAssertTrue(state.waitForExistenceFast(timeout: 15))
@@ -94,7 +97,7 @@ final class AudioImportUITests: PortavozUITestCase {
         let queue = app.buttons["library-import-queue-open"]
         XCTAssertTrue(queue.waitForExistenceFast(timeout: 10))
         queue.click()
-        let open = app.buttons["import-queue-open-\(id)"]
+        let open = panel.buttons["import-queue-open-\(id)"]
         XCTAssertTrue(open.waitForExistenceFast(timeout: 15))
         open.click()
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "Don’t send 2.")).firstMatch
@@ -102,7 +105,16 @@ final class AudioImportUITests: PortavozUITestCase {
         app.buttons["library-import-queue-open"].click()
         let expected = UITestLocale.environmentLocale == "es"
             ? "1 importaciones · 0 sin terminar" : "1 imports · 0 unfinished"
-        XCTAssertTrue(app.staticTexts["import-queue-count"].waitForLabelOrValue(expected, timeout: 5))
+        XCTAssertTrue(queueCount(expected, in: panel).waitForExistenceFast(timeout: 5))
+    }
+
+    @MainActor
+    private func queueCount(_ expected: String, in panel: XCUIElement) -> XCUIElement {
+        // One native predicate replaces separate exists/label/value snapshots
+        // while the queue is changing. Missing or nonmatching text still fails.
+        panel.staticTexts.matching(NSPredicate(
+            format: "identifier == %@ AND (label == %@ OR value == %@)",
+            "import-queue-count", expected, expected)).firstMatch
     }
 
     @MainActor
@@ -145,8 +157,7 @@ final class AudioImportUITests: PortavozUITestCase {
         app.typeKey(.return, modifierFlags: [])
         // List view avoids NSOpenPanel's offscreen column frames for deep paths.
         app.typeKey("2", modifierFlags: .command)
-        let first = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "value == %@", "Audio 00.wav")).firstMatch
+        let first = app.textFields.matching(NSPredicate(format: "value == %@", "Audio 00.wav")).firstMatch
         guard first.waitForExistenceFast(timeout: 5) else {
             XCTFail("The native picker did not reach the selected synthetic audio folder")
             return

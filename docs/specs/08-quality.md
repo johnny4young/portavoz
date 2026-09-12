@@ -7634,3 +7634,11 @@ without reselecting the source. Natural lease timing and ASR quality are not
 claims of that journey. Its database is app-owned under `/private/tmp`, avoiding
 startup reads inside the runner's protected container; tests make no external
 SQL writes or database-polling reads.
+
+Import assertions scope row/action queries to the actual queue panel. The
+completion count is matched by identifier and localized label/value in one
+native predicate, rather than independent existence, label and value snapshots
+while the queue changes. Missing or incorrect text still fails the original
+deadline. Native picker filenames are queried as read-only text fields. The
+21-file workload, paging/close/reopen checks, per-file recovery assertions and
+all timing budgets remain unchanged.

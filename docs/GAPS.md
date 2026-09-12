@@ -626,8 +626,13 @@ a published copy without its source. These are not model-quality measurements.
 
 Real-app picker, pagination, cancellation and retry journeys are being qualified
 with synthetic PCM and a scripted recognition adapter gated by both temporary
-storage and its explicit fixture flag. No successful full bilingual qualification
-is claimed here yet. Physical power loss, removable-volume TCC behavior and
+storage and its explicit fixture flag. Full hosted bilingual functional coverage
+has passed, but per-case and aggregate timing budgets have not been qualified.
+Native picker navigation, keyboard dispatch and accessibility queries before
+admission remain part of those unchanged journey budgets; total case duration
+is not an import-worker or ASR latency measurement. Consolidating queue queries
+does not establish a processing speedup or resolve these timing findings.
+Physical power loss, removable-volume TCC behavior and
 real-model throughput remain separate evidence. Required Whisper and D46's
 preparation contract are not replaced by live first-pass recovery.
 
