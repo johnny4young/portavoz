@@ -206,6 +206,8 @@ final class AppServices {
     /// System-wide dictation (⌥⌘D): lives here so the hotkey and its
     /// session survive any window coming and going.
     let dictation = DictationController()
+    @ObservationIgnored let dictationUITestFixture: DictationUITestFixture?
+    let dictationNativeUITestFixture: DictationNativeUITestFixture?
     /// THE recording session (one at a time by design): shared so the
     /// recording view, the HUD and the menu bar all observe the same one,
     /// and navigating away can never orphan a live session.
@@ -268,6 +270,10 @@ final class AppServices {
         recording = RecordingController(defaults: defaults)
         let usesTemporaryStore = storagePolicy.usesTemporaryMeetingStore
         usesTemporaryMeetingStore = usesTemporaryStore
+        dictationUITestFixture = DictationUITestFixture(
+            arguments: arguments, usesTemporaryStore: usesTemporaryStore)
+        dictationNativeUITestFixture = DictationNativeUITestFixture(
+            arguments: arguments, environment: environment, usesTemporaryStore: usesTemporaryStore)
         liveAssistUITestFixture = LiveAssistUITestFixture(
             arguments: arguments, usesTemporaryStore: usesTemporaryStore)
         let resourceCaptureState = AppResourceCaptureState()
