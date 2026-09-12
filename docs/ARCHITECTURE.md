@@ -1006,7 +1006,12 @@ Failure-dismiss tasks are single-owner and cancelled on restart so an older
 error cannot dismiss a newer session.
 System-wide input adapters remain at the app boundary: Carbon owns the keyboard
 hotkey and a session `CGEventTap` owns one explicitly configured middle or
-additional mouse button. The pure `MousePTTGesture` table also remains in the app
+additional mouse button. `DictationShortcut` is the process-owned observable
+registration owner: checked preference restoration, exclusive Carbon admission,
+explicit retry, and generation-fenced callbacks stay outside SwiftUI. Settings
+only renders that owner and invokes its existing controller rebind command.
+Temporary-store composition supplies no system-wide registrar or mouse tap;
+an explicitly selected fixture can replace registration, never actual capture. The pure `MousePTTGesture` table also remains in the app
 target because it decides presentation/input ownership, not speech recognition.
 The tap registration is idempotent, cancels a mouse-owned capture before
 rebinding can discard its release event, and retries after the app returns from
