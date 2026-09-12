@@ -1983,9 +1983,9 @@ versus visible provider and persistence outcomes (D62).
 
 Slice 2F moves external audio import through `ApplicationKit.ImportMeeting`.
 `AppServices` now only samples platform preferences, constructs private
-filesystem/model/provider adapters, localizes typed progress, requests
-Spotlight reconciliation after success, and returns the ID used by the existing
-Library navigation. The use case owns required transcription, degradable
+filesystem/model/provider adapters, provides typed progress and requests
+search reconciliation after each queue drain. The Library opens a result only
+through the user's explicit queue action. The use case owns required transcription, degradable
 diarization and summary, independent transcript/summary languages, idle
 release, staged-audio rollback, and atomic meeting/cast/transcript installation.
 File copy and compensating deletion run at utility priority instead of on the
@@ -1995,8 +1995,42 @@ After the required aggregate commits, each real summary call records one
 content-free attempt. Success links run + immutable summary/actions atomically;
 provider failure, cancellation, or publish failure remains best effort and can
 never discard the meeting or copied audio. An unavailable provider creates no
-synthetic run. Existing progress, navigation, and idle-release timing stay
-unchanged (D46/D64).
+synthetic run. D46/D64 model behavior and independent lease release are retained; audio
+selection now uses the durable queue described below. A single `.portavoz`
+bundle still uses its existing progress and automatic result navigation.
+
+The separate `ProcessAudioImports` use case can consume admitted durable imports
+without presentation ownership. It claims a fresh owner per attempt, copies or
+verifies the retained source before creating model capabilities, and runs
+`ImportMeeting` with owned adapters. Lease heartbeat and execution are structured
+children; explicit cancellation rejects late output, while process interruption
+awaits uncancelled storage cleanup and returns work to pending. A failed source
+does not prepare models; a failed transcription keeps copied audio for retry and
+does not prevent the next queued file from running. The app owns a shared supervisor for this worker, starts it after recording
+recovery, coalesces admissions and explicit retries, and wakes once for a future
+lease expiry. Closing the queue or a Library window does not cancel admitted
+work. Acquisition holds a native content-free lock through
+fresh ownership validation, reclamation of the admission's exact unpublished
+stage and publication. A busy native writer produces a distinct failure even if
+its database lease has expired. Admission reserves the meeting-relative audio
+location just like recording reservation, making even unpublished staging
+visible to the existing purge flow. Purge and restore share native exclusion;
+purge reads the current tombstone and automatic expiry rechecks the cutoff.
+The lock and deletion adapter use the same sampled root. Failed lock acquisition
+leaves the row intact; admitted filesystem-removal failures retain the existing
+best-effort policy. Library mutation errors render outside the selectable List and remain until
+dismissed or another mutation starts.
+
+The picker admits multiple audio files; drop admits every matching audio URL,
+not only the first. Mixed/multiple meeting bundles reject without partial
+admission. Audio selection opens the import queue rather than waiting for ASR
+or stealing navigation on completion. The queue projects twenty rows at a time,
+puts unfinished work first, excludes trash, uses stable meeting identifiers,
+and exposes Cancel, Retry, Open, paging and close controls. Current attempt
+phases are observational; no total progress percentage is invented. A failed
+file cannot suppress another file's result. Original files remain read-only.
+Moving the recordings root rejects while an admission/drain/pending job exists;
+the model prevents a new selection from racing the subsequent root change.
 
 Slice 2G moves quality re-passes through `ApplicationKit.RefineMeeting` and
 `ApplyRefinedMeeting`. `AppServices` composes private audio, preference,

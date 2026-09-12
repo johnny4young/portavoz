@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 117
+    "expectedCaseCount": 120
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -24,6 +24,9 @@
   },
   "schemaVersion": 1,
   "testBudgetsSeconds": {
+    "AudioImportUITests/testCancelOneImportContinuesTheNextAndExplicitRetryReusesTheQueue()": 30.0,
+    "AudioImportUITests/testMultipleAudioFilesReachPagedQueueAndOpenTheirMeeting()": 30.0,
+    "AudioImportUITests/testRelaunchResumesPublishedAudioWithoutTheSelectedOriginals()": 30.0,
     "AutomationUITests/testAppEntitiesOpenExactVisibleDestinations()": 20.0,
     "AutomationUITests/testRecordingAutomationRoutesStartAndStopThroughVisibleApp()": 20.0,
     "BackgroundWorkUITests/testBackgroundWorkCenterShowsAllOwnersAndRecoversExactFailures()": 25.0,
