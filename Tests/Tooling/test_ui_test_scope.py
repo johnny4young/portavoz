@@ -40,6 +40,18 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(set(selection.tests), expected, path)
             self.assertEqual(selection.locales, ("en",), path)
 
+    def test_package_changes_cannot_bypass_ui_evidence(self):
+        for path, locales in [("Package.swift", ("en", "es")), ("Package.resolved", ("en",))]:
+            selection = select_paths([path])
+            self.assertTrue(selection.required, path)
+            self.assertEqual(selection.tests, ALL_TESTS, path)
+            self.assertEqual(selection.locales, locales, path)
+
+    def test_package_changes_keep_bilingual_harness_expansion(self):
+        selection = select_paths(["Package.swift", "project.yml"])
+        self.assertEqual(selection.tests, ALL_TESTS)
+        self.assertEqual(selection.locales, ("en", "es"))
+
     def minimal_catalog_root(self, *methods: str, with_owner: bool = True):
         temporary = tempfile.TemporaryDirectory()
         root = Path(temporary.name)
@@ -758,7 +770,7 @@ class UITestScopeTests(unittest.TestCase):
         )
         self.assertEqual(selection.locales, ("en",))
 
-    def test_dictation_surfaces_select_only_the_audio_pane_evidence(self):
+    def test_dictation_surfaces_select_controller_and_native_delivery(self):
         for path in [
             "Sources/portavoz-app/DictationSection.swift",
             "Sources/portavoz-app/DictationShortcut.swift",
@@ -767,24 +779,25 @@ class UITestScopeTests(unittest.TestCase):
             "Sources/portavoz-app/MouseButtonPTT.swift",
             "Sources/portavoz-app/MousePTTGesture.swift",
             "Sources/portavoz-app/DictationController.swift",
+            "Sources/portavoz-app/DictationSessionDependencies.swift",
+            "Sources/portavoz-app/AppServices+DictationUITestFixture.swift",
+            "Sources/portavoz-app/TextInserter.swift",
             "Sources/TranscriptionKit/DictationTextRules.swift",
         ]:
             selection = select_paths([path])
-            self.assertEqual(
-                selection.tests,
-                (
-                    "PortavozUITests/SettingsUITests/"
-                    "testAudioPaneOffersCaptureSourceControls",
-                    "PortavozUITests/SettingsUITests/"
-                    "testDictationOffersTriggersLanguageAndDictionary",
-                    "PortavozUITests/SettingsUITests/"
-                    "testDictationRecoversShortcutConflictAndRefreshesHelp",
-                    "PortavozUITests/SettingsUITests/"
-                    "testDictationRepairsCorruptShortcutWithoutLeavingSettings",
-                ),
-                path,
-            )
+            expected = tuple(test for test in ALL_TESTS if test in FEATURE_TESTS["dictation"])
+            self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
+
+    def test_dictation_receiver_changes_keep_native_delivery_in_scope(self):
+        selection = select_paths(["Tests/PortavozDictationReceiver/DictationReceiver.swift"])
+        self.assertEqual(set(selection.tests), set(FEATURE_TESTS["dictation"]))
+        self.assertEqual(selection.locales, ("en",))
+
+    def test_menu_bar_changes_cover_the_dictation_entrypoint(self):
+        selection = select_paths(["Sources/portavoz-app/MenuBarView.swift"])
+        expected = set(FEATURE_TESTS["menu-bar-brief"] + FEATURE_TESTS["dictation"])
+        self.assertEqual(set(selection.tests), expected)
 
     def test_skill_sources_select_the_control_and_proposal_journeys(self):
         expected_set = set(

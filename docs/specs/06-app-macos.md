@@ -2600,6 +2600,33 @@ creating an evidence package; it does not certify an unobserved real-world check
 
 ## Global dictation (Jul 2026)
 
+**Disposable controller coverage (D515).** The production controller accepts
+session-scoped audio/runtime/platform dependencies. Tests run its real stream
+consumer, coalescer, final text rules, minimum-duration decision and cancellation
+path without an installed model or microphone. Temporary-store composition
+never registers a global keyboard or mouse trigger. `-seed-dictation` is inert
+outside that composition; without an explicit fixture temporary dictation refuses
+admission. The menu-bar Dictate action and panel expose stable identifiers for
+restart/cancellation journeys. This is not a change to the production trigger,
+recognition, capture-loss or delivery-success policies documented below.
+
+`TextInserter.insert` accepts a pasteboard with `.general` as its production
+default. The native receiver journey executes in the temporary app process, not
+XCTest's sandboxed runner. It uses an explicitly armed fixture and a UUID-named board, while
+retaining modifier-release, real AX inspection, keyboard events and delayed
+ownership-checked restoration. Its event pair addresses the fixed receiver's
+process: a UUID clipboard alone cannot contain a global Paste shortcut after a
+focus change. Nonpositive process targets fail before clipboard mutation and
+never fall back to session routing. The receiver establishes its own first
+responder; the test asserts actual Unicode content rather than clicking through
+desktop overlays. Production session routing remains unchanged and is not
+qualified by this fixture. It does not read the user's clipboard. Actual
+Accessibility permission is required; tests do not grant it or dismiss prompts.
+A local certificate-backed UI build can use the explicit signer/team inputs in
+spec 08 so rebuilding does not necessarily change its designated requirement.
+The app remains a disposable test identity, not the installed release or Dev app.
+
+
 **Hold-to-talk (Jul 2026)**: `GlobalHotkey` listens to kEventHotKeyPressed AND kEventHotKeyReleased (`GetEventKind` in same handler). Gesture without setting: a TAP (release < 0.5 s) preserves toggle; HOLD combination while speaking and release delivers at release — walkie-talkie. Verified E2E: hold of 2.5 s opens panel on press and closes only on release.
 
 **Configurable hotkey**: `HotkeySetting` stores a key code, Carbon modifier mask

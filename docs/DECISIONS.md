@@ -19621,6 +19621,53 @@ computed through an unobserved defaults read. Actual mounted-sidebar assertions
 must target the selected navigation button, not another pane's title; update
 labels in place rather than resetting Settings or discarding review state.
 
+## D515 — Qualify dictation through its controller and an isolated receiver
+
+**Decision.** Inject session-scoped effects into the existing dictation controller
+rather than duplicating its workflow in test code. Reuse `AudioCaptureSource`
+and `LiveTranscriptionRuntime`; production composition retains shared runtime
+acquisition and release. Keep synthetic fixture selection in disposable app
+composition and suppress global hotkey/mouse registrations for all temporary
+meeting stores, including the Settings-only journey.
+
+**Why.** The previous dictation selector exercised Settings but never entered
+capture, final text assembly or insertion. Enabling that Settings fixture could
+also register the real host shortcut. A successful policy test cannot qualify an
+unvisited controller, and a synthetic inserter cannot qualify platform delivery.
+
+**Evidence boundary.** Controller tests replace only external effects. A separate
+Xcode-only receiver reads a named pasteboard through its native Paste action;
+the explicitly armed temporary app calls the production inserter with real AX
+inspection and keyboard events. XCTest's runner has a different sandbox context
+and cannot stand in for this native client. Fixture admission requires the exact
+launch flag and a UUID clipboard namespace; insertion is attempted at most once
+for the fixed receiver bundle. The real event pair is process-addressed to that
+receiver, not injected into the global stream: a named clipboard does not contain
+a misrouted global Paste shortcut. Nonpositive process IDs fail before clipboard
+mutation and never fall back to session routing. Production's session dispatch
+remains unchanged and is not qualified by this fixture. The user clipboard and
+library are untouched.
+App Accessibility must already be authorized; the journey fails explicitly
+rather than requesting, automating or bypassing consent. Neither level claims
+real-model ASR quality, and event dispatch alone does not qualify delivery.
+
+**Consequences.** Dictation sources select controller/native-delivery journeys
+as well as Settings. Existing clipboard ownership, trigger semantics, runtime
+policy and capture-loss behavior are not silently rewritten by this test seam.
+Each added journey receives a budget without widening the existing full gate.
+Lockfile changes also select the complete English catalog: the previous no-UI
+exemption could hide a dependency update that changed app behavior. The manifest
+retains its shared-harness bilingual requirement; localization and other shared
+harness changes retain that stronger fallback.
+
+Native-client validation may use an explicitly selected local certificate and
+team rather than the default ad-hoc code-hash identity. Validate both runner
+inputs before any build, keep CI defaults unchanged, and inspect the resulting
+designated requirement. This makes repeated user-authorized native validation
+maintainable without automating consent; the native gate still fails if the
+disposable app lacks Accessibility trust. No signing credential is persisted.
+
+
 ## D523 — UI fixtures own explicit cross-process scratch, not runner containers
 
 A real seeded launch blocked its main thread while creating synthetic audio.

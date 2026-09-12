@@ -430,6 +430,13 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id("SettingsUITests", "testIntelligencePaneCreatesACustomStructure"),
     ),
+    "dictation": (
+        test_id("DictationUITests", "testDictationPanelCancelsAndRestartsWithoutGlobalInput"),
+        test_id("DictationUITests", "testNativeInserterUsesDisposableReceiverAndClipboard"),
+        test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
+        test_id("SettingsUITests", "testDictationRecoversShortcutConflictAndRefreshesHelp"),
+        test_id("SettingsUITests", "testDictationRepairsCorruptShortcutWithoutLeavingSettings"),
+    ),
     "settings-audio": (
         test_id("SettingsUITests", "testAudioPaneOffersCaptureSourceControls"),
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
@@ -591,6 +598,7 @@ FEATURE_SOURCE_SENTINELS: dict[str, str] = {
     "settings-transfer": "Sources/portavoz-app/SettingsTransferSection.swift",
     "production-sync": "Sources/portavoz-app/ProductionSyncQualificationRunner.swift",
     "settings-intelligence": "Sources/portavoz-app/SemanticSearchPreparationModel.swift",
+    "dictation": "Sources/portavoz-app/DictationController.swift",
     "settings-audio": "Sources/portavoz-app/AudioSection.swift",
     "settings-voice": "Sources/portavoz-app/SettingsVoiceSection.swift",
     "public-showcase": "Sources/portavoz-app/AppServices+Showcase.swift",
@@ -617,7 +625,6 @@ NO_UI_FILES = {
     "LICENSE",
     "README.md",
     "SECURITY.md",
-    "Package.resolved",
 }
 
 
@@ -717,7 +724,7 @@ def app_features(filename: str) -> set[str]:
     if lowered in {"appservices.swift", "portavozapp.swift"}:
         # Process composition/startup changes need one deterministic canary per
         # route, not every feature permutation behind those destinations.
-        return {"background-work", "launch-recovery", "main-shell", "menu-bar-brief"}
+        return {"background-work", "launch-recovery", "main-shell", "menu-bar-brief", "dictation"}
     if "commitmentreminder" in lowered:
         return {"commitment-radar", "meeting-commitments"}
     if any(token in lowered for token in (
@@ -730,14 +737,13 @@ def app_features(filename: str) -> set[str]:
         return set(ALL_FEATURES)
     if "showcase" in lowered:
         return {"public-showcase"}
-    # Before the generic "section"/"settings" buckets: dictation UI lives in
-    # the Audio pane, and its system-wide surface (triggers, paste) has no
-    # other XCUITest-reachable evidence.
+    # Dictation owns controller/panel and native delivery journeys, not just
+    # the Settings controls. Keep this ahead of generic presentation buckets.
     if any(
         token in lowered
         for token in ("dictation", "mousebutton", "mouseptt", "hotkey", "textinserter")
     ):
-        return {"settings-audio"}
+        return {"dictation"}
     if "semanticsearchpreparation" in lowered:
         return {"settings-intelligence"}
     if any(token in lowered for token in ("ask", "commandpalette")):
@@ -769,7 +775,7 @@ def app_features(filename: str) -> set[str]:
     if any(token in lowered for token in ("library", "trash", "voicemix")):
         return {"library"}
     if "menubar" in lowered:
-        return {"menu-bar-brief"}
+        return {"menu-bar-brief", "dictation"}
     if any(token in lowered for token in (
         "standingskill", "standingpremeetingbriefsupervisor"
     )):
@@ -1045,7 +1051,7 @@ def lower_layer_features(path: str) -> set[str]:
     if "stoprecording" in lowered or "startrecording" in lowered:
         return {"library", "recording-recovery"}
     if any(token in lowered for token in ("dictation", "mouseptt")):
-        return {"settings-audio"}
+        return {"dictation"}
     if "subtitle" in lowered:
         return {"meeting-export"}
     if "recap" in lowered:
@@ -1094,6 +1100,11 @@ def select_paths(paths: Iterable[str]) -> Selection:
         # Independent of whichever product selection branch handles the path.
         interruption_controls = interruption_controls or requires_interruption_controls(path)
 
+        if path == "Package.resolved":
+            selected.update(HARNESS_TESTS)
+            reasons.append(f"{path}: complete English dependency fallback")
+            continue
+
         if path == "Resources/Localization/Portavoz/Localizable.xcstrings":
             selected.update(HARNESS_TESTS)
             locales.add("es")
@@ -1139,6 +1150,11 @@ def select_paths(paths: Iterable[str]) -> Selection:
             reasons.append(
                 f"{path}: bilingual live-assistance evidence journey"
             )
+            continue
+
+        if path.startswith("Tests/PortavozDictationReceiver/"):
+            selected.update(feature_tests({"dictation"}))
+            reasons.append(f"{path}: native dictation receiver contract")
             continue
 
         if path == "Tests/PortavozUITests/FeatureUITestHandshakeSupport.swift":
