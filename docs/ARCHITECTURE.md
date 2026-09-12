@@ -5990,6 +5990,33 @@ make release-reliability # missing field or distribution evidence blocks
 make install
 ```
 
+## Portable preference transfer contracts
+
+`PortableSettingsTransfer` in ApplicationKit owns a versioned, bounded JSON
+allowlist, collection merge, immutable import review and stale-review/capture
+admission. Its nine portable keys describe language policies, menu-bar visibility,
+title formatting, vocabulary and deterministic dictation text preferences. They
+are not raw UserDefaults keys. Secrets, consent, capability activation, provider
+configuration, input triggers, devices and storage paths cannot enter this format.
+`AppPortableSettingsStore` maps these keys to existing app preferences on MainActor;
+only approved keys are written, and temporary composition uses a volatile domain.
+Vocabulary and replacement rules preserve non-conflicting local entries. Import
+uses the existing ordered `DictationTextRules.canonical` value; equivalent rules
+and vocabulary retain their original serialized preferences rather than creating
+false changes from JSON encoder order or formatting.
+`SettingsSidebar` explicitly observes the app-language preference for its
+prelocalized navigation/search values; a pane locale update alone cannot refresh
+those strings. It does not reset window or navigation identity.
+`SettingsTransferModel` owns file-operation/review state through a narrow client;
+`AppServices` composes the real capture state, defaults adapter and native panels.
+SwiftUI renders full before/after values and explicit Apply/Cancel actions, not
+file access or preference mutation. Import cancellation fences late reads, and
+an Apply failure remains visible inside the review sheet. `PortableSettingsFile`
+reads bounded regular files off MainActor without following a final symlink or
+blocking on a FIFO. Export uses private same-directory staging and atomic rename
+to publish a mode-0600 selected file; imported JSON never supplies a destination.
+UserDefaults writes do not claim the crash-atomic durability of a SQLite transaction.
+
 ## Documentation maintenance
 
 - `docs/ARCHITECTURE.md` describes only current structure and invariants.
