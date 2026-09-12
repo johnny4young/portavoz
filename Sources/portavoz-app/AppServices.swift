@@ -147,6 +147,7 @@ final class AppServices {
     /// Retained only as a composition decision. Disposable automation must
     /// never resolve a real GitHub credential or transport.
     @ObservationIgnored let usesTemporaryMeetingStore: Bool
+    @ObservationIgnored let dictationShortcutUITestFixture: DictationShortcutUITestFixture?
     @ObservationIgnored let liveAssistUITestFixture: LiveAssistUITestFixture?
     /// Whole-library export state outlives Settings windows so closing a pane
     /// cannot cancel publication or start a competing backup.
@@ -268,6 +269,8 @@ final class AppServices {
         recording = RecordingController(defaults: defaults)
         let usesTemporaryStore = storagePolicy.usesTemporaryMeetingStore
         usesTemporaryMeetingStore = usesTemporaryStore
+        dictationShortcutUITestFixture = DictationShortcutUITestFixture(
+            arguments: arguments, usesTemporaryStore: usesTemporaryStore)
         liveAssistUITestFixture = LiveAssistUITestFixture(
             arguments: arguments, usesTemporaryStore: usesTemporaryStore)
         let resourceCaptureState = AppResourceCaptureState()

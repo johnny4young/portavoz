@@ -427,6 +427,8 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "settings-audio": (
         test_id("SettingsUITests", "testAudioPaneOffersCaptureSourceControls"),
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
+        test_id("SettingsUITests", "testDictationRecoversShortcutConflictAndRefreshesHelp"),
+        test_id("SettingsUITests", "testDictationRepairsCorruptShortcutWithoutLeavingSettings"),
     ),
     "settings-voice": (
         test_id(

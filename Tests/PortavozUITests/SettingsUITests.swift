@@ -402,6 +402,73 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testDictationRecoversShortcutConflictAndRefreshesHelp() {
+        let app = XCUIApplication.portavoz(openSettings: true)
+        app.launchArguments.append("-seed-dictation-shortcut-conflict")
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationMouseButton":0,"dictationHotkeyKeyCode":46,"#
+            + #""dictationHotkeyModifiers":2304,"dictationHotkeyLabel":"⌥⌘M"}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+        openCategory("settings-category-audio", revealing: "settings-dictation-shortcut-retry", in: app)
+
+        let unavailable = app.control(withIdentifier: "settings-dictation-shortcut-unavailable")
+        XCTAssertTrue(unavailable.exists)
+        let retry = app.buttons["settings-dictation-shortcut-retry"]
+        XCTAssertTrue(retry.exists)
+        retry.click()
+        let help = app.staticTexts["settings-dictation-shortcut-help"]
+        XCTAssertTrue(help.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(renderedText(of: help).contains("⌥⌘M"))
+        XCTAssertFalse(unavailable.exists)
+        XCTAssertFalse(retry.exists, "retry must not leave a stale failure surface")
+
+        let recorder = app.buttons["settings-dictation-hotkey-recorder"]
+        XCTAssertTrue(recorder.waitForStableFrame())
+        recorder.click()
+        app.typeKey("n", modifierFlags: [.control, .option, .command])
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            renderedText(of: help).contains("⌃⌥⌘N") && recorder.label.contains("⌃⌥⌘N")
+        }, "the recorder and help must observe the new registration rather than their initial label")
+        let useDefault = app.buttons["settings-dictation-shortcut-default"]
+        XCTAssertTrue(useDefault.exists)
+        useDefault.click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: help).contains("⌥⌘D") })
+        XCTAssertFalse(useDefault.exists)
+        XCTAssertFalse(app.control(withIdentifier: "settings-dictation-shortcut-recovered").exists)
+        attachScreenshot(of: app, named: "dictation-shortcut-recovery")
+    }
+
+    @MainActor
+    func testDictationRepairsCorruptShortcutWithoutLeavingSettings() {
+        let app = XCUIApplication.portavoz(openSettings: true)
+        app.launchArguments.append("-seed-dictation-shortcut-conflict")
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationMouseButton":0,"dictationHotkeyKeyCode":-1,"#
+            + #""dictationHotkeyModifiers":-1,"dictationHotkeyLabel":"invalid"}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+        openCategory("settings-category-audio", revealing: "settings-dictation-shortcut-default", in: app)
+
+        let recovered = app.staticTexts["settings-dictation-shortcut-recovered"]
+        XCTAssertTrue(recovered.exists, "malformed startup settings must reach a recoverable app, not a trap")
+        XCTAssertTrue(renderedText(of: recovered).contains("⌥⌘D"))
+        let useDefault = app.buttons["settings-dictation-shortcut-default"]
+        XCTAssertTrue(useDefault.exists)
+        useDefault.click()
+        XCTAssertTrue(recovered.waitForDisappearance(timeout: 5), "explicit repair must supersede the corrupt override")
+        XCTAssertFalse(useDefault.exists)
+        XCTAssertFalse(app.control(withIdentifier: "settings-dictation-shortcut-unavailable").exists)
+        let help = app.staticTexts["settings-dictation-shortcut-help"]
+        XCTAssertTrue(help.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(renderedText(of: help).contains("⌥⌘D"))
+        openCategory("settings-category-general", revealing: "settings-language-system-toggle", in: app)
+        openCategory("settings-category-audio", revealing: "settings-dictation-shortcut-help", in: app)
+        XCTAssertFalse(recovered.exists, "pane reconstruction must not restore stale corrupt settings")
+        XCTAssertTrue(renderedText(of: help).contains("⌥⌘D"))
+    }
+
+    @MainActor
     func testVoicePaneOffersTheMirrorOptIn() {
         // The post-meeting mirror (6a-2) is opt-in and off by default; its
         // switch lives in the "My voice & Apuntador" pane.

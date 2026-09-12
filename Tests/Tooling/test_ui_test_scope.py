@@ -741,6 +741,9 @@ class UITestScopeTests(unittest.TestCase):
     def test_dictation_surfaces_select_only_the_audio_pane_evidence(self):
         for path in [
             "Sources/portavoz-app/DictationSection.swift",
+            "Sources/portavoz-app/DictationShortcut.swift",
+            "Sources/portavoz-app/DictationShortcutSettings.swift",
+            "Sources/portavoz-app/HotkeySetting+Labels.swift",
             "Sources/portavoz-app/MouseButtonPTT.swift",
             "Sources/portavoz-app/MousePTTGesture.swift",
             "Sources/portavoz-app/DictationController.swift",
@@ -754,6 +757,10 @@ class UITestScopeTests(unittest.TestCase):
                     "testAudioPaneOffersCaptureSourceControls",
                     "PortavozUITests/SettingsUITests/"
                     "testDictationOffersTriggersLanguageAndDictionary",
+                    "PortavozUITests/SettingsUITests/"
+                    "testDictationRecoversShortcutConflictAndRefreshesHelp",
+                    "PortavozUITests/SettingsUITests/"
+                    "testDictationRepairsCorruptShortcutWithoutLeavingSettings",
                 ),
                 path,
             )

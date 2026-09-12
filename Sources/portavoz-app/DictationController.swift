@@ -74,7 +74,7 @@ final class DictationController {
     /// will land. The strip shows it so you never dictate "blind" (4b).
     private(set) var targetApp: String?
 
-    private var hotkey: GlobalHotkey?
+    let shortcut = DictationShortcut()
     private var mousePTT: MouseButtonPTT?
     private var mousePTTButton: Int?
     /// True while the active session was started by the mouse button, so
@@ -93,16 +93,11 @@ final class DictationController {
     /// launch and whenever either changes — always re-registers so a new
     /// combo takes effect immediately.
     func syncHotkey(services: AppServices) {
-        hotkey?.unregister()
-        hotkey = nil
-        guard UserDefaults.standard.bool(forKey: Self.defaultsKey) else {
-            if phase == .listening { cancel() }
-            return
+        if !UserDefaults.standard.bool(forKey: Self.defaultsKey), phase == .listening {
+            cancel()
         }
-        let setting = HotkeySetting.load()
-        hotkey = GlobalHotkey(
-            keyCode: setting.keyCode,
-            modifiers: setting.modifiers,
+        shortcut.sync(
+            registrar: services.dictationShortcutRegistrar,
             onPress: { [weak self, weak services] in
                 guard let self, let services else { return }
                 self.pressedAt = Date()
@@ -145,7 +140,7 @@ final class DictationController {
         mousePTT?.invalidate()
         mousePTT = nil
         mousePTTButton = nil
-        guard let desiredButton else { return }
+        guard !services.usesTemporaryMeetingStore, let desiredButton else { return }
 
         // Configuring a system-wide mouse trigger is the earliest useful time
         // to explain its Accessibility requirement. A denied/pending prompt

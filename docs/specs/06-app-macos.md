@@ -2464,8 +2464,26 @@ answer, app-panel-only screenshot, and exact three-second citation seek (D100).
 
 **Hold-to-talk (Jul 2026)**: `GlobalHotkey` listens to kEventHotKeyPressed AND kEventHotKeyReleased (`GetEventKind` in same handler). Gesture without setting: a TAP (release < 0.5 s) preserves toggle; HOLD combination while speaking and release delivers at release — walkie-talkie. Verified E2E: hold of 2.5 s opens panel on press and closes only on release.
 
-**Configurable hotkey (Jul 2026)**: `HotkeySetting` (keyCode + Carbon mask + label, AppStorage; default ⌥⌘D) + `HotkeyRecorder` in Settings (NSEvent local monitor captures next combo; Esc cancels; combos WITHOUT ⌘/⌥ rejected with beep — single letter as global hotkey would hijack typing). `syncHotkey` now always unregister-first so new combo applies live. Verified E2E: record ⌃⌥⌘M and trigger opens panel.
- — ⌥⌘D in any app
+**Configurable hotkey**: `HotkeySetting` stores a key code, Carbon modifier mask
+and display label in UserDefaults (default ⌥⌘D). The local `HotkeyRecorder`
+requires Command or Option; Escape cancels. Return, Tab, Delete and function
+keys retain their existing bindings but display readable key glyphs. Restoration
+rejects booleans, strings masquerading as integers, fractions, negatives,
+out-of-range key codes, unsupported modifier bits and missing/malformed labels.
+A corrupt saved combination uses the default without silently writing over the
+saved values; Settings shows the fallback and an explicit default-repair action.
+An explicit edit writes just those three preferences and removes only their
+higher-priority startup overrides, so repair takes effect in the same process.
+
+`DictationShortcut` owns the observable binding and its exact registration handle
+on MainActor. Each rebind unregisters the previous handle and invalidates its
+callbacks before registering. Carbon requests exclusive ownership; failure is
+shown as unavailable, not asserted to be a particular OS conflict. Settings
+provides Retry and the recorder, and help always follows the selected binding.
+Neither recovery action begins capture or requests microphone/Accessibility
+permission. There is no automatic retry loop. Ordinary temporary-store launches
+register neither Carbon hotkeys nor the mouse event tap; the explicit shortcut
+fixture exercises failed registration and recovery with an inert registrar.
 
 Surface validated by MacParakeet: global hotkey → speak → hotkey again → text written where cursor is. `GlobalHotkey` uses Carbon `RegisterEventHotKey` — the only API consuming the keystroke without Accessibility permission — and is registered from app initialization so it survives without a window. `DictationController` owns one process-scoped, UUID-fenced session: mic → Parakeet streaming with custom vocabulary → the shared `CaptionCoalescer`; no meeting, database row, or audio file is created. The non-activating `DictationPanel` shows live text and offers explicit cancellation.
 

@@ -981,6 +981,16 @@
         }
       }
     },
+    "Another app or the system may reserve it. Choose another combination or retry.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puede estar reservado por otra app o por el sistema. Elige otra combinación o reintenta."
+          }
+        }
+      }
+    },
     "Another refine is already running — try again when it finishes.": {
       "localizations": {
         "es": {
@@ -2021,12 +2031,12 @@
         }
       }
     },
-    "Call-safe capture · dictate anywhere · ⌥⌘D": {
+    "Call-safe capture · global dictation": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Captura segura · dicta donde sea · ⌥⌘D"
+            "value": "Captura segura · dictado global"
           }
         }
       }
@@ -4339,6 +4349,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "El dictado nunca escribe en campos de contraseña."
+          }
+        }
+      }
+    },
+    "Dictation stays on this Mac and is not stored. Inserting text requires Accessibility permission.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado permanece en esta Mac y no se guarda. Insertar texto requiere el permiso de Accesibilidad."
           }
         }
       }
@@ -9869,16 +9889,6 @@
         }
       }
     },
-    "Press ⌥⌘D in any app, speak, press it again: your words are typed where your cursor is — transcribed on this Mac with your custom vocabulary, never stored. Inserting text needs the Accessibility permission (macOS asks on first use).": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Presiona ⌥⌘D en cualquier app, habla y presiónalo de nuevo: tus palabras se escriben donde está tu cursor — transcritas en esta Mac con tu vocabulario, jamás se guardan. Insertar texto requiere el permiso de Accesibilidad (macOS lo pide la primera vez)."
-          }
-        }
-      }
-    },
     "Preview": {
       "localizations": {
         "es": {
@@ -11645,6 +11655,16 @@
         }
       }
     },
+    "Retry shortcut": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reintentar atajo"
+          }
+        }
+      }
+    },
     "Return to recording": {
       "localizations": {
         "es": {
@@ -12497,6 +12517,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Compartir…"
+          }
+        }
+      }
+    },
+    "Shortcut %@ is unavailable.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El atajo %@ no está disponible."
           }
         }
       }
@@ -14501,6 +14531,16 @@
         }
       }
     },
+    "The saved shortcut is invalid. Using %@ instead.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El atajo guardado no es válido. Se usará %@ en su lugar."
+          }
+        }
+      }
+    },
     "The selected activity view could not be verified. No runs are shown.": {
       "localizations": {
         "es": {
@@ -15631,12 +15671,32 @@
         }
       }
     },
+    "Use %@ to start dictation; press it again to finish.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa %@ para iniciar el dictado; vuelve a pulsarlo para terminar."
+          }
+        }
+      }
+    },
     "Use default folder": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Usar carpeta predeterminada"
+          }
+        }
+      }
+    },
+    "Use default shortcut": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar atajo predeterminado"
           }
         }
       }
