@@ -97,7 +97,7 @@ extension AppServices {
         directory: URL,
         workloadClass: ResourceWorkloadClass
     ) async throws -> MLXRuntimeLease {
-        mlxIdleGeneration += 1
+        modelIdleReleaseScheduler.cancel(.language)
         let directoryKey = Self.mlxDirectoryKey(directory)
         if let runtime = try residentMLXRuntime(directoryKey: directoryKey) {
             return runtime
@@ -173,12 +173,8 @@ extension AppServices {
     }
 
     func scheduleMLXRelease() {
-        mlxIdleGeneration += 1
-        let generation = mlxIdleGeneration
-        Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(120))
-            guard let self, generation == self.mlxIdleGeneration else { return }
-            await self.releaseMLXRuntime()
+        modelIdleReleaseScheduler.schedule(.language, profile: modelMemoryPreferences.profile) { [weak self] in
+            _ = await self?.releaseMLXRuntime()
         }
     }
 

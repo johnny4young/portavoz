@@ -341,7 +341,9 @@ lifetime is independent from the Settings window. Matching consumers join the
 active task; a different variant waits rather than starting a second large
 transfer. Successful verification leaves the opaque token app-scoped so the
 first later quality pass does not hash the full model again, while the loaded
-Whisper runtime still releases after two idle minutes. Deleting that variant
+Whisper runtime still releases after two idle minutes in the default balanced
+profile; explicit lightweight mode uses its existing lease-protected release
+without that idle delay (D526). Deleting that variant
 invalidates its token and runtime. Persisted readiness is conservative: every
 pinned model and tokenizer artifact must pass its expected SHA-256 digest;
 actual preparation always re-enters `ModelStore` verification/repair before a
@@ -600,3 +602,12 @@ and Refine are independent from this optional relay.
 4. ~~FluidAudio pinned by revision `c367a18e`~~ — **RESOLVED**:
    `Package.swift` uses `.upToNextMinor(from: "0.15.5")`, which contains the
    upstream #732 type-checker fix.
+
+### Idle retention is separate from engine identity (D526)
+
+The explicit app memory profile only schedules existing runtime releases. It
+cannot change a pinned Refine/Import descriptor, revoke a live-speech lease,
+remove verified model assets, or change ASR windows. The actual Whisper resolver
+accepts an injected defaults store for characterization; absent and malformed
+legacy compact preferences preserve their previous resolution without writes.
+Catalog RAM numbers are advisory host guidance, not measured engine footprints.

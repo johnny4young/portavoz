@@ -6,6 +6,7 @@ import SwiftUI
 struct WhisperModelRow: View {
     let variant: AppServices.WhisperVariant
     let active: Bool
+    let belowCatalogRAM: Bool
     let preparationState: AppServices.WhisperPreparationState
     let select: () -> Void
     let download: () -> Void
@@ -24,6 +25,14 @@ struct WhisperModelRow: View {
                                 ? "Compact — less disk" : "Turbo — best quality"))
                             .font(.callout)
                         status
+                        Text(L10n.format("Catalog RAM guidance: %d GB or more.", variant.minimumRAMGB))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        if belowCatalogRAM {
+                            Text("This Mac is below the catalog guidance; performance may be limited.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

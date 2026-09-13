@@ -615,3 +615,23 @@ Backend queue backpressure and exception-path cancellation draining remain
 unverified risks, not newly reproduced product defects. Preserve the failed
 receipt and unchanged stability thresholds; do not replace this gap with a
 retry-until-green candidate or a synthetic unit-test claim.
+
+## Lightweight model memory: remaining measurements (D526)
+
+The explicit memory profile bounds idle scheduler tasks and delegates runtime
+release to existing active-use leases. It does not certify an application-wide
+RSS ceiling or lower peak memory. Cold-start latency, allocator/ANE/Metal cache
+behavior, mixed recording/refine/summary workloads, and physical 8-GiB hosts on
+supported macOS versions still need measured evidence. Compact Whisper remains
+an explicit disk-saving choice, not an automatically selected low-RAM engine;
+its runtime advantage over Turbo is not established by download size or the
+shared catalog RAM guidance. OS/external-provider model lifetimes are outside
+this profile. These limits do not relax automated lifetime or privacy tests.
+
+The broad local UI gate still exposes the shared fixture-storage boundary:
+`UITestSupport` passes runner-owned temporary audio paths to the app, and
+`AppServices.prepareSeedAudio` can block its main actor in directory creation.
+The observed accessibility launch/snapshot failures do not qualify the suite;
+focused Settings evidence does not replace that missing full bilingual result.
+Fix shared fixture ownership in its own change rather than weakening app
+permissions or hiding these tests in the memory-profile selector.

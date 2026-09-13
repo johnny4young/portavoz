@@ -7634,3 +7634,22 @@ observed state; catalogue ownership, retired-journey rejection, bounded scrollin
 unchanged runtime budgets and screenshot roles remain enforced. A tooling test
 attempts to restore either retired receipt journey with an otherwise valid scope
 and confirms that the actual duplicate policy rejects it.
+
+### Model-memory profile evidence boundaries (D526)
+
+`ModelIdleReleaseTests` exercises actual AppServices scheduling with controllable
+clocks: default durations, 500-completion bursts, replaced/canceled callbacks,
+clock failure, preference rescheduling, released service lifetime, and refused
+release during preparation. `ModelMemoryGuidanceTests` enters the actual local
+provider probe through application discovery and includes unknown/8-GiB
+boundaries, maximum unsigned bytes, corrupt preferences, and temporary-store
+isolation. The Settings category journey toggles memory mode, rebuilds the pane,
+checks the retained state and localized explanation, and restores the prior
+choice; it does not depend on the host's prior preference value.
+
+`PORTAVOZ_MODEL_RESIDENCY_TESTS=1` admits a separate installed-Parakeet test.
+It verifies pinned files, loads without download or audio, claims two real
+resident leases through AppServices, proves release is refused with either
+owner active, then checks final unload and unchanged verified files. Default
+runs explicitly skip this lane. No transcript, model-quality result, RAM budget,
+or low-memory hardware qualification is inferred from this lifetime test.

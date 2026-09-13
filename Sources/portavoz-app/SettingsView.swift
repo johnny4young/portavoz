@@ -109,6 +109,7 @@ struct SettingsView: View {
                     transcriptionLanguageSection
                     summaryLanguageSection
                     semanticSearchSection
+                    ModelMemorySettingsSection(services: services)
                     summaryEngineSection
                     customStructuresSection
                     vocabularySection
@@ -717,6 +718,7 @@ extension SettingsView {
                 WhisperModelRow(
                     variant: variant,
                     active: variant.compact == whisperCompact,
+                    belowCatalogRAM: services.modelMemoryPreferences.capacity.isBelowCatalogRAM(variant.minimumRAMGB),
                     preparationState: services.whisperPreparationState,
                     select: { whisperCompact = variant.compact },
                     download: { services.prepareWhisperVariant(variant.id) },

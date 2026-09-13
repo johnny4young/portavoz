@@ -1791,6 +1791,16 @@
         }
       }
     },
+    "Balanced memory keeps models ready for back-to-back work.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La memoria equilibrada mantiene los modelos listos para tareas consecutivas."
+          }
+        }
+      }
+    },
     "Barely hearing the other participants — if this is a call, check your output device or system-audio permission.": {
       "localizations": {
         "es": {
@@ -2137,6 +2147,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Capturando %@ directamente; el audio de otras apps queda fuera."
+          }
+        }
+      }
+    },
+    "Catalog RAM guidance: %d GB or more.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RAM orientativa del catálogo: %d GB o más."
           }
         }
       }
@@ -6619,6 +6639,16 @@
         }
       }
     },
+    "Lightweight model memory": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memoria ligera para modelos"
+          }
+        }
+      }
+    },
     "Line structure": {
       "localizations": {
         "es": {
@@ -7385,6 +7415,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Actividad de modelos: %d · Transferencias locales: %d"
+          }
+        }
+      }
+    },
+    "Model choices and downloaded files are unchanged. This is not a RAM usage limit.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los modelos seleccionados y archivos descargados no cambian. Esto no limita el uso de RAM."
+          }
+        }
+      }
+    },
+    "Model memory": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memoria de modelos"
           }
         }
       }
@@ -11019,6 +11069,16 @@
         }
       }
     },
+    "Release idle models sooner. Models in use stay available; the next start may be slower.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Libera antes los modelos inactivos. Los modelos en uso siguen disponibles; el próximo inicio puede ser más lento."
+          }
+        }
+      }
+    },
     "Reload automatic actions": {
       "localizations": {
         "es": {
@@ -13441,6 +13501,16 @@
         }
       }
     },
+    "Suggested for this Mac: lightweight memory.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugerencia para esta Mac: memoria ligera."
+          }
+        }
+      }
+    },
     "Suggested from your meetings — click to review before adding": {
       "localizations": {
         "es": {
@@ -14727,6 +14797,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Este Mac"
+          }
+        }
+      }
+    },
+    "This Mac is below the catalog guidance; performance may be limited.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta Mac no alcanza la RAM orientativa del catálogo; el rendimiento puede ser limitado."
           }
         }
       }
