@@ -307,7 +307,7 @@ extension ArchitectureDependencyTests {
         let attacher = try Self.contents(
             of: "Sources/portavoz-app/LiveTranscriptionAttacher.swift")
         let dictation = try Self.contents(
-            of: "Sources/portavoz-app/DictationController.swift")
+            of: "Sources/portavoz-app/DictationSessionDependencies.swift")
         let recovery = try Self.contents(
             of: "Sources/portavoz-app/AppPostCaptureProcessingCapabilities.swift")
         let benchmark = try Self.contents(

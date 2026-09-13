@@ -22,6 +22,12 @@ struct MenuBarContent: View {
         VStack(alignment: .leading, spacing: 0) {
             statusHeader
             quickActions
+            if let fixture = services.dictationNativeUITestFixture {
+                Button("Dictate", action: fixture.start)
+                    .accessibilityIdentifier("dictation-native-start")
+                Text(verbatim: fixture.status)
+                    .accessibilityIdentifier("dictation-native-status")
+            }
             if let nextEvent = model.state.nextEvent {
                 nextMeetingCard(nextEvent)
             }
@@ -111,6 +117,7 @@ struct MenuBarContent: View {
                 quickAction("Dictate", "waveform", tint: PVDesign.accent) {
                     services.dictation.toggle(services: services)
                 }
+                .accessibilityIdentifier("menu-bar-dictate")
             }
             quickAction("Ask", "bubble.left.and.text.bubble.right", tint: .secondary) {
                 openMainWindow()

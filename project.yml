@@ -25,7 +25,8 @@ settings:
     SWIFT_VERSION: "6.0"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
-    # Ad-hoc local signing — this project is for UI testing, not distribution.
+    # Ad-hoc by default; run-ui-tests.sh accepts an explicit local certificate
+    # for native-client trust stability. This is not distribution signing.
     CODE_SIGN_STYLE: Manual
     CODE_SIGN_IDENTITY: "-"
     DEVELOPMENT_TEAM: ""
@@ -88,6 +89,17 @@ targets:
           - AudioPlaybackKit
       - package: Sparkle
 
+  PortavozDictationReceiver:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.4"
+    sources:
+      - path: Tests/PortavozDictationReceiver
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.portavoz.dictation-test-receiver
+        GENERATE_INFOPLIST_FILE: YES
+
   # UI smoke harness. XCTest lives here; the package unit tests stay XCTest
   # too (D13) but run via `swift test` — this target is macOS UI automation.
   PortavozUITests:
@@ -104,6 +116,7 @@ targets:
       - path: Tests/PortavozUITests
     dependencies:
       - target: Portavoz
+      - target: PortavozDictationReceiver
 
 schemes:
   Portavoz:
@@ -111,6 +124,7 @@ schemes:
       targets:
         Portavoz: all
         PortavozUITests: [test]
+        PortavozDictationReceiver: [test]
     run:
       config: Debug
     test:

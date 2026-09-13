@@ -26,6 +26,8 @@ class RunUITestsTests(unittest.TestCase):
         preseed_stale_receipts: bool = False,
         notification_override: str | None = None,
         inherited_notification_override: str | None = None,
+        signing_identity: str | None = None,
+        signing_team: str | None = None,
     ) -> tuple[subprocess.CompletedProcess[str], list[str]]:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -124,6 +126,11 @@ class RunUITestsTests(unittest.TestCase):
 
             environment = os.environ.copy()
             environment.pop("DEVELOPER_DIR", None)
+            for key, value in (("UI_TEST_CODE_SIGN_IDENTITY", signing_identity),
+                               ("UI_TEST_DEVELOPMENT_TEAM", signing_team)):
+                environment.pop(key, None)
+                if value is not None:
+                    environment[key] = value
             environment.pop("PORTAVOZ_UI_TEST_LOCALE", None)
             environment.pop("TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE", None)
             notification_key = "PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS"
@@ -197,6 +204,37 @@ class RunUITestsTests(unittest.TestCase):
                 else None
             )
             return result, calls
+
+    def test_explicit_local_signer_reaches_the_real_build_invocation(self):
+        identity, team = "a" * 40, "AB12345678"
+        result, calls = self.run_runner(
+            "", phase="build-only", signing_identity=identity, signing_team=team)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(calls), 1)
+        self.assertIn("build-for-testing", calls[0])
+        self.assertIn("CODE_SIGN_STYLE=Manual", calls[0])
+        self.assertIn(f"CODE_SIGN_IDENTITY={identity}", calls[0])
+        self.assertIn(f"DEVELOPMENT_TEAM={team}", calls[0])
+
+    def test_absent_signer_keeps_the_project_signing_policy(self):
+        result, calls = self.run_runner("", phase="build-only")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("CODE_SIGN_IDENTITY=", calls[0])
+        self.assertNotIn("CODE_SIGN_STYLE=", calls[0])
+        self.assertNotIn("DEVELOPMENT_TEAM=", calls[0])
+
+    def test_malformed_or_partial_signer_never_reaches_xcode(self):
+        for identity, team in [("a" * 40, None), (None, "AB12345678"),
+                               ("a" * 39, "AB12345678"), ("a" * 41, "AB12345678"),
+                               ("-", "AB12345678"), ("a" * 40, "AB1234567"),
+                               ("a" * 40, "AB123456789"), ("a" * 40, "ab12345678"),
+                               ("a" * 40 + "\nOTHER_SETTING=1", "AB12345678")]:
+            with self.subTest(identity=identity, team=team):
+                result, calls = self.run_runner(
+                    "", phase="build-only", signing_identity=identity, signing_team=team)
+                self.assertEqual(result.returncode, 2)
+                self.assertEqual(calls, [], "invalid signing configuration must fail before build")
+                self.assertEqual(self.defaults_calls, [])
 
     def test_empty_selector_runs_the_complete_suite(self):
         result, calls = self.run_runner("")
