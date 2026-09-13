@@ -139,6 +139,7 @@ struct SettingsView: View {
                         performAction: performBackgroundWorkAction)
                 case .data:
                     LedgerSection(model: services.localDataLedger)
+                    SettingsTransferSection()
                     SupportDiagnosticsSection()
                     BackupSection()
                     recordingsSection

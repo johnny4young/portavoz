@@ -23,6 +23,23 @@ from ui_test_scope import (  # noqa: E402
 
 
 class UITestScopeTests(unittest.TestCase):
+    def test_portable_settings_files_reach_both_actual_transfer_journeys(self):
+        paths = (
+            "Sources/ApplicationKit/PortableSettings.swift",
+            "Sources/ApplicationKit/PortableSettingsTransfer.swift",
+            "Sources/portavoz-app/AppPortableSettingsStore.swift",
+            "Sources/portavoz-app/AppServices+SettingsTransfer.swift",
+            "Sources/portavoz-app/PortableSettingsFile.swift",
+            "Sources/portavoz-app/SettingsTransferModel.swift",
+            "Sources/portavoz-app/SettingsTransferSection.swift",
+        )
+        expected = set(FEATURE_TESTS["settings-transfer"])
+        self.assertEqual(len(expected), 2)
+        for path in paths:
+            selection = select_paths([path])
+            self.assertEqual(set(selection.tests), expected, path)
+            self.assertEqual(selection.locales, ("en",), path)
+
     def minimal_catalog_root(self, *methods: str, with_owner: bool = True):
         temporary = tempfile.TemporaryDirectory()
         root = Path(temporary.name)

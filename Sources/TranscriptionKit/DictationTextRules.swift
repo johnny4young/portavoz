@@ -120,7 +120,8 @@ public enum DictationTextRules {
     /// inherited from older builds. Keep the newest case-insensitive trigger,
     /// trim trigger edges, and reject deletion-shaped empty values so the UI
     /// never receives duplicate ForEach identities or dead matchers.
-    private static func canonical(
+    /// The ordered semantic value shared by matching, storage and import review.
+    public static func canonical(
         _ replacements: [DictationReplacement]
     ) -> [DictationReplacement] {
         var newestFirst: [DictationReplacement] = []

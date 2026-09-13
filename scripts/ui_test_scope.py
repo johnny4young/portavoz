@@ -408,6 +408,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "testAutomaticBriefRuleRecoversAndKeepsInspectableHistory",
         ),
     ),
+    "settings-transfer": (
+        test_id("SettingsTransferUITests", "testPortablePreferencesReviewCancelApplyAndLiveLanguage"),
+        test_id("SettingsTransferUITests", "testUnsupportedPreferencesRemainRecoverableWithoutMutation"),
+    ),
     "settings-data": (
         test_id("SettingsUITests", "testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy"),
         test_id("SettingsUITests", "testSyncPaneKeepsOptInAndExistingLibrarySeparate"),
@@ -548,6 +552,7 @@ FEATURE_SOURCE_SENTINELS: dict[str, str] = {
     "settings-skills": "Sources/portavoz-app/SkillsSettingsSection.swift",
     "settings-standing-skills": "Sources/portavoz-app/StandingSkillRulesSection.swift",
     "settings-data": "Sources/portavoz-app/AppServices+MeetingSync.swift",
+    "settings-transfer": "Sources/portavoz-app/SettingsTransferSection.swift",
     "production-sync": "Sources/portavoz-app/ProductionSyncQualificationRunner.swift",
     "settings-intelligence": "Sources/portavoz-app/SemanticSearchPreparationModel.swift",
     "settings-audio": "Sources/portavoz-app/AudioSection.swift",
@@ -663,6 +668,12 @@ def app_features(filename: str) -> set[str]:
         return {"automation-entry", "commitment-radar"}
     if lowered == "appservices+meetingsync.swift":
         return {"settings-data"}
+    if lowered in {
+        "appportablesettingsstore.swift", "appservices+settingstransfer.swift",
+        "portablesettings.swift", "portablesettingstransfer.swift", "portablesettingsfile.swift",
+        "settingstransfermodel.swift", "settingstransfersection.swift",
+    }:
+        return {"settings-transfer"}
     if lowered in {"appservices.swift", "portavozapp.swift"}:
         # Process composition/startup changes need one deterministic canary per
         # route, not every feature permutation behind those destinations.
@@ -850,6 +861,11 @@ def app_features(filename: str) -> set[str]:
 
 
 def lower_layer_features(path: str) -> set[str]:
+    if path in {
+        "Sources/ApplicationKit/PortableSettings.swift",
+        "Sources/ApplicationKit/PortableSettingsTransfer.swift",
+    }:
+        return {"settings-transfer"}
     lowered = path.lower()
     exact_owners = {
         # Shared-store roots affect startup/model preparation, not every

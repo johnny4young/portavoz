@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 116
+    "expectedCaseCount": 118
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -101,6 +101,8 @@
     "RecordingAssistUITests/testLatestManualAssistRequestOwnsTheFocusSlot()": 25.0,
     "RecordingAssistUITests/testBatchedObjectivesRevealLastArrivalAndReplacementCountsAsUnread()": 25.0,
     "RecordingAssistUITests/testUnsubmittedNotesAndObjectivesSurviveTabsAndLibraryBrowsing()": 25.0,
+    "SettingsTransferUITests/testPortablePreferencesReviewCancelApplyAndLiveLanguage()": 35.0,
+    "SettingsTransferUITests/testUnsupportedPreferencesRemainRecoverableWithoutMutation()": 25.0,
     "SettingsUITests/testAudioPaneOffersCaptureSourceControls()": 20.0,
     "SettingsUITests/testCategoryNavigationRevealsEachPane()": 24.352,
     "SettingsUITests/testDataPaneExportsAReadableWholeLibraryMarkdownBackup()": 20.0,

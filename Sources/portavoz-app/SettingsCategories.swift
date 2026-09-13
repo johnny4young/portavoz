@@ -20,18 +20,20 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: String {
+    var title: String { L10n.text(titleKey) }
+
+    var titleKey: String {
         switch self {
-        case .general: L10n.text("General & language")
-        case .audio: L10n.text("Audio & dictation")
-        case .intelligence: L10n.text("Intelligence")
-        case .voice: L10n.text("My voice & Apuntador")
-        case .agenda: L10n.text("Agenda & automation")
-        case .skills: L10n.text("Suggested actions")
-        case .integrations: L10n.text("Integrations")
-        case .sync: L10n.text("Sync")
-        case .backgroundWork: L10n.text("Background activity")
-        case .data: L10n.text("Your data")
+        case .general: "General & language"
+        case .audio: "Audio & dictation"
+        case .intelligence: "Intelligence"
+        case .voice: "My voice & Apuntador"
+        case .agenda: "Agenda & automation"
+        case .skills: "Suggested actions"
+        case .integrations: "Integrations"
+        case .sync: "Sync"
+        case .backgroundWork: "Background activity"
+        case .data: "Your data"
         }
     }
 
@@ -52,18 +54,18 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
 
     /// The one-line preview under each nav item (design system 2a): the
     /// pane's contents at a glance, so the sidebar tells you where to go.
-    var subtitle: String {
+    var subtitleKey: String {
         switch self {
-        case .general: L10n.text("System language · English/Spanish · menu bar")
-        case .audio: L10n.text("Call-safe capture · dictate anywhere · ⌥⌘D")
-        case .intelligence: L10n.text("Summary engine · Whisper refine · vocabulary")
-        case .voice: L10n.text("Enrolled voice · your name · Apuntador")
-        case .agenda: L10n.text("Reminder · end-of-meeting Shortcut · title template")
-        case .skills: L10n.text("Review · enable · history")
-        case .integrations: L10n.text("BYOK OpenAI-compatible · GitHub gists · MCP")
-        case .sync: L10n.text("iCloud · status · existing library")
-        case .backgroundWork: L10n.text("Recovery · processing · local indexes")
-        case .data: L10n.text("Export Markdown · recordings folder · trash")
+        case .general: "System language · English/Spanish · menu bar"
+        case .audio: "Call-safe capture · dictate anywhere · ⌥⌘D"
+        case .intelligence: "Summary engine · Whisper refine · vocabulary"
+        case .voice: "Enrolled voice · your name · Apuntador"
+        case .agenda: "Reminder · end-of-meeting Shortcut · title template"
+        case .skills: "Review · enable · history"
+        case .integrations: "BYOK OpenAI-compatible · GitHub gists · MCP"
+        case .sync: "iCloud · status · existing library"
+        case .backgroundWork: "Recovery · processing · local indexes"
+        case .data: "Export Markdown · recordings folder · trash"
         }
     }
 
@@ -95,12 +97,12 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         }
     }
 
-    func matches(_ query: String) -> Bool {
+    func matches(_ query: String, language: AppLanguage = .current) -> Bool {
         let query = query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !query.isEmpty else { return true }
-        return title.lowercased().contains(query)
+        return L10n.text(titleKey, language: language).lowercased().contains(query)
             || keywords.contains(query)
-            || L10n.text(keywords).contains(query)
+            || L10n.text(keywords, language: language).contains(query)
     }
 }
 

@@ -2782,6 +2782,50 @@ exercises this same production path in the durable-resume XCUITest (D63).
 
 **SettingsView (⌘,)**: Language (use system language or force English/Spanish, saved in `@AppStorage("app-language")`, applies `\.locale` live to `ContentView` and `SettingsView`) · Intelligence language policies (`transcriptionLanguage`: "Auto-detect" / "English" / "Español" for recognition only; `summaryLanguage`: "Meeting language" / "English" / "Español" for generated output only) · capability-aware Summary engine selection whose localized recommendation action is prominent and whose unavailable Apple state names Ollama/MLX recovery · proactive Whisper Turbo/Compact rows with select/download/retry/delete, background preparation progress that says download occurs only when needed, stable `settings-whisper-*` accessibility identifiers, and full catalog-integrity verification before any model is shown as downloaded (D71/D113). Whisper artifacts live under user Application Support rather than either app bundle, so Dev reinstall and normal application updates preserve them · Audio (always-on call-safe raw capture status, preferred mic with visible fallback, capture mode auto/app/system and disclosure of scope; no VPIO/AEC recording toggle, D125) · Recordings (configurable folder with migration and progress) · Titles (template with help popover of tokens, insertable chips, `Reset` button, and live preview) · Vocabulary (list editor: Enter adds, − removes) · My voice (enroll 12 s / delete — destroys file+key) · Apuntador activation/status (enabled here or from recording only when the macOS 26 Apple classifier is available; Sequoia explains the requirement while retaining Mirror) · External model BYOK (endpoint/model in defaults, key through the async application secret boundary into this-device-only Keychain, answer-provider opt-in disabled until everything and the Apuntador classifier are available; deleting key turns it off — spec 04) · GitHub (same injected secret boundary) · explicit local redacted support export in Your data (`settings-export-diagnostics`, D76) · whole-library Markdown backup with the native `NSOpenPanel`, visible progress, localized complete/partial/fatal status, bounded bookmark access plus a private publication/failure journal, and no Store or IntegrationsKit coordination in SwiftUI (`settings-export-all-button`, `settings-backup-progress`, `settings-backup-status`, D99/D180–D189). A one-shot app route lets any feature open an existing or new Settings window at an exact category (D72). `AppServices` is the sole app constructor of PlatformKit security and permission adapters; onboarding renders permission state and invokes app adapters rather than importing AVFoundation or EventKit.
 
+## Portable settings contract
+
+The version-one `portavoz-settings` envelope accepts only `format`, `version`
+and `settings`. Settings use nine semantic allowlisted keys rather than a dump
+of the app preference domain: interface/recognition/summary/dictation language,
+menu-bar visibility, title template, vocabulary, filler removal and replacements.
+Unknown settings, future versions, wrong scalar types, malformed replacement
+JSON, nulls, NUL text and out-of-bound content are rejected. The whole file is
+bounded to 1 MiB, each text value to 64 KiB, and replacement collections to 1,000
+rules, including after merging. Exported vocabulary and replacements may contain
+user-authored text; this is not a redacted support artifact.
+
+Preparing a review performs no writes. Incoming vocabulary and replacements
+merge with existing collections; non-conflicting local entries remain and an
+incoming replacement wins only for its matching case-insensitive trigger through
+the existing dictation codec. Ordered normalized rules and merged vocabulary
+terms determine whether a collection changed, not JSON key order, whitespace or
+Unicode escapes. Empty or equivalent imports preserve the original stored text
+and show the no-change status without offering Apply. Other incoming values
+replace only their own key.
+The write adapter rejects a changed portable snapshot or active capture before
+any preference mutation. It preserves unrelated preferences and startup overrides;
+an explicit production import supersedes only its changed keys' overrides.
+Temporary composition changes only volatile preferences. Settings → Your data
+offers explicit Export/Import preferences actions. Native panels choose one JSON
+document; cancelling file selection performs no write. The review shows full
+current and resulting values, including merged collections. Apply rechecks the
+portable snapshot and recording/dictation activity synchronously at mutation.
+The sidebar observes the app-language preference directly and passes its value
+to shared localization for row titles, hints and category filtering. Prelocalized
+strings do not inherit SwiftUI locale invalidation by themselves. Updating the
+language preserves the current category, query and review rather than remounting
+Settings. The live UI check targets the selected sidebar button, not the General
+pane title that is absent while Your data is open.
+Stale/capture failures keep the review open with an actionable explanation;
+Cancel/Escape discard it. Late file reads cannot reopen a cancelled review.
+
+File IO runs off MainActor. Reads are bounded at the open descriptor, reject
+final symlinks and non-regular files, and never wait on a named pipe. Private
+same-directory staging publishes an owner-only export atomically; it does not
+claim disk-flush durability. No network operation or permission request is part
+of transfer. The native-panel bypass requires both temporary-store composition
+and the explicit settings-transfer fixture flag; ordinary launches ignore it.
+
 ## Verified in real world (Jul 2026)
 
 Multiple real meetings retained audio and stable TCC permissions between

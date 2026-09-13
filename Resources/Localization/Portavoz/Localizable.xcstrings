@@ -831,6 +831,16 @@
         }
       }
     },
+    "After import": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Después de importar"
+          }
+        }
+      }
+    },
     "Agenda": {
       "localizations": {
         "es": {
@@ -1217,6 +1227,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aplicar"
+          }
+        }
+      }
+    },
+    "Apply preferences": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aplicar preferencias"
           }
         }
       }
@@ -3307,6 +3327,16 @@
         }
       }
     },
+    "Could not apply settings. Cancel and review the file again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron aplicar los ajustes. Cancela y revisa el archivo de nuevo."
+          }
+        }
+      }
+    },
     "Could not apply this name suggestion.": {
       "localizations": {
         "es": {
@@ -3437,12 +3467,32 @@
         }
       }
     },
+    "Could not export settings. Check your saved preferences and destination, then try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron exportar los ajustes. Revisa tus preferencias guardadas y el destino e inténtalo de nuevo."
+          }
+        }
+      }
+    },
     "Could not find the meeting audio.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "No se encontró el audio de la reunión."
+          }
+        }
+      }
+    },
+    "Could not import settings. Choose a supported Portavoz settings file.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron importar los ajustes. Elige un archivo de ajustes de Portavoz compatible."
           }
         }
       }
@@ -3993,12 +4043,32 @@
         }
       }
     },
+    "Current value": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Valor actual"
+          }
+        }
+      }
+    },
     "Custom structures": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Estructuras personalizadas"
+          }
+        }
+      }
+    },
+    "Custom vocabulary": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vocabulario personalizado"
           }
         }
       }
@@ -4339,6 +4409,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "El dictado nunca escribe en campos de contraseña."
+          }
+        }
+      }
+    },
+    "Dictation replacements": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reemplazos del dictado"
           }
         }
       }
@@ -4939,6 +5019,16 @@
         }
       }
     },
+    "Empty": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vacío"
+          }
+        }
+      }
+    },
     "Enable Apuntador for recordings": {
       "localizations": {
         "es": {
@@ -5379,6 +5469,16 @@
         }
       }
     },
+    "Export preferences…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar preferencias…"
+          }
+        }
+      }
+    },
     "Export redacted support file…": {
       "localizations": {
         "es": {
@@ -5539,6 +5639,16 @@
         }
       }
     },
+    "Files may include private vocabulary. Permissions, secrets and feature activation never transfer.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los archivos pueden contener vocabulario privado. Nunca se transfieren secretos, permisos ni activaciones de funciones."
+          }
+        }
+      }
+    },
     "Filter activity by update time": {
       "localizations": {
         "es": {
@@ -5625,6 +5735,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hallazgos ✦ de tus reuniones"
+          }
+        }
+      }
+    },
+    "Finish recording or dictation before applying settings. Your review is still open.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finaliza la grabación o el dictado antes de aplicar los ajustes. La revisión sigue abierta."
           }
         }
       }
@@ -6199,6 +6319,26 @@
         }
       }
     },
+    "Import preferences…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importar preferencias…"
+          }
+        }
+      }
+    },
+    "Imported %lld settings. Permissions and feature activation are unchanged.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se importaron %lld ajustes. Los permisos y la activación de funciones no han cambiado."
+          }
+        }
+      }
+    },
     "Include correction provenance": {
       "localizations": {
         "es": {
@@ -6315,6 +6455,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Inteligencia"
+          }
+        }
+      }
+    },
+    "Interface language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma de la interfaz"
           }
         }
       }
@@ -7189,6 +7339,16 @@
         }
       }
     },
+    "Meeting title template": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plantilla del título de reuniones"
+          }
+        }
+      }
+    },
     "Meeting-only name": {
       "localizations": {
         "es": {
@@ -7255,6 +7415,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Barra de menú"
+          }
+        }
+      }
+    },
+    "Menu bar visibility": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visibilidad en la barra de menús"
           }
         }
       }
@@ -7485,6 +7655,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hay más temas coincidentes. Refina el nombre para elegir el correcto."
+          }
+        }
+      }
+    },
+    "Move language, vocabulary and text preferences. Review every change before applying it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transfiere preferencias de idioma, vocabulario y texto. Revisa cada cambio antes de aplicarlo."
           }
         }
       }
@@ -8205,6 +8385,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "No hay ejecuciones que coincidan con el período seleccionado."
+          }
+        }
+      }
+    },
+    "No settings to change. Your current preferences are unchanged.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay ajustes por cambiar. Tus preferencias actuales no han cambiado."
           }
         }
       }
@@ -9319,6 +9509,16 @@
         }
       }
     },
+    "Portable preferences": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preferencias portables"
+          }
+        }
+      }
+    },
     "Portavoz": {
       "localizations": {
         "es": {
@@ -9689,6 +9889,16 @@
         }
       }
     },
+    "Preferences changed during review. Cancel and import again to review the current values.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las preferencias cambiaron durante la revisión. Cancela y vuelve a importar para revisar los valores actuales."
+          }
+        }
+      }
+    },
     "Preparation failed: %@": {
       "localizations": {
         "es": {
@@ -9815,6 +10025,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preparando modelos…"
+          }
+        }
+      }
+    },
+    "Preparing preferences…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando preferencias…"
           }
         }
       }
@@ -10535,6 +10755,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Eliminadas recientemente"
+          }
+        }
+      }
+    },
+    "Recognition language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma del reconocimiento"
           }
         }
       }
@@ -11309,6 +11539,16 @@
         }
       }
     },
+    "Remove hesitation fillers": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar muletillas de vacilación"
+          }
+        }
+      }
+    },
     "Remove note": {
       "localizations": {
         "es": {
@@ -11801,6 +12041,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Revisa las propuestas de reuniones y compromisos en su contexto original. Las preparaciones de calendario permanecen en la barra de menús de Portavoz. Aquí no se ejecuta nada."
+          }
+        }
+      }
+    },
+    "Review portable preferences before applying them. No permissions are transferred.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa las preferencias portables antes de aplicarlas. No se transfieren permisos."
+          }
+        }
+      }
+    },
+    "Review preferences": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar preferencias"
           }
         }
       }
@@ -12467,6 +12727,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "La búsqueda semántica necesita atención"
+          }
+        }
+      }
+    },
+    "Settings file saved. Keep it private: it includes your vocabulary and replacements.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivo de ajustes guardado. Mantenlo privado: incluye tu vocabulario y reemplazos."
           }
         }
       }
@@ -14881,6 +15151,16 @@
         }
       }
     },
+    "This file includes vocabulary and replacements. Share it only with people you trust.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este archivo incluye vocabulario y reemplazos. Compártelo solo con personas de confianza."
+          }
+        }
+      }
+    },
     "This history contains only execution state, attempt, and time — never meeting content.": {
       "localizations": {
         "es": {
@@ -15717,6 +15997,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vocabulario"
+          }
+        }
+      }
+    },
+    "Vocabulary and replacements are merged. Other listed values replace your current preferences.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El vocabulario y los reemplazos se combinan. Los demás valores reemplazan tus preferencias actuales."
           }
         }
       }

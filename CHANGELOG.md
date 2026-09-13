@@ -31,6 +31,14 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
 - **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
 
+## September 12, 2026
+
+- 🌐 **Settings in your chosen language** — importing a language updates navigation immediately without changing your current pane.
+
+- 🧩 **Import only real changes** — equivalent vocabulary and dictation rules stay untouched, including settings saved on older macOS versions.
+
+- 📦 **Preferences that travel safely** — export language, vocabulary and text settings, then review every change before importing; permissions and feature activation stay yours.
+
 ## September 10, 2026
 
 - **💾 Safer live notes and objectives** — accepted changes survive interrupted recordings, and failed saves keep your input available to retry.
