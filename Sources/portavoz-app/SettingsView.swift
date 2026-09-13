@@ -113,6 +113,7 @@ struct SettingsView: View {
                     SettingsVoiceSection()
                     RememberedVoicesSection()
                     semanticSearchSection
+                    ModelMemorySettingsSection(services: services)
                     customStructuresSection
                     vocabularySection
                 case .agenda:

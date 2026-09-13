@@ -735,3 +735,23 @@ Backend queue backpressure and exception-path cancellation draining remain
 unverified risks, not newly reproduced product defects. Preserve the failed
 receipt and unchanged stability thresholds; do not replace this gap with a
 retry-until-green candidate or a synthetic unit-test claim.
+
+## Lightweight model memory: remaining measurements (D526)
+
+The explicit memory profile bounds idle scheduler tasks and delegates runtime
+release to existing active-use leases. It does not certify an application-wide
+RSS ceiling or lower peak memory. Cold-start latency, allocator/ANE/Metal cache
+behavior, mixed recording/refine/summary workloads, and physical 8-GiB hosts on
+supported macOS versions still need measured evidence. Compact Whisper remains
+an explicit disk-saving choice, not an automatically selected low-RAM engine;
+its runtime advantage over Turbo is not established by download size or the
+shared catalog RAM guidance. OS/external-provider model lifetimes are outside
+this profile. These limits do not relax automated lifetime or privacy tests.
+
+Earlier broad local UI runs exposed the former runner-container storage
+boundary and an unexpected native interruption. Those failed invocations remain
+unqualified; adopting the explicit shared-scratch owner and content-blind
+interruption guard does not relabel them. The current memory-profile sources
+still require a fresh full bilingual gate and exact-head hosted evidence.
+Focused Settings or installed-model lifetime observations cannot substitute for
+that qualification or close the separate compact-reachability gap.

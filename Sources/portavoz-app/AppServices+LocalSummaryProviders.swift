@@ -27,45 +27,6 @@ extension AppServices {
     }
 }
 
-private struct AppLocalSummaryProviderProbe: LocalSummaryProviderProbing {
-    let appleOnDeviceAvailable: Bool
-    let usesTemporaryStore: Bool
-
-    func probeLocalSummaryProviders() async -> LocalSummaryProviderProfile {
-        // Disposable automation must not inherit the host's Ollama models,
-        // memory pressure, or disk state. The Apple capability may itself be
-        // an explicit deterministic fixture such as Sequoia simulation.
-        if usesTemporaryStore {
-            return LocalSummaryProviderProfile(
-                memoryGB: 16,
-                freeDiskGB: 100,
-                appleOnDeviceAvailable: appleOnDeviceAvailable,
-                ollama: .unavailable)
-        }
-        let memoryGB = Int(
-            (ProcessInfo.processInfo.physicalMemory + 500_000_000) / 1_000_000_000)
-        let free = try? URL(fileURLWithPath: NSHomeDirectory())
-            .resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-            .volumeAvailableCapacityForImportantUsage
-        let ollama: LocalOllamaAvailability
-        if await OllamaService.isRunning() {
-            ollama = .running(models: await OllamaService.models().map {
-                LocalSummaryModel(
-                    name: $0.name,
-                    parameterSize: $0.parameterSize,
-                    bytes: $0.bytes)
-            })
-        } else {
-            ollama = .unavailable
-        }
-        return LocalSummaryProviderProfile(
-            memoryGB: memoryGB,
-            freeDiskGB: Int((free ?? 0) / 1_000_000_000),
-            appleOnDeviceAvailable: appleOnDeviceAvailable,
-            ollama: ollama)
-    }
-}
-
 /// UserDefaults and SwiftUI's `@AppStorage` share the main-actor serialization
 /// point, so the guarded clean-install write cannot race an explicit Settings
 /// choice between its final check and persistence.

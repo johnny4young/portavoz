@@ -7892,3 +7892,22 @@ preserve format-2 compatibility and reject unknown/private keys, wrong types,
 nonfinite or overflowing counters and duplicate ownership before publication.
 The existing redacted-support XCUITest also inspects host JSON and its disclosure;
 synthetic unit cases do not establish physical Sequoia/Tahoe or benchmark timing.
+
+### Model-memory profile evidence boundaries (D526)
+
+`ModelIdleReleaseTests` exercises actual AppServices scheduling with controllable
+clocks: default durations, 500-completion bursts, replaced/canceled callbacks,
+clock failure, preference rescheduling, released service lifetime, and refused
+release during preparation. `ModelMemoryGuidanceTests` enters the actual local
+provider probe through application discovery and includes unknown/8-GiB
+boundaries, maximum unsigned bytes, corrupt preferences, and temporary-store
+isolation. The Settings category journey toggles memory mode, rebuilds the pane,
+checks the retained state and localized explanation, and restores the prior
+choice; it does not depend on the host's prior preference value.
+
+`PORTAVOZ_MODEL_RESIDENCY_TESTS=1` admits a separate installed-Parakeet test.
+It verifies pinned files, loads without download or audio, claims two real
+resident leases through AppServices, proves release is refused with either
+owner active, then checks final unload and unchanged verified files. Default
+runs explicitly skip this lane. No transcript, model-quality result, RAM budget,
+or low-memory hardware qualification is inferred from this lifetime test.

@@ -157,8 +157,8 @@ extension ArchitectureDependencyTests {
                 pattern: #"SentenceEmbedder\s*\("#),
             [],
             "Application workflows must receive an injected embedding runtime")
-        XCTAssertTrue(whisper.contains("Task.sleep(for: .seconds(120))"))
-        XCTAssertTrue(services.contains("Task.sleep(for: .seconds(600))"))
+        XCTAssertTrue(whisper.contains("modelIdleReleaseScheduler.schedule(.quality"))
+        XCTAssertTrue(services.contains("modelIdleReleaseScheduler.schedule(.recording"))
         XCTAssertTrue(liveSpeech.contains("modelResidencyLedger.beginUse(.liveSpeech)"))
         XCTAssertTrue(mlx.contains("private static let idleRelease: Duration = .seconds(120)"))
         XCTAssertFalse(mlx.contains("static let shared"))
@@ -534,7 +534,7 @@ extension ArchitectureDependencyTests {
             "struct MLXRuntimeLoad",
             "struct MLXRuntimeLease",
             "mlxSummaryRuntime.respondPrepared(",
-            "Task.sleep(for: .seconds(120))",
+            "modelIdleReleaseScheduler.schedule(.language",
         ] {
             XCTAssertTrue(
                 adapter.contains(transition),

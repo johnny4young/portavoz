@@ -19660,6 +19660,38 @@ reported case duration. A normalized real activity tree and an adversarial CLI
 budget reproduce the false pass. No timeout, retry or budget is relaxed.
 
 
+## D526 — Make lightweight memory explicit without changing model identity
+
+The application kept one generation counter per idle model group, but every
+completion left another sleeping task until its deadline. Cancellation must
+stop obsolete work, not merely prevent its eventual effect. One app-owned
+scheduler now keeps one cancellable task per existing group, identity-fences
+completion, and checks cancellation before registering the clock as well as
+before release. It delegates to the existing lease-protected runtime adapters;
+it is neither a second residency ledger nor an inference scheduler.
+
+Balanced remains the default, preserving the established 600-second speech and
+120-second Whisper/MLX windows. An explicit Lightweight preference requests
+prompt idle release and warns of the next-start latency trade-off. Neither
+profile can evict an active lease or delete verified files. Rejected speech
+release settles from real runtime/load state rather than unconditionally
+replacing active preparation with unknown readiness.
+
+RAM advice uses binary capacity consistently: an 8-GiB Mac must not become a
+9-GB profile through decimal rounding. This does not establish measured memory
+footprints or constrained-governor thresholds. Catalog guidance is informational.
+The two Whisper variants currently have the same catalog RAM guidance; Compact's
+smaller disk size is not evidence of lower runtime memory. No automatic variant
+switch is introduced, including for fresh installations. Existing selections
+remain authoritative; lightweight retention is an independent explicit choice.
+
+Tests enter actual AppServices scheduling and provider-profile construction,
+including canceled-clock completion, burst replacement, corrupt preferences,
+unknown and boundary capacities, and release refused during preparation. An
+opt-in installed-model lane additionally borrows the real resident Parakeet
+engine twice and checks that only the final owner permits unloading. Neither
+lane certifies low-RAM performance, ASR quality, or physical device coverage.
+
 ## D527 — Unexpected UI interruptions stop the test, not decide consent
 
 XCTest has default interruption monitors even when a test registers none. A
