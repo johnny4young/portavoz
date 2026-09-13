@@ -6920,6 +6920,15 @@ drift, non-passing owners, unknown reasons, or a shorter exclusion. Missing or
 ambiguous activity evidence keeps the reported duration and fails closed. No
 retry, timeout, budget, assertion, selector, or locale changes.
 
+The `Tear Down` marker is a start timestamp, not proof that cleanup finished.
+When it contains child activities or is followed by another top-level activity,
+the reader retains the reported duration: app termination and owned scratch
+cleanup are test work, not a runner stall. Malformed child activity collections
+also prevent attribution. A normalized real-app activity fixture drives both
+the parser and the command-line enforcement path; a diagnostic ceiling between
+the body-only and complete duration must fail, not become green by subtracting
+cleanup. The ordinary runtime budgets are unchanged.
+
 This policy was introduced after the first OBS-0 complete English run passed
 103/103 but reported one 40.353-second Summary-feedback case. Its exact
 activities occupied 10.338 seconds through teardown and left 30.015 seconds

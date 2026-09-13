@@ -19500,3 +19500,12 @@ and allocation failures; the real-app journey must additionally prove signal and
 audio readback under the actual runner sandbox. Its one-shot readiness signal
 cannot be consumed twice. Existing runtime limits stay fixed, and the complete
 bilingual catalog remains the acceptance gate for this shared harness change.
+
+The first complete hosted run passed every functional assertion but exposed a
+measurement defect: D428/D446 treated the start of `Tear Down` as the end of test
+work. Moving termination into the test owner made that assumption false; the
+reader subtracted real cleanup as though it were a runner stall. Tighten that
+boundary rather than adding a compensating duration: a teardown with child
+activities, malformed child metadata, or subsequent top-level work retains the
+reported case duration. A normalized real activity tree and an adversarial CLI
+budget reproduce the false pass. No timeout, retry or budget is relaxed.
