@@ -32,6 +32,7 @@ def test_id(test_class: str, method: str) -> str:
 
 FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "launch-recovery": (
+        test_id("UITestStorageUITests", "testSharedScratchProtectsOwnershipAndRoundTripsAppFixtures"),
         test_id(
             "LibraryUITests",
             "testDatabaseLaunchFailureOffersSafeRecovery",
@@ -460,6 +461,8 @@ HARNESS_TESTS = ALL_TESTS
 # or accepted as UI evidence. They therefore require one complete bilingual
 # run even when they do not change product presentation directly.
 FULL_BILINGUAL_HARNESS_FILES = frozenset({
+    "Package.swift",
+    "packaging/portavoz-uitests.entitlements",
     ".github/workflows/ui-tests.yml",
     "Makefile",
     "project.yml",
@@ -475,7 +478,10 @@ FULL_BILINGUAL_HARNESS_FILES = frozenset({
     "scripts/ui_test_verified_base.py",
     "docs/evidence/ui-test-runtime-budget.json",
     "Sources/portavoz-app/UITestWindowPlacement.swift",
+    "Sources/portavoz-app/SettingsSkillReceiptNavigation.swift",
     "Tests/PortavozUITests/UITestSupport.swift",
+    "Tests/PortavozUITests/UITestStorageSupport.swift",
+    "Tests/Support/UITestScratch.swift",
 })
 
 # These owners can change which real Apuntador workloads qualify, but they do
@@ -577,7 +583,6 @@ NO_UI_FILES = {
     "README.md",
     "SECURITY.md",
     "Package.resolved",
-    "Package.swift",
 }
 
 

@@ -2,8 +2,8 @@ import XCTest
 
 final class RecordingAssistUITests: PortavozUITestCase {
     @MainActor
-    func testCompanionActionsKeepIdentityAndSeenStateAfterReentry() {
-        let app = XCUIApplication.portavoz(
+    func testCompanionActionsKeepIdentityAndSeenStateAfterReentry() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             simulateSequoiaCapabilities: true,
             simulateLiveTranscriptBrowsing: true)
@@ -58,8 +58,8 @@ final class RecordingAssistUITests: PortavozUITestCase {
     /// No closed captions are released: both requests must expose their honest
     /// unavailable state, without model assets, network or a generated answer.
     @MainActor
-    func testLatestManualAssistRequestOwnsTheFocusSlot() {
-        let app = XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
+    func testLatestManualAssistRequestOwnsTheFocusSlot() throws {
+        let app = try XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
         app.launchPortavoz()
         defer { app.terminate() }
         let record = app.buttons["library-new-recording-button"]
@@ -82,8 +82,8 @@ final class RecordingAssistUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testBatchedObjectivesRevealLastArrivalAndReplacementCountsAsUnread() {
-        let app = XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
+    func testBatchedObjectivesRevealLastArrivalAndReplacementCountsAsUnread() throws {
+        let app = try XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
         app.launchArguments += ["-seed-live-companion-ui", "-seed-live-assist-arrivals-ui"]
         app.launchPortavoz()
         defer { app.terminate() }
@@ -112,8 +112,8 @@ final class RecordingAssistUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testUnsubmittedNotesAndObjectivesSurviveTabsAndLibraryBrowsing() {
-        let app = XCUIApplication.portavoz(
+    func testUnsubmittedNotesAndObjectivesSurviveTabsAndLibraryBrowsing() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true, simulateSequoiaCapabilities: true,
             simulateLiveTranscriptBrowsing: true)
         app.launchPortavoz()
@@ -171,8 +171,8 @@ final class RecordingAssistUITests: PortavozUITestCase {
     /// one open panel at a time, the newest cards open, older ones folded to a
     /// single line, and the question addressed to the user in its own slot.
     @MainActor
-    func testLiveAssistKeepsOnePanelOpenAndABoundedCardList() {
-        let app = XCUIApplication.portavoz(
+    func testLiveAssistKeepsOnePanelOpenAndABoundedCardList() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             simulateSequoiaCapabilities: true,
             simulateLiveTranscriptBrowsing: true)

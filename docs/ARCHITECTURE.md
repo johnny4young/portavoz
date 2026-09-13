@@ -5598,15 +5598,32 @@ system prompts. The explicit Notification Center level isolation answers no
 control and changes no notification state; every privacy or authentication
 choice remains user-owned and invalidates that host run instead of being
 answered by automation.
+These observations prove only that the host was quiet at those samples;
+automation started afterward remains an external race that the result bundle
+must classify.
+
 Disposable UI-test windows do not inherit a user's multi-display placement.
 Only with `-use-temp-store`, one shared AppKit boundary places both the primary
 window and the real Settings scene on `NSScreen.screens.first`, AppKit's zero
-screen, and constrains Settings to its visible frame. The harness asserts that
-the Settings navigation anchor has nonnegative global coordinates before any
-journey continues. Production launches never enter this boundary and retain
+screen, and constrains Settings to its visible frame. Its narrow view-controller
+bridge positions Settings after presentation: SwiftUI's initial placement and AppKit's
+frame restoration can overwrite a correction made at view attachment. The
+separate weak reference remains current at attachment for receipt navigation.
+The harness asserts that the Settings navigation anchor has nonnegative global
+coordinates before any journey continues. Production launches never enter this boundary and retain
 SwiftUI's saved window placement.
-This proves only that the host was quiet at those samples; automation started
-afterward remains an external race that the result bundle must classify.
+
+The UI runner owns atomically allocated, mode-0700 scratch under one dedicated
+system-temporary base, rather than handing its protected app-container paths
+to the app. Each test has an exact cleanup owner and each app fixture has its
+own child directory for database, audio, readiness signals and AppKit state.
+Allocation errors throw before app construction. Cleanup verifies directory
+identity and waits for registered app processes to exit; another test owner
+cannot tear down the active owner. The runner alone declares read/write access
+to this dedicated fixture base while retaining its sandbox. Neither production
+entitlements nor system privacy grants change. The same test-only allocator
+source is compiled into package tests and XCUITest, not a product target.
+
 Visual-only screenshot
 assertions use visible-frame intersection rather than conflating visibility
 with a control's temporary enabled or hittable state, and their bounded scroll

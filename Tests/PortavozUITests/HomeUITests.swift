@@ -5,8 +5,8 @@ import XCTest
 /// from one screen without scrolling or typing.
 final class HomeUITests: PortavozUITestCase {
     @MainActor
-    func testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold() {
-        let app = XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
+    func testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -61,8 +61,8 @@ final class HomeUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testTodayAsksAndRecordsWithoutTyping() {
-        let app = XCUIApplication.portavoz(
+    func testTodayAsksAndRecordsWithoutTyping() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedBrief: true,
             simulateLiveTranscriptBrowsing: true)

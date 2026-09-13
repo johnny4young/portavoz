@@ -1,0 +1,35 @@
+{
+  "testRuns": [
+    {
+      "activities": [
+        {
+          "isAssociatedWithFailure": false,
+          "startTime": 100.0,
+          "title": "Start Test at synthetic time"
+        },
+        {
+          "isAssociatedWithFailure": false,
+          "startTime": 100.115,
+          "title": "Set Up"
+        },
+        {
+          "childActivities": [
+            {
+              "isAssociatedWithFailure": false,
+              "startTime": 101.511,
+              "title": "Terminate app.portavoz.mac.uitest-host:1"
+            },
+            {
+              "isAssociatedWithFailure": false,
+              "startTime": 102.554,
+              "title": "Wait for app.portavoz.mac.uitest-host to become Not Running"
+            }
+          ],
+          "isAssociatedWithFailure": false,
+          "startTime": 101.51,
+          "title": "Tear Down"
+        }
+      ]
+    }
+  ]
+}

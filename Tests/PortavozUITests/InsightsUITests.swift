@@ -5,8 +5,8 @@ import XCTest
 /// heatmap, computed locally from the seeded library.
 final class InsightsUITests: PortavozUITestCase {
     @MainActor
-    func testInsightsShowsCompleteLocalDashboard() {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+    func testInsightsShowsCompleteLocalDashboard() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         // Keep the retained evidence independent of the user's persisted picker choice.
         app.launchArguments += ["-insightsScope", "week"]
         app.launchPortavoz()

@@ -187,16 +187,23 @@ def activity_boundary_seconds(tree: Any) -> ActivityBoundary | None:
         and activity.get("title") == "Set Up"
     ]
     teardowns = [
-        activity.get("startTime")
+        activity
         for activity in activities
         if isinstance(activity, dict)
         and activity.get("title") == "Tear Down"
     ]
     if len(starts) != 1 or len(setups) != 1 or len(teardowns) != 1:
         return None
+    teardown_activity = teardowns[0]
+    children = teardown_activity.get("childActivities", [])
+    # xcresult activities expose starts, not completion. A teardown marker
+    # cannot bound actual app termination/cleanup or later test activity.
+    # Keep the reported duration instead of subtracting that work as noise.
+    if not isinstance(children, list) or children or activities[-1] is not teardown_activity:
+        return None
     start = finite_nonnegative(starts[0])
     setup = finite_nonnegative(setups[0])
-    teardown = finite_nonnegative(teardowns[0])
+    teardown = finite_nonnegative(teardown_activity.get("startTime"))
     if (
         start is None
         or setup is None

@@ -134,6 +134,65 @@ class UITestRuntimeTests(unittest.TestCase):
             }]
         }))
 
+    def test_teardown_work_cannot_be_classified_as_runner_noise(self):
+        # Retained real-app activity shape, with relative timestamps and a
+        # synthetic PID: XCTest reports only starts, not cleanup completion.
+        fixture = ROOT / "Tests/Tooling/fixtures/ui-test-active-teardown.json"
+        tree = json.loads(fixture.read_text())
+        self.assertIsNone(activity_boundary_seconds(tree))
+        teardown = tree["testRuns"][0]["activities"][-1]
+        for children in ([{"title": "Cerrar café’s editor"}], None, {}, False):
+            with self.subTest(children=children):
+                teardown["childActivities"] = children
+                self.assertIsNone(activity_boundary_seconds(tree))
+        teardown["childActivities"] = []
+        self.assertIsNotNone(activity_boundary_seconds(tree))
+        tree["testRuns"][0]["activities"].append({
+            "title": "Late completion", "startTime": 103.0,
+        })
+        self.assertIsNone(activity_boundary_seconds(tree))
+
+    def test_xcresult_cli_keeps_real_cleanup_in_the_enforced_duration(self):
+        identifier = "UITestStorageUITests/testSharedScratchProtectsOwnershipAndRoundTripsAppFixtures()"
+        fixture = ROOT / "Tests/Tooling/fixtures/ui-test-active-teardown.json"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "tests.json").write_text(json.dumps({
+                "nodes": [test_node(identifier, 2.600)],
+            }))
+            (root / "activities.json").write_bytes(fixture.read_bytes())
+            xcrun = root / "xcrun"
+            xcrun.write_text(
+                f"#!{sys.executable}\n"
+                "import pathlib, sys\n"
+                "assert sys.argv[1:4] == ['xcresulttool', 'get', 'test-results']\n"
+                "assert sys.argv[4] in ['tests', 'activities']\n"
+                "print((pathlib.Path(__file__).parent / (sys.argv[4] + '.json')).read_text())\n"
+            )
+            xcrun.chmod(0o700)
+            budget = root / "budget.json"
+            budget.write_text(json.dumps({
+                "catalog": {"expectedCaseCount": 1},
+                "fullSuite": {"maximumTestDurationSecondsPerLocale": 2.0,
+                              "maximumP95Seconds": 2.0},
+                "testBudgetsSeconds": {identifier: 2.0},
+            }))
+            for locale in ("en", "es"):
+                output = root / f"{locale}-receipt.json"
+                result = subprocess.run([
+                    sys.executable, str(ROOT / "scripts/ui_test_runtime.py"),
+                    "--result", str(root / "recorded.xcresult"),
+                    "--budget", str(budget), "--output", str(output),
+                    "--locale", locale, "--selector-count", "1",
+                    "--build-duration", "6", "--wall-duration", "3", "--enforce",
+                ], env={**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"]},
+                    capture_output=True, text=True, check=False)
+                receipt = json.loads(output.read_text())
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertEqual(receipt["budgetStatus"], "failed")
+                self.assertEqual(receipt["testDurationSeconds"], 2.600)
+                self.assertEqual(receipt["runtimeAdjustments"], [])
+
     def test_reconciles_only_passing_pre_setup_harness_noise(self):
         cases = collect_test_cases({
             "nodes": [

@@ -345,7 +345,7 @@ extension ArchitectureDependencyTests {
         let launchStart = try XCTUnwrap(support.range(
             of: "func launchPortavoz()"))
         let processExitStart = try XCTUnwrap(support.range(
-            of: "private func waitForPortavozProcessExit(",
+            of: "func waitForPortavozProcessExit(",
             range: launchStart.upperBound..<support.endIndex))
         let launchBody = support[
             launchStart.lowerBound..<processExitStart.lowerBound]
@@ -1495,7 +1495,7 @@ extension ArchitectureDependencyTests {
                 "panel.level = UITestWindowPlacement.floatingPanelLevel()"), file)
         }
         XCTAssertTrue(settingsCapture.contains(
-            "UITestWindowPlacement.positionSettingsWindow(window)"))
+            "UITestWindowPlacement.positionSettingsWindow"))
         XCTAssertTrue(uiTestSupport.contains(
             #"general.frame.minX,"#))
         XCTAssertTrue(uiTestSupport.contains(

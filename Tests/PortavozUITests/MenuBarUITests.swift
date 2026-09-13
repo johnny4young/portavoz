@@ -5,8 +5,8 @@ import XCTest
 /// SystemUIServer status-item automation while preserving the real app flow.
 final class MenuBarUITests: PortavozUITestCase {
     @MainActor
-    func testPreMeetingBriefMovesFromExactProposalToDurableReceipt() {
-        let app = XCUIApplication.portavoz(
+    func testPreMeetingBriefMovesFromExactProposalToDurableReceipt() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedBrief: true,
             showMenuBarContent: true)

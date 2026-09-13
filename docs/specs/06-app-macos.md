@@ -3473,6 +3473,10 @@ opener return unavailable. A thrown resolution retains the receipt timeline,
 the route retry, and the independent Waiting revocation action. Both source and
 recovery navigation use the generic weak Settings-window bridge after the sheet
 dismisses; neither route carries content or effect authority into Settings.
+The reference follows the exact attached view's window, including detachment.
+A view-controller bridge separately positions disposable Settings after native
+presentation, so initial placement and saved-frame restoration cannot overwrite
+the test policy. Ordinary Settings retains the user's saved position and level.
 
 ### Standing-rule control plane (D435)
 

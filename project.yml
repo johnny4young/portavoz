@@ -98,10 +98,14 @@ targets:
       base:
         # A UI-test bundle isn't MainActor-isolated like the app.
         SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+        # Synthetic app/runner handoffs use only this test-owned shared root.
+        # Preserve the runner sandbox; no production entitlement is changed.
+        CODE_SIGN_ENTITLEMENTS: packaging/portavoz-uitests.entitlements
         # macOS Gatekeeper blocks an unsigned XCUITest runner; let Xcode sign it.
         GENERATE_INFOPLIST_FILE: YES
     sources:
       - path: Tests/PortavozUITests
+      - path: Tests/Support
     dependencies:
       - target: Portavoz
 

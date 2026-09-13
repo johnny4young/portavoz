@@ -2,8 +2,8 @@ import XCTest
 
 final class CommitmentRadarUITests: PortavozUITestCase {
     @MainActor
-    func testReminderAlertOpensCommitmentRadar() {
-        let app = XCUIApplication.portavoz(
+    func testReminderAlertOpensCommitmentRadar() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedCommitmentRadar: true)
         app.launchArguments.append("-simulate-reminder-open")
@@ -19,8 +19,8 @@ final class CommitmentRadarUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testRadarFiltersConfirmedWorkAndOpensItsExactSourceMeeting() {
-        let app = XCUIApplication.portavoz(
+    func testRadarFiltersConfirmedWorkAndOpensItsExactSourceMeeting() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedCommitmentRadar: true)
         app.launchPortavoz()
@@ -108,8 +108,8 @@ final class CommitmentRadarUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testReminderDraftRequiresExplicitAccessAndLeavesDurableReceipt() {
-        let app = XCUIApplication.portavoz(
+    func testReminderDraftRequiresExplicitAccessAndLeavesDurableReceipt() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedCommitmentRadar: true)
         app.launchPortavoz()
@@ -183,8 +183,8 @@ final class CommitmentRadarUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence() {
-        let app = XCUIApplication.portavoz(
+    func testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedCommitmentRadar: true)
         app.launchPortavoz()
@@ -235,8 +235,8 @@ final class CommitmentRadarUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testFieldQualityObservesARealReviewWithoutAutomatingDecisions() {
-        let app = XCUIApplication.portavoz(
+    func testFieldQualityObservesARealReviewWithoutAutomatingDecisions() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedCommitmentRadar: true)
         app.launchPortavoz()

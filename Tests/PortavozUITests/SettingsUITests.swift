@@ -5,8 +5,8 @@ import XCTest
 /// app-only language override updates SwiftUI text live.
 final class SettingsUITests: PortavozUITestCase {
     @MainActor
-    func testIntelligencePaneExplicitlyPreparesSemanticSearch() {
-        let app = XCUIApplication.portavoz(
+    func testIntelligencePaneExplicitlyPreparesSemanticSearch() throws {
+        let app = try XCUIApplication.portavoz(
             simulateSemanticAssetsMissing: true,
             openSettings: true)
         app.launchPortavoz()
@@ -45,8 +45,8 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy() {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+    func testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -85,8 +85,8 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testCategoryNavigationRevealsEachPane() {
-        let app = XCUIApplication.portavoz(openSettings: true)
+    func testCategoryNavigationRevealsEachPane() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -180,8 +180,8 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testSyncPaneKeepsOptInAndExistingLibrarySeparate() {
-        let app = XCUIApplication.portavoz(openSettings: true)
+    func testSyncPaneKeepsOptInAndExistingLibrarySeparate() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -219,10 +219,8 @@ final class SettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testDataPaneExportsARedactedLocalSupportFile() throws {
-        let destination = FileManager.default.temporaryDirectory
-            .appendingPathComponent("portavoz-support-\(UUID().uuidString).json")
-        defer { try? FileManager.default.removeItem(at: destination) }
-        let app = XCUIApplication.portavoz(seedDemo: true, openSettings: true)
+        let destination = try UITestStorage.makeDirectory().appendingPathComponent("support.json")
+        let app = try XCUIApplication.portavoz(seedDemo: true, openSettings: true)
         app.launchEnvironment["PORTAVOZ_UI_TEST_DIAGNOSTICS_PATH"] = destination.path
         app.launchPortavoz()
         defer { app.terminate() }
@@ -253,13 +251,8 @@ final class SettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testDataPaneExportsAReadableWholeLibraryMarkdownBackup() throws {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("portavoz-backup-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(
-            at: directory,
-            withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let app = XCUIApplication.portavoz(seedDemo: true, openSettings: true)
+        let directory = try UITestStorage.makeDirectory()
+        let app = try XCUIApplication.portavoz(seedDemo: true, openSettings: true)
         app.launchEnvironment["PORTAVOZ_UI_TEST_BACKUP_FOLDER"] = directory.path
         app.launchPortavoz()
         defer { app.terminate() }
@@ -297,10 +290,10 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testIntelligencePaneCreatesACustomStructure() {
+    func testIntelligencePaneCreatesACustomStructure() throws {
         // The Intelligence pane lets you author your own summary structures;
         // "Add structure" opens the editor sheet with a name field.
-        let app = XCUIApplication.portavoz(openSettings: true)
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -321,10 +314,11 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAudioPaneOffersCaptureSourceControls() {
+    func testAudioPaneOffersCaptureSourceControls() throws {
         // Capture control (field feedback): pick your mic and what to record
         // for the other side, independent of AirPods.
-        let app = XCUIApplication.portavoz(openSettings: true)
+        let app = try XCUIApplication.portavoz(openSettings: true)
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":false}"#
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -343,6 +337,19 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             callSafePolicy.waitForStableFrame(),
             "the Audio pane must expose a stable always-on call-safe capture policy")
+        // Reopen the real scene: restoration must not undo the placement
+        // established on first presentation, and receipt routing still owns it.
+        app.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(app.buttons["settings-category-general"].waitForDisappearance(timeout: 5))
+        XCTAssertTrue(app.openSettingsWindow())
+        let reopenedGeneral = app.control(withIdentifier: "settings-category-general")
+        XCTAssertGreaterThanOrEqual(reopenedGeneral.frame.minX, 0)
+        XCTAssertGreaterThanOrEqual(reopenedGeneral.frame.minY, 0)
+        openCategory(
+            "settings-category-audio",
+            revealing: "settings-mic-device",
+            in: app)
+        XCTAssertTrue(callSafePolicy.waitForStableFrame())
         attachScreenshot(of: app, named: "call-safe-audio-settings")
     }
 
@@ -350,8 +357,8 @@ final class SettingsUITests: PortavozUITestCase {
     /// push-to-talk mouse button), the {es,en}-constrained language picker,
     /// the filler filter, and the deterministic dictionary quick-add.
     @MainActor
-    func testDictationOffersTriggersLanguageAndDictionary() {
-        let app = XCUIApplication.portavoz(openSettings: true)
+    func testDictationOffersTriggersLanguageAndDictionary() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
         // AppServices merges these values into the process's volatile
         // NSArgumentDomain under -use-temp-store. The real preference domain
         // is neither read for these keys nor mutated by the test.
@@ -402,10 +409,10 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testVoicePaneOffersTheMirrorOptIn() {
+    func testVoicePaneOffersTheMirrorOptIn() throws {
         // The post-meeting mirror (6a-2) is opt-in and off by default; its
         // switch lives in the "My voice & Apuntador" pane.
-        let app = XCUIApplication.portavoz(openSettings: true)
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -425,8 +432,8 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testUnreadableVoiceStorageStaysVisibleAndOffersExplicitRecovery() {
-        let app = XCUIApplication.portavoz(openSettings: true)
+    func testUnreadableVoiceStorageStaysVisibleAndOffersExplicitRecovery() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-voice-storage-unavailable")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -462,10 +469,10 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testLanguageToggleSwitchesVisibleTextWithoutRelaunch() {
+    func testLanguageToggleSwitchesVisibleTextWithoutRelaunch() throws {
         // The standalone Settings window (⌘,), not the test sheet: the sheet
         // clips the trailing-edge toggle, the real window lays it out fully.
-        let app = XCUIApplication.portavoz(
+        let app = try XCUIApplication.portavoz(
             openSettings: true,
             launchLocale: "en")
         app.launchPortavoz()

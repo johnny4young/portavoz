@@ -19470,3 +19470,42 @@ recovery, plus real-app acceptance, termination/relaunch, removal failure,
 Library reentry, retry/discard and a held-write Stop handshake. Injected failures
 remain distinct from physical disk failure, and interrupted-process tests do
 not certify hardware power-loss behavior.
+
+
+## D523 — UI fixtures own explicit cross-process scratch, not runner containers
+
+A real seeded launch blocked its main thread while creating synthetic audio.
+The injected path came from the runner's temporary directory, inside its
+protected app container. Correct window placement could not fix this earlier
+filesystem boundary. Simply moving the path to the system temporary directory
+was also insufficient: ordinary Swift tests passed, but the sandboxed XCUITest
+runner rejected allocation before app launch.
+
+Use one dedicated test base with private, atomically allocated children and
+an explicit, narrowly scoped read/write entitlement on the UI-test target only.
+Keep the runner sandbox and production entitlements unchanged. Do not request
+broad access to another app's data, automate a privacy prompt, or grant access
+to the whole temporary filesystem. The test runner and app exchange only their
+synthetic fixtures, explicit copied audio, signals and export results.
+
+Allocation errors propagate through the real app factory instead of recording
+an assertion and continuing with fallback storage. Exact test ownership fences
+teardown after rejected overlapping setup. Cleanup waits for registered apps to
+exit and checks directory identity before removing its own tree. Replaced roots
+are not adopted; caller-selected real-audio copies are not owned by cleanup.
+
+The allocator is shared source between package tests and XCUITest, never a
+shipping module. Adversarial filesystem tests cover ownership, symlinks, Unicode
+and allocation failures; the real-app journey must additionally prove signal and
+audio readback under the actual runner sandbox. Its one-shot readiness signal
+cannot be consumed twice. Existing runtime limits stay fixed, and the complete
+bilingual catalog remains the acceptance gate for this shared harness change.
+
+The first complete hosted run passed every functional assertion but exposed a
+measurement defect: D428/D446 treated the start of `Tear Down` as the end of test
+work. Moving termination into the test owner made that assumption false; the
+reader subtracted real cleanup as though it were a runner stall. Tighten that
+boundary rather than adding a compensating duration: a teardown with child
+activities, malformed child metadata, or subsequent top-level work retains the
+reported case duration. A normalized real activity tree and an adversarial CLI
+budget reproduce the false pass. No timeout, retry or budget is relaxed.
