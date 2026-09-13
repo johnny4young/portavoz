@@ -4,6 +4,10 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## September 13, 2026
+
+- 🪶 **Lighter model memory** — release idle models sooner without interrupting work or changing your model choices, with clearer RAM guidance.
+
 ## 1.0.0 — September 11, 2026
 
 **Today's agenda, yesterday's answers.**

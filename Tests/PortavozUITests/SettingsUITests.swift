@@ -95,6 +95,28 @@ final class SettingsUITests: PortavozUITestCase {
             "settings-category-intelligence",
             revealing: "settings-summary-engine-picker",
             in: app)
+        let lightweight = app.control(withIdentifier: "settings-model-memory-lightweight")
+        XCTAssertTrue(lightweight.waitForExistenceFast(timeout: 5))
+        let memoryWindow = app.windows.containing(.any, identifier: "settings-model-memory-lightweight").firstMatch
+        let memoryForm = memoryWindow.scrollViews.element(boundBy: 1)
+        XCTAssertTrue(lightweight.revealVertically(in: memoryForm, maximumStep: 240))
+        let wasLightweight = Self.isOn(lightweight)
+        lightweight.click()
+        XCTAssertEqual(Self.isOn(lightweight), !wasLightweight)
+        openCategory("settings-category-general", revealing: "settings-search-field", in: app)
+        openCategory("settings-category-intelligence", revealing: "settings-model-memory-lightweight", in: app)
+        XCTAssertEqual(Self.isOn(lightweight), !wasLightweight, "the choice must survive rebuilding the pane")
+        let memoryHelp = app.staticTexts["settings-model-memory-help"]
+        XCTAssertTrue(memoryHelp.exists)
+        let memoryCopy = (memoryHelp.value as? String) ?? memoryHelp.label
+        XCTAssertTrue(memoryCopy.contains(UITestLocale.environmentLocale == "es"
+            ? "Los modelos en uso" : "Models in use"))
+        XCTAssertTrue(app.staticTexts["settings-model-memory-recommendation"].exists)
+        XCTAssertTrue(lightweight.revealVertically(in: memoryForm, maximumStep: 240))
+        lightweight.click()
+        XCTAssertEqual(Self.isOn(lightweight), wasLightweight)
+        XCTAssertTrue(memoryHelp.revealVertically(in: memoryForm, maximumStep: 240))
+        attachScreenshot(of: app, named: "model-memory-profile")
         XCTAssertTrue(app.textFields["settings-search-field"].exists)
         XCTAssertTrue(app.buttons["settings-category-intelligence"].isSelected)
         XCTAssertFalse(app.buttons["settings-category-general"].isSelected)

@@ -541,6 +541,7 @@ extension ArchitectureDependencyTests {
             of: "Sources/ApplicationKit/LocalSummaryProviders.swift")
         let adapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+LocalSummaryProviders.swift")
+        let probe = try Self.contents(of: "Sources/portavoz-app/AppLocalSummaryProviderProbe.swift")
         let settings = try Self.contents(of: "Sources/portavoz-app/SettingsView.swift")
         let onboarding = try Self.contents(of: "Sources/portavoz-app/OnboardingView.swift")
 
@@ -553,12 +554,12 @@ extension ArchitectureDependencyTests {
             "OllamaService", "UserDefaults", "ProcessInfo", "NSHomeDirectory",
         ] {
             XCTAssertFalse(workflow.contains(concrete), concrete)
-            XCTAssertTrue(adapter.contains(concrete), concrete)
+            XCTAssertTrue((adapter + probe).contains(concrete), concrete)
         }
         XCTAssertFalse(workflow.contains("FoundationModelsCapability"))
         XCTAssertTrue(adapter.contains("foundationModelsCapability.isAvailable"))
         XCTAssertTrue(adapter.contains("contains(\"-use-temp-store\")"))
-        XCTAssertTrue(adapter.contains("ollama: .unavailable"))
+        XCTAssertTrue(probe.contains("ollama: .unavailable"))
         XCTAssertTrue(adapter.contains("@MainActor"))
         XCTAssertTrue(adapter.contains("struct AppSummaryProviderSelectionStore"))
         for presentation in [settings, onboarding] {
