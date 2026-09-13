@@ -26,8 +26,13 @@ and focused AX element, with refused output retained for explicit Copy or retry
 (D544). Deterministic tests exercise the controller and actual inserter, but
 native focus switches, process termination/relaunch and secure-field transitions
 still need receiver/device evidence. Accessibility validation and keyboard-event
-posting are not an atomic editor transaction: `.inserted` still denotes
-dispatched events rather than a verified external edit. These remaining failures
+posting are not an atomic editor transaction. The result now distinguishes
+bounded matching readback from unverified dispatch and refusal; unsupported
+editors remain explicitly unverified. Deterministic controller/inserter coverage
+cannot qualify native AX observation. The dedicated receiver requires the
+verified result and actual text, but its existence does not establish a passed
+gate. Specific AX timeouts limit requested work, not arbitrary server allocation
+or later external edits. These remaining failures
 and evidence boundaries prevent broad reliability claims. Recovery is RAM-only;
 quitting does not preserve the output. Clipboard snapshot size/materialization
 remains an independent limitation. Model quality, Bluetooth transitions and the external-editor
@@ -38,6 +43,17 @@ unattended EN/ES UI qualification excludes exactly that TCC-owned receiver case
 (D540); run `make test-ui-native-dictation` on an explicitly authorized
 disposable app and retain its actual receipt before claiming cross-process
 delivery.
+
+### Live dictation still lacks speech admission
+
+Independent public/synthetic controller observations have produced lexical
+proposals from silence and tone inputs. The delivery double refused native
+Paste, but reaching that boundary disproves the assumption that a lexical result
+necessarily contains speech. The live lane has no pre-transcription VAD gate.
+Diagnose and validate speech admission without an ad-hoc output-token/RMS filter
+or changes to the original meeting audio. This delivery-observation work does
+not resolve model quality or certify that a matching external edit was a
+faithful transcription.
 
 ### Accepted live input survives interrupted recordings
 

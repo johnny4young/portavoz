@@ -6,6 +6,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 24, 2026
 
+- 📨 **Honest dictation delivery** — distinguish verified insertion from an unconfirmed send, so an editor that cannot acknowledge text never looks like a confirmed success.
 - **🎯 Dictation that keeps your words** — if the original field changes or text cannot be sent, copy it, retry that field, or discard it explicitly instead of losing it or pasting into another app.
 
 ## 1.1.0 — September 17, 2026

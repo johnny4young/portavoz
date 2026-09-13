@@ -206,6 +206,21 @@ root excludes that directory explicitly, alongside the UI and interruption
 fixtures; strict package diagnostics must not treat its entry point as an
 unhandled unit-test resource.
 
+`TextInsertionReadbackTests` runs the actual inserter against a deterministic
+receiver double, rather than testing only a comparison function. Cases cover
+bilingual Unicode and replaced selections, unchanged/wrong/unsupported editors,
+invalid and overflowing AX metadata, exact requested-span bounds, empty output,
+cancellation during inspection, a late matching answer, altered post-read
+selection and no duplicate event. `DictationDeliveryOutcomeTests` additionally
+routes final controller output through that same inserter, checks the resulting
+verified/unverified presentation state and rejects a retry after dispatch.
+These tests contain no native AX or model evaluation. The real receiver journey
+requires both `verified` and exact editor text; missing permission remains a
+failing gate. The dedicated delivery-banner journey exercises both distinct
+states and their dismissal in each locale, without inferring native delivery
+from the declared fixture outcomes. Its 25-second candidate budget is separate
+from a measured baseline; the full-suite budget is unchanged.
+
 UI builds remain ad-hoc by default. A local owner may explicitly set both
 `UI_TEST_CODE_SIGN_IDENTITY` (the certificate's 40-character SHA-1 identifier)
 and `UI_TEST_DEVELOPMENT_TEAM` (the 10-character team ID) when invoking the

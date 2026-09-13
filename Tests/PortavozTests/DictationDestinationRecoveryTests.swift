@@ -1,4 +1,5 @@
 import AppKit
+import PortavozCore
 import TranscriptionKit
 import XCTest
 
@@ -19,9 +20,9 @@ final class DictationDestinationRecoveryTests: XCTestCase {
                 captures += 1
                 let original = current
                 return CapturedDictationDestination(name: "Original app", canRetry: true) { _ in
-                    guard current == original else { return .targetChanged }
+                    guard current == original else { return .refused(.targetChanged) }
                     deliveries.append(original)
-                    return .inserted
+                    return .dispatched
                 }
             }
             harness.controller.toggle(using: dependencies)
@@ -132,9 +133,9 @@ final class DictationDestinationRecoveryTests: XCTestCase {
         dependencies.captureDestination = {
             CapturedDictationDestination(name: "Original app", canRetry: true) { _ in
                 attempts += 1
-                if attempts == 1 { return .targetChanged }
+                if attempts == 1 { return .refused(.targetChanged) }
                 await gate.wait()
-                return .inserted // A deliberately uncooperative late result, not a native effect.
+                return .dispatched // A deliberately uncooperative late result, not a native effect.
             }
         }
         await enterRecovery(harness, dependencies: dependencies)
@@ -172,7 +173,7 @@ final class DictationDestinationRecoveryTests: XCTestCase {
             dependencies.captureDestination = {
                 CapturedDictationDestination(name: "Original app", canRetry: true) { text in
                     delivered.append(text)
-                    return .targetChanged
+                    return .refused(.targetChanged)
                 }
             }
             dependencies.copyText = { copied.append($0); return true }

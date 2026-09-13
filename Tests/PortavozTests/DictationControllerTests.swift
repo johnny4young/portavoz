@@ -17,7 +17,7 @@ final class DictationControllerTests: XCTestCase {
         for processID: pid_t in [0, -1, .min] {
             let result = await TextInserter.insert(
                 "Must never be delivered", into: .init(processID: processID, validate: { nil }), pasteboard: board)
-            XCTAssertEqual(result, .eventUnavailable)
+            XCTAssertEqual(result, .refused(.eventUnavailable))
             XCTAssertEqual(board.changeCount, originalCount)
             XCTAssertEqual(board.string(forType: .string), "Do not replace — no reemplazar")
         }
@@ -167,7 +167,7 @@ final class DictationControllerTests: XCTestCase {
                 let expectedCopy = temporary && arguments == flags
                 let destination = dependencies.captureDestination()
                 let delivery = await destination.insert("No native events")
-                XCTAssertEqual(delivery, expectedCopy ? .targetChanged : .focusUnavailable)
+                XCTAssertEqual(delivery, .refused(expectedCopy ? .targetChanged : .focusUnavailable))
                 XCTAssertFalse(dependencies.copyText("Never copied on the first attempt"))
                 XCTAssertEqual(dependencies.copyText("Consented scratch copy"), expectedCopy)
                 board.setString("Original", forType: .string)
@@ -229,7 +229,7 @@ final class DictationControllerHarness {
             captureDestination: { [weak self] in
                 CapturedDictationDestination(name: "Disposable receiver", canRetry: true) { [weak self] text in
                     self?.insertions.append(text)
-                    return .inserted
+                    return .dispatched
                 }
             },
             copyText: { _ in false },
