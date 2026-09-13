@@ -86,6 +86,8 @@ test-ui-real-audio:
 		UI_TEST_LOCALES="en"
 
 test-model-gated:
+	@test "$${PORTAVOZ_MODEL_TESTS:-}" = 1 || \
+		(echo "test-model-gated: export PORTAVOZ_MODEL_TESTS=1 (plus PORTAVOZ_TEST_WAV and PORTAVOZ_TEST_CONVERSATION_WAV for the speech classes); see docs/RELEASING.md §1" >&2; exit 64)
 	@set -u; status=0; \
 	for class in $(MODEL_GATED_TEST_CLASSES); do \
 		log=$$(mktemp); \

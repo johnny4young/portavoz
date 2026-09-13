@@ -48,11 +48,21 @@ git switch main && git pull --ff-only origin main
 git status --short          # must be empty — clean any stray *.d / *.dia / *.swiftdeps first
 swift test                  # green (DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test if "no such module")
 swift test --filter StorageUpgradeTests # clean install + v0.6.0 library upgrade/reopen
-make test-model-gated       # Q4/T7/D380: six model classes run in Release; full skip or FluidAudio DEBUG output fails
+PORTAVOZ_MODEL_TESTS=1 PORTAVOZ_TEST_WAV=<spoken EN/ES wav> \
+  PORTAVOZ_TEST_CONVERSATION_WAV=<two-voice wav, 60 s or longer> \
+  make test-model-gated     # Q4/T7/D380: six model classes run in Release; full skip or FluidAudio DEBUG output fails
 swiftlint --strict          # 0 violations
 scripts/check-repository-hygiene.sh
 ```
 
+- `make test-model-gated` refuses to start without `PORTAVOZ_MODEL_TESTS=1`,
+  and the Parakeet and diarization classes skip without the two spoken
+  fixtures (mono 16 kHz PCM; the conversation must alternate two voices). A
+  class that skips entirely still fails the target. The authoritative
+  installed-model lane is candidate automation (see "Candidate-automation
+  receipt" below), which generates its own public `say` fixtures and never
+  inherits a private `PORTAVOZ_TEST_WAV`; run the standalone target here only
+  as an early local check with fixtures of your own.
 - **CHANGELOG.md** has every user-visible change since the last release, newest first.
 - Decide the **version** (SemVer): patch for fixes, minor for features. Last tag: `git tag --list 'v*' | sort -V | tail -1`.
 - Stray SwiftPM artifacts (`*.d`, `*.dia`, `*.swiftdeps`) sometimes leak to the repo root from an Xcode/XCUITest build — they are **not** git-ignored, so delete them before releasing.
