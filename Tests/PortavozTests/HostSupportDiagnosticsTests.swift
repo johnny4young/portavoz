@@ -1,4 +1,5 @@
 import ApplicationKit
+import Darwin
 import Foundation
 import PortavozCore
 import StorageKit
@@ -12,11 +13,14 @@ final class HostSupportDiagnosticsTests: XCTestCase {
         let services = try AppServices(arguments: ["-use-temp-store"], environment: [:])
         let meeting = Meeting(title: "SECRET reunión — Don't export", startedAt: Date())
         try await services.store.save(meeting)
+        let cpuBefore = try processCPUSeconds()
         let data = try await services.exportSupportDiagnostics()
+        let cpuAfter = try processCPUSeconds()
         let report = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         let environment = try XCTUnwrap(report["environment"] as? [String: Any])
         let host = try XCTUnwrap(environment["host"] as? [String: Any])
         XCTAssertGreaterThan(try XCTUnwrap(host["physicalMemoryBytes"] as? UInt64), 0)
+        assertCPUSeconds(try XCTUnwrap(host["processCPUSeconds"] as? Double), between: cpuBefore, and: cpuAfter)
         XCTAssertNotNil(host["thermalState"])
         let residency = try XCTUnwrap(host["modelResidency"] as? [[String: Any]])
         XCTAssertEqual(residency.count, ResourceModelFamily.allCases.count)
@@ -129,5 +133,38 @@ final class HostSupportDiagnosticsTests: XCTestCase {
         XCTAssertNil(actual.energyNanojoules, "V0 does not measure extended counters")
         XCTAssertNil(actual.diskReadBytes)
         XCTAssertNil(actual.diskWrittenBytes)
+    }
+
+    func testNativeCPUUnitsMatchIndependentProcessAccounting() async throws {
+        // Both native flavors must expose the same units. Checking only the
+        // pure conversion would pass even if the adapter fed it nanoseconds.
+        for extendedCounters in [false, true] {
+            let before = try processCPUSeconds()
+            let actual = try OwnProcessResourceUsage.current(extendedCounters: extendedCounters)
+            let after = try processCPUSeconds()
+            assertCPUSeconds(try XCTUnwrap(actual.cpuSeconds), between: before, and: after)
+        }
+    }
+
+    private func processCPUSeconds() throws -> Double {
+        var usage = rusage()
+        guard getrusage(RUSAGE_SELF, &usage) == 0 else {
+            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+        }
+        return Double(usage.ru_utime.tv_sec) + Double(usage.ru_stime.tv_sec)
+            + (Double(usage.ru_utime.tv_usec) + Double(usage.ru_stime.tv_usec)) / 1_000_000
+    }
+
+    private func assertCPUSeconds(
+        _ actual: Double, between before: Double, and after: Double,
+        file: StaticString = #filePath, line: UInt = #line
+    ) {
+        // getrusage reports user/system time separately at microsecond precision.
+        // This is their combined quantization bound, not a scheduling allowance.
+        let quantization = 2.0 / 1_000_000
+        XCTAssertGreaterThan(before, 0, "A zero-work oracle cannot detect a unit mismatch", file: file, line: line)
+        XCTAssertGreaterThanOrEqual(after, before, file: file, line: line)
+        XCTAssertGreaterThanOrEqual(actual, before - quantization, file: file, line: line)
+        XCTAssertLessThanOrEqual(actual, after + quantization, file: file, line: line)
     }
 }

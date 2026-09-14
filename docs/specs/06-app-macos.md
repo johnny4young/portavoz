@@ -2482,6 +2482,10 @@ there is no persistent host history, polling or network transmission. CPU second
 are not dictation latency. Existing capture/job timings remain independently
 identified. The disclosure and exported JSON are covered by the actual Settings
 XCUITest in both locales; physical-machine qualification remains separate.
+Exports also retain compatibility with field collection and reliability checks:
+both accept format 3 while preserving format-2 readers' existing workflows.
+The collector rejects unknown host fields and invalid typed measurements before
+creating an evidence package; it does not certify an unobserved real-world check.
 
 ## Global dictation (Jul 2026)
 

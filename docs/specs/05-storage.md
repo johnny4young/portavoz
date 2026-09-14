@@ -1427,6 +1427,9 @@ Support format 3 adds a separately sampled, content-free host environment
 (D520); it does not change this SQLite snapshot, schema or storage authority.
 Process and model-residency measurements are transient and never written into a
 meeting. Missing host fields in older support reports remain absent on decode.
+Field collection preserves both report formats; its closed host validation and
+the reliability evaluator's metadata admission evolve with the producer. Neither
+consumer drops the host object to pretend a new report is the legacy format.
 
 External audio uses the dedicated
 `saveImportedMeeting(_:speakers:segments:)` Unit of Work. It validates the

@@ -789,7 +789,7 @@ panel. The slice gate is 667 package tests (13 gated), strict SwiftLint is
 clean across 249 Swift source files, and all 23 XCUITest cases pass in English
 and Spanish (D76).
 
-The real-call protocol in `docs/FIELD-VALIDATION.md` revalidates every format-2
+The real-call protocol in `docs/FIELD-VALIDATION.md` revalidates every format-2/3
 support key and bounded value before atomically publishing a new owner-only
 evidence directory. `scripts/collect-field-evidence.py` rejects unknown fields,
 content-bearing additions, malformed counts/digests/timestamps, mismatched app
@@ -7772,5 +7772,19 @@ first event and rejects its nominal policy default as a host measurement. The
 composition/export boundary also admits all known thermal states while omitting
 a future raw state instead of reporting the governor's fair fallback.
 Resource probe tests retain the extended-counter contract.
+Native CPU-unit coverage brackets both resource flavors with independent
+`getrusage(RUSAGE_SELF)` readings and checks the actual exported CPU field against
+that same accounting source. Only the two microsecond-precision fields' combined
+quantization is admitted; no elapsed-time tolerance or sleep compensates for a
+unit mismatch. This supplements the pure Mach-timebase conversion tests without
+claiming a latency benchmark or universal physical-host qualification.
+`HostSupportFieldEvidenceTests` sends the actual AppServices JSON, without
+rewriting its format or host fields, through collection and release reliability
+validation. It also serializes every typed residency state and family through
+the same consumers so a changed Swift vocabulary cannot silently drift from
+the Python allowlist. Its subprocess is bounded and all data is synthetic and
+temporary; the resulting field checks must remain not-observed. Tooling tests
+preserve format-2 compatibility and reject unknown/private keys, wrong types,
+nonfinite or overflowing counters and duplicate ownership before publication.
 The existing redacted-support XCUITest also inspects host JSON and its disclosure;
 synthetic unit cases do not establish physical Sequoia/Tahoe or benchmark timing.

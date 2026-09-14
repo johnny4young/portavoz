@@ -163,6 +163,11 @@ CPU time is cumulative process work in seconds, not gesture latency or elapsed
 meeting time. A failed read stays unavailable. Per-family memory remains an
 optional owner measurement; process memory is never apportioned among models.
 Existing capture and durable-processing timings remain separate report fields.
+The field-evidence collector and reliability evaluator accept both support
+formats 2 and 3. The collector validates the host's closed schema before atomic
+publication rather than ignoring new fields. A producer-to-consumer test passes
+an actual AppServices export through both consumers without converting synthetic
+data into a field qualification.
 
 ### Database launch recovery
 

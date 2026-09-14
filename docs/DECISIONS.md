@@ -19502,6 +19502,15 @@ regressions also enter the export sanitizer with malformed decoded observations.
 The real Settings export journey inspects the saved artifact rather than only
 checking the button. No automatic sharing or sampling history is introduced.
 
+The report format also belongs to its consumers. An actual AppServices export
+failed at the field collector even though exporter and collector unit suites
+were green: every collector fixture still used format 2. Both the collector and
+reliability metadata validator now admit formats 2 and 3. Host fields remain
+closed and strictly validated, not an arbitrary optional JSON escape hatch.
+Cross-language tests pass actual Swift exports and every typed residency state
+through collection and reliability validation; the synthetic result stays
+not-observed. Old reports and protocol-1 invocations remain supported.
+
 
 ## D523 — UI fixtures own explicit cross-process scratch, not runner containers
 
