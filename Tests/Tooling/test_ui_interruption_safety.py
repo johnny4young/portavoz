@@ -23,7 +23,7 @@ class InterruptionSafetyTests(unittest.TestCase):
             "log": f"FIXTURE_SCRATCH={root}/portavoz-ui-child\nFIXTURE_INTERRUPTION_READY\n"
                    "PORTAVOZ_UI_INTERRUPTION_BLOCKED cleanup=complete\n".encode(),
             "summary": {"totalTestCount": 1, "skippedTests": 0, "failedTests": 1, "passedTests": 0},
-            "effects": set(),
+            "effects": {"overlay-owner-exit"},
         }
 
     def test_expected_failure_is_not_a_product_pass(self):
@@ -31,7 +31,8 @@ class InterruptionSafetyTests(unittest.TestCase):
 
     def test_rejects_false_negative_controls(self):
         for mutation in ("exit-zero", "missing-ready", "missing-guard", "fallback", "continued",
-                         "cleanup-failed", "choice", "target", "empty-restart", "skipped", "extra-case"):
+                         "cleanup-failed", "choice", "target", "empty-restart", "skipped", "extra-case",
+                         "helper-crashed"):
             with self.subTest(mutation=mutation):
                 data = self.evidence()
                 if mutation == "exit-zero":
@@ -46,6 +47,8 @@ class InterruptionSafetyTests(unittest.TestCase):
                     data["log"] = data["log"].replace(b"cleanup=complete", b"cleanup=failed")
                 elif mutation in ("choice", "target"):
                     data["effects"].add(mutation)
+                elif mutation == "helper-crashed":
+                    data["effects"].remove("overlay-owner-exit")
                 elif mutation == "empty-restart":
                     data["summary"]["totalTestCount"] = 0
                 elif mutation == "skipped":
@@ -64,12 +67,22 @@ class InterruptionSafetyTests(unittest.TestCase):
                              ("testUninterruptedActionAndTeardown", "target")):
             data = self.evidence()
             data.update(name=name, code=0, effects={effect})
+            if name == "testSyntheticChoiceIsObservable":
+                data["effects"].add("overlay-owner-exit")
             data["log"] = data["log"].split(b"FIXTURE_INTERRUPTION_READY")[0]
             data["summary"].update(failedTests=0, passedTests=1)
             safety.validate_case(**data)
             data["effects"].clear()
             with self.assertRaises(RuntimeError):
                 safety.validate_case(**data)
+
+    def test_choice_does_not_prove_the_helper_completed_its_owner_exit_callback(self):
+        data = self.evidence()
+        data.update(name="testSyntheticChoiceIsObservable", code=0, effects={"choice"})
+        data["summary"].update(failedTests=0, passedTests=1)
+        data["log"] = data["log"].split(b"FIXTURE_INTERRUPTION_READY")[0]
+        with self.assertRaisesRegex(RuntimeError, "missing synthetic action/lifecycle effect"):
+            safety.validate_case(**data)
 
     def test_shared_sources_and_fixture_changes_select_controls_and_full_bilingual(self):
         for path in (*safety.SOURCE_PATHS, "scripts/check-ui-interruption-safety.py",

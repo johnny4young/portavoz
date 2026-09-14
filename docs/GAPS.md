@@ -119,6 +119,21 @@ qualification on every supported macOS version. No test should request or answer
 a system privacy decision to manufacture that evidence. An unexpected prompt,
 failed owned cleanup, or later worker restart still invalidates the invocation;
 physical OS coverage and unexplained earlier failures remain separate.
+Earlier synthetic control receipts proved process absence but did not detect an
+overlay crash at its actor-isolated exit callback. They are not sufficient
+cleanup evidence. The corrected main-queue callback must also acknowledge its
+execution; fresh controlled and hosted qualification is required. Notification
+Center metadata alone still cannot attribute a hosted alert to that crash.
+
+### Unattributed asynchronous media-framework test crash
+
+A full package-test process has terminated with `SIGSEGV` in asynchronous
+MediaToolbox/CoreFoundation array handling. No application frame established the
+initiating call, and focused playback workflow tests did not reproduce it. This
+is unresolved: do not attribute it to an interleaved test-log line, dismiss it as
+host interference, or use the focused pass as a complete gate. Further diagnosis
+must retain the actual crash stack and exercise the real playback lifecycle
+before changing production teardown or declaring the failure fixed.
 
 ## Product gaps (users feel them)
 

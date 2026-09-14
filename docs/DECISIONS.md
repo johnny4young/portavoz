@@ -19559,3 +19559,18 @@ app, then require the original query value. Both previously failing Settings
 journeys pass this actual call site in English and Spanish; the complete
 catalog remains mandatory. This corrects the older source ratchet that froze
 click/field-Tab ordering instead of its intended focus boundary.
+
+The first hosted control run stopped before the asynchronous control because
+Notification Center was visible. Its metadata did not establish the alert's
+origin. Inspecting actual local crash reports then exposed a separate defect:
+the synthetic overlay's parent-exit callback inherited `MainActor`, but its
+Dispatch source ran on a global queue and trapped before entering the body.
+Process disappearance had incorrectly qualified that crash as cleanup.
+
+The callback now uses the main queue and writes a separate content-free lifecycle
+acknowledgement before exiting. Every control that opens an overlay requires
+that acknowledgement as well as eventual process absence; the no-overlay
+positive must not produce it. Action and choice effects remain independently
+required or forbidden. Earlier control receipts lacking this proof are not
+cleanup qualification. No wait, notification exception or test retry compensates
+for the crashed helper; the unchanged strict host preflight still applies.

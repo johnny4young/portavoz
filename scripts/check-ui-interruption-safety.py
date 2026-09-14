@@ -59,7 +59,10 @@ def require(condition: bool, message: str) -> None:
 
 def validate_case(name: str, code: int, log: bytes, summary: dict, effects: set[str]) -> None:
     negative = not CASES[name]
-    require(effects == CASES[name], f"{name}: unexpected or missing synthetic effect")
+    # A helper can vanish by trapping before its parent-exit callback runs.
+    # Require that callback's own acknowledgement, not just process absence.
+    expected = CASES[name] | ({"overlay-owner-exit"} if name != "testUninterruptedActionAndTeardown" else set())
+    require(effects == expected, f"{name}: unexpected or missing synthetic action/lifecycle effect")
     require(summary.get("totalTestCount") == 1 and summary.get("skippedTests") == 0,
             f"{name}: expected exactly one executed case, not a restarted empty suite")
     if negative:
@@ -135,10 +138,10 @@ def run(output: Path) -> None:
             summary = json.loads(subprocess.check_output(
                 ["xcrun", "xcresulttool", "get", "test-results", "summary", "--path", str(result), "--format", "json"],
                 env=environment, timeout=30))
+            wait_for_owned_apps_to_exit(products)
             observed = {path.name for path in effects.iterdir()}
             (output / f"{name}-effects.json").write_text(json.dumps(sorted(observed)) + "\n", encoding="utf-8")
             validate_case(name, code, log.read_bytes(), summary, observed)
-            wait_for_owned_apps_to_exit(products)
             receipts.append({"case": name, "invocationExitCode": code, "expectedFailure": not CASES[name],
                              "effects": sorted(observed), "ownedCleanup": "complete",
                              "invocationWallSeconds": time.monotonic() - started})

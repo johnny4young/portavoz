@@ -5603,6 +5603,10 @@ nor answers the interrupting element. The execution classifier retains this as
 A separate permission-free fixture target compiles the same base and cleanup
 sources. Observable positive controls and synchronous/asynchronous negative
 controls qualify the callback without opening a system permission prompt.
+The overlay's main-queue parent-exit callback emits a separate lifecycle
+acknowledgement before exiting; process absence without it is failed cleanup,
+not success. This closes the false-positive case where a main-actor callback
+scheduled on a global queue trapped before its body ran.
 Full bilingual runs execute this once in addition to the unchanged product
 catalog; scoped feature runs do not pay for unrelated fixture qualification.
 These observations prove only that the host was quiet at those samples;

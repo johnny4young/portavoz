@@ -7665,6 +7665,13 @@ there is no copied guard implementation. Its four serial invocations distinguish
 
 Negative controls require exactly one failed case, a completed owned-cleanup
 receipt, no scratch or owned app process left behind, and no fallback sentinel.
+Any control that opens the overlay also requires its parent-exit callback's
+content-free acknowledgement. The Dispatch source targets the main queue because
+the callback inherits the AppKit delegate's main actor. A crashed helper that
+merely disappears cannot satisfy the lifecycle proof; the no-overlay positive
+must not produce that acknowledgement. Effects are inspected after all owned
+processes have exited. This does not claim that an acknowledgement alone proves
+every possible exit failure is absent.
 Zero-test restarts are not passes. The separate qualification receipt records
 expected failures, source hashes and content-free effects; it never substitutes
 for a product UI receipt. Tooling tests reject missing readiness, absent guard,

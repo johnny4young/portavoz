@@ -12,8 +12,16 @@ final class OverlayDelegate: NSObject, NSApplicationDelegate {
               let parent = Int32(args[3]), parent > 1 else { exit(64) }
         guard kill(parent, 0) == 0 else { exit(0) }
         let ownerExit = DispatchSource.makeProcessSource(
-            identifier: parent, eventMask: .exit, queue: .global(qos: .utility))
-        ownerExit.setEventHandler { exit(0) }
+            identifier: parent, eventMask: .exit, queue: .main)
+        ownerExit.setEventHandler {
+            // This callback inherits MainActor from the AppKit delegate. A
+            // global queue traps before its body, which process absence alone
+            // cannot distinguish from a successful owned teardown.
+            let receipt = URL(fileURLWithPath: args[4]).appendingPathComponent("overlay-owner-exit")
+            do { try Data().write(to: receipt) }
+            catch { exit(74) }
+            exit(0)
+        }
         ownerExit.resume()
         parentExit = ownerExit
         guard kill(parent, 0) == 0 else { exit(0) }
