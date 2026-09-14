@@ -369,15 +369,15 @@ extension ArchitectureDependencyTests {
         XCTAssertEqual(settingsWindowBody.components(separatedBy:
             "identifier: \"settings-search-field\", timeout: timeout)").count - 1, 2)
         let searchEditingStart = try XCTUnwrap(settingsWindowBody.range(
-            of: "private func finishSearchEditing("))
+            of: "func finishTextFieldEditing("))
         let searchEditingBody = settingsWindowBody[searchEditingStart.lowerBound...]
         let searchTab = try XCTUnwrap(searchEditingBody.range(
             of: "typeKey(.tab, modifierFlags: [])"))
         let preservedSearchValue = try XCTUnwrap(searchEditingBody.range(
-            of: "search.waitForValue(originalValue, timeout: timeout)"))
+            of: "field.waitForValue(originalValue, timeout: timeout)"))
         XCTAssertLessThan(searchTab.lowerBound, preservedSearchValue.lowerBound)
-        XCTAssertFalse(searchEditingBody.contains("search.click()"))
-        XCTAssertFalse(searchEditingBody.contains("search.typeKey("))
+        XCTAssertFalse(searchEditingBody.contains("field.click()"))
+        XCTAssertFalse(searchEditingBody.contains("field.typeKey("))
         XCTAssertFalse(searchEditingBody.contains(".typeText("))
         XCTAssertFalse(searchEditingBody.contains(".escape"))
         XCTAssertFalse(searchEditingBody.contains("UserDefaults"))

@@ -6921,8 +6921,9 @@ remains the default.
 Only a passing case that crosses an individual ceiling, or participates in a
 complete-catalogue total/p95 overage, is inspected. Its exact activity tree
 must contain one top-level `Start Test`, one `Set Up`, and one later `Tear Down`;
-only the finite `Set Up`-to-`Tear Down` span that leaves at least one second
-outside the test-owned boundary may become the budget duration. The receipt
+only independently bounded runner intervals totaling at least one second may
+be excluded from the budget duration. The `Set Up`-to-`Tear Down` span remains
+a lower bound on owned work, not proof that cleanup has finished. The receipt
 retains the test identifier, reported span, attributed span, separate pre-setup
 and post-teardown exclusions, their total, and one closed reason. Hosted and
 candidate gates reject forged identity, duplicate adjustments, arithmetic
@@ -6932,12 +6933,22 @@ retry, timeout, budget, assertion, selector, or locale changes.
 
 The `Tear Down` marker is a start timestamp, not proof that cleanup finished.
 When it contains child activities or is followed by another top-level activity,
-the reader retains the reported duration: app termination and owned scratch
-cleanup are test work, not a runner stall. Malformed child activity collections
-also prevent attribution. A normalized real-app activity fixture drives both
+the reader preserves the entire reported post-setup duration: app termination
+and owned scratch cleanup are test work, not a runner stall. An independently
+proven empty pre-setup interval may still be excluded, with zero post-teardown
+exclusion. The retained duration must cover at least the known marker span;
+inconsistent clocks retain the raw duration. Start and setup must be the first
+two top-level activities, and the start marker must have no child work. Malformed
+child activity collections also prevent attribution. A normalized real-app activity fixture drives both
 the parser and the command-line enforcement path; a diagnostic ceiling between
 the body-only and complete duration must fail, not become green by subtracting
-cleanup. The ordinary runtime budgets are unchanged.
+cleanup. The CLI also exercises simultaneous pre-setup delay and active cleanup:
+short owned work may qualify, but slow cleanup, a one-millisecond ceiling overage,
+failed cases, intervening pre-setup work and malformed boundaries cannot become
+green. Both locale receipts retain the exact pre-setup exclusion and all cleanup.
+Epoch-sized timestamp subtraction preserves xcresult's written decimal precision;
+an exact budget boundary is not widened by an epsilon or binary rounding residue.
+The ordinary runtime budgets and receipt schema are unchanged.
 
 This policy was introduced after the first OBS-0 complete English run passed
 103/103 but reported one 40.353-second Summary-feedback case. Its exact
@@ -7652,6 +7663,22 @@ and confirms that the actual duplicate policy rejects it.
 
 
 ### Permission-free interruption controls
+
+The local-data ledger journey opens Settings from the seeded main window through
+the same window-opening boundary as Settings-launch fixtures. A raw Command-comma
+had bypassed the initial search-editor handoff and allowed an app-owned element
+to interrupt the following sidebar scroll. The journey verifies that the empty
+query survives opening before navigating to the exact ledger values. An earlier
+passing full suite did not prove that every entry reached this boundary.
+
+The same native-field editing handoff also applies to the commitment editor's
+initial proposed wording. A failed Spanish run captured a completion window over
+the owner picker even though the synthesized click matched its settled frame.
+The journey ends editing through ordinary app-scoped Tab, asserts the unchanged
+proposal, and then selects the exact local-user menu item before confirmation.
+Settings, Library and this editor reuse `finishTextFieldEditing`; no popup query,
+extra delay, suggestion choice, failed-click retry or system setting is involved.
+The retained failure is not evidence of a layout race or another app's intrusion.
 
 `make test-ui-interruption-safety UI_INTERRUPTION_RESULTS=<new-private-directory>`
 builds a tiny separate app/overlay/runner target once. It uses the exact shared

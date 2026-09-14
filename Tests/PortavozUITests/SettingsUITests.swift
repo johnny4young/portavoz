@@ -51,7 +51,10 @@ final class SettingsUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        app.typeKey(",", modifierFlags: .command)
+        XCTAssertTrue(
+            app.openSettingsWindow(),
+            "opening Settings must finish initial search editing before sidebar scrolling")
+        XCTAssertEqual(app.textFields["settings-search-field"].value as? String, "")
         openCategory(
             "settings-category-data",
             revealing: "settings-ledger-meetings",

@@ -19574,3 +19574,45 @@ positive must not produce it. Action and choice effects remain independently
 required or forbidden. Earlier control receipts lacking this proof are not
 cleanup qualification. No wait, notification exception or test retry compensates
 for the crashed helper; the unchanged strict host preflight still applies.
+
+A later cumulative feature run exposed one remaining call-site bypass: the
+local-data ledger journey sent raw Command-comma from the main window rather
+than using `openSettingsWindow`. An app-owned element interrupted its subsequent
+sidebar scroll. The journey now uses the existing window/focus boundary and
+asserts that the initial empty search query survives. No new dismissal, delay or
+popover-specific branch is added. Passing full suites on the parent commit had
+not established that this remaining entry used the implemented mechanism.
+
+The commitment confirmation journey exposed the same native-editor boundary
+outside search. Its failed Spanish run retained a completion window covering
+the owner picker; the event coordinate was inside the settled target, so adding
+a layout wait would not address the evidence. Generalize the existing ordinary
+Tab handoff to `finishTextFieldEditing` and reuse it before owner selection,
+asserting that the proposed wording is unchanged. The exact owner-menu action
+and confirmation remain required. This is not a popup-specific dismissal or a
+change to production consent or editing behavior.
+
+## D528 — Pre-setup admission and owned cleanup are independent timing boundaries
+
+A full real-app catalog passed every assertion, but one case exceeded its budget
+because XCTest spent 30.052 seconds between the start marker and setup. Its
+teardown also contained an owned-app exit wait. Rejecting the whole activity
+boundary protected cleanup from subtraction, but discarded independent evidence
+about the earlier empty interval.
+
+Preserve that safety boundary without conflating the two ends. When teardown
+completion is unknown, exclude only a proven empty pre-setup interval and retain
+every remaining second of the reported case, including all cleanup and later
+work. A known marker span is a lower bound, never a substitute for that retained
+duration. Require adjacent start/setup markers without child work under start;
+ambiguous boundaries, malformed children, inconsistent clocks and failed cases
+keep the raw duration. An empty terminal teardown retains the existing attribution
+policy. Timestamp differences preserve the decimal precision written by
+xcresult, so binary subtraction residue cannot turn an exact budget boundary
+into an overage. No epsilon, numeric budget, threshold, retry or receipt schema
+changes.
+
+The production receipt CLI is tested with both locales, long teardown despite
+pre-setup noise, exact and one-millisecond-over budget boundaries, failed cases,
+and invalid activity shapes. Reprocessing an old result is diagnostic evidence,
+not a replacement for fresh full-catalog qualification of the final source.

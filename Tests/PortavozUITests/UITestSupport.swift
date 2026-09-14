@@ -320,7 +320,7 @@ extension XCUIApplication {
             guard prepareForInteraction(timeout: timeout) else { return false }
             return general.waitForStableFrame(
                 timeout: timeout,
-                stableFor: 0.1) && finishSearchEditing(
+                stableFor: 0.1) && finishTextFieldEditing(
                     identifier: "settings-search-field", timeout: timeout)
         }
 
@@ -331,7 +331,7 @@ extension XCUIApplication {
                 timeout: attempt == 0 ? 2 : timeout,
                 stableFor: 0.1
             ) {
-                return finishSearchEditing(
+                return finishTextFieldEditing(
                     identifier: "settings-search-field", timeout: timeout)
             }
         }
@@ -339,22 +339,22 @@ extension XCUIApplication {
     }
 
     /// End the native field-editor session through ordinary keyboard traversal.
-    /// A cold search can own an AutoFill popover even when its query is empty;
+    /// A focused field can own an AutoFill popover even when its value is empty;
     /// clicking the field again can itself be blocked by that popover. Route
     /// Tab to the already-active app's current editor instead of its covered
     /// field; do not start a new editing session just to end it.
     /// Never choose a suggestion, change system preferences, or dismiss prompts.
     @MainActor
-    private func finishSearchEditing(
+    func finishTextFieldEditing(
         identifier: String,
         timeout: TimeInterval
     ) -> Bool {
-        let search = textFields[identifier]
-        guard search.waitForHittable(timeout: timeout),
-              let originalValue = search.value as? String
+        let field = textFields[identifier]
+        guard field.waitForHittable(timeout: timeout),
+              let originalValue = field.value as? String
         else { return false }
         typeKey(.tab, modifierFlags: [])
-        return search.waitForValue(originalValue, timeout: timeout)
+        return field.waitForValue(originalValue, timeout: timeout)
     }
 
     /// Selects a Settings category and proves its exact destination appeared.
@@ -460,7 +460,7 @@ extension XCUIApplication {
         }
 
         if search.exists {
-            guard finishSearchEditing(
+            guard finishTextFieldEditing(
                 identifier: "library-search-field", timeout: timeout)
             else {
                 XCTFail("the search field never finished editing", file: file, line: line)

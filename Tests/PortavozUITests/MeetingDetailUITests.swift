@@ -1485,6 +1485,12 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-editor").waitForExistenceFast(timeout: 5),
             "the user must get one explicit wording, owner, and deadline review boundary")
+        XCTAssertTrue(
+            app.finishTextFieldEditing(identifier: "commitment-editor-title", timeout: 5),
+            "owner selection must start after the proposed wording finishes editing unchanged")
+        XCTAssertEqual(
+            app.textFields["commitment-editor-title"].value as? String,
+            "Prepare the rollout")
         let editor = app.control(withIdentifier: "commitment-editor")
         let ownerPickers = editor.descendants(matching: .popUpButton)
         XCTAssertEqual(
