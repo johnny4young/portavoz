@@ -10,6 +10,10 @@ import XCTest
 @MainActor
 final class HostSupportDiagnosticsTests: XCTestCase {
     func testActualAppExportContainsHostResourcesWithoutContent() async throws {
+        try await assertActualAppExportContainsHostResourcesWithoutContent()
+    }
+
+    private func assertActualAppExportContainsHostResourcesWithoutContent() async throws {
         let services = try AppServices(arguments: ["-use-temp-store"], environment: [:])
         let meeting = Meeting(title: "SECRET reunión — Don't export", startedAt: Date())
         try await services.store.save(meeting)
@@ -136,6 +140,10 @@ final class HostSupportDiagnosticsTests: XCTestCase {
     }
 
     func testNativeCPUUnitsMatchIndependentProcessAccounting() async throws {
+        try assertNativeCPUUnitsMatchIndependentProcessAccounting()
+    }
+
+    private func assertNativeCPUUnitsMatchIndependentProcessAccounting() throws {
         // Both native flavors must expose the same units. Checking only the
         // pure conversion would pass even if the adapter fed it nanoseconds.
         for extendedCounters in [false, true] {
@@ -146,25 +154,60 @@ final class HostSupportDiagnosticsTests: XCTestCase {
         }
     }
 
-    private func processCPUSeconds() throws -> Double {
-        var usage = rusage()
-        guard getrusage(RUSAGE_SELF, &usage) == 0 else {
-            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+    func testNativeCPUAccountingIncludesTerminatedThreads() async throws {
+        let before = try processCPUSeconds()
+        try runTerminatingWorkers()
+        let after = try processCPUSeconds()
+        XCTAssertGreaterThan(after, before, "Retired worker CPU must remain part of process accounting")
+        try assertNativeCPUUnitsMatchIndependentProcessAccounting()
+        try await assertActualAppExportContainsHostResourcesWithoutContent()
+    }
+
+    private func runTerminatingWorkers() throws {
+        var threads: [pthread_t] = []
+        defer {
+            for thread in threads { XCTAssertEqual(pthread_join(thread, nil), 0) }
         }
-        return Double(usage.ru_utime.tv_sec) + Double(usage.ru_stime.tv_sec)
-            + (Double(usage.ru_utime.tv_usec) + Double(usage.ru_stime.tv_usec)) / 1_000_000
+        for _ in 0..<8 {
+            var thread: pthread_t?
+            let result = pthread_create(&thread, nil, { _ in
+                // Finite native work, not a sleep or an elapsed-time threshold.
+                for _ in 0..<2_048 { _ = Darwin.getpid() }
+                return nil
+            }, nil)
+            guard result == 0 else { throw POSIXError(POSIXErrorCode(rawValue: result) ?? .EIO) }
+            threads.append(try XCTUnwrap(thread))
+        }
+    }
+
+    private func processCPUSeconds() throws -> Double {
+        // Sequoia getrusage rounds each live thread separately and reads retired
+        // threads in another snapshot. No fixed microsecond allowance fixes that.
+        // TASK_ABSOLUTETIME_INFO keeps native precision and includes retired work.
+        var times = task_absolutetime_info_data_t()
+        var count = mach_msg_type_number_t(
+            MemoryLayout<task_absolutetime_info_data_t>.size / MemoryLayout<integer_t>.size)
+        let result = withUnsafeMutablePointer(to: &times) { pointer in
+            pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(mach_task_self_, task_flavor_t(TASK_ABSOLUTETIME_INFO), $0, &count)
+            }
+        }
+        var timebase = mach_timebase_info_data_t()
+        guard result == KERN_SUCCESS, mach_timebase_info(&timebase) == KERN_SUCCESS,
+              timebase.numer > 0, timebase.denom > 0 else { throw POSIXError(.EIO) }
+        let total = times.total_user.addingReportingOverflow(times.total_system)
+        guard !total.overflow else { throw POSIXError(.EOVERFLOW) }
+        // Independent API and conversion: do not call the production helper.
+        return Double(total.partialValue) * Double(timebase.numer) / Double(timebase.denom) / 1_000_000_000
     }
 
     private func assertCPUSeconds(
         _ actual: Double, between before: Double, and after: Double,
         file: StaticString = #filePath, line: UInt = #line
     ) {
-        // getrusage reports user/system time separately at microsecond precision.
-        // This is their combined quantization bound, not a scheduling allowance.
-        let quantization = 2.0 / 1_000_000
         XCTAssertGreaterThan(before, 0, "A zero-work oracle cannot detect a unit mismatch", file: file, line: line)
         XCTAssertGreaterThanOrEqual(after, before, file: file, line: line)
-        XCTAssertGreaterThanOrEqual(actual, before - quantization, file: file, line: line)
-        XCTAssertLessThanOrEqual(actual, after + quantization, file: file, line: line)
+        XCTAssertGreaterThanOrEqual(actual, before, file: file, line: line)
+        XCTAssertLessThanOrEqual(actual, after, file: file, line: line)
     }
 }

@@ -7772,12 +7772,21 @@ first event and rejects its nominal policy default as a host measurement. The
 composition/export boundary also admits all known thermal states while omitting
 a future raw state instead of reporting the governor's fair fallback.
 Resource probe tests retain the extended-counter contract.
-Native CPU-unit coverage brackets both resource flavors with independent
-`getrusage(RUSAGE_SELF)` readings and checks the actual exported CPU field against
-that same accounting source. Only the two microsecond-precision fields' combined
-quantization is admitted; no elapsed-time tolerance or sleep compensates for a
-unit mismatch. This supplements the pure Mach-timebase conversion tests without
-claiming a latency benchmark or universal physical-host qualification.
+Native CPU-unit coverage brackets both `proc_pid_rusage` flavors with independent
+`task_info(TASK_ABSOLUTETIME_INFO)` totals and checks the actual exported CPU
+field against that API. Both include terminated threads and retain native Mach
+precision. The oracle converts without calling the production helper and uses
+strict before/after bounds: no tolerance or sleep compensates for a unit mismatch.
+A bounded native-worker lifecycle also exercises both resource flavors and the
+actual export after joining the workers. On Sequoia, `getrusage` rounds each live
+thread separately and reads terminated work in a different snapshot; neither a
+fixed microsecond allowance nor `CLOCK_PROCESS_CPUTIME_ID` (which delegates to
+`getrusage`) provides the required oracle. See Apple's
+[Sequoia task accounting](https://github.com/apple-oss-distributions/xnu/blob/xnu-11417.140.69/osfmk/kern/task.c#L5425-L5497)
+and [process-clock implementation](https://github.com/apple-oss-distributions/Libc/blob/Libc-1698.140.3/gen/clock_gettime.c).
+This is an independent API path over OS accounting, not an independent physical
+measurement. It supplements the pure Mach-timebase tests without claiming a
+latency benchmark or universal physical-host qualification.
 `HostSupportFieldEvidenceTests` sends the actual AppServices JSON, without
 rewriting its format or host fields, through collection and release reliability
 validation. It also serializes every typed residency state and family through

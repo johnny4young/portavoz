@@ -19511,6 +19511,16 @@ Cross-language tests pass actual Swift exports and every typed residency state
 through collection and reliability validation; the synthetic result stays
 not-observed. Old reports and protocol-1 invocations remain supported.
 
+Native CPU validation uses `task_info(TASK_ABSOLUTETIME_INFO)` as the independent
+API around both production resource flavors and actual exported seconds. The
+earlier `getrusage` oracle failed on Sequoia because its thread-wise rounding and
+separate live/terminated snapshots invalidate a fixed quantization allowance.
+Replace that oracle, not production counters or numeric tolerances. Keep strict
+before/after bounds, test after native worker termination, and retain independent
+conversion so a wrong-unit mutation at the real adapter cannot pass merely
+because its pure helper is correct. This establishes API agreement, not physical
+hardware qualification or performance.
+
 
 ## D523 — UI fixtures own explicit cross-process scratch, not runner containers
 
