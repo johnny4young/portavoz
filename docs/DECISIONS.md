@@ -19616,3 +19616,43 @@ The production receipt CLI is tested with both locales, long teardown despite
 pre-setup noise, exact and one-millisecond-over budget boundaries, failed cases,
 and invalid activity shapes. Reprocessing an old result is diagnostic evidence,
 not a replacement for fresh full-catalog qualification of the final source.
+
+
+## D529 — Measure wheel response without weakening interaction readiness
+
+**Context:** D426 correctly requires stable containment and hittability, but its
+frame-distance-to-wheel conversion can oscillate across a short transcript
+viewport. A hosted structural-correction failure reached this boundary despite
+earlier full bilingual passes. Native hover and standalone click were rejected
+as fixes after both failed at a compact real-app call site. A separate native
+scroll fixture then reproduced four alternating maximum wheel inputs without
+revealing the target through the actual shared helper. A passing pure geometry
+function would not have exercised this defect.
+
+**Decision:** preserve D426's readiness contract and its original attempt, input
+and time bounds. Measure the same target's movement after each own wheel event
+only when viewport, target size and horizontal position remain unchanged. A
+finite positive observed response converts desired frame displacement into wheel
+units before clamping. Keep the largest response observed within this invocation;
+never store a host factor or increase the budget. The ordinary no-observation
+path starts with the prior unit conversion. The anchor-materialization overload
+retains its existing finite budget and delegates to the same helper.
+
+**Consequences:** the scroll helpers have a cohesive shared test-only source,
+compiled into both product XCUITest and the permission-free native fixture. The
+fixture deliberately varies scale and direction, checks zero-attempt boundaries,
+and proves exact target effects. Its amplification is adversarial input, not a
+measurement of a particular hosted Mac. Architecture checks retain the actual
+call sites, readiness and budget ownership rather than pinning the failed input
+formula. The compact product journey restores its own window size. No product
+behavior, per-case budget, failed-run classification or full bilingual gate is
+removed; exact-head hosted qualification remains independent of local evidence.
+
+
+The same readiness principle applies to the seeded-Library launch boundary:
+its already-hittable row fast path must not bypass the existing native editor
+handoff. A focused empty search plus visible row reproduces that omission at the
+actual helper call site; a subsequent normal key changes the query under the
+old return. The corrected ordering preserves query-recovery semantics and the
+original search/citation assertions. It does not identify an intermittent
+interruption from its frame or waive the resulting failed invocation.

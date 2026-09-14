@@ -125,6 +125,42 @@ cleanup evidence. The corrected main-queue callback must also acknowledge its
 execution; fresh controlled and hosted qualification is required. Notification
 Center metadata alone still cannot attribute a hosted alert to that crash.
 
+### Remaining UI interaction boundaries are not qualified by earlier full passes
+
+A hosted Spanish structural-correction journey exhausted its bounded vertical
+reveal attempts before the target passed containment and hittability. The next
+native click performed its own additional reveal and the remaining workflow
+assertions passed. Retained frames show a short transcript viewport with clipped
+rows; the helper's fixed wheel steps did not establish a stable actionable target.
+This is not proof that a larger attempt count or delay fixes the mechanism.
+A native scroll-view adversary now reproduces the old helper's oscillation and
+exercises measured wheel-response conversion (D529). Compact real-app coverage
+retains the failed assertion and existing runtime limits. Fresh full bilingual
+and replacement-head hosted qualification are still required; the synthetic
+amplification factor is not a measurement of the hosted runner.
+
+A separate local Spanish journey reached Intelligence Settings through summary
+failure recovery, then hit an app-owned interruption when selecting Voice. This
+deep-link entry did not use the ordinary Settings field-editor handoff. The guard
+completed owned cleanup, and XCTest restarted the worker for remaining tests;
+their later success does not qualify that invocation. The exact requesting UI
+has not been attributed from the interruption's frame alone. Review deep-link
+entries as well as direct Settings openings, preserving the destination and
+selected-engine assertions. The journey now uses the existing native editing
+handoff after proving its destination; focused bilingual evidence covers that
+boundary, but does not qualify an earlier interrupted full invocation.
+
+A later focused invocation stopped at the initial Library row click, before
+compact resizing or transcript scrolling. The seeded-Library helper's already-
+hittable fast path returned before its native search-editing handoff. This is a
+separate reachable boundary, not evidence against wheel-response conversion.
+An adversarial real-app journey reproduced this omission with a focused empty
+search and already-visible meeting: a normal key after readiness still edited
+the query. The common helper now orders its handoff before that fast return.
+Focused bilingual qualification covers the repaired boundary; full and hosted
+qualification remain required. The interruption's exact UI still cannot be
+identified from its frame alone.
+
 ### Unattributed asynchronous media-framework test crash
 
 A full package-test process has terminated with `SIGSEGV` in asynchronous

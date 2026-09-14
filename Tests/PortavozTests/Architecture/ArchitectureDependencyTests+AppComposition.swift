@@ -1796,7 +1796,7 @@ extension ArchitectureDependencyTests {
 
     func testCompactReviewActivationUsesOwnedRevealAndExactPostconditions() throws {
         let support = try Self.contents(
-            of: "Tests/PortavozUITests/UITestSupport.swift")
+            of: "Tests/PortavozUITests/UITestScrollSupport.swift")
         let transcript = try Self.contents(
             of: "Sources/portavoz-app/TranscriptSegmentsView.swift")
         let recording = try Self.contents(
@@ -1836,18 +1836,16 @@ extension ArchitectureDependencyTests {
             "maxScrolls: max(0, maxScrolls - attempt - 1)"))
         XCTAssertTrue(support.contains("if !geometryChanged { continue }"))
         XCTAssertFalse(support.contains("guard targetMoved else { return false }"))
-        XCTAssertEqual(
-            support.components(
-                separatedBy: "if viewportFrame.contains(frame),").count - 1,
-            2,
-            "geometric containment alone must not terminate before hittability")
-        XCTAssertTrue(support.contains(
-            "let inwardDelta = viewportFrame.midY - controlFrame.midY"))
-        XCTAssertTrue(support.contains(
-            "deltaY = min(max(inwardDelta, -maximumStep), maximumStep)"))
-        XCTAssertFalse(support.contains(
-            "if viewportFrame.contains(frame) {\n"
-                + "                return waitForStableContainedFrame("))
+        // The real scroll fixture owns input/geometry response behavior. Do not
+        // freeze the frame-to-wheel formula that failed on a short viewport.
+        let fixtureProject = try Self.contents(of: "Tests/UIInterruptionFixtures/project.yml")
+        XCTAssertTrue(fixtureProject.contains("../PortavozUITests/UITestScrollSupport.swift"))
+        let fixture = try Self.contents(
+            of: "Tests/UIInterruptionFixtures/Tests/InterruptionSafetyTests.swift")
+        XCTAssertTrue(fixture.contains("target.revealVertically(in: viewport, maxScrolls: 4)"))
+        XCTAssertTrue(fixture.contains("target.click()"))
+        XCTAssertTrue(support.contains("self.isHittable"))
+        XCTAssertTrue(decisions.contains("## D529"))
         XCTAssertFalse(uiTests.contains("private extension XCUIElement"))
         XCTAssertFalse(uiTests.contains("deltaY: CGFloat = -48"))
         XCTAssertFalse(uiTests.contains("waitForVisibleStableFrame"))

@@ -3,11 +3,14 @@ import AppKit
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow!
+    private var scrollProof: ScrollProofView?
+    private var targetCount = 0
     private let status = NSTextField(labelWithString: "Ready")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let scrollGeometry = ProcessInfo.processInfo.environment["PROOF_SCROLL_GEOMETRY"] == "1"
         window = NSWindow(
-            contentRect: NSRect(x: 420, y: 360, width: 520, height: 220),
+            contentRect: NSRect(x: 420, y: 360, width: 520, height: scrollGeometry ? 340 : 220),
             styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "Disposable interruption proof"
         let stack = NSStackView()
@@ -19,7 +22,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         arm.setAccessibilityIdentifier("proof-arm")
         let target = NSButton(title: "Unrelated action", target: self, action: #selector(targetAction))
         target.setAccessibilityIdentifier("proof-target")
-        for view in [status, arm, target] { stack.addArrangedSubview(view) }
+        for view in [status, arm] { stack.addArrangedSubview(view) }
+        if scrollGeometry {
+            let next = NSButton(title: "Next geometry", target: self, action: #selector(nextGeometry))
+            next.setAccessibilityIdentifier("proof-next-scroll")
+            stack.addArrangedSubview(next)
+            let scroll = ScrollProofView(target: target)
+            scrollProof = scroll
+            stack.addArrangedSubview(scroll)
+            NSLayoutConstraint.activate([
+                scroll.widthAnchor.constraint(equalToConstant: 320),
+                scroll.heightAnchor.constraint(equalToConstant: 96)
+            ])
+        } else {
+            stack.addArrangedSubview(target)
+        }
         window.contentView!.addSubview(stack)
         NSLayoutConstraint.activate([
             stack.centerXAnchor.constraint(equalTo: window.contentView!.centerXAnchor),
@@ -31,9 +48,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func targetAction() {
         guard let root = ProcessInfo.processInfo.environment["PROOF_EFFECTS_ROOT"] else { exit(64) }
-        do { try Data().write(to: URL(fileURLWithPath: root).appendingPathComponent("target")) }
+        targetCount += 1
+        do { try Data(String(targetCount).utf8).write(to: URL(fileURLWithPath: root).appendingPathComponent("target")) }
         catch { exit(74) }
         status.stringValue = "Target action happened"
+    }
+
+    @objc private func nextGeometry() {
+        scrollProof?.advanceGeometry()
+        status.stringValue = "Ready"
     }
 
     @objc private func arm() {

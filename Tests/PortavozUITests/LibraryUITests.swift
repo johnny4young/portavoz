@@ -626,6 +626,21 @@ final class LibraryUITests: PortavozUITestCase {
         // real FTS projection before publishing a new Library snapshot.
         let search = app.textFields["library-search-field"]
         XCTAssertTrue(search.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(app.finishTextFieldEditing(identifier: "library-search-field", timeout: 5))
+        search.click()
+        let visibleMeeting = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
+            .firstMatch
+        XCTAssertTrue(visibleMeeting.isHittable, "exercise the already-visible launch fast path")
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        // A normal key after launch readiness must not keep editing the search.
+        // This tests actual responder ownership without private focus attributes
+        // or requiring a particular native suggestion popover to appear.
+        app.typeKey("x", modifierFlags: [])
+        guard search.waitForValue("", timeout: 5) else {
+            XCTFail("seed readiness must finish editing even when the meeting was already hittable")
+            return
+        }
         search.click()
         search.typeText("viernes")
         XCTAssertTrue(search.waitForValue("viernes", timeout: 5))

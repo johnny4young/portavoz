@@ -32,6 +32,7 @@ targets:
       - path: ../PortavozUITests/PortavozUITestCase.swift
       - path: ../PortavozUITests/UITestStorageSupport.swift
       - path: ../PortavozUITests/UITestWaitSupport.swift
+      - path: ../PortavozUITests/UITestScrollSupport.swift
       - path: ../Support/UITestScratch.swift
     settings:
       base:

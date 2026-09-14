@@ -378,11 +378,36 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let app = try launchOnSeededMeeting()
         defer { app.terminate() }
 
+        let window = app.windows["main-AppWindow-1"]
+        let originalWindowSize = window.frame.size
+        defer {
+            let currentCorner = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 1))
+                .withOffset(CGVector(dx: -2, dy: -2))
+            let restoredCorner = window.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: originalWindowSize.width - 2, dy: originalWindowSize.height - 2))
+            currentCorner.click(forDuration: 0.1, thenDragTo: restoredCorner)
+            XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+                abs(window.frame.width - originalWindowSize.width) <= 4
+                    && abs(window.frame.height - originalWindowSize.height) <= 4
+            }, "the compact fixture must restore its own window geometry")
+        }
+        let corner = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 1))
+            .withOffset(CGVector(dx: -2, dy: -2))
+        let compactCorner = window.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: 898, dy: 648))
+        corner.click(forDuration: 0.1, thenDragTo: compactCorner)
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            window.frame.width <= 910 && window.frame.height <= 680
+        }, "the structural journey must exercise the compact hosted window")
+
         let sourceID = "B5B00000-0000-4000-8000-000000000002"
         let neighborID = "B5F00000-0000-4000-8000-000000000001"
         let correct = app.buttons["transcript-correct-\(sourceID)"]
         XCTAssertTrue(correct.waitForExistenceFast(timeout: 10))
         let transcriptScroll = app.control(withIdentifier: "detail-transcript-scroll")
+        XCTAssertLessThanOrEqual(
+            transcriptScroll.frame.height, 120,
+            "the source action must be exercised in the short, clipped transcript viewport")
         XCTAssertTrue(
             correct.revealVertically(in: transcriptScroll, maxScrolls: 4),
             "the structural correction action must be fully visible before activation")
@@ -639,6 +664,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 "the recommendation must cross the app localization boundary")
         }
         attachScreenshot(of: app, named: "sequoia-summary-actionable-settings")
+
+        XCTAssertTrue(
+            app.finishTextFieldEditing(identifier: "settings-search-field", timeout: 5),
+            "the recovery deep link must finish search editing without changing its destination")
+        XCTAssertEqual(app.textFields["settings-search-field"].value as? String, "")
 
         let voiceCategory = app.buttons["settings-category-voice"]
         XCTAssertTrue(

@@ -5601,8 +5601,11 @@ resuming the interrupted event or default handler stack. It neither inspects
 nor answers the interrupting element. The execution classifier retains this as
 `evidence-failure` even after a zero-test worker restart or an exit-zero summary.
 A separate permission-free fixture target compiles the same base and cleanup
-sources. Observable positive controls and synchronous/asynchronous negative
-controls qualify the callback without opening a system permission prompt.
+sources. The same target also compiles `UITestScrollSupport.swift`: its ordinary
+positive action exercises bounded real wheel events under controlled native
+scroll response, rather than testing a copied geometry policy. Observable positive
+controls and synchronous/asynchronous negative controls qualify the callback
+without opening a system permission prompt.
 The overlay's main-queue parent-exit callback emits a separate lifecycle
 acknowledgement before exiting; process absence without it is failed cleanup,
 not success. This closes the false-positive case where a main-actor callback

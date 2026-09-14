@@ -7682,7 +7682,7 @@ The retained failure is not evidence of a layout race or another app's intrusion
 
 `make test-ui-interruption-safety UI_INTERRUPTION_RESULTS=<new-private-directory>`
 builds a tiny separate app/overlay/runner target once. It uses the exact shared
-`PortavozUITestCase`, `UITestStorage`, `UITestScratch` and wait-helper sources;
+`PortavozUITestCase`, `UITestStorage`, `UITestScratch`, wait and scroll-helper sources;
 there is no copied guard implementation. Its four serial invocations distinguish:
 
 - an uninterrupted action, which must produce an observable synthetic effect;
@@ -7707,3 +7707,42 @@ exit-zero restart. Full bilingual selections and explicit full bilingual local
 runs include this once; narrower feature PRs do not. CI executes the controls in
 the product-builder job before publishing one reusable product build. Synthetic
 fixtures request no microphone, authentication or accessibility permission.
+
+
+### Measured wheel response and compact review geometry
+
+`UITestScrollSupport.swift` owns the shared bounded vertical-reveal helpers. Each
+invocation observes how its own wheel input moves the same target inside an
+unchanged viewport. A finite positive response with unchanged target size and
+horizontal position converts the next requested frame displacement into wheel
+units before the existing maximum input clamp. The largest observed response is
+retained only for that invocation; viewport reflow, absent geometry and opposite
+motion cannot calibrate it. Stable containment plus hittability, attempt counts,
+wait deadlines and runtime budgets are unchanged. The anchor-materialization
+path still spends from the same caller-owned attempt budget.
+
+The uninterrupted synthetic control runs the actual helper against a native
+scroll view in both directions with ordinary and deliberately amplified wheel
+response. Each phase starts clipped, rejects zero-attempt reveal, requires
+bounded reveal, accepts an already-ready zero-attempt observation and clicks the
+exact target once. The content-free effect counter must equal the number of
+completed phases. It is an input/geometry adversary, not a claim that a physical
+Mac or hosted runner uses the fixture's amplification factor. The existing
+choice and both negative interruption controls retain their exact outcomes.
+
+The real structural-correction journey explicitly resizes its own window to a
+compact viewport, retains every correction, undo and visibility assertion, and
+restores its original window size before teardown. The Sequoia summary-recovery
+journey verifies its exact Intelligence destination before ending search editing
+through the existing native handoff and then selecting Voice. These call-site
+proofs supplement, not replace, fresh full bilingual and exact-head hosted gates.
+
+
+Seeded-Library readiness applies that same editor handoff before the already-
+hittable meeting fast path. Search recovery still clears an unexpected query
+only when no seeded row is hittable. The recency/search journey explicitly
+focuses an empty search while its meeting is visible, invokes the real readiness
+helper and sends a normal key: the query must remain empty because editing has
+ended. It then retains the original FTS query, exact hit and player timestamp
+assertions. This fails against the former early return without needing a native
+popover or unsupported macOS focus attributes.
