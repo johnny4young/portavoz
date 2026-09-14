@@ -12369,9 +12369,11 @@ bounds, dialog text, controls, or credentials. The orchestrator applies
 explicit timeouts, validates the exact JSON shape, and fails closed when either
 inventory is unavailable or malformed. It reports only blocker categories and
 never dismisses a prompt.
-The UI-test bundle installs no interruption monitor for external system
-prompts, so it cannot answer a privacy or authentication decision that appears
-after the final sample.
+**Correction (Sep 2026):** installing no custom interruption monitor did not
+prevent XCTest's built-in fallback monitors from answering a privacy decision
+after the final sample. An actual UI execution disproved that safety claim.
+D527 replaces it with a content-blind, nonreturning callback and separately
+qualified positive/negative controls using the real shared test base.
 
 **Consequences:** already-present authentication alerts, notification alerts,
 Secure Input ownership, Xcode test commands, and UI runners now fail before
@@ -19509,3 +19511,51 @@ boundary rather than adding a compensating duration: a teardown with child
 activities, malformed child metadata, or subsequent top-level work retains the
 reported case duration. A normalized real activity tree and an adversarial CLI
 budget reproduce the false pass. No timeout, retry or budget is relaxed.
+
+
+## D527 — Unexpected UI interruptions stop the test, not decide consent
+
+XCTest has default interruption monitors even when a test registers none. A
+real-app run reached a microphone permission prompt and the default handler
+selected a denial. Preflight and disposable window placement cannot authorize
+that choice or prevent a later modal. The displayed app name did not establish
+the requesting executable; this is a harness defect, not attributed to another
+application.
+
+The shared `PortavozUITestCase` now registers a content-blind monitor at setup.
+It never queries the interrupting element or returns a handled/unhandled Bool.
+It first cleans only its registered apps and identity-owned scratch, then records
+an issue through the owning case with `continueAfterFailure = false`. If XCTest
+returns, as observed in asynchronous journeys, it terminates only the runner
+process. Cleanup failures retain a content-free failure category and do not
+fall through to another handler. The earlier synchronous-helper-only proof was
+insufficient: the monitor installation and callback routing must be exercised.
+
+A separate, permission-free fixture target compiles that exact test base,
+storage owner, scratch allocator and wait helpers. Two positive controls prove
+that both the normal action and a synthetic dialog choice have observable file
+effects. Two negative controls invoke the blocked action in synchronous and
+asynchronous tests; both must fail with the guard's cleanup receipt, no fallback
+sentinel, no action or choice effect, no surviving owned scratch, and no owned
+app process. The synthetic overlay watches its explicit parent's exit. This is
+not permission-prompt testing or a claim that every OS interruption has been
+reproduced.
+
+`make test-ui-interruption-safety` builds these tiny fixtures once and records
+all four outcomes. Full bilingual selections require it once, not per feature
+or locale. Hosted runs execute it in the product-builder job using the existing
+pinned XcodeGen; locale lanes still share one product build. A worker restart
+printing a zero-test success cannot qualify the invocation: the execution
+classifier emits `evidence-failure`, returns nonzero and retains the raw local
+log even if Xcode returns zero. Expected negative-control failures qualify only
+the separate harness receipt, never the product catalog. Budgets, retries,
+production entitlements and the macOS 14.4 floor are unchanged.
+
+The first product-catalog run with this guard found two app-owned interruptions
+while Settings setup tried to reopen its empty search editor just to close it.
+They are not attributed to an external permission prompt. Keep the guard intact:
+remove the redundant field click and send ordinary Tab to the already-active
+app, then require the original query value. Both previously failing Settings
+journeys pass this actual call site in English and Spanish; the complete
+catalog remains mandatory. This corrects the older source ratchet that froze
+click/field-Tab ordering instead of its intended focus boundary.

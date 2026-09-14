@@ -5578,7 +5578,8 @@ resolves its own AppKit window on attachment rather than selecting a process-wid
 first window; detachment clears the weak owner and reattachment follows the new
 window. The shared disposable-window boundary keeps
 the main and Settings windows at AppKit's standard `statusBar` level, above the
-accepted Notification Center modal, so it cannot occlude test hit targets. No
+accepted Notification Center modal, reducing occlusion without guaranteeing
+protection from later system modals. No
 production window is elevated. The palette, recording HUD, dictation and reminder
 panels retain the same elevated level only for that explicit disposable launch,
 so the main window cannot cover their input targets; ordinary launches retain
@@ -5593,11 +5594,17 @@ observation, workspace, or malformed-output failure remains fail-closed.
 An accepted run reports both content-free Notification Center window counts.
 When both are zero it instead states that the override relaxed no present
 blocker, so a clear-host run cannot be misrepresented as live-overlay proof.
-The UI-test bundle likewise installs no interruption monitor for external
-system prompts. The explicit Notification Center level isolation answers no
-control and changes no notification state; every privacy or authentication
-choice remains user-owned and invalidates that host run instead of being
-answered by automation.
+The shared UI-test base installs a content-blind interruption monitor. It ends
+only its registered apps and identity-owned scratch before recording a failure;
+if XCTest returns from that assertion it exits only the worker, rather than
+resuming the interrupted event or default handler stack. It neither inspects
+nor answers the interrupting element. The execution classifier retains this as
+`evidence-failure` even after a zero-test worker restart or an exit-zero summary.
+A separate permission-free fixture target compiles the same base and cleanup
+sources. Observable positive controls and synchronous/asynchronous negative
+controls qualify the callback without opening a system permission prompt.
+Full bilingual runs execute this once in addition to the unchanged product
+catalog; scoped feature runs do not pay for unrelated fixture qualification.
 These observations prove only that the host was quiet at those samples;
 automation started afterward remains an external race that the result bundle
 must classify.

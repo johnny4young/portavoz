@@ -102,6 +102,24 @@ desktop that preserves its interaction context; any lifecycle change must first
 reproduce the problem at the actual window attachment/presentation boundary.
 Hosted CI and a local interactive run remain distinct evidence.
 
+### Unexpected system interruptions invalidate UI qualification
+
+A retained real-app execution proved that XCTest's default interruption monitor
+could answer a microphone permission prompt despite the absence of a custom
+handler. Its requesting executable remains unattributed: the displayed app name
+alone is not evidence that another application caused the interruption. Keep
+that failed run failed.
+
+D527 replaces the unsafe no-monitor assumption with a content-blind callback
+that cleans its owned fixtures and stops the test/worker before fallback. The
+separate repeatable harness exercises the real base and cleanup in synchronous
+and asynchronous cases, with positive controls for observable action/choice
+effects. Its controlled synthetic windows are not actual TCC/authentication
+qualification on every supported macOS version. No test should request or answer
+a system privacy decision to manufacture that evidence. An unexpected prompt,
+failed owned cleanup, or later worker restart still invalidates the invocation;
+physical OS coverage and unexplained earlier failures remain separate.
+
 ## Product gaps (users feel them)
 
 | # | Gap | Today | Missing | Plan |

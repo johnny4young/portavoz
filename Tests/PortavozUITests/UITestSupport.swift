@@ -1,51 +1,6 @@
 import AppKit
 import XCTest
 
-/// Shared base for Portavoz UI journeys.
-///
-/// This type deliberately installs no interruption monitor. System-owned
-/// privacy or authentication prompts require a user's decision; the read-only
-/// host preflight reports them instead of allowing tests to answer them.
-class PortavozUITestCase: XCTestCase {
-    private let storageOwnerID = UUID()
-
-    override func setUp() async throws {
-        try await super.setUp()
-        let ownerID = storageOwnerID
-        try await MainActor.run { try UITestStorage.begin(ownerID: ownerID) }
-    }
-
-    override func tearDown() async throws {
-        let ownerID = storageOwnerID
-        let cleanup = await MainActor.run { Result { try UITestStorage.end(ownerID: ownerID) } }
-        try await super.tearDown()
-        try cleanup.get()
-    }
-}
-
-/// Evaluate an explicit state predicate without XCTest's one-second polling
-/// floor. The run loop stays live between probes, so asynchronous app and
-/// accessibility updates continue to arrive; there is no blind fixed delay.
-@MainActor
-@discardableResult
-func waitForUITestCondition(
-    timeout: TimeInterval,
-    pollInterval: TimeInterval = 0.05,
-    _ condition: () throws -> Bool
-) rethrows -> Bool {
-    if try condition() { return true }
-    let deadline = Date().addingTimeInterval(timeout)
-    while Date() < deadline {
-        let nextProbe = min(deadline, Date().addingTimeInterval(pollInterval))
-        // `run(mode:before:)` may return after any handled source, which turns
-        // a requested polling interval into an unbounded AX-query loop. Keep
-        // servicing the default run loop until the actual probe boundary.
-        RunLoop.current.run(until: nextProbe)
-        if try condition() { return true }
-    }
-    return false
-}
-
 /// The text a static element renders: SwiftUI exposes some labels only
 /// through `value`, others only through `label`.
 @MainActor
@@ -317,18 +272,6 @@ extension XCUIApplication {
         }
     }
 
-    /// XCUITest can report `.notRunning` before LaunchServices removes the
-    /// process from its inventory. Observe the real host state instead of
-    /// sleeping on every launch; an already-clear host returns immediately.
-    @MainActor
-    func waitForPortavozProcessExit(timeout: TimeInterval = 10) -> Bool {
-        waitForUITestCondition(timeout: timeout) {
-            NSRunningApplication.runningApplications(
-                withBundleIdentifier: "app.portavoz.mac.uitest-host"
-            ).isEmpty
-        }
-    }
-
     @MainActor
     func control(withIdentifier identifier: String) -> XCUIElement {
         descendants(matching: .any)[identifier]
@@ -397,7 +340,9 @@ extension XCUIApplication {
 
     /// End the native field-editor session through ordinary keyboard traversal.
     /// A cold search can own an AutoFill popover even when its query is empty;
-    /// clicking a plain navigation button does not necessarily end that edit.
+    /// clicking the field again can itself be blocked by that popover. Route
+    /// Tab to the already-active app's current editor instead of its covered
+    /// field; do not start a new editing session just to end it.
     /// Never choose a suggestion, change system preferences, or dismiss prompts.
     @MainActor
     private func finishSearchEditing(
@@ -408,8 +353,7 @@ extension XCUIApplication {
         guard search.waitForHittable(timeout: timeout),
               let originalValue = search.value as? String
         else { return false }
-        search.click()
-        search.typeKey(.tab, modifierFlags: [])
+        typeKey(.tab, modifierFlags: [])
         return search.waitForValue(originalValue, timeout: timeout)
     }
 

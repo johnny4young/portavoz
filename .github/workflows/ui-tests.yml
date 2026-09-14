@@ -18,6 +18,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       required: ${{ steps.select.outputs.required }}
+      interruption_controls: ${{ steps.select.outputs.interruption_controls }}
       tests: ${{ steps.select.outputs.tests }}
       locales: ${{ steps.select.outputs.locales }}
       matrix: ${{ steps.select.outputs.matrix }}
@@ -93,6 +94,20 @@ jobs:
 
       - name: Install checksum-pinned XcodeGen 2.46.0
         run: scripts/install-ci-xcodegen.sh "$RUNNER_TEMP/portavoz-xcodegen"
+
+      # A separate tiny fixture target proves the shared interruption guard;
+      # product locale lanes still reuse one product build without XcodeGen.
+      - name: Verify interruption safety at the shared callback
+        if: needs.scope.outputs.interruption_controls == 'true'
+        run: make test-ui-interruption-safety UI_INTERRUPTION_RESULTS="$RUNNER_TEMP/ui-interruption-safety"
+
+      - name: Preserve interruption-control evidence
+        if: always() && needs.scope.outputs.interruption_controls == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ui-interruption-safety-${{ github.run_id }}
+          path: ${{ runner.temp }}/ui-interruption-safety
+          retention-days: 7
 
       # One build feeds every locale lane. The exact products travel as one
       # xctestproducts bundle so no lane recompiles this head on its own.

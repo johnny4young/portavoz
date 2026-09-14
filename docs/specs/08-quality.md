@@ -3386,10 +3386,12 @@ reports the owning PID or asks for a window title, bounds, dialog text, control,
 or credential, and negative-layer Notification Center desktop surfaces do not
 count. Both probes have explicit timeouts and exact-shape validation;
 unavailable or malformed evidence fails
-closed. The preflight never dismisses a prompt or terminates another process,
-and the UI-test bundle installs no external-prompt interruption handler. A
-privacy or authentication prompt raised after preflight therefore invalidates
-the host run without allowing automation to answer the user's decision.
+closed. The preflight never dismisses a prompt or terminates another process.
+Preflight cannot prevent a later prompt, and the absence of a custom monitor
+does not prevent XCTest's default handlers from answering it. The shared test
+base therefore installs the content-blind, nonreturning guard described below:
+it cleans only owned resources and fails the invocation without choosing a
+control or resuming the interrupted action.
 It cannot prevent unrelated automation from starting after its second sample,
 so later connection invalidation remains a result-bundle/host classification,
 not automatically a Portavoz crash.
@@ -4701,11 +4703,19 @@ complete English catalogue retained 11 failures across Radar, Meeting Detail,
 Settings, and Skills despite otherwise valid product state. D453 therefore
 forwards the exact override into disposable `-use-temp-store` launches and
 places only their main and Settings windows at AppKit's standard status-bar
-level. The accepted overlay can no longer occlude hit targets, but no alert is
-read, dismissed, answered, or removed. Authentication windows and active
-automation still block; the isolated Secure Input bit is advisory under D468.
-CI never enables the Notification Center override, and the UI bundle still
-installs no interruption monitor. Its receipt distinguishes an accepted live
+level. This reduces occlusion by the accepted overlay; it does not prevent
+system-modal interruptions. The app's window-placement code reads or answers
+no alert. XCTest itself can still invoke built-in fallback handlers, however:
+an actual microphone permission prompt was answered despite the absence of a
+custom monitor. D527 therefore installs a content-blind monitor in the shared
+test base. It cleans only registered apps and identity-owned scratch, records a
+failure through its owning case, and exits the worker if XCTest returns; no
+handler Bool permits fallback or a resumed event. The execution receipt remains
+`evidence-failure`, including after a restart or exit-zero summary, and the writer
+returns nonzero so local and hosted gates both reject it. Authentication windows
+and active automation still block; the isolated Secure Input bit is advisory
+under D468. CI never enables the Notification Center override. Its receipt
+distinguishes an accepted live
 overlay, reported through the two content-free Notification Center counts,
 from a clear-host run where the override relaxed nothing; the latter is not
 live-overlay evidence.
@@ -7509,20 +7519,25 @@ necessary; passing these tests is not closure of the observed resource variance.
 
 ### Native search-editing boundary in UI setup
 
-The shared XCUITest setup ends native search editing with an ordinary click and
-Tab traversal, then checks that the field value is unchanged. Both existing and
-newly opened Settings windows use that boundary before category navigation.
+The shared XCUITest setup ends the active native search edit with app-scoped
+Tab traversal, then checks that the identified field value is unchanged. It
+does not click or address a key event to a field that its own popup may cover.
+Both existing and newly opened Settings windows use that boundary before
+category navigation.
 Seeded Library setup applies it only when its meeting row is not already
 hittable, after the existing foreign-keystroke query cleanup if needed. The
 normal fast path and final meeting hittability requirement remain intact.
 
-This prevents a still-active native field editor from leaving an autocomplete
-popover over a subsequent control. It does not dismiss a named system window,
-choose a suggestion, mutate AutoFill preferences, install a prompt handler or
-retry a failed assertion. Existing Skills missing-policy/retry and Library
+This avoids reopening an editor merely to close it. The earlier field click and
+field-scoped Tab both reached an app-owned interruption in real Settings
+journeys; neither is an appropriate prerequisite for ending the existing edit.
+The focus helper does not dismiss a named system window, choose a suggestion,
+mutate AutoFill preferences, install a prompt handler or retry a failed
+assertion. Existing Skills missing-policy/retry and Library
 search/palette journeys retain their full assertions. The source-level owner
-pins click/Tab/value-check ordering and both settings branches; only a complete
-bilingual real-app run can qualify the shared harness.
+pins app-scoped Tab/value-check ordering, absence of a new field click, and both
+settings branches; only a complete bilingual real-app run can qualify the
+shared harness.
 
 The Library recency/FTS journey additionally ends its deliberate query edit
 before selecting the result. It checks the exact literal query both before and
@@ -7634,3 +7649,27 @@ observed state; catalogue ownership, retired-journey rejection, bounded scrollin
 unchanged runtime budgets and screenshot roles remain enforced. A tooling test
 attempts to restore either retired receipt journey with an otherwise valid scope
 and confirms that the actual duplicate policy rejects it.
+
+
+### Permission-free interruption controls
+
+`make test-ui-interruption-safety UI_INTERRUPTION_RESULTS=<new-private-directory>`
+builds a tiny separate app/overlay/runner target once. It uses the exact shared
+`PortavozUITestCase`, `UITestStorage`, `UITestScratch` and wait-helper sources;
+there is no copied guard implementation. Its four serial invocations distinguish:
+
+- an uninterrupted action, which must produce an observable synthetic effect;
+- a deliberate synthetic choice, which calibrates the choice effect detector;
+- a synchronous blocked action, which must fail before fallback or either effect;
+- the same blocked action from an asynchronous journey, which must also fail.
+
+Negative controls require exactly one failed case, a completed owned-cleanup
+receipt, no scratch or owned app process left behind, and no fallback sentinel.
+Zero-test restarts are not passes. The separate qualification receipt records
+expected failures, source hashes and content-free effects; it never substitutes
+for a product UI receipt. Tooling tests reject missing readiness, absent guard,
+late action, dialog choice, cleanup failure, skipped/empty/extra cases and an
+exit-zero restart. Full bilingual selections and explicit full bilingual local
+runs include this once; narrower feature PRs do not. CI executes the controls in
+the product-builder job before publishing one reusable product build. Synthetic
+fixtures request no microphone, authentication or accessibility permission.

@@ -964,14 +964,15 @@ class UITestScopeTests(unittest.TestCase):
         )
         support = (ROOT / "Tests" / "PortavozUITests" / "UITestSupport.swift")
         support_source = support.read_text(encoding="utf-8")
+        wait_source = (support.parent / "UITestWaitSupport.swift").read_text(encoding="utf-8")
 
         self.assertNotIn("Thread.sleep", sources)
         self.assertNotIn(".waitForExistence(", sources)
         self.assertNotIn(".waitForNonExistence(", sources)
-        self.assertIn("func waitForUITestCondition(", support_source)
+        self.assertIn("func waitForUITestCondition(", wait_source)
         self.assertIn("func waitForExistenceFast(", support_source)
         self.assertIn("func waitForDisappearance(", support_source)
-        self.assertIn("RunLoop.current.run", support_source)
+        self.assertIn("RunLoop.current.run", wait_source)
         settings_source = (
             ROOT / "Tests" / "PortavozUITests" / "SettingsUITests.swift"
         ).read_text(encoding="utf-8")

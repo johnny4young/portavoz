@@ -468,6 +468,7 @@ FULL_BILINGUAL_HARNESS_FILES = frozenset({
     "project.yml",
     "scripts/candidate_automation.py",
     "scripts/check-ui-test-host.py",
+    "scripts/check-ui-interruption-safety.py",
     "scripts/check-url-scheme-handlers.sh",
     "scripts/run-ui-tests.sh",
     "scripts/ui_test_ci_gate.py",
@@ -480,6 +481,8 @@ FULL_BILINGUAL_HARNESS_FILES = frozenset({
     "Sources/portavoz-app/UITestWindowPlacement.swift",
     "Sources/portavoz-app/SettingsSkillReceiptNavigation.swift",
     "Tests/PortavozUITests/UITestSupport.swift",
+    "Tests/PortavozUITests/PortavozUITestCase.swift",
+    "Tests/PortavozUITests/UITestWaitSupport.swift",
     "Tests/PortavozUITests/UITestStorageSupport.swift",
     "Tests/Support/UITestScratch.swift",
 })
@@ -595,6 +598,10 @@ class Selection:
     @property
     def required(self) -> bool:
         return bool(self.tests)
+
+    @property
+    def interruption_controls_required(self) -> bool:
+        return self.tests == HARNESS_TESTS and self.locales == ("en", "es")
 
 
 def feature_tests(features: Iterable[str]) -> set[str]:
@@ -1046,7 +1053,7 @@ def select_paths(paths: Iterable[str]) -> Selection:
             reasons.append(f"{path}: complete bilingual localization fallback")
             continue
 
-        if path in FULL_BILINGUAL_HARNESS_FILES:
+        if path in FULL_BILINGUAL_HARNESS_FILES or path.startswith("Tests/UIInterruptionFixtures/"):
             selected.update(HARNESS_TESTS)
             locales.add("es")
             reasons.append(f"{path}: complete bilingual shared-harness fallback")
@@ -1314,6 +1321,7 @@ def render(selection: Selection, output_format: str) -> str:
         return "\n".join(
             (
                 f"required={'true' if selection.required else 'false'}",
+                f"interruption_controls={'true' if selection.interruption_controls_required else 'false'}",
                 f"tests={tests}",
                 f"locales={locales}",
                 f"matrix={json.dumps(list(selection.locales))}",
@@ -1324,6 +1332,7 @@ def render(selection: Selection, output_format: str) -> str:
         return "\n".join(
             (
                 f"export UI_TEST_REQUIRED={'true' if selection.required else 'false'}",
+                f"export UI_TEST_INTERRUPTION_REQUIRED={'true' if selection.interruption_controls_required else 'false'}",
                 f"export UI_TESTS={shlex.quote(tests)}",
                 f"export UI_TEST_LOCALES={shlex.quote(locales)}",
                 f"export UI_TEST_SCOPE_SUMMARY={shlex.quote(summary)}",
