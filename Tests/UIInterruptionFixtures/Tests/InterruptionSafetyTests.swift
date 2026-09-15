@@ -41,8 +41,8 @@ final class InterruptionSafetyTests: PortavozUITestCase {
         let effects = try XCTUnwrap(ProcessInfo.processInfo.environment["PROOF_EFFECTS_ROOT"])
         let targetEffect = URL(fileURLWithPath: effects).appendingPathComponent("target")
         XCTAssertFalse(FileManager.default.fileExists(atPath: targetEffect.path))
-        for scenario in 0..<4 {
-            // Both directions, first amplified then ordinary unit response.
+        for scenario in 0..<8 {
+            // Both directions: amplified, ordinary, buffered, then dropped input.
             // A previous reveal must not calibrate a later invocation.
             XCTAssertFalse(viewport.frame.contains(target.frame))
             XCTAssertFalse(target.revealVertically(in: viewport, maxScrolls: 0))
@@ -54,7 +54,7 @@ final class InterruptionSafetyTests: PortavozUITestCase {
             target.click()
             XCTAssertTrue(app.staticTexts["Target action happened"].waitForExistence(timeout: 5))
             XCTAssertEqual(try String(contentsOf: targetEffect, encoding: .utf8), String(scenario + 1))
-            if scenario < 3 {
+            if scenario < 7 {
                 app.buttons["proof-next-scroll"].click()
                 XCTAssertTrue(app.staticTexts["Ready"].waitForExistence(timeout: 5))
             }

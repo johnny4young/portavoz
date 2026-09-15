@@ -7715,15 +7715,21 @@ fixtures request no microphone, authentication or accessibility permission.
 invocation observes how its own wheel input moves the same target inside an
 unchanged viewport. A finite positive response with unchanged target size and
 horizontal position converts the next requested frame displacement into wheel
-units before the existing maximum input clamp. The largest observed response is
-retained only for that invocation; viewport reflow, absent geometry and opposite
-motion cannot calibrate it. Stable containment plus hittability, attempt counts,
+units before the existing maximum input clamp. The observation retains the
+original target/viewport geometry and the sum of its own issued input until
+movement is observed. Several events can become visible together; dividing their
+combined movement by only the final event would invent a larger response and
+make the return movement too short. Any observed geometry change retires that
+pending observation. The largest valid response is retained only for that
+invocation; viewport reflow, absent geometry and opposite motion cannot calibrate it. Stable containment plus hittability, attempt counts,
 wait deadlines and runtime budgets are unchanged. The anchor-materialization
 path still spends from the same caller-owned attempt budget.
 
 The uninterrupted synthetic control runs the actual helper against a native
 scroll view in both directions with ordinary and deliberately amplified wheel
-response. Each phase starts clipped, rejects zero-attempt reveal, requires
+response, retained initial input, and deliberately discarded initial input. The
+latter adversary prevents treating every nonmoving observation as proof that the
+native view buffered an event. Each phase starts clipped, rejects zero-attempt reveal, requires
 bounded reveal, accepts an already-ready zero-attempt observation and clicks the
 exact target once. The content-free effect counter must equal the number of
 completed phases. It is an input/geometry adversary, not a claim that a physical

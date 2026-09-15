@@ -19683,3 +19683,29 @@ stops before acting when its initial geometry or reveal precondition fails.
 bounded wheel events fail to reveal an ordinary correction action. That failure
 remains unresolved until a call-site reproduction and fresh qualification; no
 wheel limit, time budget, retry policy or production transcript behavior changes.
+
+
+## D531 — Attribute observed scroll movement to all pending input
+
+**Context:** a compact correction journey can show no displacement for one or
+more wheel events, then overshoot the source control. The bounded helper divided
+the next frame change by only the latest input. A native call-site adversary
+retaining three 48-unit events reproduced the defect: 144 points of movement
+became a false response factor of three, so the final return gesture stayed too
+short. Ordinary and amplified native cases had passed; they did not cover this
+observation boundary.
+
+**Decision:** retain the original target/viewport geometry and accumulated own
+input until movement is observed. Calibrate from that complete observation, not
+from the most recent event alone, and retire pending input on any geometry
+change. Keep the original stable containment, hittability, finite positive
+response, input clamp, attempt count and deadlines. The native adversary covers
+both directions, buffered input and discarded input as well as the prior direct,
+amplified and clipped-boundary cases; every accepted target must produce its
+exact effect once.
+
+**Consequences:** this repairs a demonstrated attribution error without another
+host multiplier or a larger retry budget. Buffering is an adversarial delivery
+shape, not a claim about undocumented macOS internals. Real compact correction
+journeys and fresh full bilingual/exact-head hosted qualification remain
+required; earlier failed invocations are never relabeled by later passing totals.

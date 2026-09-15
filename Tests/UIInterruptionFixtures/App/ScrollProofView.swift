@@ -1,10 +1,13 @@
 import AppKit
 
 /// Deliberately amplifies only this disposable scroll view's wheel response.
-/// It models an adversarial input/output scale, not a claimed macOS host factor.
+/// It also buffers or discards initial events before observable movement.
+/// These are adversarial delivery shapes, not a claimed macOS host factor.
 @MainActor
 final class ScrollProofView: NSScrollView {
     private var scenario = 0
+    private var delayedEventsRemaining = 0
+    private var pendingDeltaY: CGFloat = 0
     private var responseScale: CGFloat { scenario < 2 ? 8 : 1 }
 
     func advanceGeometry() {
@@ -13,7 +16,15 @@ final class ScrollProofView: NSScrollView {
     }
 
     private func resetPosition() {
-        contentView.scroll(to: NSPoint(x: 0, y: scenario.isMultiple(of: 2) ? 0 : 240))
+        delayedEventsRemaining = scenario >= 4 ? 2 : 0
+        pendingDeltaY = 0
+        let originY: CGFloat
+        switch scenario {
+        case 5: originY = 160 // Buffered upward input crosses the target.
+        case 7: originY = 200 // Two delivered events can still reach the target.
+        default: originY = scenario.isMultiple(of: 2) ? 0 : 240
+        }
+        contentView.scroll(to: NSPoint(x: 0, y: originY))
         reflectScrolledClipView(contentView)
     }
 
@@ -31,7 +42,14 @@ final class ScrollProofView: NSScrollView {
 
     override func scrollWheel(with event: NSEvent) {
         guard let documentView else { return }
-        let proposedY = contentView.bounds.minY - event.scrollingDeltaY * responseScale
+        pendingDeltaY += event.scrollingDeltaY
+        if delayedEventsRemaining > 0 {
+            delayedEventsRemaining -= 1
+            if scenario >= 6 { pendingDeltaY = 0 }
+            return
+        }
+        let proposedY = contentView.bounds.minY - pendingDeltaY * responseScale
+        pendingDeltaY = 0
         let maximumY = max(0, documentView.bounds.height - contentView.bounds.height)
         let y = min(max(proposedY, 0), maximumY)
         contentView.scroll(to: NSPoint(x: 0, y: y))

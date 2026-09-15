@@ -5603,8 +5603,11 @@ nor answers the interrupting element. The execution classifier retains this as
 A separate permission-free fixture target compiles the same base and cleanup
 sources. The same target also compiles `UITestScrollSupport.swift`: its ordinary
 positive action exercises bounded real wheel events under controlled native
-scroll response, rather than testing a copied geometry policy. Observable positive
-controls and synchronous/asynchronous negative controls qualify the callback
+scroll response, rather than testing a copied geometry policy. The helper keeps
+one invocation-local observation of issued input and original geometry until a
+frame changes; the native fixture covers amplified, buffered and discarded input
+in both directions. No host factor or persistent calibration is introduced.
+Observable positive controls and synchronous/asynchronous negative controls qualify the callback
 without opening a system permission prompt.
 The overlay's main-queue parent-exit callback emits a separate lifecycle
 acknowledgement before exiting; process absence without it is failed cleanup,

@@ -700,3 +700,13 @@ D530 separately replaces unsafe native-corner dragging in compact fixture setup
 with the existing temporary-window owner. That repair must retain its native
 window and real-app geometry proofs, but does not resolve the wheel failure or
 replace complete bilingual qualification of the final candidate.
+
+
+A subsequent structural-correction failure passed its compact-window setup but
+still exhausted the initial reveal before opening the editor. D531 addresses a
+separately reproduced measurement error: movement reflecting several issued
+wheel inputs was attributed to only the final event. Native buffered/discarded
+input adversaries supplement the actual correction call sites; they do not
+establish undocumented host behavior or retrospectively qualify either failed
+run. Fresh cumulative and exact-head hosted evidence is still required before
+closing the compact-interaction qualification gap.

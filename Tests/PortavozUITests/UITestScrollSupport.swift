@@ -26,6 +26,7 @@ extension XCUIElement {
         }
 
         var observedPointsPerWheelUnit: CGFloat?
+        var pendingInput: (frame: CGRect, viewport: CGRect, wheel: CGFloat)?
         for _ in 0..<maxScrolls {
             guard exists, viewportElement.exists else { return false }
             let controlFrame = frame
@@ -60,6 +61,13 @@ extension XCUIElement {
             // short viewport can oscillate across the target on every attempt.
             let wheelMovement = desiredMovement / (observedPointsPerWheelUnit ?? 1)
             let deltaY = min(max(wheelMovement, -maximumStep), maximumStep)
+            // A later frame may reflect several issued events. Keep their
+            // original geometry and total input until movement is observed.
+            let input = (
+                frame: pendingInput?.frame ?? controlFrame,
+                viewport: pendingInput?.viewport ?? rawViewportFrame,
+                wheel: (pendingInput?.wheel ?? 0) + deltaY)
+            pendingInput = input
             viewportElement.scroll(byDeltaX: 0, deltaY: deltaY)
             let geometryChanged = waitForUITestCondition(
                 timeout: 0.5,
@@ -74,19 +82,22 @@ extension XCUIElement {
 
             let updatedFrame = frame
             let updatedViewportFrame = viewportElement.frame
-            let displacement = updatedFrame.minY - controlFrame.minY
-            if updatedViewportFrame == rawViewportFrame,
+            let displacement = updatedFrame.minY - input.frame.minY
+            if updatedViewportFrame == input.viewport,
                !updatedFrame.isEmpty,
-               updatedFrame.size == controlFrame.size,
-               updatedFrame.minX == controlFrame.minX,
-               deltaY != 0 {
-                let response = displacement / deltaY
+               updatedFrame.size == input.frame.size,
+               updatedFrame.minX == input.frame.minX,
+               input.wheel != 0 {
+                let response = displacement / input.wheel
                 if response.isFinite, response > 0 {
-                    // A clipped or coalesced event can underestimate movement.
+                    // A clipped document boundary can underestimate movement.
                     // Retain the largest response actually observed in this
                     // invocation, never a global host-specific calibration.
                     observedPointsPerWheelUnit = max(observedPointsPerWheelUnit ?? response, response)
                 }
+            }
+            if updatedFrame != input.frame || updatedViewportFrame != input.viewport {
+                pendingInput = nil
             }
             viewportFrame = updatedViewportFrame.insetBy(dx: 0, dy: 4)
             if viewportFrame.contains(updatedFrame),
