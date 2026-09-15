@@ -472,7 +472,7 @@ final class LibraryUITests: PortavozUITestCase {
         let field = app.control(withIdentifier: "recording-objective-field")
         XCTAssertTrue(field.waitForExistenceFast(timeout: 5))
         field.click()
-        app.typeText("Cerrar el presupuesto del trimestre")
+        typeText("Cerrar el presupuesto del trimestre", in: app)
         app.control(withIdentifier: "recording-objective-add").click()
         XCTAssertTrue(
             app.staticTexts["Cerrar el presupuesto del trimestre"]
@@ -626,12 +626,27 @@ final class LibraryUITests: PortavozUITestCase {
         // real FTS projection before publishing a new Library snapshot.
         let search = app.textFields["library-search-field"]
         XCTAssertTrue(search.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(app.finishTextFieldEditing(identifier: "library-search-field", timeout: 5))
         search.click()
-        search.typeText("viernes")
+        let visibleMeeting = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
+            .firstMatch
+        XCTAssertTrue(visibleMeeting.isHittable, "exercise the already-visible launch fast path")
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        // A normal key after launch readiness must not keep editing the search.
+        // This tests actual responder ownership without private focus attributes
+        // or requiring a particular native suggestion popover to appear.
+        typeKey("x", modifierFlags: [], in: app)
+        guard search.waitForValue("", timeout: 5) else {
+            XCTFail("seed readiness must finish editing even when the meeting was already hittable")
+            return
+        }
+        search.click()
+        typeText("viernes", in: app)
         XCTAssertTrue(search.waitForValue("viernes", timeout: 5))
         // Commit native editing without accepting an AutoFill suggestion over
         // the real FTS hit; retain the exact query and destination assertions.
-        search.typeKey(.tab, modifierFlags: [])
+        typeKey(.tab, modifierFlags: [], in: app)
         XCTAssertTrue(search.waitForValue("viernes", timeout: 5))
         let hit = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-search-hit-'"))
@@ -706,13 +721,15 @@ final class LibraryUITests: PortavozUITestCase {
             ? "/source/fresh-es"
             : "/source/fresh-en"
         field.click()
-        field.typeText(webQuestion)
+        typeText(webQuestion, in: app)
+        XCTAssertTrue(field.waitForValue(webQuestion, timeout: 5))
         let webSourceField = app.textFields["ask-web-source-field"]
         XCTAssertTrue(webSourceField.waitForExistenceFast(timeout: 5))
         webSourceField.click()
         let webURL = try XCTUnwrap(
             URL(string: webPath, relativeTo: webFixture.baseURL)?.absoluteURL)
-        webSourceField.typeText(webURL.absoluteString)
+        typeText(webURL.absoluteString, in: app)
+        XCTAssertTrue(webSourceField.waitForValue(webURL.absoluteString, timeout: 5))
         let consent = app.checkBoxes["ask-web-consent"]
         XCTAssertTrue(consent.waitForEnabled(timeout: 5))
         XCTAssertFalse(
@@ -764,7 +781,8 @@ final class LibraryUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 5),
             "Notes must disclose the raw-local-note-only boundary")
         field.click()
-        field.typeText("budget Q3")
+        typeText("budget Q3", in: app)
+        XCTAssertTrue(field.waitForValue("budget Q3", timeout: 5))
         app.buttons["ask-submit"].click()
         XCTAssertTrue(
             app.descendants(matching: .any)["ask-pending-source-notes"]
@@ -823,7 +841,8 @@ final class LibraryUITests: PortavozUITestCase {
             "the exact seeded meeting must be exposed as an identified menu item")
         meetingOption.click()
         field.click()
-        field.typeText("sinresultado")
+        typeText("sinresultado", in: app)
+        XCTAssertTrue(field.waitForValue("sinresultado", timeout: 5))
         XCTAssertTrue(app.buttons["ask-submit"].isEnabled)
         app.buttons["ask-submit"].click()
         XCTAssertTrue(
@@ -839,7 +858,8 @@ final class LibraryUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 5))
 
         field.click()
-        field.typeText("viernes")
+        typeText("viernes", in: app)
+        XCTAssertTrue(field.waitForValue("viernes", timeout: 5))
         app.buttons["ask-submit"].click()
         XCTAssertTrue(
             app.waitForFeatureUITestHandshakeRelease(
@@ -1212,7 +1232,8 @@ final class LibraryUITests: PortavozUITestCase {
         let anchorSearch = app.textFields["ask-topic-anchor-search"]
         XCTAssertTrue(anchorSearch.waitForExistenceFast(timeout: 5))
         anchorSearch.click()
-        anchorSearch.typeText("Planning")
+        typeText("Planning", in: app)
+        XCTAssertTrue(anchorSearch.waitForValue("Planning", timeout: 5))
 
         let anchor = app.buttons[
             "ask-topic-anchor-option-B5D40000-0000-4000-8000-000000000003"]
@@ -1281,7 +1302,7 @@ final class LibraryUITests: PortavozUITestCase {
         meeting.click()
         XCTAssertTrue(
             app.control(withIdentifier: "player-current-time").waitForExistenceFast(timeout: 10))
-        app.typeKey("k", modifierFlags: .command)
+        typeKey("k", modifierFlags: .command, in: app)
         let field = app.textFields["palette-query-field"]
         XCTAssertTrue(field.waitForExistenceFast(timeout: 10))
         let source = app.descendants(matching: .any)["palette-source-library"]
@@ -1292,11 +1313,12 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(source.waitForLabelOrValue(expectedSource, timeout: 5))
         XCTAssertTrue(field.isHittable, "the palette must stay above the main window")
         field.click()
-        field.typeText("viernes")
+        typeText("viernes", in: app)
+        XCTAssertTrue(field.waitForValue("viernes", timeout: 5))
         XCTAssertTrue(
             app.buttons["palette-hit-0"].waitForExistenceFast(timeout: 10),
             "the palette must publish instant local FTS results")
-        field.typeKey(.return, modifierFlags: [])
+        typeKey(.return, modifierFlags: [], in: app)
         // `palette-answer` renders only from `state.answer`, which nothing but
         // `submit()` sets — so its presence *is* the proof that Enter ran the
         // full Ask workflow rather than reusing the instant FTS hits.

@@ -12369,9 +12369,11 @@ bounds, dialog text, controls, or credentials. The orchestrator applies
 explicit timeouts, validates the exact JSON shape, and fails closed when either
 inventory is unavailable or malformed. It reports only blocker categories and
 never dismisses a prompt.
-The UI-test bundle installs no interruption monitor for external system
-prompts, so it cannot answer a privacy or authentication decision that appears
-after the final sample.
+**Correction (Sep 2026):** installing no custom interruption monitor did not
+prevent XCTest's built-in fallback monitors from answering a privacy decision
+after the final sample. An actual UI execution disproved that safety claim.
+D527 replaces it with a content-blind, nonreturning callback and separately
+qualified positive/negative controls using the real shared test base.
 
 **Consequences:** already-present authentication alerts, notification alerts,
 Secure Input ownership, Xcode test commands, and UI runners now fail before
@@ -19509,3 +19511,270 @@ boundary rather than adding a compensating duration: a teardown with child
 activities, malformed child metadata, or subsequent top-level work retains the
 reported case duration. A normalized real activity tree and an adversarial CLI
 budget reproduce the false pass. No timeout, retry or budget is relaxed.
+
+
+## D527 — Unexpected UI interruptions stop the test, not decide consent
+
+XCTest has default interruption monitors even when a test registers none. A
+real-app run reached a microphone permission prompt and the default handler
+selected a denial. Preflight and disposable window placement cannot authorize
+that choice or prevent a later modal. The displayed app name did not establish
+the requesting executable; this is a harness defect, not attributed to another
+application.
+
+The shared `PortavozUITestCase` now registers a content-blind monitor at setup.
+It never queries the interrupting element or returns a handled/unhandled Bool.
+It first cleans only its registered apps and identity-owned scratch, then records
+an issue through the owning case with `continueAfterFailure = false`. If XCTest
+returns, as observed in asynchronous journeys, it terminates only the runner
+process. Cleanup failures retain a content-free failure category and do not
+fall through to another handler. The earlier synchronous-helper-only proof was
+insufficient: the monitor installation and callback routing must be exercised.
+
+A separate, permission-free fixture target compiles that exact test base,
+storage owner, scratch allocator and wait helpers. Two positive controls prove
+that both the normal action and a synthetic dialog choice have observable file
+effects. Two negative controls invoke the blocked action in synchronous and
+asynchronous tests; both must fail with the guard's cleanup receipt, no fallback
+sentinel, no action or choice effect, no surviving owned scratch, and no owned
+app process. The synthetic overlay watches its explicit parent's exit. This is
+not permission-prompt testing or a claim that every OS interruption has been
+reproduced.
+
+`make test-ui-interruption-safety` builds these tiny fixtures once and records
+all four outcomes. Full bilingual selections require it once, not per feature
+or locale. Hosted runs execute it in the product-builder job using the existing
+pinned XcodeGen; locale lanes still share one product build. A worker restart
+printing a zero-test success cannot qualify the invocation: the execution
+classifier emits `evidence-failure`, returns nonzero and retains the raw local
+log even if Xcode returns zero. Expected negative-control failures qualify only
+the separate harness receipt, never the product catalog. Budgets, retries,
+production entitlements and the macOS 14.4 floor are unchanged.
+
+The first product-catalog run with this guard found two app-owned interruptions
+while Settings setup tried to reopen its empty search editor just to close it.
+They are not attributed to an external permission prompt. Keep the guard intact:
+remove the redundant field click and send ordinary Tab to the already-active
+app, then require the original query value. Both previously failing Settings
+journeys pass this actual call site in English and Spanish; the complete
+catalog remains mandatory. This corrects the older source ratchet that froze
+click/field-Tab ordering instead of its intended focus boundary.
+
+The first hosted control run stopped before the asynchronous control because
+Notification Center was visible. Its metadata did not establish the alert's
+origin. Inspecting actual local crash reports then exposed a separate defect:
+the synthetic overlay's parent-exit callback inherited `MainActor`, but its
+Dispatch source ran on a global queue and trapped before entering the body.
+Process disappearance had incorrectly qualified that crash as cleanup.
+
+The callback now uses the main queue and writes a separate content-free lifecycle
+acknowledgement before exiting. Every control that opens an overlay requires
+that acknowledgement as well as eventual process absence; the no-overlay
+positive must not produce it. Action and choice effects remain independently
+required or forbidden. Earlier control receipts lacking this proof are not
+cleanup qualification. No wait, notification exception or test retry compensates
+for the crashed helper; the unchanged strict host preflight still applies.
+
+A later cumulative feature run exposed one remaining call-site bypass: the
+local-data ledger journey sent raw Command-comma from the main window rather
+than using `openSettingsWindow`. An app-owned element interrupted its subsequent
+sidebar scroll. The journey now uses the existing window/focus boundary and
+asserts that the initial empty search query survives. No new dismissal, delay or
+popover-specific branch is added. Passing full suites on the parent commit had
+not established that this remaining entry used the implemented mechanism.
+
+The commitment confirmation journey exposed the same native-editor boundary
+outside search. Its failed Spanish run retained a completion window covering
+the owner picker; the event coordinate was inside the settled target, so adding
+a layout wait would not address the evidence. Generalize the existing ordinary
+Tab handoff to `finishTextFieldEditing` and reuse it before owner selection,
+asserting that the proposed wording is unchanged. The exact owner-menu action
+and confirmation remain required. This is not a popup-specific dismissal or a
+change to production consent or editing behavior.
+
+## D528 — Pre-setup admission and owned cleanup are independent timing boundaries
+
+A full real-app catalog passed every assertion, but one case exceeded its budget
+because XCTest spent 30.052 seconds between the start marker and setup. Its
+teardown also contained an owned-app exit wait. Rejecting the whole activity
+boundary protected cleanup from subtraction, but discarded independent evidence
+about the earlier empty interval.
+
+Preserve that safety boundary without conflating the two ends. When teardown
+completion is unknown, exclude only a proven empty pre-setup interval and retain
+every remaining second of the reported case, including all cleanup and later
+work. A known marker span is a lower bound, never a substitute for that retained
+duration. Require adjacent start/setup markers without child work under start;
+ambiguous boundaries, malformed children, inconsistent clocks and failed cases
+keep the raw duration. An empty terminal teardown retains the existing attribution
+policy. Timestamp differences preserve the decimal precision written by
+xcresult, so binary subtraction residue cannot turn an exact budget boundary
+into an overage. No epsilon, numeric budget, threshold, retry or receipt schema
+changes.
+
+The production receipt CLI is tested with both locales, long teardown despite
+pre-setup noise, exact and one-millisecond-over budget boundaries, failed cases,
+and invalid activity shapes. Reprocessing an old result is diagnostic evidence,
+not a replacement for fresh full-catalog qualification of the final source.
+
+## D529 — Measure wheel response without weakening interaction readiness
+
+**Historical experiment — withdrawn by D533.** The decision below records the
+unqualified candidate, not the current implementation or successful qualification.
+
+**Context:** D426 correctly requires stable containment and hittability, but its
+frame-distance-to-wheel conversion can oscillate across a short transcript
+viewport. A hosted structural-correction failure reached this boundary despite
+earlier full bilingual passes. Native hover and standalone click were rejected
+as fixes after both failed at a compact real-app call site. A separate native
+scroll fixture then reproduced four alternating maximum wheel inputs without
+revealing the target through the actual shared helper. A passing pure geometry
+function would not have exercised this defect.
+
+**Decision:** preserve D426's readiness contract and its original attempt, input
+and time bounds. Measure the same target's movement after each own wheel event
+only when viewport, target size and horizontal position remain unchanged. A
+finite positive observed response converts desired frame displacement into wheel
+units before clamping. Keep the largest response observed within this invocation;
+never store a host factor or increase the budget. The ordinary no-observation
+path starts with the prior unit conversion. The anchor-materialization overload
+retains its existing finite budget and delegates to the same helper.
+
+**Consequences:** the scroll helpers have a cohesive shared test-only source,
+compiled into both product XCUITest and the permission-free native fixture. The
+fixture deliberately varies scale and direction, checks zero-attempt boundaries,
+and proves exact target effects. Its amplification is adversarial input, not a
+measurement of a particular hosted Mac. Architecture checks retain the actual
+call sites, readiness and budget ownership rather than pinning the failed input
+formula. The compact product journey restores its own window size. No product
+behavior, per-case budget, failed-run classification or full bilingual gate is
+removed; exact-head hosted qualification remains independent of local evidence.
+
+
+The same readiness principle applies to the seeded-Library launch boundary:
+its already-hittable row fast path must not bypass the existing native editor
+handoff. A focused empty search plus visible row reproduces that omission at the
+actual helper call site; a subsequent normal key changes the query under the
+old return. The corrected ordering preserves query-recovery semantics and the
+original search/citation assertions. It does not identify an intermittent
+interruption from its frame or waive the resulting failed invocation.
+
+
+## D530 — Own compact fixture geometry instead of dragging native chrome
+
+**Historical experiment — withdrawn by D533.** The decision below records the
+unqualified candidate, not the current implementation or successful qualification.
+
+**Context:** the structural-correction journey's corner drag can hit the Dock
+beside a rounded window instead of the resize border. A native recording showed
+an unrelated application icon being dragged while the window stayed large.
+Both the compact-window and short-transcript assertions then failed, although
+the subsequent correction effects passed. Previous green runs did not prove
+that this fixture's setup owned its input target.
+
+**Decision:** reuse the existing temporary-store main-window placement owner.
+An explicit compact launch argument requests the same bounded fixture geometry
+before user actions; no new bridge, screen permission, global setting, or
+cross-application input is needed. Ordinary and production placement remain
+unchanged. Native attached-window tests exercise the actual frame mutation and
+its guards, including a frame restored between attachment and presentation.
+As with Settings, the main-window controller reapplies owned placement from
+`viewDidAppear`; an attachment-only implementation passed native tests but
+failed the real-app compact assertion and is not treated as qualified.
+XCUITest retains the compact bounds and all product assertions, but
+stops before acting when its initial geometry or reveal precondition fails.
+
+**Consequences:** this fixes fixture ownership, not the separate case where four
+bounded wheel events fail to reveal an ordinary correction action. That failure
+remains unresolved until a call-site reproduction and fresh qualification; no
+wheel limit, time budget, retry policy or production transcript behavior changes.
+
+
+## D531 — Attribute observed scroll movement to all pending input
+
+**Historical experiment — withdrawn by D533.** The decision below records the
+unqualified candidate, not the current implementation or successful qualification.
+
+**Context:** a compact correction journey can show no displacement for one or
+more wheel events, then overshoot the source control. The bounded helper divided
+the next frame change by only the latest input. A native call-site adversary
+retaining three 48-unit events reproduced the defect: 144 points of movement
+became a false response factor of three, so the final return gesture stayed too
+short. Ordinary and amplified native cases had passed; they did not cover this
+observation boundary.
+
+**Decision:** retain the original target/viewport geometry and accumulated own
+input until movement is observed. Calibrate from that complete observation, not
+from the most recent event alone, and retire pending input on any geometry
+change. Keep the original stable containment, hittability, finite positive
+response, input clamp, attempt count and deadlines. The native adversary covers
+both directions, buffered input and discarded input as well as the prior direct,
+amplified and clipped-boundary cases; every accepted target must produce its
+exact effect once.
+
+**Consequences:** this repairs a demonstrated attribution error without another
+host multiplier or a larger retry budget. Buffering is an adversarial delivery
+shape, not a claim about undocumented macOS internals. Real compact correction
+journeys and fresh full bilingual/exact-head hosted qualification remain
+required; earlier failed invocations are never relabeled by later passing totals.
+
+## D533 — Separate interruption containment from unqualified scroll calibration
+
+**Context:** measured wheel response and pending-input attribution did not
+qualify the compact real-app correction journey. A later native counterexample
+combined dropped initial events with amplified delivery: the original eight
+phases reached their exact effects, but the first combined phase failed the
+unchanged helper's bounded reveal. Passing the separate delivery shapes did not
+establish that their composition was safe. These are harness reachability
+failures, not evidence that a transcript mutation lost data.
+
+**Decision:** withdraw the wheel-calibration, pending-input and forced-compact
+fixture experiments from the interruption-safety change. Preserve their source
+and failed counterexamples separately and retain D529–D531 as historical,
+unqualified decisions. The current helper returns to the existing bounded
+geometry policy; no multiplier, extra attempt, time allowance, automatic retry
+or product scroll behavior is introduced. This is not a repair or qualification
+of compact-window reachability.
+
+Keep the independent content-blind interruption guard, actor-owned teardown
+acknowledgement, receipt accounting and native-editor handoffs. In particular,
+an already-hittable Library row must not bypass the search-editor handoff; its
+real-app normal-key adversary remains. Settings recovery also retains its editor
+handoff, and a failed transcript reveal stops before clicking. Removing an
+experiment does not justify removing an independently demonstrated repair.
+
+**Consequences:** the ordinary real-app catalog and its correction effects remain
+required. The interruption fixture returns to four positive/negative controls
+that test the real guard and owned cleanup; it no longer claims to qualify wheel
+delivery. Compact geometry and composed delivery-shape evidence remain an open
+quality gap. Fresh native controls, full bilingual product runs and exact-head
+CI are required for the narrower change. A passing ordinary-window catalog must
+not be presented as closure of the retained compact failures.
+
+
+## D534 — Admit keyboard events by process and explicit modal context
+
+Native-editor remediation must not exchange a visible interruption for silent
+input. A field-targeted action can retarget a field covered by native completion;
+bare application-targeted typing can silently reactivate the app under a foreign
+overlay. A foreground-only fence still allows a newline to accept a same-app
+alert. Both insufficient mechanisms were disproved at the native call site,
+not inferred from aggregate passing product tests.
+
+Use one shared dispatch boundary: the unique declared test-host process must be
+frontmost, XCTest must agree it is foreground, and the modal context must match
+the journey. Default input requires no sheet or alert. A journey editing or
+closing an expected modal supplies a fixed accessibility anchor that must belong
+to the sole modal, never an arbitrary visible control behind it. This admission
+never activates another window or answers a permission prompt. Rejection keeps
+the nonreturning owned-cleanup guard. Product tests preserve focus actions,
+exact editor values, original submit/confirmation semantics and durable receipts.
+
+Thirteen native controls calibrate successful pointer, keyboard and explicitly
+expected modal input against foreign-overlay and same-app modal counterexamples.
+Negative effect receipts must contain no typing or choice. A source policy
+prevents bypassing this boundary but does not replace those runtime controls or
+the full bilingual catalog. The checks use public point-in-time observations;
+no atomic check-and-input guarantee or physical permission certification is
+claimed. No product feature, system completion preference or host permission
+policy changes.

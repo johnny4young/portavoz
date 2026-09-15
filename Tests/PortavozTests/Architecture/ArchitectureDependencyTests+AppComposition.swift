@@ -1836,18 +1836,12 @@ extension ArchitectureDependencyTests {
             "maxScrolls: max(0, maxScrolls - attempt - 1)"))
         XCTAssertTrue(support.contains("if !geometryChanged { continue }"))
         XCTAssertFalse(support.contains("guard targetMoved else { return false }"))
-        XCTAssertEqual(
-            support.components(
-                separatedBy: "if viewportFrame.contains(frame),").count - 1,
-            2,
-            "geometric containment alone must not terminate before hittability")
-        XCTAssertTrue(support.contains(
-            "let inwardDelta = viewportFrame.midY - controlFrame.midY"))
-        XCTAssertTrue(support.contains(
-            "deltaY = min(max(inwardDelta, -maximumStep), maximumStep)"))
-        XCTAssertFalse(support.contains(
-            "if viewportFrame.contains(frame) {\n"
-                + "                return waitForStableContainedFrame("))
+        // Reachability in compact windows remains open. Pin readiness and
+        // ownership, not the previously unsuccessful frame-to-wheel formula.
+        XCTAssertTrue(support.contains("self.isHittable"))
+        XCTAssertTrue(uiTests.contains(
+            "guard correct.revealVertically(in: transcriptScroll, maxScrolls: 4) else {"))
+        XCTAssertTrue(decisions.contains("## D533"))
         XCTAssertFalse(uiTests.contains("private extension XCUIElement"))
         XCTAssertFalse(uiTests.contains("deltaY: CGFloat = -48"))
         XCTAssertFalse(uiTests.contains("waitForVisibleStableFrame"))
@@ -1869,7 +1863,7 @@ extension ArchitectureDependencyTests {
             "the assist area must grow with the window, not sit at a pinned height")
 
         let objectiveSubmit = try XCTUnwrap(interviewUITest.range(
-            of: "objective.typeKey(.return, modifierFlags: [])"))
+            of: "typeKey(.return, modifierFlags: [], in: app)"))
         let objectiveAdmission = try XCTUnwrap(interviewUITest.range(
             of: "objectiveCount.waitForLabelOrValue(expectedObjectiveCount, timeout: 5)"))
         let admissionFailure = try XCTUnwrap(interviewUITest.range(

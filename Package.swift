@@ -186,7 +186,7 @@ let package = Package(
                 .product(name: "GRDB", package: "GRDB.swift"),
             ],
             path: "Tests",
-            exclude: ["PortavozUITests", "Tooling"],
+            exclude: ["PortavozUITests", "UIInterruptionFixtures", "Tooling"],
             sources: ["PortavozTests", "Support"]
         ),
     ]

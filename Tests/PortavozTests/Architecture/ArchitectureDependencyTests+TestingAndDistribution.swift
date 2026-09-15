@@ -282,13 +282,8 @@ extension ArchitectureDependencyTests {
             of: "Sources/portavoz-app/AppServices+ScaleBenchmark.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        let conditionStart = try XCTUnwrap(support.range(
-            of: "func waitForUITestCondition("))
-        let localeStart = try XCTUnwrap(support.range(
-            of: "enum UITestLocale",
-            range: conditionStart.upperBound..<support.endIndex))
-        let conditionBody = support[
-            conditionStart.lowerBound..<localeStart.lowerBound]
+        let conditionBody = try Self.contents(
+            of: "Tests/PortavozUITests/UITestWaitSupport.swift")
         XCTAssertTrue(conditionBody.contains(
             "RunLoop.current.run(until: nextProbe)"))
         XCTAssertFalse(conditionBody.contains(
@@ -344,11 +339,11 @@ extension ArchitectureDependencyTests {
 
         let launchStart = try XCTUnwrap(support.range(
             of: "func launchPortavoz()"))
-        let processExitStart = try XCTUnwrap(support.range(
-            of: "func waitForPortavozProcessExit(",
+        let nextHelperStart = try XCTUnwrap(support.range(
+            of: "func control(withIdentifier",
             range: launchStart.upperBound..<support.endIndex))
         let launchBody = support[
-            launchStart.lowerBound..<processExitStart.lowerBound]
+            launchStart.lowerBound..<nextHelperStart.lowerBound]
         let mainWindowStart = try XCTUnwrap(launchBody.range(
             of: "let mainWindow = windows[\"main-AppWindow-1\"]"))
         let settingsBranch = try XCTUnwrap(launchBody.range(
@@ -374,15 +369,15 @@ extension ArchitectureDependencyTests {
         XCTAssertEqual(settingsWindowBody.components(separatedBy:
             "identifier: \"settings-search-field\", timeout: timeout)").count - 1, 2)
         let searchEditingStart = try XCTUnwrap(settingsWindowBody.range(
-            of: "private func finishSearchEditing("))
+            of: "func finishTextFieldEditing("))
         let searchEditingBody = settingsWindowBody[searchEditingStart.lowerBound...]
-        let searchClick = try XCTUnwrap(searchEditingBody.range(of: "search.click()"))
         let searchTab = try XCTUnwrap(searchEditingBody.range(
-            of: "search.typeKey(.tab, modifierFlags: [])"))
+            of: "guard typeKeyIfOwned("))
         let preservedSearchValue = try XCTUnwrap(searchEditingBody.range(
-            of: "search.waitForValue(originalValue, timeout: timeout)"))
-        XCTAssertLessThan(searchClick.lowerBound, searchTab.lowerBound)
+            of: "field.waitForValue(originalValue, timeout: timeout)"))
         XCTAssertLessThan(searchTab.lowerBound, preservedSearchValue.lowerBound)
+        XCTAssertFalse(searchEditingBody.contains("field.click()"))
+        XCTAssertFalse(searchEditingBody.contains("field.typeKey("))
         XCTAssertFalse(searchEditingBody.contains(".typeText("))
         XCTAssertFalse(searchEditingBody.contains(".escape"))
         XCTAssertFalse(searchEditingBody.contains("UserDefaults"))
@@ -515,7 +510,7 @@ extension ArchitectureDependencyTests {
         XCTAssertEqual(recencyJourney.components(separatedBy:
             "search.waitForValue(\"viernes\", timeout: 5)").count - 1, 2)
         let endSearchEdit = try XCTUnwrap(recencyJourney.range(
-            of: "search.typeKey(.tab, modifierFlags: [])"))
+            of: "typeKey(.tab, modifierFlags: [], in: app)"))
         let selectSearchHit = try XCTUnwrap(recencyJourney.range(of: "hit.click()"))
         XCTAssertLessThan(endSearchEdit.lowerBound, selectSearchHit.lowerBound)
         XCTAssertTrue(recencyJourney.contains("hit.waitForHittable(timeout: 5)"))
@@ -1502,7 +1497,9 @@ extension ArchitectureDependencyTests {
             #"temporary Settings must stay on AppKit's zero screen"#))
         XCTAssertTrue(uiTestSupport.contains(
             #"app.launchEnvironment[notificationCenterAlertOverride] = "true""#))
-        XCTAssertFalse(uiTestSupport.contains("addUIInterruptionMonitor"))
+        let testCase = try Self.contents(of: "Tests/PortavozUITests/PortavozUITestCase.swift")
+        XCTAssertTrue(testCase.contains("addUIInterruptionMonitor"))
+        XCTAssertFalse(testCase.contains(".click()"))
     }
 
     func testProductionSandboxDecisionStaysExplicitAndReproducible() throws {

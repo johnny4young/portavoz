@@ -489,12 +489,24 @@ class UITestHostPreflightTests(unittest.TestCase):
         self.assertNotIn("System Events", target)
 
     def test_ui_test_bundle_never_answers_external_prompts(self):
-        source = UI_TEST_SUPPORT.read_text(encoding="utf-8")
+        source = (UI_TEST_SUPPORT.parent / "PortavozUITestCase.swift").read_text(encoding="utf-8")
 
-        self.assertNotIn("addUIInterruptionMonitor", source)
+        self.assertIn("addUIInterruptionMonitor", source)
+        self.assertIn("self.stopForUnexpectedInterruption()", source)
+        self.assertIn("private func stopForUnexpectedInterruption() -> Never", source)
         self.assertNotIn("com.apple.UserNotificationCenter", source)
         self.assertNotIn("typeKey(.escape", source)
-        self.assertIn("installs no interruption monitor", source)
+        self.assertNotIn(".click()", source)
+        self.assertNotIn("return true", source)
+        self.assertNotIn("return false", source)
+        self.assertIn("record(XCTIssue(", source)
+        self.assertIn("exit(EXIT_FAILURE)", source)
+        for path in UI_TEST_SUPPORT.parent.glob("*.swift"):
+            if path.name == "PortavozUITestCase.swift":
+                continue
+            journey = path.read_text(encoding="utf-8")
+            self.assertNotIn("addUIInterruptionMonitor", journey, path.name)
+            self.assertNotIn(": XCTestCase", journey, path.name)
 
     def test_hygiene_owns_preflight_policy_without_ui_workflow_duplication(self):
         workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(

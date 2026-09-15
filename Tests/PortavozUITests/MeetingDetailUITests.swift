@@ -297,9 +297,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
             correct.waitForExistenceFast(timeout: 10),
             "a stable accepted source row must expose its correction action")
         let transcriptScroll = app.control(withIdentifier: "detail-transcript-scroll")
-        XCTAssertTrue(
-            correct.revealVertically(in: transcriptScroll, maxScrolls: 4),
-            "the correction action must be fully visible before activation")
+        guard correct.revealVertically(in: transcriptScroll, maxScrolls: 4) else {
+            XCTFail("the correction action must be fully visible before activation")
+            return
+        }
         let correctFrame = correct.frame
         XCTAssertGreaterThanOrEqual(
             correctFrame.width,
@@ -328,8 +329,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let textEditor = app.textViews["transcript-correction-text"]
         XCTAssertTrue(textEditor.waitForExistenceFast(timeout: 5))
         textEditor.click()
-        textEditor.typeKey("a", modifierFlags: .command)
-        textEditor.typeText("El rollout del modelo queda para el lunes.")
+        typeKey("a", modifierFlags: .command, in: app, modalAnchor: "transcript-correction-text")
+        let correction = "El rollout del modelo queda para el lunes."
+        typeText(correction, in: app, modalAnchor: "transcript-correction-text")
+        XCTAssertTrue(textEditor.waitForValue(correction, timeout: 5))
         let speakerPicker = app.popUpButtons["transcript-correction-speaker"]
         XCTAssertTrue(speakerPicker.waitForExistenceFast(timeout: 5))
         speakerPicker.click()
@@ -383,9 +386,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let correct = app.buttons["transcript-correct-\(sourceID)"]
         XCTAssertTrue(correct.waitForExistenceFast(timeout: 10))
         let transcriptScroll = app.control(withIdentifier: "detail-transcript-scroll")
-        XCTAssertTrue(
-            correct.revealVertically(in: transcriptScroll, maxScrolls: 4),
-            "the structural correction action must be fully visible before activation")
+        guard correct.revealVertically(in: transcriptScroll, maxScrolls: 4) else {
+            XCTFail("the structural correction action must be fully visible before activation")
+            return
+        }
         correct.click()
 
         let split = app.buttons["transcript-structure-split"]
@@ -639,6 +643,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 "the recommendation must cross the app localization boundary")
         }
         attachScreenshot(of: app, named: "sequoia-summary-actionable-settings")
+
+        XCTAssertTrue(
+            app.finishTextFieldEditing(identifier: "settings-search-field", timeout: 5),
+            "the recovery deep link must finish search editing without changing its destination")
+        XCTAssertEqual(app.textFields["settings-search-field"].value as? String, "")
 
         let voiceCategory = app.buttons["settings-category-voice"]
         XCTAssertTrue(
@@ -928,7 +937,12 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let field = app.textFields["decision-confirm-topic-field"]
         XCTAssertTrue(field.waitForExistenceFast(timeout: 5))
         field.click()
-        field.typeText("atlasrollout")
+        typeText("atlasrollout", in: app, modalAnchor: "decision-confirm-topic-field")
+        guard field.waitForValue("atlasrollout", timeout: 5),
+              app.finishTextFieldEditing(
+                identifier: "decision-confirm-topic-field", timeout: 5,
+                modalAnchor: "decision-confirm-topic-field")
+        else { return XCTFail("the topic editor must preserve the exact topic before confirmation") }
         app.control(withIdentifier: "decision-confirm-submit").click()
 
         let badge = app.control(withIdentifier: "summary-decision-0-0-confirmed")
@@ -1041,7 +1055,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             refreshedMenu.click()
             if emailDismiss.waitForExistenceFast(timeout: 3) { break }
             if attempt == 0 {
-                app.typeKey(.escape, modifierFlags: [])
+                typeKey(.escape, modifierFlags: [], in: app)
                 XCTAssertTrue(refreshedMenu.waitForStableFrame(timeout: 5))
             }
         }
@@ -1269,7 +1283,17 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let repository = app.textFields["github-issue-repository"]
         XCTAssertTrue(repository.waitForHittable(timeout: 5))
         repository.click()
-        repository.typeText("portavoz/demo")
+        // The click owns the native editor; its completion surface may cover
+        // the field. Send text to that editor rather than re-targeting the field.
+        typeText("portavoz/demo", in: app, modalAnchor: "github-issue-repository")
+        guard repository.waitForValue("portavoz/demo", timeout: 5),
+              app.finishTextFieldEditing(
+                identifier: "github-issue-repository", timeout: 5,
+                modalAnchor: "github-issue-repository")
+        else {
+            XCTFail("the exact repository must survive native editor handoff before review")
+            return
+        }
         let reviewIssue = app.buttons["github-issue-review"]
         XCTAssertTrue(reviewIssue.waitForHittable(timeout: 5))
         reviewIssue.click()
@@ -1485,6 +1509,14 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-editor").waitForExistenceFast(timeout: 5),
             "the user must get one explicit wording, owner, and deadline review boundary")
+        XCTAssertTrue(
+            app.finishTextFieldEditing(
+                identifier: "commitment-editor-title", timeout: 5,
+                modalAnchor: "commitment-editor-title"),
+            "owner selection must start after the proposed wording finishes editing unchanged")
+        XCTAssertEqual(
+            app.textFields["commitment-editor-title"].value as? String,
+            "Prepare the rollout")
         let editor = app.control(withIdentifier: "commitment-editor")
         let ownerPickers = editor.descendants(matching: .popUpButton)
         XCTAssertEqual(
@@ -1534,7 +1566,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(editor.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(editor.waitForStableFrame(timeout: 5))
         editor.click()
-        editor.typeText("El rollout queda para el lunes tras QA")
+        let correction = "El rollout queda para el lunes tras QA"
+        typeText(correction, in: app, modalAnchor: "summary-feedback-correction-text")
+        XCTAssertTrue(editor.waitForValue(correction, timeout: 5))
         app.control(withIdentifier: "summary-feedback-save").click()
 
         XCTAssertTrue(
@@ -1565,17 +1599,18 @@ final class MeetingDetailUITests: PortavozUITestCase {
         // SwiftUI's macOS alert bridge strips a TextField's custom AX
         // identifier. Scope the query to the alert sheet so we never type
         // into the library search field behind it.
-        let field = app.sheets.textFields.firstMatch
+        let field = app.sheets.containing(.button, identifier: "speaker-rename-save").textFields.element
         XCTAssertTrue(field.waitForExistenceFast(timeout: 5))
         field.click()
-        field.typeKey("a", modifierFlags: .command)
-        field.typeText("Ana")
+        typeKey("a", modifierFlags: .command, in: app, modalAnchor: "speaker-rename-save")
+        typeText("Ana", in: app, modalAnchor: "speaker-rename-save")
         XCTAssertTrue(field.waitForValue("Ana", timeout: 5))
         // Commit text editing before activating Save. macOS can present its
         // native name-completion popover over the alert's buttons; a normal
         // Tab focus transition ends editing without choosing a suggestion or
         // changing the host's AutoFill preferences.
-        field.typeKey(.tab, modifierFlags: [])
+        typeKey(.tab, modifierFlags: [], in: app, modalAnchor: "speaker-rename-save")
+        XCTAssertTrue(field.waitForValue("Ana", timeout: 5))
         let save = app.control(withIdentifier: "speaker-rename-save")
         XCTAssertTrue(save.waitForHittable(timeout: 5))
         save.click()
@@ -1708,7 +1743,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(included.waitForExistenceFast(timeout: 5))
         attachScreenshot(of: app, named: "meeting-detail-correction-aware-export")
         // Close the menu without exporting — the save panel is native UI.
-        app.typeKey(.escape, modifierFlags: [])
+        typeKey(.escape, modifierFlags: [], in: app)
     }
 
     /// FEATURE-003: the recap opens as an editable draft the user reviews
@@ -1783,8 +1818,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 "the Structure submenu must seed the \(id) template")
         }
         // Close without regenerating.
-        app.typeKey(.escape, modifierFlags: [])
-        app.typeKey(.escape, modifierFlags: [])
+        typeKey(.escape, modifierFlags: [], in: app)
+        typeKey(.escape, modifierFlags: [], in: app)
     }
 
     /// Marking in/out reveals the clip export button (M11). Advances the

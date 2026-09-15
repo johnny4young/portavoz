@@ -584,7 +584,11 @@ direction from the target relative to the current identified viewport. One
 predicate waits for the nonempty, hittable, fully contained frame to remain
 stable after a scroll; a target already inside the viewport is allowed to
 settle without another wheel event, and an unresolved target fails before
-activation.
+activation. This existing readiness contract does not establish universal
+compact-window reachability: the calibration and forced-compact fixture
+experiments were withdrawn after retained real-app and native counterexamples.
+The ordinary correction journey preserves its mutation assertions but does not
+claim to close that separate harness limitation (see GAPS and D533).
 
 D233 extends the route projection with derived-artifact freshness rather than
 deleting immutable history. A correction clears route-local generated metadata,

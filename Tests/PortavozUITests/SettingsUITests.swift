@@ -51,7 +51,10 @@ final class SettingsUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        app.typeKey(",", modifierFlags: .command)
+        XCTAssertTrue(
+            app.openSettingsWindow(),
+            "opening Settings must finish initial search editing before sidebar scrolling")
+        XCTAssertEqual(app.textFields["settings-search-field"].value as? String, "")
         openCategory(
             "settings-category-data",
             revealing: "settings-ledger-meetings",
@@ -339,7 +342,7 @@ final class SettingsUITests: PortavozUITestCase {
             "the Audio pane must expose a stable always-on call-safe capture policy")
         // Reopen the real scene: restoration must not undo the placement
         // established on first presentation, and receipt routing still owns it.
-        app.typeKey("w", modifierFlags: .command)
+        typeKey("w", modifierFlags: .command, in: app)
         XCTAssertTrue(app.buttons["settings-category-general"].waitForDisappearance(timeout: 5))
         XCTAssertTrue(app.openSettingsWindow())
         let reopenedGeneral = app.control(withIdentifier: "settings-category-general")

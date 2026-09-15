@@ -86,6 +86,23 @@ class UITestExecutionTests(unittest.TestCase):
         self.assertIsNone(document["failureSignature"])
         self.assertEqual(len(document["logSHA256"]), 64)
 
+    def test_interruption_stop_cannot_be_hidden_by_worker_restart_or_success(self):
+        for exit_status in (0, 65):
+            for cleanup in ("complete", "failed"):
+                for case_count in (None, 0, 1):
+                    with self.subTest(exit_status=exit_status, cleanup=cleanup, cases=case_count):
+                        temporary, completed, document = self.run_writer(
+                            exit_status=exit_status,
+                            log=f"PORTAVOZ_UI_INTERRUPTION_BLOCKED cleanup={cleanup}\n"
+                                "Test Suite passed. Executed 0 tests, with 0 failures.",
+                            result=True,
+                            runtime_cases=case_count,
+                        )
+                        self.addCleanup(temporary.cleanup)
+                        self.assertEqual(completed.returncode, 2, completed.stderr)
+                        self.assertEqual(document["classification"], "evidence-failure")
+                        self.assertIsNone(document["failureSignature"])
+
     def test_exact_automation_mode_timeout_is_host_infrastructure(self):
         temporary, completed, document = self.run_writer(
             exit_status=65,
