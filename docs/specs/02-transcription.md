@@ -378,10 +378,13 @@ contract below: the draft succeeds with honest unattributed system segments.
 ### External audio import (D46)
 
 `ApplicationKit.ImportMeeting` owns the external-file workflow without
-constructing model objects itself. The app processor prepares shared Whisper and
-the first pyannote acquisition as required steps and reports verified model
-download progress. Only the second diarizer preparation and attribution execution
-are degradable under the existing import contract. It
+constructing model objects itself. Shared Whisper preparation and recognition
+are required; pyannote is acquired once, only after recognition succeeds (D532).
+Both optional preparation and attribution failure retain the recognized words
+without invented speakers. An unavailable preparation never invokes the
+unprepared diarizer. Cancellation in either phase still rejects publication and
+joins release; it is not converted into successful degradation. This replaces
+the former required-first/optional-second acquisition contract. The use case
 transcribes the copied system-channel file with the once-sampled
 `TranscriptLanguagePolicy` and vocabulary. Automatic mode leaves the hint nil,
 so a mixed Spanish/English recording keeps each segment's detected language;

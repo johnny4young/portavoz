@@ -55,12 +55,14 @@ actor ImportQueueProcessor: ImportMeetingProcessor {
     private var current = State()
     private var active = 0
     private var failFirst: Bool
+    private let failDiarizerPreparation: Bool
     private let hold: AsyncStream<Void>?
     private let onTranscribe: @Sendable () -> Void
 
-    init(failFirst: Bool = false, hold: AsyncStream<Void>? = nil,
+    init(failFirst: Bool = false, failDiarizerPreparation: Bool = false, hold: AsyncStream<Void>? = nil,
          onTranscribe: @escaping @Sendable () -> Void = {}) {
         self.failFirst = failFirst
+        self.failDiarizerPreparation = failDiarizerPreparation
         self.hold = hold
         self.onTranscribe = onTranscribe
     }
@@ -70,7 +72,10 @@ actor ImportQueueProcessor: ImportMeetingProcessor {
         active += 1
         current.maximumConcurrent = max(current.maximumConcurrent, active)
     }
-    func prepareDiarizer() { current.diarizerPreparationCount += 1 }
+    func prepareDiarizer() throws {
+        current.diarizerPreparationCount += 1
+        if failDiarizerPreparation { throw ImportQueueTestError.diarizerPreparation }
+    }
     func transcribe(audio: ImportedMeetingAudio, meetingID: MeetingID,
                     languageHint: String?, vocabulary: [String]) async throws -> FileTranscription {
         current.vocabularies.append(vocabulary)
@@ -90,7 +95,7 @@ actor ImportQueueProcessor: ImportMeetingProcessor {
     func scheduleIdleRelease() { current.releaseCount += 1; active -= 1 }
 }
 
-private enum ImportQueueTestError: Error { case transcription }
+private enum ImportQueueTestError: Error { case transcription, diarizerPreparation }
 
 struct ImportQueueSummary: ImportMeetingSummaryProviderResolver, ImportMeetingSummaryProvider {
     var providerID: String { "fixture" }

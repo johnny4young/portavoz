@@ -9,6 +9,35 @@ import TranscriptionKit
 import XCTest
 
 final class ProcessAudioImportsTests: XCTestCase {
+    func testUnavailableDiarizerCannotDiscardEitherLanguageOrFailTheQueue() async throws {
+        let fixture = try ImportQueueFixture()
+        defer { fixture.remove() }
+        let original = try Data(contentsOf: fixture.source)
+        let spanish = try await fixture.admit(language: .fixed(.spanish))
+        let english = try await fixture.admit(language: .fixed(.english))
+        let processor = ImportQueueProcessor(failDiarizerPreparation: true)
+
+        let count = try await fixture.worker(processor).execute(.init())
+
+        XCTAssertEqual(count, 2)
+        for (input, expected) in [(spanish, "No envíes 2. Don’t."), (english, "Don’t send 2. Café.")] {
+            let detail = try await fixture.store.detail(input.meetingID)
+            XCTAssertEqual(detail?.meeting.lifecycleState, .ready)
+            XCTAssertEqual(detail?.segments.map(\.text), [expected])
+            XCTAssertTrue(detail?.segments.allSatisfy { $0.speakerID == nil } == true)
+            XCTAssertTrue(detail?.speakers.isEmpty == true)
+            let jobs = try await fixture.store.processingJobs(for: input.meetingID)
+            XCTAssertEqual(jobs.first?.state, .succeeded)
+            let audio = fixture.root.appendingPathComponent(input.copyDirectory + "/system.wav")
+            XCTAssertEqual(try Data(contentsOf: audio), original)
+        }
+        XCTAssertEqual(try Data(contentsOf: fixture.source), original)
+        let state = await processor.state()
+        XCTAssertEqual(state.vocabularies.count, 2, "Both files must reach required recognition")
+        XCTAssertEqual(state.diarizerPreparationCount, 2, "Only one optional acquisition per file")
+        XCTAssertEqual(state.releaseCount, 2)
+    }
+
     func testRealFileQueuePreservesIndependentLanguagesSummaryAndSerialRelease() async throws {
         let fixture = try ImportQueueFixture()
         defer { fixture.remove() }
@@ -32,7 +61,7 @@ final class ProcessAudioImportsTests: XCTestCase {
         let state = await processor.state()
         XCTAssertEqual(state.releaseCount, 2)
         XCTAssertEqual(state.maximumConcurrent, 1)
-        XCTAssertEqual(state.diarizerPreparationCount, 4)
+        XCTAssertEqual(state.diarizerPreparationCount, 2)
         XCTAssertEqual(state.vocabularies, [["C++", "café"], ["C++", "café"]])
     }
 

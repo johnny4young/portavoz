@@ -1989,7 +1989,9 @@ through the user's explicit queue action. The use case owns required transcripti
 diarization and summary, independent transcript/summary languages, idle
 release, staged-audio rollback, and atomic meeting/cast/transcript installation.
 File copy and compensating deletion run at utility priority instead of on the
-MainActor. Its import-specific provider resolver exposes the configured
+MainActor. Optional diarizer preparation now occurs once after required
+recognition and shares the attribution failure boundary. A missing speaker model
+cannot prevent transcript publication; cancellation remains terminal (D532). Its import-specific provider resolver exposes the configured
 provider/model/revision without leaking engine construction into ApplicationKit.
 After the required aggregate commits, each real summary call records one
 content-free attempt. Success links run + immutable summary/actions atomically;

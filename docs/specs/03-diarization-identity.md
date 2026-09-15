@@ -2,6 +2,12 @@
 
 Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows), D104 (application-owned durable attribution policy), D105 (application-owned participant voice memory), D106 (application-owned app enrollment), D107 (application-owned verified name suggestions), D133 (stable split lineage), D148 (content-free resource measurement), D164 (process-owned model residency with fresh sessions), D303 (session-clock-anchored live windows), D357 (fail-closed encrypted identity recovery).
 
+External-audio import acquires the optional diarizer once after required
+transcription (D532). Preparation or inference failure produces honest
+unattributed segments; cancellation instead stops publication. The app keeps the
+same verified model and residency lease adapters. This does not evaluate model
+quality or change recording/refinement attribution.
+
 ## PyannoteDiarizer — `Sources/DiarizationKit/PyannoteDiarizer.swift`
 
 - pyannote community-1 (segmentation) + WeSpeaker v2 (embeddings) via FluidAudio; 10 sha256-pinned artifacts (~14 MB). `DiarizerModels.load(localSegmentationModel:localEmbeddingModel:)` loads from explicit paths and **never downloads** (unlike `AsrModels.load`).

@@ -180,6 +180,8 @@ The implemented application workflows include:
 - local summary-provider discovery, typed recommendation, and first-selection
   persistence without overwriting an existing choice;
 - external-audio import with required transcription and degradable derivation;
+  optional speaker-model preparation occurs once after recognition, within the
+  same cancellation-aware failure boundary as attribution;
 - relational `.portavoz` bundle import and read-consistent bundle export;
 - read-consistent staged whole-library Markdown backup with typed partial
   results and capture checkpoints;

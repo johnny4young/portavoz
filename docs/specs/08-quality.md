@@ -12,6 +12,21 @@ The Settings journey also checks that localized provider help retains Sequoia
 and Tahoe support plus the selected local engine, rather than stale Apple-only
 live-summary wording.
 
+Import degradation coverage reaches the real `ProcessAudioImports` worker,
+owned file copy and SQLite publication: failed optional diarizer preparation
+must preserve both language transcripts and originals. Direct workflow cases
+also cover chronological ordering, empty recognition, unavailable preparation
+without inference, and cancellation during preparation or attribution, including
+noncooperative capabilities that cancel their task but return normally. The
+existing multiple-file/paging/open XCUITest journey injects this failure through
+`-audio-import-diarizer-unavailable`; it is admitted only with both the disposable
+store and explicit import fixture. Ordinary import cannot select the fault.
+The native picker receives one keyboard confirmation and must disappear before
+worker assertions begin; a missed selection is not attributed to processing.
+Both result pages assert successful meeting actions, not only a zero unfinished
+count that could also contain failures. Recognition remains scripted, not
+ASR-quality evidence (D532).
+
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
 Supported AppKit-capable CI and release hosts require zero
@@ -394,16 +409,18 @@ both pass.
 
 Band 2 slice 2F adds thirteen import tests and an eighth architecture rule. Port
 fakes characterize exact progress/order, automatic mixed-language recognition,
-required first model preparation and transcription, degradable second
-diarizer reload/inference (including reuse of an existing engine after reload
-failure), optional summary generation/persistence, and the
+required model preparation and transcription, optional attribution and
+summary generation/persistence, and the
 released idle-release boundary. Failure cases prove every required precommit
 error attempts staged-audio cleanup without masking its original error. A real
 in-memory MeetingStore case persists the aggregate and summary through the
 ports; ownership validation rejects foreign children, and an injected SQLite
 segment failure proves meeting, cast, and transcript roll back together. The
 source rule permits one app wrapper only and rejects a return to direct import
-orchestration. Strict SwiftLint remains clean across 206 source files.
+orchestration. The original first-required/second-optional diarizer contract
+and its characterization were replaced by one optional post-recognition load
+and cancellation fences (D532). The slice originally passed strict SwiftLint
+across 206 source files.
 
 Band 2 slice 2G adds sixteen refine tests and a ninth architecture rule. Port
 fakes characterize exact progress/order, fixed-language recovery versus
