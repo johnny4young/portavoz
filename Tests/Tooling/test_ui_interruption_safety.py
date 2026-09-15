@@ -1,6 +1,7 @@
 import importlib.util
 from pathlib import Path
 import sys
+import re
 import unittest
 from unittest import mock
 import uuid
@@ -31,7 +32,7 @@ class InterruptionSafetyTests(unittest.TestCase):
 
     def test_rejects_false_negative_controls(self):
         for mutation in ("exit-zero", "missing-ready", "missing-guard", "fallback", "continued",
-                         "cleanup-failed", "choice", "target", "empty-restart", "skipped", "extra-case",
+                         "cleanup-failed", "choice", "target", "typed", "empty-restart", "skipped", "extra-case",
                          "helper-crashed"):
             with self.subTest(mutation=mutation):
                 data = self.evidence()
@@ -45,7 +46,7 @@ class InterruptionSafetyTests(unittest.TestCase):
                     data["log"] += b"FIXTURE_FALLBACK_REACHED" if mutation == "fallback" else b"FIXTURE_TARGET_CONTINUED"
                 elif mutation == "cleanup-failed":
                     data["log"] = data["log"].replace(b"cleanup=complete", b"cleanup=failed")
-                elif mutation in ("choice", "target"):
+                elif mutation in ("choice", "target", "typed"):
                     data["effects"].add(mutation)
                 elif mutation == "helper-crashed":
                     data["effects"].remove("overlay-owner-exit")
@@ -58,15 +59,43 @@ class InterruptionSafetyTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     safety.validate_case(**data)
 
+    def test_keyboard_negative_controls_require_the_same_guard_and_no_effect(self):
+        for name in ("testSynchronousTextInterruption", "testAsynchronousTextInterruption",
+                     "testSynchronousTraversalInterruption", "testAsynchronousTraversalInterruption"):
+            data = self.evidence()
+            data["name"] = name
+            safety.validate_case(**data)
+            data["effects"].add("typed")
+            with self.assertRaises(RuntimeError):
+                safety.validate_case(**data)
+            data["effects"].remove("typed")
+            data["log"] = data["log"].replace(b"PORTAVOZ_UI_INTERRUPTION_BLOCKED", b"")
+            with self.assertRaises(RuntimeError):
+                safety.validate_case(**data)
+
+    def test_same_application_modal_does_not_expect_a_foreign_owner_receipt(self):
+        for name in ("testSynchronousSameApplicationModalInterruption",
+                     "testAsynchronousSameApplicationModalInterruption", "testSameApplicationModalRejectsBackgroundAnchor"):
+            data = self.evidence()
+            data.update(name=name, effects=set())
+            safety.validate_case(**data)
+            data["effects"].add("modal-choice")
+            with self.assertRaises(RuntimeError):
+                safety.validate_case(**data)
+
     def test_surviving_scratch_is_not_successful_cleanup(self):
         with mock.patch.object(Path, "exists", return_value=True), self.assertRaises(RuntimeError):
             safety.validate_case(**self.evidence())
 
     def test_positive_controls_calibrate_both_observable_effects(self):
         for name, effect in (("testSyntheticChoiceIsObservable", "choice"),
-                             ("testUninterruptedActionAndTeardown", "target")):
+                             ("testUninterruptedActionAndTeardown", "target"),
+                             ("testUninterruptedKeyboardInputAndTeardown", "typed"),
+                             ("testSameApplicationModalChoiceIsObservable", "modal-choice")):
             data = self.evidence()
             data.update(name=name, code=0, effects={effect})
+            if name == "testSameApplicationModalChoiceIsObservable":
+                data["effects"].add("typed")
             if name == "testSyntheticChoiceIsObservable":
                 data["effects"].add("overlay-owner-exit")
             data["log"] = data["log"].split(b"FIXTURE_INTERRUPTION_READY")[0]
@@ -93,6 +122,17 @@ class InterruptionSafetyTests(unittest.TestCase):
             self.assertIn("UI_TEST_INTERRUPTION_REQUIRED=true", render(selection, "shell"))
         self.assertFalse(select_paths([]).interruption_controls_required)
         self.assertFalse(select_paths(["Sources/portavoz-app/DictationPanel.swift"]).interruption_controls_required)
+
+    def test_product_keyboard_dispatch_cannot_bypass_owned_admission(self):
+        for path in (ROOT / "Tests/PortavozUITests").glob("*.swift"):
+            if path.name == "UITestKeyboardSupport.swift":
+                continue
+            source = "\n".join(line for line in path.read_text().splitlines()
+                               if not line.lstrip().startswith("//"))
+            with self.subTest(path=path.name):
+                self.assertEqual(re.findall(r"\.\s*type(?:Text|Key)\s*\(", source), [])
+                if path.name.startswith("UITest"):
+                    self.assertEqual(re.findall(r"(?<![\w.])type(?:Text|Key)\s*\(", source), [])
 
     def test_fixture_target_compiles_the_real_installation_and_cleanup(self):
         project = (ROOT / "Tests/UIInterruptionFixtures/project.yml").read_text()

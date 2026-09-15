@@ -5423,6 +5423,15 @@ prove that Portavoz owns the frontmost key window throughout a long catalogue;
 startup and `prepareForInteraction()` therefore keep explicit activation. The
 first complete English attempt demonstrated that removing it can synthesize
 apparently successful clicks without publishing the expected route or mutation.
+Keyboard dispatch has a separate admission boundary in `UITestKeyboardSupport`:
+XCTest foreground state plus the unique declared bundle's frontmost process,
+and either no modal or exactly one modal containing the journey's explicit
+anchor. It does not reactivate after an observed ownership change. A background
+anchor never authorizes an unexpected same-app modal. Base-case wrappers refuse
+through the owned-cleanup interruption guard; shared application helpers return
+failure. Native negative controls exercise the real wrappers, while a tooling
+policy prevents raw keyboard dispatch elsewhere. These observations are not an
+atomic OS guarantee. Startup activation remains an explicit, separate operation.
 After startup activation, the main shell uses one bounded hittability proof;
 the window is not itself clicked, while every interactive control keeps its
 own stable or contained readiness boundary. Settings owns one stable General

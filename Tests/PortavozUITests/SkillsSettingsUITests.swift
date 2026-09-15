@@ -577,7 +577,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             app.menuItems["skill-offer-email-recap-draft"]
                 .waitForExistenceFast(timeout: 5),
             "the original offer must still require its exact preview")
-        app.typeKey(.escape, modifierFlags: [])
+        typeKey(.escape, modifierFlags: [], in: app)
         attachScreenshot(of: app, named: "skills-proposal-review-context")
     }
 
@@ -831,7 +831,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             app.menuItems["skill-offer-recap-draft"]
                 .waitForExistenceFast(timeout: 5),
             "the original surface must rebuild a fresh reviewable proposal")
-        app.typeKey(.escape, modifierFlags: [])
+        typeKey(.escape, modifierFlags: [], in: app)
         attachScreenshot(of: app, named: "skills-failed-recovery-context")
     }
 
@@ -963,18 +963,18 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         // Settings surface behind the sheet and the receipt sheet itself.
         try auditSkillDescriptions(in: app)
 
-        app.typeKey(.escape, modifierFlags: [])
+        typeKey(.escape, modifierFlags: [], in: app, modalAnchor: "skill-receipt-inspection")
         XCTAssertTrue(
             waitForDisappearance(inspection),
             "Escape must close the modal receipt inspector")
         XCTAssertTrue(
             receipt.waitForExistenceFast(timeout: 5),
             "dismissal must return to the exact receipt row")
-        app.typeKey(.space, modifierFlags: [])
+        typeKey(.space, modifierFlags: [], in: app)
         XCTAssertTrue(
             inspection.waitForExistenceFast(timeout: 5),
             "keyboard focus must return to the receipt that opened the sheet")
-        app.typeKey(.escape, modifierFlags: [])
+        typeKey(.escape, modifierFlags: [], in: app, modalAnchor: "skill-receipt-inspection")
     }
 
     @MainActor
@@ -1449,7 +1449,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     @MainActor
     private func closeSettings(in app: XCUIApplication) {
         cachedScrollViewport = nil
-        app.typeKey("w", modifierFlags: .command)
+        typeKey("w", modifierFlags: .command, in: app)
         XCTAssertTrue(app.prepareForInteraction())
     }
 
@@ -1508,7 +1508,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
                     .waitForExistenceFast(timeout: 5),
                 "dismissing email must not retire an unrelated recap offer")
         }
-        app.typeKey(.escape, modifierFlags: [])
+        typeKey(.escape, modifierFlags: [], in: app)
     }
 
     @MainActor

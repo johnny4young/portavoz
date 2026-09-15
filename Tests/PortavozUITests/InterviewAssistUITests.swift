@@ -40,8 +40,9 @@ final class InterviewAssistUITests: PortavozUITestCase {
         let objectiveText = isSpanish
             ? "Evaluar criterio de respuesta a incidentes"
             : "Evaluate incident-response judgment"
-        app.typeText(objectiveText)
-        objective.typeKey(.return, modifierFlags: [])
+        typeText(objectiveText, in: app)
+        XCTAssertTrue(objective.waitForValue(objectiveText, timeout: 5))
+        typeKey(.return, modifierFlags: [], in: app)
         // Both the admitted count and the saved row live on the objectives
         // tab, so the original order survives the D504 split untouched.
         let objectiveCount = app.control(

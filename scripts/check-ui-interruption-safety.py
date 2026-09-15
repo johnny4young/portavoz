@@ -28,6 +28,7 @@ SOURCE_PATHS = (
     "Tests/PortavozUITests/PortavozUITestCase.swift",
     "Tests/PortavozUITests/UITestStorageSupport.swift",
     "Tests/PortavozUITests/UITestWaitSupport.swift",
+    "Tests/PortavozUITests/UITestKeyboardSupport.swift",
     "Tests/Support/UITestScratch.swift",
 )
 CASES = {
@@ -35,6 +36,20 @@ CASES = {
     "testSyntheticChoiceIsObservable": {"choice"},
     "testSynchronousInterruption": set(),
     "testAsynchronousInterruption": set(),
+    "testUninterruptedKeyboardInputAndTeardown": {"typed"},
+    "testSynchronousTextInterruption": set(),
+    "testAsynchronousTextInterruption": set(),
+    "testSynchronousTraversalInterruption": set(),
+    "testAsynchronousTraversalInterruption": set(),
+    "testSameApplicationModalChoiceIsObservable": {"modal-choice", "typed"},
+    "testSynchronousSameApplicationModalInterruption": set(),
+    "testAsynchronousSameApplicationModalInterruption": set(),
+    "testSameApplicationModalRejectsBackgroundAnchor": set(),
+}
+NO_OVERLAY_CASES = {
+    "testUninterruptedActionAndTeardown", "testUninterruptedKeyboardInputAndTeardown",
+    "testSameApplicationModalChoiceIsObservable", "testSynchronousSameApplicationModalInterruption",
+    "testAsynchronousSameApplicationModalInterruption", "testSameApplicationModalRejectsBackgroundAnchor",
 }
 
 
@@ -61,7 +76,7 @@ def validate_case(name: str, code: int, log: bytes, summary: dict, effects: set[
     negative = not CASES[name]
     # A helper can vanish by trapping before its parent-exit callback runs.
     # Require that callback's own acknowledgement, not just process absence.
-    expected = CASES[name] | ({"overlay-owner-exit"} if name != "testUninterruptedActionAndTeardown" else set())
+    expected = CASES[name] | ({"overlay-owner-exit"} if name not in NO_OVERLAY_CASES else set())
     require(effects == expected, f"{name}: unexpected or missing synthetic action/lifecycle effect")
     require(summary.get("totalTestCount") == 1 and summary.get("skippedTests") == 0,
             f"{name}: expected exactly one executed case, not a restarted empty suite")

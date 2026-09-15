@@ -19750,3 +19750,31 @@ delivery. Compact geometry and composed delivery-shape evidence remain an open
 quality gap. Fresh native controls, full bilingual product runs and exact-head
 CI are required for the narrower change. A passing ordinary-window catalog must
 not be presented as closure of the retained compact failures.
+
+
+## D534 — Admit keyboard events by process and explicit modal context
+
+Native-editor remediation must not exchange a visible interruption for silent
+input. A field-targeted action can retarget a field covered by native completion;
+bare application-targeted typing can silently reactivate the app under a foreign
+overlay. A foreground-only fence still allows a newline to accept a same-app
+alert. Both insufficient mechanisms were disproved at the native call site,
+not inferred from aggregate passing product tests.
+
+Use one shared dispatch boundary: the unique declared test-host process must be
+frontmost, XCTest must agree it is foreground, and the modal context must match
+the journey. Default input requires no sheet or alert. A journey editing or
+closing an expected modal supplies a fixed accessibility anchor that must belong
+to the sole modal, never an arbitrary visible control behind it. This admission
+never activates another window or answers a permission prompt. Rejection keeps
+the nonreturning owned-cleanup guard. Product tests preserve focus actions,
+exact editor values, original submit/confirmation semantics and durable receipts.
+
+Thirteen native controls calibrate successful pointer, keyboard and explicitly
+expected modal input against foreign-overlay and same-app modal counterexamples.
+Negative effect receipts must contain no typing or choice. A source policy
+prevents bypassing this boundary but does not replace those runtime controls or
+the full bilingual catalog. The checks use public point-in-time observations;
+no atomic check-and-input guarantee or physical permission certification is
+claimed. No product feature, system completion preference or host permission
+policy changes.

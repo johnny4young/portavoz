@@ -168,6 +168,25 @@ Focused bilingual qualification covers the repaired boundary; full and hosted
 qualification remain required. The interruption's exact UI still cannot be
 identified from its frame alone.
 
+Repository entry and topic confirmation exposed another native-editor boundary:
+a field click can open an app-owned surface before field-targeted typing. Both
+original invocations stopped with owned cleanup. Bare application typing passed
+one real bilingual journey but was disproved by a native foreign-overlay control:
+XCTest reactivated the app and wrote despite the overlay. A foreground-only
+check was then disproved by a synthetic same-app alert: a newline accepted its
+default choice without entering an interruption monitor.
+
+Process ownership plus an explicit sole-modal-contained anchor now covers
+thirteen native controls, including legitimate bilingual editing, foreign
+interruption, unexpected same-app modal and background-anchor rejection. Real
+journeys use the same admitted dispatch and preserve exact values, confirmation
+and receipt assertions. Neither a focused journey nor these synthetic controls
+qualifies an earlier interrupted full invocation. The original requesting UI
+is not attributed from its frame; completion preferences and unrelated apps are
+not changed. Public-API admission remains a point-in-time observation: a window
+change after observation cannot be claimed atomically excluded. Full bilingual
+and exact-head hosted qualification remain distinct from native controls.
+
 ### Unattributed asynchronous media-framework test crash
 
 A full package-test process has terminated with `SIGSEGV` in asynchronous

@@ -342,7 +342,7 @@ final class SettingsUITests: PortavozUITestCase {
             "the Audio pane must expose a stable always-on call-safe capture policy")
         // Reopen the real scene: restoration must not undo the placement
         // established on first presentation, and receipt routing still owns it.
-        app.typeKey("w", modifierFlags: .command)
+        typeKey("w", modifierFlags: .command, in: app)
         XCTAssertTrue(app.buttons["settings-category-general"].waitForDisappearance(timeout: 5))
         XCTAssertTrue(app.openSettingsWindow())
         let reopenedGeneral = app.control(withIdentifier: "settings-category-general")

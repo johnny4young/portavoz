@@ -326,7 +326,10 @@ extension XCUIApplication {
 
         for attempt in 0..<2 {
             guard prepareForInteraction(timeout: timeout) else { continue }
-            typeKey(",", modifierFlags: .command)
+            guard typeKeyIfOwned(
+                XCUIKeyboardKey(rawValue: ","), modifierFlags: .command,
+                bundleIdentifier: "app.portavoz.mac.uitest-host")
+            else { return false }
             if general.waitForStableFrame(
                 timeout: attempt == 0 ? 2 : timeout,
                 stableFor: 0.1
@@ -347,13 +350,17 @@ extension XCUIApplication {
     @MainActor
     func finishTextFieldEditing(
         identifier: String,
-        timeout: TimeInterval
+        timeout: TimeInterval,
+        modalAnchor: String? = nil
     ) -> Bool {
         let field = textFields[identifier]
         guard field.waitForHittable(timeout: timeout),
               let originalValue = field.value as? String
         else { return false }
-        typeKey(.tab, modifierFlags: [])
+        guard typeKeyIfOwned(
+            .tab, modifierFlags: [], bundleIdentifier: "app.portavoz.mac.uitest-host",
+            modalAnchor: modalAnchor)
+        else { return false }
         return field.waitForValue(originalValue, timeout: timeout)
     }
 
@@ -450,9 +457,12 @@ extension XCUIApplication {
            let query = search.value as? String,
            !query.isEmpty {
             search.click()
-            search.typeKey("a", modifierFlags: .command)
-            search.typeKey(.delete, modifierFlags: [])
-            search.typeKey(.return, modifierFlags: [])
+            guard typeKeyIfOwned(
+                XCUIKeyboardKey(rawValue: "a"), modifierFlags: .command,
+                bundleIdentifier: "app.portavoz.mac.uitest-host"),
+                typeKeyIfOwned(.delete, modifierFlags: [], bundleIdentifier: "app.portavoz.mac.uitest-host"),
+                typeKeyIfOwned(.return, modifierFlags: [], bundleIdentifier: "app.portavoz.mac.uitest-host")
+            else { return false }
             windows["main-AppWindow-1"]
                 .coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.5))
                 .click()

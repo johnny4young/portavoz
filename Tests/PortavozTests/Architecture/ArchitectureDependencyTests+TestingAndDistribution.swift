@@ -372,7 +372,7 @@ extension ArchitectureDependencyTests {
             of: "func finishTextFieldEditing("))
         let searchEditingBody = settingsWindowBody[searchEditingStart.lowerBound...]
         let searchTab = try XCTUnwrap(searchEditingBody.range(
-            of: "typeKey(.tab, modifierFlags: [])"))
+            of: "guard typeKeyIfOwned("))
         let preservedSearchValue = try XCTUnwrap(searchEditingBody.range(
             of: "field.waitForValue(originalValue, timeout: timeout)"))
         XCTAssertLessThan(searchTab.lowerBound, preservedSearchValue.lowerBound)
@@ -510,7 +510,7 @@ extension ArchitectureDependencyTests {
         XCTAssertEqual(recencyJourney.components(separatedBy:
             "search.waitForValue(\"viernes\", timeout: 5)").count - 1, 2)
         let endSearchEdit = try XCTUnwrap(recencyJourney.range(
-            of: "search.typeKey(.tab, modifierFlags: [])"))
+            of: "typeKey(.tab, modifierFlags: [], in: app)"))
         let selectSearchHit = try XCTUnwrap(recencyJourney.range(of: "hit.click()"))
         XCTAssertLessThan(endSearchEdit.lowerBound, selectSearchHit.lowerBound)
         XCTAssertTrue(recencyJourney.contains("hit.waitForHittable(timeout: 5)"))

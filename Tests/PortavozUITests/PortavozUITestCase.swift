@@ -21,6 +21,39 @@ class PortavozUITestCase: XCTestCase {
         try cleanup.get()
     }
 
+    var keyboardReceiverBundleIdentifier: String { "app.portavoz.mac.uitest-host" }
+
+    func typeText(_ text: String, in app: XCUIApplication, modalAnchor: String? = nil) {
+        guard app.typeTextIfOwned(
+            text, bundleIdentifier: keyboardReceiverBundleIdentifier, modalAnchor: modalAnchor)
+        else {
+            stopForUnexpectedInterruption()
+        }
+    }
+
+    @nonobjc
+    func typeKey(
+        _ key: XCUIKeyboardKey,
+        modifierFlags: XCUIElement.KeyModifierFlags,
+        in app: XCUIApplication,
+        modalAnchor: String? = nil
+    ) {
+        guard app.typeKeyIfOwned(
+            key, modifierFlags: modifierFlags,
+            bundleIdentifier: keyboardReceiverBundleIdentifier, modalAnchor: modalAnchor)
+        else { stopForUnexpectedInterruption() }
+    }
+
+    @nonobjc
+    func typeKey(
+        _ key: String,
+        modifierFlags: XCUIElement.KeyModifierFlags,
+        in app: XCUIApplication,
+        modalAnchor: String? = nil
+    ) {
+        typeKey(XCUIKeyboardKey(rawValue: key), modifierFlags: modifierFlags, in: app, modalAnchor: modalAnchor)
+    }
+
     private func stopForUnexpectedInterruption() -> Never {
         // Cleanup precedes the assertion: synchronous XCTest unwinds here,
         // whereas async XCTest can return and would try its default handler.

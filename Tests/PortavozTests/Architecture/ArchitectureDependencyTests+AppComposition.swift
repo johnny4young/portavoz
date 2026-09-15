@@ -1863,7 +1863,7 @@ extension ArchitectureDependencyTests {
             "the assist area must grow with the window, not sit at a pinned height")
 
         let objectiveSubmit = try XCTUnwrap(interviewUITest.range(
-            of: "objective.typeKey(.return, modifierFlags: [])"))
+            of: "typeKey(.return, modifierFlags: [], in: app)"))
         let objectiveAdmission = try XCTUnwrap(interviewUITest.range(
             of: "objectiveCount.waitForLabelOrValue(expectedObjectiveCount, timeout: 5)"))
         let admissionFailure = try XCTUnwrap(interviewUITest.range(

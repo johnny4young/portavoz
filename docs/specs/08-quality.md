@@ -7685,7 +7685,7 @@ The retained failure is not evidence of a layout race or another app's intrusion
 `make test-ui-interruption-safety UI_INTERRUPTION_RESULTS=<new-private-directory>`
 builds a tiny separate app/overlay/runner target once. It uses the exact shared
 `PortavozUITestCase`, `UITestStorage`, `UITestScratch` and wait-helper sources;
-there is no copied guard implementation. Its four serial invocations distinguish:
+there is no copied guard implementation. Its original four pointer controls distinguish:
 
 - an uninterrupted action, which must produce an observable synthetic effect;
 - a deliberate synthetic choice, which calibrates the choice effect detector;
@@ -7720,6 +7720,42 @@ all split/merge/hide/restore effects and stops before activation if reveal fails
 The forced compact-window argument and calibration fixture were unqualified
 experiments, not released behavior. Their withdrawal does not establish compact
 reachability: the retained compact failure and combined dropped/amplified native
-counterexample remain open in GAPS. Four native interruption controls and the
+counterexample remain open in GAPS. Native interruption controls and the
 full real-app catalog remain separate mandatory gates, with unchanged runtime
 budgets and no retries that relabel failures. See D533.
+
+
+### Keyboard dispatch requires process and modal authority
+
+`UITestKeyboardSupport` is the only raw keyboard dispatch boundary. Journeys
+focus their intended editor explicitly, then use `PortavozUITestCase` wrappers;
+shared application helpers return failure on refused admission. Before each
+event, the receiver must be XCTest-foreground and the unique running process
+for the declared test-host bundle must be the frontmost application. No observed
+ownership change is repaired by implicitly activating the app. No-modal input
+rejects sheets and alerts; expected modal input additionally requires exactly
+one modal containing the journey's fixed accessibility anchor. A background
+control cannot authorize typing into a new dialog. Refused journey input uses
+the same nonreturning, owned-cleanup interruption guard.
+
+Repository and topic fields assert exact values and end editing through the
+admitted Tab/value-preservation handoff before review or confirmation. Transcript
+and summary TextViews retain their explicit save controls rather than treating
+Tab as a text-free traversal. Palette and objective Enter submission and receipt
+Escape/focus restoration retain their original user actions and assertions.
+A tooling policy rejects raw keyboard calls outside the shared boundary; this
+source check is not behavioral evidence.
+
+Thirteen native controls exercise that actual boundary: four original pointer/
+choice controls; native English-to-Spanish Unicode replacement with Select All
+and Tab; synchronous/asynchronous text and traversal under a foreign overlay;
+explicit expected-modal editing and choice; synchronous/asynchronous unexpected
+same-app modal rejection; and rejection of a background anchor behind that
+modal. The native Edit menu calibrates Select All, and the modal positive is
+scoped to the identified sheet rather than its duplicate Touch Bar button.
+Negative controls require no writing or choice effects and complete owned
+cleanup, plus the foreign owner's exit callback where an overlay was launched.
+Bare application typing and foreground-only typing each have a retained native
+counterexample. All controls and full bilingual product journeys are required
+for this shared-harness change. These public-API observations are point-in-time,
+not an atomic OS input guarantee or permission-dialog certification (D534).

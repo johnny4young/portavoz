@@ -797,7 +797,7 @@ test-ui-bilingual: UI_TEST_INTERRUPTION_REQUIRED = true
 test-ui-bilingual: test-ui-scoped
 
 ## Permission-free negative controls use the same base/cleanup as real journeys.
-## The four invocations share one small fixture build, not the product catalog.
+## All controls share one small fixture build, not the product catalog.
 UI_INTERRUPTION_RESULTS ?= $(CURDIR)/dist/ui-interruption-safety/$(shell date -u +%Y%m%dT%H%M%S)
 .PHONY: test-ui-interruption-safety
 test-ui-interruption-safety:
