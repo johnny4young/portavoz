@@ -584,7 +584,11 @@ direction from the target relative to the current identified viewport. One
 predicate waits for the nonempty, hittable, fully contained frame to remain
 stable after a scroll; a target already inside the viewport is allowed to
 settle without another wheel event, and an unresolved target fails before
-activation.
+activation. This existing readiness contract does not establish universal
+compact-window reachability: the calibration and forced-compact fixture
+experiments were withdrawn after retained real-app and native counterexamples.
+The ordinary correction journey preserves its mutation assertions but does not
+claim to close that separate harness limitation (see GAPS and D533).
 
 D233 extends the route projection with derived-artifact freshness rather than
 deleting immutable history. A correction clears route-local generated metadata,
@@ -3477,12 +3481,6 @@ The reference follows the exact attached view's window, including detachment.
 A view-controller bridge separately positions disposable Settings after native
 presentation, so initial placement and saved-frame restoration cannot overwrite
 the test policy. Ordinary Settings retains the user's saved position and level.
-The main-window owner accepts `-ui-test-compact-main-window` only alongside
-`-use-temp-store`. That fixed correction-test fixture stays inside the zero
-screen's visible frame without a pointer gesture near the Dock. As with
-Settings, native presentation reapplies the placement after frame restoration.
-Ordinary main
-windows retain their existing placement; no other app's window is positioned.
 
 ### Standing-rule control plane (D435)
 

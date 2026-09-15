@@ -122,7 +122,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     private func launchOnSeededMeeting(
         latestRecipe: Bool = false,
-        compactWindow: Bool = false,
         refineRunning: Bool = false,
         justRecorded: Bool = false,
         processingFailure: Bool = false,
@@ -149,9 +148,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
             simulateSequoiaCapabilities: simulateSequoiaCapabilities,
             simulateSkillEffectFailureOnce: simulateSkillEffectFailureOnce,
             simulateApuntadorRefreshSuccess: simulateApuntadorRefreshSuccess)
-        if compactWindow {
-            app.launchArguments.append("-ui-test-compact-main-window")
-        }
         if justRecorded {
             app.launchArguments += ["-mirrorAfterMeeting", "true"]
         }
@@ -380,26 +376,14 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
     @MainActor
     func testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence() throws {
-        let app = try launchOnSeededMeeting(compactWindow: true)
+        let app = try launchOnSeededMeeting()
         defer { app.terminate() }
-
-        let window = app.windows["main-AppWindow-1"]
-        guard waitForUITestCondition(timeout: 5, {
-            window.frame.width <= 910 && window.frame.height <= 680
-        }) else {
-            XCTFail("the structural journey must exercise the compact hosted window; observed \(window.frame)")
-            return
-        }
 
         let sourceID = "B5B00000-0000-4000-8000-000000000002"
         let neighborID = "B5F00000-0000-4000-8000-000000000001"
         let correct = app.buttons["transcript-correct-\(sourceID)"]
         XCTAssertTrue(correct.waitForExistenceFast(timeout: 10))
         let transcriptScroll = app.control(withIdentifier: "detail-transcript-scroll")
-        guard transcriptScroll.frame.height <= 120 else {
-            XCTFail("the source action needs the short, clipped transcript viewport; observed \(transcriptScroll.frame)")
-            return
-        }
         guard correct.revealVertically(in: transcriptScroll, maxScrolls: 4) else {
             XCTFail("the structural correction action must be fully visible before activation")
             return

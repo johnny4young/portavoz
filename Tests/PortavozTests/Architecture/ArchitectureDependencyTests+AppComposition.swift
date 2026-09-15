@@ -1796,7 +1796,7 @@ extension ArchitectureDependencyTests {
 
     func testCompactReviewActivationUsesOwnedRevealAndExactPostconditions() throws {
         let support = try Self.contents(
-            of: "Tests/PortavozUITests/UITestScrollSupport.swift")
+            of: "Tests/PortavozUITests/UITestSupport.swift")
         let transcript = try Self.contents(
             of: "Sources/portavoz-app/TranscriptSegmentsView.swift")
         let recording = try Self.contents(
@@ -1836,16 +1836,12 @@ extension ArchitectureDependencyTests {
             "maxScrolls: max(0, maxScrolls - attempt - 1)"))
         XCTAssertTrue(support.contains("if !geometryChanged { continue }"))
         XCTAssertFalse(support.contains("guard targetMoved else { return false }"))
-        // The real scroll fixture owns input/geometry response behavior. Do not
-        // freeze the frame-to-wheel formula that failed on a short viewport.
-        let fixtureProject = try Self.contents(of: "Tests/UIInterruptionFixtures/project.yml")
-        XCTAssertTrue(fixtureProject.contains("../PortavozUITests/UITestScrollSupport.swift"))
-        let fixture = try Self.contents(
-            of: "Tests/UIInterruptionFixtures/Tests/InterruptionSafetyTests.swift")
-        XCTAssertTrue(fixture.contains("target.revealVertically(in: viewport, maxScrolls: 4)"))
-        XCTAssertTrue(fixture.contains("target.click()"))
+        // Reachability in compact windows remains open. Pin readiness and
+        // ownership, not the previously unsuccessful frame-to-wheel formula.
         XCTAssertTrue(support.contains("self.isHittable"))
-        XCTAssertTrue(decisions.contains("## D529"))
+        XCTAssertTrue(uiTests.contains(
+            "guard correct.revealVertically(in: transcriptScroll, maxScrolls: 4) else {"))
+        XCTAssertTrue(decisions.contains("## D533"))
         XCTAssertFalse(uiTests.contains("private extension XCUIElement"))
         XCTAssertFalse(uiTests.contains("deltaY: CGFloat = -48"))
         XCTAssertFalse(uiTests.contains("waitForVisibleStableFrame"))

@@ -7535,9 +7535,11 @@ Tab traversal, then checks that the identified field value is unchanged. It
 does not click or address a key event to a field that its own popup may cover.
 Both existing and newly opened Settings windows use that boundary before
 category navigation.
-Seeded Library setup applies it only when its meeting row is not already
-hittable, after the existing foreign-keystroke query cleanup if needed. The
-normal fast path and final meeting hittability requirement remain intact.
+Seeded Library setup applies the handoff before its already-hittable row fast
+path. A real-app adversary focuses an empty search with a visible row, calls the
+actual helper, then sends a normal key and verifies that search remains empty.
+Query cleanup still applies only to the prior recovery case with no hittable
+meeting row. The final meeting hittability requirement remains intact.
 
 This avoids reopening an editor merely to close it. The earlier field click and
 field-scoped Tab both reached an app-owned interruption in real Settings
@@ -7682,7 +7684,7 @@ The retained failure is not evidence of a layout race or another app's intrusion
 
 `make test-ui-interruption-safety UI_INTERRUPTION_RESULTS=<new-private-directory>`
 builds a tiny separate app/overlay/runner target once. It uses the exact shared
-`PortavozUITestCase`, `UITestStorage`, `UITestScratch`, wait and scroll-helper sources;
+`PortavozUITestCase`, `UITestStorage`, `UITestScratch` and wait-helper sources;
 there is no copied guard implementation. Its four serial invocations distinguish:
 
 - an uninterrupted action, which must produce an observable synthetic effect;
@@ -7709,54 +7711,15 @@ the product-builder job before publishing one reusable product build. Synthetic
 fixtures request no microphone, authentication or accessibility permission.
 
 
-### Measured wheel response and compact review geometry
+### Bounded scroll evidence is separate from interruption controls
 
-`UITestScrollSupport.swift` owns the shared bounded vertical-reveal helpers. Each
-invocation observes how its own wheel input moves the same target inside an
-unchanged viewport. A finite positive response with unchanged target size and
-horizontal position converts the next requested frame displacement into wheel
-units before the existing maximum input clamp. The observation retains the
-original target/viewport geometry and the sum of its own issued input until
-movement is observed. Several events can become visible together; dividing their
-combined movement by only the final event would invent a larger response and
-make the return movement too short. Any observed geometry change retires that
-pending observation. The largest valid response is retained only for that
-invocation; viewport reflow, absent geometry and opposite motion cannot calibrate it. Stable containment plus hittability, attempt counts,
-wait deadlines and runtime budgets are unchanged. The anchor-materialization
-path still spends from the same caller-owned attempt budget.
-
-The uninterrupted synthetic control runs the actual helper against a native
-scroll view in both directions with ordinary and deliberately amplified wheel
-response, retained initial input, and deliberately discarded initial input. The
-latter adversary prevents treating every nonmoving observation as proof that the
-native view buffered an event. Each phase starts clipped, rejects zero-attempt reveal, requires
-bounded reveal, accepts an already-ready zero-attempt observation and clicks the
-exact target once. The content-free effect counter must equal the number of
-completed phases. It is an input/geometry adversary, not a claim that a physical
-Mac or hosted runner uses the fixture's amplification factor. The existing
-choice and both negative interruption controls retain their exact outcomes.
-
-The real structural-correction journey requests compact placement through the
-existing disposable-window owner before interaction. Its temporary process does
-not synthesize resize or restore gestures against rounded native corners next
-to the Dock. It retains the same compact-window and short-viewport bounds, every
-correction and undo assertion, and fails before acting when initial geometry or
-reveal readiness is not satisfied. Attached native-window tests exercise the
-real placement with large/small visible screens, a second untouched window, and
-missing or ineligible temporary-store arguments. A native controller reapplies
-placement on presentation because SwiftUI can restore the frame after initial
-attachment; a test deliberately replaces the frame between those lifecycle
-events before invoking the actual controller. The Sequoia summary-recovery
-journey verifies its exact Intelligence destination before ending search editing
-through the existing native handoff and then selecting Voice. These call-site
-proofs supplement, not replace, fresh full bilingual and exact-head hosted gates.
-
-
-Seeded-Library readiness applies that same editor handoff before the already-
-hittable meeting fast path. Search recovery still clears an unexpected query
-only when no seeded row is hittable. The recency/search journey explicitly
-focuses an empty search while its meeting is visible, invokes the real readiness
-helper and sends a normal key: the query must remain empty because editing has
-ended. It then retains the original FTS query, exact hit and player timestamp
-assertions. This fails against the former early return without needing a native
-popover or unsupported macOS focus attributes.
+The shared `UITestSupport.swift` owns the existing geometry-based bounded scroll
+helper; no measured response or pending-input accumulator is active. The
+structural-correction journey uses ordinary disposable window placement, retains
+all split/merge/hide/restore effects and stops before activation if reveal fails.
+The forced compact-window argument and calibration fixture were unqualified
+experiments, not released behavior. Their withdrawal does not establish compact
+reachability: the retained compact failure and combined dropped/amplified native
+counterexample remain open in GAPS. Four native interruption controls and the
+full real-app catalog remain separate mandatory gates, with unchanged runtime
+budgets and no retries that relabel failures. See D533.

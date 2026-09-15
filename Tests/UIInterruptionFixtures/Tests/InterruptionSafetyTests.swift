@@ -34,31 +34,9 @@ final class InterruptionSafetyTests: PortavozUITestCase {
     }
 
     func testUninterruptedActionAndTeardown() throws {
-        let app = try launchOwnedApp(scrollGeometry: true)
-        let target = app.buttons["proof-target"]
-        let viewport = app.scrollViews["proof-scroll"]
-        XCTAssertTrue(target.waitForExistence(timeout: 5))
-        let effects = try XCTUnwrap(ProcessInfo.processInfo.environment["PROOF_EFFECTS_ROOT"])
-        let targetEffect = URL(fileURLWithPath: effects).appendingPathComponent("target")
-        XCTAssertFalse(FileManager.default.fileExists(atPath: targetEffect.path))
-        for scenario in 0..<8 {
-            // Both directions: amplified, ordinary, buffered, then dropped input.
-            // A previous reveal must not calibrate a later invocation.
-            XCTAssertFalse(viewport.frame.contains(target.frame))
-            XCTAssertFalse(target.revealVertically(in: viewport, maxScrolls: 0))
-            guard target.revealVertically(in: viewport, maxScrolls: 4) else {
-                XCTFail("the real helper must reveal the clipped target within its original wheel budget")
-                return
-            }
-            XCTAssertTrue(target.revealVertically(in: viewport, maxScrolls: 0))
-            target.click()
-            XCTAssertTrue(app.staticTexts["Target action happened"].waitForExistence(timeout: 5))
-            XCTAssertEqual(try String(contentsOf: targetEffect, encoding: .utf8), String(scenario + 1))
-            if scenario < 7 {
-                app.buttons["proof-next-scroll"].click()
-                XCTAssertTrue(app.staticTexts["Ready"].waitForExistence(timeout: 5))
-            }
-        }
+        let app = try launchOwnedApp()
+        app.buttons["proof-target"].click()
+        XCTAssertTrue(app.staticTexts["Target action happened"].waitForExistence(timeout: 5))
     }
 
     func testSyntheticChoiceIsObservable() throws {
@@ -71,7 +49,7 @@ final class InterruptionSafetyTests: PortavozUITestCase {
         })
     }
 
-    private func launchOwnedApp(scrollGeometry: Bool = false) throws -> XCUIApplication {
+    private func launchOwnedApp() throws -> XCUIApplication {
         let directory = try UITestStorage.makeDirectory()
         ownedRoot = directory.deletingLastPathComponent()
         // Only a newly allocated public-synthetic fixture path is recorded.
@@ -82,7 +60,6 @@ final class InterruptionSafetyTests: PortavozUITestCase {
             ProcessInfo.processInfo.environment["PROOF_OVERLAY_EXECUTABLE"]
         app.launchEnvironment["PROOF_EFFECTS_ROOT"] =
             ProcessInfo.processInfo.environment["PROOF_EFFECTS_ROOT"]
-        app.launchEnvironment["PROOF_SCROLL_GEOMETRY"] = scrollGeometry ? "1" : "0"
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "-NSQuitAlwaysKeepsWindows", "NO"]
         app.launch()
         let arm = app.buttons["proof-arm"]

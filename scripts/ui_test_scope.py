@@ -483,7 +483,6 @@ FULL_BILINGUAL_HARNESS_FILES = frozenset({
     "Tests/PortavozUITests/UITestSupport.swift",
     "Tests/PortavozUITests/PortavozUITestCase.swift",
     "Tests/PortavozUITests/UITestWaitSupport.swift",
-    "Tests/PortavozUITests/UITestScrollSupport.swift",
     "Tests/PortavozUITests/UITestStorageSupport.swift",
     "Tests/Support/UITestScratch.swift",
 })

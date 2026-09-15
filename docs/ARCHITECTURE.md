@@ -5601,14 +5601,8 @@ resuming the interrupted event or default handler stack. It neither inspects
 nor answers the interrupting element. The execution classifier retains this as
 `evidence-failure` even after a zero-test worker restart or an exit-zero summary.
 A separate permission-free fixture target compiles the same base and cleanup
-sources. The same target also compiles `UITestScrollSupport.swift`: its ordinary
-positive action exercises bounded real wheel events under controlled native
-scroll response, rather than testing a copied geometry policy. The helper keeps
-one invocation-local observation of issued input and original geometry until a
-frame changes; the native fixture covers amplified, buffered and discarded input
-in both directions. No host factor or persistent calibration is introduced.
-Observable positive controls and synchronous/asynchronous negative controls qualify the callback
-without opening a system permission prompt.
+sources. Observable positive controls and synchronous/asynchronous negative
+controls qualify the callback without opening a system permission prompt.
 The overlay's main-queue parent-exit callback emits a separate lifecycle
 acknowledgement before exiting; process absence without it is failed cleanup,
 not success. This closes the false-positive case where a main-actor callback
@@ -5628,7 +5622,11 @@ frame restoration can overwrite a correction made at view attachment. The
 separate weak reference remains current at attachment for receipt navigation.
 The harness asserts that the Settings navigation anchor has nonnegative global
 coordinates before any journey continues. Production launches never enter this boundary and retain
-SwiftUI's saved window placement.
+SwiftUI's saved window placement. No forced compact-main-window mode or
+measured wheel-response calibration is active. The ordinary bounded UI-test
+scroll helper remains separate from interruption containment; compact-window
+reachability is an unresolved quality limitation, not qualification implied by
+the normal-window catalog.
 
 The UI runner owns atomically allocated, mode-0700 scratch under one dedicated
 system-temporary base, rather than handing its protected app-container paths
@@ -5765,13 +5763,6 @@ touch the real library or Keychain. Selected per-launch preferences enter a
 volatile injected defaults authority before the recording owner is composed;
 that owner retains the same authority, so deterministic fixtures cannot sample
 or rewrite the host's persistent Apuntador opt-in.
-
-Disposable main-window placement stays in one app-owned AppKit bridge. Its view
-tracks attachment to the exact window; its controller reapplies placement after
-native presentation, following the existing Settings lifecycle boundary. The
-compact correction fixture is an explicit temporary-store launch option, not a
-pointer gesture against native window chrome or another application's Dock.
-Normal production window placement remains SwiftUI-owned.
 
 ## Enforced engineering rules
 

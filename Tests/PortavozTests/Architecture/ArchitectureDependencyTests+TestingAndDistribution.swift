@@ -292,14 +292,16 @@ extension ArchitectureDependencyTests {
 
         XCTAssertTrue(support.contains("var candidateFrame: CGRect?"))
         XCTAssertTrue(support.contains("stableSince = Date()"))
+        XCTAssertTrue(support.contains(
+            "Date().timeIntervalSince(stableSince) >= stableInterval"))
         XCTAssertFalse(support.contains("var previousFrame: CGRect?"))
         let stableFrameStart = try XCTUnwrap(support.range(
             of: "func waitForStableFrame("))
-        let screenshotStart = try XCTUnwrap(support.range(
-            of: "extension XCTestCase",
+        let revealStart = try XCTUnwrap(support.range(
+            of: "func revealVertically(",
             range: stableFrameStart.upperBound..<support.endIndex))
         let stableFrameBody = support[
-            stableFrameStart.lowerBound..<screenshotStart.lowerBound]
+            stableFrameStart.lowerBound..<revealStart.lowerBound]
         XCTAssertFalse(stableFrameBody.contains("waitForExistenceFast"))
         XCTAssertFalse(stableFrameBody.contains("guard self.exists else"))
         let stableFrameHittable = try XCTUnwrap(stableFrameBody.range(
@@ -406,13 +408,13 @@ extension ArchitectureDependencyTests {
             "scrollSidebarRowIntoView(meeting)"))
         XCTAssertTrue(seededSettleBody.contains("XCTFail("))
 
-        let scrollSupport = try Self.contents(
-            of: "Tests/PortavozUITests/UITestScrollSupport.swift")
-        let containedFrameStart = try XCTUnwrap(scrollSupport.range(
+        let containedFrameStart = try XCTUnwrap(support.range(
             of: "private func waitForStableContainedFrame("))
-        let containedFrameBody = scrollSupport[containedFrameStart.lowerBound...]
-        XCTAssertTrue(containedFrameBody.contains(
-            "Date().timeIntervalSince(stableSince) >= stableInterval"))
+        let screenshotStart = try XCTUnwrap(support.range(
+            of: "extension XCTestCase",
+            range: containedFrameStart.upperBound..<support.endIndex))
+        let containedFrameBody = support[
+            containedFrameStart.lowerBound..<screenshotStart.lowerBound]
         XCTAssertTrue(containedFrameBody.contains(
             "let stableProbeInterval = stableInterval > 0 ? stableInterval : 0.05"))
         XCTAssertTrue(containedFrameBody.contains(

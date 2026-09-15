@@ -28,7 +28,6 @@ SOURCE_PATHS = (
     "Tests/PortavozUITests/PortavozUITestCase.swift",
     "Tests/PortavozUITests/UITestStorageSupport.swift",
     "Tests/PortavozUITests/UITestWaitSupport.swift",
-    "Tests/PortavozUITests/UITestScrollSupport.swift",
     "Tests/Support/UITestScratch.swift",
 )
 CASES = {

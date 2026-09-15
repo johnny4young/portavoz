@@ -19617,8 +19617,10 @@ pre-setup noise, exact and one-millisecond-over budget boundaries, failed cases,
 and invalid activity shapes. Reprocessing an old result is diagnostic evidence,
 not a replacement for fresh full-catalog qualification of the final source.
 
-
 ## D529 — Measure wheel response without weakening interaction readiness
+
+**Historical experiment — withdrawn by D533.** The decision below records the
+unqualified candidate, not the current implementation or successful qualification.
 
 **Context:** D426 correctly requires stable containment and hittability, but its
 frame-distance-to-wheel conversion can oscillate across a short transcript
@@ -19660,6 +19662,9 @@ interruption from its frame or waive the resulting failed invocation.
 
 ## D530 — Own compact fixture geometry instead of dragging native chrome
 
+**Historical experiment — withdrawn by D533.** The decision below records the
+unqualified candidate, not the current implementation or successful qualification.
+
 **Context:** the structural-correction journey's corner drag can hit the Dock
 beside a rounded window instead of the resize border. A native recording showed
 an unrelated application icon being dragged while the window stayed large.
@@ -19687,6 +19692,9 @@ wheel limit, time budget, retry policy or production transcript behavior changes
 
 ## D531 — Attribute observed scroll movement to all pending input
 
+**Historical experiment — withdrawn by D533.** The decision below records the
+unqualified candidate, not the current implementation or successful qualification.
+
 **Context:** a compact correction journey can show no displacement for one or
 more wheel events, then overshoot the source control. The bounded helper divided
 the next frame change by only the latest input. A native call-site adversary
@@ -19709,3 +19717,36 @@ host multiplier or a larger retry budget. Buffering is an adversarial delivery
 shape, not a claim about undocumented macOS internals. Real compact correction
 journeys and fresh full bilingual/exact-head hosted qualification remain
 required; earlier failed invocations are never relabeled by later passing totals.
+
+## D533 — Separate interruption containment from unqualified scroll calibration
+
+**Context:** measured wheel response and pending-input attribution did not
+qualify the compact real-app correction journey. A later native counterexample
+combined dropped initial events with amplified delivery: the original eight
+phases reached their exact effects, but the first combined phase failed the
+unchanged helper's bounded reveal. Passing the separate delivery shapes did not
+establish that their composition was safe. These are harness reachability
+failures, not evidence that a transcript mutation lost data.
+
+**Decision:** withdraw the wheel-calibration, pending-input and forced-compact
+fixture experiments from the interruption-safety change. Preserve their source
+and failed counterexamples separately and retain D529–D531 as historical,
+unqualified decisions. The current helper returns to the existing bounded
+geometry policy; no multiplier, extra attempt, time allowance, automatic retry
+or product scroll behavior is introduced. This is not a repair or qualification
+of compact-window reachability.
+
+Keep the independent content-blind interruption guard, actor-owned teardown
+acknowledgement, receipt accounting and native-editor handoffs. In particular,
+an already-hittable Library row must not bypass the search-editor handoff; its
+real-app normal-key adversary remains. Settings recovery also retains its editor
+handoff, and a failed transcript reveal stops before clicking. Removing an
+experiment does not justify removing an independently demonstrated repair.
+
+**Consequences:** the ordinary real-app catalog and its correction effects remain
+required. The interruption fixture returns to four positive/negative controls
+that test the real guard and owned cleanup; it no longer claims to qualify wheel
+delivery. Compact geometry and composed delivery-shape evidence remain an open
+quality gap. Fresh native controls, full bilingual product runs and exact-head
+CI are required for the narrower change. A passing ordinary-window catalog must
+not be presented as closure of the retained compact failures.

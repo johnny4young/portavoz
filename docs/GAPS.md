@@ -125,19 +125,26 @@ cleanup evidence. The corrected main-queue callback must also acknowledge its
 execution; fresh controlled and hosted qualification is required. Notification
 Center metadata alone still cannot attribute a hosted alert to that crash.
 
-### Remaining UI interaction boundaries are not qualified by earlier full passes
+### Compact-window scroll reachability remains unqualified
 
-A hosted Spanish structural-correction journey exhausted its bounded vertical
-reveal attempts before the target passed containment and hittability. The next
-native click performed its own additional reveal and the remaining workflow
-assertions passed. Retained frames show a short transcript viewport with clipped
-rows; the helper's fixed wheel steps did not establish a stable actionable target.
-This is not proof that a larger attempt count or delay fixes the mechanism.
-A native scroll-view adversary now reproduces the old helper's oscillation and
-exercises measured wheel-response conversion (D529). Compact real-app coverage
-retains the failed assertion and existing runtime limits. Fresh full bilingual
-and replacement-head hosted qualification are still required; the synthetic
-amplification factor is not a measurement of the hosted runner.
+The ordinary bounded `revealVertically` helper can fail to reveal a correction
+control in a short transcript viewport. Wheel-response calibration and
+pending-input attribution were withdrawn after a compact real-app failure and
+a native counterexample combining dropped input with amplified delivery. The
+individual native delivery shapes passed; the combined shape did not. Neither
+an aggregate pass count nor a restored ordinary window closes this limitation.
+
+The interruption-safety harness retains the original real-app catalog and all
+correction effects but does not force the experimental compact geometry. Its
+four native controls qualify interruption containment and owned cleanup only,
+not scrolling. The rejected experiment and failed evidence remain separate;
+a future repair must reproduce compact geometry safely, reach the actual helper,
+include composed delivery shapes and retain the existing finite interaction
+budgets. Do not infer that the underlying transcript write path is defective
+from a harness failure before activation, or claim physical macOS coverage from
+the ordinary-window catalog. See D533 for the separation boundary.
+
+### Native editor entry points retain independent evidence
 
 A separate local Spanish journey reached Intelligence Settings through summary
 failure recovery, then hit an app-owned interruption when selecting Voice. This
@@ -684,29 +691,3 @@ Backend queue backpressure and exception-path cancellation draining remain
 unverified risks, not newly reproduced product defects. Preserve the failed
 receipt and unchanged stability thresholds; do not replace this gap with a
 retry-until-green candidate or a synthetic unit-test claim.
-
-## Compact transcript correction interaction qualification
-
-D529's native response fixture does not yet establish reliable reveal of every
-real compact transcript action. A subsequent Spanish correction journey failed
-its initial stable-containment proof after four bounded wheel events in a
-78-point viewport. The original source button remained clipped above that
-viewport; its editor never opened. No external interruption or product crash is
-established by that failure. Preserve the result and reproduce the actual call
-site before changing the wheel mechanism; more retries or looser bounds would
-not close this gap.
-
-D530 separately replaces unsafe native-corner dragging in compact fixture setup
-with the existing temporary-window owner. That repair must retain its native
-window and real-app geometry proofs, but does not resolve the wheel failure or
-replace complete bilingual qualification of the final candidate.
-
-
-A subsequent structural-correction failure passed its compact-window setup but
-still exhausted the initial reveal before opening the editor. D531 addresses a
-separately reproduced measurement error: movement reflecting several issued
-wheel inputs was attributed to only the final event. Native buffered/discarded
-input adversaries supplement the actual correction call sites; they do not
-establish undocumented host behavior or retrospectively qualify either failed
-run. Fresh cumulative and exact-head hosted evidence is still required before
-closing the compact-interaction qualification gap.
