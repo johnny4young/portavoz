@@ -718,15 +718,15 @@ acquisition is nonblocking, but that does not make directory creation, bookmark
 resolution or file I/O nonblocking. Physical permission/removable-volume behavior
 remains separate from deterministic local-file tests.
 
-Some shared real-app fixtures still use runner-owned audio or database paths.
-On macOS hosts that protect one app's container from another, seed generation
-can wait inside filesystem creation before its journey reaches product actions.
-A full run stopped at that boundary is not successful UI or timing
-qualification. The import journeys separate app-owned destinations from
-explicitly selected runner-owned source audio; changing that one feature's
-fixture does not certify the older cross-process fixtures. Their ownership
-contract needs a separate, complete repair without widening sandbox
-entitlements or dropping their real storage assertions.
+Shared real-app fixtures now use the explicit D523 scratch owner, and import
+fixtures retain its database/audio paths rather than assigning unowned temporary
+destinations. Sources use that owner too. Actual import teardown assertions check
+their removal after the app exits. Earlier full runs stopped by protected
+runner-container access remain invalid; a later ownership repair does not
+retroactively qualify them. Cumulative import qualification must retain the
+original functional and timing budgets, native picker, relaunch and storage
+assertions. A focused import success does not establish the separate compact
+correction interaction described below.
 
 ## Compact transcript correction interaction qualification
 

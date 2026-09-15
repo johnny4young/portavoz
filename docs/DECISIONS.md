@@ -19612,6 +19612,15 @@ activities, malformed child metadata, or subsequent top-level work retains the
 reported case duration. A normalized real activity tree and an adversarial CLI
 budget reproduce the false pass. No timeout, retry or budget is relaxed.
 
+The import fixture must keep this ownership at its real app-factory call site.
+Raw database/audio overrides completed the relaunch workflow but left both
+artifacts outside teardown; new post-teardown assertions reproduced that leak.
+Retain the factory's paths and allocate synthetic selection files through the
+same owner. Cleanup joins app exit before removing sources, including unexpected
+interruption exits where method-level defers do not run. All native picker,
+multi-file, cancellation, retry and missing-original assertions remain; shorter
+fixture paths are not evidence of faster ASR or import processing.
+
 
 ## D527 — Unexpected UI interruptions stop the test, not decide consent
 
