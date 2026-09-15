@@ -7924,10 +7924,14 @@ bilingual aggregate limit are unchanged. The catalogue owns their import scope.
 
 Native open-panel file selection uses the panel's List view and Select All
 command; read-only filename text fields are not treated as clickable controls.
-The runner owns the synthetic source directory and selects it explicitly. Audio
-destination is a unique `/private/tmp/portavoz-import-owned-*` directory created
-only by the nonsandboxed app, not a write by the sandboxed runner. Supplying
-`TMPDIR` does not itself grant an app access to another app's protected container.
+The runner allocates synthetic sources through `UITestStorage` and selects them
+explicitly. The app factory supplies the same owner's database, audio destination
+and process temporary root; import fixtures do not override those paths. Shared
+teardown joins app exit before removing its tree, including interruption exits
+where a method's deferred removal would not run. Every import journey checks that
+its source directory, database, audio destination and process root are absent
+after the real shared teardown. The former raw app-path overrides passed the
+relaunch workflow but left both SQLite and copied audio behind at that boundary.
 No test changes TCC grants or runner entitlements.
 
 The cancellation journey rejects one cancel at the app client boundary; the
@@ -7940,9 +7944,9 @@ temporary-store and import-fixture flags. Relaunch terminates after copy
 publication and removes the synthetic original, then advances only the worker's
 injected clock beyond the dead owner's lease. The same meeting is completed
 without reselecting the source. Natural lease timing and ASR quality are not
-claims of that journey. Its database is app-owned under `/private/tmp`, avoiding
-startup reads inside the runner's protected container; tests make no external
-SQL writes or database-polling reads.
+claims of that journey. Its database uses the explicitly shared scratch rather
+than the runner's protected container; tests make no external SQL writes or
+database-polling reads.
 
 Import assertions scope row/action queries to the actual queue panel. The
 completion count is matched by identifier and localized label/value in one

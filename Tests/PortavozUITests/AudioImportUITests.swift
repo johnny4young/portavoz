@@ -4,11 +4,20 @@ import XCTest
 /// Synthetic PCM is decoded and copied for real, but recognition is scripted.
 /// This exercises the native picker → admission → worker → queue → meeting route.
 final class AudioImportUITests: PortavozUITestCase {
+    private var ownedArtifacts: [URL] = []
+
+    override func tearDown() async throws {
+        try await super.tearDown()
+        for artifact in ownedArtifacts {
+            XCTAssertFalse(FileManager.default.fileExists(atPath: artifact.path),
+                           "Synthetic import files must leave with their test owner")
+        }
+    }
+
     @MainActor
     func testMultipleAudioFilesReachPagedQueueAndOpenTheirMeeting() throws {
         let folder = try makeAudioSelection(count: 21)
-        defer { try? FileManager.default.removeItem(at: folder) }
-        let app = fixtureApp()
+        let app = try fixtureApp()
         app.launchPortavoz()
         defer { app.terminate() }
         chooseAudio(in: folder.appendingPathComponent("selection"), app: app)
@@ -38,8 +47,7 @@ final class AudioImportUITests: PortavozUITestCase {
     @MainActor
     func testCancelOneImportContinuesTheNextAndExplicitRetryReusesTheQueue() throws {
         let folder = try makeAudioSelection(count: 2)
-        defer { try? FileManager.default.removeItem(at: folder) }
-        let app = fixtureApp(holdFirst: true)
+        let app = try fixtureApp(holdFirst: true)
         app.launchArguments.append("-audio-import-fail-mutations-once")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -75,8 +83,7 @@ final class AudioImportUITests: PortavozUITestCase {
     @MainActor
     func testRelaunchResumesPublishedAudioWithoutTheSelectedOriginals() throws {
         let folder = try makeAudioSelection(count: 1)
-        defer { try? FileManager.default.removeItem(at: folder) }
-        let app = fixtureApp(holdFirst: true)
+        let app = try fixtureApp(holdFirst: true)
         app.launchPortavoz()
         defer { app.terminate() }
         chooseAudio(in: folder.appendingPathComponent("selection"), app: app)
@@ -135,14 +142,12 @@ final class AudioImportUITests: PortavozUITestCase {
     }
 
     @MainActor
-    private func fixtureApp(holdFirst: Bool = false) -> XCUIApplication {
-        let app = XCUIApplication.portavoz()
+    private func fixtureApp(holdFirst: Bool = false) throws -> XCUIApplication {
+        let app = try XCUIApplication.portavoz()
         app.launchArguments.append("-audio-import-ui-fixture")
-        app.launchEnvironment["PORTAVOZ_UI_TEST_DATABASE_PATH"] =
-            "/private/tmp/portavoz-import-db-" + UUID().uuidString + ".sqlite"
-        // Only the nonsandboxed app creates this destination. The sandboxed
-        // runner creates sources in its own container and grants selection.
-        app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] = "/private/tmp/portavoz-import-owned-" + UUID().uuidString
+        for key in ["TMPDIR", "PORTAVOZ_UI_TEST_DATABASE_PATH", "PORTAVOZ_AUDIO_ROOT"] {
+            ownedArtifacts.append(URL(fileURLWithPath: try XCTUnwrap(app.launchEnvironment[key])))
+        }
         if holdFirst { app.launchArguments.append("-audio-import-hold-first") }
         return app
     }
@@ -172,10 +177,10 @@ final class AudioImportUITests: PortavozUITestCase {
     }
 
     private func makeAudioSelection(count: Int) throws -> URL {
-        // The sandboxed runner owns source files; NSOpenPanel grants their
-        // explicit selection to the app. Only the app creates its destination.
-        let folder = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("portavoz-import-ui-" + UUID().uuidString)
+        // One owner joins app exit before removing originals and copied audio,
+        // including interruption exits where a method's defer cannot run.
+        let folder = try UITestStorage.makeDirectory()
+        ownedArtifacts.append(folder)
         let selection = folder.appendingPathComponent("selection")
         try FileManager.default.createDirectory(at: selection, withIntermediateDirectories: true)
         let format = try XCTUnwrap(AVAudioFormat(standardFormatWithSampleRate: 16_000, channels: 1))
