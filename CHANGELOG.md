@@ -31,6 +31,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
 - **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
 
+## September 12, 2026
+
+- **⌨️ Reliable dictation shortcuts** — recover unavailable shortcuts and keep on-screen help in sync with your chosen keys.
+
 ## September 10, 2026
 
 - **💾 Safer live notes and objectives** — accepted changes survive interrupted recordings, and failed saves keep your input available to retry.

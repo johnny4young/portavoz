@@ -21,7 +21,7 @@ struct DictationSection: View {
                         services: services, promptIfNeeded: enabled)
                 }
             if enabled {
-                HotkeyRecorder {
+                DictationShortcutSettings(shortcut: services.dictation.shortcut) {
                     services.dictation.syncHotkey(services: services)
                 }
                 MouseButtonRecorder {
@@ -39,9 +39,7 @@ struct DictationSection: View {
                 DictationDictionaryEditor()
             }
             Text(
-                // One-line UI help text.
-                // swiftlint:disable:next line_length
-                "Press ⌥⌘D in any app, speak, press it again: your words are typed where your cursor is — transcribed on this Mac with your custom vocabulary, never stored. Inserting text needs the Accessibility permission (macOS asks on first use)."
+                "Dictation stays on this Mac and is not stored. Inserting text requires Accessibility permission."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
