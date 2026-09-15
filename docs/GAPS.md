@@ -753,8 +753,9 @@ admission remain part of those unchanged journey budgets; total case duration
 is not an import-worker or ASR latency measurement. Consolidating queue queries
 does not establish a processing speedup or resolve these timing findings.
 Physical power loss, removable-volume TCC behavior and
-real-model throughput remain separate evidence. Required Whisper and D46's
-preparation contract are not replaced by live first-pass recovery.
+real-model throughput remain separate evidence. Required Whisper recognition
+is not replaced by live first-pass recovery; speaker preparation is optional
+under D532.
 
 A missing/changed original before copy publication leaves staged bytes intact
 but cannot certify their source. Only published audio resumes without the original.
@@ -777,5 +778,4 @@ runner-container access remain invalid; a later ownership repair does not
 retroactively qualify them. Cumulative import qualification must retain the
 original functional and timing budgets, native picker, relaunch and storage
 assertions. A focused import success does not establish the separate compact
-correction interaction described below.
-
+correction interaction recorded elsewhere in this document.

@@ -127,8 +127,8 @@ public struct ImportMeetingRequest: Sendable {
     }
 }
 
-/// Imports one external recording while preserving the released synchronous
-/// UX, language policies, best-effort derivation, and idle-release behavior.
+/// Imports one external recording with required recognition, optional speaker
+/// attribution and summary, independent language policies and joined release.
 /// Copied audio is staged until the meeting, cast, and transcript commit.
 public struct ImportMeeting: ApplicationUseCase {
     private let audioFiles: any ImportMeetingAudioFiles
@@ -174,7 +174,6 @@ public struct ImportMeeting: ApplicationUseCase {
             await request.progress(.preparingModels)
             try await processor.prepareTranscriber(progress: request.progress)
             do {
-                try await processor.prepareDiarizer()
                 let content = try await importedContent(
                     meetingID: meetingID,
                     audio: audio,
@@ -226,8 +225,20 @@ public struct ImportMeeting: ApplicationUseCase {
             languageHint: preferences.transcriptLanguage.languageHint,
             vocabulary: preferences.vocabulary)
         await progress(.identifyingSpeakers)
-        _ = try? await processor.prepareDiarizer()
-        let turns = (try? await processor.diarize(audio: audio)) ?? []
+        let turns: [SpeakerTurn]
+        do {
+            try Task.checkCancellation()
+            try await processor.prepareDiarizer()
+            try Task.checkCancellation()
+            turns = try await processor.diarize(audio: audio)
+        } catch {
+            // Optional capability failure preserves the recognized words, but
+            // cancellation is not permission to publish an unattributed result.
+            try Task.checkCancellation()
+            if error is CancellationError { throw error }
+            turns = []
+        }
+        try Task.checkCancellation()
         let attribution = SpeakerAttributor.attribute(
             segments: transcription.segments.sorted { $0.startTime < $1.startTime },
             turns: turns,

@@ -19976,6 +19976,38 @@ shape, not a claim about undocumented macOS internals. Real compact correction
 journeys and fresh full bilingual/exact-head hosted qualification remain
 required; earlier failed invocations are never relabeled by later passing totals.
 
+
+## D532 — Keep optional speaker preparation out of required import recognition
+
+**Context:** the external-audio workflow still required a first diarizer load
+before transcription, then repeated that preparation best-effort afterward.
+The transcription spec and characterization tests preserved this legacy D46
+behavior, while broader app and architecture descriptions called attribution
+optional. A missing speaker model therefore failed admitted imports without
+attempting usable recognition. A real file/SQLite worker counterexample showed
+both English and Spanish jobs failed with empty transcripts despite an available
+recognizer. The old test count of two preparations per import froze the defect.
+
+**Decision:** replace that required-first contract. Prepare the required
+recognizer, transcribe, then acquire the optional diarizer exactly once. Failed
+optional preparation or attribution yields no speaker turns, preserving the
+recognized words and normal publication. Do not call an unprepared capability.
+Explicit or task cancellation in either optional phase still escapes before
+publication and joins the existing release/owned-audio cleanup path. Check task
+cancellation after each optional await as well as on error: a native capability
+can return normally after its task was cancelled. The real use-case adversary
+cancels the task inside each capability without throwing; thrown-error tests
+alone did not detect the late publication.
+
+**Consequences:** required recognition, independent language policies, atomic
+publication, immutable original audio, lease ownership, summary policy and
+macOS deployment floor remain unchanged. No model, network default, second ASR
+pass or fallback speaker identity is added. Existing call-site tests now cover
+missing preparation, both languages, silence and cancellation; the existing
+native multiple-import journey exercises the preparation fault rather than only
+an already prepared engine returning empty turns. Scripted recognition and
+synthetic files do not establish physical model quality or performance.
+
 ## D533 — Separate interruption containment from unqualified scroll calibration
 
 **Context:** measured wheel response and pending-input attribution did not

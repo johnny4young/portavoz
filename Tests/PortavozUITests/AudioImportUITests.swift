@@ -18,14 +18,19 @@ final class AudioImportUITests: PortavozUITestCase {
     func testMultipleAudioFilesReachPagedQueueAndOpenTheirMeeting() throws {
         let folder = try makeAudioSelection(count: 21)
         let app = try fixtureApp()
+        // The entire queue must still finish when optional model preparation
+        // fails, not merely when an already prepared diarizer returns no turns.
+        app.launchArguments.append("-audio-import-diarizer-unavailable")
         app.launchPortavoz()
         defer { app.terminate() }
-        chooseAudio(in: folder.appendingPathComponent("selection"), app: app)
+        guard chooseAudio(in: folder.appendingPathComponent("selection"), app: app) else { return }
         let panel = app.control(withIdentifier: "import-queue-panel")
         XCTAssertTrue(panel.waitForExistenceFast(timeout: 15))
         let expected = UITestLocale.environmentLocale == "es"
             ? "21 importaciones · 0 sin terminar" : "21 imports · 0 unfinished"
         XCTAssertTrue(queueCount(expected, in: panel).waitForExistenceFast(timeout: 30))
+        let completed = panel.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "import-queue-open-"))
+        XCTAssertEqual(completed.count, 20, "Every first-page import must publish a readable meeting")
         let next = panel.buttons["import-queue-next"]
         let previous = panel.buttons["import-queue-previous"]
         XCTAssertFalse(previous.isEnabled)
@@ -33,10 +38,11 @@ final class AudioImportUITests: PortavozUITestCase {
         next.click()
         XCTAssertTrue(previous.waitForEnabled(timeout: 5))
         XCTAssertFalse(next.isEnabled)
+        XCTAssertEqual(completed.count, 1, "The last import must also publish without speaker models")
         previous.click()
         panel.buttons["import-queue-close"].click()
         app.buttons["library-import-queue-open"].click()
-        let open = panel.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "import-queue-open-")).firstMatch
+        let open = completed.firstMatch
         XCTAssertTrue(open.waitForExistenceFast(timeout: 5))
         open.click()
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "No envíes 2.")).firstMatch
@@ -51,7 +57,7 @@ final class AudioImportUITests: PortavozUITestCase {
         app.launchArguments.append("-audio-import-fail-mutations-once")
         app.launchPortavoz()
         defer { app.terminate() }
-        chooseAudio(in: folder.appendingPathComponent("selection"), app: app)
+        guard chooseAudio(in: folder.appendingPathComponent("selection"), app: app) else { return }
         let panel = app.control(withIdentifier: "import-queue-panel")
         XCTAssertTrue(panel.waitForExistenceFast(timeout: 15))
         let state = panel.staticTexts.matching(NSPredicate(
@@ -86,7 +92,7 @@ final class AudioImportUITests: PortavozUITestCase {
         let app = try fixtureApp(holdFirst: true)
         app.launchPortavoz()
         defer { app.terminate() }
-        chooseAudio(in: folder.appendingPathComponent("selection"), app: app)
+        guard chooseAudio(in: folder.appendingPathComponent("selection"), app: app) else { return }
         let panel = app.control(withIdentifier: "import-queue-panel")
         XCTAssertTrue(panel.waitForExistenceFast(timeout: 15))
         let state = panel.staticTexts.matching(NSPredicate(
@@ -153,7 +159,7 @@ final class AudioImportUITests: PortavozUITestCase {
     }
 
     @MainActor
-    private func chooseAudio(in folder: URL, app: XCUIApplication) {
+    private func chooseAudio(in folder: URL, app: XCUIApplication) -> Bool {
         app.buttons["library-import-audio-button"].click()
         app.typeKey("g", modifierFlags: [.command, .shift])
         let path = app.textFields.firstMatch
@@ -165,15 +171,26 @@ final class AudioImportUITests: PortavozUITestCase {
         let first = app.textFields.matching(NSPredicate(format: "value == %@", "Audio 00.wav")).firstMatch
         guard first.waitForExistenceFast(timeout: 5) else {
             XCTFail("The native picker did not reach the selected synthetic audio folder")
-            return
+            return false
         }
         // The modal panel already owns keyboard focus after Go to Folder.
         // Select its files with the native command; read-only AX name fields
         // are not clickable controls even when their frames are visible.
         app.typeKey("a", modifierFlags: .command)
-        let confirm = app.buttons["OKButton"]
-        XCTAssertTrue(confirm.waitForEnabled(timeout: 5))
-        confirm.click()
+        let picker = app.dialogs["open-panel"]
+        guard picker.buttons["OKButton"].waitForEnabled(timeout: 5) else {
+            XCTFail("The native picker did not enable import for its selected audio")
+            return false
+        }
+        // Complete the keyboard-owned selection with its native default action.
+        // An enabled XPC button can lack a usable click activation point; do not
+        // repeat submission or mistake an open picker for worker progress.
+        app.typeKey(.return, modifierFlags: [])
+        guard picker.waitForDisappearance(timeout: 5) else {
+            XCTFail("The native picker did not acknowledge the import selection")
+            return false
+        }
+        return true
     }
 
     private func makeAudioSelection(count: Int) throws -> URL {

@@ -34,8 +34,8 @@ final class ImportMeetingUseCaseTests: XCTestCase {
             .generatingSummary,
         ])
         XCTAssertEqual(state.events, [
-            "preferences", "copy", "prepare-transcriber", "prepare-diarizer-1",
-            "transcribe", "prepare-diarizer-2", "diarize", "install",
+            "preferences", "copy", "prepare-transcriber",
+            "transcribe", "prepare-diarizer", "diarize", "install",
             "summarize", "save-summary", "release",
         ])
         XCTAssertEqual(state.copiedSource, fixture.source)
@@ -123,24 +123,6 @@ final class ImportMeetingUseCaseTests: XCTestCase {
         XCTAssertNil(state.installed?.meeting.language)
         XCTAssertEqual(state.summaryRequest?.targetLanguage, "es")
         XCTAssertTrue(state.installed?.segments.allSatisfy { $0.speakerID == nil } == true)
-    }
-
-    func testDiarizerReloadFailureStillUsesAnAvailableEngine() async throws {
-        let fixture = ImportFixture()
-        let dependencies = ImportDependencies(
-            transcription: fixture.spanishTranscription,
-            failures: [.secondDiarizerPreparation])
-
-        let meetingID = try await fixture.useCase(dependencies: dependencies)(
-            fixture.request(dependencies: dependencies))
-
-        let state = await dependencies.state()
-        XCTAssertEqual(meetingID, fixture.meetingID)
-        XCTAssertEqual(state.installed?.speakers.map(\.label), ["S1"])
-        XCTAssertTrue(state.installed?.segments.allSatisfy { $0.speakerID != nil } == true)
-        XCTAssertTrue(state.events.contains("diarize"))
-        XCTAssertEqual(state.releaseCount, 1)
-        XCTAssertTrue(state.discardedAudio.isEmpty)
     }
 
     func testDiarizationFailureDegradesToUnattributedTranscript() async throws {
@@ -256,21 +238,66 @@ final class ImportMeetingUseCaseTests: XCTestCase {
         XCTAssertNil(state.installed)
     }
 
-    func testRequiredDiarizerPreparationFailureDiscardsCopyAndSchedulesRelease() async {
+    func testDiarizerPreparationFailureKeepsRecognizedWordsWithoutInventingSpeakers() async throws {
         let fixture = ImportFixture()
-        let dependencies = ImportDependencies(
-            transcription: fixture.spanishTranscription,
-            failures: [.firstDiarizerPreparation])
-
-        await XCTAssertThrowsErrorAsync {
-            _ = try await fixture.useCase(dependencies: dependencies)(
+        let silent = FileTranscription(text: "", segments: [], audioDuration: 8, processingTime: 0)
+        let cases = [(fixture.spanishTranscription, [
+            "Primero revisamos el presupuesto.", "Después acordamos el lanzamiento.",
+        ]), (silent, [])]
+        for (transcription, expected) in cases {
+            let dependencies = ImportDependencies(transcription: transcription, failures: [.diarizerPreparation])
+            let result = try await fixture.useCase(dependencies: dependencies)(
                 fixture.request(dependencies: dependencies))
-        }
 
-        let state = await dependencies.state()
-        XCTAssertEqual(state.discardedAudio, [fixture.audio])
-        XCTAssertEqual(state.releaseCount, 1)
-        XCTAssertNil(state.installed)
+            let state = await dependencies.state()
+            XCTAssertEqual(result, fixture.meetingID)
+            XCTAssertEqual(state.installed?.segments.map(\.text), expected)
+            XCTAssertTrue(state.installed?.speakers.isEmpty == true)
+            XCTAssertFalse(state.events.contains("diarize"), "Do not invoke an unprepared capability")
+            XCTAssertTrue(state.discardedAudio.isEmpty)
+            XCTAssertEqual(state.releaseCount, 1)
+        }
+    }
+
+    func testCancellationDuringOptionalAttributionCannotPublish() async {
+        let fixture = ImportFixture()
+        for failure in [ImportFailure.diarizerPreparationCancellation, .diarizationCancellation] {
+            let dependencies = ImportDependencies(transcription: fixture.spanishTranscription, failures: [failure])
+            do {
+                _ = try await fixture.useCase(dependencies: dependencies)(
+                    fixture.request(dependencies: dependencies))
+                XCTFail("Cancellation must not become successful degraded attribution")
+            } catch { XCTAssertTrue(error is CancellationError) }
+
+            let state = await dependencies.state()
+            XCTAssertTrue(state.events.contains("transcribe"))
+            XCTAssertEqual(state.events.contains("diarize"), failure == .diarizationCancellation)
+            XCTAssertNil(state.installed)
+            XCTAssertEqual(state.discardedAudio, [fixture.audio])
+            XCTAssertEqual(state.releaseCount, 1)
+        }
+    }
+
+    func testCancelledOptionalCapabilityReturningNormallyCannotPublish() async {
+        let fixture = ImportFixture()
+        for failure in [ImportFailure.diarizerPreparationTaskCancellation, .diarizationTaskCancellation] {
+            let dependencies = ImportDependencies(transcription: fixture.spanishTranscription, failures: [failure])
+            // Cancel the child task without throwing from the capability: native
+            // operations may finish successfully after cancellation is requested.
+            let task = Task {
+                try await fixture.useCase(dependencies: dependencies)(fixture.request(dependencies: dependencies))
+            }
+            do {
+                _ = try await task.value
+                XCTFail("A cancelled import must not publish a late successful capability result")
+            } catch { XCTAssertTrue(error is CancellationError) }
+
+            let state = await dependencies.state()
+            XCTAssertEqual(state.events.contains("diarize"), failure == .diarizationTaskCancellation)
+            XCTAssertNil(state.installed)
+            XCTAssertEqual(state.discardedAudio, [fixture.audio])
+            XCTAssertEqual(state.releaseCount, 1)
+        }
     }
 
     func testTranscriptionOrStorageFailureRollsBackCopiedAudio() async {
@@ -516,10 +543,13 @@ private struct ImportFixture: Sendable {
 
 private enum ImportFailure: Hashable, Sendable {
     case transcriberPreparation
-    case firstDiarizerPreparation
-    case secondDiarizerPreparation
+    case diarizerPreparation
+    case diarizerPreparationCancellation
+    case diarizerPreparationTaskCancellation
     case transcription
     case diarization
+    case diarizationCancellation
+    case diarizationTaskCancellation
     case aggregatePersistence
     case summaryUnavailable
     case summaryGeneration
@@ -568,7 +598,6 @@ private actor ImportDependencies:
     private var copiedSource: URL?
     private var discardedAudio: [ImportedMeetingAudio] = []
     private var discardAttempts = 0
-    private var diarizerPreparations = 0
     private var transcriptionLanguageHint: String?
     private var transcriptionVocabulary: [String] = []
     private var installed: InstalledImport?
@@ -632,14 +661,10 @@ private actor ImportDependencies:
     }
 
     func prepareDiarizer() throws {
-        diarizerPreparations += 1
-        events.append("prepare-diarizer-\(diarizerPreparations)")
-        if diarizerPreparations == 1, failures.contains(.firstDiarizerPreparation) {
-            throw ImportDependencyError()
-        }
-        if diarizerPreparations == 2, failures.contains(.secondDiarizerPreparation) {
-            throw ImportDependencyError()
-        }
+        events.append("prepare-diarizer")
+        if failures.contains(.diarizerPreparation) { throw ImportDependencyError() }
+        if failures.contains(.diarizerPreparationCancellation) { throw CancellationError() }
+        if failures.contains(.diarizerPreparationTaskCancellation) { withUnsafeCurrentTask { $0?.cancel() } }
     }
 
     func transcribe(
@@ -658,6 +683,8 @@ private actor ImportDependencies:
     func diarize(audio: ImportedMeetingAudio) throws -> [SpeakerTurn] {
         events.append("diarize")
         if failures.contains(.diarization) { throw ImportDependencyError() }
+        if failures.contains(.diarizationCancellation) { throw CancellationError() }
+        if failures.contains(.diarizationTaskCancellation) { withUnsafeCurrentTask { $0?.cancel() } }
         return turns
     }
 

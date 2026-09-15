@@ -10,6 +10,7 @@ import TranscriptionKit
 /// select this processor or disable its configured summary provider.
 actor AudioImportUITestFixture: ImportMeetingProcessor, ImportMeetingSummaryProviderResolver {
     private let holdsFirst: Bool
+    private let diarizerUnavailable: Bool
     private var attempts = 0
     private var rejectsCancellation: Bool
     private var rejectsDeletion: Bool
@@ -19,12 +20,14 @@ actor AudioImportUITestFixture: ImportMeetingProcessor, ImportMeetingSummaryProv
         guard arguments.contains("-use-temp-store"), arguments.contains("-audio-import-ui-fixture") else { return nil }
         return AudioImportUITestFixture(
             holdsFirst: arguments.contains("-audio-import-hold-first"),
+            diarizerUnavailable: arguments.contains("-audio-import-diarizer-unavailable"),
             rejectsMutations: arguments.contains("-audio-import-fail-mutations-once"),
             clockOffset: arguments.contains("-audio-import-expired-owner") ? 121 : 0)
     }
 
-    private init(holdsFirst: Bool, rejectsMutations: Bool, clockOffset: TimeInterval) {
+    private init(holdsFirst: Bool, diarizerUnavailable: Bool, rejectsMutations: Bool, clockOffset: TimeInterval) {
         self.holdsFirst = holdsFirst
+        self.diarizerUnavailable = diarizerUnavailable
         rejectsCancellation = rejectsMutations
         rejectsDeletion = rejectsMutations
         self.clockOffset = clockOffset
@@ -43,7 +46,9 @@ actor AudioImportUITestFixture: ImportMeetingProcessor, ImportMeetingSummaryProv
     }
 
     func prepareTranscriber(progress: @escaping ImportMeetingProgressHandler) {}
-    func prepareDiarizer() {}
+    func prepareDiarizer() throws {
+        if diarizerUnavailable { throw AudioImportFixtureError.diarizerUnavailable }
+    }
 
     func transcribe(audio: ImportedMeetingAudio, meetingID: MeetingID,
                     languageHint: String?, vocabulary: [String]) async throws -> FileTranscription {
@@ -61,3 +66,5 @@ actor AudioImportUITestFixture: ImportMeetingProcessor, ImportMeetingSummaryProv
     func scheduleIdleRelease() {}
     func resolveImportMeetingSummaryProvider() -> ImportMeetingSummaryProviderResolution { .unavailable }
 }
+
+private enum AudioImportFixtureError: Error { case diarizerUnavailable }

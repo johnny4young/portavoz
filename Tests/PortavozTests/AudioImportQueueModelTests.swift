@@ -8,12 +8,24 @@ import XCTest
 final class AudioImportQueueModelTests: XCTestCase {
     func testScriptedRecognitionCannotBeEnabledWithoutTemporaryStoreAndExplicitFixture() async {
         for arguments in [[], ["-audio-import-ui-fixture"], ["-use-temp-store"],
+                          ["-audio-import-diarizer-unavailable"],
+                          ["-use-temp-store", "-audio-import-diarizer-unavailable"],
                           ["-use-temp-store", "-audio-import-hold-first"],
                           ["-use-temp-store", "-audio-import-fail-mutations-once", "-audio-import-expired-owner"]] {
             XCTAssertNil(AudioImportUITestFixture.makeIfRequested(arguments: arguments))
         }
         XCTAssertNotNil(AudioImportUITestFixture.makeIfRequested(
             arguments: ["-use-temp-store", "-audio-import-ui-fixture"]))
+    }
+
+    func testOptionalDiarizerFaultRequiresTheDisposableFixture() async throws {
+        let unavailable = try XCTUnwrap(AudioImportUITestFixture.makeIfRequested(arguments: [
+            "-use-temp-store", "-audio-import-ui-fixture", "-audio-import-diarizer-unavailable"]))
+        do { try await unavailable.prepareDiarizer(); XCTFail("Fault must reach the actual worker capability") }
+        catch { XCTAssertFalse(error is CancellationError) }
+        let ordinary = try XCTUnwrap(AudioImportUITestFixture.makeIfRequested(arguments: [
+            "-use-temp-store", "-audio-import-ui-fixture"]))
+        try await ordinary.prepareDiarizer()
     }
 
     func testMutationFixtureFailuresAreOneShotAndClockAdvancesOnlyWhenRequested() async throws {
