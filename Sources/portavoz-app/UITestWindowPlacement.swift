@@ -3,12 +3,39 @@ import SwiftUI
 
 /// Resolve the window containing this exact disposable view, not whichever
 /// main-capable window happens to come first after an external URL opens one.
-struct UITestMainWindowCapture: NSViewRepresentable {
-    func makeNSView(context: Context) -> UITestMainWindowCaptureView {
-        UITestMainWindowCaptureView()
+struct UITestMainWindowCapture: NSViewControllerRepresentable {
+    func makeNSViewController(context: Context) -> UITestMainWindowCaptureController {
+        UITestMainWindowCaptureController()
     }
 
-    func updateNSView(_ nsView: UITestMainWindowCaptureView, context: Context) {}
+    func updateNSViewController(
+        _ controller: UITestMainWindowCaptureController,
+        context: Context
+    ) {}
+}
+
+@MainActor
+final class UITestMainWindowCaptureController: NSViewController {
+    private let position: @MainActor (NSWindow) -> Void
+
+    init(position: @escaping @MainActor (NSWindow) -> Void = UITestWindowPlacement.positionMainWindow) {
+        self.position = position
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { nil }
+
+    override func loadView() {
+        view = UITestMainWindowCaptureView(position: position)
+    }
+
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        // As with Settings, SwiftUI can restore geometry after attachment.
+        // Reapply the owned test placement once native presentation completes.
+        if let window = view.window { position(window) }
+    }
 }
 
 @MainActor
@@ -56,17 +83,36 @@ enum UITestWindowPlacement {
     }
 
     static func positionMainWindow(_ window: NSWindow) {
-        guard let visibleFrame = zeroScreenVisibleFrame else { return }
+        positionMainWindow(
+            window,
+            arguments: ProcessInfo.processInfo.arguments,
+            visibleFrame: zeroScreenVisibleFrame)
+    }
+
+    static func positionMainWindow(
+        _ window: NSWindow,
+        arguments: [String],
+        visibleFrame: NSRect?
+    ) {
+        guard arguments.contains("-use-temp-store"), let visibleFrame,
+              !visibleFrame.isEmpty else { return }
 
         let minimumWidth: CGFloat = 900
         let leftClearance = min(
             400,
             max(0, visibleFrame.width - minimumWidth))
+        // Compact correction fixtures exercise the actual short viewport, not
+        // native window-resize chrome. A rounded corner beside the Dock is not
+        // a safe automation target and can drag an unrelated application icon.
+        let compact = arguments.contains("-ui-test-compact-main-window")
+        let width = compact ? min(900, visibleFrame.width - leftClearance)
+            : visibleFrame.width - leftClearance
+        let height = compact ? min(650, visibleFrame.height) : visibleFrame.height
         let frame = NSRect(
             x: visibleFrame.minX + leftClearance,
-            y: visibleFrame.minY,
-            width: visibleFrame.width - leftClearance,
-            height: visibleFrame.height)
+            y: visibleFrame.maxY - height,
+            width: width,
+            height: height)
         applyAcceptedNotificationCenterIsolation(to: window)
         window.setFrame(frame, display: true, animate: false)
     }

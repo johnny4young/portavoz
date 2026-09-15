@@ -3477,6 +3477,12 @@ The reference follows the exact attached view's window, including detachment.
 A view-controller bridge separately positions disposable Settings after native
 presentation, so initial placement and saved-frame restoration cannot overwrite
 the test policy. Ordinary Settings retains the user's saved position and level.
+The main-window owner accepts `-ui-test-compact-main-window` only alongside
+`-use-temp-store`. That fixed correction-test fixture stays inside the zero
+screen's visible frame without a pointer gesture near the Dock. As with
+Settings, native presentation reapplies the placement after frame restoration.
+Ordinary main
+windows retain their existing placement; no other app's window is positioned.
 
 ### Standing-rule control plane (D435)
 

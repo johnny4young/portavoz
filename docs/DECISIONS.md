@@ -19656,3 +19656,30 @@ actual helper call site; a subsequent normal key changes the query under the
 old return. The corrected ordering preserves query-recovery semantics and the
 original search/citation assertions. It does not identify an intermittent
 interruption from its frame or waive the resulting failed invocation.
+
+
+## D530 — Own compact fixture geometry instead of dragging native chrome
+
+**Context:** the structural-correction journey's corner drag can hit the Dock
+beside a rounded window instead of the resize border. A native recording showed
+an unrelated application icon being dragged while the window stayed large.
+Both the compact-window and short-transcript assertions then failed, although
+the subsequent correction effects passed. Previous green runs did not prove
+that this fixture's setup owned its input target.
+
+**Decision:** reuse the existing temporary-store main-window placement owner.
+An explicit compact launch argument requests the same bounded fixture geometry
+before user actions; no new bridge, screen permission, global setting, or
+cross-application input is needed. Ordinary and production placement remain
+unchanged. Native attached-window tests exercise the actual frame mutation and
+its guards, including a frame restored between attachment and presentation.
+As with Settings, the main-window controller reapplies owned placement from
+`viewDidAppear`; an attachment-only implementation passed native tests but
+failed the real-app compact assertion and is not treated as qualified.
+XCUITest retains the compact bounds and all product assertions, but
+stops before acting when its initial geometry or reveal precondition fails.
+
+**Consequences:** this fixes fixture ownership, not the separate case where four
+bounded wheel events fail to reveal an ordinary correction action. That failure
+remains unresolved until a call-site reproduction and fresh qualification; no
+wheel limit, time budget, retry policy or production transcript behavior changes.

@@ -684,3 +684,19 @@ Backend queue backpressure and exception-path cancellation draining remain
 unverified risks, not newly reproduced product defects. Preserve the failed
 receipt and unchanged stability thresholds; do not replace this gap with a
 retry-until-green candidate or a synthetic unit-test claim.
+
+## Compact transcript correction interaction qualification
+
+D529's native response fixture does not yet establish reliable reveal of every
+real compact transcript action. A subsequent Spanish correction journey failed
+its initial stable-containment proof after four bounded wheel events in a
+78-point viewport. The original source button remained clipped above that
+viewport; its editor never opened. No external interruption or product crash is
+established by that failure. Preserve the result and reproduce the actual call
+site before changing the wheel mechanism; more retries or looser bounds would
+not close this gap.
+
+D530 separately replaces unsafe native-corner dragging in compact fixture setup
+with the existing temporary-window owner. That repair must retain its native
+window and real-app geometry proofs, but does not resolve the wheel failure or
+replace complete bilingual qualification of the final candidate.

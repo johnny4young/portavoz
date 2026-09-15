@@ -122,6 +122,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     private func launchOnSeededMeeting(
         latestRecipe: Bool = false,
+        compactWindow: Bool = false,
         refineRunning: Bool = false,
         justRecorded: Bool = false,
         processingFailure: Bool = false,
@@ -148,6 +149,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
             simulateSequoiaCapabilities: simulateSequoiaCapabilities,
             simulateSkillEffectFailureOnce: simulateSkillEffectFailureOnce,
             simulateApuntadorRefreshSuccess: simulateApuntadorRefreshSuccess)
+        if compactWindow {
+            app.launchArguments.append("-ui-test-compact-main-window")
+        }
         if justRecorded {
             app.launchArguments += ["-mirrorAfterMeeting", "true"]
         }
@@ -297,9 +301,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
             correct.waitForExistenceFast(timeout: 10),
             "a stable accepted source row must expose its correction action")
         let transcriptScroll = app.control(withIdentifier: "detail-transcript-scroll")
-        XCTAssertTrue(
-            correct.revealVertically(in: transcriptScroll, maxScrolls: 4),
-            "the correction action must be fully visible before activation")
+        guard correct.revealVertically(in: transcriptScroll, maxScrolls: 4) else {
+            XCTFail("the correction action must be fully visible before activation")
+            return
+        }
         let correctFrame = correct.frame
         XCTAssertGreaterThanOrEqual(
             correctFrame.width,
@@ -375,42 +380,30 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
     @MainActor
     func testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence() throws {
-        let app = try launchOnSeededMeeting()
+        let app = try launchOnSeededMeeting(compactWindow: true)
         defer { app.terminate() }
 
         let window = app.windows["main-AppWindow-1"]
-        let originalWindowSize = window.frame.size
-        defer {
-            let currentCorner = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 1))
-                .withOffset(CGVector(dx: -2, dy: -2))
-            let restoredCorner = window.coordinate(withNormalizedOffset: .zero)
-                .withOffset(CGVector(dx: originalWindowSize.width - 2, dy: originalWindowSize.height - 2))
-            currentCorner.click(forDuration: 0.1, thenDragTo: restoredCorner)
-            XCTAssertTrue(waitForUITestCondition(timeout: 5) {
-                abs(window.frame.width - originalWindowSize.width) <= 4
-                    && abs(window.frame.height - originalWindowSize.height) <= 4
-            }, "the compact fixture must restore its own window geometry")
-        }
-        let corner = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 1))
-            .withOffset(CGVector(dx: -2, dy: -2))
-        let compactCorner = window.coordinate(withNormalizedOffset: .zero)
-            .withOffset(CGVector(dx: 898, dy: 648))
-        corner.click(forDuration: 0.1, thenDragTo: compactCorner)
-        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+        guard waitForUITestCondition(timeout: 5, {
             window.frame.width <= 910 && window.frame.height <= 680
-        }, "the structural journey must exercise the compact hosted window")
+        }) else {
+            XCTFail("the structural journey must exercise the compact hosted window; observed \(window.frame)")
+            return
+        }
 
         let sourceID = "B5B00000-0000-4000-8000-000000000002"
         let neighborID = "B5F00000-0000-4000-8000-000000000001"
         let correct = app.buttons["transcript-correct-\(sourceID)"]
         XCTAssertTrue(correct.waitForExistenceFast(timeout: 10))
         let transcriptScroll = app.control(withIdentifier: "detail-transcript-scroll")
-        XCTAssertLessThanOrEqual(
-            transcriptScroll.frame.height, 120,
-            "the source action must be exercised in the short, clipped transcript viewport")
-        XCTAssertTrue(
-            correct.revealVertically(in: transcriptScroll, maxScrolls: 4),
-            "the structural correction action must be fully visible before activation")
+        guard transcriptScroll.frame.height <= 120 else {
+            XCTFail("the source action needs the short, clipped transcript viewport; observed \(transcriptScroll.frame)")
+            return
+        }
+        guard correct.revealVertically(in: transcriptScroll, maxScrolls: 4) else {
+            XCTFail("the structural correction action must be fully visible before activation")
+            return
+        }
         correct.click()
 
         let split = app.buttons["transcript-structure-split"]

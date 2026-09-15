@@ -7730,9 +7730,17 @@ completed phases. It is an input/geometry adversary, not a claim that a physical
 Mac or hosted runner uses the fixture's amplification factor. The existing
 choice and both negative interruption controls retain their exact outcomes.
 
-The real structural-correction journey explicitly resizes its own window to a
-compact viewport, retains every correction, undo and visibility assertion, and
-restores its original window size before teardown. The Sequoia summary-recovery
+The real structural-correction journey requests compact placement through the
+existing disposable-window owner before interaction. Its temporary process does
+not synthesize resize or restore gestures against rounded native corners next
+to the Dock. It retains the same compact-window and short-viewport bounds, every
+correction and undo assertion, and fails before acting when initial geometry or
+reveal readiness is not satisfied. Attached native-window tests exercise the
+real placement with large/small visible screens, a second untouched window, and
+missing or ineligible temporary-store arguments. A native controller reapplies
+placement on presentation because SwiftUI can restore the frame after initial
+attachment; a test deliberately replaces the frame between those lifecycle
+events before invoking the actual controller. The Sequoia summary-recovery
 journey verifies its exact Intelligence destination before ending search editing
 through the existing native handoff and then selecting Voice. These call-site
 proofs supplement, not replace, fresh full bilingual and exact-head hosted gates.

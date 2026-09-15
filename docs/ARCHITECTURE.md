@@ -5763,6 +5763,13 @@ volatile injected defaults authority before the recording owner is composed;
 that owner retains the same authority, so deterministic fixtures cannot sample
 or rewrite the host's persistent Apuntador opt-in.
 
+Disposable main-window placement stays in one app-owned AppKit bridge. Its view
+tracks attachment to the exact window; its controller reapplies placement after
+native presentation, following the existing Settings lifecycle boundary. The
+compact correction fixture is an explicit temporary-store launch option, not a
+pointer gesture against native window chrome or another application's Dock.
+Normal production window placement remains SwiftUI-owned.
+
 ## Enforced engineering rules
 
 1. Meeting content does not leave the device without explicit, visible policy.
