@@ -1,6 +1,8 @@
 import ApplicationKit
 import Foundation
 import ModelStoreKit
+import PlatformKit
+import PortavozCore
 
 extension AppServices {
     func exportSupportDiagnostics() async throws -> Data {
@@ -16,7 +18,31 @@ extension AppServices {
                         forInfoDictionaryKey: "CFBundleVersion") as? String
                         ?? "development",
                     operatingSystem: ProcessInfo.processInfo.operatingSystemVersionString,
-                    models: await supportModelReadiness())))
+                    models: await supportModelReadiness(),
+                    host: supportHostDiagnostics())))
+    }
+
+    func supportHostDiagnostics(
+        thermalState: ProcessInfo.ThermalState = ProcessInfo.processInfo.thermalState,
+        readProcess: () throws -> OwnProcessResourceUsage = { try .current() }
+    ) -> SupportHostDiagnostics {
+        let process = try? readProcess()
+        // A conservative governor fallback is not an observed host fact.
+        let observedThermal: ResourceThermalState? = switch thermalState {
+        case .nominal: .nominal
+        case .fair: .fair
+        case .serious: .serious
+        case .critical: .critical
+        @unknown default: nil
+        }
+        let info = ProcessInfo.processInfo
+        return SupportHostDiagnostics(
+            physicalMemoryBytes: info.physicalMemory,
+            processFootprintBytes: process?.physicalFootprintBytes,
+            processCPUSeconds: process?.cpuSeconds,
+            thermalState: observedThermal,
+            lowPowerModeEnabled: info.isLowPowerModeEnabled,
+            modelResidency: modelResidencyLedger.records)
     }
 
     private func supportModelReadiness() async -> [SupportModelReadiness] {
