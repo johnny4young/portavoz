@@ -128,7 +128,7 @@ final class StandingSkillExecutionTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 51)
+
             XCTAssertEqual(
                 try String.fetchOne(
                     database,
@@ -136,7 +136,7 @@ final class StandingSkillExecutionTests: XCTestCase {
                         SELECT identifier FROM grdb_migrations
                         ORDER BY rowid DESC LIMIT 1
                         """),
-                "v51")
+                "v\(StorageSchema.version)")
             let row = try XCTUnwrap(Row.fetchOne(
                 database,
                 sql: """

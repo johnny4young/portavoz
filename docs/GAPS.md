@@ -685,6 +685,49 @@ unverified risks, not newly reproduced product defects. Preserve the failed
 receipt and unchanged stability thresholds; do not replace this gap with a
 retry-until-green candidate or a synthetic unit-test claim.
 
+### Multi-file audio import qualification
+
+The Library now admits multiple audio files into the same SQLite job authority,
+with app-owned serial supervision and a paged queue for progress, cancellation,
+retry and explicit result navigation. Storage/native/controller tests cover
+owner-fenced publication, preserved originals, cancellation, retry, and resuming
+a published copy without its source. These are not model-quality measurements.
+
+Real-app picker, pagination, cancellation and retry journeys are being qualified
+with synthetic PCM and a scripted recognition adapter gated by both temporary
+storage and its explicit fixture flag. Full hosted bilingual functional coverage
+has passed, but per-case and aggregate timing budgets have not been qualified.
+Native picker navigation, keyboard dispatch and accessibility queries before
+admission remain part of those unchanged journey budgets; total case duration
+is not an import-worker or ASR latency measurement. Consolidating queue queries
+does not establish a processing speedup or resolve these timing findings.
+Physical power loss, removable-volume TCC behavior and
+real-model throughput remain separate evidence. Required Whisper and D46's
+preparation contract are not replaced by live first-pass recovery.
+
+A missing/changed original before copy publication leaves staged bytes intact
+but cannot certify their source. Only published audio resumes without the original.
+Purge and restore share native exclusion and fresh tombstone checks; filesystem
+removal and SQLite purge are still not one crash-atomic transaction.
+
+Native filesystem cancellation is cooperative, not a promise to interrupt a
+kernel call waiting for filesystem access or an OS permission decision. An accepted cancellation
+invalidates the file's durable publication authority immediately; the serial
+supervisor still joins native cleanup before starting another attempt. File-lock
+acquisition is nonblocking, but that does not make directory creation, bookmark
+resolution or file I/O nonblocking. Physical permission/removable-volume behavior
+remains separate from deterministic local-file tests.
+
+Shared real-app fixtures now use the explicit D523 scratch owner, and import
+fixtures retain its database/audio paths rather than assigning unowned temporary
+destinations. Sources use that owner too. Actual import teardown assertions check
+their removal after the app exits. Earlier full runs stopped by protected
+runner-container access remain invalid; a later ownership repair does not
+retroactively qualify them. Cumulative import qualification must retain the
+original functional and timing budgets, native picker, relaunch and storage
+assertions. A focused import success does not establish the separate compact
+correction interaction described below.
+
 ## Compact transcript correction interaction qualification
 
 D529's native response fixture does not yet establish reliable reveal of every

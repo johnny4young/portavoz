@@ -3,15 +3,19 @@ import Foundation
 import IntegrationsKit
 import IntelligenceKit
 import ModelStoreKit
+import PlatformKit
 import PortavozCore
 import StorageKit
 import TranscriptionKit
 
 extension AppServices {
     /// ApplicationKit commands composed from the real local adapters.
-    var meetingLifecycle: MeetingLifecycleUseCases { .init(store: store) }
+    var meetingLifecycle: MeetingLifecycleUseCases { .init(store: store, acquisition: audioImportFiles) }
+    var audioImportFiles: LocalAudioImportFiles { .init(root: Self.audioRoot) }
     var meetingPurge: MeetingPurgeUseCases {
-        .init(store: store, audioFiles: AppMeetingAudioFiles())
+        let root = Self.audioRoot
+        return .init(store: store, audioFiles: AppMeetingAudioFiles(root: root),
+                     acquisition: LocalAudioImportFiles(root: root))
     }
     /// One resolver literal shared by every generation use case, so a new
     /// consumer inherits FM/Ollama/MLX/BYOK routing without duplication.
@@ -166,8 +170,10 @@ func withLiveSummaryRefinementTimeout<Value: Sendable>(
 
 /// Production filesystem adapter for permanent meeting-audio removal.
 private struct AppMeetingAudioFiles: MeetingAudioFiles {
+    let root: URL
+
     func removeAudioDirectory(_ relativePath: String) throws {
-        let directory = RecordingsLocation.shared.resolve(relativePath)
+        let directory = root.appendingPathComponent(relativePath, isDirectory: true)
         guard FileManager.default.fileExists(atPath: directory.path) else { return }
         try FileManager.default.removeItem(at: directory)
     }

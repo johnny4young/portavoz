@@ -12,6 +12,21 @@ The Settings journey also checks that localized provider help retains Sequoia
 and Tahoe support plus the selected local engine, rather than stale Apple-only
 live-summary wording.
 
+Import degradation coverage reaches the real `ProcessAudioImports` worker,
+owned file copy and SQLite publication: failed optional diarizer preparation
+must preserve both language transcripts and originals. Direct workflow cases
+also cover chronological ordering, empty recognition, unavailable preparation
+without inference, and cancellation during preparation or attribution, including
+noncooperative capabilities that cancel their task but return normally. The
+existing multiple-file/paging/open XCUITest journey injects this failure through
+`-audio-import-diarizer-unavailable`; it is admitted only with both the disposable
+store and explicit import fixture. Ordinary import cannot select the fault.
+The native picker receives one keyboard confirmation and must disappear before
+worker assertions begin; a missed selection is not attributed to processing.
+Both result pages assert successful meeting actions, not only a zero unfinished
+count that could also contain failures. Recognition remains scripted, not
+ASR-quality evidence (D532).
+
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
 Supported AppKit-capable CI and release hosts require zero
@@ -46,6 +61,23 @@ version or historical test totals independently. Populated file-backed `SkillDis
 exercise actual library-open migration and new-write constraints, while
 `TranscriptCorrectionChainDeletionTests` covers public sync replay, purge,
 reopen and subsequent foreign-key enforcement across distinct meeting chains.
+Durable audio-import tests separately exercise populated migration/admission,
+real temporary-file bookmark/copy/hash behavior and the application worker with
+deterministic model doubles. They include same-length corruption, replaced file
+identity, source rename, cancellation with deliberately late model output,
+uncancelled lease retirement, published-copy retry/reopen without the original,
+language separation and accepted-revision summary provenance. Native acquisition
+tests cover cancellation after copy but before publication, injected SQLite
+publication rejection, and an expired owner still holding its file operation.
+They assert reuse of the one reserved directory, rejection of overlapping native
+acquisition, and lock release after cancellation without sleep-based ordering.
+Actual purge tests cover pending, copied-unpublished and published audio;
+stale restored rows; a still-running native writer; restoration between file and
+database deletion; and restore/re-delete after an expiry snapshot was read.
+Original selected files remain unchanged. These call the real purge/restore use
+cases with SQLite and native exclusion, not only a pure path policy.
+These are not real-ASR or
+XCUITest evidence; the Library queue remains unconnected.
 The shared
 `waitForSeededLibraryToSettle` helper scrolls a sidebar row into view before
 waiting on it and names the cause when it gives up, so a fixture that lengthens
@@ -377,16 +409,18 @@ both pass.
 
 Band 2 slice 2F adds thirteen import tests and an eighth architecture rule. Port
 fakes characterize exact progress/order, automatic mixed-language recognition,
-required first model preparation and transcription, degradable second
-diarizer reload/inference (including reuse of an existing engine after reload
-failure), optional summary generation/persistence, and the
+required model preparation and transcription, optional attribution and
+summary generation/persistence, and the
 released idle-release boundary. Failure cases prove every required precommit
 error attempts staged-audio cleanup without masking its original error. A real
 in-memory MeetingStore case persists the aggregate and summary through the
 ports; ownership validation rejects foreign children, and an injected SQLite
 segment failure proves meeting, cast, and transcript roll back together. The
 source rule permits one app wrapper only and rejects a return to direct import
-orchestration. Strict SwiftLint remains clean across 206 source files.
+orchestration. The original first-required/second-optional diarizer contract
+and its characterization were replaced by one optional post-recognition load
+and cancellation fences (D532). The slice originally passed strict SwiftLint
+across 206 source files.
 
 Band 2 slice 2G adds sixteen refine tests and a ninth architecture rule. Port
 fakes characterize exact progress/order, fixed-language recovery versus
@@ -7661,7 +7695,6 @@ unchanged runtime budgets and screenshot roles remain enforced. A tooling test
 attempts to restore either retired receipt journey with an otherwise valid scope
 and confirms that the actual duplicate policy rejects it.
 
-
 ### Permission-free interruption controls
 
 The local-data ledger journey opens Settings from the seeded main window through
@@ -7760,3 +7793,51 @@ helper and sends a normal key: the query must remain empty because editing has
 ended. It then retains the original FTS query, exact hit and player timestamp
 assertions. This fails against the former early return without needing a native
 popover or unsupported macOS focus attributes.
+
+
+### Durable audio-import coverage
+
+Real-file/store/controller tests exercise whole-selection admission, bounded
+pagination, cancellation followed by a different file, published-copy resume
+without the source, and single-bundle import parity. Invalid/mixed selections
+must not partially enqueue. Mutation failures require visible dismissible state.
+The real-app import journeys use the native multi-selection picker, SQLite and
+copy/verification code; only the model adapter is replaced, behind both
+`-use-temp-store` and `-audio-import-ui-fixture`. It decodes synthetic PCM and
+returns labeled scripted bilingual text, not measured ASR output. New journeys
+have explicit 30-second budgets before measurement; prior budgets and the full
+bilingual aggregate limit are unchanged. The catalogue owns their import scope.
+
+Native open-panel file selection uses the panel's List view and Select All
+command; read-only filename text fields are not treated as clickable controls.
+The runner allocates synthetic sources through `UITestStorage` and selects them
+explicitly. The app factory supplies the same owner's database, audio destination
+and process temporary root; import fixtures do not override those paths. Shared
+teardown joins app exit before removing its tree, including interruption exits
+where a method's deferred removal would not run. Every import journey checks that
+its source directory, database, audio destination and process root are absent
+after the real shared teardown. The former raw app-path overrides passed the
+relaunch workflow but left both SQLite and copied audio behind at that boundary.
+No test changes TCC grants or runner entitlements.
+
+The cancellation journey rejects one cancel at the app client boundary; the
+running row remains available, dismissal clears feedback, and the next explicit
+cancel and retry complete. A rejected Library deletion likewise preserves its
+row until an explicit successful retry. These two deterministic failures are
+fixture behavior, not SQLite fault qualification; populated storage/application
+tests separately exercise rejected real writes. The fixture requires both
+temporary-store and import-fixture flags. Relaunch terminates after copy
+publication and removes the synthetic original, then advances only the worker's
+injected clock beyond the dead owner's lease. The same meeting is completed
+without reselecting the source. Natural lease timing and ASR quality are not
+claims of that journey. Its database uses the explicitly shared scratch rather
+than the runner's protected container; tests make no external SQL writes or
+database-polling reads.
+
+Import assertions scope row/action queries to the actual queue panel. The
+completion count is matched by identifier and localized label/value in one
+native predicate, rather than independent existence, label and value snapshots
+while the queue changes. Missing or incorrect text still fails the original
+deadline. Native picker filenames are queried as read-only text fields. The
+21-file workload, paging/close/reopen checks, per-file recovery assertions and
+all timing budgets remain unchanged.

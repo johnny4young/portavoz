@@ -23,25 +23,7 @@ public protocol ImportMeetingAudioFiles: Sendable {
     func discardImportedAudio(_ audio: ImportedMeetingAudio) async throws
 }
 
-/// Platform-backed preferences sampled once at the import boundary.
-public struct ImportMeetingPreferencesSnapshot: Sendable {
-    public let transcriptLanguage: TranscriptLanguagePolicy
-    public let summaryLanguage: SummaryLanguagePolicy
-    public let summaryFallbackLanguage: LanguageCode
-    public let vocabulary: [String]
-
-    public init(
-        transcriptLanguage: TranscriptLanguagePolicy,
-        summaryLanguage: SummaryLanguagePolicy,
-        summaryFallbackLanguage: LanguageCode,
-        vocabulary: [String]
-    ) {
-        self.transcriptLanguage = transcriptLanguage
-        self.summaryLanguage = summaryLanguage
-        self.summaryFallbackLanguage = summaryFallbackLanguage
-        self.vocabulary = vocabulary
-    }
-}
+public typealias ImportMeetingPreferencesSnapshot = PortavozCore.ImportMeetingPreferencesSnapshot
 
 public protocol ImportMeetingPreferences: Sendable {
     func importMeetingPreferences() async -> ImportMeetingPreferencesSnapshot
@@ -99,7 +81,7 @@ public protocol ImportMeetingStore: Sendable {
         _ meeting: Meeting,
         speakers: [Speaker],
         segments: [TranscriptSegment]
-    ) async throws
+    ) async throws -> Int
     func saveImportedSummary(
         _ draft: SummaryDraft,
         generationRun: GenerationRun
@@ -112,8 +94,9 @@ extension MeetingStore: ImportMeetingStore {
         _ meeting: Meeting,
         speakers: [Speaker],
         segments: [TranscriptSegment]
-    ) async throws {
+    ) async throws -> Int {
         try await saveImportedMeeting(meeting, speakers: speakers, segments: segments)
+        return meeting.transcriptRevision
     }
 
     public func saveImportedSummary(
@@ -144,8 +127,8 @@ public struct ImportMeetingRequest: Sendable {
     }
 }
 
-/// Imports one external recording while preserving the released synchronous
-/// UX, language policies, best-effort derivation, and idle-release behavior.
+/// Imports one external recording with required recognition, optional speaker
+/// attribution and summary, independent language policies and joined release.
 /// Copied audio is staged until the meeting, cast, and transcript commit.
 public struct ImportMeeting: ApplicationUseCase {
     private let audioFiles: any ImportMeetingAudioFiles
@@ -191,7 +174,6 @@ public struct ImportMeeting: ApplicationUseCase {
             await request.progress(.preparingModels)
             try await processor.prepareTranscriber(progress: request.progress)
             do {
-                try await processor.prepareDiarizer()
                 let content = try await importedContent(
                     meetingID: meetingID,
                     audio: audio,
@@ -205,13 +187,14 @@ public struct ImportMeeting: ApplicationUseCase {
                     endedAt: startedAt.addingTimeInterval(content.audioDuration),
                     language: content.spokenLanguage,
                     audioDirectory: audio.relativeDirectory)
-                try await store.installImportedMeeting(
+                let installedRevision = try await store.installImportedMeeting(
                     meeting,
                     speakers: content.speakers,
                     segments: content.segments)
                 aggregateCommitted = true
                 await saveSummaryIfPossible(
                     meetingID: meetingID,
+                    sourceTranscriptRevision: installedRevision,
                     content: content,
                     preferences: sampledPreferences,
                     progress: request.progress)
@@ -242,8 +225,20 @@ public struct ImportMeeting: ApplicationUseCase {
             languageHint: preferences.transcriptLanguage.languageHint,
             vocabulary: preferences.vocabulary)
         await progress(.identifyingSpeakers)
-        _ = try? await processor.prepareDiarizer()
-        let turns = (try? await processor.diarize(audio: audio)) ?? []
+        let turns: [SpeakerTurn]
+        do {
+            try Task.checkCancellation()
+            try await processor.prepareDiarizer()
+            try Task.checkCancellation()
+            turns = try await processor.diarize(audio: audio)
+        } catch {
+            // Optional capability failure preserves the recognized words, but
+            // cancellation is not permission to publish an unattributed result.
+            try Task.checkCancellation()
+            if error is CancellationError { throw error }
+            turns = []
+        }
+        try Task.checkCancellation()
         let attribution = SpeakerAttributor.attribute(
             segments: transcription.segments.sorted { $0.startTime < $1.startTime },
             turns: turns,
@@ -258,6 +253,7 @@ public struct ImportMeeting: ApplicationUseCase {
 
     private func saveSummaryIfPossible(
         meetingID: MeetingID,
+        sourceTranscriptRevision: Int,
         content: ImportedMeetingContent,
         preferences: ImportMeetingPreferencesSnapshot,
         progress: ImportMeetingProgressHandler
@@ -281,6 +277,7 @@ public struct ImportMeeting: ApplicationUseCase {
             id: makeGenerationRunID(),
             request: request,
             provider: provider,
+            sourceTranscriptRevision: sourceTranscriptRevision,
             inputFingerprint: SummaryFingerprint.compute(
                 request: request,
                 providerID: provider.providerID),
@@ -327,11 +324,13 @@ private struct ImportedSummaryGenerationAttempt: Sendable {
     let recipeID: String
     let outputLanguage: String
     let startedAt: Date
+    let sourceTranscriptRevision: Int
 
     init(
         id: GenerationRunID,
         request: SummaryRequest,
         provider: any ImportMeetingSummaryProvider,
+        sourceTranscriptRevision: Int,
         inputFingerprint: String,
         startedAt: Date
     ) {
@@ -343,6 +342,7 @@ private struct ImportedSummaryGenerationAttempt: Sendable {
         self.inputFingerprint = inputFingerprint
         recipeID = request.recipe.id
         outputLanguage = request.targetLanguage
+        self.sourceTranscriptRevision = sourceTranscriptRevision
         self.startedAt = startedAt
     }
 
@@ -362,6 +362,7 @@ private struct ImportedSummaryGenerationAttempt: Sendable {
             configJSON: Self.json(Configuration(
                 operation: "generate",
                 recipeID: recipeID,
+                sourceTranscriptRevision: sourceTranscriptRevision,
                 workflow: "audio-import")),
             outputLanguage: outputLanguage,
             startedAt: startedAt,
@@ -386,6 +387,7 @@ private struct ImportedSummaryGenerationAttempt: Sendable {
     private struct Configuration: Encodable {
         let operation: String
         let recipeID: String
+        let sourceTranscriptRevision: Int
         let workflow: String
     }
 
