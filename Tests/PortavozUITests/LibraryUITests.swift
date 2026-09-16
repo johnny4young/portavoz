@@ -330,9 +330,13 @@ final class LibraryUITests: PortavozUITestCase {
         let preparingPrefix = isSpanish
             ? "Grabando. Los subtítulos empiezan"
             : "Recording. Captions start"
+        // The notice row exposes its message as a text child (the same text
+        // the remote-outage and clipping journeys read), not as its own label.
+        let preparingText = preparing.descendants(matching: .staticText).firstMatch
         XCTAssertTrue(
-            preparing.label.contains(preparingPrefix),
-            "expected localized preparing copy, saw: \(preparing.label)")
+            preparingText.waitForExistenceFast(timeout: 5)
+                && preparingText.label.contains(preparingPrefix),
+            "expected localized preparing copy, saw: \(preparingText.label)")
         XCTAssertTrue(
             app.continueLiveTranscriptionAttachFixture(),
             "the fixture must release the model-ready transition")
