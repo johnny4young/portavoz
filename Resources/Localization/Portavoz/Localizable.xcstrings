@@ -1531,6 +1531,16 @@
         }
       }
     },
+    "Ask your meetings…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pregunta a tus reuniones…"
+          }
+        }
+      }
+    },
     "Ask your week…": {
       "localizations": {
         "es": {
@@ -7869,6 +7879,16 @@
         }
       }
     },
+    "Next meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próxima reunión"
+          }
+        }
+      }
+    },
     "Next meeting · %@": {
       "localizations": {
         "es": {
@@ -10735,6 +10755,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Graba una reunión o elige una de la biblioteca. Todo se procesa en tu Mac."
+          }
+        }
+      }
+    },
+    "Record now": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grabar ahora"
           }
         }
       }

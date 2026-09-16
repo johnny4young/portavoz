@@ -2563,21 +2563,24 @@ Capture timing starts when the microphone stream actually opens, not when model 
 ## Today (home) — the default destination (D495, Sep 2026)
 
 `Route.library` and the empty route render `HomeView`, the screen a daily
-caller lands on: the header date with `New recording`/`Return to recording` and
-`Ask`; a this-week strip (`HomeWeekFacts`: meetings, recorded time, open
-to-dos) computed from the Library snapshot; **Up next** (today's and up to three
-of tomorrow's calendar events, each with `Brief` and an event-linked `Record`,
-or the calendar offer); **Open to-dos** (the first five open action items with
-the same checkbox action as the sidebar and a link to the source meeting, plus
-"N more in Radar"); **Pick up where you left off** (the three newest meetings
-with voice mix, duration, open count and lifecycle badge); and **Ask your
-meetings** chips that submit a catalogued question through `AskModel` before
-routing to Ask, so the common daily questions cost one click. The view owns no
-store, observation, `.task`, or `@State`: it renders `LibraryModel.State` and
-sends the sidebar's own actions, and `ContentView` supplies the Ask and record
-closures. The sidebar gains a `Today` destination (`library-home-button`)
+caller lands on: the header date with one primary action, `New
+recording`/`Return to recording`; the Ask field (`HomeAskField`,
+`home-ask-field`, submit button `home-ask`) with three ready questions under
+it (`home-ask-chip-<n>`) that submit through `AskModel` before routing to Ask;
+**Next meeting** as the hero row (large time, title, countdown, attendees,
+`Brief` and an event-linked `Record`), followed compactly by the rest of today
+and up to three of tomorrow's events, or the calendar offer plus `Record now`
+(`home-hero-record`) when nothing is scheduled; then **Open to-dos** (the
+first five open action items with the same checkbox action as the sidebar and
+a link to the source meeting, plus "N more in Radar") beside **Pick up where
+you left off** (the three newest meetings with voice mix, duration, open count
+and lifecycle badge), both at content height. The week's totals live in
+Insights, not on Today. `HomeView` owns no store, observation, `.task`, or
+`@State` (the typed question lives in `HomeAskField`): it renders
+`LibraryModel.State` and sends the sidebar's own actions, and `ContentView`
+supplies the Ask and record closures. The sidebar gains a `Today` destination (`library-home-button`)
 selected for both the nil and `.library` routes. Identifiers:
-`home-title`, `home-record`, `home-ask`, `home-stat-*`, `home-upcoming-<id>`
+`home-title`, `home-record`, `home-ask`, `home-ask-field`, `home-hero-record`, `home-upcoming-<id>`
 (+`-brief-`/`-record-`), `home-todo-<uuid>`/`home-todo-toggle-<uuid>`,
 `home-recent-<uuid>`, `home-ask-chip-<n>`, `home-calendar-offer`. The showcase
 seed adds a fictional agenda and two clock-relative meetings so the public

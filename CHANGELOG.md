@@ -6,6 +6,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 16, 2026
 
+- **🌅 Today leads with your next meeting** — the next call is the hero with its countdown, brief and record button; Ask is a field you can type in with three ready questions; to-dos and recent meetings sit side by side. The week's numbers moved to Insights.
+
 - **🗨️ Apuntador always says what it's doing** — a chip beside the assist tabs reads Listening, Questions only, Off or Unavailable, with the one action that changes it. Translated lines show a small mark instead of repeating the language on every line.
 
 - **📣 One line of status while you record** — instead of a stack of banners, the recording shows the one thing that matters now with its action; anything else waits behind "N more".
