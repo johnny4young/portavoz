@@ -147,7 +147,7 @@ struct AskMemoryView: View {
                 identifier: "ask-memory-abstained")
         case .invalidEvidence:
             memoryFailure(
-                message: "Portavoz could not verify the returned evidence.",
+                message: "Portavoz could not verify these results.",
                 identifier: "ask-memory-invalid-evidence")
         case .unavailable:
             memoryFailure(
@@ -169,7 +169,7 @@ struct AskMemoryView: View {
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
             Divider()
-            Text("Evidence")
+            Text("Sources")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
             ForEach(Array(orderedCitations(commitment).enumerated()), id: \.offset) { index, citation in
@@ -223,13 +223,13 @@ struct AskMemoryView: View {
         }
         if disclosure.omittedStaleCount > 0 {
             Label(
-                "Some commitments with outdated evidence were omitted.",
+                "Some commitments with outdated sources were left out.",
                 systemImage: "clock")
                 .accessibilityIdentifier("ask-memory-omitted-stale")
         }
         if disclosure.omittedUnavailableCount > 0 {
             Label(
-                "Some commitments without available evidence were omitted.",
+                "Some commitments without sources were left out.",
                 systemImage: "exclamationmark.shield")
                 .accessibilityIdentifier("ask-memory-omitted-unavailable")
         }
@@ -285,7 +285,7 @@ struct AskMemoryView: View {
         case .personUnavailable:
             "This confirmed person is no longer available."
         case .staleEvidenceOnly, .evidenceUnavailable:
-            "The matching commitments need current transcript evidence before Portavoz can show them."
+            "These commitments need an up-to-date transcript before Portavoz can show them."
         case .projectionInconsistent:
             "Confirmed memory could not verify a complete projection yet."
         case .candidateBudgetExceeded:

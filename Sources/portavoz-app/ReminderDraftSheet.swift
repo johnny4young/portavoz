@@ -143,7 +143,7 @@ private extension ReminderDraftSheet {
         HStack(spacing: 6) {
             capabilityChip("reads one confirmed commitment")
             capabilityChip("creates one local reminder")
-            capabilityChip("nothing leaves this Mac")
+            capabilityChip("stays on your Mac")
         }
     }
 

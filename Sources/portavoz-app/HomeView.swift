@@ -62,7 +62,7 @@ struct HomeView: View {
             }
             recentCard
             askCard
-            Label("Local-first · transfers require opt-in", systemImage: "lock.shield")
+            Label("On your Mac", systemImage: "lock.shield")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
@@ -165,8 +165,7 @@ struct HomeView: View {
                     }
                     .accessibilityIdentifier("home-calendar-offer")
                     // The help text is one catalog key; keep the sentence whole.
-                    // swiftlint:disable:next line_length
-                    .help("Shows today's and tomorrow's meetings here, with a prep brief for each. Read-only, on-device.")
+                    .help("Shows today's and tomorrow's meetings with a brief for each.")
                 } else {
                     emptyLine("Nothing scheduled — record when the call starts.")
                 }

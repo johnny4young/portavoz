@@ -215,7 +215,7 @@ struct MeetingDetailTrustSection: View {
     @ViewBuilder
     private var processingRecoveryAction: some View {
         if values.hasSavedAudio {
-            Button("Refine saved audio", action: actions.refineSavedAudio)
+            Button("Improve from saved audio", action: actions.refineSavedAudio)
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .accessibilityIdentifier("detail-recover-with-refine")
@@ -273,8 +273,7 @@ struct MeetingDetailTrustSection: View {
         case "transcription.empty":
             L10n.text(
                 // One-line UI explanation.
-                // swiftlint:disable:next line_length
-                "Your audio is safe. The automatic pass found no reliable speech. Refine re-transcribes the saved audio with Whisper and lets you review the result before replacing anything.")
+                "No reliable speech was found. Improve re-transcribes the saved audio and shows you a draft first.")
         case "transcription.recovery.unavailable":
             L10n.text(
                 // One-line UI explanation.
@@ -283,7 +282,7 @@ struct MeetingDetailTrustSection: View {
         case "capture.no-audio":
             L10n.text("Capture failed before audio could be saved. The failure record remains in your library.")
         case "capture.publication.failed":
-            L10n.text("Portavoz preserved recovery evidence but could not finalize the recording.")
+            L10n.text("Portavoz kept the recording data but could not finish saving it.")
         default:
             L10n.text("Portavoz preserved the meeting, but automatic recovery could not finish.")
         }
@@ -294,7 +293,7 @@ struct MeetingDetailTrustSection: View {
         if let receipt = values.privacyReceipt {
             let tint = privacyReceiptTint(receipt.status)
             VStack(alignment: .leading, spacing: 8) {
-                Label("Privacy receipt", systemImage: privacyReceiptIcon(receipt.status))
+                Label("Activity", systemImage: privacyReceiptIcon(receipt.status))
                     .font(.headline)
                     .foregroundStyle(tint)
                     .accessibilityIdentifier("detail-privacy-receipt")

@@ -82,7 +82,7 @@ enum RecordingAssistTab: String, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .companion: L10n.text("Companion")
+        case .companion: L10n.text("Apuntador")
         case .objectives: L10n.text("Objectives")
         case .notes: L10n.text("Notes")
         case .interview: L10n.text("Interview")

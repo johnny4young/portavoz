@@ -25,7 +25,7 @@ struct CommitmentReviewQueueView: View {
             ContentUnavailableView {
                 Label("Couldn’t load suggestions", systemImage: "exclamationmark.triangle")
             } description: {
-                Text("Nothing was confirmed or changed. Your meeting evidence is still safe.")
+                Text("Nothing was confirmed or changed.")
             } actions: {
                 Button("Try again") {
                     Task { await model.send(.load) }
@@ -36,7 +36,7 @@ struct CommitmentReviewQueueView: View {
             ContentUnavailableView {
                 Label("Nothing to review", systemImage: "checkmark.circle")
             } description: {
-                Text("New evidence-backed suggestions and due deferrals will appear here.")
+                Text("New suggestions and due items will appear here.")
             }
             .accessibilityIdentifier("commitment-review-empty")
         case .loaded:
@@ -175,7 +175,7 @@ private extension CommitmentReviewQueueView {
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.small)
-        .help("Open the complete meeting evidence before confirming.")
+        .help("Open the full meeting before confirming.")
         .accessibilityIdentifier(
             "commitment-review-open-\(item.id.uuidString)")
     }
@@ -193,7 +193,7 @@ private extension CommitmentReviewQueueView {
             })
         if item.hasMoreEvidence {
             Text(L10n.format(
-                "Showing %d of %d evidence excerpts",
+                "Showing %d of %d excerpts",
                 item.evidence.segments.count,
                 item.evidenceCount))
                 .font(.caption2)

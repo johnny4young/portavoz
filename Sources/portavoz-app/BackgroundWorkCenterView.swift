@@ -239,11 +239,11 @@ private struct BackgroundWorkRow: View {
         case .recoveryCandidates:
             L10n.text("Interrupted recording scan")
         case .recoveryPreservation:
-            L10n.text("Recovery evidence")
+            L10n.text("Recovery")
         case .processingClaim:
             L10n.text("Job claim")
         case .processingPreservation:
-            L10n.text("Processing evidence")
+            L10n.text("Processing")
         case .scheduling:
             L10n.text("Retry scheduling")
         case .coordination:

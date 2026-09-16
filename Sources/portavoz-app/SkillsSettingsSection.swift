@@ -47,8 +47,7 @@ struct SkillsSettingsSection: View {
             Section("Control") {
                 Text(
                     // Keep this as one literal so localization validation sees it.
-                    // swiftlint:disable:next line_length
-                    "Portavoz suggests actions based on evidence from your meetings. Nothing runs until you review and confirm it."
+                    "Portavoz suggests actions from your meetings. Nothing runs until you confirm it."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)

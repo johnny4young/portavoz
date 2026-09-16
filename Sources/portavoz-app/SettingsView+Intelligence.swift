@@ -203,8 +203,7 @@ extension SettingsView {
         case .needsPreparation:
             L10n.text(
                 // One-line UI help.
-                // swiftlint:disable:next line_length
-                "Prepare once to add meaning-based English and Spanish matches. Preparing may use a few hundred MB on this Mac; macOS manages the assets, and exact search stays available.")
+                "Find related words, not just exact ones. Uses a few hundred MB once.")
         case .preparing:
             L10n.text(
                 // swiftlint:disable:next line_length
@@ -212,8 +211,7 @@ extension SettingsView {
         case .ready:
             L10n.text(
                 // One-line UI help.
-                // swiftlint:disable:next line_length
-                "Meaning-based English and Spanish matches can augment exact search. New or corrected text is indexed in the background.")
+                "Related-word matches in English and Spanish, indexed in the background.")
         case .unsupported:
             L10n.text(
                 // swiftlint:disable:next line_length

@@ -89,7 +89,7 @@ struct RecordingInterviewAssistView: View {
         .disabled(controller.interviewAssist.answerState == .generating)
         .accessibilityIdentifier("recording-interview-answer")
         .accessibilityHint(L10n.text(
-            "Drafts only from earlier cited captions using your selected local AI."))
+            "Drafts only from earlier captions, with your local AI."))
     }
 
     @ViewBuilder
@@ -97,7 +97,7 @@ struct RecordingInterviewAssistView: View {
         switch controller.interviewAssist.answerState {
         case nil:
             Text(L10n.text(
-                "Ask only when the earlier conversation contains evidence. Otherwise Portavoz will abstain."))
+                "Answers only from what was said earlier. Otherwise Portavoz stays quiet."))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         case .generating:
@@ -111,7 +111,7 @@ struct RecordingInterviewAssistView: View {
             groundedAnswer(answer)
         case .insufficientEvidence:
             status(
-                "The earlier conversation does not contain enough cited evidence to answer.",
+                "The conversation so far does not answer that.",
                 identifier: "recording-interview-insufficient")
         case .unavailable:
             status(

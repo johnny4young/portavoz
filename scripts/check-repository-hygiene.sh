@@ -132,6 +132,7 @@ python3 -m unittest Tests.Tooling.test_ui_test_ci_gate
 python3 -m unittest Tests.Tooling.test_ui_test_execution
 python3 -m unittest Tests.Tooling.test_ui_interruption_safety
 python3 -m unittest Tests.Tooling.test_app_payload_permissions
+python3 -m unittest Tests.Tooling.test_ui_copy_policy
 python3 -m unittest Tests.Tooling.test_ui_test_verified_base
 python3 -m unittest Tests.Tooling.test_ui_test_verification_anchor
 bash -n scripts/make-app.sh

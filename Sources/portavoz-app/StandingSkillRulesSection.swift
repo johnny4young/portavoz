@@ -113,7 +113,7 @@ private extension StandingSkillRulesSection {
                 systemImage: "exclamationmark.triangle")
                 .foregroundStyle(.orange)
                 .accessibilityIdentifier("settings-standing-load-error")
-            Text("No rule or run is shown until Portavoz verifies its local authority.")
+            Text("Loading your automations…")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Button("Try again") { Task { await load() } }
@@ -193,7 +193,7 @@ private extension StandingSkillRulesSection {
 
             if deleteConfirmationID == item.id {
                 Text(
-                    "Delete this rule? Existing receipts and prepared briefs stay available for review."
+                    "Delete this rule? Its history and prepared briefs stay available."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)

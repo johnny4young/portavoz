@@ -74,7 +74,7 @@ struct LibraryView: View {
                 .controlSize(.small)
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
-                .help("Shows today's and tomorrow's meetings here, with a prep brief for each. Read-only, on-device.")
+                .help("Shows today's and tomorrow's meetings with a brief for each.")
             }
 
             searchField
@@ -440,7 +440,7 @@ extension LibraryView {
             Image(systemName: "lock.shield")
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
-            Text("Local-first · transfers require opt-in")
+            Text("On your Mac")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)

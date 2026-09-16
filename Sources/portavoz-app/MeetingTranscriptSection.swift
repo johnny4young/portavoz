@@ -65,7 +65,7 @@ struct MeetingTranscriptSection: View {
                 }
                 .buttonStyle(.borderless)
                 .accessibilityIdentifier("transcript-hidden-lines")
-                .help("Review hidden transcript evidence")
+                .help("Review hidden lines")
             }
             if values.player != nil {
                 Text("Click a line to jump there")

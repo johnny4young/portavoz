@@ -11,8 +11,7 @@ struct AutomationSection: View {
                 .accessibilityIdentifier("settings-automation-shortcut")
             Text(
                 // One-line UI help text.
-                // swiftlint:disable:next line_length
-                "Type the exact name of a Shortcut; it receives the finished meeting as Markdown (summary, action items and transcript) — connect it to Notes, Mail, Slack or anything else. Tip: any automation tool can also start a recording by opening portavoz://record."
+                "Type a Shortcut name. It receives the finished meeting as Markdown. Any tool can also open portavoz://record."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

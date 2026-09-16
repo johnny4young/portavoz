@@ -69,7 +69,7 @@ struct SkillProposalSection: View {
         } else if loadFailed {
             VStack(alignment: .leading, spacing: 8) {
                 Label(
-                    "Suggested actions are unavailable",
+                    "Automations are unavailable",
                     systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier(
@@ -87,8 +87,7 @@ struct SkillProposalSection: View {
                 Label("No suggested actions", systemImage: "sparkles")
                 Text(
                     // Keep this as one literal so localization validation sees it.
-                    // swiftlint:disable:next line_length
-                    "Suggestions appear when a meeting, commitment, or calendar event provides enough evidence for an action."
+                    "Suggestions appear when a meeting, commitment or calendar event calls for an action."
                 )
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -368,7 +367,7 @@ struct SkillProposalSection: View {
         case .meetingSummary: L10n.text("meeting summary")
         case .transcript: L10n.text("transcript")
         case .notes: L10n.text("notes")
-        case .companionHistory: L10n.text("Companion history")
+        case .companionHistory: L10n.text("Apuntador history")
         case .commitment: L10n.text("confirmed commitment")
         case .calendarEvent: L10n.text("calendar event")
         case .selectedDestination: L10n.text("destination you select")

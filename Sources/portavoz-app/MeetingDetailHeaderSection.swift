@@ -225,7 +225,7 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
                     help: L10n.text(
                         // One-line UI help text.
                         // swiftlint:disable:next line_length
-                        "Stores only an encrypted numeric fingerprint of their voice on this Mac — never the audio, never synced — so future meetings can suggest their name. Removable in Settings.")),
+                        "Keeps an encrypted voiceprint so future meetings can suggest this name. Removable in Settings.")),
                 accept: actions.acceptVoiceOffer,
                 dismiss: actions.dismissVoiceOffer)
         }

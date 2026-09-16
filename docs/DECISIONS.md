@@ -19867,3 +19867,38 @@ payload trees plus the two real packaged apps, one built with the trapping
 accessor and one without, exercise the gate in both directions. This changes no
 product feature, consent default, model asset or budget. Field confirmation on a
 second physical Mac remains external evidence (GAPS).
+
+## D536 — UI language, icons and heights speak the user's vocabulary
+
+**Context:** a review of the shipped 1.0 interface, grounded in the XCUITest
+catalog screenshots and the 1,728-key localization catalog, found the product
+explaining itself in engineering terms and repeating itself: 47 "on this/your
+Mac" phrases, 54 strings with "evidence", 19 with "receipt", three simultaneous
+privacy disclaimers per window, 27 strings longer than 160 characters, one
+symbol (`sparkles`) standing for ten concepts, and content boxes with fixed
+heights that force scrolling on large displays.
+
+**Decision:** presentation and copy follow three rules, enforced where the
+repository already enforces truth.
+
+1. *Language.* User-facing strings name what the user does, not how Portavoz is
+   built. "Sources" replaces "evidence"; "activity" and "history" replace
+   "receipt" and "provenance"; "authority", "boundary", "admitted", "honest",
+   "pull-only" and "100%" do not appear. Help texts and tooltips stay at or
+   under 90 characters; longer explanations move behind an explicit control.
+   One privacy phrase, "On your Mac", replaces every disclaimer variant. The
+   in-meeting assistant is "Apuntador" in both languages; "Skills" and
+   "Suggested actions" are "Automations". `Tests/Tooling/test_ui_copy_policy.py`
+   keeps these rules in repository hygiene.
+2. *Icons.* One SF Symbol per concept, declared in one place; `sparkles` marks
+   generated content and nothing else. (Implemented by the icon slice of the
+   same goal; the architecture ratchet lands with it.)
+3. *Heights.* Content decides height. First-level views fit a 1,280×800 window
+   without page scrolling; only long lists scroll, inside their own area.
+   (Implemented by the layout slices of the same goal.)
+
+**Consequences:** the 1.1 goal "Portavoz sin ruido" delivers these rules in
+fifteen slices, each with its own XCUITest update and changelog line. Product
+data, engines, consent defaults and runtime budgets do not change. Strings that
+XCUITest asserts by text are limited to seeded content and a few navigation
+titles; journeys assert identifiers, which do not change.

@@ -15,7 +15,7 @@ struct CompanionSettingsSection: View {
                 .accessibilityIdentifier("settings-apuntador-enabled")
                 .disabled(!detectorAvailable)
             // swiftlint:disable:next line_length
-            Text("Turn it on here or from the recording toolbar. Apuntador detects questions privately; it never speaks or answers for you. Without an available answer engine, it shows an honest question-only card.")
+            Text("Detects questions during a recording and suggests answers. Without an answer engine, cards show the question only.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -27,15 +27,14 @@ struct CompanionSettingsSection: View {
             .autocorrectionDisabled()
             Text(L10n.format(
                 // swiftlint:disable:next line_length
-                "When someone asks for you by name (\"%@\", what do you think?), Apuntador highlights the card as “asked you” even when it is not a technical question. Empty = use your macOS account name.",
+                "When someone says your name, Apuntador marks the card as asked to you. Empty uses your macOS account name.",
                 companionUserName.isEmpty ? NSFullUserName() : companionUserName))
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            Toggle("Mirror after each meeting", isOn: $mirrorAfterMeeting)
+            Toggle("Your talk time after each meeting", isOn: $mirrorAfterMeeting)
                 .accessibilityIdentifier("settings-mirror-after-meeting")
-            // swiftlint:disable:next line_length
-            Text("When a meeting has two or more speakers and runs at least five minutes, show a private card with your own numbers next to your usual average — measured on your Mac, never judged.")
+            Text("After meetings of five minutes or more, show your talk time next to your average.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -79,7 +78,7 @@ struct CompanionSettingsSection: View {
                 .foregroundStyle(.green)
                 .accessibilityIdentifier("settings-apuntador-status")
                 // swiftlint:disable:next line_length
-                Text("On macOS Sequoia, the bundled bilingual detector works fully offline and shows question-only cards. On-device generated answers require macOS Tahoe with Apple Intelligence; an explicitly enabled BYOK provider may answer general knowledge questions.")
+                Text("On macOS Sequoia, cards show the question only. Generated answers need macOS Tahoe with Apple Intelligence, or a provider you enable.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -100,7 +99,6 @@ struct CompanionSettingsSection: View {
     }
 
     private func unavailableMessage(_ reason: String) -> String {
-        // swiftlint:disable:next line_length
-        L10n.format("Apple's optional answer enhancement is unavailable: %@. The bundled detector still works fully offline and shows question-only cards; explicitly enabled BYOK remains limited to general knowledge questions.", reason)
+        L10n.format("Generated answers are unavailable: %@. Cards show the question only.", reason)
     }
 }

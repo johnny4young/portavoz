@@ -63,7 +63,7 @@ struct SkillReceiptInspectionSheet: View {
     private var header: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Receipt details")
+                Text("Details")
                     .font(.title3.weight(.semibold))
                     .accessibilityIdentifier("skill-receipt-inspection")
                 Text(SkillReceiptPresentation.skillTitle(currentSkillID))
@@ -81,7 +81,7 @@ struct SkillReceiptInspectionSheet: View {
                     .symbolRenderingMode(.hierarchical)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Close receipt details")
+            .accessibilityLabel("Close details")
             .accessibilityIdentifier("skill-receipt-inspection-close")
             .disabled(isResolvingReceiptAction)
         }
@@ -114,7 +114,7 @@ struct SkillReceiptInspectionSheet: View {
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(
-                        "Review the exact source for this receipt. This does not start or change the action run.")
+                        "Open the source of this entry. Nothing runs or changes.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Button("Review source in context") {
@@ -128,7 +128,7 @@ struct SkillReceiptInspectionSheet: View {
             }
         case .residentMenuBar:
             Label(
-                "Review this receipt beside its original event in the menu bar. Nothing runs automatically.",
+                "Open this entry beside its calendar event in the menu bar.",
                 systemImage: "menubar.rectangle")
                 .font(.callout)
                 .foregroundStyle(.secondary)
@@ -191,7 +191,7 @@ struct SkillReceiptInspectionSheet: View {
                 .accessibilityIdentifier("skill-receipt-recovery-external")
         case .unavailable:
             Label(
-                "A safe recovery route is unavailable. This receipt remains available for review.",
+                "No safe recovery is available. This entry stays here for review.",
                 systemImage: "exclamationmark.shield")
                 .font(.callout)
                 .foregroundStyle(.secondary)
@@ -243,20 +243,20 @@ struct SkillReceiptInspectionSheet: View {
         if isLoading, inspection == nil {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("Loading receipt history…")
+                Text("Loading history…")
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .accessibilityIdentifier("skill-receipt-inspection-loading")
         } else if loadFailed || inspection == nil {
             VStack(alignment: .leading, spacing: 10) {
                 Label(
-                    "Receipt history is unavailable",
+                    "History is unavailable",
                     systemImage: "exclamationmark.triangle")
                     .font(.headline)
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("skill-receipt-inspection-error")
                 Text(
-                    "Portavoz could not verify this receipt. This inspector never runs or retries an action.")
+                    "Portavoz could not verify this entry. Nothing runs or retries from here.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                 Button("Try again") {

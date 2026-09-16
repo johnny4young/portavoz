@@ -1261,19 +1261,19 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
       "category": "control",
-      "source": "Button(\"Enhance in English\") { actions.enhance(.english, nil) }",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
-      "category": "control",
-      "source": "Button(\"Enhance in Spanish\") { actions.enhance(.spanish, nil) }",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
-      "category": "control",
       "source": "Button(\"Español\") { actions.enhance(.spanish, alternate.engine) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+      "category": "control",
+      "source": "Button(\"Tidy up in English\") { actions.enhance(.english, nil) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+      "category": "control",
+      "source": "Button(\"Tidy up in Spanish\") { actions.enhance(.spanish, nil) }",
       "occurrences": 1
     },
     {
@@ -1501,13 +1501,13 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
       "category": "control",
-      "source": "Button(\"Open support diagnostics\", action: actions.openSupportDiagnostics)",
+      "source": "Button(\"Improve from saved audio\", action: actions.refineSavedAudio)",
       "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
       "category": "control",
-      "source": "Button(\"Refine saved audio\", action: actions.refineSavedAudio)",
+      "source": "Button(\"Open support diagnostics\", action: actions.openSupportDiagnostics)",
       "occurrences": 1
     },
     {

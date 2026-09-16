@@ -130,7 +130,7 @@ struct MeetingGeneratedDocumentSection: View {
                 },
                 dismiss: actions.dismissRecipeSuggestion)
             .help(
-                "This meeting looks like a \(suggested.localizedDisplayName) — restructure the summary with one click. Nothing changes unless you accept.")
+                "Looks like a \(suggested.localizedDisplayName). Restructure the summary with one click.")
         }
     }
 

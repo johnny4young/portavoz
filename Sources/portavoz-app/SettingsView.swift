@@ -702,7 +702,7 @@ extension SettingsView {
             .accessibilityIdentifier("settings-summary-provider-help")
 
             Divider()
-            Text("Refine model (Whisper large-v3)")
+            Text("Improvement model (Whisper large-v3)")
                 .font(.callout.weight(.medium))
             if whisperVariants.isEmpty {
                 HStack(spacing: 8) {
@@ -729,8 +729,7 @@ extension SettingsView {
             }
             Text(
                 // One-line UI help text.
-                // swiftlint:disable:next line_length
-                "Download Whisper here before your first Refine. Preparation continues when Settings closes, and Refine joins the same verified download instead of starting another one. Turbo is the default; Compact saves about 1 GB of disk."
+                "Download Whisper before your first improvement. Turbo is the default; Compact saves about 1 GB."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

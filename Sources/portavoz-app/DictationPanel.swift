@@ -117,7 +117,7 @@ private struct DictationStripView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(insertedTitle(words))
                     .font(.callout.weight(.medium))
-                Text("Nothing was saved in Portavoz — dictation never leaves a trace.")
+                Text("Nothing was saved in Portavoz.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

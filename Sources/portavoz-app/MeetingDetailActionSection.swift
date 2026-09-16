@@ -85,8 +85,7 @@ struct MeetingDetailActionSection: View {
             .accessibilityValue("refine")
             .help(L10n.text(
                 // One-line UI help.
-                // swiftlint:disable:next line_length
-                "Re-transcribe with Whisper (maximum quality) and present the result as a draft — nothing is applied without your confirmation. Use the menu to force a language."))
+                "Re-transcribe with Whisper and review the draft before applying it."))
         }
     }
 
@@ -103,7 +102,7 @@ struct MeetingDetailActionSection: View {
             Button("Export subtitles (VTT)…") { actions.export(.vtt) }
                 .accessibilityIdentifier("detail-export-vtt")
             Toggle(
-                "Include correction provenance",
+                "Include edit history",
                 isOn: Binding(
                     get: { values.includeCorrectionProvenance },
                     set: { include in
@@ -115,7 +114,7 @@ struct MeetingDetailActionSection: View {
                         ? "detail-export-correction-provenance-on"
                         : "detail-export-correction-provenance-off")
                 .accessibilityLabel(
-                    Text("Include correction provenance")
+                    Text("Include edit history")
                         + Text(verbatim: ", ")
                         + (values.includeCorrectionProvenance
                             ? Text("On")

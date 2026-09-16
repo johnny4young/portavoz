@@ -96,10 +96,10 @@ struct RecordingToolbar: View {
             .toggleStyle(.button)
             .controlSize(.small)
             .help(L10n.text(
-                "Watches only open objectives and measured talk balance. It never opens the Web or takes action."))
+                "Nudges you about open objectives and talk balance."))
             .accessibilityIdentifier("recording-proactive-assist")
             .accessibilityHint(L10n.text(
-                "Watches only open objectives and measured talk balance. It never opens the Web or takes action."))
+                "Nudges you about open objectives and talk balance."))
             if controller.proactiveAssist.isEnabled {
                 Button {
                     controller.setProactiveAssistPaused(
@@ -122,10 +122,10 @@ struct RecordingToolbar: View {
             .toggleStyle(.button)
             .controlSize(.small)
             .help(L10n.text(
-                "Shows the current remote question and offers a pull-only answer from earlier cited captions."))
+                "Shows what they just asked, with an answer drawn from this meeting."))
             .accessibilityIdentifier("recording-interview-assist")
             .accessibilityHint(L10n.text(
-                "Shows the current remote question and offers a pull-only answer from earlier cited captions."))
+                "Shows what they just asked, with an answer drawn from this meeting."))
             Button {
                 controller.requestCatchUp()
             } label: {
@@ -144,10 +144,10 @@ struct RecordingToolbar: View {
             }
             .controlSize(.small)
             .help(L10n.text(
-                "One or two questions worth asking next, grounded in the conversation and your open objectives."))
+                "One or two questions worth asking next."))
             .accessibilityIdentifier("recording-next-question")
             .accessibilityHint(L10n.text(
-                "One or two questions worth asking next, grounded in the conversation and your open objectives."))
+                "One or two questions worth asking next."))
             Button(action: onCompact) {
                 Label("HUD", systemImage: "arrow.down.right.and.arrow.up.left")
             }
@@ -162,7 +162,7 @@ struct RecordingToolbar: View {
 
     private var companionHelp: String {
         L10n.text(
-            "Detects questions privately and suggests answers when an engine is available. It never answers for you.")
+            "Detects questions and suggests answers.")
     }
 
     private var stopButton: some View {

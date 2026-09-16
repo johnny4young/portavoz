@@ -210,7 +210,7 @@ private struct CommandPaletteView: View {
                 .padding(.vertical, 5)
                 .accessibilityIdentifier("palette-hit-\(index)")
             }
-            Text("Press Enter for a full answer with receipts.")
+            Text("Enter for a full answer with sources.")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 14)

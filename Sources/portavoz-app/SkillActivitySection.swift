@@ -245,7 +245,7 @@ struct SkillActivitySection: View {
     private var loadingContent: some View {
         HStack(spacing: 8) {
             ProgressView().controlSize(.small)
-            Text("Loading receipt history…")
+            Text("Loading history…")
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("settings-skills-receipt-scope-loading")
@@ -255,7 +255,7 @@ struct SkillActivitySection: View {
         VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 4) {
                 Label(
-                    "Receipt history is unavailable",
+                    "History is unavailable",
                     systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.orange)
                 Text("The selected activity view could not be verified. No runs are shown.")
@@ -308,7 +308,7 @@ struct SkillActivitySection: View {
         }
         return switch receiptScope {
         case .recent:
-            L10n.text("A receipt appears here only after you confirm an action.")
+            L10n.text("An entry appears here after you confirm an action.")
         case .waiting:
             L10n.text("Confirmed runs appear here until execution begins.")
         case .needsAttention:
@@ -322,7 +322,7 @@ struct SkillActivitySection: View {
         switch presentationState {
         case .unavailable:
             [
-                L10n.text("Receipt history is unavailable"),
+                L10n.text("History is unavailable"),
                 L10n.text(
                     "The selected activity view could not be verified. No runs are shown.")
             ].joined(separator: ". ")

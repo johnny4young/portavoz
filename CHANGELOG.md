@@ -4,6 +4,10 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## September 16, 2026
+
+- **🧹 Plainer words everywhere** — Portavoz stops talking like its own source code: "sources" instead of "evidence", "activity" instead of "receipts", one short privacy line instead of three, and tooltips you can read in one glance. The in-meeting assistant is Apuntador in both languages, and Suggested actions are now Automations.
+
 ## 1.0.1 — September 15, 2026
 
 **Recording starts on every Mac.**

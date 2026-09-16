@@ -61,7 +61,7 @@ struct MeetingDetailRefineReviewSheet: View {
             GridRow {
                 Text("").font(.caption)
                 Text("Current").font(.caption.weight(.semibold))
-                Text("Refined").font(.caption.weight(.semibold))
+                Text("Improved").font(.caption.weight(.semibold))
             }
             GridRow {
                 Text("Segments").foregroundStyle(.secondary)

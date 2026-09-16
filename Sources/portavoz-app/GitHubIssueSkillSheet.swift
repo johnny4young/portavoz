@@ -62,7 +62,7 @@ struct GitHubIssueSkillSheet: View {
                     .foregroundStyle(.secondary)
             }
             Label(
-                "Reviewing is local. Nothing leaves this Mac until you confirm the exact issue.",
+                "Nothing is sent until you confirm the issue.",
                 systemImage: "lock.shield")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -183,7 +183,7 @@ struct GitHubIssueSkillSheet: View {
         _ citations: [GitHubIssueCitation]
     ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Evidence included").font(.caption.weight(.semibold))
+            Text("Sources included").font(.caption.weight(.semibold))
             ForEach(Array(citations.enumerated()), id: \.element.id) { index, citation in
                 Text("\(time(citation.timestamp)) · \(citation.speaker): \(citation.excerpt)")
                     .font(.caption)

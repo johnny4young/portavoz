@@ -63,7 +63,7 @@ struct MeetingCommitmentInboxSection: View {
             Label("Commitments to confirm", systemImage: "checkmark.seal")
                 .font(.headline)
                 .accessibilityIdentifier("detail-commitment-inbox-title")
-            Text("Review the evidence before adding anything to your commitment list.")
+            Text("Check the source before adding anything to your commitments.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

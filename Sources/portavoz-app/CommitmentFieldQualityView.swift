@@ -65,7 +65,7 @@ private extension CommitmentFieldQualityView {
                     detail: ownerDetail(scorecard.overall),
                     identifier: "commitment-quality-owner")
                 metricCard(
-                    title: "Evidence coverage",
+                    title: "Source coverage",
                     value: percent(scorecard.overall.evidenceCoverage),
                     detail: evidenceDetail(scorecard.overall),
                     identifier: "commitment-quality-evidence")
@@ -87,7 +87,7 @@ private extension CommitmentFieldQualityView {
         VStack(alignment: .leading, spacing: 8) {
             Label("Private quality check", systemImage: "lock.shield.fill")
                 .font(.headline)
-            Text("Rolling 90-day evidence from suggestions you actually reviewed.")
+            Text("Last 90 days of suggestions you reviewed.")
                 .foregroundStyle(.secondary)
             Label("Advisory only — no threshold or automation uses these numbers.",
                   systemImage: "info.circle")

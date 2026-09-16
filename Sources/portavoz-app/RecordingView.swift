@@ -468,8 +468,7 @@ extension RecordingView {
         switch controller.liveTranscriptState {
         case .preparing:
             L10n.text(
-                // swiftlint:disable:next line_length
-                "Audio is safe. Live captions will start automatically when the local model is ready; Stop still creates the complete transcript.")
+                "Recording. Captions start when the model is ready.")
         case .failed:
             L10n.text(
                 "Live captions could not start. Audio is safe; Stop will create the complete transcript.")
@@ -497,8 +496,7 @@ extension RecordingView {
         HStack(spacing: 8) {
             Label(
                 // One-line UI copy.
-                // swiftlint:disable:next line_length
-                "Barely hearing the other participants — if this is a call, check your output device or system-audio permission.",
+                "Can't hear the others. Check your output device.",
                 systemImage: "speaker.slash.fill")
                 .font(.caption)
                 .foregroundStyle(.orange)

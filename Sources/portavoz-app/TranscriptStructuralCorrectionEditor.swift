@@ -83,7 +83,7 @@ struct TranscriptStructuralCorrectionControls: View {
 
     private var availableActions: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Text("Change how this line is grouped while keeping the recording evidence.")
+            Text("Change how this line is grouped. The recording stays as it is.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             HStack(spacing: 8) {
@@ -156,7 +156,7 @@ struct TranscriptStructuralCorrectionControls: View {
                     .accessibilityLabel("Split time")
                     .accessibilityValue(ClockFormat.mmss(splitTime))
                     .accessibilityIdentifier("transcript-structure-split-time")
-                Text(L10n.format("Boundary at %@", ClockFormat.mmss(splitTime)))
+                Text(L10n.format("Split at %@", ClockFormat.mmss(splitTime)))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
@@ -331,7 +331,7 @@ struct SuppressedTranscriptCorrectionsSheet: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Hidden transcript lines")
                 .font(.title2.bold())
-            Text("Noise stays out of the reading without deleting recorded evidence.")
+            Text("Noise is hidden from the reading. The recording stays as it is.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
             ScrollView {

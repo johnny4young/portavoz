@@ -101,7 +101,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(corrector.contains("struct CorrectMeetingTranscript"))
         XCTAssertTrue(corrector.contains("func transcriptContent("))
         XCTAssertTrue(corrector.contains("appendTranscriptCorrections(events)"))
-        XCTAssertTrue(editor.contains("Original evidence"))
+        XCTAssertTrue(editor.contains("Original text"))
         XCTAssertTrue(editor.contains("Undo correction"))
         XCTAssertFalse(editor.contains("StorageKit"))
         XCTAssertFalse(editor.contains("MeetingStore"))

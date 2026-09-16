@@ -140,7 +140,7 @@ struct AskView: View {
                     .accessibilityIdentifier("ask-cancel")
                 }
                 if !model.state.pendingCitations.isEmpty {
-                    Text("Evidence available now")
+                    Text("Sources found")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     citationButtons(
@@ -148,7 +148,7 @@ struct AskView: View {
                         identifierPrefix: "ask-pending-citation")
                 }
                 if !model.state.pendingNoteCitations.isEmpty {
-                    Text("Evidence from your notes")
+                    Text("From your notes")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     noteCitationButtons(
@@ -281,11 +281,11 @@ extension AskView {
     private func progressText(for phase: AskModel.PendingPhase) -> LocalizedStringKey {
         switch phase {
         case .findingEvidence:
-            "Finding exact evidence…"
+            "Finding exact matches…"
         case .refiningEvidence:
-            "Exact evidence found — checking related meaning…"
+            "Exact matches found, checking related ones…"
         case .generatingAnswer:
-            "Evidence ready — generating answer…"
+            "Sources ready, writing the answer…"
         }
     }
 

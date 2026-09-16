@@ -1357,8 +1357,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let category = app.control(
             withIdentifier: "settings-category-skills")
         let expectedTitle = UITestLocale.environmentLocale == "es"
-            ? "Acciones sugeridas"
-            : "Suggested actions"
+            ? "Automatizaciones"
+            : "Automations"
         XCTAssertTrue(
             try waitForLabel(category, toContain: expectedTitle),
             "the stable internal Skills route needs a plain-language public title")

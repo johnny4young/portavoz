@@ -72,7 +72,7 @@ struct MenuBarBriefConfirmSheet: View {
         HStack(spacing: 6) {
             capability("reads meeting material", id: "read")
             capability("writes a local draft", id: "write")
-            capability("nothing leaves this Mac", id: "local")
+            capability("stays on your Mac", id: "local")
         }
     }
 

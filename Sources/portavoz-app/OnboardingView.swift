@@ -65,7 +65,7 @@ struct OnboardingView: View {
             Text("Your first listen")
                 .font(.largeTitle.bold())
                 .accessibilityIdentifier("onboarding-first-listen")
-            Text("Say a sentence — anything about your day. Portavoz transcribes it live, 100% on this Mac.")
+            Text("Say a sentence, anything about your day. Portavoz transcribes it live.")
                 .font(.title3)
                 .foregroundStyle(.secondary)
 
@@ -104,7 +104,7 @@ struct OnboardingView: View {
             firstListenResult
         case .captionsUnavailable:
             VStack(alignment: .leading, spacing: 8) {
-                Label("Heard you — 100% on your Mac.", systemImage: "checkmark.seal.fill")
+                Label("Got it.", systemImage: "checkmark.seal.fill")
                     .foregroundStyle(.green)
                 Text("Live captions need macOS 26; your words never left this Mac either way.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -180,7 +180,7 @@ struct OnboardingView: View {
     private var models: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("On-device models").font(.largeTitle.bold())
-            Text("Transcription and voice models download once (~1 GB, integrity-verified) and then work offline.")
+            Text("Models download once (about 1 GB) and work offline.")
                 .foregroundStyle(.secondary)
             HStack(spacing: 10) {
                 if modelsReady {

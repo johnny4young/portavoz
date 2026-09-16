@@ -64,8 +64,8 @@ struct MeetingDetailNotesSection: View {
 
     private var enhancementMenu: some View {
         Menu {
-            Button("Enhance in Spanish") { actions.enhance(.spanish, nil) }
-            Button("Enhance in English") { actions.enhance(.english, nil) }
+            Button("Tidy up in Spanish") { actions.enhance(.spanish, nil) }
+            Button("Tidy up in English") { actions.enhance(.english, nil) }
             if let alternate = values.alternateEngine {
                 Divider()
                 Menu(alternate.label) {
@@ -74,7 +74,7 @@ struct MeetingDetailNotesSection: View {
                 }
             }
         } label: {
-            Label("Enhance", systemImage: "sparkles")
+            Label("Tidy up", systemImage: "sparkles")
         }
         .menuStyle(.borderlessButton)
         .fixedSize()

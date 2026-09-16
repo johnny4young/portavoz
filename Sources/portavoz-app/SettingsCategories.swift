@@ -27,7 +27,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .intelligence: L10n.text("Intelligence")
         case .voice: L10n.text("My voice & Apuntador")
         case .agenda: L10n.text("Agenda & automation")
-        case .skills: L10n.text("Suggested actions")
+        case .skills: L10n.text("Automations")
         case .integrations: L10n.text("Integrations")
         case .sync: L10n.text("Sync")
         case .backgroundWork: L10n.text("Background activity")
@@ -83,7 +83,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .agenda:
             "reminder calendar shortcut title template"
         case .skills:
-            "actions suggestions skills automation pause enable receipts local drafts exports"
+            "actions suggestions skills automation automations pause enable history local drafts exports"
         case .integrations:
             "byok api key github gist token mcp endpoint openai"
         case .sync:
@@ -136,8 +136,7 @@ struct LedgerSection: View {
             .padding(.vertical, 4)
             Text(
                 // One-line UI help text.
-                // swiftlint:disable:next line_length
-                "Nothing auto-uploads. Network transfers happen only after an action or opt-in, and Portavoz keeps local receipts."
+                "Nothing is sent unless you ask for it. Every transfer is logged here."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

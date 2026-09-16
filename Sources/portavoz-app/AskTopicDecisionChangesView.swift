@@ -60,7 +60,7 @@ struct AskTopicDecisionChangesView: View {
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
             Divider()
-            Text("Evidence")
+            Text("Sources")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
             ForEach(

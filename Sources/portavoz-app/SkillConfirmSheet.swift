@@ -244,7 +244,7 @@ struct SkillConfirmSheet: View {
         let boundary = switch target.offer.kind {
         case .emailRecapDraft: L10n.text("you still press Send")
         case .secretGistPublish: L10n.text("the full document leaves this Mac")
-        case .recapDraft, .packageExport: L10n.text("nothing leaves this Mac")
+        case .recapDraft, .packageExport: L10n.text("stays on your Mac")
         }
         return [L10n.text("reads meeting material"), effect, boundary]
     }

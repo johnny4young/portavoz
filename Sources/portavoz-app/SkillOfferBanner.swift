@@ -59,12 +59,12 @@ struct SkillOfferMenu: View {
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
-            .accessibilityLabel(L10n.text("Suggested actions"))
+            .accessibilityLabel(L10n.text("Automations"))
             .accessibilityIdentifier("skill-offer-menu")
             .help(L10n.text(
                 // Keep the catalog key as one literal: LocalizationTests deliberately
                 // scans call-site prose rather than evaluating Swift concatenation.
-                "Things Portavoz can prepare from this meeting — always previewed and always confirmed by you."))
+                "What Portavoz can prepare from this meeting. You review and confirm each one."))
         }
     }
 
