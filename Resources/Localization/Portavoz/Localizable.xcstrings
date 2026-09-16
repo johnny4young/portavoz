@@ -4939,6 +4939,16 @@
         }
       }
     },
+    "During the meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durante la reunión"
+          }
+        }
+      }
+    },
     "Each view shows up to %d matching runs on this Mac.": {
       "localizations": {
         "es": {
@@ -5275,6 +5285,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Coincidencias exactas encontradas, revisando relacionadas…"
+          }
+        }
+      }
+    },
+    "Example": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ejemplo"
           }
         }
       }
@@ -5829,6 +5849,16 @@
         }
       }
     },
+    "Friday, after the review — said at 12:40.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El viernes, después de la revisión — dicho a las 12:40."
+          }
+        }
+      }
+    },
     "From your notes": {
       "localizations": {
         "es": {
@@ -6105,6 +6135,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Escuchado"
+          }
+        }
+      }
+    },
+    "Hears the questions the meeting asks you and drafts an answer from what was said.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escucha las preguntas que te hace la reunión y redacta una respuesta con lo que se dijo."
           }
         }
       }
@@ -8685,6 +8725,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Desactivada. Portavoz no ha contactado iCloud para sincronizar reuniones."
+          }
+        }
+      }
+    },
+    "Offers a recap, an email draft or an export after the meeting. You review, then it runs.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ofrece un resumen, un borrador de correo o una exportación al terminar. Tú revisas y luego se ejecuta."
           }
         }
       }
@@ -14921,6 +14971,16 @@
         }
       }
     },
+    "They asked: “When do we ship the report?”": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Te preguntaron: “¿Cuándo entregamos el reporte?”"
+          }
+        }
+      }
+    },
     "They guide the final summary: they are expanded with facts and marked as yours (▸).": {
       "localizations": {
         "es": {
@@ -15331,6 +15391,16 @@
         }
       }
     },
+    "Three things Portavoz does while you talk. Nothing runs without you.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tres cosas que Portavoz hace mientras hablas. Nada se ejecuta sin ti."
+          }
+        }
+      }
+    },
     "Tidy up": {
       "localizations": {
         "es": {
@@ -15667,6 +15737,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Activar"
+          }
+        }
+      }
+    },
+    "Turns “I’ll send it Friday” into a commitment you confirm, with its source.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Convierte “lo envío el viernes” en un compromiso que tú confirmas, con su fuente."
           }
         }
       }

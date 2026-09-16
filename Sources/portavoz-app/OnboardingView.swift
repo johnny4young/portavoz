@@ -21,7 +21,7 @@ struct OnboardingView: View {
     @State private var enrollMessage: String?
     @State private var listen = FirstListenController()
 
-    private let lastStep = 3
+    private let lastStep = 4
 
     var body: some View {
         VStack(spacing: 0) {
@@ -30,7 +30,7 @@ struct OnboardingView: View {
                 .padding(28)
             footer
         }
-        .frame(width: 520, height: 480)
+        .frame(width: 520, height: 520)
         .task {
             providerRecommendation = await services
                 .discoverLocalSummaryProviders().recommendation
@@ -46,10 +46,97 @@ struct OnboardingView: View {
     @ViewBuilder private var content: some View {
         switch step {
         case 0: firstListen
-        case 1: permissions
-        case 2: models
+        case 1: duringMeeting
+        case 2: permissions
+        case 3: models
         default: voice
         }
+    }
+
+    // MARK: - During the meeting
+
+    /// Step 1 — what Portavoz does while you talk, in three lines and one
+    /// example, so Apuntador, Radar and Automations are not a surprise later.
+    private var duringMeeting: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("During the meeting")
+                .font(.largeTitle.bold())
+                .accessibilityIdentifier("onboarding-during-meeting")
+            Text("Three things Portavoz does while you talk. Nothing runs without you.")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+            featureRow(
+                symbol: PVSymbol.apuntador,
+                title: L10n.text("Apuntador"),
+                detail: L10n.text(
+                    "Hears the questions the meeting asks you and drafts an answer from what was said.")
+            ) {
+                Toggle("", isOn: apuntadorBinding)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .accessibilityLabel(L10n.text("Apuntador"))
+                    .accessibilityIdentifier("onboarding-apuntador-toggle")
+            }
+            featureRow(
+                symbol: PVSymbol.radar,
+                title: L10n.text("Radar"),
+                detail: L10n.text(
+                    "Turns “I’ll send it Friday” into a commitment you confirm, with its source.")
+            ) { EmptyView() }
+            featureRow(
+                symbol: PVSymbol.automations,
+                title: L10n.text("Automations"),
+                detail: L10n.text(
+                    "Offers a recap, an email draft or an export after the meeting. You review, then it runs.")
+            ) { EmptyView() }
+            exampleCard
+        }
+    }
+
+    private var apuntadorBinding: Binding<Bool> {
+        Binding(
+            get: { services.recording.companionEnabled },
+            set: { services.recording.companionEnabled = $0 })
+    }
+
+    private func featureRow<Trailing: View>(
+        symbol: String, title: String, detail: String,
+        @ViewBuilder trailing: () -> Trailing
+    ) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: symbol).foregroundStyle(PVDesign.accent).frame(width: 22)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.callout.weight(.medium))
+                Text(detail).font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer()
+            trailing()
+        }
+        .padding(10)
+        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    /// One Apuntador card the way it will look mid-meeting, so the first real
+    /// one is recognised, not explained.
+    private var exampleCard: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label("Example", systemImage: PVSymbol.apuntador)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(PVDesign.accent)
+            Text("They asked: “When do we ship the report?”")
+                .font(.callout.weight(.semibold))
+            Text("Friday, after the review — said at 12:40.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(PVDesign.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8).strokeBorder(PVDesign.accent.opacity(0.25), lineWidth: 1))
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("onboarding-example-card")
     }
 
     // MARK: - Steps

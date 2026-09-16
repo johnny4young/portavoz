@@ -2391,6 +2391,16 @@ disclaimer. Primary actions on the recording failure screen and its banners
 carry an icon (`PVSymbol.retry`, Library, diagnostics, download) next to the
 verb, and the Today ask chips carry the Ask symbol.
 
+## First-run setup (Sep 2026, D536)
+
+`OnboardingView` runs five steps in a 520×520 window: the live first listen;
+**During the meeting** (`onboarding-during-meeting`), which introduces
+Apuntador (with the real opt-in switch, `onboarding-apuntador-toggle`, bound
+to the recording controller), Radar and Automations in one line each plus one
+example card (`onboarding-example-card`) drawn like a live Apuntador card;
+permissions; on-device models; and the optional voice enrollment. Skip stays
+available on every step (`onboarding-skip`).
+
 ## Ask and Radar layout (Sep 2026, D536)
 
 Ask puts the question first: the source picker, then the field
