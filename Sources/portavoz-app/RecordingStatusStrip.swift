@@ -115,8 +115,6 @@ struct RecordingStatusStrip: View {
             }
             .font(.caption.weight(.medium))
             .foregroundStyle(notice.severity.tint)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(notice.message)
             .accessibilityIdentifier(notice.id)
             ForEach(notice.actions, id: \.identifier) { action in
                 Button(action.title, action: action.perform)

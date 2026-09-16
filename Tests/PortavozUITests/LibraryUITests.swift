@@ -495,9 +495,8 @@ final class LibraryUITests: PortavozUITestCase {
             app.recordingMoreItem("recording-next-question").exists,
             "the More menu must offer the next-question action")
         XCTAssertTrue(app.menuItems["recording-hud"].exists)
-        let proactive = app.recordingMoreItem("recording-proactive-assist")
-        XCTAssertTrue(proactive.exists)
-        proactive.click()
+        typeKey(.escape, modifierFlags: [], in: app)
+        app.recordingMoreItem("recording-proactive-assist").click()
 
         // Suggestions only becomes a tab once this recording opts in.
         app.openAssistTab("proactive")

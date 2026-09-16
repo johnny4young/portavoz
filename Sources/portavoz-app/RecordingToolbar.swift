@@ -126,36 +126,9 @@ struct RecordingToolbar: View {
             "Detects questions and suggests answers.")
     }
 
-    /// Everything that is not needed every minute lives behind one menu, with
-    /// the current state marked, so the bar keeps three visible controls.
+    /// Everything that is not needed every minute lives behind one menu.
     private var moreMenu: some View {
-        Menu {
-            Toggle(isOn: proactiveAssistBinding) {
-                Label(L10n.text("Proactive"), systemImage: PVSymbol.proactive)
-            }
-            .accessibilityIdentifier("recording-proactive-assist")
-            Toggle(isOn: interviewAssistBinding) {
-                Label(L10n.text("Interview"), systemImage: "person.crop.rectangle.stack")
-            }
-            .accessibilityIdentifier("recording-interview-assist")
-            Divider()
-            Button {
-                controller.requestNextQuestion()
-            } label: {
-                Label(L10n.text("Suggest a question"), systemImage: "lightbulb")
-            }
-            .accessibilityIdentifier("recording-next-question")
-            Button(action: onCompact) {
-                Label(L10n.text("Floating mini panel"), systemImage: "arrow.down.right.and.arrow.up.left")
-            }
-            .accessibilityIdentifier("recording-hud")
-        } label: {
-            Label(L10n.text("More"), systemImage: "ellipsis.circle")
-        }
-        .controlSize(.small)
-        .fixedSize()
-        .help(L10n.text("Proactive help, interview mode, a suggested question and the mini panel"))
-        .accessibilityIdentifier("recording-more")
+        RecordingMoreMenu(controller: controller, onCompact: onCompact)
     }
 
     private var stopButton: some View {
@@ -172,23 +145,6 @@ struct RecordingToolbar: View {
         Binding(
             get: { controller.companionEnabled },
             set: { controller.companionEnabled = $0 }
-        )
-    }
-
-    private var interviewAssistBinding: Binding<Bool> {
-        Binding(
-            get: { controller.interviewAssist.isEnabled },
-            set: {
-                controller.interviewAssist.setEnabled(
-                    $0,
-                    captions: controller.captions)
-            })
-    }
-
-    private var proactiveAssistBinding: Binding<Bool> {
-        Binding(
-            get: { controller.proactiveAssist.isEnabled },
-            set: { controller.setProactiveAssistEnabled($0) }
         )
     }
 
@@ -243,5 +199,54 @@ private struct RecordingLevelMeter: View {
         guard level > 0.0001 else { return 0 }
         let decibels = 20 * log10(level)
         return CGFloat(max(0, min(1, (Double(decibels) + 60) / 60)))
+    }
+}
+
+/// The More menu reads only the two opt-in flags, so caption updates that
+/// re-render the bar never rebuild an open menu under the pointer.
+private struct RecordingMoreMenu: View {
+    let controller: RecordingController
+    let onCompact: () -> Void
+
+    var body: some View {
+        Menu {
+            Toggle(isOn: proactiveAssistBinding) {
+                Label(L10n.text("Proactive"), systemImage: PVSymbol.proactive)
+            }
+            .accessibilityIdentifier("recording-proactive-assist")
+            Toggle(isOn: interviewAssistBinding) {
+                Label(L10n.text("Interview"), systemImage: "person.crop.rectangle.stack")
+            }
+            .accessibilityIdentifier("recording-interview-assist")
+            Divider()
+            Button {
+                controller.requestNextQuestion()
+            } label: {
+                Label(L10n.text("Suggest a question"), systemImage: "lightbulb")
+            }
+            .accessibilityIdentifier("recording-next-question")
+            Button(action: onCompact) {
+                Label(L10n.text("Floating mini panel"), systemImage: "arrow.down.right.and.arrow.up.left")
+            }
+            .accessibilityIdentifier("recording-hud")
+        } label: {
+            Label(L10n.text("More"), systemImage: "ellipsis.circle")
+        }
+        .controlSize(.small)
+        .fixedSize()
+        .help(L10n.text("Proactive help, interview mode, a suggested question and the mini panel"))
+        .accessibilityIdentifier("recording-more")
+    }
+
+    private var interviewAssistBinding: Binding<Bool> {
+        Binding(
+            get: { controller.interviewAssist.isEnabled },
+            set: { controller.interviewAssist.setEnabled($0, captions: controller.captions) })
+    }
+
+    private var proactiveAssistBinding: Binding<Bool> {
+        Binding(
+            get: { controller.proactiveAssist.isEnabled },
+            set: { controller.setProactiveAssistEnabled($0) })
     }
 }

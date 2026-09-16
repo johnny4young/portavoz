@@ -310,7 +310,7 @@ extension XCUIApplication {
         line: UInt = #line
     ) -> XCUIElement {
         let item = menuItems[identifier]
-        if !item.exists {
+        if !item.isHittable {
             let more = control(withIdentifier: "recording-more")
             guard more.waitForHittable(timeout: timeout) else {
                 XCTFail("the recording bar never offered its More menu", file: file, line: line)
@@ -318,7 +318,7 @@ extension XCUIApplication {
             }
             more.click()
         }
-        if !item.waitForExistenceFast(timeout: timeout) {
+        if !item.waitForHittable(timeout: timeout) {
             XCTFail("the More menu never offered \(identifier)", file: file, line: line)
         }
         return item
