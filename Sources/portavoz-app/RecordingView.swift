@@ -130,7 +130,16 @@ struct RecordingView: View {
                     .frame(height: split.captions)
                     .padding(.horizontal, 20)
                 assistDivider(total: geo.size.height)
-                RecordingAssistPanel(controller: controller)
+                RecordingAssistPanel(
+                    controller: controller,
+                    apuntadorState: RecordingApuntadorState.resolve(
+                        enabled: controller.companionEnabled,
+                        detectorAvailable: services.companionAvailable,
+                        answersAvailable: services.companionAnswersAvailable),
+                    openApuntadorSettings: {
+                        services.pendingSettingsCategory = .intelligence
+                        openSettings()
+                    })
                     .frame(height: split.assist)
                     .padding(.horizontal, 20)
             }
@@ -289,16 +298,17 @@ private struct LiveRecordingCaptionsView: View {
                 .fill(Color.indigo)
                 .frame(width: 3)
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    Image(systemName: "character.bubble")
-                        .accessibilityHidden(true)
-                    Text(liveTranslationLabel)
-                        .accessibilityLabel(liveTranslationLabel)
-                        .accessibilityIdentifier(
-                            "recording-live-translation-\(segmentID.uuidString)")
-                }
+                // The language is named once, in the Translate picker; each
+                // line carries only the mark and keeps the full name for
+                // assistive technology.
+                Label(liveTranslationLabel, systemImage: "translate")
+                    .labelStyle(.iconOnly)
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.indigo)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(liveTranslationLabel)
+                    .accessibilityIdentifier(
+                        "recording-live-translation-\(segmentID.uuidString)")
                 Text(translated)
                     .font(.callout)
                     .foregroundStyle(.primary)

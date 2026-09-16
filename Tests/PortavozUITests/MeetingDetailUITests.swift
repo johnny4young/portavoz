@@ -116,18 +116,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
     /// title; the popover carries the auditable detail.
     @MainActor
     private func openActivity(in app: XCUIApplication) -> XCUIElement {
-        let popover = app.control(withIdentifier: "detail-activity-popover")
-        if !popover.exists {
-            let chip = app.buttons["detail-privacy-receipt"]
-            XCTAssertTrue(
-                chip.waitForHittable(timeout: 10),
-                "the header must offer the activity chip")
-            chip.click()
-        }
-        XCTAssertTrue(
-            popover.waitForExistenceFast(timeout: 5),
-            "the activity popover must open from the chip")
-        return popover
+        app.openMeetingActivity()
     }
 
     @MainActor
@@ -1406,7 +1395,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
             issueRemoteReceipts.count == remoteCountAfterGist + 1
         }, "one issue confirmation must add exactly one egress receipt")
         attachScreenshot(of: app, named: "meeting-detail-github-issue-receipts")
-        closeActivity(in: app)
 
         XCTAssertTrue(app.openSettingsWindow())
         XCTAssertTrue(app.openSettingsCategory(

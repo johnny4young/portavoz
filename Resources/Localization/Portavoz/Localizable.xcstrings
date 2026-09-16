@@ -1331,12 +1331,32 @@
         }
       }
     },
+    "Apuntador is off": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apuntador apagado"
+          }
+        }
+      }
+    },
     "Apuntador is ready on this Mac.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Apuntador está listo en este Mac."
+          }
+        }
+      }
+    },
+    "Apuntador is unavailable": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apuntador no disponible"
           }
         }
       }
@@ -6789,6 +6809,16 @@
         }
       }
     },
+    "Listening for questions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuchando preguntas"
+          }
+        }
+      }
+    },
     "Listening…": {
       "localizations": {
         "es": {
@@ -10379,6 +10409,26 @@
         }
       }
     },
+    "Questions only": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo preguntas"
+          }
+        }
+      }
+    },
+    "Questions show up here. Answers need an engine you enable in Settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las preguntas aparecen aquí. Las respuestas necesitan un motor que actives en Ajustes."
+          }
+        }
+      }
+    },
     "Questions the meeting asks you show up here.": {
       "localizations": {
         "es": {
@@ -12577,6 +12627,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Envía solo la pregunta detectada, nunca audio ni texto de la reunión."
+          }
+        }
+      }
+    },
+    "Settings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustes"
           }
         }
       }
@@ -15527,6 +15587,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Turbo — mejor calidad"
+          }
+        }
+      }
+    },
+    "Turn Apuntador on to see the questions the meeting asks you.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activa el Apuntador para ver las preguntas que te hace la reunión."
+          }
+        }
+      }
+    },
+    "Turn on": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activar"
           }
         }
       }

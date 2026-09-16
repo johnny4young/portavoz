@@ -11,6 +11,9 @@ import SwiftUI
 /// the tabs (D504).
 struct RecordingAssistPanel: View {
     @Bindable var controller: RecordingController
+    /// Resolved by the composition (it knows the detector and answer engines).
+    let apuntadorState: RecordingApuntadorState
+    let openApuntadorSettings: @MainActor () -> Void
     @State private var selection: RecordingAssistTab = .companion
     /// Owned here so switching tabs does not reset what the user opened.
     @State private var presentations: [UUID: CompanionCardPresentation] = [:]
@@ -150,6 +153,10 @@ private extension RecordingAssistPanel {
                 tabButton(candidate)
             }
             Spacer(minLength: 0)
+            RecordingApuntadorStateChip(
+                state: apuntadorState,
+                turnOn: { controller.companionEnabled = true },
+                openSettings: openApuntadorSettings)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("recording-assist-tabs")
@@ -200,7 +207,8 @@ private extension RecordingAssistPanel {
             RecordingCompanionCardsView(
                 controller: controller,
                 presentations: $presentations,
-                focused: focusedCardID)
+                focused: focusedCardID,
+                emptyMessage: apuntadorState.explanation)
         case .objectives:
             objectivesTab
         case .notes:

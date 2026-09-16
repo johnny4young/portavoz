@@ -537,6 +537,13 @@ final class AppServices {
         BundledLiveQuestionDetector.resourceIsLoadable
     }
 
+    /// Whether Apuntador can draft answers, not only show questions: the
+    /// on-device model or an explicitly enabled BYOK provider.
+    var companionAnswersAvailable: Bool {
+        appleSummaryAvailable
+            || UserDefaults.standard.bool(forKey: BYOKSettings.companionEnabledKey)
+    }
+
     // MARK: - Embedded MLX model (D25 last mile)
 
     @discardableResult

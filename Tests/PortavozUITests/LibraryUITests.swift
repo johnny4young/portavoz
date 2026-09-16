@@ -321,6 +321,9 @@ final class LibraryUITests: PortavozUITestCase {
             "the fixture must enter the model-preparing state")
         let preparing = app.control(withIdentifier: "recording-transcript-deferred")
         XCTAssertTrue(preparing.waitForExistenceFast(timeout: 20))
+        XCTAssertTrue(
+            app.control(withIdentifier: "recording-apuntador-state").exists,
+            "the assist panel must always say what Apuntador is doing")
         let preparingPrefix = isSpanish
             ? "Grabando. Los subtítulos empiezan"
             : "Recording. Captions start"
@@ -558,9 +561,9 @@ final class LibraryUITests: PortavozUITestCase {
             "a translated row must expose its own labeled visual boundary")
         let targetLanguageLabel =
             isSpanish ? "Traducción al inglés" : "English translation"
-        XCTAssertTrue(
-            app.staticTexts[targetLanguageLabel].exists,
-            "translated copy must visibly say which language it represents")
+        XCTAssertEqual(
+            translation.label, targetLanguageLabel,
+            "the translation mark must name its language for assistive technology")
         attachScreenshot(of: app, named: "recording-live-translation-rail")
     }
 

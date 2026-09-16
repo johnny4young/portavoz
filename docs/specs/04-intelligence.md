@@ -2175,6 +2175,12 @@ message without attempting provider fallback.
 
 ## Live Apuntador (D26/D431) — bundled admission + provider-neutral serving
 
+The recording screen states the lane in one chip with four values: listening
+(detector and an answer engine available), questions only (detector without an
+answer engine), off (the recording has not opted in), unavailable (the bundled
+detector cannot load). The chip is presentation over the same admission and
+serving state described below; it never changes admission.
+
 A remote caption becomes a semantic candidate when the next row closes it or
 when the shared two-second silence endpointer observes no further delta. The
 pure `TurnEndpointPolicy` still rejects microphone rows, noise, low-confidence

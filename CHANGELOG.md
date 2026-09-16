@@ -6,6 +6,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 16, 2026
 
+- **🗨️ Apuntador always says what it's doing** — a chip beside the assist tabs reads Listening, Questions only, Off or Unavailable, with the one action that changes it. Translated lines show a small mark instead of repeating the language on every line.
+
 - **📣 One line of status while you record** — instead of a stack of banners, the recording shows the one thing that matters now with its action; anything else waits behind "N more".
 
 - **🎛️ A calmer recording bar** — Translate, Apuntador and Catch me up stay in view; Proactive, Interview, Suggest a question and the mini panel wait in a More menu that shows what is on.

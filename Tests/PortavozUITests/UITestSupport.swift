@@ -277,6 +277,29 @@ extension XCUIApplication {
         descendants(matching: .any)[identifier]
     }
 
+    /// Privacy and action history live behind the activity chip under a
+    /// meeting's title; the popover carries the auditable detail.
+    @MainActor
+    func openMeetingActivity(
+        timeout: TimeInterval = 10,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let popover = control(withIdentifier: "detail-activity-popover")
+        if !popover.exists {
+            let chip = buttons["detail-privacy-receipt"]
+            guard chip.waitForHittable(timeout: timeout) else {
+                XCTFail("the header never offered the activity chip", file: file, line: line)
+                return popover
+            }
+            chip.click()
+        }
+        if !popover.waitForExistenceFast(timeout: 5) {
+            XCTFail("the activity popover never opened from the chip", file: file, line: line)
+        }
+        return popover
+    }
+
     /// Secondary recording actions live behind the More menu; a journey that
     /// needs one opens the menu first and gets the item back.
     @MainActor

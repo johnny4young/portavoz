@@ -1267,6 +1267,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let submit = app.buttons["skill-confirm-submit"]
         XCTAssertTrue(submit.waitForStableFrame(timeout: 5))
         submit.click()
+        _ = app.openMeetingActivity()
         XCTAssertTrue(
             app.control(withIdentifier: "skill-receipt-recap-draft")
                 .waitForExistenceFast(timeout: 10))
