@@ -1,16 +1,6 @@
 {
   "sourceLanguage": "en",
   "strings": {
-    "%@ h": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ h"
-          }
-        }
-      }
-    },
     "%@ in meetings with no decision": {
       "localizations": {
         "es": {
@@ -331,16 +321,6 @@
         }
       }
     },
-    "%d still open": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%d aún abiertos"
-          }
-        }
-      }
-    },
     "%d withdrawn": {
       "localizations": {
         "es": {
@@ -471,16 +451,6 @@
         }
       }
     },
-    "A 12-second sample lets Portavoz tag your interventions as “Me” on any microphone or channel. You can enroll or redo it later in Settings.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Una muestra de 12 segundos permite etiquetar tus intervenciones como “Yo” en cualquier micrófono o canal. Puedes enrolarte o repetirla después en Ajustes."
-          }
-        }
-      }
-    },
     "A confirmed commitment can become a reminder.": {
       "localizations": {
         "es": {
@@ -507,16 +477,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hay un resumen de reunión listo para usar."
-          }
-        }
-      }
-    },
-    "A recovery copy is created by reading the failed library without modifying it, verified before publication, and never overwrites an existing copy.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Una copia de recuperación se crea leyendo la biblioteca que falló sin modificarla, se verifica antes de publicarse y nunca sobrescribe una copia existente."
           }
         }
       }
@@ -567,16 +527,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hay un token guardado en el Llavero de este dispositivo. Solo se usa después de que confirmes un Gist o un issue."
-          }
-        }
-      }
-    },
-    "A token is stored in this device’s Keychain. It is used only when you publish a gist.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hay un token guardado en el Keychain de este equipo. Se usa solo cuando publicas un gist."
           }
         }
       }
@@ -831,16 +781,6 @@
         }
       }
     },
-    "After meetings of five minutes or more, show your talk time next to your average.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tras reuniones de cinco minutos o más, muestra tu tiempo de habla junto a tu promedio."
-          }
-        }
-      }
-    },
     "Agenda": {
       "localizations": {
         "es": {
@@ -1091,16 +1031,6 @@
         }
       }
     },
-    "App, macOS, model and processing status. Never meeting text, prompts, secrets or paths.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "App, macOS, modelo y estado del procesamiento. Nunca texto de reuniones, prompts, secretos ni rutas."
-          }
-        }
-      }
-    },
     "App, macOS, model, audio health and processing status. Never meeting text, prompts, secrets or paths.": {
       "localizations": {
         "es": {
@@ -1141,16 +1071,6 @@
         }
       }
     },
-    "Apple Intelligence requires macOS 26 — choose Ollama in Settings.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Intelligence requiere macOS 26 — elige Ollama en Ajustes."
-          }
-        }
-      }
-    },
     "Apple Intelligence: on-device summaries, free and fast.": {
       "localizations": {
         "es": {
@@ -1167,26 +1087,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "La función Traducción de Apple no admite este par de idiomas en este Mac."
-          }
-        }
-      }
-    },
-    "Apple needs macOS 26 with Apple Intelligence. Ollama and Built-in run local models; Built-in downloads 3 GB once. Live summaries always use Apple.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple necesita macOS 26 con Apple Intelligence. Ollama e Integrado corren modelos locales; Integrado descarga 3 GB una vez. Los resúmenes en vivo siempre usan Apple."
-          }
-        }
-      }
-    },
-    "Apple needs macOS 26 with Apple Intelligence. Ollama runs a local model. Live summaries always use Apple.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple necesita macOS 26 con Apple Intelligence. Ollama corre un modelo local. Los resúmenes en vivo siempre usan Apple."
           }
         }
       }
@@ -1237,16 +1137,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Los resúmenes de Apple requieren macOS 26 y Apple Intelligence. En macOS Sequoia, elige Ollama o Integrado (MLX) en Ajustes de Inteligencia."
-          }
-        }
-      }
-    },
-    "Apple's on-device model is unavailable: %@. Choose another summary engine if needed; BYOK cannot replace Apuntador's question detector yet.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El modelo en el dispositivo de Apple no está disponible: %@. Elige otro motor de resúmenes si lo necesitas; BYOK todavía no puede reemplazar el detector de preguntas de Apuntador."
           }
         }
       }
@@ -1351,16 +1241,6 @@
         }
       }
     },
-    "Apuntador is ready on this Mac.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apuntador está listo en este Mac."
-          }
-        }
-      }
-    },
     "Apuntador is unavailable": {
       "localizations": {
         "es": {
@@ -1387,36 +1267,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "El Apuntador escucha preguntas en los subtítulos en vivo y muestra cada una como una tarjeta. Con un motor de respuestas (Apple Intelligence en macOS Tahoe o un proveedor que actives) redacta una respuesta a partir de la reunión; sin uno, las tarjetas muestran solo la pregunta. No se envía nada a ningún lado a menos que hayas activado un proveedor."
-          }
-        }
-      }
-    },
-    "Apuntador question detection is ready on this Mac.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La detección de preguntas del Apuntador está lista en este Mac."
-          }
-        }
-      }
-    },
-    "Apuntador question detection is ready.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La detección de preguntas del Apuntador está lista."
-          }
-        }
-      }
-    },
-    "Apuntador question detection is unavailable.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La detección de preguntas del Apuntador no está disponible."
           }
         }
       }
@@ -1691,26 +1541,6 @@
         }
       }
     },
-    "Audio is recording now. The complete transcript will appear after the local model finishes preparing.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El audio ya se está grabando. La transcripción completa aparecerá cuando el modelo local termine de prepararse."
-          }
-        }
-      }
-    },
-    "Audio on your disk": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Audio en tu disco"
-          }
-        }
-      }
-    },
     "Auto-detect": {
       "localizations": {
         "es": {
@@ -1967,16 +1797,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Brief"
-          }
-        }
-      }
-    },
-    "Brief for your next meeting: who's coming, related meetings, open to-dos": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Brief de tu próxima reunión: quiénes vienen, reuniones relacionadas y pendientes abiertos"
           }
         }
       }
@@ -2551,16 +2371,6 @@
         }
       }
     },
-    "Choose an audio file to transcribe as a meeting": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Elige un archivo de audio para transcribirlo como reunión"
-          }
-        }
-      }
-    },
     "Choose an audio file to transcribe, or a .portavoz meeting file": {
       "localizations": {
         "es": {
@@ -2581,16 +2391,6 @@
         }
       }
     },
-    "Choose destination…": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Elegir destino…"
-          }
-        }
-      }
-    },
     "Choose one confirmed person. Portavoz uses the exact identity you select and never guesses from question text.": {
       "localizations": {
         "es": {
@@ -2607,16 +2407,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Elige un tema confirmado y una vista de memoria. Portavoz usa la identidad exacta que selecciones y solo muestra hechos respaldados por fuentes que confirmaste explícitamente."
-          }
-        }
-      }
-    },
-    "Choose one confirmed topic. Portavoz uses the exact identity you select and shows only current decisions you explicitly confirmed about it.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Elige un tema confirmado. Portavoz usa la identidad exacta que selecciones y muestra solo las decisiones actuales que confirmaste explícitamente sobre ese tema."
           }
         }
       }
@@ -2791,16 +2581,6 @@
         }
       }
     },
-    "Compact view": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vista compacta"
-          }
-        }
-      }
-    },
     "Compact — less disk": {
       "localizations": {
         "es": {
@@ -2837,16 +2617,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Comprimiendo…"
-          }
-        }
-      }
-    },
-    "Computed on your Mac, from your library.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Calculado en tu Mac, a partir de tu biblioteca."
           }
         }
       }
@@ -3287,16 +3057,6 @@
         }
       }
     },
-    "Correct text or speaker": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Corregir texto o hablante"
-          }
-        }
-      }
-    },
     "Correct the summary": {
       "localizations": {
         "es": {
@@ -3587,26 +3347,6 @@
         }
       }
     },
-    "Could not prepare recording: %@": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No se pudo preparar la grabación: %@"
-          }
-        }
-      }
-    },
-    "Could not prepare the models: %@": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No se pudieron preparar los modelos: %@"
-          }
-        }
-      }
-    },
     "Could not remember the voice.": {
       "localizations": {
         "es": {
@@ -3733,16 +3473,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se pudieron buscar reuniones."
-          }
-        }
-      }
-    },
-    "Could not start capture: %@": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No se pudo iniciar la captura: %@"
           }
         }
       }
@@ -4303,16 +4033,6 @@
         }
       }
     },
-    "Detects questions and suggests on-device answers. It never answers for you.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Detecta preguntas y sugiere respuestas en tu Mac. Jamás responde por ti."
-          }
-        }
-      }
-    },
     "Detects questions during a recording and suggests answers.": {
       "localizations": {
         "es": {
@@ -4323,32 +4043,12 @@
         }
       }
     },
-    "Detects questions during a recording and suggests answers. Without an answer engine, cards show the question only.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Detecta preguntas durante una grabación y sugiere respuestas. Sin motor de respuestas, las tarjetas muestran solo la pregunta."
-          }
-        }
-      }
-    },
     "Dictate": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Dictar"
-          }
-        }
-      }
-    },
-    "Dictate (⌥⌘D)": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dictar (⌥⌘D)"
           }
         }
       }
@@ -4369,16 +4069,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dictando"
-          }
-        }
-      }
-    },
-    "Dictating — ⌥⌘D inserts into the front app": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dictando — ⌥⌘D inserta en la app activa"
           }
         }
       }
@@ -4595,16 +4285,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Descarta este recordatorio para esta reunión"
-          }
-        }
-      }
-    },
-    "Dismiss this suggestion": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Descartar esta sugerencia"
           }
         }
       }
@@ -4849,26 +4529,6 @@
         }
       }
     },
-    "Downloads on refine · ": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Se descarga al refinar · "
-          }
-        }
-      }
-    },
-    "Draft a recap of this meeting?": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "¿Preparo el recap de esta reunión?"
-          }
-        }
-      }
-    },
     "Draft the recap…": {
       "localizations": {
         "es": {
@@ -4955,26 +4615,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Antes"
-          }
-        }
-      }
-    },
-    "Echo cancellation (recommended with speakers)": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancelación de eco (recomendada con parlantes)"
-          }
-        }
-      }
-    },
-    "Echo cancellation · dictate anywhere · ⌥⌘D": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancelación de eco · dicta donde sea · ⌥⌘D"
           }
         }
       }
@@ -5199,16 +4839,6 @@
         }
       }
     },
-    "Enrolled voice · your name · Apuntador": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voz enrolada · tu nombre · Apuntador"
-          }
-        }
-      }
-    },
     "Enter a GitHub repository as owner/name.": {
       "localizations": {
         "es": {
@@ -5245,16 +4875,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Español"
-          }
-        }
-      }
-    },
-    "Every meeting becomes searchable notes with action items.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cada reunión se vuelve notas buscables con action items."
           }
         }
       }
@@ -5315,16 +4935,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Exportar"
-          }
-        }
-      }
-    },
-    "Export Markdown · recordings folder · trash": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Exportar Markdown · carpeta de grabaciones · papelera"
           }
         }
       }
@@ -5459,16 +5069,6 @@
         }
       }
     },
-    "Export this meeting as a package?": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "¿Exporto esta reunión como paquete?"
-          }
-        }
-      }
-    },
     "Export this package": {
       "localizations": {
         "es": {
@@ -5555,16 +5155,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Falló — la recuperación no está disponible"
-          }
-        }
-      }
-    },
-    "Failed — retry is available": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Falló — puedes reintentar"
           }
         }
       }
@@ -6329,16 +5919,6 @@
         }
       }
     },
-    "Improve transcript": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mejorar transcripción"
-          }
-        }
-      }
-    },
     "Improved": {
       "localizations": {
         "es": {
@@ -6555,16 +6135,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Saldrá de la vista de transcripción, pero el original y una acción para restaurarlo seguirán disponibles."
-          }
-        }
-      }
-    },
-    "It tells apart every voice, including yours.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Distingue cada voz, incluida la tuya."
           }
         }
       }
@@ -6895,36 +6465,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Escuchando… %d s"
-          }
-        }
-      }
-    },
-    "Listening… speak normally for 12 seconds.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Escuchando… habla normal durante 12 segundos."
-          }
-        }
-      }
-    },
-    "Live Apuntador needs Apple Intelligence.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apuntador en vivo necesita Apple Intelligence."
-          }
-        }
-      }
-    },
-    "Live Apuntador requires macOS 26 and Apple Intelligence.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apuntador en vivo requiere macOS 26 y Apple Intelligence."
           }
         }
       }
@@ -7389,26 +6929,6 @@
         }
       }
     },
-    "Meetings in your database": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reuniones en tu base de datos"
-          }
-        }
-      }
-    },
-    "Meetings per week": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reuniones por semana"
-          }
-        }
-      }
-    },
     "Memory graph": {
       "localizations": {
         "es": {
@@ -7759,16 +7279,6 @@
         }
       }
     },
-    "Name speakers in your meetings and the people you meet most will show up here.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ponles nombre a los speakers de tus reuniones y aquí aparecerán las personas con quienes más te reúnes."
-          }
-        }
-      }
-    },
     "Name suggestions require macOS 26.": {
       "localizations": {
         "es": {
@@ -7979,16 +7489,6 @@
         }
       }
     },
-    "Next: %@": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Próxima: %@"
-          }
-        }
-      }
-    },
     "No %@ runs match the selected time period.": {
       "localizations": {
         "es": {
@@ -8005,26 +7505,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "No hay ejecuciones de %@ que coincidan con esta vista de actividad."
-          }
-        }
-      }
-    },
-    "No Apple Intelligence or Ollama, and the embedded model needs 8 GB of RAM and 4 GB of disk. Install Ollama (ollama.com) or configure BYOK in Settings.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No hay Apple Intelligence ni Ollama, y el modelo integrado necesita 8 GB de RAM y 4 GB de disco. Instala Ollama (ollama.com) o configura BYOK en Ajustes."
-          }
-        }
-      }
-    },
-    "No Apple Intelligence or Ollama, but your Mac can run the built-in model (one 3 GB download).": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sin Apple Intelligence ni Ollama, pero tu Mac puede correr el modelo integrado (una descarga de 3 GB)."
           }
         }
       }
@@ -8379,16 +7859,6 @@
         }
       }
     },
-    "No reliable speech was found. Improve the transcript from the saved audio.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No se encontró voz confiable. Mejora la transcripción desde el audio guardado."
-          }
-        }
-      }
-    },
     "No remote service used": {
       "localizations": {
         "es": {
@@ -8689,16 +8159,6 @@
         }
       }
     },
-    "Nudges you about open objectives and talk balance.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Te avisa sobre objetivos abiertos y balance de habla."
-          }
-        }
-      }
-    },
     "OK": {
       "localizations": {
         "es": {
@@ -8829,16 +8289,6 @@
         }
       }
     },
-    "On macOS Sequoia, summaries and Improve work with Ollama, Built-in and Whisper.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "En macOS Sequoia, los resúmenes y Mejorar funcionan con Ollama, Integrado y Whisper."
-          }
-        }
-      }
-    },
     "On your Mac": {
       "localizations": {
         "es": {
@@ -8865,16 +8315,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Modelos en el equipo"
-          }
-        }
-      }
-    },
-    "On-device summaries require macOS 26 (or choose Ollama in Settings).": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Los resúmenes en el dispositivo requieren macOS 26 (o elige Ollama en Ajustes)."
           }
         }
       }
@@ -9119,16 +8559,6 @@
         }
       }
     },
-    "Open the original surface to review the exact preview and confirm. Nothing runs here.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abre la superficie original para revisar la vista previa exacta y confirmar. Aquí no se ejecuta nada."
-          }
-        }
-      }
-    },
     "Open the source of this entry. Nothing runs or changes.": {
       "localizations": {
         "es": {
@@ -9175,16 +8605,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Compromiso abierto: %@"
-          }
-        }
-      }
-    },
-    "Opening %@.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abriendo %@."
           }
         }
       }
@@ -9479,16 +8899,6 @@
         }
       }
     },
-    "People you meet with": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Con quién te reúnes"
-          }
-        }
-      }
-    },
     "Permissions": {
       "localizations": {
         "es": {
@@ -9519,32 +8929,12 @@
         }
       }
     },
-    "Personal token (scope: gist)": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token personal (scope: gist)"
-          }
-        }
-      }
-    },
     "Pick up where you left off": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Retoma donde lo dejaste"
-          }
-        }
-      }
-    },
-    "Pin the language you speak so a quiet or noisy recording is never transcribed in the wrong language. Auto-detect works well with clear audio.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fija el idioma que hablas para que una grabación baja o con ruido nunca se transcriba en el idioma equivocado. La detección automática funciona bien con audio claro."
           }
         }
       }
@@ -9625,16 +9015,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Portavoz no pudo terminar de guardar la grabación. Mantén la app abierta y exporta los diagnósticos de soporte."
-          }
-        }
-      }
-    },
-    "Portavoz could not open the recording screen.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Portavoz no pudo abrir la pantalla de grabación."
           }
         }
       }
@@ -9879,16 +9259,6 @@
         }
       }
     },
-    "Portavoz stopped before starting background work. Your original library has not been changed or deleted.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Portavoz se detuvo antes de iniciar tareas en segundo plano. Tu biblioteca original no se ha modificado ni eliminado."
-          }
-        }
-      }
-    },
     "Portavoz suggests actions from your meetings. Nothing runs until you confirm it.": {
       "localizations": {
         "es": {
@@ -10019,32 +9389,12 @@
         }
       }
     },
-    "Preparing Whisper (%@; downloads only if needed)… %d%%": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Preparando Whisper (%@; descarga solo si hace falta)… %d%%"
-          }
-        }
-      }
-    },
     "Preparing another on-device model could disrupt live capture. Finish the recording, then try again.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Preparar otro modelo en el dispositivo podría afectar la captura en vivo. Termina la grabación y vuelve a intentarlo."
-          }
-        }
-      }
-    },
-    "Preparing in background; downloads only if needed… %d%%": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Preparando en segundo plano; descarga solo si hace falta… %d%%"
           }
         }
       }
@@ -10125,16 +9475,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vista previa"
-          }
-        }
-      }
-    },
-    "Preview draft": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ver borrador"
           }
         }
       }
@@ -10235,16 +9575,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Procesamiento"
-          }
-        }
-      }
-    },
-    "Processing failed: %@": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El procesamiento falló: %@"
           }
         }
       }
@@ -10449,16 +9779,6 @@
         }
       }
     },
-    "Question detection and on-device answer suggestions are ready.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La detección de preguntas y las sugerencias de respuestas en el dispositivo están listas."
-          }
-        }
-      }
-    },
     "Question detection and on-device answers work on this Mac.": {
       "localizations": {
         "es": {
@@ -10535,16 +9855,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Salir"
-          }
-        }
-      }
-    },
-    "Quit Portavoz": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Salir de Portavoz"
           }
         }
       }
@@ -10679,16 +9989,6 @@
         }
       }
     },
-    "Reads the meeting and copies a draft. You send it yourself.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lee la reunión y copia un borrador. Lo envías tú."
-          }
-        }
-      }
-    },
     "Ready to review": {
       "localizations": {
         "es": {
@@ -10759,16 +10059,6 @@
         }
       }
     },
-    "Recent activity": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Actividad reciente"
-          }
-        }
-      }
-    },
     "Recently deleted": {
       "localizations": {
         "es": {
@@ -10799,32 +10089,12 @@
         }
       }
     },
-    "Record a conversation, revisit its sources, or ask your library a question.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Graba una conversación, revisa sus fuentes o hazle una pregunta a tu biblioteca."
-          }
-        }
-      }
-    },
     "Record a fresh 12 seconds": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Grabar 12 segundos nuevos"
-          }
-        }
-      }
-    },
-    "Record a meeting or choose one from the library. Everything is processed on your Mac.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Graba una reunión o elige una de la biblioteca. Todo se procesa en tu Mac."
           }
         }
       }
@@ -10845,16 +10115,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Grabar esta reunión"
-          }
-        }
-      }
-    },
-    "Record when it starts": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Grabar al empezar"
           }
         }
       }
@@ -10885,16 +10145,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Grabación interrumpida"
-          }
-        }
-      }
-    },
-    "Recording mic + system audio — everything stays on your Mac": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Grabando micrófono + audio del sistema — todo se queda en tu Mac"
           }
         }
       }
@@ -11039,16 +10289,6 @@
         }
       }
     },
-    "Recovery · processing · local indexes": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recuperación · procesamiento · índices locales"
-          }
-        }
-      }
-    },
     "Redraft": {
       "localizations": {
         "es": {
@@ -11065,16 +10305,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reduce el eco del altavoz bajando el micrófono fuera de tus turnos"
-          }
-        }
-      }
-    },
-    "Refine the filters to see more.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ajusta los filtros para ver más."
           }
         }
       }
@@ -11599,16 +10829,6 @@
         }
       }
     },
-    "Removes speaker echo from your mic so others are not tagged as you. With headphones you can turn it off.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Quita el eco del altavoz de tu micrófono para que los demás no se etiqueten como tú. Con audífonos puedes desactivarlo."
-          }
-        }
-      }
-    },
     "Rename meeting": {
       "localizations": {
         "es": {
@@ -11675,16 +10895,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Repositorio"
-          }
-        }
-      }
-    },
-    "Required only to publish gists. It is stored in Keychain — never in the database or cloud.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Necesario solo para publicar gists. Se guarda en Keychain — nunca en la base de datos ni en la nube."
           }
         }
       }
@@ -12061,16 +11271,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Revisar la fuente en contexto"
-          }
-        }
-      }
-    },
-    "Review sources and history": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Revisar fuentes e historial"
           }
         }
       }
@@ -12921,16 +12121,6 @@
         }
       }
     },
-    "Showing %d of %d commitments": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mostrando %d de %d compromisos"
-          }
-        }
-      }
-    },
     "Showing %d of %d excerpts": {
       "localizations": {
         "es": {
@@ -12951,52 +12141,12 @@
         }
       }
     },
-    "Showing commitments for %@.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mostrando los compromisos de %@."
-          }
-        }
-      }
-    },
-    "Shows the 20 most recent runs on this Mac.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Muestra las 20 ejecuciones más recientes en este Mac."
-          }
-        }
-      }
-    },
     "Shows today's and tomorrow's meetings with a brief for each.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Muestra las reuniones de hoy y mañana con un brief para cada una."
-          }
-        }
-      }
-    },
-    "Shows what they just asked, with an answer drawn from this meeting.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Muestra lo que acaban de preguntar, con una respuesta tomada de esta reunión."
-          }
-        }
-      }
-    },
-    "Shrink to a floating mini panel with the timer and captions": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reduce a un mini panel flotante con el cronómetro y los subtítulos"
           }
         }
       }
@@ -13237,16 +12387,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fuente no disponible"
-          }
-        }
-      }
-    },
-    "Source: %@": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fuente: %@"
           }
         }
       }
@@ -13571,16 +12711,6 @@
         }
       }
     },
-    "Starts in %lld min": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Empieza en %lld min"
-          }
-        }
-      }
-    },
     "Starts recording linked to this event: the meeting gets its real title": {
       "localizations": {
         "es": {
@@ -13731,16 +12861,6 @@
         }
       }
     },
-    "Suggest one or two questions worth asking next": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sugiere una o dos preguntas para hacer a continuación"
-          }
-        }
-      }
-    },
     "Suggested due date: %@": {
       "localizations": {
         "es": {
@@ -13841,16 +12961,6 @@
         }
       }
     },
-    "Summaries with commitments will count here.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Los resúmenes con compromisos contarán aquí."
-          }
-        }
-      }
-    },
     "Summarize as %@?": {
       "localizations": {
         "es": {
@@ -13887,16 +12997,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Motor de resúmenes · Apuntador · tu voz"
-          }
-        }
-      }
-    },
-    "Summary engine · Whisper refine · vocabulary": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Motor de resúmenes · refine Whisper · vocabulario"
           }
         }
       }
@@ -14391,16 +13491,6 @@
         }
       }
     },
-    "The diarizer is not available.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El diarizador no está disponible."
-          }
-        }
-      }
-    },
     "The email draft could not be opened. Portavoz did not send it.": {
       "localizations": {
         "es": {
@@ -14527,16 +13617,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se pudo leer el registro local de cambios."
-          }
-        }
-      }
-    },
-    "The local model could not generate the summary.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El modelo local no pudo generar el resumen."
           }
         }
       }
@@ -14711,16 +13791,6 @@
         }
       }
     },
-    "The reminder could not be created. Nothing else changed.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No se pudo crear el recordatorio. Nada más cambió."
-          }
-        }
-      }
-    },
     "The reminder result could not be verified. Check Reminders before trying again.": {
       "localizations": {
         "es": {
@@ -14841,42 +13911,12 @@
         }
       }
     },
-    "The transcript does not prove any names — you can rename the pills manually.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El transcript no prueba ningún nombre — puedes renombrar las etiquetas manualmente."
-          }
-        }
-      }
-    },
     "The transcript was refined, but Apuntador cards could not be refreshed.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "El transcript se refinó, pero no se pudieron actualizar las tarjetas del Apuntador."
-          }
-        }
-      }
-    },
-    "The transcription engine is not available.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El motor de transcripción no está disponible."
-          }
-        }
-      }
-    },
-    "The transcription model is not available.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El modelo de transcripción no está disponible."
           }
         }
       }
@@ -15671,16 +14711,6 @@
         }
       }
     },
-    "Transcription, voices and summaries run on your Mac.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La transcripción, las voces y los resúmenes corren en tu Mac."
-          }
-        }
-      }
-    },
     "Translate": {
       "localizations": {
         "es": {
@@ -15891,16 +14921,6 @@
         }
       }
     },
-    "Up next": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A continuación"
-          }
-        }
-      }
-    },
     "Up to %d briefs per day": {
       "localizations": {
         "es": {
@@ -16091,16 +15111,6 @@
         }
       }
     },
-    "Voices remembered — encrypted on this Mac": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voces recordadas — cifradas en este Mac"
-          }
-        }
-      }
-    },
     "Voices you chose to remember, used to suggest names. Right-click a name to forget it.": {
       "localizations": {
         "es": {
@@ -16211,16 +15221,6 @@
         }
       }
     },
-    "Web answers are not available yet. Nothing else will be searched.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Las respuestas web aún no están disponibles. No se buscará en ninguna otra fuente."
-          }
-        }
-      }
-    },
     "Web source request": {
       "localizations": {
         "es": {
@@ -16267,16 +15267,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Día de la semana"
-          }
-        }
-      }
-    },
-    "Welcome to Portavoz": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bienvenido a Portavoz"
           }
         }
       }
@@ -16361,16 +15351,6 @@
         }
       }
     },
-    "When someone says your name, Apuntador marks the card as asked to you. Empty uses your macOS account name.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cuando alguien dice tu nombre, Apuntador marca la tarjeta como dirigida a ti. Vacío usa el nombre de tu cuenta de macOS."
-          }
-        }
-      }
-    },
     "Which commitment?": {
       "localizations": {
         "es": {
@@ -16397,16 +15377,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "¿Qué reunión?"
-          }
-        }
-      }
-    },
-    "Who did I talk with recently?": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "¿Con quién hablé recientemente?"
           }
         }
       }
@@ -16441,32 +15411,12 @@
         }
       }
     },
-    "Will propose a cited brief from the upcoming calendar event.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Propondrá un brief con citas a partir del próximo evento del calendario."
-          }
-        }
-      }
-    },
     "With %d GB of RAM, prefer Ollama models up to 8B to keep Portavoz responsive.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Con %d GB de RAM, prefiere modelos Ollama de hasta 8B para mantener Portavoz fluido."
-          }
-        }
-      }
-    },
-    "Within two hours of each upcoming calendar event, Portavoz prepares one cited brief from your local library. Nothing is sent, shared, or written to a file.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "En las dos horas previas a cada evento próximo del calendario, Portavoz prepara un brief con citas desde tu biblioteca local. Nada se envía, comparte ni escribe en un archivo."
           }
         }
       }
@@ -16497,16 +15447,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Escribir resúmenes en"
-          }
-        }
-      }
-    },
-    "Writes a text-only .portavoz file to a folder you choose.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Escribe un archivo .portavoz solo de texto en la carpeta que elijas."
           }
         }
       }
@@ -16561,16 +15501,6 @@
         }
       }
     },
-    "You create these rules yourself. They run only reversible work on this Mac and can be paused or deleted at any time.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tú creas estas reglas. Solo ejecutan tareas reversibles en este Mac y puedes pausarlas o eliminarlas en cualquier momento."
-          }
-        }
-      }
-    },
     "You spoke %d%% of the last five minutes.": {
       "localizations": {
         "es": {
@@ -16597,16 +15527,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tu Mac puede ejecutar el modelo integrado después de una descarga verificada de 3 GB, completamente en el dispositivo."
-          }
-        }
-      }
-    },
-    "Your Mac has Apple Intelligence — the summary runs on the Neural Engine without downloading anything.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tu Mac tiene Apple Intelligence: el resumen se ejecuta en el Neural Engine sin descargar nada."
           }
         }
       }
@@ -16721,26 +15641,6 @@
         }
       }
     },
-    "Your meetings, in focus": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tus reuniones, con claridad"
-          }
-        }
-      }
-    },
-    "Your meetings, on your Mac.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tus reuniones, en tu Mac."
-          }
-        }
-      }
-    },
     "Your mic is muted for Portavoz": {
       "localizations": {
         "es": {
@@ -16771,32 +15671,12 @@
         }
       }
     },
-    "Your note sources": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fuentes de tus notas"
-          }
-        }
-      }
-    },
     "Your notes": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Tus notas"
-          }
-        }
-      }
-    },
-    "Your question and meetings are not sent to the page. The selected local answer engine receives only the downloaded excerpt.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tu pregunta y tus reuniones no se envían a la página. El motor local seleccionado recibe solo el fragmento descargado."
           }
         }
       }
@@ -16967,32 +15847,12 @@
         }
       }
     },
-    "avg length": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "duración media"
-          }
-        }
-      }
-    },
     "balanced": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "equilibrado"
-          }
-        }
-      }
-    },
-    "busiest day": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "día más activo"
           }
         }
       }
@@ -17077,16 +15937,6 @@
         }
       }
     },
-    "e.g. %@": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "p. ej. %@"
-          }
-        }
-      }
-    },
     "echo aec dictation hotkey microphone mic level": {
       "localizations": {
         "es": {
@@ -17163,26 +16013,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sincronización con iCloud"
-          }
-        }
-      }
-    },
-    "iCloud · status · existing library": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "iCloud · estado · biblioteca existente"
-          }
-        }
-      }
-    },
-    "icloud cloud sync status existing library encrypted devices pause remove": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "icloud nube sincronización estado biblioteca existente cifrado dispositivos pausar quitar"
           }
         }
       }
@@ -17307,16 +16137,6 @@
         }
       }
     },
-    "meetings this week": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "reuniones esta semana"
-          }
-        }
-      }
-    },
     "meetings · vs %@": {
       "localizations": {
         "es": {
@@ -17403,16 +16223,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "grabadas"
-          }
-        }
-      }
-    },
-    "recorded this week": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "grabado esta semana"
           }
         }
       }
@@ -17527,16 +16337,6 @@
         }
       }
     },
-    "week streak": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "semanas seguidas"
-          }
-        }
-      }
-    },
     "writes a local draft": {
       "localizations": {
         "es": {
@@ -17603,16 +16403,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "tú todavía pulsas Enviar"
-          }
-        }
-      }
-    },
-    "“%@” came up in %d meetings": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "«%@» apareció en %d reuniones"
           }
         }
       }

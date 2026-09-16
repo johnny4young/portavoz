@@ -240,7 +240,7 @@ struct HomeView: View {
             } label: {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(open.item.text).lineLimit(2)
-                    Text(open.meetingTitle)
+                    Text(MeetingRowTitle.display(open.meetingTitle))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -278,7 +278,7 @@ struct HomeView: View {
                 VoiceMixBar(slices: state.voiceMixes[meeting.id] ?? [], colorScheme: colorScheme)
                     .frame(width: 44)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(meeting.title)
+                    Text(MeetingRowTitle.display(meeting.title))
                         .font(.body.weight(.medium))
                         .lineLimit(1)
                     Text(meeting.startedAt, format: .dateTime.weekday(.abbreviated).day().month().hour().minute())

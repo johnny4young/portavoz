@@ -127,6 +127,12 @@ Center metadata alone still cannot attribute a hosted alert to that crash.
 
 ### Compact-window scroll reachability remains unqualified
 
+The 1.1 layout removed the fixed 240-point artifacts box (the area now
+measures its material and caps at half the column) and moved the rail's
+sections behind lenses, which reduces the scrolling the compact geometry
+needed; the harness still does not force that geometry, so the limitation
+below stands as written.
+
 The ordinary bounded `revealVertically` helper can fail to reveal a correction
 control in a short transcript viewport. Wheel-response calibration and
 pending-input attribution were withdrawn after a compact real-app failure and
@@ -143,6 +149,19 @@ include composed delivery shapes and retain the existing finite interaction
 budgets. Do not infer that the underlying transcript write path is defective
 from a harness failure before activation, or claim physical macOS coverage from
 the ordinary-window catalog. See D533 for the separation boundary.
+
+### 1.1 layout items deliberately kept as they were
+
+The "sin ruido" pass (D536/D537) stopped short of four proposed changes, each
+for a reason the code records: the live Apuntador stays in the D504 split
+(captions above, assist panel below, user-owned divider) with a state chip
+rather than becoming a right-hand panel, because the split's floors, budgets
+and journeys are qualified and a side panel is not; the Automations pane keeps
+its history as a section rather than a tab, because thirteen journeys address
+receipts in the same pane; Ask keeps its By person / By topic segmented
+surfaces, because six journeys select them by identifier; and meeting-skill
+proposals stay in the detail action row rather than under the summary. Each is
+a presentation choice that can be revisited with its journeys.
 
 ### Native editor entry points retain independent evidence
 
