@@ -6,6 +6,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 16, 2026
 
+- **📐 The meeting page fits your screen** — the summary, commitments and notes take only the space they need, so the transcript gets the rest of the window instead of a fixed box. Long material still scrolls in place, and the player stays put at the bottom.
+
 - **🚦 Warnings look different from errors** — an orange circle means "still working, keep an eye on it"; a red triangle means "stopped". Recording banners, the error screen and Today use the same code, buttons carry an icon, and tooltips start with what the control does.
 
 - **🎯 One icon per idea** — Today, Radar, Apuntador, Automations, privacy, retry and history each keep one icon across the whole app, and the ✦ spark now only marks text Portavoz generated.

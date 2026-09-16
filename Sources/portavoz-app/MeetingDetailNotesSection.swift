@@ -86,28 +86,22 @@ struct MeetingDetailNotesSection: View {
     @ViewBuilder
     private var content: some View {
         if let enhanced = values.notes.enhanced {
-            ScrollView {
-                MarkdownText(text: enhanced.markdown)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(maxHeight: 220)
+            MarkdownText(text: enhanced.markdown)
+                .frame(maxWidth: .infinity, alignment: .leading)
         } else {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(values.notes.contextItems) { item in
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Text(values.presentation.clock(item.timestamp))
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.tertiary)
-                            Text(item.content)
-                                .font(.callout)
-                                .textSelection(.enabled)
-                        }
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(values.notes.contextItems) { item in
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(values.presentation.clock(item.timestamp))
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.tertiary)
+                        Text(item.content)
+                            .font(.callout)
+                            .textSelection(.enabled)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxHeight: 140)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

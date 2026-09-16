@@ -526,10 +526,15 @@ already prepared session and cannot resolve audio or storage. Architecture
 tests keep the root at 500 lines or fewer and reject model effects or broad
 composition dependencies in presentation children.
 
-The composed primary column assigns generated material to a bounded
-180-to-240-point scroll region, gives the transcript the remaining flexible
-height, clips its focused viewport to that exact allocation, and keeps the
-player as a separate dock below it. Transcript correction buttons are
+The composed primary column lets generated material take the height its
+content needs, capped at half of the column (never below 180 points):
+`MeetingDetailArtifactsSection` renders the material inline when it fits the
+cap and switches to its own scroll area only when it does not
+(`ViewThatFits`), so a short summary leaves the transcript most of the window
+and a long one still cannot collapse it. Notes render at content height inside
+that area instead of nesting a second scroll view. The transcript receives the
+remaining flexible height, clips its focused viewport to that exact
+allocation, and the player stays as a separate dock below it. Transcript correction buttons are
 28-point accessories outside focus blur and scale effects. Long summaries,
 notes, or commitment review can therefore scroll without collapsing their own
 controls, covering transcript corrections, or allowing the player to intercept

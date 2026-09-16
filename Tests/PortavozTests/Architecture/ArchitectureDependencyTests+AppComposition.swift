@@ -1980,8 +1980,11 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(view.contains("MeetingDetailFlowHost("))
         XCTAssertTrue(view.contains("MeetingDetailPlaybackNavigation()"))
         XCTAssertTrue(view.contains("MeetingDetailArtifactsSection"))
-        XCTAssertTrue(artifacts.contains(
-            ".frame(minHeight: 180, idealHeight: 240, maxHeight: 240)"))
+        XCTAssertTrue(artifacts.contains("ViewThatFits(in: .vertical)"))
+        XCTAssertTrue(artifacts.contains(".frame(maxHeight: heightCap)"))
+        XCTAssertFalse(artifacts.contains("maxHeight: 240"), "content decides the height (D536)")
+        XCTAssertTrue(view.contains("GeometryReader { column in"))
+        XCTAssertTrue(view.contains("MeetingDetailArtifactsSection(columnHeight: column.size.height)"))
         XCTAssertTrue(view.contains(".layoutPriority(1)"))
         XCTAssertTrue(flowHost.contains("MeetingDetailRefineReviewSheet("))
         XCTAssertTrue(flowHost.contains("TranscriptCorrectionEditor("))
