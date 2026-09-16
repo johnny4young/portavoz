@@ -943,8 +943,9 @@ of child presentation types; scoped action values are their mutation boundary.
 
 The child is itself a composition surface rather than the owner of every visual
 section. `MeetingDetailHeaderSection` renders identity, facts, participants,
-and optional suggestions. `MeetingDetailTrustSection` renders processing,
-recovery, and the privacy receipt. `MeetingGeneratedDocumentSection` renders
+and optional suggestions. `MeetingDetailTrustSection` renders processing and
+recovery; `MeetingDetailActivityLine` renders the privacy receipt and action
+history as one chip under the title with a popover for the detail. `MeetingGeneratedDocumentSection` renders
 the summary overview, decision/open-question sections, typed commitments, and
 claim-adjacent proof controls. Each receives only explicit values and actions;
 none can reach the route model, services, stores, or global preferences. The
@@ -3068,9 +3069,10 @@ ApplicationKit workflows.
 
 Secondary Meeting Detail flows use the same rule. `MeetingDetailActionSection`
 renders Refine, recap, export, Gist, and delete capabilities from immutable
-values and explicit intents. `MeetingDetailRailSection` owns the independently
-scrolling recovery, privacy, health, chapter, and persisted Companion
-presentation without reaching the model or composition root; the coordinator
+values and explicit intents. `MeetingDetailRailSection` owns the always-present
+recovery card and the three lenses (people, Apuntador, chapters) shown one at
+a time; the composition owns the selected lens and passes it in as a value,
+so the rail reaches neither state nor the composition root; the coordinator
 projects health availability once rather than making the rail rescan every
 segment during presentation. One
 scene-owned `MeetingDetailFlowState` represents mutually exclusive sheet,

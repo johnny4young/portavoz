@@ -1367,8 +1367,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             withIdentifier: "settings-actions-explanation")
         XCTAssertTrue(explanation.waitForExistenceFast(timeout: 5))
         let expectedExplanation = UITestLocale.environmentLocale == "es"
-            ? "Nada se ejecuta hasta que revisas y confirmas cada acción."
-            : "Nothing runs until you review and confirm it."
+            ? "Nada se ejecuta hasta que lo confirmes."
+            : "Nothing runs until you confirm it."
         XCTAssertTrue(
             try waitForLabel(explanation, toContain: expectedExplanation),
             "the pane must explain the review-first safety contract")

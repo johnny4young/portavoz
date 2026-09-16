@@ -953,7 +953,7 @@ extension ArchitectureDependencyTests {
         let sheet = try Self.contents(
             of: "Sources/portavoz-app/SkillConfirmSheet.swift")
         let trust = try Self.contents(
-            of: "Sources/portavoz-app/MeetingDetailTrustSection.swift")
+            of: "Sources/portavoz-app/MeetingDetailActivityLine.swift")
         let receiptPresentation = try Self.contents(
             of: "Sources/portavoz-app/SkillReceiptPresentation.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")

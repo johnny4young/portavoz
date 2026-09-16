@@ -2,6 +2,31 @@ import ApplicationKit
 import PortavozCore
 import SwiftUI
 
+/// The three review lenses beside the transcript.
+enum MeetingDetailRailTab: String, CaseIterable, Identifiable {
+    case people
+    case apuntador
+    case chapters
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .people: L10n.text("People")
+        case .apuntador: L10n.text("Apuntador")
+        case .chapters: L10n.text("Chapters")
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .people: "person.2"
+        case .apuntador: PVSymbol.apuntador
+        case .chapters: "list.number"
+        }
+    }
+}
+
 struct MeetingDetailRailValues {
     let trust: MeetingDetailTrustValues?
     let hasHealth: Bool
@@ -13,14 +38,8 @@ struct MeetingDetailRailValues {
     let transcriptRevision: Int
     let hasPlayback: Bool
     let isRefreshingCompanion: Bool
+    let selectedTab: MeetingDetailRailTab
     let presentation: MeetingDetailPresentation
-
-    var hasContent: Bool {
-        trust != nil
-            || hasHealth
-            || !chapters.isEmpty
-            || !companionCards.isEmpty
-    }
 }
 
 struct MeetingDetailRailActions {
@@ -32,62 +51,128 @@ struct MeetingDetailRailActions {
     let copyAnswer: @MainActor (String) -> Void
     let refreshCompanionCards: @MainActor () -> Void
     let removeCompanionCard: @MainActor @Sendable (UUID) async -> Void
+    let selectTab: @MainActor (MeetingDetailRailTab) -> Void
 }
 
-/// Independently scrolling secondary review surfaces beside the transcript.
+/// The always-present review rail beside the transcript.
 ///
-/// Recovery, privacy, health, chapters, and persisted Apuntador evidence share
-/// one explicit rail boundary and cannot reach route or composition owners.
+/// Processing that needs attention sits on top; below it one of three lenses
+/// (People, Apuntador, Chapters) fills the column height and scrolls on its
+/// own. The rail never disappears, so the page keeps one shape; a lens
+/// without material says so in one line. Selection is owned by the
+/// composition, not by this view.
 struct MeetingDetailRailSection: View {
     let values: MeetingDetailRailValues
     let actions: MeetingDetailRailActions
 
     var body: some View {
-        Group {
-            if values.hasContent {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        if let trust = values.trust {
-                            MeetingDetailTrustSection(
-                                values: trust,
-                                actions: MeetingDetailTrustActions(
-                                    retryProcessing: actions.retryProcessing,
-                                    refineSavedAudio: actions.refineSavedAudio,
-                                    openSupportDiagnostics: actions.openSupportDiagnostics))
-                        }
-                        if values.hasHealth {
-                            MeetingHealthView(
-                                speakers: values.speakers,
-                                segments: values.segments)
-                        }
-                        MeetingTranscriptChaptersSection(
-                            chapters: values.chapters,
-                            hasPlayback: values.hasPlayback,
-                            presentation: values.presentation,
-                            seekAndPlay: actions.seekAndPlay)
-                        MeetingDetailCompanionSection(
-                            values: MeetingDetailCompanionValues(
-                                cards: values.companionCards,
-                                freshnessByCardID: values.companionFreshness,
-                                transcriptRevision: values.transcriptRevision,
-                                segments: values.segments,
-                                hasPlayback: values.hasPlayback,
-                                isRefreshing: values.isRefreshingCompanion,
-                                presentation: values.presentation),
-                            actions: MeetingDetailCompanionActions(
-                                seekAndPlay: actions.seekAndPlay,
-                                focusEvidence: actions.focusEvidence,
-                                copyAnswer: actions.copyAnswer,
-                                refresh: actions.refreshCompanionCards,
-                                removeCard: actions.removeCompanionCard))
-                    }
+        VStack(alignment: .leading, spacing: 12) {
+            if let trust = values.trust {
+                MeetingDetailTrustSection(
+                    values: trust,
+                    actions: MeetingDetailTrustActions(
+                        retryProcessing: actions.retryProcessing,
+                        refineSavedAudio: actions.refineSavedAudio,
+                        openSupportDiagnostics: actions.openSupportDiagnostics))
+            }
+            tabBar
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    lens
                 }
-                .frame(width: 260)
-                .frame(maxHeight: .infinity)
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("detail-secondary-rail")
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+        .frame(width: 260)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("detail-secondary-rail")
+    }
+
+    private var tabBar: some View {
+        HStack(spacing: 4) {
+            ForEach(MeetingDetailRailTab.allCases) { tab in
+                let selected = tab == values.selectedTab
+                Button {
+                    actions.selectTab(tab)
+                } label: {
+                    Label(tab.title, systemImage: tab.symbol)
+                        .font(.caption.weight(selected ? .semibold : .regular))
+                        .lineLimit(1)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            selected ? PVDesign.accent.opacity(PVDesign.chipTint) : .clear,
+                            in: RoundedRectangle(cornerRadius: PVDesign.radiusSmall))
+                        .foregroundStyle(selected ? PVDesign.accent : .secondary)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+                .accessibilityIdentifier("detail-rail-tab-\(tab.rawValue)")
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("detail-rail-tabs")
+    }
+
+    @ViewBuilder
+    private var lens: some View {
+        switch values.selectedTab {
+        case .people:
+            if values.hasHealth {
+                MeetingHealthView(
+                    speakers: values.speakers,
+                    segments: values.segments)
+            } else {
+                emptyLens("No one has been identified yet.", id: "detail-rail-empty-people")
+            }
+        case .apuntador:
+            if values.companionCards.isEmpty {
+                emptyLens(
+                    "Apuntador answers from this meeting appear here.",
+                    id: "detail-rail-empty-apuntador")
+            } else {
+                MeetingDetailCompanionSection(
+                    values: MeetingDetailCompanionValues(
+                        cards: values.companionCards,
+                        freshnessByCardID: values.companionFreshness,
+                        transcriptRevision: values.transcriptRevision,
+                        segments: values.segments,
+                        hasPlayback: values.hasPlayback,
+                        isRefreshing: values.isRefreshingCompanion,
+                        presentation: values.presentation),
+                    actions: MeetingDetailCompanionActions(
+                        seekAndPlay: actions.seekAndPlay,
+                        focusEvidence: actions.focusEvidence,
+                        copyAnswer: actions.copyAnswer,
+                        refresh: actions.refreshCompanionCards,
+                        removeCard: actions.removeCompanionCard))
+            }
+        case .chapters:
+            if values.chapters.isEmpty {
+                emptyLens(
+                    "Chapters appear once the conversation has natural breaks.",
+                    id: "detail-rail-empty-chapters")
+            } else {
+                MeetingTranscriptChaptersSection(
+                    chapters: values.chapters,
+                    hasPlayback: values.hasPlayback,
+                    presentation: values.presentation,
+                    seekAndPlay: actions.seekAndPlay)
+            }
+        }
+    }
+
+    private func emptyLens(_ text: LocalizedStringKey, id: String) -> some View {
+        Text(text)
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(14)
+            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+            .accessibilityIdentifier(id)
     }
 }
 

@@ -1281,6 +1281,16 @@
         }
       }
     },
+    "Apuntador answers from this meeting appear here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquí aparecen las respuestas del Apuntador de esta reunión."
+          }
+        }
+      }
+    },
     "Apuntador could not finish re-checking. Your previous answers were kept.": {
       "localizations": {
         "es": {
@@ -2247,6 +2257,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Capítulos"
+          }
+        }
+      }
+    },
+    "Chapters appear once the conversation has natural breaks.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los capítulos aparecen cuando la conversación tiene pausas naturales."
           }
         }
       }
@@ -4189,16 +4209,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Detecta preguntas y sugiere respuestas en tu Mac. Jamás responde por ti."
-          }
-        }
-      }
-    },
-    "Detects questions during a recording and suggests answers.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Detecta preguntas durante una grabación y sugiere respuestas."
           }
         }
       }
@@ -8059,6 +8069,16 @@
         }
       }
     },
+    "No one has been identified yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no se ha identificado a nadie."
+          }
+        }
+      }
+    },
     "No owner suggested": {
       "localizations": {
         "es": {
@@ -9205,6 +9225,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "En pausa junto con todas las acciones"
+          }
+        }
+      }
+    },
+    "People": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personas"
           }
         }
       }
@@ -12247,6 +12277,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mira lo que Portavoz puede preparar de esta reunión. Tú confirmas cada una."
+          }
+        }
+      }
+    },
+    "See what left this Mac and every action you confirmed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mira qué salió de este Mac y cada acción que confirmaste"
           }
         }
       }

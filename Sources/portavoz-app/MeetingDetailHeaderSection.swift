@@ -14,6 +14,11 @@ struct MeetingDetailHeaderValues {
     let voiceSuggestions: [MeetingVoiceSuggestion]
     let personOffer: MeetingDetailRememberOffer?
     let voiceOffer: MeetingDetailRememberOffer?
+
+    var hasSuggestions: Bool {
+        !nameSuggestions.isEmpty || !voiceSuggestions.isEmpty
+            || personOffer != nil || voiceOffer != nil
+    }
 }
 
 struct MeetingDetailRememberOffer {
@@ -71,6 +76,7 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
             actionContent
             factsRow
             participantsRow
+            suggestionsRow
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-header-section")
@@ -124,10 +130,24 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
             if !unnamed.isEmpty {
                 suggestNamesControl
             }
-            nameSuggestionChips
-            voiceSuggestionChips
-            rememberPersonOffer
-            rememberVoiceOffer
+        }
+    }
+
+    /// Every ✦ suggestion and offer sits in one scrolling row under the cast,
+    /// so a meeting with many suggestions never pushes the summary down.
+    @ViewBuilder
+    private var suggestionsRow: some View {
+        if values.hasSuggestions {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    nameSuggestionChips
+                    voiceSuggestionChips
+                    rememberPersonOffer
+                    rememberVoiceOffer
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("detail-suggestions-row")
         }
     }
 

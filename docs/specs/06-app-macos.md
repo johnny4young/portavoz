@@ -503,9 +503,21 @@ ApplicationKit continue to own playback preparation, compression, file re-
 resolution, and pending seeks.
 
 `MeetingDetailActionSection` separately renders Refine, recap, export, Gist,
-and delete capabilities. `MeetingDetailRailSection` renders recovery, privacy,
-health, chapters, and persisted Companion cards in one independently scrolling
-column. Neither section can reach the model, services, store, or preferences.
+and delete capabilities. `MeetingDetailRailSection` is the always-present 260-point column beside the
+transcript: processing that needs attention sits on top, then three lenses,
+People (`detail-rail-tab-people`, meeting health), Apuntador
+(`detail-rail-tab-apuntador`, persisted cards) and Chapters
+(`detail-rail-tab-chapters`), of which exactly one fills the remaining height
+and scrolls on its own; a lens without material shows one sentence
+(`detail-rail-empty-*`). The selected lens is composition state passed in as a
+value with a `selectTab` action, so the rail itself stays stateless.
+`MeetingDetailActivityLine` renders the privacy receipt and the action history
+as one chip under the title (`detail-privacy-receipt`) whose popover
+(`detail-activity-popover`) carries the remote attempts, the private iCloud
+disclosure and every `skill-receipt-<skillID>` row. The header keeps every ✦
+suggestion and remember offer in one horizontal row
+(`detail-suggestions-row`). None of these sections can reach the model,
+services, store, or preferences.
 `MeetingDetailScene` owns one observable `MeetingDetailFlowState`; its typed
 sheet, dialog, alert, and export routes replace independent modal flags while
 preserving Refine and mirror presentations owned by their source services.
@@ -528,9 +540,9 @@ composition dependencies in presentation children.
 
 The composed primary column lets generated material take the height its
 content needs, capped at half of the column (never below 180 points):
-`MeetingDetailArtifactsSection` renders the material inline when it fits the
-cap and switches to its own scroll area only when it does not
-(`ViewThatFits`), so a short summary leaves the transcript most of the window
+`MeetingDetailArtifactsSection` measures its material (`onGeometryChange`)
+and takes exactly that height up to the cap, scrolling inside its own area
+only beyond it, so a short summary leaves the transcript most of the window
 and a long one still cannot collapse it. Notes render at content height inside
 that area instead of nesting a second scroll view. The transcript receives the
 remaining flexible height, clips its focused viewport to that exact
@@ -2101,8 +2113,8 @@ uploads the report. A deterministic temp-store destination lets XCUITest prove
 the file was created and contains no seeded transcript.
 
 The same slice adds processing as Meeting Detail's fifth independent update.
-The right rail distinguishes pending/running local recovery, exhausted durable
-jobs, and a `needsAttention` shell without a job. Exhausted work exposes one
+The top of the right rail distinguishes pending/running local recovery,
+exhausted durable jobs, and a `needsAttention` shell without a job. Exhausted work exposes one
 `detail-retry-processing` action through the route-owned model; retry preserves
 the job's identity/idempotency/input evidence and then kicks the normal worker.
 A recoverable audio shell instead offers Refine, while a shell without audio
@@ -3040,7 +3052,7 @@ artifact — the composed recap verbatim, complete Gist Markdown/filename/host,
 or the meeting title plus the destination already chosen in the native save
 panel — and the declared capability chips. Confirming runs `ExecuteSkill`
 (claim before effect, typed failure categories); the durable receipts render in
-`MeetingDetailTrustSection` beside the privacy receipt as
+the `MeetingDetailActivityLine` popover beside the privacy receipt as
 `skill-receipt-<skillID>` rows.
 
 Offer policy is durable state, never session memory: dismissal writes
