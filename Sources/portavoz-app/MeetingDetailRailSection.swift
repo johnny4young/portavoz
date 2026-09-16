@@ -96,12 +96,15 @@ struct MeetingDetailRailSection: View {
                 Button {
                     actions.selectTab(tab)
                 } label: {
+                    // The selected lens names itself; the others show their
+                    // mark only, so three lenses fit the 260-point column.
                     Label(tab.title, systemImage: tab.symbol)
+                        .labelStyle(RailTabLabelStyle(showsTitle: selected))
                         .font(.caption.weight(selected ? .semibold : .regular))
                         .lineLimit(1)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 5)
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: selected ? .infinity : nil)
                         .background(
                             selected ? PVDesign.accent.opacity(PVDesign.chipTint) : .clear,
                             in: RoundedRectangle(cornerRadius: PVDesign.radiusSmall))
@@ -109,6 +112,8 @@ struct MeetingDetailRailSection: View {
                         .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(tab.title)
+                .help(tab.title)
                 .accessibilityAddTraits(selected ? .isSelected : [])
                 .accessibilityIdentifier("detail-rail-tab-\(tab.rawValue)")
             }
@@ -370,5 +375,19 @@ struct MeetingDetailCompanionSection: View {
         }
         if card.answer.isEmpty { return L10n.text("question detected") }
         return base
+    }
+}
+
+/// Icon always, title only when asked.
+private struct RailTabLabelStyle: LabelStyle {
+    let showsTitle: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 4) {
+            configuration.icon
+            if showsTitle {
+                configuration.title
+            }
+        }
     }
 }
