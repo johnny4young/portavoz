@@ -19829,3 +19829,41 @@ gaps, each now closed at its owner rather than in a journey:
   selected by changes to the sources they qualify, their fixture, classifier or
   CI/Make owners, and by explicit full requests, not by every full-bilingual
   fallback such as localization.
+
+
+## D535 — An install must read and resolve its own payload
+
+**Context:** Portavoz 1.0.0 quit at the first recording on a clean Sequoia
+install from Homebrew, with `Fatal error: could not load resource bundle` raised
+by the generated SwiftPM accessor while `RecordingView` read the bundled
+question detector's availability. The crash was reproduced from the published
+artifact, not inferred: the accessor searches only the `.app` root and one
+absolute build-directory path from the machine that compiled the binary, while
+packaging stages that bundle in `Contents/Resources`. The release therefore
+resolved its resources on the build Mac alone. The same staged copy also kept
+its build-time owner-only modes (`drwx------`, owner 501), so an account with a
+different user id could not have read it even at the searched path.
+
+**Decision:** an installed app must read and resolve its own payload, and the
+release must prove it before publication.
+
+- `IntelligenceResourceBundle` resolves this module's resources without
+  trapping, searching `Contents/Resources` first and the build directory last.
+  An absent or unreadable bundle disables the bundled detector and leaves the
+  app running; it never ends the process.
+- `make-app.sh` normalizes payload modes (`u+rwX,go+rX,go-w`) after staging and
+  before signing, so the signature covers modes every installing account can
+  read.
+- `portavoz-app --bundled-assets-status` reports the resolved bundle path and
+  whether its model loads, then exits. It prints one path from the app's own
+  bundle and no user data.
+- `scripts/verify-app-payload.sh`, run by distribution verification before any
+  receipt is written, rejects an unreadable entry, a missing staged classifier,
+  a resolution outside the extracted app, and a bundle whose model cannot load.
+
+**Consequences:** the released 1.0.0 artifact fails this gate, which is the
+point: a fix must ship before another install repeats the crash. Synthetic
+payload trees plus the two real packaged apps, one built with the trapping
+accessor and one without, exercise the gate in both directions. This changes no
+product feature, consent default, model asset or budget. Field confirmation on a
+second physical Mac remains external evidence (GAPS).

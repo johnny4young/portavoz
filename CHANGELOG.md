@@ -4,6 +4,10 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## September 15, 2026
+
+- **🎙️ Recording starts on every Mac** — a fresh install no longer quits when you press record: the app now reads its bundled Apuntador question model from inside the app, instead of depending on the machine that built the release.
+
 ## 1.0.0 — September 11, 2026
 
 **Today's agenda, yesterday's answers.**

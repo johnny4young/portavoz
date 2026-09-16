@@ -292,6 +292,14 @@ scripts/verify_release_appcast.py \
 grep -E 'version |sha256 ' dist/release/portavoz.rb            # match the DMG
 ```
 
+Distribution verification also runs `scripts/verify-app-payload.sh` on the
+extracted copy (D535): every payload entry must be readable by the installing
+account, the Apuntador classifier must be staged inside `Contents/Resources`,
+and the app itself must report resolving that bundle from within its own copy.
+Portavoz 1.0.0 shipped before this gate existed and fails it: its resources
+resolved only on the build machine, so a clean install quit at the first
+recording.
+
 The distribution verifier is intentionally stricter than opening the DMG. A
 stapled outer image can open while a cask-extracted app has no embedded ticket
 and must reach Apple's service at first launch. Never publish unless both

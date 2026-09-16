@@ -66,6 +66,10 @@ cp -a "$MOUNT/Portavoz.app" "$APP_COPY"
 hdiutil detach "$MOUNT" -quiet
 mounted=false
 
+# An install-unreadable or build-machine-dependent payload passes signing,
+# notarization and Gatekeeper, then ends the app at a user's first recording.
+scripts/verify-app-payload.sh "$APP_COPY"
+
 codesign --verify --deep --strict --verbose=2 "$APP_COPY"
 xcrun stapler validate "$APP_COPY"
 spctl -a -vvv -t exec "$APP_COPY"
