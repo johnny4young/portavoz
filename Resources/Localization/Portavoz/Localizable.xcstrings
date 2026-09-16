@@ -2731,16 +2731,6 @@
         }
       }
     },
-    "Coming later": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Más adelante"
-          }
-        }
-      }
-    },
     "Commitment": {
       "localizations": {
         "es": {
@@ -6739,6 +6729,16 @@
         }
       }
     },
+    "Last run %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Última ejecución %@"
+          }
+        }
+      }
+    },
     "Last week": {
       "localizations": {
         "es": {
@@ -7845,6 +7845,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Requiere revisión tras una interrupción"
+          }
+        }
+      }
+    },
+    "Never run": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nunca se ha ejecutado"
           }
         }
       }
@@ -9535,16 +9545,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fija el idioma que hablas para que una grabación baja o con ruido nunca se transcriba en el idioma equivocado. La detección automática funciona bien con audio claro."
-          }
-        }
-      }
-    },
-    "Planned": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Planificado"
           }
         }
       }

@@ -69,14 +69,6 @@ struct SkillsSettingsSection: View {
                     }
                 }
 
-                if !plannedSkills.isEmpty {
-                    Section("Coming later") {
-                        ForEach(plannedSkills) { skill in
-                            plannedSkillRow(skill)
-                        }
-                    }
-                }
-
                 Section("Suggestions to review") {
                     SkillProposalSection(
                         snapshot: proposalSnapshot,
@@ -142,8 +134,12 @@ struct SkillsSettingsSection: View {
         snapshot?.skills.filter { $0.availability == .available } ?? []
     }
 
-    private var plannedSkills: [SkillControlCenterItem] {
-        snapshot?.skills.filter { $0.availability == .planned } ?? []
+    /// The newest receipt per action, so each row says when it last ran.
+    private func lastRun(_ skill: SkillControlCenterItem) -> Date? {
+        snapshot?.receipts
+            .filter { $0.skillID == skill.id }
+            .map(\.updatedAt)
+            .max()
     }
 
     private func availableSkillRow(
@@ -159,6 +155,10 @@ struct SkillsSettingsSection: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 skillDisclosure(skill)
+                Text(lastRunText(skill))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .accessibilityIdentifier("settings-skill-\(skill.id)-last-run")
             }
             Spacer(minLength: 12)
             Toggle("", isOn: skillBinding(skill))
@@ -174,30 +174,11 @@ struct SkillsSettingsSection: View {
         .accessibilityElement(children: .contain)
     }
 
-    private func plannedSkillRow(
-        _ skill: SkillControlCenterItem
-    ) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            skillIcon(skill)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(skillTitle(skill.id))
-                    .font(.callout.weight(.semibold))
-                Text(skillDescription(skill.id))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 12)
-            Text("Planned")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(.quaternary, in: Capsule())
-        }
-        .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("settings-skill-\(skill.id)-planned")
+    private func lastRunText(_ skill: SkillControlCenterItem) -> String {
+        guard let date = lastRun(skill) else { return L10n.text("Never run") }
+        return L10n.format(
+            "Last run %@",
+            date.formatted(.relative(presentation: .named)))
     }
 
     private func skillIcon(_ skill: SkillControlCenterItem) -> some View {

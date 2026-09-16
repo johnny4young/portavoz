@@ -1282,6 +1282,9 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             receipt.waitForExistenceFast(timeout: 10),
             "the management pane must project the confirmed durable receipt")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-skill-recap-draft-last-run").exists,
+            "each available action says when it last ran")
         XCTAssertFalse(Self.isOn(app.control(
             withIdentifier: "settings-skill-meeting-package-export-enabled")))
         try scrollToVisible(receipt, in: app)

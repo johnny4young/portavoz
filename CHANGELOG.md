@@ -6,6 +6,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 16, 2026
 
+- **⚡ Automations, at a glance** — every automation shows its switch and when it last ran; the list of things "coming later" is gone.
+
 - **👋 Setup shows what happens during a meeting** — a new onboarding step introduces Apuntador, Radar and Automations in one line each, with an example card and the Apuntador switch right there.
 
 - **🔎 Ask, Radar and the library, tidier** — Ask puts the question box above the answers and lists every source on one line; Radar shows reminders as a chip and keeps each commitment's history behind one click; Import moved into the record button's menu and meeting rows no longer start with a date.

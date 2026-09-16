@@ -2432,7 +2432,11 @@ with a fixed 224-point sidebar. Long explanations live behind
 Apuntador reports one status with three values, `Apuntador: ready`,
 `Apuntador: questions only`, `Apuntador: unavailable`
 (`settings-apuntador-status`), followed by one cause line
-(`settings-apuntador-status-cause`), never a green check above a failure.
+(`settings-apuntador-status-cause`), never a green check above a failure. The Automations pane lists only the
+actions that exist (the "Coming later" list is gone); each row carries its
+switch, its disclosure and when it last ran (`settings-skill-<id>-last-run`,
+from the newest receipt in the loaded snapshot), followed by the suggestions
+to review, the standing rules and the action history.
 
 ## Design system in app (Jul 2026) — tokens + voices B + accent
 
