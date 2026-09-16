@@ -300,6 +300,13 @@ if [[ "$SIGN_ID" != "-" ]]; then
   SIGN_FLAGS+=(--timestamp)
 fi
 
+# Every payload entry must be readable by the account that installs the app,
+# not only by the one that built it. `cp -R` preserves a build artifact's
+# modes, and a SwiftPM resource bundle can arrive owner-only; `Bundle.module`
+# then traps on a Mac whose user id differs, ending the app at first use.
+# Normalize before signing so the signature covers the corrected modes.
+chmod -R u+rwX,go+rX,go-w "$APP"
+
 codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc" 2>/dev/null || true
 codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc" 2>/dev/null || true
 codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate" 2>/dev/null || true

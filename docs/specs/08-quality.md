@@ -3386,10 +3386,12 @@ reports the owning PID or asks for a window title, bounds, dialog text, control,
 or credential, and negative-layer Notification Center desktop surfaces do not
 count. Both probes have explicit timeouts and exact-shape validation;
 unavailable or malformed evidence fails
-closed. The preflight never dismisses a prompt or terminates another process,
-and the UI-test bundle installs no external-prompt interruption handler. A
-privacy or authentication prompt raised after preflight therefore invalidates
-the host run without allowing automation to answer the user's decision.
+closed. The preflight never dismisses a prompt or terminates another process.
+Preflight cannot prevent a later prompt, and the absence of a custom monitor
+does not prevent XCTest's default handlers from answering it. The shared test
+base therefore installs the content-blind, nonreturning guard described below:
+it cleans only owned resources and fails the invocation without choosing a
+control or resuming the interrupted action.
 It cannot prevent unrelated automation from starting after its second sample,
 so later connection invalidation remains a result-bundle/host classification,
 not automatically a Portavoz crash.
@@ -4701,11 +4703,19 @@ complete English catalogue retained 11 failures across Radar, Meeting Detail,
 Settings, and Skills despite otherwise valid product state. D453 therefore
 forwards the exact override into disposable `-use-temp-store` launches and
 places only their main and Settings windows at AppKit's standard status-bar
-level. The accepted overlay can no longer occlude hit targets, but no alert is
-read, dismissed, answered, or removed. Authentication windows and active
-automation still block; the isolated Secure Input bit is advisory under D468.
-CI never enables the Notification Center override, and the UI bundle still
-installs no interruption monitor. Its receipt distinguishes an accepted live
+level. This reduces occlusion by the accepted overlay; it does not prevent
+system-modal interruptions. The app's window-placement code reads or answers
+no alert. XCTest itself can still invoke built-in fallback handlers, however:
+an actual microphone permission prompt was answered despite the absence of a
+custom monitor. D527 therefore installs a content-blind monitor in the shared
+test base. It cleans only registered apps and identity-owned scratch, records a
+failure through its owning case, and exits the worker if XCTest returns; no
+handler Bool permits fallback or a resumed event. The execution receipt remains
+`evidence-failure`, including after a restart or exit-zero summary, and the writer
+returns nonzero so local and hosted gates both reject it. Authentication windows
+and active automation still block; the isolated Secure Input bit is advisory
+under D468. CI never enables the Notification Center override. Its receipt
+distinguishes an accepted live
 overlay, reported through the two content-free Notification Center counts,
 from a clear-host run where the override relaxed nothing; the latter is not
 live-overlay evidence.
@@ -6911,8 +6921,9 @@ remains the default.
 Only a passing case that crosses an individual ceiling, or participates in a
 complete-catalogue total/p95 overage, is inspected. Its exact activity tree
 must contain one top-level `Start Test`, one `Set Up`, and one later `Tear Down`;
-only the finite `Set Up`-to-`Tear Down` span that leaves at least one second
-outside the test-owned boundary may become the budget duration. The receipt
+only independently bounded runner intervals totaling at least one second may
+be excluded from the budget duration. The `Set Up`-to-`Tear Down` span remains
+a lower bound on owned work, not proof that cleanup has finished. The receipt
 retains the test identifier, reported span, attributed span, separate pre-setup
 and post-teardown exclusions, their total, and one closed reason. Hosted and
 candidate gates reject forged identity, duplicate adjustments, arithmetic
@@ -6922,12 +6933,22 @@ retry, timeout, budget, assertion, selector, or locale changes.
 
 The `Tear Down` marker is a start timestamp, not proof that cleanup finished.
 When it contains child activities or is followed by another top-level activity,
-the reader retains the reported duration: app termination and owned scratch
-cleanup are test work, not a runner stall. Malformed child activity collections
-also prevent attribution. A normalized real-app activity fixture drives both
+the reader preserves the entire reported post-setup duration: app termination
+and owned scratch cleanup are test work, not a runner stall. An independently
+proven empty pre-setup interval may still be excluded, with zero post-teardown
+exclusion. The retained duration must cover at least the known marker span;
+inconsistent clocks retain the raw duration. Start and setup must be the first
+two top-level activities, and the start marker must have no child work. Malformed
+child activity collections also prevent attribution. A normalized real-app activity fixture drives both
 the parser and the command-line enforcement path; a diagnostic ceiling between
 the body-only and complete duration must fail, not become green by subtracting
-cleanup. The ordinary runtime budgets are unchanged.
+cleanup. The CLI also exercises simultaneous pre-setup delay and active cleanup:
+short owned work may qualify, but slow cleanup, a one-millisecond ceiling overage,
+failed cases, intervening pre-setup work and malformed boundaries cannot become
+green. Both locale receipts retain the exact pre-setup exclusion and all cleanup.
+Epoch-sized timestamp subtraction preserves xcresult's written decimal precision;
+an exact budget boundary is not widened by an epsilon or binary rounding residue.
+The ordinary runtime budgets and receipt schema are unchanged.
 
 This policy was introduced after the first OBS-0 complete English run passed
 103/103 but reported one 40.353-second Summary-feedback case. Its exact
@@ -7509,20 +7530,27 @@ necessary; passing these tests is not closure of the observed resource variance.
 
 ### Native search-editing boundary in UI setup
 
-The shared XCUITest setup ends native search editing with an ordinary click and
-Tab traversal, then checks that the field value is unchanged. Both existing and
-newly opened Settings windows use that boundary before category navigation.
-Seeded Library setup applies it only when its meeting row is not already
-hittable, after the existing foreign-keystroke query cleanup if needed. The
-normal fast path and final meeting hittability requirement remain intact.
+The shared XCUITest setup ends the active native search edit with app-scoped
+Tab traversal, then checks that the identified field value is unchanged. It
+does not click or address a key event to a field that its own popup may cover.
+Both existing and newly opened Settings windows use that boundary before
+category navigation.
+Seeded Library setup applies the handoff before its already-hittable row fast
+path. A real-app adversary focuses an empty search with a visible row, calls the
+actual helper, then sends a normal key and verifies that search remains empty.
+Query cleanup still applies only to the prior recovery case with no hittable
+meeting row. The final meeting hittability requirement remains intact.
 
-This prevents a still-active native field editor from leaving an autocomplete
-popover over a subsequent control. It does not dismiss a named system window,
-choose a suggestion, mutate AutoFill preferences, install a prompt handler or
-retry a failed assertion. Existing Skills missing-policy/retry and Library
+This avoids reopening an editor merely to close it. The earlier field click and
+field-scoped Tab both reached an app-owned interruption in real Settings
+journeys; neither is an appropriate prerequisite for ending the existing edit.
+The focus helper does not dismiss a named system window, choose a suggestion,
+mutate AutoFill preferences, install a prompt handler or retry a failed
+assertion. Existing Skills missing-policy/retry and Library
 search/palette journeys retain their full assertions. The source-level owner
-pins click/Tab/value-check ordering and both settings branches; only a complete
-bilingual real-app run can qualify the shared harness.
+pins app-scoped Tab/value-check ordering, absence of a new field click, and both
+settings branches; only a complete bilingual real-app run can qualify the
+shared harness.
 
 The Library recency/FTS journey additionally ends its deliberate query edit
 before selecting the result. It checks the exact literal query both before and
@@ -7634,3 +7662,125 @@ observed state; catalogue ownership, retired-journey rejection, bounded scrollin
 unchanged runtime budgets and screenshot roles remain enforced. A tooling test
 attempts to restore either retired receipt journey with an otherwise valid scope
 and confirms that the actual duplicate policy rejects it.
+
+
+### Permission-free interruption controls
+
+The local-data ledger journey opens Settings from the seeded main window through
+the same window-opening boundary as Settings-launch fixtures. A raw Command-comma
+had bypassed the initial search-editor handoff and allowed an app-owned element
+to interrupt the following sidebar scroll. The journey verifies that the empty
+query survives opening before navigating to the exact ledger values. An earlier
+passing full suite did not prove that every entry reached this boundary.
+
+The same native-field editing handoff also applies to the commitment editor's
+initial proposed wording. A failed Spanish run captured a completion window over
+the owner picker even though the synthesized click matched its settled frame.
+The journey ends editing through ordinary app-scoped Tab, asserts the unchanged
+proposal, and then selects the exact local-user menu item before confirmation.
+Settings, Library and this editor reuse `finishTextFieldEditing`; no popup query,
+extra delay, suggestion choice, failed-click retry or system setting is involved.
+The retained failure is not evidence of a layout race or another app's intrusion.
+
+`make test-ui-interruption-safety UI_INTERRUPTION_RESULTS=<new-private-directory>`
+builds a tiny separate app/overlay/runner target once. It uses the exact shared
+`PortavozUITestCase`, `UITestStorage`, `UITestScratch` and wait-helper sources;
+there is no copied guard implementation. Its original four pointer controls distinguish:
+
+- an uninterrupted action, which must produce an observable synthetic effect;
+- a deliberate synthetic choice, which calibrates the choice effect detector;
+- a synchronous blocked action, which must fail before fallback or either effect;
+- the same blocked action from an asynchronous journey, which must also fail.
+
+Negative controls require exactly one failed case, a completed owned-cleanup
+receipt, no scratch or owned app process left behind, and no fallback sentinel.
+Any control that opens the overlay also requires its parent-exit callback's
+content-free acknowledgement. The Dispatch source targets the main queue because
+the callback inherits the AppKit delegate's main actor. A crashed helper that
+merely disappears cannot satisfy the lifecycle proof; the no-overlay positive
+must not produce that acknowledgement. Effects are inspected after all owned
+processes have exited. This does not claim that an acknowledgement alone proves
+every possible exit failure is absent.
+Zero-test restarts are not passes. The separate qualification receipt records
+expected failures, source hashes and content-free effects; it never substitutes
+for a product UI receipt. Tooling tests reject missing readiness, absent guard,
+late action, dialog choice, cleanup failure, skipped/empty/extra cases and an
+exit-zero restart. Changes to the guard, keyboard, storage, wait or scratch
+sources, the fixture target, the execution classifier or their CI/Make owners
+select this once, as do explicit full bilingual local runs and full-suite
+dispatches; localization-only and other unrelated full-bilingual fallbacks do not. CI executes the controls in
+the product-builder job before publishing one reusable product build. Synthetic
+fixtures request no microphone, authentication or accessibility permission.
+
+
+### Bounded scroll evidence is separate from interruption controls
+
+The shared `UITestSupport.swift` owns the existing geometry-based bounded scroll
+helper; no measured response or pending-input accumulator is active. The
+structural-correction journey uses ordinary disposable window placement, retains
+all split/merge/hide/restore effects and stops before activation if reveal fails.
+The forced compact-window argument and calibration fixture were unqualified
+experiments, not released behavior. Their withdrawal does not establish compact
+reachability: the retained compact failure and combined dropped/amplified native
+counterexample remain open in GAPS. Native interruption controls and the
+full real-app catalog remain separate mandatory gates, with unchanged runtime
+budgets and no retries that relabel failures. See D533.
+
+
+### Keyboard dispatch requires process and modal authority
+
+`UITestKeyboardSupport` is the only raw keyboard dispatch boundary. Journeys
+focus their intended editor explicitly, then use `PortavozUITestCase` wrappers;
+shared application helpers return failure on refused admission. Before each
+event, the receiver must be XCTest-foreground and the unique running process
+for the declared test-host bundle must be the frontmost application. No observed
+ownership change is repaired by implicitly activating the app. No-modal input
+rejects sheets, alerts and hittable app-modal dialogs; expected
+modal input additionally requires exactly
+one modal containing the journey's fixed accessibility anchor. A background
+control cannot authorize typing into a new dialog. Admission re-observes for at
+most one second so a cached frontmost value or closing sheet can converge; it
+never activates or dismisses anything. Refused journey input uses the same
+nonreturning, owned-cleanup interruption guard and records a content-free
+`keyboard-owner` or `modal-context` reason; the interruption monitor records
+`interruption`. A guard that finds no live session reports `cleanup=absent`.
+
+`handOffTextFieldEditing` observes keyboard focus first and sends no key when
+the field is not the active editor, because Tab would otherwise move an
+unrelated responder into it. It never clicks the field either: its own
+completion surface can cover that click. The post-condition is the exact
+original value plus a field nothing covers any more, since a window whose only
+key view is that field keeps focus there. It reports finished, not-editing,
+field-unavailable, keyboard-refused, value-changed, surface-retained or
+focus-unobservable, and seeded-Library readiness fails with that cause. The
+focus observation reads the automation daemon's snapshot key that XCTest does
+not publish on macOS, and fails closed if a toolchain stops reporting it. The shared tear-down names its owned app exit
+and scratch removal as a Tear Down child activity, so runtime attribution keeps
+that cleanup in the case duration.
+
+Repository and topic fields assert exact values and end editing through the
+admitted Tab/value-preservation handoff before review or confirmation. Transcript
+and summary TextViews retain their explicit save controls rather than treating
+Tab as a text-free traversal. Palette and objective Enter submission and receipt
+Escape/focus restoration retain their original user actions and assertions.
+A tooling policy rejects raw keyboard calls outside the shared boundary; this
+source check is not behavioral evidence.
+
+Sixteen native controls exercise that actual boundary: four original pointer/
+choice controls; native English-to-Spanish Unicode replacement with Select All
+and Tab; synchronous/asynchronous text and traversal under a foreign overlay;
+explicit expected-modal editing and choice; synchronous/asynchronous unexpected
+same-app modal rejection; rejection of a background anchor behind that
+modal; and an `NSAlert.runModal()` app-modal dialog, observed as a hittable
+dialog, with an anchored positive edit/choice plus synchronous/asynchronous
+default-input rejection. A non-hittable dialog such as the floating Writing
+Tools affordance after a native selection is not a modal for this rule. Every
+negative control must stop through its declared reason. A failed or timed-out
+control stops only fixture processes built under its own products directory. The native Edit menu calibrates Select All, and the modal positive is
+scoped to the identified sheet rather than its duplicate Touch Bar button.
+Negative controls require no writing or choice effects and complete owned
+cleanup, plus the foreign owner's exit callback where an overlay was launched.
+Bare application typing and foreground-only typing each have a retained native
+counterexample. All controls and full bilingual product journeys are required
+for this shared-harness change. These public-API observations are point-in-time,
+not an atomic OS input guarantee or permission-dialog certification (D534).

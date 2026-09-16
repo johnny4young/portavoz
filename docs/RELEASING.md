@@ -2,7 +2,7 @@
 
 The end-to-end recipe for cutting a public release: a notarized DMG that
 updates existing users via **Sparkle** and new users via **Homebrew**. Written
-from the real flow (v0.1.0 → v1.0.0, nine releases). Follow it top to bottom.
+from the real flow (v0.1.0 → v1.0.1, ten releases). Follow it top to bottom.
 
 Distribution is direct-download only (no App Store) — decision D10/D20.
 
@@ -292,6 +292,14 @@ scripts/verify_release_appcast.py \
 grep -E 'version |sha256 ' dist/release/portavoz.rb            # match the DMG
 ```
 
+Distribution verification also runs `scripts/verify-app-payload.sh` on the
+extracted copy (D535): every payload entry must be readable by the installing
+account, the Apuntador classifier must be staged inside `Contents/Resources`,
+and the app itself must report resolving that bundle from within its own copy.
+Portavoz 1.0.0 shipped before this gate existed and fails it: its resources
+resolved only on the build machine, so a clean install quit at the first
+recording.
+
 The distribution verifier is intentionally stricter than opening the DMG. A
 stapled outer image can open while a cask-extracted app has no embedded ticket
 and must reach Apple's service at first launch. Never publish unless both
@@ -534,6 +542,7 @@ gh workflow run update-cask.yml -f tag=v<version>      # bumps johnny4young/home
 
 | Tag | Title |
 |---|---|
+| v1.0.1 | Portavoz 1.0.1 — recording starts on every Mac |
 | v1.0.0 | Portavoz 1.0.0 — today's agenda, yesterday's answers |
 | v0.7.0 | Portavoz 0.7.0 — live help, safer recordings |
 | v0.6.0 | Portavoz 0.6.0 — the Companion remembers, and you choose what it hears |

@@ -39,8 +39,11 @@ enum UITestStorage {
         session.applications.append(application)
     }
 
-    static func end(ownerID: UUID) throws {
-        guard let owned = session, owned.ownerID == ownerID else { return }
+    /// Ends the caller's own session. Returns `false` when that owner has no
+    /// live session, so a guard never reports cleanup it did not perform.
+    @discardableResult
+    static func end(ownerID: UUID) throws -> Bool {
+        guard let owned = session, owned.ownerID == ownerID else { return false }
         defer { session = nil }
         for application in owned.applications {
             if application.state != .notRunning { application.terminate() }
@@ -51,5 +54,6 @@ enum UITestStorage {
             }
         }
         try owned.scratch.remove()
+        return true
     }
 }

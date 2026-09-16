@@ -118,7 +118,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
                 "\(owner) must not run through protected capture")
         }
 
-        app.typeKey("w", modifierFlags: .command)
+        typeKey("w", modifierFlags: .command, in: app)
         XCTAssertTrue(app.prepareForInteraction())
         let stop = app.buttons["recording-stop-after-remote-outage"]
         XCTAssertTrue(stop.waitForHittable(timeout: 10))

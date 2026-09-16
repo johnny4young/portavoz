@@ -468,6 +468,7 @@ FULL_BILINGUAL_HARNESS_FILES = frozenset({
     "project.yml",
     "scripts/candidate_automation.py",
     "scripts/check-ui-test-host.py",
+    "scripts/check-ui-interruption-safety.py",
     "scripts/check-url-scheme-handlers.sh",
     "scripts/run-ui-tests.sh",
     "scripts/ui_test_ci_gate.py",
@@ -480,9 +481,35 @@ FULL_BILINGUAL_HARNESS_FILES = frozenset({
     "Sources/portavoz-app/UITestWindowPlacement.swift",
     "Sources/portavoz-app/SettingsSkillReceiptNavigation.swift",
     "Tests/PortavozUITests/UITestSupport.swift",
+    "Tests/PortavozUITests/PortavozUITestCase.swift",
+    "Tests/PortavozUITests/UITestWaitSupport.swift",
+    "Tests/PortavozUITests/UITestKeyboardSupport.swift",
     "Tests/PortavozUITests/UITestStorageSupport.swift",
     "Tests/Support/UITestScratch.swift",
 })
+
+# The native interruption controls compile and qualify only these owners. A
+# change here, or anywhere in the fixture target, requires the controls; an
+# unrelated full-bilingual fallback such as localization does not.
+INTERRUPTION_CONTROL_FILES = frozenset({
+    ".github/workflows/ui-tests.yml",
+    "Makefile",
+    "packaging/portavoz-uitests.entitlements",
+    "scripts/check-ui-interruption-safety.py",
+    "scripts/ui_test_execution.py",
+    "scripts/ui_test_scope.py",
+    "Tests/PortavozUITests/PortavozUITestCase.swift",
+    "Tests/PortavozUITests/UITestKeyboardSupport.swift",
+    "Tests/PortavozUITests/UITestStorageSupport.swift",
+    "Tests/PortavozUITests/UITestWaitSupport.swift",
+    "Tests/Support/UITestScratch.swift",
+})
+INTERRUPTION_FIXTURE_PREFIX = "Tests/UIInterruptionFixtures/"
+
+
+def requires_interruption_controls(path: str) -> bool:
+    return path in INTERRUPTION_CONTROL_FILES or path.startswith(INTERRUPTION_FIXTURE_PREFIX)
+
 
 # These owners can change which real Apuntador workloads qualify, but they do
 # not build, select, measure, or accept XCUITest itself. Exercise the exact
@@ -591,10 +618,15 @@ class Selection:
     tests: tuple[str, ...]
     locales: tuple[str, ...]
     reasons: tuple[str, ...]
+    interruption_controls: bool = False
 
     @property
     def required(self) -> bool:
         return bool(self.tests)
+
+    @property
+    def interruption_controls_required(self) -> bool:
+        return self.interruption_controls
 
 
 def feature_tests(features: Iterable[str]) -> set[str]:
@@ -1034,11 +1066,14 @@ def select_paths(paths: Iterable[str]) -> Selection:
     selected: set[str] = set()
     locales: set[str] = {"en"}
     reasons: list[str] = []
+    interruption_controls = False
 
     for raw_path in paths:
         path = raw_path.strip().removeprefix("./")
         if not path:
             continue
+        # Independent of whichever product selection branch handles the path.
+        interruption_controls = interruption_controls or requires_interruption_controls(path)
 
         if path == "Resources/Localization/Portavoz/Localizable.xcstrings":
             selected.update(HARNESS_TESTS)
@@ -1046,7 +1081,7 @@ def select_paths(paths: Iterable[str]) -> Selection:
             reasons.append(f"{path}: complete bilingual localization fallback")
             continue
 
-        if path in FULL_BILINGUAL_HARNESS_FILES:
+        if path in FULL_BILINGUAL_HARNESS_FILES or path.startswith(INTERRUPTION_FIXTURE_PREFIX):
             selected.update(HARNESS_TESTS)
             locales.add("es")
             reasons.append(f"{path}: complete bilingual shared-harness fallback")
@@ -1139,7 +1174,12 @@ def select_paths(paths: Iterable[str]) -> Selection:
 
     ordered_tests = tuple(test for test in ALL_TESTS if test in selected)
     ordered_locales = tuple(locale for locale in ("en", "es") if locale in locales) if ordered_tests else ()
-    return Selection(ordered_tests, ordered_locales, tuple(dict.fromkeys(reasons)))
+    return Selection(
+        ordered_tests,
+        ordered_locales,
+        tuple(dict.fromkeys(reasons)),
+        interruption_controls=interruption_controls,
+    )
 
 
 def changed_paths(base: str, head: str) -> list[str]:
@@ -1314,6 +1354,7 @@ def render(selection: Selection, output_format: str) -> str:
         return "\n".join(
             (
                 f"required={'true' if selection.required else 'false'}",
+                f"interruption_controls={'true' if selection.interruption_controls_required else 'false'}",
                 f"tests={tests}",
                 f"locales={locales}",
                 f"matrix={json.dumps(list(selection.locales))}",
@@ -1324,6 +1365,7 @@ def render(selection: Selection, output_format: str) -> str:
         return "\n".join(
             (
                 f"export UI_TEST_REQUIRED={'true' if selection.required else 'false'}",
+                f"export UI_TEST_INTERRUPTION_REQUIRED={'true' if selection.interruption_controls_required else 'false'}",
                 f"export UI_TESTS={shlex.quote(tests)}",
                 f"export UI_TEST_LOCALES={shlex.quote(locales)}",
                 f"export UI_TEST_SCOPE_SUMMARY={shlex.quote(summary)}",
@@ -1364,7 +1406,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
 
     if arguments.all:
-        selection = Selection(ALL_TESTS, ("en", "es"), ("explicit full-suite request",))
+        selection = Selection(
+            ALL_TESTS, ("en", "es"), ("explicit full-suite request",), interruption_controls=True)
     else:
         paths = arguments.paths
         if arguments.working_tree:

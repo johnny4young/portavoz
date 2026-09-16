@@ -1836,18 +1836,36 @@ extension ArchitectureDependencyTests {
             "maxScrolls: max(0, maxScrolls - attempt - 1)"))
         XCTAssertTrue(support.contains("if !geometryChanged { continue }"))
         XCTAssertFalse(support.contains("guard targetMoved else { return false }"))
+        // Reachability in compact windows remains open. Pin readiness and
+        // ownership, not the previously unsuccessful frame-to-wheel formula:
+        // every successful reveal must pass the stable, contained and hittable
+        // proof rather than ending on geometric containment alone.
+        let revealStart = try XCTUnwrap(support.range(of: "func revealVertically("))
+        let anchorRevealStart = try XCTUnwrap(support.range(
+            of: "func revealVertically(",
+            range: revealStart.upperBound..<support.endIndex))
+        let revealBody = support[revealStart.lowerBound..<anchorRevealStart.lowerBound]
         XCTAssertEqual(
-            support.components(
-                separatedBy: "if viewportFrame.contains(frame),").count - 1,
-            2,
+            revealBody.components(separatedBy: "if viewportFrame.contains(frame),").count - 1, 2)
+        XCTAssertEqual(
+            revealBody.components(separatedBy: "waitForStableContainedFrame(").count - 1, 2,
             "geometric containment alone must not terminate before hittability")
-        XCTAssertTrue(support.contains(
-            "let inwardDelta = viewportFrame.midY - controlFrame.midY"))
-        XCTAssertTrue(support.contains(
-            "deltaY = min(max(inwardDelta, -maximumStep), maximumStep)"))
-        XCTAssertFalse(support.contains(
-            "if viewportFrame.contains(frame) {\n"
-                + "                return waitForStableContainedFrame("))
+        XCTAssertEqual(revealBody.components(separatedBy: "return true").count - 1, 2)
+        let containedProofStart = try XCTUnwrap(support.range(
+            of: "private func waitForStableContainedFrame("))
+        let containedProof = support[containedProofStart.lowerBound...]
+        let containment = try XCTUnwrap(containedProof.range(
+            of: "viewportFrame.contains(controlFrame),"))
+        let hittable = try XCTUnwrap(containedProof.range(
+            of: "self.isHittable",
+            range: containment.upperBound..<containedProof.endIndex))
+        XCTAssertLessThan(containment.lowerBound, hittable.lowerBound)
+        XCTAssertLessThan(
+            containedProof.distance(from: containment.upperBound, to: hittable.lowerBound), 64,
+            "the hittability proof must belong to the same containment guard")
+        XCTAssertTrue(uiTests.contains(
+            "guard correct.revealVertically(in: transcriptScroll, maxScrolls: 4) else {"))
+        XCTAssertTrue(decisions.contains("## D533"))
         XCTAssertFalse(uiTests.contains("private extension XCUIElement"))
         XCTAssertFalse(uiTests.contains("deltaY: CGFloat = -48"))
         XCTAssertFalse(uiTests.contains("waitForVisibleStableFrame"))
@@ -1869,7 +1887,7 @@ extension ArchitectureDependencyTests {
             "the assist area must grow with the window, not sit at a pinned height")
 
         let objectiveSubmit = try XCTUnwrap(interviewUITest.range(
-            of: "objective.typeKey(.return, modifierFlags: [])"))
+            of: "typeKey(.return, modifierFlags: [], in: app)"))
         let objectiveAdmission = try XCTUnwrap(interviewUITest.range(
             of: "objectiveCount.waitForLabelOrValue(expectedObjectiveCount, timeout: 5)"))
         let admissionFailure = try XCTUnwrap(interviewUITest.range(

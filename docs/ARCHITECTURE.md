@@ -5423,6 +5423,18 @@ prove that Portavoz owns the frontmost key window throughout a long catalogue;
 startup and `prepareForInteraction()` therefore keep explicit activation. The
 first complete English attempt demonstrated that removing it can synthesize
 apparently successful clicks without publishing the expected route or mutation.
+Keyboard dispatch has a separate admission boundary in `UITestKeyboardSupport`:
+XCTest foreground state plus the unique declared bundle's frontmost process,
+and either no sheet, alert or hittable app-modal dialog or exactly one such
+modal containing the journey's explicit anchor, re-observed for at most one
+second without activating anything. A dialog nothing can click, such as the
+floating selection affordance macOS shows after Select All, never captures the
+keys and is not counted. It does not reactivate after an observed ownership change. A background
+anchor never authorizes an unexpected same-app modal. Base-case wrappers refuse
+through the owned-cleanup interruption guard; shared application helpers return
+failure. Native negative controls exercise the real wrappers, while a tooling
+policy prevents raw keyboard dispatch elsewhere. These observations are not an
+atomic OS guarantee. Startup activation remains an explicit, separate operation.
 After startup activation, the main shell uses one bounded hittability proof;
 the window is not itself clicked, while every interactive control keeps its
 own stable or contained readiness boundary. Settings owns one stable General
@@ -5578,7 +5590,8 @@ resolves its own AppKit window on attachment rather than selecting a process-wid
 first window; detachment clears the weak owner and reattachment follows the new
 window. The shared disposable-window boundary keeps
 the main and Settings windows at AppKit's standard `statusBar` level, above the
-accepted Notification Center modal, so it cannot occlude test hit targets. No
+accepted Notification Center modal, reducing occlusion without guaranteeing
+protection from later system modals. No
 production window is elevated. The palette, recording HUD, dictation and reminder
 panels retain the same elevated level only for that explicit disposable launch,
 so the main window cannot cover their input targets; ordinary launches retain
@@ -5593,11 +5606,26 @@ observation, workspace, or malformed-output failure remains fail-closed.
 An accepted run reports both content-free Notification Center window counts.
 When both are zero it instead states that the override relaxed no present
 blocker, so a clear-host run cannot be misrepresented as live-overlay proof.
-The UI-test bundle likewise installs no interruption monitor for external
-system prompts. The explicit Notification Center level isolation answers no
-control and changes no notification state; every privacy or authentication
-choice remains user-owned and invalidates that host run instead of being
-answered by automation.
+The shared UI-test base installs a content-blind interruption monitor. It ends
+only its registered apps and identity-owned scratch before recording a failure;
+if XCTest returns from that assertion it exits only the worker, rather than
+resuming the interrupted event or default handler stack. It neither inspects
+nor answers the interrupting element. The execution classifier retains this as
+`evidence-failure` even after a zero-test worker restart or an exit-zero summary.
+A separate permission-free fixture target compiles the same base and cleanup
+sources. Observable positive controls and synchronous/asynchronous negative
+controls qualify the callback without opening a system permission prompt.
+The overlay's main-queue parent-exit callback emits a separate lifecycle
+acknowledgement before exiting; process absence without it is failed cleanup,
+not success. This closes the false-positive case where a main-actor callback
+scheduled on a global queue trapped before its body ran.
+Changes to the sources these controls qualify, their fixture, classifier or
+CI/Make owners, plus explicit full runs, execute them once in addition to the
+product catalog; localization and unrelated feature runs do not pay for fixture
+qualification. A failed control stops only its own built fixture processes. The
+shared tear-down names its owned cleanup as a child activity so runtime
+attribution never subtracts it, and the editing handoff observes keyboard focus
+before sending Tab so traversal can never move focus into the field.
 These observations prove only that the host was quiet at those samples;
 automation started afterward remains an external race that the result bundle
 must classify.
@@ -5611,7 +5639,11 @@ frame restoration can overwrite a correction made at view attachment. The
 separate weak reference remains current at attachment for receipt navigation.
 The harness asserts that the Settings navigation anchor has nonnegative global
 coordinates before any journey continues. Production launches never enter this boundary and retain
-SwiftUI's saved window placement.
+SwiftUI's saved window placement. No forced compact-main-window mode or
+measured wheel-response calibration is active. The ordinary bounded UI-test
+scroll helper remains separate from interruption containment; compact-window
+reachability is an unresolved quality limitation, not qualification implied by
+the normal-window catalog.
 
 The UI runner owns atomically allocated, mode-0700 scratch under one dedicated
 system-temporary base, rather than handing its protected app-container paths
