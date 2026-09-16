@@ -238,7 +238,7 @@ private extension RecordingAssistPanel {
             .accessibilityIdentifier("recording-live-summary")
         } else {
             RecordingAssistEmptyState(
-                symbol: "sparkles",
+                symbol: PVSymbol.generate,
                 message: L10n.text("A running summary appears once there is enough to say."))
         }
     }
@@ -254,7 +254,7 @@ struct RecordingCatchUpCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Label(L10n.text("Catch me up"), systemImage: "clock.arrow.circlepath")
+                Label(L10n.text("Catch me up"), systemImage: PVSymbol.history)
                     .font(.headline)
                 Spacer()
                 Button(action: dismiss) {

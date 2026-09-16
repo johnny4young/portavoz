@@ -122,7 +122,7 @@ struct MeetingDetailCompanionSection: View {
             if !values.cards.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Label("Apuntador", systemImage: "sparkles")
+                        Label("Apuntador", systemImage: PVSymbol.apuntador)
                             .font(.headline)
                             .foregroundStyle(PVDesign.accent)
                             .accessibilityIdentifier("detail-apuntador")
@@ -133,7 +133,7 @@ struct MeetingDetailCompanionSection: View {
                                     ProgressView()
                                         .controlSize(.small)
                                 } else {
-                                    Label("Re-check answers", systemImage: "arrow.clockwise")
+                                    Label("Re-check answers", systemImage: PVSymbol.retry)
                                         .labelStyle(.iconOnly)
                                 }
                             }
@@ -166,7 +166,7 @@ struct MeetingDetailCompanionSection: View {
             if values.freshnessByCardID[card.id] == .stale {
                 Label(
                     "Transcript changed — this answer may be out of date.",
-                    systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                    systemImage: PVSymbol.history)
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("apuntador-card-\(card.id.uuidString)-stale")

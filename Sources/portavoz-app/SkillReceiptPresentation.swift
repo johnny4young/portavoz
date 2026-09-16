@@ -113,7 +113,7 @@ enum SkillReceiptPresentation {
     static func icon(for state: SkillExecutionState) -> String {
         switch state {
         case .succeeded: "checkmark.circle.fill"
-        case .failed, .executing: "exclamationmark.triangle.fill"
+        case .failed, .executing: PVSymbol.error
         case .dismissed: "xmark.circle"
         case .confirmed, .proposed, .previewed: "clock"
         }

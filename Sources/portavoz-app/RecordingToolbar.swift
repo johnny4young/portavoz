@@ -82,7 +82,7 @@ struct RecordingToolbar: View {
             }
             if companionAvailable {
                 Toggle(isOn: companionBinding) {
-                    Label("Apuntador", systemImage: "questionmark.bubble")
+                    Label("Apuntador", systemImage: PVSymbol.apuntador)
                 }
                 .toggleStyle(.button)
                 .controlSize(.small)
@@ -91,7 +91,7 @@ struct RecordingToolbar: View {
                 .accessibilityHint(companionHelp)
             }
             Toggle(isOn: proactiveAssistBinding) {
-                Label(L10n.text("Proactive"), systemImage: "sparkles")
+                Label(L10n.text("Proactive"), systemImage: PVSymbol.proactive)
             }
             .toggleStyle(.button)
             .controlSize(.small)
@@ -129,7 +129,7 @@ struct RecordingToolbar: View {
             Button {
                 controller.requestCatchUp()
             } label: {
-                Label(L10n.text("Catch me up"), systemImage: "clock.arrow.circlepath")
+                Label(L10n.text("Catch me up"), systemImage: PVSymbol.history)
             }
             .controlSize(.small)
             .help(L10n.text(
@@ -167,7 +167,7 @@ struct RecordingToolbar: View {
 
     private var stopButton: some View {
         Button(action: onStop) {
-            Label("Stop", systemImage: "stop.circle.fill")
+            Label("Stop", systemImage: PVSymbol.stop)
         }
         .controlSize(.small)
         .tint(.red)

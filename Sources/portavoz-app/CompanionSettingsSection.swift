@@ -46,7 +46,7 @@ struct CompanionSettingsSection: View {
             VStack(alignment: .leading, spacing: 4) {
                 Label(
                     "Apuntador question detection is unavailable.",
-                    systemImage: "exclamationmark.triangle.fill"
+                    systemImage: PVSymbol.error
                 )
                 .font(.callout.weight(.medium))
                 .foregroundStyle(.orange)

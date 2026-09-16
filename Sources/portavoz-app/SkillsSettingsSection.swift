@@ -217,7 +217,7 @@ struct SkillsSettingsSection: View {
             case .noDirectNetworkHandoff:
                 Label(
                     "No direct network handoff",
-                    systemImage: "lock.shield.fill")
+                    systemImage: PVSymbol.privacy)
                     .foregroundStyle(.green)
                     .accessibilityIdentifier(
                         "settings-skill-\(skill.id)-boundary")
@@ -520,7 +520,7 @@ private extension SkillsSettingsSection {
             .accessibilityIdentifier("settings-skills-loading")
         } else if controlLoadFailed, snapshot == nil {
             VStack(alignment: .leading, spacing: 8) {
-                Label("Action controls are unavailable", systemImage: "exclamationmark.triangle")
+                Label("Action controls are unavailable", systemImage: PVSymbol.warning)
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("settings-skills-load-error")
                 Text("Nothing can be changed until Portavoz reads the durable policy.")
@@ -555,7 +555,7 @@ private extension SkillsSettingsSection {
                 VStack(alignment: .leading, spacing: 8) {
                     Label(
                         "The last change could not be verified. Reload controls before trying again.",
-                        systemImage: "exclamationmark.triangle")
+                        systemImage: PVSymbol.warning)
                         .font(.caption)
                         .foregroundStyle(.orange)
                         .accessibilityIdentifier("settings-skills-stale-error")
@@ -670,7 +670,7 @@ private extension SkillsSettingsSection {
         case MeetingPackageExportSkill.id: "shippingbox"
         case ReminderDraftSkill.id: "checklist"
         case PreMeetingBriefSkill.id: "calendar.badge.clock"
-        default: "sparkles"
+        default: PVSymbol.automations
         }
     }
 

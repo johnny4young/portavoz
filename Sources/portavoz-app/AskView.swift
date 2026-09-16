@@ -391,7 +391,7 @@ extension AskView {
             .accessibilityIdentifier("ask-source-meetings-loading")
         case .failed:
             HStack(spacing: 8) {
-                Label("Meeting list unavailable.", systemImage: "exclamationmark.triangle")
+                Label("Meeting list unavailable.", systemImage: PVSymbol.warning)
                 Button("Try again") { model.retrySourceMeetings() }
                     .accessibilityIdentifier("ask-source-meetings-retry")
             }

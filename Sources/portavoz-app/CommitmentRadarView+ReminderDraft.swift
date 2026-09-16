@@ -34,7 +34,7 @@ extension CommitmentRadarView {
             } else if let receipt = surface.receipt {
                 Label(
                     reminderDraftReceiptLabel(receipt.state),
-                    systemImage: "exclamationmark.triangle.fill")
+                    systemImage: PVSymbol.error)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier(

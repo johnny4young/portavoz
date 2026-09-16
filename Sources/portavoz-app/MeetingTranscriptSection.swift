@@ -115,7 +115,7 @@ struct MeetingTranscriptChaptersSection: View {
     var body: some View {
         if !chapters.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Label("Chapters", systemImage: "sparkles")
+                Label("Chapters", systemImage: PVSymbol.generate)
                     .font(.headline)
                     .foregroundStyle(PVDesign.accent)
                 ForEach(chapters) { chapter in

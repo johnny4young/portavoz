@@ -19891,8 +19891,8 @@ repository already enforces truth.
    "Suggested actions" are "Automations". `Tests/Tooling/test_ui_copy_policy.py`
    keeps these rules in repository hygiene.
 2. *Icons.* One SF Symbol per concept, declared in one place; `sparkles` marks
-   generated content and nothing else. (Implemented by the icon slice of the
-   same goal; the architecture ratchet lands with it.)
+   generated content and nothing else. `PVSymbol` (`PVDesign.swift`) is the
+   single declaration and `testSymbolsAreDeclaredOncePerConcept` is the ratchet.
 3. *Heights.* Content decides height. First-level views fit a 1,280×800 window
    without page scrolling; only long lists scroll, inside their own area.
    (Implemented by the layout slices of the same goal.)

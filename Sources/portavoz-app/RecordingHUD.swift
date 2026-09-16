@@ -144,7 +144,7 @@ struct RecordingHUDView: View {
             .buttonStyle(.plain)
             .help("Back to the full window")
             Button(action: onStop) {
-                Image(systemName: "stop.circle.fill")
+                Image(systemName: PVSymbol.stop)
                     .font(.title3)
                     .foregroundStyle(.red)
             }
@@ -196,7 +196,7 @@ struct RecordingHUDView: View {
 
     private var hudCaptureHealthIcon: String {
         controller.systemCaptureHealth == .recovered
-            ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+            ? "checkmark.circle.fill" : PVSymbol.error
     }
 
     private var hudCaptureHealthColor: Color {

@@ -442,7 +442,7 @@ extension LibraryView {
             Button {
                 showsPrivacyNote.toggle()
             } label: {
-                Label("On your Mac", systemImage: "lock.shield")
+                Label("On your Mac", systemImage: PVSymbol.privacy)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }

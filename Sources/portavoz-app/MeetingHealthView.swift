@@ -28,7 +28,7 @@ struct MeetingHealthView: View {
                         .accessibilityIdentifier("detail-meeting-health")
                     Spacer()
                     if health.questionsTotal > 0 {
-                        chip("questionmark.bubble", "\(health.questionsTotal)")
+                        chip(PVSymbol.apuntador, "\(health.questionsTotal)")
                             .help("Questions asked in the meeting")
                     }
                     if health.interruptionsTotal > 0 {

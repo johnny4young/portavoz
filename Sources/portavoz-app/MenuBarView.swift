@@ -89,12 +89,12 @@ struct MenuBarContent: View {
     private var quickActions: some View {
         HStack(spacing: 8) {
             if recording {
-                quickAction("Stop", "stop.circle.fill", tint: .red) {
+                quickAction("Stop", PVSymbol.stop, tint: .red) {
                     let services = self.services
                     Task { await services.recording.stop(services: services) }
                 }
             } else {
-                quickAction("Record", "record.circle", tint: .red) {
+                quickAction("Record", PVSymbol.record, tint: .red) {
                     openMainWindow()
                     services.pendingRoute = .recording(nil)
                 }
@@ -161,7 +161,7 @@ struct MenuBarContent: View {
                     openMainWindow()
                     services.pendingRoute = .recording(event)
                 } label: {
-                    Label("Record", systemImage: "record.circle")
+                    Label("Record", systemImage: PVSymbol.record)
                         .font(.caption.weight(.semibold))
                 }
                 .buttonStyle(.plain)
@@ -198,7 +198,7 @@ struct MenuBarContent: View {
                     Text("Preparing…")
                 }
             } else {
-                Label("Prepare brief", systemImage: "sparkles")
+                Label("Prepare brief", systemImage: PVSymbol.generate)
             }
         }
         .font(.caption.weight(.semibold))
@@ -225,7 +225,7 @@ struct MenuBarContent: View {
                         Text(meeting.title).lineLimit(1)
                         Spacer(minLength: 4)
                         if let pending = model.state.pendingByMeeting[meeting.id], pending > 0 {
-                            Label("\(pending)", systemImage: "sparkles")
+                            Label("\(pending)", systemImage: PVSymbol.automations)
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(PVDesign.accent)
                         }

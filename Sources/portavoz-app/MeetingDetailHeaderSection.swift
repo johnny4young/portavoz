@@ -137,7 +137,7 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
             ProgressView().controlSize(.small)
         } else if values.nameSuggestions.isEmpty {
             Button(action: actions.suggestNames) {
-                Label("Suggest names", systemImage: "sparkles")
+                Label("Suggest names", systemImage: PVSymbol.generate)
                     .font(.caption)
             }
             .buttonStyle(.plain)

@@ -160,12 +160,12 @@ extension SettingsView {
         _ phase: SemanticSearchPreparationModel.Phase
     ) -> String {
         switch phase {
-        case .checking, .preparing: "arrow.triangle.2.circlepath"
-        case .needsPreparation: "sparkles"
+        case .checking, .preparing: PVSymbol.retry
+        case .needsPreparation: PVSymbol.generate
         case .ready: "checkmark.circle.fill"
         case .unsupported: "minus.circle"
         case .blockedByCapture: "waveform.circle"
-        case .failed: "exclamationmark.triangle.fill"
+        case .failed: PVSymbol.error
         }
     }
 

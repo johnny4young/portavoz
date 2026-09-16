@@ -43,7 +43,7 @@ struct SkillOfferMenu: View {
                             "skill-offer-dismiss-\(offer.kind.rawValue)")
                 }
             } label: {
-                Image(systemName: "sparkles")
+                Image(systemName: PVSymbol.automations)
                     .font(.system(size: 13))
                     .foregroundStyle(PVDesign.accent)
                     .frame(width: 30, height: 30)

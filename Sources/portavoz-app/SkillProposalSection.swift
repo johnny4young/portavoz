@@ -70,7 +70,7 @@ struct SkillProposalSection: View {
             VStack(alignment: .leading, spacing: 8) {
                 Label(
                     "Automations are unavailable",
-                    systemImage: "exclamationmark.triangle")
+                    systemImage: PVSymbol.warning)
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier(
                         "settings-skills-proposals-error")
@@ -84,7 +84,7 @@ struct SkillProposalSection: View {
             }
         } else if let offers = snapshot?.offers, offers.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
-                Label("No suggested actions", systemImage: "sparkles")
+                Label("No suggested actions", systemImage: PVSymbol.automations)
                 Text(
                     // Keep this as one literal so localization validation sees it.
                     "Suggestions appear when a meeting, commitment or calendar event calls for an action."
@@ -129,7 +129,7 @@ struct SkillProposalSection: View {
                 "settings-skills-proposals-refreshing")
         } else {
             Button(action: refresh) {
-                Label("Refresh suggested actions", systemImage: "arrow.clockwise")
+                Label("Refresh suggested actions", systemImage: PVSymbol.retry)
             }
             .accessibilityIdentifier("settings-skills-proposals-refresh")
             .disabled(isMutating)
@@ -149,7 +149,7 @@ struct SkillProposalSection: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "sparkles.rectangle.stack.fill")
+                Image(systemName: PVSymbol.generate)
                     .foregroundStyle(PVDesign.accent)
                     .frame(width: 18)
                     .accessibilityHidden(true)
@@ -275,7 +275,7 @@ struct SkillProposalSection: View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Label(
                 "This proposal could not be opened. It remains available.",
-                systemImage: "exclamationmark.triangle")
+                systemImage: PVSymbol.warning)
                 .font(.caption)
                 .foregroundStyle(.orange)
                 .accessibilityIdentifier(
@@ -305,7 +305,7 @@ struct SkillProposalSection: View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Label(
                 "This proposal could not be dismissed. It remains available.",
-                systemImage: "exclamationmark.triangle")
+                systemImage: PVSymbol.warning)
                 .font(.caption)
                 .foregroundStyle(.orange)
                 .accessibilityIdentifier(

@@ -21,7 +21,7 @@ struct CommitmentFieldQualityView: View {
             .frame(maxWidth: .infinity, minHeight: 180)
         case .failed:
             ContentUnavailableView {
-                Label("Couldn’t load quality signals", systemImage: "exclamationmark.triangle")
+                Label("Couldn’t load quality signals", systemImage: PVSymbol.warning)
             } description: {
                 Text("Your reviews are still safe on this Mac.")
             } actions: {
@@ -85,7 +85,7 @@ private extension CommitmentFieldQualityView {
 
     var qualityNotice: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Private quality check", systemImage: "lock.shield.fill")
+            Label("Private quality check", systemImage: PVSymbol.privacy)
                 .font(.headline)
             Text("Last 90 days of suggestions you reviewed.")
                 .foregroundStyle(.secondary)

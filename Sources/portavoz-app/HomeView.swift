@@ -81,7 +81,7 @@ struct HomeView: View {
             Button(action: onRecord) {
                 Label(
                     recordingActive ? LocalizedStringKey("Return to recording") : LocalizedStringKey("New recording"),
-                    systemImage: recordingActive ? "record.circle" : "plus")
+                    systemImage: recordingActive ? PVSymbol.record : "plus")
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
@@ -233,7 +233,7 @@ struct HomeView: View {
             Button {
                 route = .recording(event)
             } label: {
-                Label("Record", systemImage: "record.circle")
+                Label("Record", systemImage: PVSymbol.record)
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
@@ -305,7 +305,7 @@ struct HomeView: View {
     private var recentCard: some View {
         let openByMeeting = Dictionary(grouping: state.openItems, by: \.meetingID)
             .mapValues(\.count)
-        return card(title: L10n.text("Pick up where you left off"), symbol: "clock.arrow.circlepath") {
+        return card(title: L10n.text("Pick up where you left off"), symbol: PVSymbol.history) {
             if state.meetings.isEmpty {
                 emptyLine("No meetings yet")
             } else {
@@ -365,7 +365,7 @@ struct HomeView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .needsAttention:
-            Label("Needs attention", systemImage: "exclamationmark.triangle.fill")
+            Label("Needs attention", systemImage: PVSymbol.error)
                 .font(.caption)
                 .foregroundStyle(PVDesign.brandAmber)
         case .recording, .ready:

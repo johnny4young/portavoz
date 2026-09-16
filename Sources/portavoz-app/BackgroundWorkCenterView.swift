@@ -38,8 +38,8 @@ struct BackgroundWorkIndicator: View {
                         : L10n.text("Background work active"))
                 } icon: {
                     Image(systemName: model.needsAttention
-                        ? "exclamationmark.arrow.triangle.2.circlepath"
-                        : "arrow.triangle.2.circlepath")
+                        ? PVSymbol.retry
+                        : PVSymbol.retry)
                 }
             }
             .help(L10n.text("Open background activity"))
@@ -255,10 +255,10 @@ private struct BackgroundWorkRow: View {
 
     private var icon: String {
         switch snapshot.phase {
-        case .failed: "exclamationmark.triangle.fill"
-        case .retryScheduled: "clock.arrow.circlepath"
+        case .failed: PVSymbol.error
+        case .retryScheduled: PVSymbol.history
         case .waitingForRecording: "mic.fill"
-        case .running: "arrow.triangle.2.circlepath"
+        case .running: PVSymbol.retry
         case .idle: snapshot.lastOutcome == nil ? "circle" : "checkmark.circle.fill"
         }
     }

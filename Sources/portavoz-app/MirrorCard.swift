@@ -46,7 +46,7 @@ struct MirrorCard: View {
             }
 
             HStack(alignment: .top, spacing: 6) {
-                Image(systemName: "sparkles")
+                Image(systemName: PVSymbol.generate)
                     .font(.caption)
                     .foregroundStyle(PVDesign.chipAISpark)
                 Text(MirrorStats.synthesis(

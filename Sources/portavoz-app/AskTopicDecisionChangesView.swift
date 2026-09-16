@@ -37,7 +37,7 @@ struct AskTopicDecisionChangesView: View {
         _ change: AskMemoryDecisionConflict
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label(context.heading, systemImage: "arrow.triangle.2.circlepath")
+            Label(context.heading, systemImage: PVSymbol.retry)
                 .font(.headline)
             Text("Changed to")
                 .font(.caption.weight(.semibold))

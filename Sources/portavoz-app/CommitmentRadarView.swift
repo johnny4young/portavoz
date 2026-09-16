@@ -282,7 +282,7 @@ private extension CommitmentRadarView {
             .frame(maxWidth: .infinity, minHeight: 180)
         case .failed:
             ContentUnavailableView {
-                Label("Couldn’t load commitments", systemImage: "exclamationmark.triangle")
+                Label("Couldn’t load commitments", systemImage: PVSymbol.warning)
             } description: {
                 Text("Your confirmed commitments are still safe on this Mac.")
             } actions: {
@@ -293,7 +293,7 @@ private extension CommitmentRadarView {
             }
         case .empty:
             ContentUnavailableView {
-                Label("No confirmed commitments", systemImage: "scope")
+                Label("No confirmed commitments", systemImage: PVSymbol.radar)
             } description: {
                 Text(emptyDescription)
             }
@@ -453,7 +453,7 @@ private extension CommitmentRadarView {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             VStack(alignment: .leading, spacing: 8) {
-                Label("History", systemImage: "clock.arrow.circlepath")
+                Label("History", systemImage: PVSymbol.history)
                     .font(.subheadline.bold())
                 ForEach(item.history) { event in
                     historyRow(event)

@@ -110,7 +110,7 @@ struct RecordingView: View {
             case .failed(let message):
                 Spacer()
                 ContentUnavailableView {
-                    Label("Something went wrong", systemImage: "exclamationmark.triangle")
+                    Label("Something went wrong", systemImage: PVSymbol.warning)
                         .accessibilityIdentifier("recording-failure")
                 } description: {
                     VStack(spacing: 8) {
@@ -435,7 +435,7 @@ extension RecordingView {
     private var systemCaptureHealthIcon: String {
         switch controller.systemCaptureHealth {
         case .recovered: "checkmark.circle.fill"
-        case .healthy, .stalled, .recovering, .failed: "exclamationmark.triangle.fill"
+        case .healthy, .stalled, .recovering, .failed: PVSymbol.error
         }
     }
 
@@ -454,7 +454,7 @@ extension RecordingView {
             Text(liveTranscriptStatusMessage)
         } icon: {
             Image(systemName: controller.liveTranscriptState == .failed
-                ? "exclamationmark.triangle.fill" : "waveform.badge.clock")
+                ? PVSymbol.error : "waveform.badge.clock")
         }
         .font(.caption)
         .foregroundStyle(controller.liveTranscriptState == .failed ? .orange : .secondary)
@@ -482,7 +482,7 @@ extension RecordingView {
     var micLowBanner: some View {
         Label(
             "Your voice sounds low — move closer or use headphones with a microphone",
-            systemImage: "exclamationmark.triangle.fill")
+            systemImage: PVSymbol.error)
         .font(.caption)
         .foregroundStyle(.orange)
         .padding(.horizontal, 20)
@@ -578,7 +578,7 @@ extension RecordingView {
             Text(translationStatusMessage)
         } icon: {
             Image(systemName: controller.translationState == .failed
-                ? "exclamationmark.triangle.fill" : "character.bubble")
+                ? PVSymbol.error : "character.bubble")
         }
         .font(.caption)
         .foregroundStyle(controller.translationState == .failed ? .orange : .secondary)

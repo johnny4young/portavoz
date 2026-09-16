@@ -74,7 +74,7 @@ struct MeetingDetailNotesSection: View {
                 }
             }
         } label: {
-            Label("Tidy up", systemImage: "sparkles")
+            Label("Tidy up", systemImage: PVSymbol.generate)
         }
         .menuStyle(.borderlessButton)
         .fixedSize()

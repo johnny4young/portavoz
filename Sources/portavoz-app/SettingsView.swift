@@ -629,7 +629,7 @@ extension SettingsView {
                 VStack(alignment: .leading, spacing: 4) {
                     Label(
                         providerRecommendation.localizedHeadline,
-                        systemImage: "wand.and.stars.inverse")
+                        systemImage: PVSymbol.generate)
                         .font(.callout.weight(.medium))
                     ForEach(providerRecommendation.localizedReasons, id: \.self) { reason in
                         Text("• \(reason)").font(.caption).foregroundStyle(.secondary)
@@ -668,7 +668,7 @@ extension SettingsView {
                         if detectingOllama {
                             ProgressView().controlSize(.small)
                         } else {
-                            Label("Detect models", systemImage: "arrow.clockwise")
+                            Label("Detect models", systemImage: PVSymbol.retry)
                         }
                     }
                     .controlSize(.small)

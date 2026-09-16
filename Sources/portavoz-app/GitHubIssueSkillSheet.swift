@@ -63,7 +63,7 @@ struct GitHubIssueSkillSheet: View {
             }
             Label(
                 "Nothing is sent until you confirm the issue.",
-                systemImage: "lock.shield")
+                systemImage: PVSymbol.privacy)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -99,7 +99,7 @@ struct GitHubIssueSkillSheet: View {
             citationSummary(draft.citations)
             Label(
                 "Confirming sends this title, body, and cited excerpts to this repository and creates one issue.",
-                systemImage: "network.badge.shield.half.filled")
+                systemImage: PVSymbol.privacy)
                 .font(.caption)
                 .foregroundStyle(.orange)
                 .fixedSize(horizontal: false, vertical: true)
@@ -215,7 +215,7 @@ struct GitHubIssueSkillSheet: View {
         case .outcomeUnknown(let outputURL, let message):
             Label(
                 "Issue outcome unknown — check GitHub",
-                systemImage: "exclamationmark.triangle.fill")
+                systemImage: PVSymbol.error)
                 .font(.headline)
                 .foregroundStyle(.orange)
                 .accessibilityIdentifier("github-issue-result-title")
@@ -257,7 +257,7 @@ struct GitHubIssueSkillSheet: View {
 
     @ViewBuilder private var failureView: some View {
         if let failure {
-            Label(failure, systemImage: "exclamationmark.triangle.fill")
+            Label(failure, systemImage: PVSymbol.error)
                 .font(.callout)
                 .foregroundStyle(.red)
                 .fixedSize(horizontal: false, vertical: true)

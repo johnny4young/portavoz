@@ -39,14 +39,14 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         switch self {
         case .general: "globe"
         case .audio: "mic"
-        case .intelligence: "sparkles"
+        case .intelligence: PVSymbol.intelligence
         case .voice: "person.wave.2"
         case .agenda: "calendar.badge.clock"
-        case .skills: "sparkles"
+        case .skills: PVSymbol.automations
         case .integrations: "link"
         case .sync: "icloud"
-        case .backgroundWork: "clock.arrow.circlepath"
-        case .data: "lock.shield"
+        case .backgroundWork: PVSymbol.history
+        case .data: PVSymbol.privacy
         }
     }
 

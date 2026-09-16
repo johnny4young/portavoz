@@ -28,7 +28,7 @@ struct AskTopicMemoryView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Topic memory", systemImage: "checkmark.seal")
+            Label("Topic memory", systemImage: PVSymbol.success)
                 .font(.title2.bold())
                 .accessibilityIdentifier("ask-topic-title")
             Text(
@@ -69,7 +69,7 @@ struct AskTopicMemoryView: View {
             VStack(alignment: .leading, spacing: 8) {
                 statusRow(
                     "Could not search confirmed topics.",
-                    systemImage: "exclamationmark.triangle")
+                    systemImage: PVSymbol.warning)
                 Button("Try again") { model.retryTopicSearch() }
                     .accessibilityIdentifier("ask-topic-search-retry")
             }
@@ -273,7 +273,7 @@ struct AskTopicMemoryView: View {
 extension AskTopicMemoryView {
     private func decisionCard(_ decision: AskMemoryDecision) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label(decision.statement, systemImage: "checkmark.seal.fill")
+            Label(decision.statement, systemImage: PVSymbol.success)
                 .font(.headline)
                 .accessibilityIdentifier(
                     "ask-topic-decision-\(decision.id.rawValue.uuidString)")
@@ -314,7 +314,7 @@ extension AskTopicMemoryView {
         _ discussion: AskMemoryFirstDiscussion
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("First confirmed discussion", systemImage: "clock.arrow.circlepath")
+            Label("First confirmed discussion", systemImage: PVSymbol.history)
                 .font(.headline)
             Text(discussion.meetingTitle)
                 .font(.title3.weight(.semibold))
@@ -390,7 +390,7 @@ extension AskTopicMemoryView {
         VStack(alignment: .leading, spacing: 8) {
             statusRow(
                 message,
-                systemImage: "exclamationmark.triangle",
+                systemImage: PVSymbol.warning,
                 identifier: identifier)
             Button("Try again") { model.loadSelectedTopicMemory() }
                 .accessibilityIdentifier("ask-topic-load-retry")

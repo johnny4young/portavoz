@@ -25,7 +25,7 @@ struct MenuBarBriefConfirmSheet: View {
             .accessibilityIdentifier("menu-bar-brief-preview")
             capabilities
             if let failure {
-                Label(failure, systemImage: "exclamationmark.triangle.fill")
+                Label(failure, systemImage: PVSymbol.error)
                     .font(.callout)
                     .foregroundStyle(.red)
                     .fixedSize(horizontal: false, vertical: true)
@@ -112,7 +112,7 @@ struct MenuBarPreparedBriefSheet: View {
                 Button("Done", action: dismiss)
                     .accessibilityIdentifier("menu-bar-brief-result-close")
                 Button(action: record) {
-                    Label("Record this meeting", systemImage: "record.circle")
+                    Label("Record this meeting", systemImage: PVSymbol.record)
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("menu-bar-brief-result-record")

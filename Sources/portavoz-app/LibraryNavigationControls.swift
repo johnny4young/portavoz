@@ -16,7 +16,7 @@ struct LibraryNavigationControls: View {
                 .disabled(importing)
             Divider().padding(.vertical, 4)
             navigationButton(
-                "Today", symbol: "sun.max", id: "library-home-button",
+                "Today", symbol: PVSymbol.today, id: "library-home-button",
                 help: "Today's agenda, open to-dos, recent meetings and one-click questions",
                 selected: isHome) { onNavigate(.library) }
             navigationButton(
@@ -28,7 +28,7 @@ struct LibraryNavigationControls: View {
                 help: "Totals, cadence, people and commitments — computed on your Mac",
                 selected: route == .insights) { onNavigate(.insights) }
             navigationButton(
-                "Radar", symbol: "scope", id: "library-commitment-radar-button",
+                "Radar", symbol: PVSymbol.radar, id: "library-commitment-radar-button",
                 help: "Confirmed commitments, deadlines, sources and changes — kept on your Mac",
                 selected: route?.isCommitmentRadar == true) { onNavigate(.commitments(nil)) }
         }

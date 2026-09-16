@@ -110,7 +110,7 @@ struct AskMemoryBlockersView: View {
         VStack(alignment: .leading, spacing: 8) {
             statusRow(
                 message,
-                systemImage: "exclamationmark.triangle",
+                systemImage: PVSymbol.warning,
                 identifier: identifier)
             Button("Try again", action: onRetry)
                 .accessibilityIdentifier("ask-memory-blockers-retry")

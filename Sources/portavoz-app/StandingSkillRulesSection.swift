@@ -69,7 +69,7 @@ struct StandingSkillRulesSection: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Label(
                         "The last rule change could not be verified. Reload before trying again.",
-                        systemImage: "exclamationmark.triangle")
+                        systemImage: PVSymbol.warning)
                         .font(.caption)
                         .foregroundStyle(.orange)
                         .accessibilityIdentifier(
@@ -110,7 +110,7 @@ private extension StandingSkillRulesSection {
         VStack(alignment: .leading, spacing: 8) {
             Label(
                 "Automatic actions are unavailable",
-                systemImage: "exclamationmark.triangle")
+                systemImage: PVSymbol.warning)
                 .foregroundStyle(.orange)
                 .accessibilityIdentifier("settings-standing-load-error")
             Text("Loading your automations…")
@@ -239,7 +239,7 @@ private extension StandingSkillRulesSection {
                 Button {
                     Task { await load() }
                 } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
+                    Label("Refresh", systemImage: PVSymbol.retry)
                 }
                 .accessibilityLabel("Refresh automatic action history")
                 .accessibilityIdentifier("settings-standing-history-refresh")
@@ -495,7 +495,7 @@ private struct StandingSkillBriefSheet: View {
             .frame(maxHeight: 360)
             Label(
                 "This brief stays in Portavoz on this Mac. Nothing was sent or shared.",
-                systemImage: "lock.shield")
+                systemImage: PVSymbol.privacy)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("standing-brief-privacy")

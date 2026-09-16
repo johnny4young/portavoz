@@ -104,7 +104,7 @@ struct SkillActivitySection: View {
 
             if presentationState.allowsExplicitRefresh {
                 Button(action: refresh) {
-                    Label("Refresh activity", systemImage: "arrow.clockwise")
+                    Label("Refresh activity", systemImage: PVSymbol.retry)
                 }
                 .accessibilityIdentifier(
                     "settings-skills-receipt-refresh")
@@ -256,7 +256,7 @@ struct SkillActivitySection: View {
             VStack(alignment: .leading, spacing: 4) {
                 Label(
                     "History is unavailable",
-                    systemImage: "exclamationmark.triangle")
+                    systemImage: PVSymbol.warning)
                     .foregroundStyle(.orange)
                 Text("The selected activity view could not be verified. No runs are shown.")
                     .font(.caption)
@@ -272,7 +272,7 @@ struct SkillActivitySection: View {
 
     private var emptyContent: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label(emptyTitle, systemImage: "checkmark.seal")
+            Label(emptyTitle, systemImage: PVSymbol.success)
             Text(emptyDetail)
                 .font(.caption)
                 .foregroundStyle(.secondary)

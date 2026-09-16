@@ -119,7 +119,7 @@ private extension CommitmentReminderStatusCard {
     }
 
     var statusIcon: String {
-        if model.state.phase == .failed { return "exclamationmark.triangle.fill" }
+        if model.state.phase == .failed { return PVSymbol.error }
         return switch model.state.permission {
         case .unknown, .notDetermined: "bell.badge"
         case .denied: "bell.slash.fill"

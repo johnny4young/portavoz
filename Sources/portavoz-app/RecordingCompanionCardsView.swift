@@ -24,7 +24,7 @@ struct RecordingCompanionCardsView: View {
         let rows = rows
         if rows.isEmpty {
             RecordingAssistEmptyState(
-                symbol: "questionmark.bubble",
+                symbol: PVSymbol.apuntador,
                 message: L10n.text("Questions the meeting asks you show up here."))
         } else {
             ScrollView {
@@ -110,7 +110,7 @@ struct RecordingCompanionCardsView: View {
 
     private func header(_ row: CompanionCardWindow.Row, identity: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Label(row.card.question, systemImage: "questionmark.bubble.fill")
+            Label(row.card.question, systemImage: PVSymbol.apuntador)
                 .font(.callout.weight(.semibold))
                 .lineLimit(row.presentation == .full ? nil : 2)
             Spacer(minLength: 4)

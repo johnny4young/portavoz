@@ -104,7 +104,7 @@ struct OnboardingView: View {
             firstListenResult
         case .captionsUnavailable:
             VStack(alignment: .leading, spacing: 8) {
-                Label("Got it.", systemImage: "checkmark.seal.fill")
+                Label("Got it.", systemImage: PVSymbol.success)
                     .foregroundStyle(.green)
                 Text("Live captions need macOS 26. Recording still works.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -121,10 +121,10 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 10) {
             if listen.hasCaption {
                 captionCard(listen.caption)
-                Label(L10n.format("%d words heard.", listen.wordCount), systemImage: "checkmark.seal.fill")
+                Label(L10n.format("%d words heard.", listen.wordCount), systemImage: PVSymbol.success)
                     .font(.caption).foregroundStyle(.secondary)
             } else {
-                Label("Got it.", systemImage: "checkmark.seal.fill")
+                Label("Got it.", systemImage: PVSymbol.success)
                     .font(.callout).foregroundStyle(.secondary)
             }
             Button("Listen again") { listen.start() }
@@ -197,7 +197,7 @@ struct OnboardingView: View {
                 Divider()
                 Label(
                     providerRecommendation.localizedHeadline,
-                    systemImage: "wand.and.stars.inverse")
+                    systemImage: PVSymbol.generate)
                     .font(.callout.weight(.medium))
                 ForEach(providerRecommendation.localizedReasons, id: \.self) { reason in
                     Text("• \(reason)").font(.caption).foregroundStyle(.secondary)
@@ -226,7 +226,7 @@ struct OnboardingView: View {
                 .foregroundStyle(.secondary)
             if enrolled {
                 HStack(spacing: 10) {
-                    Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
+                    Image(systemName: PVSymbol.success).foregroundStyle(.green)
                     Text("Voice enrolled").font(.callout)
                 }
             } else if enrolling {

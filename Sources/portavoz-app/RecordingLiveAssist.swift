@@ -91,7 +91,7 @@ struct RecordingObjectivesPanel: View {
                 .foregroundStyle(objective.checkedAt == nil
                     ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
             if objective.checkedByModel {
-                Image(systemName: "sparkle")
+                Image(systemName: PVSymbol.generate)
                     .font(.caption2)
                     .foregroundStyle(.orange)
                     .help(L10n.text("Checked off by Apuntador"))
@@ -144,7 +144,7 @@ struct RecordingProactiveAssistView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
-                Label(L10n.text("Proactive help"), systemImage: "sparkles")
+                Label(L10n.text("Proactive help"), systemImage: PVSymbol.proactive)
                     .font(.headline)
                     .accessibilityIdentifier("recording-proactive-panel")
                 Spacer()
@@ -166,7 +166,7 @@ struct RecordingProactiveAssistView: View {
             }
             Label(
                 L10n.text("Local signals only · no model, Web request, or automatic action"),
-                systemImage: "lock.fill")
+                systemImage: PVSymbol.privacy)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }

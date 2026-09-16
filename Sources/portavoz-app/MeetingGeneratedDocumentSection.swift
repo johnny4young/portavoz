@@ -87,7 +87,7 @@ struct MeetingGeneratedDocumentSection: View {
             HStack(spacing: 8) {
                 Label(
                     "Transcript changed — regenerate this summary to use your corrections.",
-                    systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                    systemImage: PVSymbol.history)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("detail-stale-summary")
@@ -191,7 +191,7 @@ struct MeetingGeneratedDocumentSection: View {
                     }
                 }
             } label: {
-                Image(systemName: "arrow.clockwise")
+                Image(systemName: PVSymbol.retry)
             }
             .menuStyle(.borderlessButton)
             .fixedSize()
@@ -336,7 +336,7 @@ struct MeetingGeneratedDocumentSection: View {
                 : L10n.format(
                     "Confirmed · %@",
                     confirmed.topicLabels.joined(separator: ", "))
-            let badgeLabel = Label(badge, systemImage: "checkmark.seal.fill")
+            let badgeLabel = Label(badge, systemImage: PVSymbol.success)
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if confirmed.topicLinks.isEmpty {
@@ -480,14 +480,14 @@ struct MeetingEvidenceSources: View {
         case .stale:
             Label(
                 "Sources are out of date after transcript changes.",
-                systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                systemImage: PVSymbol.history)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier(staleIdentifier)
         case .unavailable:
             Label(
                 "Sources are no longer available.",
-                systemImage: "exclamationmark.triangle")
+                systemImage: PVSymbol.warning)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier(unavailableIdentifier)

@@ -23,7 +23,7 @@ struct CommitmentReviewQueueView: View {
             .frame(maxWidth: .infinity, minHeight: 180)
         case .failed:
             ContentUnavailableView {
-                Label("Couldn’t load suggestions", systemImage: "exclamationmark.triangle")
+                Label("Couldn’t load suggestions", systemImage: PVSymbol.warning)
             } description: {
                 Text("Nothing was confirmed or changed.")
             } actions: {

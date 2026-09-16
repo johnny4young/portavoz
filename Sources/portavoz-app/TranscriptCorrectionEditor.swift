@@ -57,7 +57,7 @@ struct TranscriptCorrectionEditor: View {
             originalEvidence
             history
             if let operationError {
-                Label(operationError, systemImage: "exclamationmark.triangle")
+                Label(operationError, systemImage: PVSymbol.warning)
                     .font(.callout)
                     .foregroundStyle(.red)
                     .accessibilityIdentifier("transcript-correction-error")

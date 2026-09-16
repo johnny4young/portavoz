@@ -1262,8 +1262,8 @@ route. One privacy promise exists in the main window: the sidebar footer chip
 "On your Mac" (`library-privacy-chip`), whose popover explains that nothing is
 sent unless the user asks and links to Settings through `SettingsLink`. Today,
 Insights, the menu-bar panel, onboarding and the Settings sidebar repeat no
-disclaimer (D536); feature-specific on-device claims remain limited to
-operations that cannot use a remote provider.
+disclaimer; feature-specific on-device claims remain limited to
+operations that cannot use a remote provider. Every SF Symbol the app draws is a `PVSymbol` constant (one per concept, in `PVDesign.swift`); `sparkles` is reserved for `ChipLabel`, and an architecture ratchet keeps retired glyph literals out of view code.
 
 ## Verified model lifecycle
 

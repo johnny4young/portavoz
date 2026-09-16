@@ -46,7 +46,7 @@ struct SkillReceiptInspectionSheet: View {
             Divider()
             Label(
                 "This history contains only execution state, attempt, and time — never meeting content.",
-                systemImage: "lock.shield")
+                systemImage: PVSymbol.privacy)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -101,7 +101,7 @@ struct SkillReceiptInspectionSheet: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Label(
                         "Source context could not be verified. This did not start or change the action run.",
-                        systemImage: "exclamationmark.triangle")
+                        systemImage: PVSymbol.warning)
                         .font(.callout)
                         .foregroundStyle(.orange)
                         .accessibilityIdentifier("skill-receipt-context-error")
@@ -152,7 +152,7 @@ struct SkillReceiptInspectionSheet: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Label(
                         "Recovery context could not be verified. Nothing ran.",
-                        systemImage: "exclamationmark.triangle")
+                        systemImage: PVSymbol.warning)
                         .font(.callout)
                         .foregroundStyle(.orange)
                         .accessibilityIdentifier("skill-receipt-recovery-error")
@@ -211,7 +211,7 @@ struct SkillReceiptInspectionSheet: View {
             VStack(alignment: .leading, spacing: 8) {
                 Label(
                     "Approval could not be revoked. The run is still waiting.",
-                    systemImage: "exclamationmark.triangle")
+                    systemImage: PVSymbol.warning)
                     .font(.callout)
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("skill-receipt-revoke-error")
@@ -251,7 +251,7 @@ struct SkillReceiptInspectionSheet: View {
             VStack(alignment: .leading, spacing: 10) {
                 Label(
                     "History is unavailable",
-                    systemImage: "exclamationmark.triangle")
+                    systemImage: PVSymbol.warning)
                     .font(.headline)
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("skill-receipt-inspection-error")
@@ -475,7 +475,7 @@ private extension SkillReceiptInspectionSheet {
         case .confirmed: "person.crop.circle.badge.checkmark"
         case .started: "play.circle.fill"
         case .succeeded: "checkmark.circle.fill"
-        case .failed: "exclamationmark.triangle.fill"
+        case .failed: PVSymbol.error
         case .cancelled: "xmark.circle"
         }
     }

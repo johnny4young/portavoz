@@ -158,7 +158,7 @@ struct MeetingDetailActionSection: View {
             if isRefining {
                 Image(systemName: "xmark").font(.system(size: 13, weight: .semibold))
             } else {
-                Image(systemName: "wand.and.stars").font(.system(size: 13))
+                Image(systemName: PVSymbol.generate).font(.system(size: 13))
             }
         }
         .foregroundStyle(.secondary)

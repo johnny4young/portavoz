@@ -110,7 +110,7 @@ struct ReminderBannerView: View {
             }
             Spacer(minLength: 8)
             Button(action: onRecord) {
-                Label("Record this meeting", systemImage: "record.circle")
+                Label("Record this meeting", systemImage: PVSymbol.record)
                     .font(.caption)
             }
             .buttonStyle(.borderedProminent)

@@ -92,8 +92,8 @@ struct MeetingDetailTrustSection: View {
                 ForEach(values.skillReceipts) { receipt in
                     HStack(spacing: 6) {
                         Image(systemName: receipt.state == .succeeded
-                            ? "checkmark.seal"
-                            : "exclamationmark.triangle")
+                            ? PVSymbol.success
+                            : PVSymbol.warning)
                             .foregroundStyle(
                                 receipt.state == .succeeded ? .green : .orange)
                         Text(skillReceiptTitle(receipt))
@@ -149,7 +149,7 @@ struct MeetingDetailTrustSection: View {
         processingCard(tint: .orange) {
             Label(
                 "Processing needs attention",
-                systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+                systemImage: PVSymbol.retry)
                 .font(.headline)
                 .foregroundStyle(.orange)
                 .accessibilityIdentifier("detail-processing-status")
@@ -172,7 +172,7 @@ struct MeetingDetailTrustSection: View {
             if retryingProcessing {
                 ProgressView().controlSize(.small)
             } else {
-                Label("Retry processing", systemImage: "arrow.clockwise")
+                Label("Retry processing", systemImage: PVSymbol.retry)
             }
         }
         .buttonStyle(.borderedProminent)
@@ -370,7 +370,7 @@ struct MeetingDetailTrustSection: View {
 
     private func privacyReceiptIcon(_ status: PrivacyReceiptStatus) -> String {
         switch status {
-        case .allContentStayedOnDevice: "lock.shield.fill"
+        case .allContentStayedOnDevice: PVSymbol.privacy
         case .noRemoteTransferRecorded: "clock.badge.questionmark"
         case .remoteTransferAttempted: "arrow.up.right.square.fill"
         }

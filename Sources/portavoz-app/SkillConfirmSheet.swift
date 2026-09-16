@@ -37,7 +37,7 @@ struct SkillConfirmSheet: View {
         preview
         capabilities
         if let failure {
-            Label(failure, systemImage: "exclamationmark.triangle.fill")
+            Label(failure, systemImage: PVSymbol.error)
                 .font(.callout)
                 .foregroundStyle(.red)
                 .fixedSize(horizontal: false, vertical: true)
@@ -80,7 +80,7 @@ struct SkillConfirmSheet: View {
             case .gistOutcomeUnknown(let outputURL, let message):
                 Label(
                     L10n.text("Publication outcome unknown — check GitHub"),
-                    systemImage: "exclamationmark.triangle.fill")
+                    systemImage: PVSymbol.error)
                     .font(.headline)
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("gist-result-title")
@@ -198,7 +198,7 @@ struct SkillConfirmSheet: View {
                     in: RoundedRectangle(cornerRadius: 7))
                 Label(
                     gistBoundary,
-                    systemImage: "network.badge.shield.half.filled")
+                    systemImage: PVSymbol.privacy)
                     .font(.caption)
                     .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)

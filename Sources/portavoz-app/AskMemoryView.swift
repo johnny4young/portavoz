@@ -69,7 +69,7 @@ struct AskMemoryView: View {
             VStack(alignment: .leading, spacing: 8) {
                 statusRow(
                     "Could not search confirmed people.",
-                    systemImage: "exclamationmark.triangle")
+                    systemImage: PVSymbol.warning)
                 Button("Try again") { model.retryPeopleSearch() }
                     .accessibilityIdentifier("ask-memory-person-retry")
             }
@@ -239,7 +239,7 @@ struct AskMemoryView: View {
         VStack(alignment: .leading, spacing: 8) {
             statusRow(
                 message,
-                systemImage: "exclamationmark.triangle",
+                systemImage: PVSymbol.warning,
                 identifier: identifier)
             Button("Try again") { model.loadSelectedPersonCommitments() }
                 .accessibilityIdentifier("ask-memory-load-retry")
