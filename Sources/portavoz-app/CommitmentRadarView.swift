@@ -24,7 +24,6 @@ struct CommitmentRadarView: View {
                 modePicker
                 if state.mode == .confirmed {
                     appEntityFocusBanner
-                    CommitmentReminderStatusCard(model: reminders)
                     filters
                     confirmedContent
                 } else if state.mode == .review {
@@ -128,9 +127,13 @@ private extension CommitmentRadarView {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Label(headerBadge, systemImage: headerBadgeIcon)
-                .font(.caption)
-                .foregroundStyle(state.mode == .confirmed ? .green : PVDesign.accent)
+            if state.mode == .confirmed {
+                CommitmentReminderStatusCard(model: reminders)
+            } else {
+                Label(headerBadge, systemImage: headerBadgeIcon)
+                    .font(.caption)
+                    .foregroundStyle(PVDesign.accent)
+            }
         }
     }
 
@@ -308,15 +311,11 @@ private extension CommitmentRadarView {
     func radarPage(_ page: CommitmentRadarPage) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text(L10n.format(
-                    "Showing %d of %d commitments",
-                    page.items.count,
-                    page.totalCount))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
                 Spacer()
                 if page.hasMore {
-                    Text("Refine the filters to see more.")
+                    Text(L10n.format(
+                        "%d more not shown — refine the filters to see them.",
+                        page.totalCount - page.items.count))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -367,14 +366,23 @@ private extension CommitmentRadarView {
 
             radarActions(item)
 
-            DisclosureGroup(
-                isExpanded: expansionBinding(item.id)
-            ) {
-                commitmentDetails(item)
-                    .padding(.top, 8)
+            Button {
+                expansionBinding(item.id).wrappedValue.toggle()
             } label: {
-                Text("Review sources and history")
+                Label("Sources and history", systemImage: PVSymbol.history)
                     .font(.caption.weight(.medium))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(PVDesign.accent)
+            .accessibilityIdentifier(
+                "commitment-radar-details-\(item.id.rawValue.uuidString)")
+            .popover(isPresented: expansionBinding(item.id), arrowEdge: .bottom) {
+                ScrollView {
+                    commitmentDetails(item)
+                        .padding(16)
+                }
+                .frame(width: 560)
+                .frame(maxHeight: 420)
             }
         }
         .padding(16)

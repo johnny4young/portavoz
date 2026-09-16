@@ -49,8 +49,6 @@ struct LibraryView: View {
 
             LibraryNavigationControls(
                 route: route,
-                importing: state.importStatus != nil,
-                onImport: chooseAudioToImport,
                 onNavigate: { route = $0 })
                 .padding(.horizontal, 12)
                 .padding(.top, 12)
@@ -348,7 +346,7 @@ extension LibraryView {
     /// The voice mix remains a separate, meaningful recording cue.
     private func meetingRow(_ meeting: Meeting) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(meeting.title).lineLimit(1)
+            Text(MeetingRowTitle.display(meeting.title)).lineLimit(1)
             Text(meeting.startedAt.formatted(date: .abbreviated, time: .shortened))
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -371,7 +369,38 @@ extension LibraryView {
     /// The primary action, styled to the design system: an indigo→violet
     /// gradient pill whose leading glyph is a mini-waveform with your amber
     /// peak — the brand mark on the button you press most.
+    /// The primary action plus a ▾ menu for the rare ones (Import), so the
+    /// navigation list stays destinations only.
     private var recordButton: some View {
+        HStack(spacing: 4) {
+            recordAction
+            Menu {
+                Button {
+                    chooseAudioToImport()
+                } label: {
+                    Label("Import audio…", systemImage: "square.and.arrow.down")
+                }
+                .disabled(state.importStatus != nil)
+                .accessibilityIdentifier("library-import-audio-button")
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 24, height: 34)
+                    .background(
+                        PVDesign.brandViolet.opacity(0.9),
+                        in: RoundedRectangle(cornerRadius: 10))
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .accessibilityLabel(L10n.text("More recording options"))
+            .help(L10n.text("Transcribe an audio file (.m4a, .wav, .mp3) as a new meeting"))
+            .accessibilityIdentifier("library-record-menu")
+        }
+    }
+
+    private var recordAction: some View {
         Button {
             if recordingActive {
                 onReturnToRecording()

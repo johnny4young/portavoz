@@ -145,8 +145,11 @@ final class LibraryUITests: PortavozUITestCase {
         }
         XCTAssertTrue(app.buttons["home-record"].isHittable)
         XCTAssertTrue(app.buttons["home-ask"].isHittable)
+        XCTAssertTrue(
+            app.control(withIdentifier: "library-record-menu").exists,
+            "Import lives behind the record button's menu, not in the navigation")
         let navigation = [
-            "library-import-audio-button", "library-home-button", "library-ask-button",
+            "library-home-button", "library-ask-button",
             "library-insights-button", "library-commitment-radar-button"
         ].map { app.buttons[$0] }
         for button in navigation {

@@ -191,6 +191,16 @@
         }
       }
     },
+    "%d more not shown — refine the filters to see them.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d más sin mostrar — ajusta los filtros para verlos."
+          }
+        }
+      }
+    },
     "%d more sources not shown": {
       "localizations": {
         "es": {
@@ -7569,6 +7579,16 @@
         }
       }
     },
+    "More recording options": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Más opciones de grabación"
+          }
+        }
+      }
+    },
     "More than 100 active blockers exist; this view shows the newest verified results.": {
       "localizations": {
         "es": {
@@ -13227,6 +13247,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fuentes"
+          }
+        }
+      }
+    },
+    "Sources and history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuentes e historial"
           }
         }
       }

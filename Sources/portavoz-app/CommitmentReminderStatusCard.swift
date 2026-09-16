@@ -4,25 +4,22 @@ import SwiftUI
 struct CommitmentReminderStatusCard: View {
     let model: CommitmentReminderModel
 
+    /// One chip in the Radar header: state, and the control that changes it.
+    /// The explanation lives in the tooltip and the accessibility value.
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Image(systemName: statusIcon)
+        HStack(alignment: .center, spacing: 8) {
+            Label(statusTitle, systemImage: statusIcon)
+                .font(.caption.weight(.medium))
                 .foregroundStyle(statusColor)
-                .font(.title3)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(statusTitle)
-                    .font(.subheadline.bold())
-                Text(statusDescription)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 16)
+                .lineLimit(1)
+                .accessibilityValue(Text(statusDescription))
+                .help(statusDescription)
             statusControl
+                .controlSize(.small)
         }
-        .padding(14)
-        .background(
-            statusColor.opacity(0.09),
-            in: RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(statusColor.opacity(0.10), in: Capsule())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("commitment-reminder-card")
         .onReceive(NotificationCenter.default.publisher(

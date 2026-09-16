@@ -50,9 +50,12 @@ struct AskView: View {
         .onDisappear { model.cancelAllWork() }
     }
 
+    /// The question comes first: sources, then the field, then the answers,
+    /// so the entry never sits a page away from the last exchange.
     @ViewBuilder
     private var conversation: some View {
         sourcePolicy
+        inputBar
         Divider()
         if model.state.exchanges.isEmpty && !model.state.isAsking {
             ContentUnavailableView(
@@ -64,7 +67,6 @@ struct AskView: View {
         } else {
             exchangeList
         }
-        inputBar
     }
 
     private var surfacePicker: some View {
@@ -195,31 +197,28 @@ struct AskView: View {
                     .accessibilityIdentifier(
                         "ask-generation-\(exchange.generationOutcome.rawValue)")
             }
-            if !exchange.citations.isEmpty {
-                Text("Sources")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                citationButtons(
-                    exchange.citations,
-                    identifierPrefix: "ask-citation-\(exchange.id.uuidString)")
-            }
-            if !exchange.noteCitations.isEmpty {
-                Text("Your note sources")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                noteCitationButtons(
-                    exchange.noteCitations,
-                    identifierPrefix:
-                        "ask-note-citation-\(exchange.id.uuidString)")
-            }
-            if !exchange.webCitations.isEmpty {
-                Text("Web sources")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                webCitationLinks(
-                    exchange.webCitations,
-                    identifierPrefix:
-                        "ask-web-citation-\(exchange.id.uuidString)")
+            if !exchange.citations.isEmpty || !exchange.noteCitations.isEmpty
+                || !exchange.webCitations.isEmpty {
+                // One line of sources per answer: meeting moments, your notes
+                // and web pages flow together; each keeps its own mark.
+                FlowLayout(spacing: 10, rowSpacing: 4) {
+                    Text("Sources")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    citationButtons(
+                        exchange.citations,
+                        identifierPrefix: "ask-citation-\(exchange.id.uuidString)")
+                    noteCitationButtons(
+                        exchange.noteCitations,
+                        identifierPrefix:
+                            "ask-note-citation-\(exchange.id.uuidString)")
+                    webCitationLinks(
+                        exchange.webCitations,
+                        identifierPrefix:
+                            "ask-web-citation-\(exchange.id.uuidString)")
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("ask-sources-\(exchange.id.uuidString)")
             }
             webFailureNotice(exchange.webSourceFailures)
         }

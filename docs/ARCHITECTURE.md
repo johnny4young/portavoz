@@ -5678,8 +5678,8 @@ documentation or isolated surface changes.
 The live recording command surface is isolated in `RecordingToolbar` rather
 than growing the already state-heavy `RecordingView`. It is responsive by
 construction rather than by control truncation. Three controls stay visible
-(Translate, Apuntador, Catch me up) and the rest sit behind one More menu with
-their state checked. Its wide layout is one row; at the 900 pt minimum window,
+(Translate, Apuntador, Catch me up) and the rest sit in one More panel (a popover)
+with their state shown as switches. Its wide layout is one row; at the 900 pt minimum window,
 `ViewThatFits` moves secondary actions to an icon-only second row while
 keeping the elapsed clock horizontal and Stop visible beside it. The focused external-recording XCUITest enforces those
 geometric invariants in both locales.
