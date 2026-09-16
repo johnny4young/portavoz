@@ -53,10 +53,17 @@ class AppPayloadPermissionTests(unittest.TestCase):
             "resources are staged before they are normalised",
         )
 
-    def test_distribution_verification_runs_the_payload_gate(self):
+    def test_distribution_verification_runs_the_payload_gate_on_a_trusted_copy(self):
         self.assertIn('scripts/verify-app-payload.sh "$APP_COPY"', VERIFY)
+        gate = VERIFY.index("verify-app-payload.sh")
+        for trust in ("codesign --verify --deep --strict", "xcrun stapler validate", "spctl -a -vvv -t exec"):
+            self.assertLess(
+                VERIFY.index(trust),
+                gate,
+                "the extracted app runs only after its signature, ticket and Gatekeeper verdict passed",
+            )
         self.assertLess(
-            VERIFY.index("verify-app-payload.sh"),
+            gate,
             VERIFY.index("record-distribution"),
             "no receipt is written for a payload the installing user cannot use",
         )
