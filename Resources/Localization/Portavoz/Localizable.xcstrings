@@ -171,6 +171,16 @@
         }
       }
     },
+    "%d more": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d más"
+          }
+        }
+      }
+    },
     "%d more in Radar": {
       "localizations": {
         "es": {
