@@ -19474,6 +19474,54 @@ remain distinct from physical disk failure, and interrupted-process tests do
 not certify hardware power-loss behavior.
 
 
+## D520 — Export host facts on demand through existing support ownership
+
+The support report already projects redacted capture and durable-processing
+facts, but omitted RAM, thermal conditions and current runtime ownership. Reuse
+that explicit local export instead of adding background history or a diagnostic
+service. Format 3 adds a typed host snapshot; older absent host fields remain
+absent. Core resource enums retain their meaning and gain closed Codable forms,
+not model/provider names or content-bearing metadata.
+
+PlatformKit samples only its own process, using the stable V0 counters on the
+deployment floor. The benchmark reuses that bridge with explicitly requested
+current extended counters; it must not substitute zero for missing energy or I/O.
+App composition reads its existing residency ledger. It does not export the
+pressure monitor: that owner publishes a nominal policy default before receiving
+an OS memory event, and an actual export test demonstrated that the default would
+be mislabeled as a host measurement. Unknown reads remain unknown, and duplicate
+or invalid family evidence is omitted instead of inventing an idle runtime.
+Export does not mutate the ledger or storage. Known native thermal states map
+directly to the closed vocabulary; a future state is omitted instead of becoming
+the governor's conservative fair fallback. Both boundaries have call-site tests.
+
+Cumulative CPU seconds, current process footprint and optional per-family
+measurements are distinct facts, not a latency benchmark or summed RAM estimate.
+A failing real AppServices export test first established the missing host object;
+regressions also enter the export sanitizer with malformed decoded observations.
+The real Settings export journey inspects the saved artifact rather than only
+checking the button. No automatic sharing or sampling history is introduced.
+
+The report format also belongs to its consumers. An actual AppServices export
+failed at the field collector even though exporter and collector unit suites
+were green: every collector fixture still used format 2. Both the collector and
+reliability metadata validator now admit formats 2 and 3. Host fields remain
+closed and strictly validated, not an arbitrary optional JSON escape hatch.
+Cross-language tests pass actual Swift exports and every typed residency state
+through collection and reliability validation; the synthetic result stays
+not-observed. Old reports and protocol-1 invocations remain supported.
+
+Native CPU validation uses `task_info(TASK_ABSOLUTETIME_INFO)` as the independent
+API around both production resource flavors and actual exported seconds. The
+earlier `getrusage` oracle failed on Sequoia because its thread-wise rounding and
+separate live/terminated snapshots invalidate a fixed quantization allowance.
+Replace that oracle, not production counters or numeric tolerances. Keep strict
+before/after bounds, test after native worker termination, and retain independent
+conversion so a wrong-unit mutation at the real adapter cannot pass merely
+because its pure helper is correct. This establishes API agreement, not physical
+hardware qualification or performance.
+
+
 ## D523 — UI fixtures own explicit cross-process scratch, not runner containers
 
 A real seeded launch blocked its main thread while creating synthetic audio.
