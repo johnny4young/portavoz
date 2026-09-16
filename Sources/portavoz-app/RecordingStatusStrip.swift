@@ -107,15 +107,15 @@ struct RecordingStatusStrip: View {
 
     private func noticeRow(_ notice: RecordingNotice) -> some View {
         HStack(spacing: 8) {
-            Label {
-                // The message text is the identified element: journeys read
-                // it as a label and as a static text alike.
+            // A plain text beside its mark, not a Label: the message is then
+            // one static text that carries the identifier and its own label,
+            // which is what journeys and assistive technology read.
+            HStack(spacing: 6) {
+                Image(systemName: notice.symbol ?? notice.severity.symbol)
+                    .accessibilityHidden(true)
                 Text(notice.message)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier(notice.id)
-            } icon: {
-                Image(systemName: notice.symbol ?? notice.severity.symbol)
-                    .accessibilityHidden(true)
             }
             .font(.caption.weight(.medium))
             .foregroundStyle(notice.severity.tint)

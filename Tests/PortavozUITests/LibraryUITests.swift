@@ -331,8 +331,8 @@ final class LibraryUITests: PortavozUITestCase {
             ? "Grabando. Los subtítulos empiezan"
             : "Recording. Captions start"
         XCTAssertTrue(
-            preparing.label.contains(preparingPrefix),
-            "expected localized preparing copy, saw: \(preparing.label)")
+            renderedText(of: preparing).contains(preparingPrefix),
+            "expected localized preparing copy, saw: \(renderedText(of: preparing))")
         XCTAssertTrue(
             app.continueLiveTranscriptionAttachFixture(),
             "the fixture must release the model-ready transition")
