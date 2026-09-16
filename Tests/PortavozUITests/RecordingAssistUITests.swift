@@ -70,7 +70,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         let nextQuestion = app.control(withIdentifier: "recording-next-question-panel")
         app.buttons["recording-catch-up"].click()
         XCTAssertTrue(catchUp.waitForExistenceFast(timeout: 3))
-        app.buttons["recording-next-question"].click()
+        app.recordingMoreItem("recording-next-question").click()
         XCTAssertTrue(nextQuestion.waitForExistenceFast(timeout: 3))
         XCTAssertFalse(catchUp.exists, "the previous request cannot occupy the only render site")
         app.buttons["recording-catch-up"].click()

@@ -6,6 +6,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 16, 2026
 
+- **🎛️ A calmer recording bar** — Translate, Apuntador and Catch me up stay in view; Proactive, Interview, Suggest a question and the mini panel wait in a More menu that shows what is on.
+
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador now live with Intelligence, sync and background activity with Your data. Each control keeps one short line; the long version opens from "How it works". Apuntador shows one status: ready, questions only, or unavailable.
 
 - **🗂️ Three lenses beside the transcript** — People, Apuntador and Chapters now share one always-present side column; pick the lens you need instead of scrolling past the others. Privacy and action history moved to a small chip under the title that opens on click.

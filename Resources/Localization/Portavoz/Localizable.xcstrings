@@ -5689,6 +5689,16 @@
         }
       }
     },
+    "Floating mini panel": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mini panel flotante"
+          }
+        }
+      }
+    },
     "Fold this card": {
       "localizations": {
         "es": {
@@ -7475,6 +7485,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mes"
+          }
+        }
+      }
+    },
+    "More": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Más"
           }
         }
       }
@@ -10055,6 +10075,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ayuda proactiva"
+          }
+        }
+      }
+    },
+    "Proactive help, interview mode, a suggested question and the mini panel": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayuda proactiva, modo entrevista, una pregunta sugerida y el mini panel"
           }
         }
       }

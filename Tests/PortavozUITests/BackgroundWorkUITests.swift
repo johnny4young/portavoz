@@ -65,7 +65,15 @@ final class BackgroundWorkUITests: PortavozUITestCase {
             "attention states must expose only a closed localized category")
 
         let idle = UITestLocale.environmentLocale == "es" ? "Inactivo" : "Idle"
+        let settingsWindow = app.windows.containing(
+            .any,
+            identifier: "background-work-overview"
+        ).firstMatch
+        let settingsForm = settingsWindow.scrollViews.element(boundBy: 1)
         let processingRetry = app.buttons["background-work-action-processing"]
+        XCTAssertTrue(
+            processingRetry.revealVertically(in: settingsForm),
+            "the processing recovery action must be reachable in the Your data pane")
         XCTAssertTrue(processingRetry.waitForHittable(timeout: 5))
         processingRetry.click()
         XCTAssertTrue(
@@ -73,11 +81,6 @@ final class BackgroundWorkUITests: PortavozUITestCase {
                 .waitForLabelOrValue(idle, timeout: 5),
             "processing retry must route only to its owner and publish the new safe state")
 
-        let settingsWindow = app.windows.containing(
-            .any,
-            identifier: "background-work-overview"
-        ).firstMatch
-        let settingsForm = settingsWindow.scrollViews.element(boundBy: 1)
         let graphRetry = app.buttons["background-work-action-memory-graph"]
         XCTAssertTrue(
             graphRetry.revealVertically(in: settingsForm),

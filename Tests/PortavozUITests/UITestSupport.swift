@@ -277,6 +277,30 @@ extension XCUIApplication {
         descendants(matching: .any)[identifier]
     }
 
+    /// Secondary recording actions live behind the More menu; a journey that
+    /// needs one opens the menu first and gets the item back.
+    @MainActor
+    func recordingMoreItem(
+        _ identifier: String,
+        timeout: TimeInterval = 8,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let item = menuItems[identifier]
+        if !item.exists {
+            let more = control(withIdentifier: "recording-more")
+            guard more.waitForHittable(timeout: timeout) else {
+                XCTFail("the recording bar never offered its More menu", file: file, line: line)
+                return item
+            }
+            more.click()
+        }
+        if !item.waitForExistenceFast(timeout: timeout) {
+            XCTFail("the More menu never offered \(identifier)", file: file, line: line)
+        }
+        return item
+    }
+
     /// The live assist area shows one panel at a time (D504), so a journey
     /// that asserts a panel must open its tab first. Fails with the tab name
     /// rather than letting the panel's own assertion time out.

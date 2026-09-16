@@ -479,21 +479,21 @@ final class LibraryUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 5),
             "an added objective must appear in the checklist")
 
-        XCTAssertTrue(
-            app.control(withIdentifier: "recording-next-question").exists,
-            "the bar must offer the next-question action")
         XCTAssertTrue(app.control(withIdentifier: "recording-translation-picker").exists)
-        XCTAssertTrue(app.control(withIdentifier: "recording-hud").exists)
         XCTAssertTrue(
             app.control(withIdentifier: "recording-talk-balance")
                 .waitForExistenceFast(timeout: 8),
             "closed captions must surface the talk-balance cue")
-
-        let proactive = app.control(withIdentifier: "recording-proactive-assist")
-        XCTAssertTrue(proactive.exists)
         XCTAssertFalse(
             app.control(withIdentifier: "recording-assist-tab-proactive").exists,
             "proactive help must be off until this recording explicitly opts in")
+
+        XCTAssertTrue(
+            app.recordingMoreItem("recording-next-question").exists,
+            "the More menu must offer the next-question action")
+        XCTAssertTrue(app.menuItems["recording-hud"].exists)
+        let proactive = app.recordingMoreItem("recording-proactive-assist")
+        XCTAssertTrue(proactive.exists)
         proactive.click()
 
         // Suggestions only becomes a tab once this recording opts in.
