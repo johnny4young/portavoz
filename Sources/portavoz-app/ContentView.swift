@@ -141,7 +141,7 @@ struct ContentView: View {
                 BackgroundWorkIndicator(
                     model: services.backgroundWork,
                     openCenter: {
-                        services.pendingSettingsCategory = .backgroundWork
+                        services.pendingSettingsCategory = .data
                         openSettings()
                     })
             }

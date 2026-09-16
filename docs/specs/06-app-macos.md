@@ -382,8 +382,8 @@ strings, and raw errors never enter it. Post-capture's quarter-lease heartbeat
 is still only durable liveness; the UI never converts it into percentage
 progress.
 
-Settings adds a searchable **Background activity** category with one row per
-owner. Running work uses an indeterminate progress indicator. Safe aggregate
+Settings shows a searchable **Background activity** section inside Your data
+with one row per owner. Running work uses an indeterminate progress indicator. Safe aggregate
 counts, attempt number, localized retry time, and closed failure reason remain
 visible after settlement. Owner-specific actions call only the existing owner:
 Library route for recovery, processing kick, Spotlight reindex, semantic wake,
@@ -2390,6 +2390,24 @@ the last few minutes", "Shrink to a floating mini panel"), never with a
 disclaimer. Primary actions on the recording failure screen and its banners
 carry an icon (`PVSymbol.retry`, Library, diagnostics, download) next to the
 verb, and the Today ask chips carry the Ask symbol.
+
+## Settings layout (Sep 2026, D537)
+
+Settings has seven categories: General & language, Audio & dictation,
+Intelligence (summary engine, languages, Apuntador, your voice, remembered
+voices, semantic search, structures, vocabulary), Agenda & automation,
+Automations, Integrations, and Your data (ledger, iCloud sync, background
+activity, diagnostics, backup, recordings folder). The former "My voice &
+Apuntador", "Sync" and "Background activity" categories merged into
+Intelligence and Your data; their controls and accessibility identifiers are
+unchanged, and every deep link (`pendingSettingsCategory`) resolves to one of
+the seven. The window resizes between 760×620 and the screen (ideal 900×700)
+with a fixed 224-point sidebar. Long explanations live behind
+`HowItWorksLink` ("How it works", a popover next to a one-line caption);
+Apuntador reports one status with three values, `Apuntador: ready`,
+`Apuntador: questions only`, `Apuntador: unavailable`
+(`settings-apuntador-status`), followed by one cause line
+(`settings-apuntador-status-cause`), never a green check above a failure.
 
 ## Design system in app (Jul 2026) — tokens + voices B + accent
 

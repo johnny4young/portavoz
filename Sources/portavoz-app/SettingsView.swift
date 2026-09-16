@@ -81,12 +81,11 @@ struct SettingsView: View {
     @State private var settingsWindowReference = SettingsWindowReference()
 
     var body: some View {
-        // A fixed two-pane layout, NOT a NavigationSplitView: the settings
-        // window is a fixed size with a permanent sidebar (design system 2a),
-        // so the collapsible split view only added a misplaced toggle button
-        // and — with the fixed window width — crashed on collapse/expand. The
-        // NavigationStack is just for the centered titlebar title; it adds no
-        // collapse chrome.
+        // A two-pane layout, NOT a NavigationSplitView: the sidebar is
+        // permanent (design system 2a), so the collapsible split view only
+        // added a misplaced toggle button and crashed on collapse/expand. The
+        // window resizes between the minimum and the screen; the
+        // NavigationStack is just for the centered titlebar title.
         NavigationStack {
             settingsBody
         }
@@ -106,16 +105,15 @@ struct SettingsView: View {
                     AudioSection()
                     DictationSection()
                 case .intelligence:
+                    summaryEngineSection
                     transcriptionLanguageSection
                     summaryLanguageSection
-                    semanticSearchSection
-                    summaryEngineSection
-                    customStructuresSection
-                    vocabularySection
-                case .voice:
+                    companionSection
                     SettingsVoiceSection()
                     RememberedVoicesSection()
-                    companionSection
+                    semanticSearchSection
+                    customStructuresSection
+                    vocabularySection
                 case .agenda:
                     agendaSection
                     AutomationSection()
@@ -131,14 +129,12 @@ struct SettingsView: View {
                 case .integrations:
                     byokSection
                     GitHubSection()
-                case .sync:
+                case .data:
+                    LedgerSection(model: services.localDataLedger)
                     MeetingSyncSettingsSection()
-                case .backgroundWork:
                     BackgroundWorkCenterSection(
                         model: services.backgroundWork,
                         performAction: performBackgroundWorkAction)
-                case .data:
-                    LedgerSection(model: services.localDataLedger)
                     SupportDiagnosticsSection()
                     BackupSection()
                     recordingsSection
@@ -147,8 +143,10 @@ struct SettingsView: View {
             .formStyle(.grouped)
             .frame(maxWidth: .infinity)
         }
-        .frame(width: 760)
-        .frame(minHeight: 620)
+        // Resizable: the sidebar keeps its width and the pane takes the rest,
+        // so long Spanish help lines and the merged panes never force a scroll.
+        .frame(minWidth: 760, idealWidth: 900, maxWidth: .infinity)
+        .frame(minHeight: 620, idealHeight: 700, maxHeight: .infinity)
         .background(SettingsWindowCapture(reference: settingsWindowReference))
         .navigationTitle((category ?? .general).title)
         .sheet(isPresented: $showingStructureSheet) {

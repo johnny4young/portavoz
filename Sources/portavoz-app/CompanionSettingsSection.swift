@@ -1,6 +1,8 @@
 import Foundation
 import SwiftUI
 
+/// Apuntador in Settings: one status with three values, one cause line, and
+/// short captions with the explanation behind "How it works".
 struct CompanionSettingsSection: View {
     let capability: FoundationModelsCapability
     let detectorAvailable: Bool
@@ -8,16 +10,45 @@ struct CompanionSettingsSection: View {
     @Binding var companionUserName: String
     @Binding var mirrorAfterMeeting: Bool
 
+    /// Ready · Questions only · Unavailable, never a green check over a failure.
+    private enum Readiness {
+        case ready
+        case questionsOnly(cause: String)
+        case unavailable
+    }
+
+    private var readiness: Readiness {
+        guard detectorAvailable else { return .unavailable }
+        switch capability {
+        case .available:
+            return .ready
+        case .requiresMacOS26:
+            return .questionsOnly(cause: L10n.text(
+                // One-line UI explanation.
+                // swiftlint:disable:next line_length
+                "On macOS Sequoia, cards show the question only. Generated answers need macOS Tahoe with Apple Intelligence, or a provider you enable."))
+        case .unavailable(let reason):
+            return .questionsOnly(cause: L10n.format(
+                "Generated answers are unavailable: %@. Cards show the question only.", reason))
+        }
+    }
+
     var body: some View {
         Section("Apuntador") {
             capabilityStatus
             Toggle("Enable Apuntador for recordings", isOn: $companionEnabled)
                 .accessibilityIdentifier("settings-apuntador-enabled")
                 .disabled(!detectorAvailable)
-            // swiftlint:disable:next line_length
-            Text("Detects questions during a recording and suggests answers. Without an answer engine, cards show the question only.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 10) {
+                Text("Detects questions during a recording and suggests answers.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                HowItWorksLink(
+                    text: L10n.text(
+                        // swiftlint:disable:next line_length
+                        "Apuntador listens for questions in the live captions and shows each one as a card. With an answer engine (Apple Intelligence on macOS Tahoe, or a provider you enable) it drafts an answer from the meeting; without one, cards show the question only. Nothing is sent anywhere unless you enabled a provider."),
+                    identifier: "settings-apuntador-how-it-works")
+            }
 
             TextField(
                 "Your name in meetings",
@@ -26,78 +57,65 @@ struct CompanionSettingsSection: View {
             )
             .autocorrectionDisabled()
             Text(L10n.format(
-                // swiftlint:disable:next line_length
-                "When someone says your name, Apuntador marks the card as asked to you. Empty uses your macOS account name.",
+                "Cards addressed to “%@” are marked as asked to you.",
                 companionUserName.isEmpty ? NSFullUserName() : companionUserName))
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             Toggle("Your talk time after each meeting", isOn: $mirrorAfterMeeting)
                 .accessibilityIdentifier("settings-mirror-after-meeting")
-            Text("After meetings of five minutes or more, show your talk time next to your average.")
+            Text("After meetings of five minutes or more, next to your average.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
     }
 
-    @ViewBuilder
     private var capabilityStatus: some View {
-        if !detectorAvailable {
-            VStack(alignment: .leading, spacing: 4) {
-                Label(
-                    "Apuntador question detection is unavailable.",
-                    systemImage: PVSymbol.error
-                )
+        VStack(alignment: .leading, spacing: 4) {
+            Label(statusTitle, systemImage: statusSymbol)
                 .font(.callout.weight(.medium))
-                .foregroundStyle(.orange)
+                .foregroundStyle(statusTint)
                 .accessibilityIdentifier("settings-apuntador-status")
-                Text("Reinstall Portavoz to restore its bundled offline question detector.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        } else {
-            capabilityStatusWithDetector
+            Text(statusCause)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("settings-apuntador-status-cause")
         }
     }
 
-    @ViewBuilder
-    private var capabilityStatusWithDetector: some View {
-        switch capability {
-        case .available:
-            Label("Question detection and on-device answer suggestions are ready.", systemImage: PVSymbol.success)
-                .foregroundStyle(.green)
-                .accessibilityIdentifier("settings-apuntador-status")
-        case .requiresMacOS26:
-            VStack(alignment: .leading, spacing: 4) {
-                Label(
-                    "Apuntador question detection is ready on this Mac.",
-                    systemImage: PVSymbol.success
-                )
-                .font(.callout.weight(.medium))
-                .foregroundStyle(.green)
-                .accessibilityIdentifier("settings-apuntador-status")
-                // swiftlint:disable:next line_length
-                Text("On macOS Sequoia, cards show the question only. Generated answers need macOS Tahoe with Apple Intelligence, or a provider you enable.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        case .unavailable(let reason):
-            VStack(alignment: .leading, spacing: 4) {
-                Label(
-                    "Apuntador question detection is ready.",
-                    systemImage: PVSymbol.success
-                )
-                .font(.callout.weight(.medium))
-                .foregroundStyle(.green)
-                .accessibilityIdentifier("settings-apuntador-status")
-                Text(unavailableMessage(reason))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+    private var statusTitle: String {
+        switch readiness {
+        case .ready: L10n.text("Apuntador: ready")
+        case .questionsOnly: L10n.text("Apuntador: questions only")
+        case .unavailable: L10n.text("Apuntador: unavailable")
         }
     }
 
-    private func unavailableMessage(_ reason: String) -> String {
-        L10n.format("Generated answers are unavailable: %@. Cards show the question only.", reason)
+    private var statusSymbol: String {
+        switch readiness {
+        case .ready: PVSymbol.success
+        case .questionsOnly: PVSymbol.warning
+        case .unavailable: PVSymbol.error
+        }
+    }
+
+    private var statusTint: Color {
+        switch readiness {
+        case .ready: .green
+        case .questionsOnly: .orange
+        case .unavailable: .red
+        }
+    }
+
+    private var statusCause: String {
+        switch readiness {
+        case .ready:
+            L10n.text("Question detection and on-device answers work on this Mac.")
+        case .questionsOnly(let cause):
+            cause
+        case .unavailable:
+            L10n.text("Reinstall Portavoz to restore its bundled offline question detector.")
+        }
     }
 }

@@ -19902,3 +19902,26 @@ fifteen slices, each with its own XCUITest update and changelog line. Product
 data, engines, consent defaults and runtime budgets do not change. Strings that
 XCUITest asserts by text are limited to seeded content and a few navigation
 titles; journeys assert identifiers, which do not change.
+
+## D537 — Settings: seven categories, a resizable window, one Apuntador status
+
+**Context:** Settings had ten categories with overlapping subjects (voice and
+Apuntador apart from Intelligence; Sync and Background activity apart from
+Your data), a fixed 760-point window that forced scrolling in Spanish, long
+paragraphs under every control, and an Apuntador status that showed a green
+check above a failure message.
+
+**Decision:** seven categories (General & language, Audio & dictation,
+Intelligence, Agenda & automation, Automations, Integrations, Your data);
+"My voice & Apuntador" merges into Intelligence, "Sync" and "Background
+activity" into Your data. Controls, identifiers and deep links are unchanged.
+The window resizes from 760×620 up to the screen. Long explanations move
+behind a "How it works" popover (`HowItWorksLink`), leaving one caption line
+per control. Apuntador shows one status with three values (ready, questions
+only, unavailable) and one cause line.
+
+**Consequences:** XCUITest journeys select the merged categories; the
+`settings-category-voice`, `-sync` and `-background-work` identifiers no
+longer exist. The architecture and interaction ratchets that pin control
+identifiers keep passing because only the containers changed.
+

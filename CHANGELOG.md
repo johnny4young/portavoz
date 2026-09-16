@@ -6,6 +6,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 16, 2026
 
+- **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador now live with Intelligence, sync and background activity with Your data. Each control keeps one short line; the long version opens from "How it works". Apuntador shows one status: ready, questions only, or unavailable.
+
 - **🗂️ Three lenses beside the transcript** — People, Apuntador and Chapters now share one always-present side column; pick the lens you need instead of scrolling past the others. Privacy and action history moved to a small chip under the title that opens on click.
 
 - **📐 The meeting page fits your screen** — the summary, commitments and notes take only the space they need, so the transcript gets the rest of the window instead of a fixed box. Long material still scrolls in place, and the player stays put at the bottom.

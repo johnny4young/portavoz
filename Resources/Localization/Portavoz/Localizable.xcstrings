@@ -801,6 +801,16 @@
         }
       }
     },
+    "After meetings of five minutes or more, next to your average.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tras reuniones de cinco minutos o más, junto a tu promedio."
+          }
+        }
+      }
+    },
     "After meetings of five minutes or more, show your talk time next to your average.": {
       "localizations": {
         "es": {
@@ -1331,6 +1341,16 @@
         }
       }
     },
+    "Apuntador listens for questions in the live captions and shows each one as a card. With an answer engine (Apple Intelligence on macOS Tahoe, or a provider you enable) it drafts an answer from the meeting; without one, cards show the question only. Nothing is sent anywhere unless you enabled a provider.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El Apuntador escucha preguntas en los subtítulos en vivo y muestra cada una como una tarjeta. Con un motor de respuestas (Apple Intelligence en macOS Tahoe o un proveedor que actives) redacta una respuesta a partir de la reunión; sin uno, las tarjetas muestran solo la pregunta. No se envía nada a ningún lado a menos que hayas activado un proveedor."
+          }
+        }
+      }
+    },
     "Apuntador question detection is ready on this Mac.": {
       "localizations": {
         "es": {
@@ -1367,6 +1387,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Solo la pregunta para Apuntador"
+          }
+        }
+      }
+    },
+    "Apuntador: questions only": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apuntador: solo preguntas"
+          }
+        }
+      }
+    },
+    "Apuntador: ready": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apuntador: listo"
+          }
+        }
+      }
+    },
+    "Apuntador: unavailable": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apuntador: no disponible"
           }
         }
       }
@@ -2147,6 +2197,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Capturando %@ directamente; el audio de otras apps queda fuera."
+          }
+        }
+      }
+    },
+    "Cards addressed to “%@” are marked as asked to you.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las tarjetas dirigidas a “%@” se marcan como preguntas para ti."
           }
         }
       }
@@ -4213,6 +4273,16 @@
         }
       }
     },
+    "Detects questions during a recording and suggests answers.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detecta preguntas durante una grabación y sugiere respuestas."
+          }
+        }
+      }
+    },
     "Detects questions during a recording and suggests answers. Without an answer engine, cards show the question only.": {
       "localizations": {
         "es": {
@@ -6055,6 +6125,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "El historial no está disponible"
+          }
+        }
+      }
+    },
+    "How it works": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cómo funciona"
           }
         }
       }
@@ -9919,6 +9999,16 @@
         }
       }
     },
+    "Privacy · iCloud sync · storage · background activity": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacidad · sincronización iCloud · almacenamiento · actividad en segundo plano"
+          }
+        }
+      }
+    },
     "Private due-date reminders": {
       "localizations": {
         "es": {
@@ -10205,6 +10295,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "La detección de preguntas y las sugerencias de respuestas en el dispositivo están listas."
+          }
+        }
+      }
+    },
+    "Question detection and on-device answers work on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La detección de preguntas y las respuestas en el dispositivo funcionan en este Mac."
           }
         }
       }
@@ -12431,6 +12531,16 @@
         }
       }
     },
+    "Sends only the detected question, never audio or meeting text.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envía solo la pregunta detectada, nunca audio ni texto de la reunión."
+          }
+        }
+      }
+    },
     "Share a recap": {
       "localizations": {
         "es": {
@@ -13557,6 +13667,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Motor de resúmenes"
+          }
+        }
+      }
+    },
+    "Summary engine · Apuntador · your voice": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motor de resúmenes · Apuntador · tu voz"
           }
         }
       }
@@ -17073,6 +17193,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "resumen motor apple ollama mlx whisper refine vocabulario"
+          }
+        }
+      }
+    },
+    "summary engine apple ollama mlx whisper refine vocabulary voice enroll apuntador name remembered": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "resumen motor apple ollama mlx whisper mejorar vocabulario voz registrar apuntador nombre recordadas"
           }
         }
       }

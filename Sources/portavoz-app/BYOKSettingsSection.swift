@@ -48,13 +48,16 @@ struct BYOKSettingsSection: View {
                 isOn: $isEnabled
             )
             .disabled(!isReady || !companionAvailable)
-            Text(
-                // One-line UI help text.
-                // swiftlint:disable:next line_length
-                "Any /chat/completions endpoint works, including a local Ollama or LM Studio server. Apuntador sends only the detected question, never audio or meeting text."
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            HStack(spacing: 10) {
+                Text("Sends only the detected question, never audio or meeting text.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                HowItWorksLink(
+                    text: L10n.text(
+                        // swiftlint:disable:next line_length
+                        "Any /chat/completions endpoint works, including a local Ollama or LM Studio server. Apuntador sends only the detected question, never audio or meeting text."),
+                    identifier: "settings-byok-how-it-works")
+            }
             if let message {
                 Text(message).font(.caption).foregroundStyle(.secondary)
             }

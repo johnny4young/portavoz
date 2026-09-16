@@ -99,7 +99,7 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertTrue(providerCopy.contains(spanish ? "Sequoia y Tahoe" : "Sequoia and Tahoe"))
         XCTAssertTrue(providerCopy.contains(spanish ? "motor local seleccionado" : "selected local engine"))
         XCTAssertTrue(app.control(withIdentifier: "settings-category-data").exists)
-        XCTAssertTrue(app.control(withIdentifier: "settings-category-sync").exists)
+        XCTAssertTrue(app.control(withIdentifier: "settings-category-integrations").exists)
 
         // …and picking Intelligence reveals the summary-engine picker, which
         // now lives in that pane rather than one long scroll (M12).
@@ -180,7 +180,7 @@ final class SettingsUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         openCategory(
-            "settings-category-sync",
+            "settings-category-data",
             revealing: "settings-sync-status",
             in: app)
 
@@ -406,7 +406,7 @@ final class SettingsUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         openCategory(
-            "settings-category-voice",
+            "settings-category-intelligence",
             revealing: "settings-mirror-after-meeting",
             in: app)
 
@@ -428,7 +428,7 @@ final class SettingsUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         openCategory(
-            "settings-category-voice",
+            "settings-category-intelligence",
             revealing: "settings-voice-storage-error",
             in: app)
         XCTAssertTrue(app.staticTexts["settings-voice-storage-error"].exists)
@@ -436,7 +436,7 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertTrue(app.buttons["settings-voice-storage-reset"].exists)
 
         XCTAssertTrue(app.openSettingsCategory(
-            "settings-category-voice",
+            "settings-category-intelligence",
             revealing: "settings-remembered-voices-error"))
         XCTAssertTrue(app.staticTexts["settings-remembered-voices-error"].exists)
         XCTAssertTrue(app.buttons["settings-remembered-voices-retry"].exists)
@@ -448,7 +448,7 @@ final class SettingsUITests: PortavozUITestCase {
             app.staticTexts["settings-remembered-voices-error"]
                 .waitForDisappearance(timeout: 5))
         openCategory(
-            "settings-category-voice",
+            "settings-category-intelligence",
             revealing: "settings-voice-storage-reset",
             in: app)
         app.buttons["settings-voice-storage-reset"].click()

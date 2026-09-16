@@ -822,8 +822,8 @@ Snapshots contain only closed phases/stages/outcomes/failure categories,
 aggregate counts, attempt numbers, retry dates, and timestamps. They cannot
 carry a meeting identity, title, transcript or note text, path, model payload,
 or raw error. A processing lease heartbeat remains ownership liveness and is
-never presented as percentage progress. The Settings **Background activity**
-pane renders indeterminate progress only while an owner reports running, shows
+never presented as percentage progress. The **Background activity** section of
+the Your data Settings pane renders indeterminate progress only while an owner reports running, shows
 exact safe counts/retry metadata, and routes recovery actions back to the
 original owner. A compact main-toolbar indicator exists only while work is
 active, waiting, retrying, or needs attention and deep-links to that pane.

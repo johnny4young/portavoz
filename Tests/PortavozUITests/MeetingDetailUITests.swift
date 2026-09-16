@@ -694,27 +694,24 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "the recovery deep link must finish search editing without changing its destination")
         XCTAssertEqual(app.textFields["settings-search-field"].value as? String, "")
 
-        let voiceCategory = app.buttons["settings-category-voice"]
-        XCTAssertTrue(
-            voiceCategory.waitForStableFrame(timeout: 5),
-            "the Voice category must expose its actual button hit target")
-        voiceCategory.click()
         let status = app.control(withIdentifier: "settings-apuntador-status")
         XCTAssertTrue(
             status.waitForExistenceFast(timeout: 5),
-            "the voice pane must explain Apuntador's cross-version capability")
+            "the Intelligence pane must explain Apuntador's cross-version capability")
         let toggle = app.control(withIdentifier: "settings-apuntador-enabled")
         XCTAssertTrue(
             toggle.exists,
             "Sequoia must expose the bundled detector instead of a dead platform gate")
         let expectedDetectionStatus = UITestLocale.environmentLocale == "es"
-                ? "La detección de preguntas del Apuntador está lista en este Mac."
-                : "Apuntador question detection is ready on this Mac."
+                ? "Apuntador: solo preguntas"
+                : "Apuntador: questions only"
         let detectionStatus = try accessibleText(of: status)
         XCTAssertTrue(
             detectionStatus.contains(expectedDetectionStatus),
             "the status must distinguish working detection from optional answer generation; "
                 + "saw '\(detectionStatus)'")
+        let cause = app.control(withIdentifier: "settings-apuntador-status-cause")
+        XCTAssertTrue(cause.exists, "one cause line must follow the status")
         attachScreenshot(of: app, named: "sequoia-apuntador-requirements")
     }
 

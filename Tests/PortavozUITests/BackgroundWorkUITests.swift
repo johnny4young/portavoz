@@ -14,7 +14,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
         indicator.click()
 
         XCTAssertTrue(
-            app.control(withIdentifier: "settings-category-background-work")
+            app.control(withIdentifier: "settings-category-data")
                 .waitForExistenceFast(timeout: 10),
             "the compact indicator must expose the exact Settings category")
         XCTAssertTrue(
