@@ -115,6 +115,9 @@ struct RecordingStatusStrip: View {
             }
             .font(.caption.weight(.medium))
             .foregroundStyle(notice.severity.tint)
+            // The row carries the message as its own label and still exposes
+            // the text child, so both label and static-text lookups read it.
+            .accessibilityLabel(notice.message)
             .accessibilityIdentifier(notice.id)
             ForEach(notice.actions, id: \.identifier) { action in
                 Button(action.title, action: action.perform)
