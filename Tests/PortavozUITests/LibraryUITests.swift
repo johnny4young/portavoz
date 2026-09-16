@@ -527,9 +527,9 @@ final class LibraryUITests: PortavozUITestCase {
         let running = isSpanish ? "Observando señales locales" : "Watching local signals"
         XCTAssertTrue(proactiveStatus.waitForLabelOrValue(running, timeout: 3))
 
-        proactive.click()
+        app.recordingMoreItem("recording-proactive-assist").click()
         XCTAssertTrue(proactivePanel.waitForDisappearance(timeout: 3))
-        proactive.click()
+        app.recordingMoreItem("recording-proactive-assist").click()
         XCTAssertTrue(proactivePanel.waitForExistenceFast(timeout: 3))
         XCTAssertFalse(
             objectiveSuggestion.exists,
