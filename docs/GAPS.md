@@ -177,8 +177,12 @@ check was then disproved by a synthetic same-app alert: a newline accepted its
 default choice without entering an interruption monitor.
 
 Process ownership plus an explicit sole-modal-contained anchor now covers
-thirteen native controls, including legitimate bilingual editing, foreign
-interruption, unexpected same-app modal and background-anchor rejection. Real
+sixteen native controls, including legitimate bilingual editing, foreign
+interruption, unexpected same-app sheet and app-modal dialog rejection, and
+background-anchor rejection. Two surfaces stay outside the rule: popovers, and
+a dialog nothing can click such as the floating Writing Tools affordance. An
+unexpected popover with a default button is therefore not refused, and an
+app-modal dialog whose hit point lies off-screen is not either. Real
 journeys use the same admitted dispatch and preserve exact values, confirmation
 and receipt assertions. Neither a focused journey nor these synthetic controls
 qualifies an earlier interrupted full invocation. The original requesting UI

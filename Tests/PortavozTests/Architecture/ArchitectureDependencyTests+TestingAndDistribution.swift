@@ -369,13 +369,26 @@ extension ArchitectureDependencyTests {
         XCTAssertEqual(settingsWindowBody.components(separatedBy:
             "identifier: \"settings-search-field\", timeout: timeout)").count - 1, 2)
         let searchEditingStart = try XCTUnwrap(settingsWindowBody.range(
-            of: "func finishTextFieldEditing("))
+            of: "func handOffTextFieldEditing("))
         let searchEditingBody = settingsWindowBody[searchEditingStart.lowerBound...]
+        // Only an observed editor receives Tab, so traversal can never move an
+        // unknown responder into the field; the field itself is never clicked,
+        // because its own completion surface can cover that click.
+        let observedFocus = try XCTUnwrap(searchEditingBody.range(
+            of: "guard let editing = field.observedKeyboardFocus else { return .focusUnobservable }"))
+        let notEditing = try XCTUnwrap(searchEditingBody.range(
+            of: "guard editing else { return .notEditing }",
+            range: observedFocus.upperBound..<searchEditingBody.endIndex))
         let searchTab = try XCTUnwrap(searchEditingBody.range(
-            of: "guard typeKeyIfOwned("))
+            of: "let admission = typeKeyIfOwned(",
+            range: notEditing.upperBound..<searchEditingBody.endIndex))
         let preservedSearchValue = try XCTUnwrap(searchEditingBody.range(
-            of: "field.waitForValue(originalValue, timeout: timeout)"))
-        XCTAssertLessThan(searchTab.lowerBound, preservedSearchValue.lowerBound)
+            of: "field.waitForValue(originalValue, timeout: timeout)",
+            range: searchTab.upperBound..<searchEditingBody.endIndex))
+        let releasedSurface = try XCTUnwrap(searchEditingBody.range(
+            of: "waitForUITestCondition(timeout: timeout, { field.isHittable })",
+            range: preservedSearchValue.upperBound..<searchEditingBody.endIndex))
+        XCTAssertLessThan(preservedSearchValue.lowerBound, releasedSurface.lowerBound)
         XCTAssertFalse(searchEditingBody.contains("field.click()"))
         XCTAssertFalse(searchEditingBody.contains("field.typeKey("))
         XCTAssertFalse(searchEditingBody.contains(".typeText("))
@@ -1500,6 +1513,9 @@ extension ArchitectureDependencyTests {
         let testCase = try Self.contents(of: "Tests/PortavozUITests/PortavozUITestCase.swift")
         XCTAssertTrue(testCase.contains("addUIInterruptionMonitor"))
         XCTAssertFalse(testCase.contains(".click()"))
+        // Owned cleanup is a named Tear Down child so runtime attribution keeps it.
+        XCTAssertTrue(testCase.contains(
+            "XCTContext.runActivity(named: \"Finish owned UI test cleanup\")"))
     }
 
     func testProductionSandboxDecisionStaysExplicitAndReproducible() throws {

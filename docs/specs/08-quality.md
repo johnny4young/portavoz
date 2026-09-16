@@ -7705,8 +7705,10 @@ Zero-test restarts are not passes. The separate qualification receipt records
 expected failures, source hashes and content-free effects; it never substitutes
 for a product UI receipt. Tooling tests reject missing readiness, absent guard,
 late action, dialog choice, cleanup failure, skipped/empty/extra cases and an
-exit-zero restart. Full bilingual selections and explicit full bilingual local
-runs include this once; narrower feature PRs do not. CI executes the controls in
+exit-zero restart. Changes to the guard, keyboard, storage, wait or scratch
+sources, the fixture target, the execution classifier or their CI/Make owners
+select this once, as do explicit full bilingual local runs and full-suite
+dispatches; localization-only and other unrelated full-bilingual fallbacks do not. CI executes the controls in
 the product-builder job before publishing one reusable product build. Synthetic
 fixtures request no microphone, authentication or accessibility permission.
 
@@ -7733,10 +7735,28 @@ shared application helpers return failure on refused admission. Before each
 event, the receiver must be XCTest-foreground and the unique running process
 for the declared test-host bundle must be the frontmost application. No observed
 ownership change is repaired by implicitly activating the app. No-modal input
-rejects sheets and alerts; expected modal input additionally requires exactly
+rejects sheets, alerts and hittable app-modal dialogs; expected
+modal input additionally requires exactly
 one modal containing the journey's fixed accessibility anchor. A background
-control cannot authorize typing into a new dialog. Refused journey input uses
-the same nonreturning, owned-cleanup interruption guard.
+control cannot authorize typing into a new dialog. Admission re-observes for at
+most one second so a cached frontmost value or closing sheet can converge; it
+never activates or dismisses anything. Refused journey input uses the same
+nonreturning, owned-cleanup interruption guard and records a content-free
+`keyboard-owner` or `modal-context` reason; the interruption monitor records
+`interruption`. A guard that finds no live session reports `cleanup=absent`.
+
+`handOffTextFieldEditing` observes keyboard focus first and sends no key when
+the field is not the active editor, because Tab would otherwise move an
+unrelated responder into it. It never clicks the field either: its own
+completion surface can cover that click. The post-condition is the exact
+original value plus a field nothing covers any more, since a window whose only
+key view is that field keeps focus there. It reports finished, not-editing,
+field-unavailable, keyboard-refused, value-changed, surface-retained or
+focus-unobservable, and seeded-Library readiness fails with that cause. The
+focus observation reads the automation daemon's snapshot key that XCTest does
+not publish on macOS, and fails closed if a toolchain stops reporting it. The shared tear-down names its owned app exit
+and scratch removal as a Tear Down child activity, so runtime attribution keeps
+that cleanup in the case duration.
 
 Repository and topic fields assert exact values and end editing through the
 admitted Tab/value-preservation handoff before review or confirmation. Transcript
@@ -7746,12 +7766,17 @@ Escape/focus restoration retain their original user actions and assertions.
 A tooling policy rejects raw keyboard calls outside the shared boundary; this
 source check is not behavioral evidence.
 
-Thirteen native controls exercise that actual boundary: four original pointer/
+Sixteen native controls exercise that actual boundary: four original pointer/
 choice controls; native English-to-Spanish Unicode replacement with Select All
 and Tab; synchronous/asynchronous text and traversal under a foreign overlay;
 explicit expected-modal editing and choice; synchronous/asynchronous unexpected
-same-app modal rejection; and rejection of a background anchor behind that
-modal. The native Edit menu calibrates Select All, and the modal positive is
+same-app modal rejection; rejection of a background anchor behind that
+modal; and an `NSAlert.runModal()` app-modal dialog, observed as a hittable
+dialog, with an anchored positive edit/choice plus synchronous/asynchronous
+default-input rejection. A non-hittable dialog such as the floating Writing
+Tools affordance after a native selection is not a modal for this rule. Every
+negative control must stop through its declared reason. A failed or timed-out
+control stops only fixture processes built under its own products directory. The native Edit menu calibrates Select All, and the modal positive is
 scoped to the identified sheet rather than its duplicate Touch Bar button.
 Negative controls require no writing or choice effects and complete owned
 cleanup, plus the foreign owner's exit callback where an overlay was launched.

@@ -1837,8 +1837,32 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(support.contains("if !geometryChanged { continue }"))
         XCTAssertFalse(support.contains("guard targetMoved else { return false }"))
         // Reachability in compact windows remains open. Pin readiness and
-        // ownership, not the previously unsuccessful frame-to-wheel formula.
-        XCTAssertTrue(support.contains("self.isHittable"))
+        // ownership, not the previously unsuccessful frame-to-wheel formula:
+        // every successful reveal must pass the stable, contained and hittable
+        // proof rather than ending on geometric containment alone.
+        let revealStart = try XCTUnwrap(support.range(of: "func revealVertically("))
+        let anchorRevealStart = try XCTUnwrap(support.range(
+            of: "func revealVertically(",
+            range: revealStart.upperBound..<support.endIndex))
+        let revealBody = support[revealStart.lowerBound..<anchorRevealStart.lowerBound]
+        XCTAssertEqual(
+            revealBody.components(separatedBy: "if viewportFrame.contains(frame),").count - 1, 2)
+        XCTAssertEqual(
+            revealBody.components(separatedBy: "waitForStableContainedFrame(").count - 1, 2,
+            "geometric containment alone must not terminate before hittability")
+        XCTAssertEqual(revealBody.components(separatedBy: "return true").count - 1, 2)
+        let containedProofStart = try XCTUnwrap(support.range(
+            of: "private func waitForStableContainedFrame("))
+        let containedProof = support[containedProofStart.lowerBound...]
+        let containment = try XCTUnwrap(containedProof.range(
+            of: "viewportFrame.contains(controlFrame),"))
+        let hittable = try XCTUnwrap(containedProof.range(
+            of: "self.isHittable",
+            range: containment.upperBound..<containedProof.endIndex))
+        XCTAssertLessThan(containment.lowerBound, hittable.lowerBound)
+        XCTAssertLessThan(
+            containedProof.distance(from: containment.upperBound, to: hittable.lowerBound), 64,
+            "the hittability proof must belong to the same containment guard")
         XCTAssertTrue(uiTests.contains(
             "guard correct.revealVertically(in: transcriptScroll, maxScrolls: 4) else {"))
         XCTAssertTrue(decisions.contains("## D533"))

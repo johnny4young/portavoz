@@ -5425,8 +5425,11 @@ first complete English attempt demonstrated that removing it can synthesize
 apparently successful clicks without publishing the expected route or mutation.
 Keyboard dispatch has a separate admission boundary in `UITestKeyboardSupport`:
 XCTest foreground state plus the unique declared bundle's frontmost process,
-and either no modal or exactly one modal containing the journey's explicit
-anchor. It does not reactivate after an observed ownership change. A background
+and either no sheet, alert or hittable app-modal dialog or exactly one such
+modal containing the journey's explicit anchor, re-observed for at most one
+second without activating anything. A dialog nothing can click, such as the
+floating selection affordance macOS shows after Select All, never captures the
+keys and is not counted. It does not reactivate after an observed ownership change. A background
 anchor never authorizes an unexpected same-app modal. Base-case wrappers refuse
 through the owned-cleanup interruption guard; shared application helpers return
 failure. Native negative controls exercise the real wrappers, while a tooling
@@ -5616,8 +5619,13 @@ The overlay's main-queue parent-exit callback emits a separate lifecycle
 acknowledgement before exiting; process absence without it is failed cleanup,
 not success. This closes the false-positive case where a main-actor callback
 scheduled on a global queue trapped before its body ran.
-Full bilingual runs execute this once in addition to the unchanged product
-catalog; scoped feature runs do not pay for unrelated fixture qualification.
+Changes to the sources these controls qualify, their fixture, classifier or
+CI/Make owners, plus explicit full runs, execute them once in addition to the
+product catalog; localization and unrelated feature runs do not pay for fixture
+qualification. A failed control stops only its own built fixture processes. The
+shared tear-down names its owned cleanup as a child activity so runtime
+attribution never subtracts it, and the editing handoff observes keyboard focus
+before sending Tab so traversal can never move focus into the field.
 These observations prove only that the host was quiet at those samples;
 automation started afterward remains an external race that the result bundle
 must classify.

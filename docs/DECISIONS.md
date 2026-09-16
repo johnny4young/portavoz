@@ -19542,8 +19542,8 @@ not permission-prompt testing or a claim that every OS interruption has been
 reproduced.
 
 `make test-ui-interruption-safety` builds these tiny fixtures once and records
-all four outcomes. Full bilingual selections require it once, not per feature
-or locale. Hosted runs execute it in the product-builder job using the existing
+every control outcome (four at this decision; D534 extends the set). Changes to
+the sources it qualifies require it once, not per feature or locale. Hosted runs execute it in the product-builder job using the existing
 pinned XcodeGen; locale lanes still share one product build. A worker restart
 printing a zero-test success cannot qualify the invocation: the execution
 classifier emits `evidence-failure`, returns nonzero and retains the raw local
@@ -19607,7 +19607,8 @@ work. A known marker span is a lower bound, never a substitute for that retained
 duration. Require adjacent start/setup markers without child work under start;
 ambiguous boundaries, malformed children, inconsistent clocks and failed cases
 keep the raw duration. An empty terminal teardown retains the existing attribution
-policy. Timestamp differences preserve the decimal precision written by
+policy, so the shared base names its owned cleanup as a Tear Down child activity
+(D534): product cases therefore never have that cleanup subtracted. Timestamp differences preserve the decimal precision written by
 xcresult, so binary subtraction residue cannot turn an exact budget boundary
 into an overage. No epsilon, numeric budget, threshold, retry or receipt schema
 changes.
@@ -19744,9 +19745,9 @@ handoff, and a failed transcript reveal stops before clicking. Removing an
 experiment does not justify removing an independently demonstrated repair.
 
 **Consequences:** the ordinary real-app catalog and its correction effects remain
-required. The interruption fixture returns to four positive/negative controls
-that test the real guard and owned cleanup; it no longer claims to qualify wheel
-delivery. Compact geometry and composed delivery-shape evidence remain an open
+required. The interruption fixture returns to its positive/negative controls
+that test the real guard and owned cleanup (four at this decision; D534 extends
+them); it no longer claims to qualify wheel delivery. Compact geometry and composed delivery-shape evidence remain an open
 quality gap. Fresh native controls, full bilingual product runs and exact-head
 CI are required for the narrower change. A passing ordinary-window catalog must
 not be presented as closure of the retained compact failures.
@@ -19763,18 +19764,68 @@ not inferred from aggregate passing product tests.
 
 Use one shared dispatch boundary: the unique declared test-host process must be
 frontmost, XCTest must agree it is foreground, and the modal context must match
-the journey. Default input requires no sheet or alert. A journey editing or
+the journey. Default input requires no sheet, alert or app-modal dialog. A journey editing or
 closing an expected modal supplies a fixed accessibility anchor that must belong
 to the sole modal, never an arbitrary visible control behind it. This admission
 never activates another window or answers a permission prompt. Rejection keeps
 the nonreturning owned-cleanup guard. Product tests preserve focus actions,
 exact editor values, original submit/confirmation semantics and durable receipts.
 
-Thirteen native controls calibrate successful pointer, keyboard and explicitly
-expected modal input against foreign-overlay and same-app modal counterexamples.
-Negative effect receipts must contain no typing or choice. A source policy
+Sixteen native controls calibrate successful pointer, keyboard and explicitly
+expected modal input against foreign-overlay, same-app sheet and app-modal
+dialog counterexamples. Each negative control must stop through its exact
+content-free refusal path (`interruption`, `keyboard-owner` or `modal-context`)
+with completed owned cleanup. Negative effect receipts must contain no typing or
+choice. A source policy
 prevents bypassing this boundary but does not replace those runtime controls or
 the full bilingual catalog. The checks use public point-in-time observations;
 no atomic check-and-input guarantee or physical permission certification is
 claimed. No product feature, system completion preference or host permission
 policy changes.
+
+**Review corrections (Sep 2026):** a review of this boundary found six concrete
+gaps, each now closed at its owner rather than in a journey:
+
+- *App-modal dialogs.* Counting only sheets and alerts admitted Return while an
+  app-modal window such as `NSSavePanel.runModal()` was up, which the product
+  uses for import and export. Sheets and alerts still count through one
+  predicate query, and a dialog counts when it is hittable. An `NSAlert.runModal()`
+  fixture proves the dialog is observable (hittable, 272x258, five children),
+  that an anchored edit and choice work, and that synchronous and asynchronous
+  default input is refused with no effect. Hittability is the discriminator
+  because macOS exposes the floating Writing Tools affordance that follows a
+  native selection as a non-hittable 53x48 dialog: a real catalog run proved
+  that counting it refused an expected anchored edit inside the transcript
+  correction sheet. Nothing can click that affordance, so it never receives the
+  keys. A dialog whose hit point lies off-screen is likewise not counted, and
+  popovers remain outside this rule.
+- *Observation convergence.* Admission re-observes for at most one second while
+  the run loop services workspace notifications, so a cached frontmost value or a
+  closing sheet converges. It never activates, dismisses or answers anything,
+  and a persistent mismatch is refused with its category.
+- *Editing handoff.* Tab moves whatever owns focus, so ending a field's editor
+  without first owning that editor could move focus into the field and still
+  preserve its value. A real-app diagnostic reproduced exactly that: a second Tab
+  returned focus to the Library search field. Re-establishing the editor with a
+  click is not available either, because the field's own completion surface can
+  cover it, and a catalog run turned three Settings journeys into interruption
+  stops that way. The handoff therefore observes keyboard focus first and sends
+  no key at all when the field is not the active editor. Its post-condition is
+  the exact value plus a field nothing covers any more, because a window whose
+  only key view is that field keeps focus there through Tab. Outcomes are
+  distinct (not-editing, field-unavailable, keyboard-refused, value-changed,
+  surface-retained, focus-unobservable) so seeded-Library readiness reports the
+  actual cause. XCTest publishes no macOS focus attribute; the handoff reads the
+  automation daemon's own snapshot key and fails closed when a toolchain stops
+  publishing it rather than sending a key on an assumption.
+- *Owned cleanup attribution.* The shared tear-down wraps app exit and scratch
+  removal in a named child activity. Runtime attribution then keeps that work
+  instead of subtracting an apparently empty teardown.
+- *Cleanup receipts.* A guard that finds no live session for its owner reports
+  `cleanup=absent`, never `complete`; controls reject both absent and failed.
+- *Control lifecycle and selection.* A failed or timed-out control stops only the
+  fixture processes built under its own products directory before failing, so a
+  modal-level overlay cannot interrupt the next UI command. The controls are
+  selected by changes to the sources they qualify, their fixture, classifier or
+  CI/Make owners, and by explicit full requests, not by every full-bilingual
+  fallback such as localization.

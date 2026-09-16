@@ -627,11 +627,16 @@ final class LibraryUITests: PortavozUITestCase {
         let search = app.textFields["library-search-field"]
         XCTAssertTrue(search.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(app.finishTextFieldEditing(identifier: "library-search-field", timeout: 5))
-        search.click()
+        // Prove the row is already visible before focusing search: the click can
+        // raise a native completion surface over the sidebar, which says
+        // nothing about the launch fast path under test.
         let visibleMeeting = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
             .firstMatch
-        XCTAssertTrue(visibleMeeting.isHittable, "exercise the already-visible launch fast path")
+        XCTAssertTrue(
+            visibleMeeting.waitForHittable(timeout: 5),
+            "exercise the already-visible launch fast path")
+        search.click()
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         // A normal key after launch readiness must not keep editing the search.
         // This tests actual responder ownership without private focus attributes
