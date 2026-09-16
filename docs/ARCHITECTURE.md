@@ -1258,9 +1258,12 @@ current live summaries in one bounded database projection, overlaps commitment
 loading, and admits generated context only when its source index resolves to a
 navigable related meeting. Agenda buttons explicitly opt out of selectable
 meeting-row behavior, so opening a brief cannot race the sidebar's meeting
-route. Persistent privacy seals use local-first and explicit opt-in language;
-feature-specific on-device claims remain limited to operations that cannot use
-a remote provider.
+route. One privacy promise exists in the main window: the sidebar footer chip
+"On your Mac" (`library-privacy-chip`), whose popover explains that nothing is
+sent unless the user asks and links to Settings through `SettingsLink`. Today,
+Insights, the menu-bar panel, onboarding and the Settings sidebar repeat no
+disclaimer (D536); feature-specific on-device claims remain limited to
+operations that cannot use a remote provider.
 
 ## Verified model lifecycle
 

@@ -57,9 +57,6 @@ struct InsightsView: View {
             .fixedSize()
             .accessibilityIdentifier("insights-scope")
             Spacer()
-            Label("Computed on your Mac.", systemImage: "lock.fill")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
         }
     }
 

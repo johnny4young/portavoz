@@ -60,15 +60,6 @@ final class SettingsUITests: PortavozUITestCase {
             revealing: "settings-ledger-meetings",
             in: app)
 
-        let localFirstSeal = UITestLocale.environmentLocale == "es"
-            ? "Local primero"
-            : "Local-first"
-        let privacySeal = app.buttons["settings-privacy-seal"]
-        XCTAssertTrue(privacySeal.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(
-            privacySeal.label.contains(localFirstSeal),
-            "the standing privacy seal must describe the opt-in architecture without an absolute all-local claim")
-
         let meetings = app.control(withIdentifier: "settings-ledger-meetings")
         XCTAssertTrue(meetings.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(meetings.waitForValue("1", timeout: 10))
@@ -212,11 +203,6 @@ final class SettingsUITests: PortavozUITestCase {
             "existing meetings must remain a separate explicit action")
         XCTAssertTrue(app.buttons["settings-sync-pause"].exists)
         XCTAssertTrue(app.buttons["settings-sync-remove"].exists)
-        let privacySeal = app.buttons["settings-privacy-seal"]
-        XCTAssertTrue(privacySeal.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(
-            privacySeal.waitForLabelContaining("iCloud", timeout: 5),
-            "the standing privacy seal must stop claiming that everything is local")
         attachScreenshot(of: app, named: "band-6c-cloud-sync")
     }
 

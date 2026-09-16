@@ -331,6 +331,16 @@
         }
       }
     },
+    "%d words heard.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d palabras escuchadas."
+          }
+        }
+      }
+    },
     "%d words inserted into %@.": {
       "localizations": {
         "es": {
@@ -347,16 +357,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "%d palabras insertadas."
-          }
-        }
-      }
-    },
-    "%d words · transcribed on this Mac · nothing left your device": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%d palabras · transcrito en este Mac · nada salió de tu dispositivo"
           }
         }
       }
@@ -2757,16 +2757,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Calculado en tu Mac, a partir de tu biblioteca."
-          }
-        }
-      }
-    },
-    "Computed on your Mac.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Calculado en tu Mac."
           }
         }
       }
@@ -5999,16 +5989,6 @@
         }
       }
     },
-    "Heard you — nothing left your device.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Te escuché — nada salió de tu dispositivo."
-          }
-        }
-      }
-    },
     "Hidden as noise · original preserved": {
       "localizations": {
         "es": {
@@ -6779,12 +6759,12 @@
         }
       }
     },
-    "Live captions need macOS 26; your words never left this Mac either way.": {
+    "Live captions need macOS 26. Recording still works.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Los subtítulos en vivo necesitan macOS 26; tus palabras tampoco salieron de este Mac."
+            "value": "Los subtítulos en vivo necesitan macOS 26. Grabar sigue funcionando."
           }
         }
       }
@@ -7195,16 +7175,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Procesamiento de reuniones"
-          }
-        }
-      }
-    },
-    "Meeting text syncs privately. Audio and device-only data stay here.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El texto de las reuniones se sincroniza de forma privada. El audio y los datos exclusivos del dispositivo permanecen aquí."
           }
         }
       }
@@ -8639,16 +8609,6 @@
         }
       }
     },
-    "On your Mac. See the activity log in “Your data”.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "En tu Mac. Mira el registro de actividad en “Tus datos”."
-          }
-        }
-      }
-    },
     "On — prepares briefs in the final two hours": {
       "localizations": {
         "es": {
@@ -9965,16 +9925,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Recordatorios privados de fechas límite"
-          }
-        }
-      }
-    },
-    "Private iCloud sync": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sincronización privada con iCloud"
           }
         }
       }
@@ -12257,6 +12207,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ver"
+          }
+        }
+      }
+    },
+    "See activity": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver actividad"
           }
         }
       }

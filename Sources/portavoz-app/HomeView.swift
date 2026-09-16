@@ -62,9 +62,6 @@ struct HomeView: View {
             }
             recentCard
             askCard
-            Label("On your Mac", systemImage: "lock.shield")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
         }
     }
 

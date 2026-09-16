@@ -6,6 +6,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 16, 2026
 
+- **🔒 One privacy line, not five** — the sidebar chip "On your Mac" is now the only privacy reminder in the window; click it for the short version and a link to your activity log. Today, Insights, the menu bar, onboarding and Settings stop repeating it.
+
 - **🧹 Plainer words everywhere** — Portavoz stops talking like its own source code: "sources" instead of "evidence", "activity" instead of "receipts", one short privacy line instead of three, and tooltips you can read in one glance. The in-meeting assistant is Apuntador in both languages, and Suggested actions are now Automations.
 
 ## 1.0.1 — September 15, 2026

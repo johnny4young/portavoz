@@ -106,7 +106,7 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Label("Got it.", systemImage: "checkmark.seal.fill")
                     .foregroundStyle(.green)
-                Text("Live captions need macOS 26; your words never left this Mac either way.")
+                Text("Live captions need macOS 26. Recording still works.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         case .failed(let message):
@@ -121,12 +121,10 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 10) {
             if listen.hasCaption {
                 captionCard(listen.caption)
-                Label(
-                    L10n.format("%d words · transcribed on this Mac · nothing left your device", listen.wordCount),
-                    systemImage: "lock.shield")
+                Label(L10n.format("%d words heard.", listen.wordCount), systemImage: "checkmark.seal.fill")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
-                Label("Heard you — nothing left your device.", systemImage: "lock.shield")
+                Label("Got it.", systemImage: "checkmark.seal.fill")
                     .font(.callout).foregroundStyle(.secondary)
             }
             Button("Listen again") { listen.start() }

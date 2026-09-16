@@ -59,16 +59,8 @@ struct MenuBarContent: View {
     private var statusHeader: some View {
         HStack(spacing: 10) {
             liveWaveform
-            VStack(alignment: .leading, spacing: 1) {
-                Text(recording ? "Recording…" : "Portavoz is idle")
-                    .font(.subheadline.weight(.semibold))
-                HStack(spacing: 4) {
-                    Image(systemName: "lock.fill").font(.system(size: 9))
-                    Text("On your Mac")
-                        .font(.caption2)
-                }
-                .foregroundStyle(Color.green)
-            }
+            Text(recording ? "Recording…" : "Portavoz is idle")
+                .font(.subheadline.weight(.semibold))
             Spacer()
         }
         .padding(.bottom, 10)

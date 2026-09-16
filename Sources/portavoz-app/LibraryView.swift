@@ -15,6 +15,7 @@ struct LibraryView: View {
     /// To-dos fold away when the user wants a lean sidebar; the choice
     /// survives relaunches.
     @AppStorage("todosSectionExpanded") private var todosExpanded = true
+    @State private var showsPrivacyNote = false
     @Environment(\.colorScheme) private var colorScheme
     private let briefTimer = Timer.publish(every: 300, on: .main, in: .common).autoconnect()
 
@@ -433,16 +434,34 @@ extension LibraryView {
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
     }
 
-    /// The standing privacy line, pinned under the library — the product's
-    /// core claim, always in view.
+    /// The product's one privacy promise, pinned under the library (D536).
+    /// Every other surface trusts this chip instead of repeating the claim;
+    /// the detail lives one click away, in Settings ▸ Your data.
     private var localFooter: some View {
-        HStack(spacing: 7) {
-            Image(systemName: "lock.shield")
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
-            Text("On your Mac")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+        HStack {
+            Button {
+                showsPrivacyNote.toggle()
+            } label: {
+                Label("On your Mac", systemImage: "lock.shield")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("library-privacy-chip")
+            .popover(isPresented: $showsPrivacyNote, arrowEdge: .top) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Nothing is sent unless you ask for it. Every transfer is logged here.")
+                        .font(.callout)
+                        .fixedSize(horizontal: false, vertical: true)
+                    SettingsLink {
+                        Text("See activity")
+                    }
+                    .accessibilityIdentifier("library-privacy-activity")
+                }
+                .padding(14)
+                .frame(width: 280)
+                .accessibilityIdentifier("library-privacy-note")
+            }
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 14)
