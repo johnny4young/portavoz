@@ -202,40 +202,58 @@ private struct RecordingLevelMeter: View {
     }
 }
 
-/// The More menu reads only the two opt-in flags, so caption updates that
-/// re-render the bar never rebuild an open menu under the pointer.
+/// The rest of the bar's actions live in one panel. It reads only the two
+/// opt-in flags, so caption updates that re-render the bar never rebuild it
+/// under the pointer, and its switches show their state plainly.
 private struct RecordingMoreMenu: View {
     let controller: RecordingController
     let onCompact: () -> Void
 
+    @State private var showsPanel = false
+
     var body: some View {
-        Menu {
-            Toggle(isOn: proactiveAssistBinding) {
-                Label(L10n.text("Proactive"), systemImage: PVSymbol.proactive)
-            }
-            .accessibilityIdentifier("recording-proactive-assist")
-            Toggle(isOn: interviewAssistBinding) {
-                Label(L10n.text("Interview"), systemImage: "person.crop.rectangle.stack")
-            }
-            .accessibilityIdentifier("recording-interview-assist")
-            Divider()
-            Button {
-                controller.requestNextQuestion()
-            } label: {
-                Label(L10n.text("Suggest a question"), systemImage: "lightbulb")
-            }
-            .accessibilityIdentifier("recording-next-question")
-            Button(action: onCompact) {
-                Label(L10n.text("Floating mini panel"), systemImage: "arrow.down.right.and.arrow.up.left")
-            }
-            .accessibilityIdentifier("recording-hud")
+        Button {
+            showsPanel.toggle()
         } label: {
             Label(L10n.text("More"), systemImage: "ellipsis.circle")
         }
         .controlSize(.small)
-        .fixedSize()
         .help(L10n.text("Proactive help, interview mode, a suggested question and the mini panel"))
         .accessibilityIdentifier("recording-more")
+        .popover(isPresented: $showsPanel, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle(isOn: proactiveAssistBinding) {
+                    Label(L10n.text("Proactive"), systemImage: PVSymbol.proactive)
+                }
+                .toggleStyle(.switch)
+                .accessibilityIdentifier("recording-proactive-assist")
+                Toggle(isOn: interviewAssistBinding) {
+                    Label(L10n.text("Interview"), systemImage: "person.crop.rectangle.stack")
+                }
+                .toggleStyle(.switch)
+                .accessibilityIdentifier("recording-interview-assist")
+                Divider()
+                Button {
+                    showsPanel = false
+                    controller.requestNextQuestion()
+                } label: {
+                    Label(L10n.text("Suggest a question"), systemImage: "lightbulb")
+                }
+                .accessibilityIdentifier("recording-next-question")
+                Button {
+                    showsPanel = false
+                    onCompact()
+                } label: {
+                    Label(L10n.text("Floating mini panel"), systemImage: "arrow.down.right.and.arrow.up.left")
+                }
+                .accessibilityIdentifier("recording-hud")
+            }
+            .controlSize(.small)
+            .padding(14)
+            .frame(width: 260, alignment: .leading)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("recording-more-panel")
+        }
     }
 
     private var interviewAssistBinding: Binding<Bool> {

@@ -300,8 +300,8 @@ extension XCUIApplication {
         return popover
     }
 
-    /// Secondary recording actions live behind the More menu; a journey that
-    /// needs one opens the menu first and gets the item back.
+    /// Secondary recording actions live in the More panel; a journey that
+    /// needs one opens the panel first and gets the control back.
     @MainActor
     func recordingMoreItem(
         _ identifier: String,
@@ -309,17 +309,19 @@ extension XCUIApplication {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        let item = menuItems[identifier]
-        if !item.isHittable {
+        let panel = control(withIdentifier: "recording-more-panel")
+        if !panel.exists {
             let more = control(withIdentifier: "recording-more")
             guard more.waitForHittable(timeout: timeout) else {
-                XCTFail("the recording bar never offered its More menu", file: file, line: line)
-                return item
+                XCTFail("the recording bar never offered its More panel", file: file, line: line)
+                return panel
             }
             more.click()
+            _ = panel.waitForExistenceFast(timeout: timeout)
         }
+        let item = panel.descendants(matching: .any)[identifier]
         if !item.waitForHittable(timeout: timeout) {
-            XCTFail("the More menu never offered \(identifier)", file: file, line: line)
+            XCTFail("the More panel never offered \(identifier)", file: file, line: line)
         }
         return item
     }
