@@ -259,7 +259,7 @@ private struct BackgroundWorkRow: View {
         case .retryScheduled: PVSymbol.history
         case .waitingForRecording: "mic.fill"
         case .running: PVSymbol.retry
-        case .idle: snapshot.lastOutcome == nil ? "circle" : "checkmark.circle.fill"
+        case .idle: snapshot.lastOutcome == nil ? "circle" : PVSymbol.success
         }
     }
 

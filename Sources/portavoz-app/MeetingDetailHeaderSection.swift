@@ -179,7 +179,7 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
                 })
             .fixedSize()
             .help(L10n.format(
-                "Voice match: sounds like “%@” from your remembered voices.",
+                "Matches “%@” from your remembered voices",
                 suggestion.name))
         }
     }

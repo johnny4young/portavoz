@@ -491,16 +491,6 @@
         }
       }
     },
-    "A quick recap of the last few minutes — for when you zoned out or just joined.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Un repaso rápido de los últimos minutos — para cuando te desconectaste o acabas de llegar."
-          }
-        }
-      }
-    },
     "A recovery copy is created by reading the failed library without modifying it, verified before publication, and never overwrites an existing copy.": {
       "localizations": {
         "es": {
@@ -1421,6 +1411,16 @@
         }
       }
     },
+    "Ask anything across every meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pregunta lo que sea sobre todas tus reuniones"
+          }
+        }
+      }
+    },
     "Ask view": {
       "localizations": {
         "es": {
@@ -1761,16 +1761,6 @@
         }
       }
     },
-    "Back to the full window": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Volver a la ventana completa"
-          }
-        }
-      }
-    },
     "Background": {
       "localizations": {
         "es": {
@@ -1867,16 +1857,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Brief"
-          }
-        }
-      }
-    },
-    "Brief for this meeting: who's coming, related meetings, open to-dos": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Brief de esta reunión: quiénes vienen, reuniones relacionadas y pendientes abiertos"
           }
         }
       }
@@ -2267,16 +2247,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Capítulos"
-          }
-        }
-      }
-    },
-    "Chapters jump the player — this meeting has no audio.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Los capítulos saltan el reproductor — esta reunión no tiene audio."
           }
         }
       }
@@ -2877,16 +2847,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Compromiso confirmado"
-          }
-        }
-      }
-    },
-    "Confirmed commitments, deadlines, sources and changes — kept on your Mac": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Compromisos confirmados, fechas límite, fuentes y cambios — guardados en tu Mac"
           }
         }
       }
@@ -3783,6 +3743,36 @@
         }
       }
     },
+    "Counts how often someone talked over someone else": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuenta cuántas veces alguien habló encima de otra persona"
+          }
+        }
+      }
+    },
+    "Counts how often this speaker interrupted": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuenta cuántas veces interrumpió esta persona"
+          }
+        }
+      }
+    },
+    "Counts the questions asked in this meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuenta las preguntas hechas en esta reunión"
+          }
+        }
+      }
+    },
     "Covered speech": {
       "localizations": {
         "es": {
@@ -4479,6 +4469,16 @@
         }
       }
     },
+    "Dismiss this reminder for this meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descarta este recordatorio para esta reunión"
+          }
+        }
+      }
+    },
     "Dismiss this suggestion": {
       "localizations": {
         "es": {
@@ -4495,16 +4495,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Descartar la oferta de voz"
-          }
-        }
-      }
-    },
-    "Dismiss — it will not remind you again for this meeting": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Descartar — no te volverá a avisar para esta reunión"
           }
         }
       }
@@ -5619,16 +5609,6 @@
         }
       }
     },
-    "Floating mini panel with the timer and captions — records without covering your meeting": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Panel mini flotante con el timer y las captions — graba sin tapar tu reunión"
-          }
-        }
-      }
-    },
     "Fold this card": {
       "localizations": {
         "es": {
@@ -6339,16 +6319,6 @@
         }
       }
     },
-    "Interruptions made by this speaker": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Interrupciones hechas por este hablante"
-          }
-        }
-      }
-    },
     "Interview": {
       "localizations": {
         "es": {
@@ -6455,6 +6425,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Saltar a este momento"
+          }
+        }
+      }
+    },
+    "Jumping needs audio, and this meeting has none": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saltar necesita audio y esta reunión no tiene"
           }
         }
       }
@@ -7069,6 +7049,16 @@
         }
       }
     },
+    "Matches “%@” from your remembered voices": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coincide con “%@” de tus voces recordadas"
+          }
+        }
+      }
+    },
     "May share outside Portavoz": {
       "localizations": {
         "es": {
@@ -7565,16 +7555,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Las sugerencias de nombres requieren macOS 26."
-          }
-        }
-      }
-    },
-    "Natural-language questions over every meeting, answered on your Mac": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Preguntas en lenguaje natural sobre todas tus reuniones, respondidas en tu Mac"
           }
         }
       }
@@ -8645,16 +8625,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Un momento…"
-          }
-        }
-      }
-    },
-    "One or two questions worth asking next.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Una o dos preguntas que vale la pena hacer a continuación."
           }
         }
       }
@@ -10229,16 +10199,6 @@
         }
       }
     },
-    "Questions asked in the meeting": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Preguntas hechas en la reunión"
-          }
-        }
-      }
-    },
     "Questions like \"what did we agree about the budget?\" — answered on your Mac, citing meeting and moment.": {
       "localizations": {
         "es": {
@@ -10465,6 +10425,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Borrador de recap"
+          }
+        }
+      }
+    },
+    "Recap the last few minutes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resume los últimos minutos"
           }
         }
       }
@@ -11585,6 +11555,16 @@
         }
       }
     },
+    "Return to the full window": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelve a la ventana completa"
+          }
+        }
+      }
+    },
     "Return to the original context and review a fresh suggestion. This does not run the action.": {
       "localizations": {
         "es": {
@@ -12101,6 +12081,16 @@
         }
       }
     },
+    "Searches only your meeting library": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Busca solo en tu biblioteca de reuniones"
+          }
+        }
+      }
+    },
     "Searching confirmed people…": {
       "localizations": {
         "es": {
@@ -12227,6 +12217,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ver mi tendencia"
+          }
+        }
+      }
+    },
+    "See today's agenda, open to-dos, recent meetings and quick questions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mira la agenda de hoy, pendientes abiertos, reuniones recientes y preguntas rápidas"
+          }
+        }
+      }
+    },
+    "See totals, cadence, people and commitments": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mira totales, cadencia, personas y compromisos"
+          }
+        }
+      }
+    },
+    "See what Portavoz can prepare from this meeting. You confirm each one.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mira lo que Portavoz puede preparar de esta reunión. Tú confirmas cada una."
+          }
+        }
+      }
+    },
+    "See who's coming, related meetings and open to-dos": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mira quién viene, reuniones relacionadas y pendientes abiertos"
           }
         }
       }
@@ -12607,6 +12637,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Muestra lo que acaban de preguntar, con una respuesta tomada de esta reunión."
+          }
+        }
+      }
+    },
+    "Shrink to a floating mini panel with the timer and captions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reduce a un mini panel flotante con el cronómetro y los subtítulos"
           }
         }
       }
@@ -13331,6 +13371,16 @@
         }
       }
     },
+    "Suggest one or two questions worth asking next": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugiere una o dos preguntas para hacer a continuación"
+          }
+        }
+      }
+    },
     "Suggested due date: %@": {
       "localizations": {
         "es": {
@@ -13937,16 +13987,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se pudo generar el repaso. La grabación continúa intacta."
-          }
-        }
-      }
-    },
-    "The command palette searches only your local meeting library.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La paleta de comandos solo busca en tu biblioteca local de reuniones."
           }
         }
       }
@@ -15001,16 +15041,6 @@
         }
       }
     },
-    "Times someone started talking over someone else": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Veces que alguien empezó a hablar encima de otro"
-          }
-        }
-      }
-    },
     "Title": {
       "localizations": {
         "es": {
@@ -15057,16 +15087,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hoy"
-          }
-        }
-      }
-    },
-    "Today's agenda, open to-dos, recent meetings and one-click questions": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La agenda de hoy, pendientes abiertos, reuniones recientes y preguntas de un clic"
           }
         }
       }
@@ -15151,12 +15171,12 @@
         }
       }
     },
-    "Totals, cadence, people and commitments — computed on your Mac": {
+    "Track confirmed commitments, deadlines, sources and changes": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Totales, cadencia, personas y compromisos — calculado en tu Mac"
+            "value": "Sigue compromisos confirmados, plazos, fuentes y cambios"
           }
         }
       }
@@ -15631,16 +15651,6 @@
         }
       }
     },
-    "Voice match: sounds like “%@” from your remembered voices.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coincidencia de voz: suena como “%@” entre tus voces recordadas."
-          }
-        }
-      }
-    },
     "Voice only": {
       "localizations": {
         "es": {
@@ -15867,16 +15877,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Qué pasó"
-          }
-        }
-      }
-    },
-    "What Portavoz can prepare from this meeting. You review and confirm each one.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lo que Portavoz puede preparar a partir de esta reunión. Tú revisas y confirmas cada una."
           }
         }
       }

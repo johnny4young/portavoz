@@ -71,7 +71,7 @@ struct SkillConfirmSheet: View {
         VStack(alignment: .leading, spacing: 14) {
             switch result {
             case .gistPublished(let url):
-                Label(L10n.text("Gist published"), systemImage: "checkmark.circle.fill")
+                Label(L10n.text("Gist published"), systemImage: PVSymbol.success)
                     .font(.headline)
                     .foregroundStyle(.green)
                     .accessibilityIdentifier("gist-result-title")

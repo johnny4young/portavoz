@@ -158,7 +158,7 @@ struct AskMemoryView: View {
 
     private func commitmentCard(_ commitment: AskMemoryCommitment) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label(commitment.title, systemImage: "checkmark.circle.fill")
+            Label(commitment.title, systemImage: PVSymbol.success)
                 .font(.headline)
                 .accessibilityIdentifier(
                     "ask-memory-commitment-\(commitment.id.rawValue.uuidString)")

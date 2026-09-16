@@ -17,19 +17,19 @@ struct LibraryNavigationControls: View {
             Divider().padding(.vertical, 4)
             navigationButton(
                 "Today", symbol: PVSymbol.today, id: "library-home-button",
-                help: "Today's agenda, open to-dos, recent meetings and one-click questions",
+                help: "See today's agenda, open to-dos, recent meetings and quick questions",
                 selected: isHome) { onNavigate(.library) }
             navigationButton(
                 "Ask", symbol: "bubble.left.and.text.bubble.right", id: "library-ask-button",
-                help: "Natural-language questions over every meeting, answered on your Mac",
+                help: "Ask anything across every meeting",
                 selected: route == .ask) { onNavigate(.ask) }
             navigationButton(
                 "Insights", symbol: "chart.bar.xaxis", id: "library-insights-button",
-                help: "Totals, cadence, people and commitments — computed on your Mac",
+                help: "See totals, cadence, people and commitments",
                 selected: route == .insights) { onNavigate(.insights) }
             navigationButton(
                 "Radar", symbol: PVSymbol.radar, id: "library-commitment-radar-button",
-                help: "Confirmed commitments, deadlines, sources and changes — kept on your Mac",
+                help: "Track confirmed commitments, deadlines, sources and changes",
                 selected: route?.isCommitmentRadar == true) { onNavigate(.commitments(nil)) }
         }
     }

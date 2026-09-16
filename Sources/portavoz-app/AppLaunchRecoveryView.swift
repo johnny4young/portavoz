@@ -135,7 +135,7 @@ struct AppLaunchRecoveryView: View {
             .accessibilityIdentifier(identifier)
             .accessibilityLabel(Text(working))
         case .succeeded:
-            Label(succeeded, systemImage: "checkmark.circle.fill")
+            Label(succeeded, systemImage: PVSymbol.success)
                 .foregroundStyle(.green)
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier(identifier)

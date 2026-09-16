@@ -98,7 +98,7 @@ struct MenuBarPreparedBriefSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Brief ready", systemImage: "checkmark.circle.fill")
+            Label("Brief ready", systemImage: PVSymbol.success)
                 .font(.headline)
                 .foregroundStyle(.green)
             ScrollView {

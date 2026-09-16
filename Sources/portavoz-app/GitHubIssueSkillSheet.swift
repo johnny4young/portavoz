@@ -200,7 +200,7 @@ struct GitHubIssueSkillSheet: View {
     ) -> some View {
         switch result {
         case .published(let outputURL):
-            Label("GitHub issue created", systemImage: "checkmark.circle.fill")
+            Label("GitHub issue created", systemImage: PVSymbol.success)
                 .font(.headline)
                 .foregroundStyle(.green)
                 .accessibilityIdentifier("github-issue-result-title")

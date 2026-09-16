@@ -2065,7 +2065,7 @@ extension ArchitectureDependencyTests {
             "wand.and.stars.inverse", "wand.and.stars", "sparkle",
             "sparkles.rectangle.stack.fill", "questionmark.bubble.fill",
             "questionmark.bubble", "record.circle", "stop.circle.fill", "stop.fill",
-            "checkmark.seal.fill", "checkmark.seal"
+            "checkmark.seal.fill", "checkmark.seal", "checkmark.circle.fill"
         ]
         for literal in retired {
             let owners = try Self.sourceMatches(

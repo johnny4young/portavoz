@@ -111,7 +111,7 @@ private struct DictationStripView: View {
     /// and the honest reassurance that nothing was stored.
     private func insertedView(_ words: Int) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: "checkmark.circle.fill")
+            Image(systemName: PVSymbol.success)
                 .foregroundStyle(.green)
                 .font(.title3)
             VStack(alignment: .leading, spacing: 1) {

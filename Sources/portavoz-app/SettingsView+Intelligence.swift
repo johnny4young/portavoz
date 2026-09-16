@@ -162,7 +162,7 @@ extension SettingsView {
         switch phase {
         case .checking, .preparing: PVSymbol.retry
         case .needsPreparation: PVSymbol.generate
-        case .ready: "checkmark.circle.fill"
+        case .ready: PVSymbol.success
         case .unsupported: "minus.circle"
         case .blockedByCapture: "waveform.circle"
         case .failed: PVSymbol.error

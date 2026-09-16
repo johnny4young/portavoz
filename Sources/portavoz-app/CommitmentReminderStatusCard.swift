@@ -87,7 +87,7 @@ private extension CommitmentReminderStatusCard {
                 .controlSize(.small)
                 .accessibilityIdentifier("commitment-reminder-reconciling")
         } else {
-            Label("On", systemImage: "checkmark.circle.fill")
+            Label("On", systemImage: PVSymbol.success)
                 .font(.caption.bold())
                 .foregroundStyle(.green)
                 .accessibilityIdentifier("commitment-reminder-enabled")

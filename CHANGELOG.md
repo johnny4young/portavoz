@@ -6,6 +6,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 16, 2026
 
+- **🚦 Warnings look different from errors** — an orange circle means "still working, keep an eye on it"; a red triangle means "stopped". Recording banners, the error screen and Today use the same code, buttons carry an icon, and tooltips start with what the control does.
+
 - **🎯 One icon per idea** — Today, Radar, Apuntador, Automations, privacy, retry and history each keep one icon across the whole app, and the ✦ spark now only marks text Portavoz generated.
 
 - **🔒 One privacy line, not five** — the sidebar chip "On your Mac" is now the only privacy reminder in the window; click it for the short version and a link to your activity log. Today, Insights, the menu bar, onboarding and Settings stop repeating it.

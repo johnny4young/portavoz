@@ -29,11 +29,11 @@ struct MeetingHealthView: View {
                     Spacer()
                     if health.questionsTotal > 0 {
                         chip(PVSymbol.apuntador, "\(health.questionsTotal)")
-                            .help("Questions asked in the meeting")
+                            .help("Counts the questions asked in this meeting")
                     }
                     if health.interruptionsTotal > 0 {
                         chip("exclamationmark.bubble", "\(health.interruptionsTotal)")
-                            .help("Times someone started talking over someone else")
+                            .help("Counts how often someone talked over someone else")
                     }
                 }
                 ForEach(health.stats) { stat in
@@ -66,7 +66,7 @@ struct MeetingHealthView: View {
                 .frame(width: 96, alignment: .leading)
             if stat.interruptionsMade > 0 {
                 chip("exclamationmark.bubble", "\(stat.interruptionsMade)")
-                    .help("Interruptions made by this speaker")
+                    .help("Counts how often this speaker interrupted")
             }
         }
     }

@@ -78,7 +78,7 @@ struct RecordingObjectivesPanel: View {
                 controller.toggleObjective(objective.id)
             } label: {
                 Image(systemName: objective.checkedAt == nil
-                    ? "circle" : "checkmark.circle.fill")
+                    ? "circle" : PVSymbol.success)
                     .foregroundStyle(objective.checkedAt == nil
                         ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.tint))
             }

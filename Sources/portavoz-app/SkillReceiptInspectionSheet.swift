@@ -474,7 +474,7 @@ private extension SkillReceiptInspectionSheet {
         switch kind {
         case .confirmed: "person.crop.circle.badge.checkmark"
         case .started: "play.circle.fill"
-        case .succeeded: "checkmark.circle.fill"
+        case .succeeded: PVSymbol.success
         case .failed: PVSymbol.error
         case .cancelled: "xmark.circle"
         }

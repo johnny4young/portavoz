@@ -64,15 +64,14 @@ struct CompanionSettingsSection: View {
     private var capabilityStatusWithDetector: some View {
         switch capability {
         case .available:
-            // swiftlint:disable:next line_length
-            Label("Question detection and on-device answer suggestions are ready.", systemImage: "checkmark.circle.fill")
+            Label("Question detection and on-device answer suggestions are ready.", systemImage: PVSymbol.success)
                 .foregroundStyle(.green)
                 .accessibilityIdentifier("settings-apuntador-status")
         case .requiresMacOS26:
             VStack(alignment: .leading, spacing: 4) {
                 Label(
                     "Apuntador question detection is ready on this Mac.",
-                    systemImage: "checkmark.circle.fill"
+                    systemImage: PVSymbol.success
                 )
                 .font(.callout.weight(.medium))
                 .foregroundStyle(.green)
@@ -86,7 +85,7 @@ struct CompanionSettingsSection: View {
             VStack(alignment: .leading, spacing: 4) {
                 Label(
                     "Apuntador question detection is ready.",
-                    systemImage: "checkmark.circle.fill"
+                    systemImage: PVSymbol.success
                 )
                 .font(.callout.weight(.medium))
                 .foregroundStyle(.green)

@@ -228,7 +228,7 @@ struct HomeView: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
             .disabled(state.briefLoading != nil)
-            .help("Brief for this meeting: who's coming, related meetings, open to-dos")
+            .help("See who's coming, related meetings and open to-dos")
             .accessibilityIdentifier("home-upcoming-brief-\(event.id)")
             Button {
                 route = .recording(event)
@@ -365,7 +365,7 @@ struct HomeView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .needsAttention:
-            Label("Needs attention", systemImage: PVSymbol.error)
+            Label("Needs attention", systemImage: PVSymbol.warning)
                 .font(.caption)
                 .foregroundStyle(PVDesign.brandAmber)
         case .recording, .ready:
@@ -390,7 +390,7 @@ struct HomeView: View {
             Button {
                 onAsk(L10n.text(question))
             } label: {
-                Text(L10n.text(question))
+                Label(L10n.text(question), systemImage: PVSymbol.ask)
                     .font(.callout)
                     .lineLimit(1)
                     .padding(.horizontal, 12)

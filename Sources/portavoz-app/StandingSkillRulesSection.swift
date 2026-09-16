@@ -486,7 +486,7 @@ private struct StandingSkillBriefSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Prepared brief", systemImage: "checkmark.circle.fill")
+            Label("Prepared brief", systemImage: PVSymbol.success)
                 .font(.headline)
                 .foregroundStyle(.green)
             ScrollView {

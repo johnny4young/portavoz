@@ -120,7 +120,7 @@ struct ReminderBannerView: View {
                     .foregroundStyle(.tertiary)
             }
             .buttonStyle(.plain)
-            .help("Dismiss — it will not remind you again for this meeting")
+            .help("Dismiss this reminder for this meeting")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)

@@ -135,7 +135,7 @@ struct InsightsView: View {
                         Text("\(facts.doneActionItems)/\(max(total, facts.doneActionItems))")
                             .font(.title3.bold().monospacedDigit())
                         if facts.openActionItems > 0 {
-                            Image(systemName: PVSymbol.error)
+                            Image(systemName: PVSymbol.warning)
                                 .font(.caption2)
                                 .foregroundStyle(PVDesign.brandAmber)
                         }

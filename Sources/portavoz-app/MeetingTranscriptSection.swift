@@ -152,6 +152,6 @@ struct MeetingTranscriptChaptersSection: View {
         .accessibilityIdentifier("chapter-\(Int(chapter.startTime))")
         .help(hasPlayback
             ? L10n.text("Jump to this moment")
-            : L10n.text("Chapters jump the player — this meeting has no audio."))
+            : L10n.text("Jumping needs audio, and this meeting has none"))
     }
 }

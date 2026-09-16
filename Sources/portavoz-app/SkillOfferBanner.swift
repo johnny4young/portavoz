@@ -64,7 +64,7 @@ struct SkillOfferMenu: View {
             .help(L10n.text(
                 // Keep the catalog key as one literal: LocalizationTests deliberately
                 // scans call-site prose rather than evaluating Swift concatenation.
-                "What Portavoz can prepare from this meeting. You review and confirm each one."))
+                "See what Portavoz can prepare from this meeting. You confirm each one."))
         }
     }
 

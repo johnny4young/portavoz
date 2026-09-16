@@ -142,7 +142,7 @@ struct RecordingHUDView: View {
                 Image(systemName: "arrow.up.left.and.arrow.down.right")
             }
             .buttonStyle(.plain)
-            .help("Back to the full window")
+            .help("Return to the full window")
             Button(action: onStop) {
                 Image(systemName: PVSymbol.stop)
                     .font(.title3)
@@ -195,11 +195,18 @@ struct RecordingHUDView: View {
     }
 
     private var hudCaptureHealthIcon: String {
-        controller.systemCaptureHealth == .recovered
-            ? "checkmark.circle.fill" : PVSymbol.error
+        switch controller.systemCaptureHealth {
+        case .recovered: PVSymbol.success
+        case .failed: PVSymbol.error
+        case .healthy, .stalled, .recovering: PVSymbol.warning
+        }
     }
 
     private var hudCaptureHealthColor: Color {
-        controller.systemCaptureHealth == .recovered ? .green : .orange
+        switch controller.systemCaptureHealth {
+        case .recovered: .green
+        case .failed: .red
+        case .healthy, .stalled, .recovering: .orange
+        }
     }
 }

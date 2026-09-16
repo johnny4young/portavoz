@@ -133,10 +133,10 @@ struct RecordingToolbar: View {
             }
             .controlSize(.small)
             .help(L10n.text(
-                "A quick recap of the last few minutes — for when you zoned out or just joined."))
+                "Recap the last few minutes"))
             .accessibilityIdentifier("recording-catch-up")
             .accessibilityHint(L10n.text(
-                "A quick recap of the last few minutes — for when you zoned out or just joined."))
+                "Recap the last few minutes"))
             Button {
                 controller.requestNextQuestion()
             } label: {
@@ -144,19 +144,19 @@ struct RecordingToolbar: View {
             }
             .controlSize(.small)
             .help(L10n.text(
-                "One or two questions worth asking next."))
+                "Suggest one or two questions worth asking next"))
             .accessibilityIdentifier("recording-next-question")
             .accessibilityHint(L10n.text(
-                "One or two questions worth asking next."))
+                "Suggest one or two questions worth asking next"))
             Button(action: onCompact) {
                 Label("HUD", systemImage: "arrow.down.right.and.arrow.up.left")
             }
             .controlSize(.small)
             .help(L10n.text(
-                "Floating mini panel with the timer and captions — records without covering your meeting"))
+                "Shrink to a floating mini panel with the timer and captions"))
             .accessibilityIdentifier("recording-hud")
             .accessibilityHint(L10n.text(
-                "Floating mini panel with the timer and captions — records without covering your meeting"))
+                "Shrink to a floating mini panel with the timer and captions"))
         }
     }
 

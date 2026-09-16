@@ -110,7 +110,7 @@ struct RecordingView: View {
             case .failed(let message):
                 Spacer()
                 ContentUnavailableView {
-                    Label("Something went wrong", systemImage: PVSymbol.warning)
+                    Label("Something went wrong", systemImage: PVSymbol.error)
                         .accessibilityIdentifier("recording-failure")
                 } description: {
                     VStack(spacing: 8) {
@@ -434,15 +434,17 @@ extension RecordingView {
 
     private var systemCaptureHealthIcon: String {
         switch controller.systemCaptureHealth {
-        case .recovered: "checkmark.circle.fill"
-        case .healthy, .stalled, .recovering, .failed: PVSymbol.error
+        case .recovered: PVSymbol.success
+        case .healthy, .stalled, .recovering: PVSymbol.warning
+        case .failed: PVSymbol.error
         }
     }
 
     private var systemCaptureHealthColor: Color {
         switch controller.systemCaptureHealth {
         case .recovered: .green
-        case .healthy, .stalled, .recovering, .failed: .orange
+        case .healthy, .stalled, .recovering: .orange
+        case .failed: .red
         }
     }
 
@@ -482,7 +484,7 @@ extension RecordingView {
     var micLowBanner: some View {
         Label(
             "Your voice sounds low — move closer or use headphones with a microphone",
-            systemImage: PVSymbol.error)
+            systemImage: PVSymbol.warning)
         .font(.caption)
         .foregroundStyle(.orange)
         .padding(.horizontal, 20)
@@ -561,7 +563,11 @@ extension RecordingView {
                 systemImage: "arrow.down.circle")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Button("Download") { controller.translationDownloadApproved = true }
+            Button {
+                controller.translationDownloadApproved = true
+            } label: {
+                Label("Download", systemImage: "arrow.down.circle.fill")
+            }
                 .buttonStyle(.plain)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.tint)
@@ -598,26 +604,38 @@ private extension RecordingView {
         if let context = controller.failureContext {
             switch context.recovery {
             case .retry:
-                Button("Try again") {
+                Button {
                     Task { await controller.start(services: services, event: event) }
+                } label: {
+                    Label("Try again", systemImage: PVSymbol.retry)
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("recording-retry")
             case .library:
-                Button("Open Library") { route = nil }
-                    .buttonStyle(.borderedProminent)
+                Button {
+                    route = nil
+                } label: {
+                    Label("Open Library", systemImage: "books.vertical")
+                }
+                .buttonStyle(.borderedProminent)
                     .accessibilityIdentifier("recording-open-library")
             case .supportDiagnostics:
-                Button("Open support diagnostics") {
+                Button {
                     services.pendingSettingsCategory = .data
                     openSettings()
+                } label: {
+                    Label("Open support diagnostics", systemImage: "stethoscope")
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("recording-open-support-diagnostics")
             }
         }
-        Button("Back") { route = nil }
-            .accessibilityIdentifier("recording-back")
+        Button {
+            route = nil
+        } label: {
+            Label("Back", systemImage: "chevron.left")
+        }
+        .accessibilityIdentifier("recording-back")
     }
 
     private var preparingText: String {

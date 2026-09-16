@@ -227,7 +227,7 @@ struct LibraryView: View {
         // meeting routes. Prevent AppKit's row-selection gesture from racing
         // the async brief action and opening the adjacent meeting instead.
         .selectionDisabled()
-        .help("Brief for this meeting: who's coming, related meetings, open to-dos")
+        .help("See who's coming, related meetings and open to-dos")
         .accessibilityIdentifier("library-upcoming-\(event.id)")
     }
 

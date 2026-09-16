@@ -26,7 +26,7 @@ extension CommitmentRadarView {
             } else if surface.receipt?.state == .succeeded {
                 Label(
                     "Created in Reminders",
-                    systemImage: "checkmark.circle.fill")
+                    systemImage: PVSymbol.success)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.green)
                     .accessibilityIdentifier(

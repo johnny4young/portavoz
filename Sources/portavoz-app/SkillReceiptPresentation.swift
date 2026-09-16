@@ -112,8 +112,9 @@ enum SkillReceiptPresentation {
     /// SF symbol for a receipt state, shared by every receipt list.
     static func icon(for state: SkillExecutionState) -> String {
         switch state {
-        case .succeeded: "checkmark.circle.fill"
-        case .failed, .executing: PVSymbol.error
+        case .succeeded: PVSymbol.success
+        case .failed: PVSymbol.error
+        case .executing: "hourglass"
         case .dismissed: "xmark.circle"
         case .confirmed, .proposed, .previewed: "clock"
         }

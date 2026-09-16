@@ -182,7 +182,7 @@ struct OnboardingView: View {
                 .foregroundStyle(.secondary)
             HStack(spacing: 10) {
                 if modelsReady {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                    Image(systemName: PVSymbol.success).foregroundStyle(.green)
                     Text("Models ready").font(.callout)
                 } else if downloadingModels {
                     ProgressView().controlSize(.small)
@@ -295,7 +295,7 @@ struct OnboardingView: View {
             }
             Spacer()
             if done {
-                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                Image(systemName: PVSymbol.success).foregroundStyle(.green)
             } else if let action {
                 Button(actionLabel, action: action).controlSize(.small)
             }

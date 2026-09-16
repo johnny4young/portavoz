@@ -151,7 +151,7 @@ struct MenuBarContent: View {
                     .accessibilityIdentifier("menu-bar-brief-dismiss")
                     .help("Don't suggest a brief for this event again")
                 } else if model.state.preparedEventID == event.id {
-                    Label("Brief prepared", systemImage: "checkmark.circle.fill")
+                    Label("Brief prepared", systemImage: PVSymbol.success)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.green)
                         .accessibilityIdentifier("menu-bar-brief-prepared")
