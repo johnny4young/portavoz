@@ -57,8 +57,8 @@ final class BackgroundWorkUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 5),
             "retrying owners must disclose their exact scheduled wake")
         let processingFailure = UITestLocale.environmentLocale == "es"
-            ? "Motivo: Evidencia de procesamiento"
-            : "Reason: Processing evidence"
+            ? "Motivo: Procesamiento"
+            : "Reason: Processing"
         XCTAssertTrue(
             app.staticTexts["background-work-failure-processing"]
                 .waitForLabelOrValue(processingFailure, timeout: 5),

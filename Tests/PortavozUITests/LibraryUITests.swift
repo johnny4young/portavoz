@@ -322,8 +322,8 @@ final class LibraryUITests: PortavozUITestCase {
         let preparing = app.control(withIdentifier: "recording-transcript-deferred")
         XCTAssertTrue(preparing.waitForExistenceFast(timeout: 20))
         let preparingPrefix = isSpanish
-            ? "El audio sigue guardándose correctamente."
-            : "Audio is safe."
+            ? "Grabando. Los subtítulos empiezan"
+            : "Recording. Captions start"
         XCTAssertTrue(
             preparing.label.contains(preparingPrefix),
             "expected localized preparing copy, saw: \(preparing.label)")
