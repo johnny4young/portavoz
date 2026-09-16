@@ -108,17 +108,17 @@ struct RecordingStatusStrip: View {
     private func noticeRow(_ notice: RecordingNotice) -> some View {
         HStack(spacing: 8) {
             Label {
+                // The message text is the identified element: journeys read
+                // it as a label and as a static text alike.
                 Text(notice.message)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier(notice.id)
             } icon: {
                 Image(systemName: notice.symbol ?? notice.severity.symbol)
+                    .accessibilityHidden(true)
             }
             .font(.caption.weight(.medium))
             .foregroundStyle(notice.severity.tint)
-            // The row carries the message as its own label and still exposes
-            // the text child, so both label and static-text lookups read it.
-            .accessibilityLabel(notice.message)
-            .accessibilityIdentifier(notice.id)
             ForEach(notice.actions, id: \.identifier) { action in
                 Button(action.title, action: action.perform)
                     .buttonStyle(.plain)
