@@ -21,22 +21,23 @@ struct MeetingDetailActivityLine: View {
 
     var body: some View {
         if values.hasContent {
-            // The popover anchors on a one-point view under the chip, never on
-            // the button or its row: an anchor covering the chip surfaced as an
-            // unmappable zero-size element under hit tests on the hosted runner.
-            Button {
-                showsActivity.toggle()
-            } label: {
-                Label(chipTitle, systemImage: chipSymbol)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(chipTint)
-            }
-            .buttonStyle(.plain)
-            .contentShape(.rect)
-            .accessibilityLabel(chipTitle)
-            .accessibilityIdentifier("detail-privacy-receipt")
-            .help(L10n.text("See what left this Mac and every action you confirmed"))
-            .overlay(alignment: .bottomLeading) {
+            // The popover anchors on a one-point sibling beside the chip, never
+            // on the button or over it: anything attached to the chip's own
+            // bounds surfaced as an unmappable element under hit tests on the
+            // hosted runner.
+            HStack(spacing: 0) {
+                Button {
+                    showsActivity.toggle()
+                } label: {
+                    Label(chipTitle, systemImage: chipSymbol)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(chipTint)
+                }
+                .buttonStyle(.plain)
+                .contentShape(.rect)
+                .accessibilityLabel(chipTitle)
+                .accessibilityIdentifier("detail-privacy-receipt")
+                .help(L10n.text("See what left this Mac and every action you confirmed"))
                 Color.clear
                     .frame(width: 1, height: 1)
                     .accessibilityHidden(true)

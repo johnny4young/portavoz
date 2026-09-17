@@ -499,16 +499,15 @@ extension LibraryView {
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("library-privacy-chip")
-            .overlay(alignment: .topLeading) {
-                // A one-point anchor beside the chip: an anchor covering the
-                // chip is an unmappable element under hit tests on the runner.
-                Color.clear
-                    .frame(width: 1, height: 1)
-                    .accessibilityHidden(true)
-                    .popover(isPresented: $showsPrivacyNote, arrowEdge: .top) {
-                        privacyNote
-                    }
-            }
+            // A one-point sibling anchors the note: anything attached to the
+            // chip's own bounds is an unmappable element under hit tests on
+            // the hosted runner.
+            Color.clear
+                .frame(width: 1, height: 1)
+                .accessibilityHidden(true)
+                .popover(isPresented: $showsPrivacyNote, arrowEdge: .top) {
+                    privacyNote
+                }
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 14)

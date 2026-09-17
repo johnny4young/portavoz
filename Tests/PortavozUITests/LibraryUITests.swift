@@ -194,10 +194,16 @@ final class LibraryUITests: PortavozUITestCase {
 
         // A fresh Settings window.
         openActivity()
-        // A window previously showing another pane.
+        // A window previously showing another pane. On a small display the
+        // Settings window covers the main window, so bring the main window
+        // forward (⌘`) before reaching for the chip; Settings stays open.
         XCTAssertTrue(app.openSettingsCategory(
             "settings-category-general", revealing: "settings-category-list"))
         XCTAssertTrue(app.buttons["settings-category-general"].isSelected)
+        typeKey("`", modifierFlags: .command, in: app)
+        XCTAssertTrue(
+            app.buttons["library-privacy-chip"].waitForHittable(timeout: 10),
+            "the main window must be in front before the chip is used again")
         openActivity()
     }
 
