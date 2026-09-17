@@ -3,33 +3,25 @@ import SwiftUI
 /// Presentation-only destinations remain available while an import is working.
 struct LibraryNavigationControls: View {
     let route: Route?
-    let importing: Bool
-    let onImport: () -> Void
     let onNavigate: (Route) -> Void
 
     var body: some View {
         VStack(spacing: 2) {
             navigationButton(
-                "Import", symbol: "square.and.arrow.down", id: "library-import-audio-button",
-                help: "Transcribe an audio file (.m4a, .wav, .mp3) as a new meeting",
-                busy: importing, action: onImport)
-                .disabled(importing)
-            Divider().padding(.vertical, 4)
-            navigationButton(
-                "Today", symbol: "sun.max", id: "library-home-button",
-                help: "Today's agenda, open to-dos, recent meetings and one-click questions",
+                "Today", symbol: PVSymbol.today, id: "library-home-button",
+                help: "See today's agenda, open to-dos, recent meetings and quick questions",
                 selected: isHome) { onNavigate(.library) }
             navigationButton(
                 "Ask", symbol: "bubble.left.and.text.bubble.right", id: "library-ask-button",
-                help: "Natural-language questions over every meeting, answered on your Mac",
+                help: "Ask anything across every meeting",
                 selected: route == .ask) { onNavigate(.ask) }
             navigationButton(
                 "Insights", symbol: "chart.bar.xaxis", id: "library-insights-button",
-                help: "Totals, cadence, people and commitments — computed on your Mac",
+                help: "See totals, cadence, people and commitments",
                 selected: route == .insights) { onNavigate(.insights) }
             navigationButton(
-                "Radar", symbol: "scope", id: "library-commitment-radar-button",
-                help: "Confirmed commitments, deadlines, sources and changes — kept on your Mac",
+                "Radar", symbol: PVSymbol.radar, id: "library-commitment-radar-button",
+                help: "Track confirmed commitments, deadlines, sources and changes",
                 selected: route?.isCommitmentRadar == true) { onNavigate(.commitments(nil)) }
         }
     }
@@ -41,21 +33,15 @@ struct LibraryNavigationControls: View {
 
     private func navigationButton(
         _ title: LocalizedStringKey, symbol: String, id: String, help: String,
-        selected: Bool = false, busy: Bool = false, action: @escaping () -> Void
+        selected: Bool = false, action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             HStack(spacing: 10) {
-                Group {
-                    if busy {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Image(systemName: symbol)
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(selected ? PVDesign.accent : .secondary)
-                    }
-                }
-                .frame(width: 20)
-                .accessibilityHidden(true)
+                Image(systemName: symbol)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(selected ? PVDesign.accent : .secondary)
+                    .frame(width: 20)
+                    .accessibilityHidden(true)
                 Text(title)
                     .font(.body.weight(selected ? .semibold : .regular))
                     .lineLimit(1)

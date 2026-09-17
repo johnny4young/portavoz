@@ -57,9 +57,6 @@ struct InsightsView: View {
             .fixedSize()
             .accessibilityIdentifier("insights-scope")
             Spacer()
-            Label("Computed on your Mac — nothing leaves it.", systemImage: "lock.fill")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
         }
     }
 
@@ -138,7 +135,7 @@ struct InsightsView: View {
                         Text("\(facts.doneActionItems)/\(max(total, facts.doneActionItems))")
                             .font(.title3.bold().monospacedDigit())
                         if facts.openActionItems > 0 {
-                            Image(systemName: "exclamationmark.triangle.fill")
+                            Image(systemName: PVSymbol.warning)
                                 .font(.caption2)
                                 .foregroundStyle(PVDesign.brandAmber)
                         }
@@ -410,7 +407,7 @@ extension InsightsView {
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
                 HStack(spacing: 4) {
-                    Image(systemName: "sparkles")
+                    Image(systemName: PVSymbol.generate)
                         .font(.caption2)
                         .foregroundStyle(PVDesign.chipAISpark)
                     Text("See").font(.caption2.weight(.medium)).foregroundStyle(PVDesign.accent)

@@ -822,8 +822,8 @@ Snapshots contain only closed phases/stages/outcomes/failure categories,
 aggregate counts, attempt numbers, retry dates, and timestamps. They cannot
 carry a meeting identity, title, transcript or note text, path, model payload,
 or raw error. A processing lease heartbeat remains ownership liveness and is
-never presented as percentage progress. The Settings **Background activity**
-pane renders indeterminate progress only while an owner reports running, shows
+never presented as percentage progress. The **Background activity** section of
+the Your data Settings pane renders indeterminate progress only while an owner reports running, shows
 exact safe counts/retry metadata, and routes recovery actions back to the
 original owner. A compact main-toolbar indicator exists only while work is
 active, waiting, retrying, or needs attention and deep-links to that pane.
@@ -943,8 +943,9 @@ of child presentation types; scoped action values are their mutation boundary.
 
 The child is itself a composition surface rather than the owner of every visual
 section. `MeetingDetailHeaderSection` renders identity, facts, participants,
-and optional suggestions. `MeetingDetailTrustSection` renders processing,
-recovery, and the privacy receipt. `MeetingGeneratedDocumentSection` renders
+and optional suggestions. `MeetingDetailTrustSection` renders processing and
+recovery; `MeetingDetailActivityLine` renders the privacy receipt and action
+history as one chip under the title with a popover for the detail. `MeetingGeneratedDocumentSection` renders
 the summary overview, decision/open-question sections, typed commitments, and
 claim-adjacent proof controls. Each receives only explicit values and actions;
 none can reach the route model, services, stores, or global preferences. The
@@ -1258,9 +1259,12 @@ current live summaries in one bounded database projection, overlaps commitment
 loading, and admits generated context only when its source index resolves to a
 navigable related meeting. Agenda buttons explicitly opt out of selectable
 meeting-row behavior, so opening a brief cannot race the sidebar's meeting
-route. Persistent privacy seals use local-first and explicit opt-in language;
-feature-specific on-device claims remain limited to operations that cannot use
-a remote provider.
+route. One privacy promise exists in the main window: the sidebar footer chip
+"On your Mac" (`library-privacy-chip`), whose popover explains that nothing is
+sent unless the user asks and opens Settings on Your data. Today,
+Insights, the menu-bar panel, onboarding and the Settings sidebar repeat no
+disclaimer; feature-specific on-device claims remain limited to
+operations that cannot use a remote provider. Every SF Symbol the app draws is a `PVSymbol` constant (one per concept, in `PVDesign.swift`); `sparkles` is reserved for `ChipLabel`, and an architecture ratchet keeps retired glyph literals out of view code.
 
 ## Verified model lifecycle
 
@@ -1942,8 +1946,9 @@ pure ApplicationKit projection select only the feature journeys they own.
 
 The primary Meeting Detail column keeps generated material, synchronized
 transcript, and playback as three independent layout regions. Summary,
-commitment-review, and note content has a bounded 180-to-240-point vertical
-scroll region; the transcript receives the remaining flexible height and clips
+commitment-review, and note content takes the height it needs up to half of
+the column and scrolls inside its own area only beyond that; the transcript
+receives the remaining flexible height and clips
 its focused viewport to the geometry SwiftUI actually allocated; and the
 playback dock retains its intrinsic size below that viewport. Focused-row visual
 effects transform only transcript presentation. Correction controls remain
@@ -3064,9 +3069,10 @@ ApplicationKit workflows.
 
 Secondary Meeting Detail flows use the same rule. `MeetingDetailActionSection`
 renders Refine, recap, export, Gist, and delete capabilities from immutable
-values and explicit intents. `MeetingDetailRailSection` owns the independently
-scrolling recovery, privacy, health, chapter, and persisted Companion
-presentation without reaching the model or composition root; the coordinator
+values and explicit intents. `MeetingDetailRailSection` owns the always-present
+recovery card and the three lenses (people, Apuntador, chapters) shown one at
+a time; the composition owns the selected lens and passes it in as a value,
+so the rail reaches neither state nor the composition root; the coordinator
 projects health availability once rather than making the rail rescan every
 segment during presentation. One
 scene-owned `MeetingDetailFlowState` represents mutually exclusive sheet,
@@ -5671,10 +5677,11 @@ documentation or isolated surface changes.
 
 The live recording command surface is isolated in `RecordingToolbar` rather
 than growing the already state-heavy `RecordingView`. It is responsive by
-construction rather than by control truncation. Its wide layout is one row; at
-the 900 pt minimum window, `ViewThatFits` moves secondary actions to an
-icon-only second row while keeping the elapsed clock horizontal and Stop
-visible beside it. The focused external-recording XCUITest enforces those
+construction rather than by control truncation. Three controls stay visible
+(Translate, Apuntador, Catch me up) and the rest sit in one More panel (a popover)
+with their state shown as switches. Its wide layout is one row; at the 900 pt minimum window,
+`ViewThatFits` moves secondary actions to an icon-only second row while
+keeping the elapsed clock horizontal and Stop visible beside it. The focused external-recording XCUITest enforces those
 geometric invariants in both locales.
 
 The live transcript has reader-owned scroll state independent from the

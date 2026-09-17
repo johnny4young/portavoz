@@ -277,6 +277,82 @@ extension XCUIApplication {
         descendants(matching: .any)[identifier]
     }
 
+    /// Privacy and action history live behind the activity chip under a
+    /// meeting's title; the popover carries the auditable detail.
+    @MainActor
+    func openMeetingActivity(
+        timeout: TimeInterval = 10,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let popover = control(withIdentifier: "detail-activity-popover")
+        if !popover.exists {
+            // A sheet that is still going away leaves an unmappable host in
+            // the tree and makes the chip's own hit test throw on the hosted
+            // runner; let every sheet and dialog finish first.
+            guard waitForUITestCondition(timeout: timeout, {
+                self.sheets.count == 0 && self.dialogs.count == 0
+            }) else {
+                XCTFail("a sheet or dialog never closed before the activity chip", file: file, line: line)
+                return popover
+            }
+            let chip = buttons["detail-privacy-receipt"]
+            guard chip.waitForExistenceFast(timeout: timeout),
+                  chip.waitForStableFrame(timeout: timeout)
+            else {
+                XCTFail("the header never offered the activity chip", file: file, line: line)
+                return popover
+            }
+            chip.click()
+        }
+        if !popover.waitForExistenceFast(timeout: 5) {
+            XCTFail("the activity popover never opened from the chip", file: file, line: line)
+        }
+        return popover
+    }
+
+    /// Secondary recording actions live in the More panel; a journey that
+    /// needs one opens the panel first and gets the control back.
+    @MainActor
+    func recordingMoreItem(
+        _ identifier: String,
+        timeout: TimeInterval = 8,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let panel = control(withIdentifier: "recording-more-panel")
+        if !panel.exists {
+            let more = control(withIdentifier: "recording-more")
+            guard more.waitForHittable(timeout: timeout) else {
+                XCTFail("the recording bar never offered its More panel", file: file, line: line)
+                return panel
+            }
+            more.click()
+            _ = panel.waitForExistenceFast(timeout: timeout)
+        }
+        let item = panel.descendants(matching: .any)[identifier]
+        if !item.waitForHittable(timeout: timeout) {
+            XCTFail("the More panel never offered \(identifier)", file: file, line: line)
+        }
+        return item
+    }
+
+    /// Closes the More panel when it is open. Escape goes through the owned
+    /// keyboard admission (the popover is not a sheet, so no modal anchor);
+    /// a synthesized outside click is swallowed by the popover instead.
+    @MainActor
+    @discardableResult
+    func dismissRecordingMorePanel(bundleIdentifier: String) -> UITestKeyboardAdmission {
+        let panel = control(withIdentifier: "recording-more-panel")
+        guard panel.exists else { return .admitted }
+        let admission = typeKeyIfOwned(
+            .escape, modifierFlags: [], bundleIdentifier: bundleIdentifier)
+        if admission == .admitted {
+            _ = panel.waitForDisappearance(timeout: 3)
+        }
+        return admission
+    }
+
     /// The live assist area shows one panel at a time (D504), so a journey
     /// that asserts a panel must open its tab first. Fails with the tab name
     /// rather than letting the panel's own assertion time out.

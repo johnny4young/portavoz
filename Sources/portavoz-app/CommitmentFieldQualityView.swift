@@ -21,7 +21,7 @@ struct CommitmentFieldQualityView: View {
             .frame(maxWidth: .infinity, minHeight: 180)
         case .failed:
             ContentUnavailableView {
-                Label("Couldn’t load quality signals", systemImage: "exclamationmark.triangle")
+                Label("Couldn’t load quality signals", systemImage: PVSymbol.warning)
             } description: {
                 Text("Your reviews are still safe on this Mac.")
             } actions: {
@@ -65,7 +65,7 @@ private extension CommitmentFieldQualityView {
                     detail: ownerDetail(scorecard.overall),
                     identifier: "commitment-quality-owner")
                 metricCard(
-                    title: "Evidence coverage",
+                    title: "Source coverage",
                     value: percent(scorecard.overall.evidenceCoverage),
                     detail: evidenceDetail(scorecard.overall),
                     identifier: "commitment-quality-evidence")
@@ -85,9 +85,9 @@ private extension CommitmentFieldQualityView {
 
     var qualityNotice: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Private quality check", systemImage: "lock.shield.fill")
+            Label("Private quality check", systemImage: PVSymbol.privacy)
                 .font(.headline)
-            Text("Rolling 90-day evidence from suggestions you actually reviewed.")
+            Text("Last 90 days of suggestions you reviewed.")
                 .foregroundStyle(.secondary)
             Label("Advisory only — no threshold or automation uses these numbers.",
                   systemImage: "info.circle")

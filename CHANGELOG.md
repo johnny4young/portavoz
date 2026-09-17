@@ -4,6 +4,36 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## September 16, 2026
+
+- **⚡ Automations, at a glance** — every automation shows its switch and when it last ran; the list of things "coming later" is gone.
+
+- **👋 Setup shows what happens during a meeting** — a new onboarding step introduces Apuntador, Radar and Automations in one line each, with an example card and the Apuntador switch right there.
+
+- **🔎 Ask, Radar and the library, tidier** — Ask puts the question box above the answers and lists every source on one line; Radar shows reminders as a chip and keeps each commitment's history behind one click; Import moved into the record button's menu and meeting rows no longer start with a date.
+
+- **🌅 Today leads with your next meeting** — the next call is the hero with its countdown, brief and record button; Ask is a field you can type in with three ready questions; to-dos and recent meetings sit side by side. The week's numbers moved to Insights.
+
+- **🗨️ Apuntador always says what it's doing** — a chip beside the assist tabs reads Listening, Questions only, Off or Unavailable, with the one action that changes it. Translated lines show a small mark instead of repeating the language on every line.
+
+- **📣 One line of status while you record** — instead of a stack of banners, the recording shows the one thing that matters now with its action; anything else waits behind "N more".
+
+- **🎛️ A calmer recording bar** — Translate, Apuntador and Catch me up stay in view; Proactive, Interview, Suggest a question and the mini panel wait in a More menu that shows what is on.
+
+- **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador now live with Intelligence, sync and background activity with Your data. Each control keeps one short line; the long version opens from "How it works". Apuntador shows one status: ready, questions only, or unavailable.
+
+- **🗂️ Three lenses beside the transcript** — People, Apuntador and Chapters now share one always-present side column; pick the lens you need instead of scrolling past the others. Privacy and action history moved to a small chip under the title that opens on click.
+
+- **📐 The meeting page fits your screen** — the summary, commitments and notes take only the space they need, so the transcript gets the rest of the window instead of a fixed box. Long material still scrolls in place, and the player stays put at the bottom.
+
+- **🚦 Warnings look different from errors** — an orange circle means "still working, keep an eye on it"; a red triangle means "stopped". Recording banners, the error screen and Today use the same code, buttons carry an icon, and tooltips start with what the control does.
+
+- **🎯 One icon per idea** — Today, Radar, Apuntador, Automations, privacy, retry and history each keep one icon across the whole app, and the ✦ spark now only marks text Portavoz generated.
+
+- **🔒 One privacy line, not five** — the sidebar chip "On your Mac" is now the only privacy reminder in the window; click it for the short version and a link to your activity log. Today, Insights, the menu bar, onboarding and Settings stop repeating it.
+
+- **🧹 Plainer words everywhere** — Portavoz stops talking like its own source code: "sources" instead of "evidence", "activity" instead of "receipts", one short privacy line instead of three, and tooltips you can read in one glance. The in-meeting assistant is Apuntador in both languages, and Suggested actions are now Automations.
+
 ## 1.0.1 — September 15, 2026
 
 **Recording starts on every Mac.**

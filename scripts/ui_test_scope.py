@@ -64,6 +64,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "library": (
         test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
+        test_id("LibraryUITests", "testPrivacyChipOpensTheActivityLogInYourData"),
         test_id("LibraryUITests", "testSeededMeetingsGroupByRecency"),
         test_id("LibraryUITests", "testActiveRecordingRemainsReachableAfterBrowsingTheLibrary"),
     ),

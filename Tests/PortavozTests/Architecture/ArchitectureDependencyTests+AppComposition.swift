@@ -1881,7 +1881,7 @@ extension ArchitectureDependencyTests {
                 + "        .id(objective.id)"))
         // Objective reveal behavior belongs to the real-app single/batched
         // arrival journeys, not an assertion freezing the predicate's spelling.
-        XCTAssertTrue(recording.contains("RecordingAssistPanel(controller: controller)"))
+        XCTAssertTrue(recording.contains("RecordingAssistPanel(\n                    controller: controller,"))
         XCTAssertFalse(
             recording.contains(".frame(maxHeight: 260)"),
             "the assist area must grow with the window, not sit at a pinned height")
@@ -1980,8 +1980,11 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(view.contains("MeetingDetailFlowHost("))
         XCTAssertTrue(view.contains("MeetingDetailPlaybackNavigation()"))
         XCTAssertTrue(view.contains("MeetingDetailArtifactsSection"))
-        XCTAssertTrue(artifacts.contains(
-            ".frame(minHeight: 180, idealHeight: 240, maxHeight: 240)"))
+        XCTAssertTrue(artifacts.contains(".onGeometryChange(for: CGFloat.self)"))
+        XCTAssertTrue(artifacts.contains(".frame(height: resolvedHeight)"))
+        XCTAssertFalse(artifacts.contains("maxHeight: 240"), "content decides the height (D536)")
+        XCTAssertTrue(view.contains("GeometryReader { column in"))
+        XCTAssertTrue(view.contains("MeetingDetailArtifactsSection(columnHeight: column.size.height)"))
         XCTAssertTrue(view.contains(".layoutPriority(1)"))
         XCTAssertTrue(flowHost.contains("MeetingDetailRefineReviewSheet("))
         XCTAssertTrue(flowHost.contains("TranscriptCorrectionEditor("))
@@ -2036,6 +2039,42 @@ extension ArchitectureDependencyTests {
             "AudioCaptureKit", "services.", "store."
         ] {
             XCTAssertFalse(coordinatorSources.contains(forbidden), forbidden)
+        }
+    }
+
+    /// D536 rule 2: one SF Symbol per concept. Views name concepts through
+    /// `PVSymbol`; `sparkles` is reserved for the generated-content chip.
+    func testSymbolsAreDeclaredOncePerConcept() throws {
+        let design = try Self.contents(of: "Sources/portavoz-app/PVDesign.swift")
+        XCTAssertTrue(design.contains("enum PVSymbol"))
+        for concept in [
+            "today", "ask", "insights", "radar", "apuntador", "apuntadorOff", "generate", "proactive",
+            "automations", "intelligence", "privacy", "success", "warning", "error",
+            "retry", "history", "record", "stop"
+        ] {
+            XCTAssertTrue(design.contains("static let \(concept) = \""), concept)
+        }
+
+        let sparkleOwners = try Self.sourceMatches(
+            under: "Sources/portavoz-app", pattern: #""sparkles""#)
+        XCTAssertEqual(sparkleOwners, ["ChipLabel.swift"], "sparkles marks generated content only")
+
+        let retired = [
+            "sun.max", "scope", "lock.fill", "lock.shield.fill", "lock.shield",
+            "network.badge.shield.half.filled", "arrow.triangle.2.circlepath",
+            "exclamationmark.arrow.triangle.2.circlepath", "arrow.clockwise",
+            "clock.arrow.trianglehead.counterclockwise.rotate.90", "clock.arrow.circlepath",
+            "exclamationmark.triangle.fill", "exclamationmark.triangle",
+            "wand.and.stars.inverse", "wand.and.stars", "sparkle",
+            "sparkles.rectangle.stack.fill", "questionmark.bubble.fill",
+            "questionmark.bubble", "record.circle", "stop.circle.fill", "stop.fill",
+            "checkmark.seal.fill", "checkmark.seal", "checkmark.circle.fill"
+        ]
+        for literal in retired {
+            let owners = try Self.sourceMatches(
+                under: "Sources/portavoz-app",
+                pattern: "\"" + NSRegularExpression.escapedPattern(for: literal) + "\"")
+            XCTAssertEqual(owners.filter { $0 != "PVDesign.swift" }, [], literal)
         }
     }
 }

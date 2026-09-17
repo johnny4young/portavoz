@@ -17,7 +17,7 @@ struct MeetingDetailSummaryPlaceholder: View {
         VStack(alignment: .leading, spacing: 6) {
             abandonedNotice
             Button(action: generate) {
-                Label("Generate summary", systemImage: "sparkles")
+                Label("Generate summary", systemImage: PVSymbol.generate)
             }
             .accessibilityIdentifier("detail-generate-summary")
         }

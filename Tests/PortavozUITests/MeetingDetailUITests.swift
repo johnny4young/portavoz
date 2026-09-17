@@ -31,6 +31,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.staticTexts["Scale baseline summary revision 1."]
                 .waitForExistenceFast(timeout: 15),
             "the 5,000-segment detail must render its initial summary")
+        selectRailTab("chapters", in: app)
         XCTAssertTrue(
             app.control(withIdentifier: "detail-chapters").waitForExistenceFast(timeout: 10),
             "the scale detail must complete its chapter projection")
@@ -76,6 +77,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 continueEnvironmentKey:
                     "PORTAVOZ_UI_TEST_SCALE_SUMMARY_CONTINUE_PATH"),
             "the test must release the summary update only after observing revision 1")
+        selectRailTab("chapters", in: app)
         XCTAssertTrue(
             app.control(withIdentifier: "detail-chapters").waitForExistenceFast(timeout: 15),
             "the 20,000-segment detail must complete its chapter projection")
@@ -98,6 +100,35 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             try waitForEvidenceNavigation(in: app, selected: false),
             "reset must leave the cited timestamp AND deselect the source row")
+    }
+
+    /// The rail shows one lens at a time; tests name the lens they need.
+    @MainActor
+    private func selectRailTab(_ tab: String, in app: XCUIApplication) {
+        let button = app.buttons["detail-rail-tab-\(tab)"]
+        XCTAssertTrue(
+            button.waitForHittable(timeout: 10),
+            "the rail must offer the \(tab) lens")
+        button.click()
+    }
+
+    /// Privacy and action history live behind the activity chip under the
+    /// title; the popover carries the auditable detail.
+    @MainActor
+    private func openActivity(in app: XCUIApplication) -> XCUIElement {
+        app.openMeetingActivity()
+    }
+
+    @MainActor
+    private func closeActivity(in app: XCUIApplication) {
+        let popover = app.control(withIdentifier: "detail-activity-popover")
+        guard popover.exists else { return }
+        // Escape closes a transient popover; it is not a sheet, so the
+        // keyboard admission rule needs no modal anchor.
+        typeKey(.escape, modifierFlags: [], in: app)
+        XCTAssertTrue(
+            popover.waitForDisappearance(timeout: 5),
+            "Escape must close the activity popover")
     }
 
     @MainActor
@@ -206,6 +237,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertFalse(
             app.buttons["detail-thin-summary-suggestion"].exists,
             "a stale summary must not compete with an unrelated thin-summary suggestion")
+        selectRailTab("apuntador", in: app)
         XCTAssertTrue(
             app.control(
                 withIdentifier:
@@ -231,6 +263,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             simulateApuntadorRefreshSuccess: true)
         defer { app.terminate() }
 
+        selectRailTab("apuntador", in: app)
         let refresh = app.buttons["detail-apuntador-refresh"]
         XCTAssertTrue(
             refresh.waitForExistenceFast(timeout: 10),
@@ -263,6 +296,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             simulateSequoiaCapabilities: true)
         defer { app.terminate() }
 
+        selectRailTab("apuntador", in: app)
         let refresh = app.buttons["detail-apuntador-refresh"]
         XCTAssertTrue(
             refresh.waitForStableFrame(timeout: 10),
@@ -649,27 +683,24 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "the recovery deep link must finish search editing without changing its destination")
         XCTAssertEqual(app.textFields["settings-search-field"].value as? String, "")
 
-        let voiceCategory = app.buttons["settings-category-voice"]
-        XCTAssertTrue(
-            voiceCategory.waitForStableFrame(timeout: 5),
-            "the Voice category must expose its actual button hit target")
-        voiceCategory.click()
         let status = app.control(withIdentifier: "settings-apuntador-status")
         XCTAssertTrue(
             status.waitForExistenceFast(timeout: 5),
-            "the voice pane must explain Apuntador's cross-version capability")
+            "the Intelligence pane must explain Apuntador's cross-version capability")
         let toggle = app.control(withIdentifier: "settings-apuntador-enabled")
         XCTAssertTrue(
             toggle.exists,
             "Sequoia must expose the bundled detector instead of a dead platform gate")
         let expectedDetectionStatus = UITestLocale.environmentLocale == "es"
-                ? "La detección de preguntas del Apuntador está lista en este Mac."
-                : "Apuntador question detection is ready on this Mac."
+                ? "Apuntador: solo preguntas"
+                : "Apuntador: questions only"
         let detectionStatus = try accessibleText(of: status)
         XCTAssertTrue(
             detectionStatus.contains(expectedDetectionStatus),
             "the status must distinguish working detection from optional answer generation; "
                 + "saw '\(detectionStatus)'")
+        let cause = app.control(withIdentifier: "settings-apuntador-status-cause")
+        XCTAssertTrue(cause.exists, "one cause line must follow the status")
         attachScreenshot(of: app, named: "sequoia-apuntador-requirements")
     }
 
@@ -707,13 +738,14 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 10),
             "the right rail must show meeting health")
         XCTAssertTrue(
-            secondaryRail.descendants(matching: .any)["detail-privacy-receipt"]
-                .waitForExistenceFast(timeout: 10),
-            "the right rail must show the local privacy receipt")
+            app.buttons["detail-privacy-receipt"].waitForExistenceFast(timeout: 10),
+            "the header must show the local privacy chip")
+        let activity = openActivity(in: app)
         XCTAssertTrue(
-            secondaryRail.descendants(matching: .any)["privacy-remote-event-0"].exists,
+            activity.descendants(matching: .any)["privacy-remote-event-0"]
+                .waitForExistenceFast(timeout: 5),
             "the fixture's content-free remote summary attempt must be auditable")
-        let syncDisclosure = secondaryRail.descendants(matching: .any)[
+        let syncDisclosure = activity.descendants(matching: .any)[
             "detail-privacy-receipt-sync"]
         XCTAssertTrue(
             syncDisclosure.exists,
@@ -723,15 +755,18 @@ final class MeetingDetailUITests: PortavozUITestCase {
             : "This meeting's text was stored in encrypted fields in your private iCloud database."
         XCTAssertTrue(
             syncDisclosure.waitForValue(expectedSyncDescription, timeout: 5))
+        closeActivity(in: app)
         XCTAssertTrue(
             app.control(withIdentifier: "detail-refine").exists,
             "the action row must offer the refine control")
         XCTAssertTrue(
             app.control(withIdentifier: "detail-transcript-section").exists,
             "the transcript must expose its correction-ready reading boundary")
+        selectRailTab("chapters", in: app)
         XCTAssertTrue(
-            secondaryRail.descendants(matching: .any)["detail-chapters"].exists,
-            "the right rail must show the ✦ chapters (the seed has a second chapter)")
+            secondaryRail.descendants(matching: .any)["detail-chapters"]
+                .waitForExistenceFast(timeout: 5),
+            "the chapters lens must show the ✦ chapters (the seed has a second chapter)")
         let laterChapter = secondaryRail.descendants(matching: .any)["chapter-200"]
         XCTAssertTrue(
             laterChapter.exists,
@@ -748,6 +783,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         laterChapter.click()
         let currentTime = app.control(withIdentifier: "player-current-time")
         XCTAssertTrue(currentTime.waitForValueOtherThan("0:00", timeout: 5))
+        selectRailTab("apuntador", in: app)
         XCTAssertTrue(
             secondaryRail.descendants(matching: .any)["detail-apuntador"]
                 .waitForExistenceFast(timeout: 5),
@@ -841,6 +877,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(try waitForEvidenceNavigation(in: app, selected: true))
         attachScreenshot(of: app, named: "meeting-detail-summary-evidence")
 
+        selectRailTab("chapters", in: app)
         let resetChapter = app.control(withIdentifier: "chapter-0")
         let playbackToggle = app.control(withIdentifier: "player-play-pause")
         try resetEvidenceNavigation(
@@ -891,6 +928,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             playbackToggle: playbackToggle,
             in: app)
 
+        selectRailTab("apuntador", in: app)
         XCTAssertTrue(
             app.control(withIdentifier: "detail-apuntador-section")
                 .waitForExistenceFast(timeout: 10),
@@ -1021,6 +1059,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             submit.waitForStableFrame(timeout: 5),
             "the confirmation sheet must expose a stable submit button")
         submit.click()
+        _ = openActivity(in: app)
         let receipt = app.control(withIdentifier: "skill-receipt-recap-draft")
         guard receipt.waitForExistenceFast(timeout: 10) else {
             XCTFail("a confirmed run must leave its auditable receipt")
@@ -1034,6 +1073,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             copied,
             "\(subject)\n\n\(previewBody)",
             "the clipboard must contain the exact artifact the user approved")
+        closeActivity(in: app)
 
         // 3 · A succeeded recap retires only that offer; external and export
         // adapters remain independent user intents.
@@ -1154,6 +1194,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertEqual(submit.label, expectedSubmit)
         submit.click()
 
+        _ = openActivity(in: app)
         let receipt = app.control(
             withIdentifier: "skill-receipt-email-recap-draft")
         XCTAssertTrue(
@@ -1173,6 +1214,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.state,
             .runningForeground,
             "UI automation must never launch the host email application")
+        closeActivity(in: app)
 
         menu.click()
         XCTAssertFalse(
@@ -1245,6 +1287,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(dismissResult.exists)
         dismissResult.click()
 
+        _ = openActivity(in: app)
         let receipt = app.control(
             withIdentifier: "skill-receipt-secret-gist-publish")
         XCTAssertTrue(
@@ -1267,6 +1310,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             remoteReceiptTexts.contains { $0.contains("api.github.com") },
             "the egress ledger must include api.github.com; got: \(remoteReceiptTexts)")
         let remoteCountAfterGist = remoteReceipts.count
+        closeActivity(in: app)
 
         let todos = app.control(withIdentifier: "summary-tab-todos")
         XCTAssertTrue(todos.waitForHittable(timeout: 5))
@@ -1336,6 +1380,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "https://github.com/portavoz/demo/issues/42"))
         app.buttons["github-issue-result-dismiss"].click()
 
+        _ = openActivity(in: app)
         let issueReceipt = app.control(
             withIdentifier: "skill-receipt-github-issue-create")
         XCTAssertTrue(issueReceipt.waitForExistenceFast(timeout: 10))
@@ -1458,6 +1503,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(app.prepareForInteraction())
         XCTAssertTrue(submit.waitForStableFrame(timeout: 5))
         submit.click()
+        _ = openActivity(in: app)
         let receipt = app.control(withIdentifier: "skill-receipt-recap-draft")
         XCTAssertTrue(
             receipt.waitForExistenceFast(timeout: 10),

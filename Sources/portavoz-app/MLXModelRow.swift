@@ -13,7 +13,7 @@ struct MLXModelRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: downloaded ? "checkmark.circle.fill" : "arrow.down.circle")
+            Image(systemName: downloaded ? PVSymbol.success : "arrow.down.circle")
                 .foregroundStyle(downloaded ? Color.green : Color.secondary)
             if downloaded {
                 Text("Qwen3.5 4B · downloaded · 3 GB").font(.caption)

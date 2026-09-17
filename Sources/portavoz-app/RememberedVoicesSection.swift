@@ -58,8 +58,7 @@ struct RememberedVoicesSection: View {
                     if !voices.isEmpty {
                         Text(
                             // One-line UI help text.
-                            // swiftlint:disable:next line_length
-                            "Encrypted numeric fingerprints of voices you chose to remember, used only to suggest names in future meetings — never audio, never synced. Right-click a name to forget one voice."
+                            "Voices you chose to remember, used to suggest names. Right-click a name to forget it."
                         )
                         .font(.caption)
                         .foregroundStyle(.secondary)

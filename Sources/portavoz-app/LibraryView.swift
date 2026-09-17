@@ -11,10 +11,13 @@ struct LibraryView: View {
     let recordingActive: Bool
     let onReturnToRecording: () -> Void
     let onOpenSearchHit: (LibrarySearchHit) -> Void
+    /// Opens Settings on Your data, where the activity log lives.
+    let onOpenActivity: () -> Void
 
     /// To-dos fold away when the user wants a lean sidebar; the choice
     /// survives relaunches.
     @AppStorage("todosSectionExpanded") private var todosExpanded = true
+    @State private var showsPrivacyNote = false
     @Environment(\.colorScheme) private var colorScheme
     private let briefTimer = Timer.publish(every: 300, on: .main, in: .common).autoconnect()
 
@@ -48,8 +51,6 @@ struct LibraryView: View {
 
             LibraryNavigationControls(
                 route: route,
-                importing: state.importStatus != nil,
-                onImport: chooseAudioToImport,
                 onNavigate: { route = $0 })
                 .padding(.horizontal, 12)
                 .padding(.top, 12)
@@ -74,7 +75,7 @@ struct LibraryView: View {
                 .controlSize(.small)
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
-                .help("Shows today's and tomorrow's meetings here, with a prep brief for each. Read-only, on-device.")
+                .help("Shows today's and tomorrow's meetings with a brief for each.")
             }
 
             searchField
@@ -226,7 +227,7 @@ struct LibraryView: View {
         // meeting routes. Prevent AppKit's row-selection gesture from racing
         // the async brief action and opening the adjacent meeting instead.
         .selectionDisabled()
-        .help("Brief for this meeting: who's coming, related meetings, open to-dos")
+        .help("See who's coming, related meetings and open to-dos")
         .accessibilityIdentifier("library-upcoming-\(event.id)")
     }
 
@@ -347,7 +348,7 @@ extension LibraryView {
     /// The voice mix remains a separate, meaningful recording cue.
     private func meetingRow(_ meeting: Meeting) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(meeting.title).lineLimit(1)
+            Text(MeetingRowTitle.display(meeting.title)).lineLimit(1)
             Text(meeting.startedAt.formatted(date: .abbreviated, time: .shortened))
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -370,7 +371,38 @@ extension LibraryView {
     /// The primary action, styled to the design system: an indigo→violet
     /// gradient pill whose leading glyph is a mini-waveform with your amber
     /// peak — the brand mark on the button you press most.
+    /// The primary action plus a ▾ menu for the rare ones (Import), so the
+    /// navigation list stays destinations only.
     private var recordButton: some View {
+        HStack(spacing: 4) {
+            recordAction
+            Menu {
+                Button {
+                    chooseAudioToImport()
+                } label: {
+                    Label("Import audio…", systemImage: "square.and.arrow.down")
+                }
+                .disabled(state.importStatus != nil)
+                .accessibilityIdentifier("library-import-audio-button")
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 24, height: 34)
+                    .background(
+                        PVDesign.brandViolet.opacity(0.9),
+                        in: RoundedRectangle(cornerRadius: 10))
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .accessibilityLabel(L10n.text("More recording options"))
+            .help(L10n.text("Transcribe an audio file (.m4a, .wav, .mp3) as a new meeting"))
+            .accessibilityIdentifier("library-record-menu")
+        }
+    }
+
+    private var recordAction: some View {
         Button {
             if recordingActive {
                 onReturnToRecording()
@@ -415,6 +447,26 @@ extension LibraryView {
             : L10n.text("Start a new recording"))
     }
 
+    /// The short privacy note behind the sidebar chip.
+    private var privacyNote: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Nothing is sent unless you ask for it. Every transfer is logged here.")
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("See activity") {
+                showsPrivacyNote = false
+                onOpenActivity()
+            }
+            .accessibilityIdentifier("library-privacy-activity")
+        }
+        .padding(14)
+        .frame(width: 280)
+        // A container, so the note's identifier does not stamp the
+        // See activity button and hide its own.
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("library-privacy-note")
+    }
+
     /// Library filtering stays distinct from the global Command-K palette.
     private var searchField: some View {
         HStack(spacing: 7) {
@@ -433,16 +485,33 @@ extension LibraryView {
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
     }
 
-    /// The standing privacy line, pinned under the library — the product's
-    /// core claim, always in view.
+    /// The product's one privacy promise, pinned under the library (D536).
+    /// Every other surface trusts this chip instead of repeating the claim;
+    /// the detail lives one click away, in Settings ▸ Your data.
     private var localFooter: some View {
-        HStack(spacing: 7) {
-            Image(systemName: "lock.shield")
-                .foregroundStyle(.secondary)
+        HStack {
+            // Bordered, not plain: the hosted runner's hit test maps a
+            // bordered button reliably in every locale.
+            Button {
+                showsPrivacyNote.toggle()
+            } label: {
+                Label("On your Mac", systemImage: PVSymbol.privacy)
+                    .font(.caption2)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.mini)
+            .tint(.secondary)
+            .fixedSize()
+            .accessibilityIdentifier("library-privacy-chip")
+            // A one-point sibling anchors the note: anything attached to the
+            // chip's own bounds is an unmappable element under hit tests on
+            // the hosted runner.
+            Color.clear
+                .frame(width: 1, height: 1)
                 .accessibilityHidden(true)
-            Text("Local-first · transfers require opt-in")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                .popover(isPresented: $showsPrivacyNote, arrowEdge: .top) {
+                    privacyNote
+                }
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 14)

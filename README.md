@@ -11,9 +11,9 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 ![Platform](https://img.shields.io/badge/platform-macOS%2014.4%2B-lightgrey)
 ![Swift](https://img.shields.io/badge/Swift-6-orange)
 
-![Today: this week's numbers, the agenda with a brief and a linked recording per event, open to-dos, the meetings to pick back up, and one-click questions for Ask](assets/screenshots/today.png)
+![Today: the next meeting with its countdown, brief and linked recording, an Ask field with three ready questions, open to-dos beside the meetings to pick back up](assets/screenshots/today.png)
 
-![A current Portavoz meeting: dismissible AI suggestions, colored speaker pills, a tabbed summary, transcript, clear playback, privacy receipt, meeting health, chapters, and Apuntador](assets/screenshots/meeting-detail.png)
+![A current Portavoz meeting: dismissible ✦ suggestions in one row, colored speaker pills, an activity chip, a tabbed summary, transcript, clear playback, and a side column with People, Apuntador and Chapters lenses](assets/screenshots/meeting-detail.png)
 
 <table>
 <tr>
@@ -33,12 +33,12 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 ## Why Portavoz
 
 - **Who-said-what, structurally.** Microphone and system audio are captured as separate channels: everything on your mic is *you*, by hardware truth. Remote voices are separated on-device with speaker diarization, then named from transcript, calendar, or encrypted voice evidence only after you confirm the suggestion. A separately confirmed, private person link can remember that human across meetings without silently merging people who share a name.
-- **Local-first, with receipts.** Transcription, diarization, and summaries run on-device by default. Remote providers require explicit configuration or confirmation, and each meeting shows a content-free privacy receipt for tracked on-device processing and remote-transfer attempts. Local Ollama remains visibly local.
+- **On your Mac, with an activity log.** Transcription, diarization, and summaries run on-device by default. Remote providers require explicit configuration or confirmation, and each meeting's activity chip shows, without content, what stayed on your Mac and any remote-transfer attempt. Local Ollama remains visibly local.
 - **Private when support is needed.** Export a redacted local support file without meeting text, generated output, prompts, secrets, full URLs, or paths. Stalled background work is visible in Meeting Detail and can be retried without replacing its durable safety evidence.
 - **Failures tell you what to do.** Recording Start/Stop failures keep a stable support reference and route you to retry, your preserved Library audio, or private local diagnostics instead of exposing a dependency error or ending at a generic alert.
 - **Bilingual by design.** Every speaker keeps the language they actually used, while summaries can independently follow the meeting or always use English or Spanish — with technical terms kept intact. Library search folds Latin accents and pairs common English/Spanish meeting terms. Ask shows exact bilingual citations immediately, then privately checks related meaning when Apple's local language assets are ready and generates an answer when Apple Intelligence is available.
 - **Listen back, not just read.** A synchronized player scrolls the transcript like song lyrics, colors your turns apart from theirs on the waveform, and defaults to a reversible clear mix that removes the loudspeaker copy from your mic without rewriting the recording. Export any span or compress every channel without removing an original until all outputs verify.
-- **A companion while you talk.** Opt-in live cards answer a factual question the room just asked, or nudge you when someone addressed you by name — on-device by default.
+- **Apuntador while you talk.** Opt-in live cards answer a factual question the room just asked, or nudge you when someone addressed you by name — on-device by default, with its state always visible.
 - **Built for developers.** Action items that become GitHub/Linear issues, decision records, a local MCP server so your AI tools can ask "what did I agree to yesterday?", native Siri/Shortcuts recording, and Shortcuts automation on meeting end.
 - **Open format.** Your meetings are SQLite you own, with Markdown, SRT, WebVTT, and portable `.portavoz` exports. No accounts, no lock-in.
 
@@ -101,7 +101,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 **Own your data**
 - **Open format** — a SQLite file you own, canonical Markdown, diarized SRT/WebVTT subtitles, and portable `.portavoz` bundles. Full-library backup reads one consistent snapshot, shows partial progress honestly, resumes safe interrupted work after relaunch, and publishes Markdown without replacing existing files; per-meeting bundles optionally include audio, and **trash** restores meetings before automatic purge after 30 days. No accounts, no lock-in.
 - **iCloud sync that asks first** *(next release; production field validation pending)* — optionally sync encrypted meeting text and portable metadata through your private iCloud database. Future changes and the existing library are separate choices; the existing-library pass yields to active recording and resumes from a durable checkpoint. Settings always shows this Mac's real state. Audio, local paths, voiceprints, secrets, and embeddings never sync, and Pause/Remove never delete your local meetings or remote records. Public enablement waits for the documented production-container and two-Mac release matrix.
-- **Privacy receipt** — every meeting explains whether tracked processing stayed on your Mac, a remote transfer was attempted, or iCloud acknowledged an encrypted private copy. It shows purpose, destination host, and time but no copied transcript, prompt, notes, summary, or action-item text. Upgraded libraries state the exact date tracking began instead of guessing about older activity.
+- **Activity chip** — every meeting explains whether tracked processing stayed on your Mac, a remote transfer was attempted, or iCloud acknowledged an encrypted private copy. It shows purpose, destination host, and time but no copied transcript, prompt, notes, summary, or action-item text. Upgraded libraries state the exact date tracking began instead of guessing about older activity.
 
 ## Benchmarks
 

@@ -41,7 +41,7 @@ struct MeetingActionItemsView: View {
                     "action-item-\(item.id.uuidString)-github")
                 .help(
                     // Keep this as one literal so localization validation sees it.
-                    "Review the repository, exact issue body, and transcript evidence before anything leaves this Mac.")
+                    "Review the repository, the issue body and its sources before sending.")
             }
         }
     }

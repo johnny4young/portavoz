@@ -12,6 +12,8 @@ struct RecordingCompanionCardsView: View {
     @Binding var presentations: [UUID: CompanionCardPresentation]
     /// The card lifted into the focus slot, so the list does not repeat it.
     let focused: UUID?
+    /// What the empty list says; the state chip decides it.
+    let emptyMessage: String
 
     private var rows: [CompanionCardWindow.Row] {
         CompanionCardWindow.rows(
@@ -24,8 +26,8 @@ struct RecordingCompanionCardsView: View {
         let rows = rows
         if rows.isEmpty {
             RecordingAssistEmptyState(
-                symbol: "questionmark.bubble",
-                message: L10n.text("Questions the meeting asks you show up here."))
+                symbol: PVSymbol.apuntador,
+                message: emptyMessage)
         } else {
             ScrollView {
                 // A plain stack, not a lazy one: the window bounds this list to
@@ -110,7 +112,7 @@ struct RecordingCompanionCardsView: View {
 
     private func header(_ row: CompanionCardWindow.Row, identity: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Label(row.card.question, systemImage: "questionmark.bubble.fill")
+            Label(row.card.question, systemImage: PVSymbol.apuntador)
                 .font(.callout.weight(.semibold))
                 .lineLimit(row.presentation == .full ? nil : 2)
             Spacer(minLength: 4)

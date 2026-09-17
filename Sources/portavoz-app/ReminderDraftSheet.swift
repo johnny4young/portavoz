@@ -18,7 +18,7 @@ struct ReminderDraftSheet: View {
             destination
             capabilities
             if let failure = confirmation?.failure {
-                Label(failure, systemImage: "exclamationmark.triangle.fill")
+                Label(failure, systemImage: PVSymbol.error)
                     .font(.callout)
                     .foregroundStyle(.red)
                     .fixedSize(horizontal: false, vertical: true)
@@ -97,7 +97,7 @@ private extension ReminderDraftSheet {
             VStack(alignment: .leading, spacing: 8) {
                 Label(
                     "Reminders access is off. Nothing was created.",
-                    systemImage: "lock.fill")
+                    systemImage: PVSymbol.privacy)
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("reminder-draft-access-denied")
                 HStack {
@@ -143,7 +143,7 @@ private extension ReminderDraftSheet {
         HStack(spacing: 6) {
             capabilityChip("reads one confirmed commitment")
             capabilityChip("creates one local reminder")
-            capabilityChip("nothing leaves this Mac")
+            capabilityChip("stays on your Mac")
         }
     }
 

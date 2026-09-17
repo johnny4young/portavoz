@@ -28,7 +28,7 @@ struct AskTopicMemoryView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Topic memory", systemImage: "checkmark.seal")
+            Label("Topic memory", systemImage: PVSymbol.success)
                 .font(.title2.bold())
                 .accessibilityIdentifier("ask-topic-title")
             Text(
@@ -69,7 +69,7 @@ struct AskTopicMemoryView: View {
             VStack(alignment: .leading, spacing: 8) {
                 statusRow(
                     "Could not search confirmed topics.",
-                    systemImage: "exclamationmark.triangle")
+                    systemImage: PVSymbol.warning)
                 Button("Try again") { model.retryTopicSearch() }
                     .accessibilityIdentifier("ask-topic-search-retry")
             }
@@ -246,13 +246,13 @@ struct AskTopicMemoryView: View {
     private var invalidEvidenceMessage: String {
         switch model.state.selectedJob {
         case .currentDecisions:
-            "Portavoz could not verify the returned decision evidence."
+            "Portavoz could not verify these decisions."
         case .firstConfirmedDiscussion:
-            "Portavoz could not verify the first discussion evidence."
+            "Portavoz could not verify the first discussion."
         case .decisionConflicts:
-            "Portavoz could not verify the decision change evidence."
+            "Portavoz could not verify these decision changes."
         case .changesSince:
-            "Portavoz could not verify the changes-since evidence."
+            "Portavoz could not verify these changes."
         }
     }
 
@@ -273,7 +273,7 @@ struct AskTopicMemoryView: View {
 extension AskTopicMemoryView {
     private func decisionCard(_ decision: AskMemoryDecision) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label(decision.statement, systemImage: "checkmark.seal.fill")
+            Label(decision.statement, systemImage: PVSymbol.success)
                 .font(.headline)
                 .accessibilityIdentifier(
                     "ask-topic-decision-\(decision.id.rawValue.uuidString)")
@@ -284,7 +284,7 @@ extension AskTopicMemoryView {
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
             Divider()
-            Text("Evidence")
+            Text("Sources")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
             ForEach(Array(orderedCitations(decision).enumerated()), id: \.offset) { index, citation in
@@ -314,7 +314,7 @@ extension AskTopicMemoryView {
         _ discussion: AskMemoryFirstDiscussion
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("First confirmed discussion", systemImage: "clock.arrow.circlepath")
+            Label("First confirmed discussion", systemImage: PVSymbol.history)
                 .font(.headline)
             Text(discussion.meetingTitle)
                 .font(.title3.weight(.semibold))
@@ -390,7 +390,7 @@ extension AskTopicMemoryView {
         VStack(alignment: .leading, spacing: 8) {
             statusRow(
                 message,
-                systemImage: "exclamationmark.triangle",
+                systemImage: PVSymbol.warning,
                 identifier: identifier)
             Button("Try again") { model.loadSelectedTopicMemory() }
                 .accessibilityIdentifier("ask-topic-load-retry")
@@ -470,39 +470,39 @@ extension AskTopicMemoryView {
     private var unavailableEvidenceMessage: String {
         switch model.state.selectedJob {
         case .currentDecisions:
-            "The matching decisions need current transcript evidence before Portavoz can show them."
+            "These decisions need an up-to-date transcript before Portavoz can show them."
         case .firstConfirmedDiscussion:
-            "The first confirmed discussion needs current transcript evidence before Portavoz can show it."
+            "The first discussion needs an up-to-date transcript before Portavoz can show it."
         case .decisionConflicts:
-            "The matching decision changes need current transcript evidence before Portavoz can show them."
+            "These decision changes need an up-to-date transcript before Portavoz can show them."
         case .changesSince:
-            "The matching changes since this meeting need current transcript evidence before Portavoz can show them."
+            "These changes need an up-to-date transcript before Portavoz can show them."
         }
     }
 
     private var omittedStaleMessage: LocalizedStringKey {
         switch model.state.selectedJob {
         case .currentDecisions:
-            "Some decisions with outdated evidence were omitted."
+            "Some decisions with outdated sources were left out."
         case .firstConfirmedDiscussion:
-            "Some discussions with outdated evidence were omitted."
+            "Some discussions with outdated sources were left out."
         case .decisionConflicts:
-            "Some decision changes with outdated evidence were omitted."
+            "Some decision changes with outdated sources were left out."
         case .changesSince:
-            "Some changes since this meeting with outdated evidence were omitted."
+            "Some changes with outdated sources were left out."
         }
     }
 
     private var omittedUnavailableMessage: LocalizedStringKey {
         switch model.state.selectedJob {
         case .currentDecisions:
-            "Some decisions without available evidence were omitted."
+            "Some decisions without sources were left out."
         case .firstConfirmedDiscussion:
-            "Some discussions without available evidence were omitted."
+            "Some discussions without sources were left out."
         case .decisionConflicts:
-            "Some decision changes without available evidence were omitted."
+            "Some decision changes without sources were left out."
         case .changesSince:
-            "Some changes since this meeting without available evidence were omitted."
+            "Some changes without sources were left out."
         }
     }
 }

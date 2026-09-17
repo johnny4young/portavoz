@@ -82,7 +82,7 @@ struct RecordingToolbar: View {
             }
             if companionAvailable {
                 Toggle(isOn: companionBinding) {
-                    Label("Apuntador", systemImage: "questionmark.bubble")
+                    Label("Apuntador", systemImage: PVSymbol.apuntador)
                 }
                 .toggleStyle(.button)
                 .controlSize(.small)
@@ -90,16 +90,17 @@ struct RecordingToolbar: View {
                 .accessibilityIdentifier("recording-companion")
                 .accessibilityHint(companionHelp)
             }
-            Toggle(isOn: proactiveAssistBinding) {
-                Label(L10n.text("Proactive"), systemImage: "sparkles")
+            Button {
+                controller.requestCatchUp()
+            } label: {
+                Label(L10n.text("Catch me up"), systemImage: PVSymbol.history)
             }
-            .toggleStyle(.button)
             .controlSize(.small)
             .help(L10n.text(
-                "Watches only open objectives and measured talk balance. It never opens the Web or takes action."))
-            .accessibilityIdentifier("recording-proactive-assist")
+                "Recap the last few minutes"))
+            .accessibilityIdentifier("recording-catch-up")
             .accessibilityHint(L10n.text(
-                "Watches only open objectives and measured talk balance. It never opens the Web or takes action."))
+                "Recap the last few minutes"))
             if controller.proactiveAssist.isEnabled {
                 Button {
                     controller.setProactiveAssistPaused(
@@ -116,58 +117,23 @@ struct RecordingToolbar: View {
                 .accessibilityValue(controller.proactiveAssist.isPaused
                     ? L10n.text("Paused") : L10n.text("Watching local signals"))
             }
-            Toggle(isOn: interviewAssistBinding) {
-                Label(L10n.text("Interview"), systemImage: "person.crop.rectangle.stack")
-            }
-            .toggleStyle(.button)
-            .controlSize(.small)
-            .help(L10n.text(
-                "Shows the current remote question and offers a pull-only answer from earlier cited captions."))
-            .accessibilityIdentifier("recording-interview-assist")
-            .accessibilityHint(L10n.text(
-                "Shows the current remote question and offers a pull-only answer from earlier cited captions."))
-            Button {
-                controller.requestCatchUp()
-            } label: {
-                Label(L10n.text("Catch me up"), systemImage: "clock.arrow.circlepath")
-            }
-            .controlSize(.small)
-            .help(L10n.text(
-                "A quick recap of the last few minutes — for when you zoned out or just joined."))
-            .accessibilityIdentifier("recording-catch-up")
-            .accessibilityHint(L10n.text(
-                "A quick recap of the last few minutes — for when you zoned out or just joined."))
-            Button {
-                controller.requestNextQuestion()
-            } label: {
-                Label(L10n.text("Suggest a question"), systemImage: "lightbulb")
-            }
-            .controlSize(.small)
-            .help(L10n.text(
-                "One or two questions worth asking next, grounded in the conversation and your open objectives."))
-            .accessibilityIdentifier("recording-next-question")
-            .accessibilityHint(L10n.text(
-                "One or two questions worth asking next, grounded in the conversation and your open objectives."))
-            Button(action: onCompact) {
-                Label("HUD", systemImage: "arrow.down.right.and.arrow.up.left")
-            }
-            .controlSize(.small)
-            .help(L10n.text(
-                "Floating mini panel with the timer and captions — records without covering your meeting"))
-            .accessibilityIdentifier("recording-hud")
-            .accessibilityHint(L10n.text(
-                "Floating mini panel with the timer and captions — records without covering your meeting"))
+            moreMenu
         }
     }
 
     private var companionHelp: String {
         L10n.text(
-            "Detects questions privately and suggests answers when an engine is available. It never answers for you.")
+            "Detects questions and suggests answers.")
+    }
+
+    /// Everything that is not needed every minute lives behind one menu.
+    private var moreMenu: some View {
+        RecordingMoreMenu(controller: controller, onCompact: onCompact)
     }
 
     private var stopButton: some View {
         Button(action: onStop) {
-            Label("Stop", systemImage: "stop.circle.fill")
+            Label("Stop", systemImage: PVSymbol.stop)
         }
         .controlSize(.small)
         .tint(.red)
@@ -179,23 +145,6 @@ struct RecordingToolbar: View {
         Binding(
             get: { controller.companionEnabled },
             set: { controller.companionEnabled = $0 }
-        )
-    }
-
-    private var interviewAssistBinding: Binding<Bool> {
-        Binding(
-            get: { controller.interviewAssist.isEnabled },
-            set: {
-                controller.interviewAssist.setEnabled(
-                    $0,
-                    captions: controller.captions)
-            })
-    }
-
-    private var proactiveAssistBinding: Binding<Bool> {
-        Binding(
-            get: { controller.proactiveAssist.isEnabled },
-            set: { controller.setProactiveAssistEnabled($0) }
         )
     }
 
@@ -250,5 +199,72 @@ private struct RecordingLevelMeter: View {
         guard level > 0.0001 else { return 0 }
         let decibels = 20 * log10(level)
         return CGFloat(max(0, min(1, (Double(decibels) + 60) / 60)))
+    }
+}
+
+/// The rest of the bar's actions live in one panel. It reads only the two
+/// opt-in flags, so caption updates that re-render the bar never rebuild it
+/// under the pointer, and its switches show their state plainly.
+private struct RecordingMoreMenu: View {
+    let controller: RecordingController
+    let onCompact: () -> Void
+
+    @State private var showsPanel = false
+
+    var body: some View {
+        Button {
+            showsPanel.toggle()
+        } label: {
+            Label(L10n.text("More"), systemImage: "ellipsis.circle")
+        }
+        .controlSize(.small)
+        .help(L10n.text("Proactive help, interview mode, a suggested question and the mini panel"))
+        .accessibilityIdentifier("recording-more")
+        .popover(isPresented: $showsPanel, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle(isOn: proactiveAssistBinding) {
+                    Label(L10n.text("Proactive"), systemImage: PVSymbol.proactive)
+                }
+                .toggleStyle(.switch)
+                .accessibilityIdentifier("recording-proactive-assist")
+                Toggle(isOn: interviewAssistBinding) {
+                    Label(L10n.text("Interview"), systemImage: "person.crop.rectangle.stack")
+                }
+                .toggleStyle(.switch)
+                .accessibilityIdentifier("recording-interview-assist")
+                Divider()
+                Button {
+                    showsPanel = false
+                    controller.requestNextQuestion()
+                } label: {
+                    Label(L10n.text("Suggest a question"), systemImage: "lightbulb")
+                }
+                .accessibilityIdentifier("recording-next-question")
+                Button {
+                    showsPanel = false
+                    onCompact()
+                } label: {
+                    Label(L10n.text("Floating mini panel"), systemImage: "arrow.down.right.and.arrow.up.left")
+                }
+                .accessibilityIdentifier("recording-hud")
+            }
+            .controlSize(.small)
+            .padding(14)
+            .frame(width: 260, alignment: .leading)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("recording-more-panel")
+        }
+    }
+
+    private var interviewAssistBinding: Binding<Bool> {
+        Binding(
+            get: { controller.interviewAssist.isEnabled },
+            set: { controller.interviewAssist.setEnabled($0, captions: controller.captions) })
+    }
+
+    private var proactiveAssistBinding: Binding<Bool> {
+        Binding(
+            get: { controller.proactiveAssist.isEnabled },
+            set: { controller.setProactiveAssistEnabled($0) })
     }
 }

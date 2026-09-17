@@ -14,6 +14,7 @@
     "Sources/portavoz-app/MeetingActionItemsView.swift",
     "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
     "Sources/portavoz-app/MeetingDetailActionSection.swift",
+    "Sources/portavoz-app/MeetingDetailActivityLine.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator+Commitments.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift",
@@ -839,6 +840,54 @@
       "occurrences": 1
     },
     {
+      "path": "Sources/portavoz-app/MeetingDetailActivityLine.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActivityLine.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-activity-popover\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActivityLine.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-privacy-receipt\")",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActivityLine.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-privacy-receipt-sync\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActivityLine.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"privacy-remote-event-\\(index)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActivityLine.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-receipt-\\(receipt.skillID)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActivityLine.swift",
+      "category": "presentation",
+      "source": ".popover(isPresented: $showsActivity, arrowEdge: .bottom) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActivityLine.swift",
+      "category": "state",
+      "source": "@State private var showsActivity = false",
+      "occurrences": 1
+    },
+    {
       "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
       "category": "presentation",
       "source": "createStructure: { flow.sheet = .newStructure },",
@@ -1243,6 +1292,12 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
       "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-suggestions-row\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+      "category": "identifier",
       "source": ".accessibilityIdentifier(presentation.acceptIdentifier)",
       "occurrences": 1
     },
@@ -1261,19 +1316,19 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
       "category": "control",
-      "source": "Button(\"Enhance in English\") { actions.enhance(.english, nil) }",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
-      "category": "control",
-      "source": "Button(\"Enhance in Spanish\") { actions.enhance(.spanish, nil) }",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
-      "category": "control",
       "source": "Button(\"Español\") { actions.enhance(.spanish, alternate.engine) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+      "category": "control",
+      "source": "Button(\"Tidy up in English\") { actions.enhance(.english, nil) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+      "category": "control",
+      "source": "Button(\"Tidy up in Spanish\") { actions.enhance(.spanish, nil) }",
       "occurrences": 1
     },
     {
@@ -1346,7 +1401,7 @@
       "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
       "category": "control",
       "source": "Button {",
-      "occurrences": 1
+      "occurrences": 2
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
@@ -1399,7 +1454,25 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
       "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-rail-tab-\\(tab.rawValue)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-rail-tabs\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "identifier",
       "source": ".accessibilityIdentifier(\"detail-secondary-rail\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(id)",
       "occurrences": 1
     },
     {
@@ -1501,31 +1574,19 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
       "category": "control",
-      "source": "Button(\"Open support diagnostics\", action: actions.openSupportDiagnostics)",
+      "source": "Button(\"Improve from saved audio\", action: actions.refineSavedAudio)",
       "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
       "category": "control",
-      "source": "Button(\"Refine saved audio\", action: actions.refineSavedAudio)",
+      "source": "Button(\"Open support diagnostics\", action: actions.openSupportDiagnostics)",
       "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"detail-open-support-diagnostics\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"detail-privacy-receipt\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"detail-privacy-receipt-sync\")",
       "occurrences": 1
     },
     {
@@ -1554,18 +1615,6 @@
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"privacy-remote-event-\\(index)\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"skill-receipt-\\(receipt.skillID)\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
       "category": "state",
       "source": "@State private var retryingProcessing = false",
       "occurrences": 1
@@ -1586,6 +1635,12 @@
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "state",
       "source": "@State private var playbackNavigation = MeetingDetailPlaybackNavigation()",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "state",
+      "source": "@State private var railTab = MeetingDetailRailTab.people",
       "occurrences": 1
     },
     {
@@ -3126,7 +3181,7 @@
           "anchor": "\"action-item-\\(item.id.uuidString)-github\""
         },
         {
-          "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+          "path": "Sources/portavoz-app/MeetingDetailActivityLine.swift",
           "anchor": "\"skill-receipt-\\(receipt.skillID)\""
         },
         {

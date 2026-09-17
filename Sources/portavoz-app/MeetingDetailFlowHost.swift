@@ -266,7 +266,7 @@ struct MeetingDetailFlowHost<Content: View>: View {
         } else {
             ContentUnavailableView(
                 "Couldn’t complete",
-                systemImage: "exclamationmark.triangle",
+                systemImage: PVSymbol.warning,
                 description: Text(
                     "This transcript line no longer matches the accepted recording."))
                 .accessibilityIdentifier("transcript-correction-unavailable")

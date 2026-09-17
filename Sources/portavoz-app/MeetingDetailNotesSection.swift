@@ -64,8 +64,8 @@ struct MeetingDetailNotesSection: View {
 
     private var enhancementMenu: some View {
         Menu {
-            Button("Enhance in Spanish") { actions.enhance(.spanish, nil) }
-            Button("Enhance in English") { actions.enhance(.english, nil) }
+            Button("Tidy up in Spanish") { actions.enhance(.spanish, nil) }
+            Button("Tidy up in English") { actions.enhance(.english, nil) }
             if let alternate = values.alternateEngine {
                 Divider()
                 Menu(alternate.label) {
@@ -74,7 +74,7 @@ struct MeetingDetailNotesSection: View {
                 }
             }
         } label: {
-            Label("Enhance", systemImage: "sparkles")
+            Label("Tidy up", systemImage: PVSymbol.generate)
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
@@ -86,28 +86,22 @@ struct MeetingDetailNotesSection: View {
     @ViewBuilder
     private var content: some View {
         if let enhanced = values.notes.enhanced {
-            ScrollView {
-                MarkdownText(text: enhanced.markdown)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(maxHeight: 220)
+            MarkdownText(text: enhanced.markdown)
+                .frame(maxWidth: .infinity, alignment: .leading)
         } else {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(values.notes.contextItems) { item in
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Text(values.presentation.clock(item.timestamp))
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.tertiary)
-                            Text(item.content)
-                                .font(.callout)
-                                .textSelection(.enabled)
-                        }
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(values.notes.contextItems) { item in
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(values.presentation.clock(item.timestamp))
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.tertiary)
+                        Text(item.content)
+                            .font(.callout)
+                            .textSelection(.enabled)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxHeight: 140)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
