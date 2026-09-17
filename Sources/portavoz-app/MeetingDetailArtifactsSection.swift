@@ -14,8 +14,12 @@ struct MeetingDetailArtifactsSection<Content: View>: View {
 
     @State private var contentHeight: CGFloat = 0
 
-    /// Half of the column, never below the smallest useful reading area.
-    private var heightCap: CGFloat { max(180, columnHeight * 0.5) }
+    /// Half of the column on a tall window; on a short one the transcript and
+    /// the playback dock keep their room first, and the material falls back to
+    /// the smallest useful reading area (the pre-1.1 floor).
+    private var heightCap: CGFloat {
+        max(180, min(columnHeight * 0.5, columnHeight - 360))
+    }
 
     /// The measured material, bounded by the cap; a not-yet-measured area
     /// keeps the smallest useful height so the first layout is never empty.

@@ -29,6 +29,10 @@ struct MeetingDetailActivityLine: View {
                     .foregroundStyle(chipTint)
             }
             .buttonStyle(.plain)
+            .contentShape(.rect)
+            // One element: a hit test on the chip must map to the button, not
+            // to a text child or the popover anchor.
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel(chipTitle)
             .accessibilityIdentifier("detail-privacy-receipt")
             .help(L10n.text("See what left this Mac and every action you confirmed"))

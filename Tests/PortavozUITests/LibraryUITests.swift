@@ -176,9 +176,8 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
 
         func openActivity() {
-            XCTAssertTrue(app.prepareForInteraction())
             let chip = app.buttons["library-privacy-chip"]
-            XCTAssertTrue(chip.waitForStableFrame(timeout: 10))
+            XCTAssertTrue(chip.waitForHittable(timeout: 10))
             chip.click()
             XCTAssertTrue(
                 app.control(withIdentifier: "library-privacy-note").waitForExistenceFast(timeout: 5),
@@ -566,10 +565,11 @@ final class LibraryUITests: PortavozUITestCase {
 
         // One panel open for both flips: the switch stays put while the
         // suggestions panel below it disappears and returns.
-        let proactiveSwitch = app.recordingMoreItem("recording-proactive-assist")
-        proactiveSwitch.click()
+        // Each flip goes through the helper: a slower host can close the
+        // panel between the two clicks, and the helper reopens it.
+        app.recordingMoreItem("recording-proactive-assist").click()
         XCTAssertTrue(proactivePanel.waitForDisappearance(timeout: 3))
-        proactiveSwitch.click()
+        app.recordingMoreItem("recording-proactive-assist").click()
         XCTAssertTrue(proactivePanel.waitForExistenceFast(timeout: 3))
         // The panel may stay open: the last assertion reads the suggestions
         // panel underneath, and teardown terminates the app.
