@@ -499,7 +499,7 @@ final class LibraryUITests: PortavozUITestCase {
             "the More menu must offer the next-question action")
         XCTAssertTrue(app.control(withIdentifier: "recording-hud").exists)
         app.recordingMoreItem("recording-proactive-assist").click()
-        typeKey(.escape, modifierFlags: [], in: app)
+        app.dismissRecordingMorePanel()
 
         // Suggestions only becomes a tab once this recording opts in.
         app.openAssistTab("proactive")
@@ -530,11 +530,14 @@ final class LibraryUITests: PortavozUITestCase {
         let running = isSpanish ? "Observando señales locales" : "Watching local signals"
         XCTAssertTrue(proactiveStatus.waitForLabelOrValue(running, timeout: 3))
 
-        app.recordingMoreItem("recording-proactive-assist").click()
+        // One panel open for both flips: the switch stays put while the
+        // suggestions panel below it disappears and returns.
+        let proactiveSwitch = app.recordingMoreItem("recording-proactive-assist")
+        proactiveSwitch.click()
         XCTAssertTrue(proactivePanel.waitForDisappearance(timeout: 3))
-        app.recordingMoreItem("recording-proactive-assist").click()
+        proactiveSwitch.click()
         XCTAssertTrue(proactivePanel.waitForExistenceFast(timeout: 3))
-        typeKey(.escape, modifierFlags: [], in: app)
+        app.dismissRecordingMorePanel()
         XCTAssertFalse(
             objectiveSuggestion.exists,
             "re-enabling the same recording must not repeat an emitted evidence signal")

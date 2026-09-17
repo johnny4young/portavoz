@@ -326,6 +326,18 @@ extension XCUIApplication {
         return item
     }
 
+    /// Closes the More panel when it is open. Bare Escape, not the admission
+    /// helper: the popover is not a sheet, so nothing else can own the key.
+    @MainActor
+    func dismissRecordingMorePanel() {
+        let panel = control(withIdentifier: "recording-more-panel")
+        guard panel.exists else { return }
+        // Escape closes the transient popover; a synthesized outside click
+        // is swallowed by the popover and only costs its disappearance wait.
+        typeKey(.escape, modifierFlags: [])
+        _ = panel.waitForDisappearance(timeout: 3)
+    }
+
     /// The live assist area shows one panel at a time (D504), so a journey
     /// that asserts a panel must open its tab first. Fails with the tab name
     /// rather than letting the panel's own assertion time out.

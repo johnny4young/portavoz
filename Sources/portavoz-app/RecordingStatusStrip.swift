@@ -113,15 +113,23 @@ struct RecordingStatusStrip: View {
             HStack(spacing: 6) {
                 Image(systemName: notice.symbol ?? notice.severity.symbol)
                     .accessibilityHidden(true)
+                // No vertical fixedSize here: inside the recording's flexible
+                // stack it would report a wrapped-at-zero-width height as the
+                // minimum and push the whole screen up.
                 Text(notice.message)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(3)
                     .accessibilityIdentifier(notice.id)
             }
+            // The message wraps inside the width it gets; the actions keep
+            // their intrinsic size, so a long Spanish notice never pushes its
+            // button past the window edge.
+            .frame(maxWidth: .infinity, alignment: .leading)
             .font(.caption.weight(.medium))
             .foregroundStyle(notice.severity.tint)
             ForEach(notice.actions, id: \.identifier) { action in
                 Button(action.title, action: action.perform)
                     .buttonStyle(.plain)
+                    .fixedSize()
                     .font(.caption2.weight(action.prominent ? .semibold : .medium))
                     .foregroundStyle(action.prominent ? notice.severity.tint : Color.secondary)
                     .accessibilityIdentifier(action.identifier)
