@@ -4,6 +4,17 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## 1.1.0 — September 17, 2026
+
+**Less noise, one place for everything.**
+
+- **🗨️ One Apuntador, always visible** — a chip beside the assist tabs says Listening, Questions only, Off or Unavailable with the one action that changes it; Settings shows the same status, and setup introduces Apuntador, Radar and Automations in one step.
+- **📣 One line of status while you record** — the recording bar keeps Translate, Apuntador and Catch me up in view, tucks the rest into a More menu, and replaces a stack of banners with the one notice that matters now.
+- **🗂️ The meeting page fits your screen** — summary, commitments and notes take only the space they need so the transcript gets the rest; People, Apuntador and Chapters share one side column with a lens picker; privacy and action history sit in a small chip under the title.
+- **🌅 Today leads with your next meeting** — the next call is the hero with its countdown, brief and record button; Ask is a field with three ready questions; Ask, Radar and the library lost their clutter.
+- **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
+- **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
+
 ## September 16, 2026
 
 - **⚡ Automations, at a glance** — every automation shows its switch and when it last ran; the list of things "coming later" is gone.
