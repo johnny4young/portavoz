@@ -499,7 +499,8 @@ final class LibraryUITests: PortavozUITestCase {
             "the More menu must offer the next-question action")
         XCTAssertTrue(app.control(withIdentifier: "recording-hud").exists)
         app.recordingMoreItem("recording-proactive-assist").click()
-        app.dismissRecordingMorePanel()
+        XCTAssertEqual(
+            app.dismissRecordingMorePanel(bundleIdentifier: keyboardReceiverBundleIdentifier), .admitted)
 
         // Suggestions only becomes a tab once this recording opts in.
         app.openAssistTab("proactive")
@@ -537,7 +538,8 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(proactivePanel.waitForDisappearance(timeout: 3))
         proactiveSwitch.click()
         XCTAssertTrue(proactivePanel.waitForExistenceFast(timeout: 3))
-        app.dismissRecordingMorePanel()
+        // The panel may stay open: the last assertion reads the suggestions
+        // panel underneath, and teardown terminates the app.
         XCTAssertFalse(
             objectiveSuggestion.exists,
             "re-enabling the same recording must not repeat an emitted evidence signal")

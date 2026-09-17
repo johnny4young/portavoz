@@ -21,7 +21,8 @@ final class InterviewAssistUITests: PortavozUITestCase {
         let toggle = app.recordingMoreItem("recording-interview-assist")
         XCTAssertTrue(toggle.exists)
         toggle.click()
-        app.dismissRecordingMorePanel()
+        XCTAssertEqual(
+            app.dismissRecordingMorePanel(bundleIdentifier: keyboardReceiverBundleIdentifier), .admitted)
 
         // Interview becomes a tab once the recording opts in (D504).
         app.openAssistTab("interview")

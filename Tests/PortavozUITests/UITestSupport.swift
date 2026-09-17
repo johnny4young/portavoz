@@ -326,16 +326,20 @@ extension XCUIApplication {
         return item
     }
 
-    /// Closes the More panel when it is open. Bare Escape, not the admission
-    /// helper: the popover is not a sheet, so nothing else can own the key.
+    /// Closes the More panel when it is open. Escape goes through the owned
+    /// keyboard admission (the popover is not a sheet, so no modal anchor);
+    /// a synthesized outside click is swallowed by the popover instead.
     @MainActor
-    func dismissRecordingMorePanel() {
+    @discardableResult
+    func dismissRecordingMorePanel(bundleIdentifier: String) -> UITestKeyboardAdmission {
         let panel = control(withIdentifier: "recording-more-panel")
-        guard panel.exists else { return }
-        // Escape closes the transient popover; a synthesized outside click
-        // is swallowed by the popover and only costs its disappearance wait.
-        typeKey(.escape, modifierFlags: [])
-        _ = panel.waitForDisappearance(timeout: 3)
+        guard panel.exists else { return .admitted }
+        let admission = typeKeyIfOwned(
+            .escape, modifierFlags: [], bundleIdentifier: bundleIdentifier)
+        if admission == .admitted {
+            _ = panel.waitForDisappearance(timeout: 3)
+        }
+        return admission
     }
 
     /// The live assist area shows one panel at a time (D504), so a journey

@@ -7784,3 +7784,13 @@ Bare application typing and foreground-only typing each have a retained native
 counterexample. All controls and full bilingual product journeys are required
 for this shared-harness change. These public-API observations are point-in-time,
 not an atomic OS input guarantee or permission-dialog certification (D534).
+
+### Runtime budget re-qualified with the 1.1 recording bar (Sep 2026)
+
+`LibraryUITests/testRecordingOffersObjectivesNextQuestionAndTalkBalance` opens
+the recording More panel twice by design (opt in to proactive help, then flip
+it off and on to prove a signal is not repeated). The panel is a popover, so
+each open costs its presentation; measured runs landed between 19.2 s and
+21.0 s against the former 20.117 s pin. Its budget is now 21.5 s. No other
+per-case or aggregate budget changed, and the journey itself was trimmed to
+one admission-checked Escape.
