@@ -18,7 +18,7 @@ struct FlowLayout: Layout {
             var rowHeight: CGFloat = 0
             var rowWidth: CGFloat = 0
             for subview in row {
-                let size = subview.sizeThatFits(.unspecified)
+                let size = itemSize(subview, fitting: proposal.width ?? .infinity)
                 rowHeight = max(rowHeight, size.height)
                 rowWidth += size.width
             }
@@ -37,9 +37,9 @@ struct FlowLayout: Layout {
         var y = bounds.minY
         for row in rows(fitting: bounds.width, subviews: subviews) {
             var x = bounds.minX
-            let rowHeight = row.map { $0.sizeThatFits(.unspecified).height }.max() ?? 0
-            for subview in row {
-                let size = subview.sizeThatFits(.unspecified)
+            let sizes = row.map { itemSize($0, fitting: bounds.width) }
+            let rowHeight = sizes.map(\.height).max() ?? 0
+            for (subview, size) in zip(row, sizes) {
                 subview.place(
                     at: CGPoint(x: x, y: y + (rowHeight - size.height) / 2),
                     proposal: ProposedViewSize(size))
@@ -49,11 +49,21 @@ struct FlowLayout: Layout {
         }
     }
 
+    /// A child never gets more than the row width: a long citation title is
+    /// proposed the row's width so its own line limit truncates it, instead
+    /// of being placed at its natural width past the viewport.
+    private func itemSize(_ subview: Subviews.Element, fitting width: CGFloat) -> CGSize {
+        let natural = subview.sizeThatFits(.unspecified)
+        guard width.isFinite, natural.width > width else { return natural }
+        let constrained = subview.sizeThatFits(ProposedViewSize(width: width, height: nil))
+        return CGSize(width: min(constrained.width, width), height: constrained.height)
+    }
+
     private func rows(fitting width: CGFloat, subviews: Subviews) -> [[Subviews.Element]] {
         var rows: [[Subviews.Element]] = [[]]
         var x: CGFloat = 0
         for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
+            let size = itemSize(subview, fitting: width)
             if x > 0, x + size.width > width {
                 rows.append([subview])
                 x = size.width + spacing

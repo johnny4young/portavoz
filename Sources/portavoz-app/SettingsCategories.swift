@@ -57,25 +57,31 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
 
     /// Lowercased match targets for the sidebar search: English words for
     /// what each pane contains; the localized twin lives in the catalog
-    /// (the string IS its own key), so Spanish queries land too.
-    private var keywords: String {
+    /// (each string IS its own key), so Spanish queries land too. Merged
+    /// panes keep one group per former pane, each localized on its own.
+    var keywordGroups: [String] {
         switch self {
         case .general:
-            "language english spanish menu bar launch login"
+            ["language english spanish menu bar launch login"]
         case .audio:
-            "call safe capture echo aec dictation hotkey microphone mic level"
+            ["call safe capture echo aec dictation hotkey microphone mic level"]
         case .intelligence:
-            "summary engine apple ollama mlx whisper refine vocabulary voice enroll apuntador name remembered"
+            [
+                "summary engine apple ollama mlx whisper refine vocabulary",
+                "voice enroll apuntador name remembered"
+            ]
         case .agenda:
-            "reminder calendar shortcut title template"
+            ["reminder calendar shortcut title template"]
         case .skills:
-            "actions suggestions skills automation automations pause enable history local drafts exports"
+            ["actions suggestions skills automation automations pause enable history local drafts exports"]
         case .integrations:
-            "byok api key github gist token mcp endpoint openai"
+            ["byok api key github gist token mcp endpoint openai"]
         case .data:
-            "export markdown backup folder recordings trash privacy local icloud cloud sync status "
-                + "existing library encrypted devices pause remove background activity recovery "
-                + "processing jobs spotlight semantic index graph retry progress"
+            [
+                "export markdown backup folder recordings trash privacy local",
+                "icloud cloud sync status existing library encrypted devices pause remove",
+                "background activity recovery processing jobs spotlight semantic index graph retry progress"
+            ]
         }
     }
 
@@ -83,8 +89,9 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         let query = query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !query.isEmpty else { return true }
         return title.lowercased().contains(query)
-            || keywords.contains(query)
-            || L10n.text(keywords).contains(query)
+            || keywordGroups.contains { group in
+                group.contains(query) || L10n.text(group).contains(query)
+            }
     }
 }
 

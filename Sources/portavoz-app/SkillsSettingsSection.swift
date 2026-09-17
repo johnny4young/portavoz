@@ -134,14 +134,6 @@ struct SkillsSettingsSection: View {
         snapshot?.skills.filter { $0.availability == .available } ?? []
     }
 
-    /// The newest receipt per action, so each row says when it last ran.
-    private func lastRun(_ skill: SkillControlCenterItem) -> Date? {
-        snapshot?.receipts
-            .filter { $0.skillID == skill.id }
-            .map(\.updatedAt)
-            .max()
-    }
-
     private func availableSkillRow(
         _ skill: SkillControlCenterItem
     ) -> some View {
@@ -174,11 +166,17 @@ struct SkillsSettingsSection: View {
         .accessibilityElement(children: .contain)
     }
 
+    /// Reads the verified per-action map, never the filtered history page:
+    /// an unavailable read says so instead of claiming "never".
     private func lastRunText(_ skill: SkillControlCenterItem) -> String {
-        guard let date = lastRun(skill) else { return L10n.text("Never run") }
-        return L10n.format(
-            "Last run %@",
-            date.formatted(.relative(presentation: .named)))
+        guard let snapshot, snapshot.lastRunLoadState == .verified else {
+            return L10n.text("Last run unavailable")
+        }
+        guard let run = snapshot.lastRuns[skill.id] else { return L10n.text("Never run") }
+        let when = run.updatedAt.formatted(.relative(presentation: .named))
+        return run.state == .succeeded
+            ? L10n.format("Last run %@", when)
+            : L10n.format("Last run %@ · did not finish", when)
     }
 
     private func skillIcon(_ skill: SkillControlCenterItem) -> some View {

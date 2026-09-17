@@ -6,6 +6,9 @@ import SwiftUI
 struct CompanionSettingsSection: View {
     let capability: FoundationModelsCapability
     let detectorAvailable: Bool
+    /// A validated BYOK provider (client would build) answers general
+    /// knowledge questions even where Apple Intelligence cannot run.
+    let providerAnswersAvailable: Bool
     @Binding var companionEnabled: Bool
     @Binding var companionUserName: String
     @Binding var mirrorAfterMeeting: Bool
@@ -13,6 +16,7 @@ struct CompanionSettingsSection: View {
     /// Ready · Questions only · Unavailable, never a green check over a failure.
     private enum Readiness {
         case ready
+        case readyThroughProvider
         case questionsOnly(cause: String)
         case unavailable
     }
@@ -22,6 +26,9 @@ struct CompanionSettingsSection: View {
         switch capability {
         case .available:
             return .ready
+        case .requiresMacOS26 where providerAnswersAvailable,
+             .unavailable where providerAnswersAvailable:
+            return .readyThroughProvider
         case .requiresMacOS26:
             return .questionsOnly(cause: L10n.text(
                 // One-line UI explanation.
@@ -86,7 +93,7 @@ struct CompanionSettingsSection: View {
 
     private var statusTitle: String {
         switch readiness {
-        case .ready: L10n.text("Apuntador: ready")
+        case .ready, .readyThroughProvider: L10n.text("Apuntador: ready")
         case .questionsOnly: L10n.text("Apuntador: questions only")
         case .unavailable: L10n.text("Apuntador: unavailable")
         }
@@ -94,7 +101,7 @@ struct CompanionSettingsSection: View {
 
     private var statusSymbol: String {
         switch readiness {
-        case .ready: PVSymbol.success
+        case .ready, .readyThroughProvider: PVSymbol.success
         case .questionsOnly: PVSymbol.warning
         case .unavailable: PVSymbol.error
         }
@@ -102,7 +109,7 @@ struct CompanionSettingsSection: View {
 
     private var statusTint: Color {
         switch readiness {
-        case .ready: .green
+        case .ready, .readyThroughProvider: .green
         case .questionsOnly: .orange
         case .unavailable: .red
         }
@@ -112,6 +119,10 @@ struct CompanionSettingsSection: View {
         switch readiness {
         case .ready:
             L10n.text("Question detection and on-device answers work on this Mac.")
+        case .readyThroughProvider:
+            L10n.text(
+                // swiftlint:disable:next line_length
+                "Questions and general-knowledge answers through your provider. Meeting-context answers need Apple Intelligence.")
         case .questionsOnly(let cause):
             cause
         case .unavailable:

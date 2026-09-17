@@ -34,6 +34,9 @@ struct RecordingView: View {
     private var assistFraction = RecordingAssistLayout.defaultFraction
     /// The fraction the current divider drag started from.
     @State private var dividerAnchor: Double?
+    /// Whether an answer engine exists for Apuntador, resolved from the same
+    /// validated capability that builds the provider client.
+    @State private var apuntadorAnswersAvailable = false
     /// The fraction being dragged right now. `@AppStorage` is written once, on
     /// release: writing it per frame put a `UserDefaults` round trip and a full
     /// `RecordingView` invalidation — captions re-projected and all — into every
@@ -105,6 +108,7 @@ struct RecordingView: View {
         .navigationTitle("Recording")
         .liveTranslation(controller)
         .task { await startRecording() }
+        .task { apuntadorAnswersAvailable = await services.companionAnswersAvailable() }
         .onDisappear { hud.close() }
     }
 
@@ -135,7 +139,7 @@ struct RecordingView: View {
                     apuntadorState: RecordingApuntadorState.resolve(
                         enabled: controller.companionEnabled,
                         detectorAvailable: services.companionAvailable,
-                        answersAvailable: services.companionAnswersAvailable),
+                        answersAvailable: apuntadorAnswersAvailable),
                     openApuntadorSettings: {
                         services.pendingSettingsCategory = .intelligence
                         openSettings()

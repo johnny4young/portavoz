@@ -11,6 +11,8 @@ struct LibraryView: View {
     let recordingActive: Bool
     let onReturnToRecording: () -> Void
     let onOpenSearchHit: (LibrarySearchHit) -> Void
+    /// Opens Settings on Your data, where the activity log lives.
+    let onOpenActivity: () -> Void
 
     /// To-dos fold away when the user wants a lean sidebar; the choice
     /// survives relaunches.
@@ -482,13 +484,17 @@ extension LibraryView {
                     Text("Nothing is sent unless you ask for it. Every transfer is logged here.")
                         .font(.callout)
                         .fixedSize(horizontal: false, vertical: true)
-                    SettingsLink {
-                        Text("See activity")
+                    Button("See activity") {
+                        showsPrivacyNote = false
+                        onOpenActivity()
                     }
                     .accessibilityIdentifier("library-privacy-activity")
                 }
                 .padding(14)
                 .frame(width: 280)
+                // A container, so the note's identifier does not stamp the
+                // See activity button and hide its own.
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("library-privacy-note")
             }
             Spacer(minLength: 0)

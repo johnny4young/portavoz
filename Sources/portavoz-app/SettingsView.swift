@@ -49,6 +49,7 @@ struct SettingsView: View {
     @AppStorage(BYOKSettings.companionEnabledKey) private var companionBYOKEnabled = false
     @State private var byokKey = ""
     @State private var hasStoredBYOKKey = false
+    @State private var byokAnswersReady = false
     @State private var byokMessage: String?
 
     @AppStorage("companionUserName") private var companionUserName = ""
@@ -198,6 +199,11 @@ struct SettingsView: View {
         }
         .onChange(of: services.pendingSettingsCategory) { _, _ in
             applyPendingCategory()
+        }
+        // The Apuntador status reads the same validated capability that
+        // builds the provider client, and follows every input that changes it.
+        .task(id: "\(companionBYOKEnabled)|\(byokEndpoint)|\(byokModel)|\(hasStoredBYOKKey)") {
+            byokAnswersReady = await services.companionAnswersAvailable()
         }
     }
 
@@ -767,6 +773,7 @@ extension SettingsView {
         CompanionSettingsSection(
             capability: services.foundationModelsCapability,
             detectorAvailable: services.companionAvailable,
+            providerAnswersAvailable: byokAnswersReady,
             companionEnabled: companionEnabledBinding,
             companionUserName: $companionUserName,
             mirrorAfterMeeting: $mirrorAfterMeeting)

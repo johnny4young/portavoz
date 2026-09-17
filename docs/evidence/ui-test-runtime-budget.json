@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 117
+    "expectedCaseCount": 118
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -54,6 +54,7 @@
     "LibraryUITests/testLibraryRendersRecordButtonAndActionChips()": 20.0,
     "LibraryUITests/testLiveTranscriptYieldsFollowWhileReadingHistory()": 20.0,
     "LibraryUITests/testLiveTranslationUsesADistinctLabeledRail()": 20.0,
+    "LibraryUITests/testPrivacyChipOpensTheActivityLogInYourData()": 20.0,
     "LibraryUITests/testRecordingOffersObjectivesNextQuestionAndTalkBalance()": 21.5,
     "LibraryUITests/testRecordingStartFailureOffersTypedRecovery()": 20.0,
     "LibraryUITests/testRecordingWarnsWhenIncomingAudioClips()": 20.0,

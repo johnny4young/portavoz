@@ -538,10 +538,12 @@ final class AppServices {
     }
 
     /// Whether Apuntador can draft answers, not only show questions: the
-    /// on-device model or an explicitly enabled BYOK provider.
-    var companionAnswersAvailable: Bool {
-        appleSummaryAvailable
-            || UserDefaults.standard.bool(forKey: BYOKSettings.companionEnabledKey)
+    /// on-device model, or a BYOK provider that would actually build a client
+    /// (enabled, valid endpoint, model and readable key), never the consent
+    /// flag alone.
+    func companionAnswersAvailable() async -> Bool {
+        if appleSummaryAvailable { return true }
+        return await companionBYOKClient() != nil
     }
 
     // MARK: - Embedded MLX model (D25 last mile)

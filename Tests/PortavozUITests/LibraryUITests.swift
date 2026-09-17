@@ -169,6 +169,39 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testPrivacyChipOpensTheActivityLogInYourData() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+
+        func openActivity() {
+            XCTAssertTrue(app.prepareForInteraction())
+            let chip = app.buttons["library-privacy-chip"]
+            XCTAssertTrue(chip.waitForStableFrame(timeout: 10))
+            chip.click()
+            XCTAssertTrue(
+                app.control(withIdentifier: "library-privacy-note").waitForExistenceFast(timeout: 5),
+                "the chip must open its short privacy note")
+            let seeActivity = app.buttons["library-privacy-activity"]
+            XCTAssertTrue(seeActivity.waitForHittable(timeout: 5))
+            seeActivity.click()
+            XCTAssertTrue(
+                app.control(withIdentifier: "settings-ledger-audio").waitForExistenceFast(timeout: 10),
+                "See activity must land on Your data, where the activity log lives")
+            XCTAssertTrue(app.buttons["settings-category-data"].isSelected)
+        }
+
+        // A fresh Settings window.
+        openActivity()
+        // A window previously showing another pane.
+        XCTAssertTrue(app.openSettingsCategory(
+            "settings-category-general", revealing: "settings-category-list"))
+        XCTAssertTrue(app.buttons["settings-category-general"].isSelected)
+        openActivity()
+    }
+
+    @MainActor
     func testRecordingStartFailureOffersTypedRecovery() throws {
         let app = try XCUIApplication.portavoz(simulateRecordingStartFailure: true)
         app.launchPortavoz()

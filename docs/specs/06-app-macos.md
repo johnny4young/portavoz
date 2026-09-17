@@ -2435,7 +2435,10 @@ Apuntador reports one status with three values, `Apuntador: ready`,
 (`settings-apuntador-status-cause`), never a green check above a failure. The Automations pane lists only the
 actions that exist (the "Coming later" list is gone); each row carries its
 switch, its disclosure and when it last ran (`settings-skill-<id>-last-run`,
-from the newest receipt in the loaded snapshot), followed by the suggestions
+from `SkillControlCenterSnapshot.lastRuns`, one bounded completed plus one
+attention read per action outside the history lens, so filters, pagination
+and waiting approvals cannot change it; an unavailable read says so instead of
+"Never run"), followed by the suggestions
 to review, the standing rules and the action history.
 
 ## Design system in app (Jul 2026) — tokens + voices B + accent

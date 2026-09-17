@@ -6309,6 +6309,26 @@
         }
       }
     },
+    "Last run %@ · did not finish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Última ejecución %@ · no terminó"
+          }
+        }
+      }
+    },
+    "Last run unavailable": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Última ejecución no disponible"
+          }
+        }
+      }
+    },
     "Last week": {
       "localizations": {
         "es": {
@@ -9805,6 +9825,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Las sugerencias de preguntas necesitan Apple Intelligence en macOS 26. La grabación continúa sin cambios."
+          }
+        }
+      }
+    },
+    "Questions and general-knowledge answers through your provider. Meeting-context answers need Apple Intelligence.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preguntas y respuestas de conocimiento general con tu proveedor. Las respuestas con contexto de la reunión necesitan Apple Intelligence."
           }
         }
       }
@@ -15847,6 +15877,16 @@
         }
       }
     },
+    "background activity recovery processing jobs spotlight semantic index graph retry progress": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "actividad segundo plano recuperación procesamiento trabajos spotlight índice semántico grafo reintentar progreso"
+          }
+        }
+      }
+    },
     "balanced": {
       "localizations": {
         "es": {
@@ -15873,6 +15913,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "evento del calendario"
+          }
+        }
+      }
+    },
+    "call safe capture echo aec dictation hotkey microphone mic level": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "llamada segura captura eco aec dictado atajo micrófono mic nivel"
           }
         }
       }
@@ -16013,6 +16063,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sincronización con iCloud"
+          }
+        }
+      }
+    },
+    "icloud cloud sync status existing library encrypted devices pause remove": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "icloud nube sincronización estado biblioteca existente cifrado dispositivos pausar quitar"
           }
         }
       }
@@ -16263,16 +16323,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "resumen motor apple ollama mlx whisper refine vocabulario"
-          }
-        }
-      }
-    },
-    "summary engine apple ollama mlx whisper refine vocabulary voice enroll apuntador name remembered": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "resumen motor apple ollama mlx whisper mejorar vocabulario voz registrar apuntador nombre recordadas"
           }
         }
       }
