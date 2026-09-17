@@ -7794,3 +7794,10 @@ each open costs its presentation; measured runs landed between 19.2 s and
 21.0 s against the former 20.117 s pin. Its budget is now 21.5 s. No other
 per-case or aggregate budget changed, and the journey itself was trimmed to
 one admission-checked Escape.
+
+`MeetingDetailUITests/testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument`
+now opens the meeting activity popover twice (receipt after the Gist, receipt
+after the issue) because receipts moved behind the activity chip; the full
+English catalog measured 25.928 s against the former 25.789 s pin, and its
+budget is now 26.5 s. Both re-qualified budgets are the only budget changes of
+the 1.1 goal.

@@ -80,7 +80,7 @@
     "MeetingDetailUITests/testPlayerExposesSkipAndOnlyMyVoice()": 20.0,
     "MeetingDetailUITests/testRecapSheetDraftsFromTheSummaryWithoutTheTranscript()": 20.0,
     "MeetingDetailUITests/testRunningRefineCanBeCanceledWithoutChangingTheTranscript()": 20.0,
-    "MeetingDetailUITests/testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument()": 25.789,
+    "MeetingDetailUITests/testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument()": 26.5,
     "MeetingDetailUITests/testSequoiaApuntadorRefreshPreservesStaleAnswers()": 20.0,
     "MeetingDetailUITests/testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador()": 20.0,
     "MeetingDetailUITests/testSkillProposalJourneyFromBannerToReceipt()": 30.848,
