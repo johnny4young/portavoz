@@ -490,14 +490,18 @@ extension LibraryView {
     /// the detail lives one click away, in Settings ▸ Your data.
     private var localFooter: some View {
         HStack {
+            // Bordered, not plain: the hosted runner's hit test maps a
+            // bordered button reliably in every locale.
             Button {
                 showsPrivacyNote.toggle()
             } label: {
                 Label("On your Mac", systemImage: PVSymbol.privacy)
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.bordered)
+            .controlSize(.mini)
+            .tint(.secondary)
+            .fixedSize()
             .accessibilityIdentifier("library-privacy-chip")
             // A one-point sibling anchors the note: anything attached to the
             // chip's own bounds is an unmappable element under hit tests on

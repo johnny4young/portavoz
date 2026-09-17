@@ -26,15 +26,18 @@ struct MeetingDetailActivityLine: View {
             // bounds surfaced as an unmappable element under hit tests on the
             // hosted runner.
             HStack(spacing: 0) {
+                // A bordered control, not a plain text button: the runner's
+                // hit test maps a bordered button reliably in every locale.
                 Button {
                     showsActivity.toggle()
                 } label: {
                     Label(chipTitle, systemImage: chipSymbol)
                         .font(.caption.weight(.medium))
-                        .foregroundStyle(chipTint)
                 }
-                .buttonStyle(.plain)
-                .contentShape(.rect)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .tint(chipTint)
+                .fixedSize()
                 .accessibilityLabel(chipTitle)
                 .accessibilityIdentifier("detail-privacy-receipt")
                 .help(L10n.text("See what left this Mac and every action you confirmed"))
