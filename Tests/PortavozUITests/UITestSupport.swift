@@ -287,8 +287,19 @@ extension XCUIApplication {
     ) -> XCUIElement {
         let popover = control(withIdentifier: "detail-activity-popover")
         if !popover.exists {
+            // A sheet that is still going away leaves an unmappable host in
+            // the tree and makes the chip's own hit test throw on the hosted
+            // runner; let every sheet and dialog finish first.
+            guard waitForUITestCondition(timeout: timeout, {
+                self.sheets.count == 0 && self.dialogs.count == 0
+            }) else {
+                XCTFail("a sheet or dialog never closed before the activity chip", file: file, line: line)
+                return popover
+            }
             let chip = buttons["detail-privacy-receipt"]
-            guard chip.waitForHittable(timeout: timeout) else {
+            guard chip.waitForExistenceFast(timeout: timeout),
+                  chip.waitForStableFrame(timeout: timeout)
+            else {
                 XCTFail("the header never offered the activity chip", file: file, line: line)
                 return popover
             }
