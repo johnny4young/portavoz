@@ -21,21 +21,23 @@ struct MeetingDetailActivityLine: View {
 
     var body: some View {
         if values.hasContent {
-            Button {
-                showsActivity.toggle()
-            } label: {
-                Label(chipTitle, systemImage: chipSymbol)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(chipTint)
+            // The popover anchors on the row, not on the button: an anchor on
+            // the button itself surfaced as an unmappable zero-size element
+            // under hit tests on the hosted runner.
+            HStack(spacing: 0) {
+                Button {
+                    showsActivity.toggle()
+                } label: {
+                    Label(chipTitle, systemImage: chipSymbol)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(chipTint)
+                }
+                .buttonStyle(.plain)
+                .contentShape(.rect)
+                .accessibilityLabel(chipTitle)
+                .accessibilityIdentifier("detail-privacy-receipt")
+                .help(L10n.text("See what left this Mac and every action you confirmed"))
             }
-            .buttonStyle(.plain)
-            .contentShape(.rect)
-            // One element: a hit test on the chip must map to the button, not
-            // to a text child or the popover anchor.
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(chipTitle)
-            .accessibilityIdentifier("detail-privacy-receipt")
-            .help(L10n.text("See what left this Mac and every action you confirmed"))
             .popover(isPresented: $showsActivity, arrowEdge: .bottom) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {

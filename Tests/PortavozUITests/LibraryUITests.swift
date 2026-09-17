@@ -177,7 +177,8 @@ final class LibraryUITests: PortavozUITestCase {
 
         func openActivity() {
             let chip = app.buttons["library-privacy-chip"]
-            XCTAssertTrue(chip.waitForHittable(timeout: 10))
+            XCTAssertTrue(chip.waitForExistenceFast(timeout: 10))
+            XCTAssertTrue(chip.waitForStableFrame(timeout: 10))
             chip.click()
             XCTAssertTrue(
                 app.control(withIdentifier: "library-privacy-note").waitForExistenceFast(timeout: 5),
