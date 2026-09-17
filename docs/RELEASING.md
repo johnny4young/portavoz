@@ -2,7 +2,7 @@
 
 The end-to-end recipe for cutting a public release: a notarized DMG that
 updates existing users via **Sparkle** and new users via **Homebrew**. Written
-from the real flow (v0.1.0 → v1.0.1, ten releases). Follow it top to bottom.
+from the real flow (v0.1.0 → v1.1.0, eleven releases). Follow it top to bottom.
 
 Distribution is direct-download only (no App Store) — decision D10/D20.
 
@@ -542,6 +542,7 @@ gh workflow run update-cask.yml -f tag=v<version>      # bumps johnny4young/home
 
 | Tag | Title |
 |---|---|
+| v1.1.0 | Portavoz 1.1.0 — less noise, one place for everything |
 | v1.0.1 | Portavoz 1.0.1 — recording starts on every Mac |
 | v1.0.0 | Portavoz 1.0.0 — today's agenda, yesterday's answers |
 | v0.7.0 | Portavoz 0.7.0 — live help, safer recordings |
