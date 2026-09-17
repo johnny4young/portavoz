@@ -21,36 +21,45 @@ struct MeetingDetailActivityLine: View {
 
     var body: some View {
         if values.hasContent {
-            // The popover anchors on the row, not on the button: an anchor on
-            // the button itself surfaced as an unmappable zero-size element
-            // under hit tests on the hosted runner.
-            HStack(spacing: 0) {
-                Button {
-                    showsActivity.toggle()
-                } label: {
-                    Label(chipTitle, systemImage: chipSymbol)
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(chipTint)
-                }
-                .buttonStyle(.plain)
-                .contentShape(.rect)
-                .accessibilityLabel(chipTitle)
-                .accessibilityIdentifier("detail-privacy-receipt")
-                .help(L10n.text("See what left this Mac and every action you confirmed"))
+            // The popover anchors on a one-point view under the chip, never on
+            // the button or its row: an anchor covering the chip surfaced as an
+            // unmappable zero-size element under hit tests on the hosted runner.
+            Button {
+                showsActivity.toggle()
+            } label: {
+                Label(chipTitle, systemImage: chipSymbol)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(chipTint)
             }
-            .popover(isPresented: $showsActivity, arrowEdge: .bottom) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        privacyReceiptSection
-                        skillReceiptSection
+            .buttonStyle(.plain)
+            .contentShape(.rect)
+            .accessibilityLabel(chipTitle)
+            .accessibilityIdentifier("detail-privacy-receipt")
+            .help(L10n.text("See what left this Mac and every action you confirmed"))
+            .overlay(alignment: .bottomLeading) {
+                Color.clear
+                    .frame(width: 1, height: 1)
+                    .accessibilityHidden(true)
+                    .popover(isPresented: $showsActivity, arrowEdge: .bottom) {
+                        activityPopover
                     }
-                    .padding(16)
-                }
-                .frame(width: 340)
-                .frame(maxHeight: 420)
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("detail-activity-popover")
             }
+        }
+    }
+
+    private var activityPopover: some View {
+        Group {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    privacyReceiptSection
+                    skillReceiptSection
+                }
+                .padding(16)
+            }
+            .frame(width: 340)
+            .frame(maxHeight: 420)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("detail-activity-popover")
         }
     }
 

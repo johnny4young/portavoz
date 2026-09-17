@@ -447,6 +447,26 @@ extension LibraryView {
             : L10n.text("Start a new recording"))
     }
 
+    /// The short privacy note behind the sidebar chip.
+    private var privacyNote: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Nothing is sent unless you ask for it. Every transfer is logged here.")
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("See activity") {
+                showsPrivacyNote = false
+                onOpenActivity()
+            }
+            .accessibilityIdentifier("library-privacy-activity")
+        }
+        .padding(14)
+        .frame(width: 280)
+        // A container, so the note's identifier does not stamp the
+        // See activity button and hide its own.
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("library-privacy-note")
+    }
+
     /// Library filtering stays distinct from the global Command-K palette.
     private var searchField: some View {
         HStack(spacing: 7) {
@@ -479,23 +499,15 @@ extension LibraryView {
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("library-privacy-chip")
-            .popover(isPresented: $showsPrivacyNote, arrowEdge: .top) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Nothing is sent unless you ask for it. Every transfer is logged here.")
-                        .font(.callout)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Button("See activity") {
-                        showsPrivacyNote = false
-                        onOpenActivity()
+            .overlay(alignment: .topLeading) {
+                // A one-point anchor beside the chip: an anchor covering the
+                // chip is an unmappable element under hit tests on the runner.
+                Color.clear
+                    .frame(width: 1, height: 1)
+                    .accessibilityHidden(true)
+                    .popover(isPresented: $showsPrivacyNote, arrowEdge: .top) {
+                        privacyNote
                     }
-                    .accessibilityIdentifier("library-privacy-activity")
-                }
-                .padding(14)
-                .frame(width: 280)
-                // A container, so the note's identifier does not stamp the
-                // See activity button and hide its own.
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("library-privacy-note")
             }
             Spacer(minLength: 0)
         }

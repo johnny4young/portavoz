@@ -543,6 +543,10 @@ final class AppServices {
     /// flag alone.
     func companionAnswersAvailable() async -> Bool {
         if appleSummaryAvailable { return true }
+        // The disposable UI-test store never reaches the Keychain (the same
+        // rule the BYOK pane follows), so journeys never pay for or prompt on
+        // a Keychain read.
+        if usesTemporaryMeetingStore { return false }
         return await companionBYOKClient() != nil
     }
 
