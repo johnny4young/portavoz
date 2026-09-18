@@ -2304,8 +2304,9 @@ released prefilter and Foundation Models adapters remain comparison controls;
 the added `bundled-question` adapter executes the real compiled model over the
 same complete fixture and can request target enforcement without gaining
 serving authority from measurement alone. SwiftPM copies the compiled resource
-into `Portavoz_IntelligenceKit.bundle`, and app packaging fails when it is
-absent. A deterministic bilingual real-app journey enables Apuntador through
+into `Portavoz_IntelligenceKit.bundle`, at the bundle root on Xcode 26 and
+under `Contents/Resources` with Xcode 27's Swift Build; packaging and the
+payload verifier accept either layout and fail when the model is in neither. A deterministic bilingual real-app journey enables Apuntador through
 volatile temporary-store preferences, emits one frozen public-synthetic remote
 question, exercises the bundled model, and expects the Sequoia question-only
 state. It never reads a private meeting or requires an installed generative
