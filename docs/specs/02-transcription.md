@@ -146,6 +146,17 @@ this composer and corrected text remains intentionally unmaterialized.
 | Research-only live challenger | Nemotron 3.5 ASR Latin 1120 ms (FluidAudio) | Adapter complete; Portavoz evidence not accepted |
 | Multiple per role with recommender | — | Planned (D25/M12) |
 
+## Engine dependency boundary
+
+FluidAudio is fixed to exact version **0.15.6** in the Swift package manifest;
+`Package.resolved` retains revision `4dbf4f9f9a5ff3a53ade848d7ba4e3df13db859b`.
+Resolving another dependency must not admit a later FluidAudio patch. Direct
+imports remain confined to `ParakeetEngine`, `ParakeetSegmentMapper`,
+`NemotronLatin1120Engine`, `PyannoteDiarizer` and `DiarizationEvaluation` inside
+the transcription/diarization kits. App composition consumes Portavoz contracts,
+not vendor types. This pin does not promote a challenger or change model weights;
+upgrading requires separate matched recognition, diarization and resource evidence.
+
 ## Model registry — ModelStoreKit
 
 - `ModelCatalog` with 10 pinned descriptors: `parakeetTdtV3` (21 artifacts, 483 MB, int8 subset), research-only `nemotronLatin1120` (10 artifacts, ~588 MB, lean fused-decoder subset), `speakerDiarization` (10 artifacts, ~14 MB), `whisperLargeV3Turbo` (24 artifacts, ~1.6 GB), `whisperLargeV3_626MB`, `whisperTokenizer` (3 files), the default `mlxQwen35`, the retained `mlxQwen3` A/B alternative, and evaluation-only Qwen3.5 0.8B/2B MLX challengers. Each `ModelArtifact` = relative path + sha256 + size; `resolveBase` is pinned to an exact Hugging Face commit. The compact challengers are reachable only through exact `--mlx-smoke qwen35-0.8b` or `qwen35-2b` tokens and never through Settings, product routing, or `recommended(for:)`; promotion requires Portavoz quality/resource evidence rather than upstream claims (D433).
@@ -597,6 +608,5 @@ and Refine are independent from this optional relay.
    (Ajustes) selects the compact descriptor, while the recommender enables it
    when low disk space is detected. Refine freezes that selection for its whole
    operation, and Turbo remains the default.
-4. ~~FluidAudio pinned by revision `c367a18e`~~ — **RESOLVED**:
-   `Package.swift` uses `.upToNextMinor(from: "0.15.5")`, which contains the
-   upstream #732 type-checker fix.
+4. FluidAudio is pinned to exact `0.15.6`, not a minor range. It retains the
+   upstream type-checker fix while preventing unreviewed patch updates (D516).
