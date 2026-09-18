@@ -21,8 +21,11 @@ if [[ -n "$UNREADABLE" ]]; then
   exit 65
 fi
 
+# The model sits at the bundle root (Xcode 26 SwiftPM) or under
+# Contents/Resources (Xcode 27 Swift Build); the app resolves either layout.
 CLASSIFIER="$APP/Contents/Resources/Portavoz_IntelligenceKit.bundle"
-if [[ ! -d "$CLASSIFIER/PortavozLiveQuestionClassifier.mlmodelc" ]]; then
+if [[ ! -d "$CLASSIFIER/PortavozLiveQuestionClassifier.mlmodelc" \
+      && ! -d "$CLASSIFIER/Contents/Resources/PortavozLiveQuestionClassifier.mlmodelc" ]]; then
   echo "The app is missing its staged Apuntador question classifier." >&2
   exit 65
 fi

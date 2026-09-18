@@ -19947,6 +19947,9 @@ import Combine. CI keeps its Xcode 26.6/26.3 pins until Xcode 27 leaves the
 hosted preview image.
 
 **Consequences:** the strict build, the package suite and the release recipe
-run unchanged on either toolchain. A future Xcode that removes the old label
-deletes the `#else` branch in one file. Decoding behavior is unchanged: greedy
+run unchanged on either toolchain. Xcode 27's Swift Build also stages SwiftPM
+resource bundles as `Contents/Resources` bundles instead of flat directories;
+`make-app.sh` and `verify-app-payload.sh` accept both layouts because the app
+resolves resources through `Bundle`, which reads either. A future Xcode that
+removes the old label deletes the `#else` branch in one file. Decoding behavior is unchanged: greedy
 everywhere, same token caps.

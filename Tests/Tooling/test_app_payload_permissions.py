@@ -19,11 +19,24 @@ VERIFY = (ROOT / "scripts/verify-distribution.sh").read_text(encoding="utf-8")
 PAYLOAD = ROOT / "scripts/verify-app-payload.sh"
 
 
-def make_app(root: Path, *, resolved: str | None, loadable: bool = True, mode: int = 0o755) -> Path:
-    """A synthetic app whose binary reports what a real one would report."""
+def make_app(
+    root: Path,
+    *,
+    resolved: str | None,
+    loadable: bool = True,
+    mode: int = 0o755,
+    nested_layout: bool = False,
+) -> Path:
+    """A synthetic app whose binary reports what a real one would report.
+
+    ``nested_layout`` stages the model under ``Contents/Resources`` the way
+    Xcode 27's Swift Build lays out a resource bundle; the default is the
+    flat layout Xcode 26's SwiftPM produces.
+    """
     app = root / "Portavoz.app"
     staged = app / "Contents/Resources/Portavoz_IntelligenceKit.bundle"
-    (staged / "PortavozLiveQuestionClassifier.mlmodelc").mkdir(parents=True)
+    model_home = staged / "Contents/Resources" if nested_layout else staged
+    (model_home / "PortavozLiveQuestionClassifier.mlmodelc").mkdir(parents=True)
     (staged / "Info.plist").write_text("", encoding="utf-8")
     binary = app / "Contents/MacOS/portavoz-app"
     binary.parent.mkdir(parents=True)
@@ -78,6 +91,18 @@ class AppPayloadPermissionTests(unittest.TestCase):
             app = make_app(Path(directory), resolved=None)
             completed = self.run_payload_gate(app)
             self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_payload_gate_accepts_the_nested_resource_layout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app = make_app(Path(directory), resolved=None, nested_layout=True)
+            completed = self.run_payload_gate(app)
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_packaging_accepts_either_classifier_layout(self):
+        self.assertIn(
+            '"$QUESTION_BUNDLE/Contents/Resources/PortavozLiveQuestionClassifier.mlmodelc"',
+            MAKE_APP,
+        )
 
     def test_payload_gate_rejects_an_unreadable_staged_bundle(self):
         with tempfile.TemporaryDirectory() as directory:
