@@ -19925,3 +19925,28 @@ only, unavailable) and one cause line.
 longer exist. The architecture and interaction ratchets that pin control
 identifiers keep passing because only the containers changed.
 
+
+---
+
+## D538 — One source compiles warning-free on Xcode 26 and Xcode 27
+
+**Context:** Xcode 27 (Swift 6.4, MacOSX27 SDK) deprecates the FoundationModels
+`GenerationOptions(sampling:)` initializer in favor of `samplingMode:`, flags a
+weak inner capture whose outer closure implicitly captures the same reference
+strongly, and warns when Combine types appear in a file that never imports
+Combine. The warnings-as-errors gate rejected all three, so the 1.1.0 release
+could not be built on a Mac whose only Xcode is 27, while hosted CI still pins
+Xcode 26.6, whose SDK has only the old initializer label.
+
+**Decision:** every greedy prompt goes through one IntelligenceKit helper,
+`GenerationOptions.greedy(maximumResponseTokens:)`, which selects the label
+behind `#if compiler(>=6.4)`; no call site names the initializer. Progress
+closures that hop to the main actor capture `self` weakly at the outermost
+`Task` instead of only in the nested hop. Files that use Combine publishers
+import Combine. CI keeps its Xcode 26.6/26.3 pins until Xcode 27 leaves the
+hosted preview image.
+
+**Consequences:** the strict build, the package suite and the release recipe
+run unchanged on either toolchain. A future Xcode that removes the old label
+deletes the `#else` branch in one file. Decoding behavior is unchanged: greedy
+everywhere, same token caps.

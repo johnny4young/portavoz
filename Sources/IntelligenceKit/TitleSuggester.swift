@@ -23,7 +23,7 @@ public enum TitleSuggester {
                 try await session.respond(
                     to: "Summary:\n\(excerpt)",
                     generating: SuggestedTitle.self,
-                    options: GenerationOptions(sampling: .greedy)
+                    options: .greedy()
                 ).content
             }
         guard let raw = suggested?.title else { return nil }

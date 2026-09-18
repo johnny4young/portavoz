@@ -75,10 +75,10 @@ struct RecordingInterviewAssistView: View {
     }
 
     private var answerAction: some View {
-        Button {
-            controller.interviewAssist.requestAnswer(
+        Button { [weak controller] in
+            controller?.interviewAssist.requestAnswer(
                 using: services.assistInterviewQuestion,
-                isRecording: { [weak controller] in
+                isRecording: {
                     controller?.phase == .recording
                 })
         } label: {

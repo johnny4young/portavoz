@@ -89,7 +89,7 @@ public enum ObjectiveCheckDetector {
                 try await session.respond(
                     to: prompt,
                     generating: DetectedObjectiveCoverage.self,
-                    options: GenerationOptions(sampling: .greedy)
+                    options: .greedy()
                 ).content
             }
         guard let detected else { return [] }

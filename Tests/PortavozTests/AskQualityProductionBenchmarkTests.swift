@@ -1,5 +1,6 @@
 import ApplicationKit
 import Foundation
+import PortavozCore
 import StorageKit
 import XCTest
 @testable import portavoz_cli

@@ -5274,7 +5274,12 @@ AVAudioConverter input callback receives its immutable source through one
 lock-protected, one-shot Sendable bridge; unchecked conformance is confined to
 that bridge and no import-wide concurrency suppression is used. First-party
 Swift sources compile against the current SDK with warnings treated as errors
-both locally and in the primary GitHub Actions build lane. Hosted CI uses the
+both locally and in the primary GitHub Actions build lane, and the same
+sources compile warning-free under Xcode 27 (Swift 6.4): the FoundationModels
+`sampling:` to `samplingMode:` rename lives behind one `#if compiler(>=6.4)`
+helper in IntelligenceKit, and closures that hand model-download progress to
+the main actor capture `self` weakly at their outermost boundary. Hosted
+CI uses the
 explicit macos-26/Xcode 26.6 pair for that lane and macos-15/Xcode 26.3 for the
 oldest supported runtime lane; `DEVELOPER_DIR` is verified instead of selecting
 the newest installed Xcode. Each lane owns one complete test invocation so its
