@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationKit
+import Combine
 import PortavozCore
 import SwiftUI
 import UniformTypeIdentifiers

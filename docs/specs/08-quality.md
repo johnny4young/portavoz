@@ -1329,7 +1329,13 @@ vertical scroll coordinate space, supported MLX memory API, narrow
 lock-protected AVAudioConverter input bridge, absence of import-wide
 AVFoundation concurrency suppression, current no-op/throwing call shapes, and
 the CI warning gate. This leaves first-party Swift warning-free without turning
-dependency package metadata warnings into product exceptions (D118).
+dependency package metadata warnings into product exceptions (D118). Xcode 27
+(Swift 6.4) adds three diagnostic families the strict gate rejects: the
+FoundationModels `GenerationOptions` initializer rename, a weak inner capture
+that differs from an implicitly strong outer capture, and Combine types used
+without the import. The sources compile warning-free under both toolchains
+(D538); hosted CI still pins Xcode 26.6 and 26.3. Xcode 27 also needs its
+separate Metal Toolchain component because `mlx-swift` compiles Metal kernels.
 
 ### Meeting Memory Graph projection recovery (D273/D277)
 

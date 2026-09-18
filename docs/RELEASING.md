@@ -65,6 +65,7 @@ scripts/check-repository-hygiene.sh
   as an early local check with fixtures of your own.
 - **CHANGELOG.md** has every user-visible change since the last release, newest first.
 - Decide the **version** (SemVer): patch for fixes, minor for features. Last tag: `git tag --list 'v*' | sort -V | tail -1`.
+- The release host's selected Xcode must pass the same strict gates as CI. Xcode 27 needs the separately downloaded Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`) because `mlx-swift` compiles Metal kernels, and a fresh Xcode needs its license accepted before `swift` runs at all.
 - Stray SwiftPM artifacts (`*.d`, `*.dia`, `*.swiftdeps`) sometimes leak to the repo root from an Xcode/XCUITest build — they are **not** git-ignored, so delete them before releasing.
 
 ### Reliability identity and deterministic receipt (D147)
