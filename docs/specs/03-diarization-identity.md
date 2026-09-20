@@ -1,6 +1,13 @@
 # Spec 03 — Diarization and identity (DiarizationKit + naming)
 
-Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows), D104 (application-owned durable attribution policy), D105 (application-owned participant voice memory), D106 (application-owned app enrollment), D107 (application-owned verified name suggestions), D133 (stable split lineage), D148 (content-free resource measurement), D164 (process-owned model residency with fresh sessions), D303 (session-clock-anchored live windows), D357 (fail-closed encrypted identity recovery).
+Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows), D104 (application-owned durable attribution policy), D105 (application-owned participant voice memory), D106 (application-owned app enrollment), D107 (application-owned verified name suggestions), D133 (stable split lineage), D148 (content-free resource measurement), D164 (process-owned model residency with fresh sessions), D303 (session-clock-anchored live windows), D357 (fail-closed encrypted identity recovery), D516 (reviewed exact speech-engine pin).
+
+The shared FluidAudio dependency is pinned to an exact reviewed release (D516),
+which freezes its diarization implementation too — not just the ASR adapter. Model
+hashes, clustering thresholds and per-operation speaker/session ownership remain
+unchanged. A future engine upgrade must qualify diarization as well as recognition;
+dictation-only averages cannot establish parity. Upstream diarizer fixes published
+since the pin are listed in gap T35.
 
 ## PyannoteDiarizer — `Sources/DiarizationKit/PyannoteDiarizer.swift`
 
