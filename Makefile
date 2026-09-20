@@ -86,6 +86,8 @@ test-ui-real-audio:
 		UI_TEST_LOCALES="en"
 
 test-model-gated:
+	@test "$${PORTAVOZ_MODEL_TESTS:-}" = 1 || \
+		(echo "test-model-gated: export PORTAVOZ_MODEL_TESTS=1 (plus PORTAVOZ_TEST_WAV and PORTAVOZ_TEST_CONVERSATION_WAV for the speech classes); see docs/RELEASING.md §1" >&2; exit 64)
 	@set -u; status=0; \
 	for class in $(MODEL_GATED_TEST_CLASSES); do \
 		log=$$(mktemp); \
@@ -791,11 +793,22 @@ test-ui-es: UI_TEST_LOCALES = es
 test-ui-es: test-ui-scoped
 
 test-ui-bilingual: UI_TEST_LOCALES = en es
+test-ui-bilingual: UI_TEST_INTERRUPTION_REQUIRED = true
 test-ui-bilingual: test-ui-scoped
+
+## Permission-free negative controls use the same base/cleanup as real journeys.
+## All controls share one small fixture build, not the product catalog.
+UI_INTERRUPTION_RESULTS ?= $(CURDIR)/dist/ui-interruption-safety/$(shell date -u +%Y%m%dT%H%M%S)
+.PHONY: test-ui-interruption-safety
+test-ui-interruption-safety:
+	python3 scripts/check-ui-interruption-safety.py --output "$(UI_INTERRUPTION_RESULTS)"
 
 ## Run explicit Xcode selectors, for example:
 ##   make test-ui-scoped UI_TESTS='PortavozUITests/SettingsUITests/testCategoryNavigationRevealsEachPane'
 test-ui-scoped: test-ui-build
+	@if [ "$(UI_TEST_INTERRUPTION_REQUIRED)" = true ]; then \
+		$(MAKE) --no-print-directory test-ui-interruption-safety; \
+	fi
 	@$(MAKE) --no-print-directory test-ui-run \
 		UI_TESTS="$(UI_TESTS)" UI_TEST_LOCALES="$(UI_TEST_LOCALES)"
 

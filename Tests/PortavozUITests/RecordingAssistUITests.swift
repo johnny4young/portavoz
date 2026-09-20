@@ -2,8 +2,8 @@ import XCTest
 
 final class RecordingAssistUITests: PortavozUITestCase {
     @MainActor
-    func testCompanionActionsKeepIdentityAndSeenStateAfterReentry() {
-        let app = XCUIApplication.portavoz(
+    func testCompanionActionsKeepIdentityAndSeenStateAfterReentry() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             simulateSequoiaCapabilities: true,
             simulateLiveTranscriptBrowsing: true)
@@ -58,8 +58,8 @@ final class RecordingAssistUITests: PortavozUITestCase {
     /// No closed captions are released: both requests must expose their honest
     /// unavailable state, without model assets, network or a generated answer.
     @MainActor
-    func testLatestManualAssistRequestOwnsTheFocusSlot() {
-        let app = XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
+    func testLatestManualAssistRequestOwnsTheFocusSlot() throws {
+        let app = try XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
         app.launchPortavoz()
         defer { app.terminate() }
         let record = app.buttons["library-new-recording-button"]
@@ -70,7 +70,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         let nextQuestion = app.control(withIdentifier: "recording-next-question-panel")
         app.buttons["recording-catch-up"].click()
         XCTAssertTrue(catchUp.waitForExistenceFast(timeout: 3))
-        app.buttons["recording-next-question"].click()
+        app.recordingMoreItem("recording-next-question").click()
         XCTAssertTrue(nextQuestion.waitForExistenceFast(timeout: 3))
         XCTAssertFalse(catchUp.exists, "the previous request cannot occupy the only render site")
         app.buttons["recording-catch-up"].click()
@@ -82,8 +82,8 @@ final class RecordingAssistUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testBatchedObjectivesRevealLastArrivalAndReplacementCountsAsUnread() {
-        let app = XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
+    func testBatchedObjectivesRevealLastArrivalAndReplacementCountsAsUnread() throws {
+        let app = try XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
         app.launchArguments += ["-seed-live-companion-ui", "-seed-live-assist-arrivals-ui"]
         app.launchPortavoz()
         defer { app.terminate() }
@@ -112,8 +112,8 @@ final class RecordingAssistUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testUnsubmittedNotesAndObjectivesSurviveTabsAndLibraryBrowsing() {
-        let app = XCUIApplication.portavoz(
+    func testUnsubmittedNotesAndObjectivesSurviveTabsAndLibraryBrowsing() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true, simulateSequoiaCapabilities: true,
             simulateLiveTranscriptBrowsing: true)
         app.launchPortavoz()
@@ -126,12 +126,12 @@ final class RecordingAssistUITests: PortavozUITestCase {
         app.openAssistTab("notes")
         let note = app.control(withIdentifier: "recording-note-field")
         note.click()
-        app.typeText(noteText)
+        typeText(noteText, in: app)
         XCTAssertTrue(note.waitForLabelOrValue(noteText, timeout: 3))
         app.openAssistTab("objectives")
         let objective = app.control(withIdentifier: "recording-objective-field")
         objective.click()
-        app.typeText(objectiveText)
+        typeText(objectiveText, in: app)
         XCTAssertTrue(objective.waitForLabelOrValue(objectiveText, timeout: 3))
         app.openAssistTab("notes")
         XCTAssertTrue(note.waitForLabelOrValue(noteText, timeout: 3))
@@ -171,8 +171,8 @@ final class RecordingAssistUITests: PortavozUITestCase {
     /// one open panel at a time, the newest cards open, older ones folded to a
     /// single line, and the question addressed to the user in its own slot.
     @MainActor
-    func testLiveAssistKeepsOnePanelOpenAndABoundedCardList() {
-        let app = XCUIApplication.portavoz(
+    func testLiveAssistKeepsOnePanelOpenAndABoundedCardList() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             simulateSequoiaCapabilities: true,
             simulateLiveTranscriptBrowsing: true)

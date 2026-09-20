@@ -39,6 +39,12 @@ The Settings journey also checks that localized provider help retains Sequoia
 and Tahoe support plus the selected local engine, rather than stale Apple-only
 live-summary wording.
 
+Portable-preference UI journeys allocate input and output documents through the
+shared identity-owned `UITestStorage` cross-process scratch boundary. They use
+the throwing application factory and admit review-sheet Escape through the
+keyboard receiver guard; no runner-container path or raw keyboard bypass is
+needed for import/export coverage.
+
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
 Supported AppKit-capable CI and release hosts require zero
@@ -1356,7 +1362,13 @@ vertical scroll coordinate space, supported MLX memory API, narrow
 lock-protected AVAudioConverter input bridge, absence of import-wide
 AVFoundation concurrency suppression, current no-op/throwing call shapes, and
 the CI warning gate. This leaves first-party Swift warning-free without turning
-dependency package metadata warnings into product exceptions (D118).
+dependency package metadata warnings into product exceptions (D118). Xcode 27
+(Swift 6.4) adds three diagnostic families the strict gate rejects: the
+FoundationModels `GenerationOptions` initializer rename, a weak inner capture
+that differs from an implicitly strong outer capture, and Combine types used
+without the import. The sources compile warning-free under both toolchains
+(D538); hosted CI still pins Xcode 26.6 and 26.3. Xcode 27 also needs its
+separate Metal Toolchain component because `mlx-swift` compiles Metal kernels.
 
 ### Meeting Memory Graph projection recovery (D273/D277)
 
@@ -3413,15 +3425,60 @@ reports the owning PID or asks for a window title, bounds, dialog text, control,
 or credential, and negative-layer Notification Center desktop surfaces do not
 count. Both probes have explicit timeouts and exact-shape validation;
 unavailable or malformed evidence fails
-closed. The preflight never dismisses a prompt or terminates another process,
-and the UI-test bundle installs no external-prompt interruption handler. A
-privacy or authentication prompt raised after preflight therefore invalidates
-the host run without allowing automation to answer the user's decision.
+closed. The preflight never dismisses a prompt or terminates another process.
+Preflight cannot prevent a later prompt, and the absence of a custom monitor
+does not prevent XCTest's default handlers from answering it. The shared test
+base therefore installs the content-blind, nonreturning guard described below:
+it cleans only owned resources and fails the invocation without choosing a
+control or resuming the interrupted action.
 It cannot prevent unrelated automation from starting after its second sample,
 so later connection invalidation remains a result-bundle/host classification,
 not automatically a Portavoz crash.
 
-The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when LaunchServices holds stale claimants of the `portavoz:` scheme: every build product that ever registered stays in that database, including temp copies whose paths are long gone, and `testRecordingAutomationRoutesStartAndStopThroughVisibleApp` can resolve to one — the launch fails silently and the test reports whichever app happened to be frontmost, which reads as a code regression and is not one. Observed on this machine: 21 of 31 claimants pointed at paths that no longer exist, and the test passed 4/4 in isolation on the same commit. A warning rather than a gate, because rebuilding the database is a system-wide action with its own side effects. **No UI gate asserts generated text** (D306): `testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState` used to pin an exact `RAGAnswerer` sentence and failed 3 of 6 runs on a quiet machine, because the workflow honestly falls back to "Closest passages from your meetings:" whenever the on-device model is unavailable or throttled. It now asserts `palette-answer`, which renders only from `state.answer` and therefore proves Enter ran the full Ask workflow, plus the citation that proves the receipt reaches the exact second — 6 of 6 after the change. A model's availability is not a property of this repository, and a gate that fails for it teaches the team to ignore red. It verifies the UI through automation instead of driving the screen. The harness treats `-portavoz-open-settings` only as a runner-side hint, removes it before launch, and opens the real production Settings scene with `⌘,`; no test-only sheet or app-owned window lifecycle can leak into the following case. Every relaunch first observes the prior process terminate, waits on the content-free running-process inventory to clear, and receives a UUID-scoped `TMPDIR` so AppKit saved state cannot race another case. Launch args: `-NSTreatUnknownArgumentsAsOpen NO`, `-ApplePersistenceIgnoreState YES`, `-use-temp-store` (disposable DB; Settings does not touch the real Keychain, local voice identity, or CloudKit/APNs and completion does not invoke host Shortcuts), `-simulate-reminder-open` (routes one content-free stale reminder response through the production delegate path to Radar and is legal only with the disposable store), `-simulate-app-entity-route meeting|person|commitment` (invokes the production SDK-only open-action logic shared with each `OpenIntent` after the bounded disposable catalog is seeded), `-seed-demo` (deterministic meeting with transcript, summary, typed overview, decision, action-item, and role-separated Apuntador sources, coauthorship bullet "▸", action item, audio, and a content-free remote-attempt receipt), `-seed-stale-derived` (appends one deterministic correction after seeded Summary and Apuntador provenance so stale presentation is exercised without a model), `-seed-commitment-inbox` (links the disposable Ana speaker to one exact canonical person and exposes an evidence-backed pending candidate), `-seed-commitment-radar` (adds four bounded confirmed commitments across owner, due, and lifecycle states), `-seed-showcase` (fictional bilingual library used only by the public screenshot contract), `-seed-unnamed-speaker` (leaves the disposable remote speaker unnamed so the explicit name-suggestion action can be verified without invoking a real model), `-seed-ai-suggestions` (adds deterministic title, recipe, and speaker-name recommendations so each dismiss path can be verified without invoking a real model), `-seed-live-translation-ui` (adds a deterministic translated row so the labeled translation rail can be verified without language assets), `-seed-latest-recipe` (adds a newer Standup snapshot to prove D45 reload selection), `-seed-recovery` (a staging-only recovery fixture, allowed only with the temp store), `-seed-processing` (a model-free durable-processing fixture, also temp-store-only), `-seed-processing-failure` (converts the disposable seed's first job into an exhausted failure), `-seed-refine-running` (a model-free cancellable refine fixture, temp-store-only), `-seed-just-recorded` (marks only the disposable seed as freshly captured so the opted-in mirror can be verified), `-seed-without-summary` (omits only the disposable summary), `-seed-scale` plus optional `-scale-auto-summary-update` (a temp-store-only 5k-detail fixture), `-simulate-sequoia-capabilities` (forces the app-owned Foundation Models capability unavailable), `-simulate-apuntador-refresh-success` (replaces a disposable stale snapshot through the production refresh action without invoking a real model), `-simulate-ask-progressive-handshake` (holds disposable lexical evidence and the partial local answer at two finite XCUITest-owned boundaries), `-simulate-semantic-assets-missing` (substitutes a disposable embedding model only with temporary storage so the explicit Settings transition cannot touch host assets), `-simulate-voice-storage-unavailable` (returns a typed missing key to both voice stores only with temporary storage so the recovery UI cannot touch host biometric data), `-simulate-recording-start-failure` (injects one typed preparation failure), `-simulate-system-capture-stall` (injects a prolonged content-free stall, the two-minute Stop affordance, and recovery), `-simulate-system-audio-clipping` (feeds only compact persisted-level evidence for a sustained ceiling warning), `-simulate-live-transcription-attach` (moves one active recording from preparing to a live caption), `-simulate-live-transcript-browsing` (emits an initial caption history, pauses, then appends rows while the reader owns scroll position), `-simulate-live-apuntador` (replaces one remote row with the locale-matched frozen public-synthetic question while the real bundled classifier remains authoritative), `-simulate-skill-receipt-scope-unavailable` (returns unavailable only for non-Recent Skill activity loads so verified durable controls and explicit retry remain testable), `-simulate-standing-reconciliation-cancellation-once` (throws one cancellation-shaped event-resolution failure only with temporary storage so stale standing-rule mutations remain locked until verified reload), `-simulate-skill-control-mutation-unavailable` (commits only a temporary-store policy mutation and then fails its response while the following durable read remains healthy, so recovery must adopt durable truth without replaying the ambiguous write), `-simulate-skill-receipt-refresh-handshake` (holds only non-Recent temporary-store receipt refreshes at a finite XCUITest-owned boundary so stale-row transitions and explicit refresh remain observable without a fixed delay), `-simulate-skill-receipt-policy-unavailable` (fails only the receipt inspector’s optional policy port so audit-only source review remains testable), `-simulate-skill-proposal-refresh-handshake` (holds each temporary-store proposal read at a finite XCUITest-owned boundary so retained inert actions and explicit refresh remain observable without a fixed delay), `-simulate-skill-proposal-unavailable` (fails only the content-free proposed-offer read so independently verified policy remains usable), `-simulate-skill-proposal-review-unavailable` (fails only the opaque review-to-context read while retaining the verified row and retry), `-simulate-skill-proposal-dismiss-unavailable` (fails only one opaque proposal-dismissal write while retaining the verified row and retry), `-seed-duplicate-skill-proposals` (uses the real meeting-offer producer for two disposable meetings so same-Skill assistive names must stay unique), `-seed-skill-history` (adds 25 content-free confirmed executions only to prove explicit 20-to-50 history expansion and same-scope refresh), `-seed-skill-exact-page-history` (adds exactly 20 matching executions so a full visible page cannot invent continuation), `-seed-skill-waiting` (adds one content-free confirmed execution that stops before begin), `-simulate-skill-receipt-revoke-unavailable` (fails only the waiting-revocation write while retaining its receipt and retry), `-seed-skill-failed-recoverable` (adds one failed local execution with an exact meeting subject), and `-simulate-skill-receipt-recovery-unavailable` (fails only the opaque receipt-to-context resolution while retaining its evidence and retry); all are legal only with the temp store. The runner-only Settings hint is never visible to the app process; after the main window is ready, the harness invokes the production `⌘,` command and waits for the real Settings category control. Every launch receives a unique `PORTAVOZ_AUDIO_ROOT`; tests that exercise copied real audio may explicitly override it with `PORTAVOZ_TEST_AUDIO_ROOT`. The diagnostics case additionally supplies a unique `PORTAVOZ_UI_TEST_DIAGNOSTICS_PATH`, and the backup case a unique `PORTAVOZ_UI_TEST_BACKUP_FOLDER`; production launches ignore both overrides. Only disposable `-use-temp-store` launches place the throwaway main window and real Settings scene on AppKit's zero screen. The main frame retains left clearance for desktop overlays; Settings is constrained inside the same screen's visible frame, and the harness requires its navigation anchor to have nonnegative global coordinates before continuing. Production multi-display placement remains unchanged. Localized, asynchronously populated controls that can still reflow must hold a stable hittable frame before XCUITest activates them; existence alone does not make a cached click coordinate reliable. The native recording-route case additionally proves the elapsed clock remains wider than it is tall and Stop stays hittable inside the minimum-width window, protecting the responsive two-row recording bar without screenshot pixel matching. The seed synthesizes a two-tone clip (mic/system) or adopts only that scratch copy. Covers 105 cases in `AutomationUITests`, `LibraryUITests`, `InterviewAssistUITests`, `InsightsUITests`, `OnboardingUITests`, `MeetingDetailUITests`, `CommitmentRadarUITests`, `PublicShowcaseUITests`, `SettingsUITests`, and `SkillsSettingsUITests`: the targeted production `portavoz://record` handoff into a visible disposable recording, exact meeting/person/commitment App Entity routes, library and grouping, the global bounded Commitment Radar with separate generated-review triage and exact source navigation, exact Library result-to-timestamp seek, return from a browsed meeting to the still-active recording, source-grounded upcoming-meeting preparation, exact local-data receipts, full Ask and command-palette answer/citation paths (the palette case begins with its destination detail already open so it proves same-route delivery), interrupted staging recovery to a playable detail, durable processing resume/retry, typed recording-start failure/retry/reference, cold-model live-caption attachment, reader-owned live-caption history with an explicit Jump to live, visible prolonged system-callback outage, sustained incoming-clipping warning and dismissal, explicit Stop exit into the guarded typed no-audio Retry state, one complete heatmap/interlocutors journey, one sequential first-listen-to-local-voice enrollment journey, 5k-detail rendering plus scoped summary update, overview, decision, action-item, and Apuntador source-to-transcript/audio navigation, explicit summary-claim correction/unsupported/clear review, focused transcript text/speaker correction with original evidence and durable undo, explicit merge/hide/restore structural correction with hidden accepted evidence, correction-stale Summary/Apuntador evidence with explicit regeneration plus simulated-Sequoia preservation, summary/transcript/player/rail/privacy receipt/clip plus scoped action-item mutation, dismissible AI recommendations, reversible clear playback, a visually distinct live-translation rail, correction-aware SRT/WebVTT export-menu availability, explicit transcript/calendar name-suggestion entry, confirmed-person memory, newest-recipe reload, refine cancellation, the post-meeting mirror sheet, Sequoia intelligence recovery, Settings navigation, explicit iCloud sync opt-in/existing-library separation, redacted support export, readable whole-library Markdown backup, independent transcript/summary language controls, explicit semantic-asset preparation, custom structures, audio capture, local-voice enrollment, unreadable voice-storage recovery, mirror opt-in, live locale, truthful Skills activity transitions, distinct positional assistive names for repeated same-Skill proposals, read-only control recovery after an unverified committed mutation, cancellation-shaped automatic-action failure with stale-mutation lock and verified reload, bounded explicit Skills history expansion, same-selection explicit Skills refresh, exact query-level Skill and rolling-period filtering with 20/50 reset, exact-page continuation suppression, and the three public showcase surfaces. The palette screenshot targets its identified `NSPanel`; every other retained attachment targets an app window. The automation route retains `automation-visible-recording`; the App Entity route retains `app-entity-commitment-route`; the scaled detail, Ask surfaces, Meeting Detail claim review and overview/decision/action-item/Apuntador source/player, rail/player waveform, confirmed-person memory, grouped Library, global Commitment Radar, `commitment-review-queue`, `commitment-review-exact-source`, `commitment-reminder-open-radar`, Insights heatmap, post-meeting mirror, Sequoia capability, semantic-search preparation, diagnostics, recovery, recording-failure, remote-audio-recovery, remote-audio-stop-recovery, system-audio-clipping, live-transcript-hot-attach, live-transcript-history-paused, live-translation-rail, transcript-correction-original-evidence, transcript-structural-correction-evidence, meeting-detail-stale-derived-artifacts, meeting-detail-apuntador-refreshed, meeting-detail-correction-aware-export, transcript/calendar-name, local-voice, voice-storage-recovery, dismissible-AI, Skills activity transition, `skills-activity-expanded-history`, `skills-activity-explicit-refresh`, `skills-activity-period-filter`, `skills-activity-exact-page`, and public showcase cases keep named app-only `XCTAttachment` screenshots, including `public-meeting-detail`, `public-live-translation`, and `public-insights`, so feature-band runs can export and inspect deterministic visual evidence without screen driving or exposing unrelated desktop content. `make public-screenshots` runs only those three showcase cases, exports their attachments, and replaces the synchronized README/site assets. `make test-ui-en` and `make test-ui-es` use Xcode's `-testLanguage`/`-testRegion` contract; a shell environment variable alone is not accepted as localization evidence. Export itself (`AudioClipExporter`) is tested as a unit test — a 15 s clip from a 30 s source exports to m4a in a fraction of a second (comfortably below the < 2 s M11 criterion).
+Disposable Settings uses the real scene and a narrow
+`NSViewControllerRepresentable` bridge. The weak owning-window reference updates
+on view attachment for receipt routing; zero-screen placement runs instead from
+`viewDidAppear`, after SwiftUI placement and AppKit frame restoration. An
+attachment-time correction is insufficient even if its geometry is correct.
+The placement policy remains gated by `-use-temp-store`: production preserves
+saved frame and level. Controller tests exercise restoration between attachment
+and appearance, repeated presentation, detachment/reparenting, and the production
+no-op. The Audio Settings XCUITest closes and reopens the real scene through
+Command-comma and retains the shared nonnegative-coordinate assertion.
+
+Cross-process fixtures use `UITestScratch`, a test-only Foundation/Darwin
+allocator compiled into both existing test targets. `mkdtemp` creates private
+children below `/private/tmp/portavoz-ui-tests`; the shared base must already
+be, or be created as, a real directory owned by the current user with mode 0700.
+An existing symlink, foreign owner or wider permissions fails rather than being
+silently adopted or changed. Cleanup binds to the allocated directory's device,
+inode and owner, refuses a replacement and does not follow child symlinks.
+
+`PortavozUITestCase` owns the scratch lifecycle. Its exact UUID fences teardown,
+including when a different setup is rejected. The throwing app factory assigns
+an explicit database, audio root, readiness/continuation files and `TMPDIR` to
+an app-specific child. Explicit recovery databases, exports and backup folders
+use the same allocator; an operator-supplied copy of real audio remains an
+explicit override and is not included in automatic cleanup. Fixture allocation
+errors reach the test before app construction. Registered app termination and
+the running-app inventory must both clear before owned scratch is removed; a
+still-running participant leaves its directory intact and fails the test.
+
+The macOS UI runner keeps its sandbox. Its test-only entitlements add read/write
+access solely to `/private/tmp/portavoz-ui-tests/`, not all of `/private/tmp`,
+other app containers, or user data. The app and release receive no new filesystem
+entitlement, and no TCC grant or privacy prompt is automated. This distinction
+matters: an ordinary Swift test can allocate a directory which the sandboxed UI
+runner cannot. The real storage journey therefore verifies allocation failure
+at the actual app factory, foreign-owner teardown rejection, app-produced
+readiness, both synthetic audio channels read back by the runner, and removal of
+the owned root after base teardown terminates the app. Library
+readiness consumes its one-shot signal; it must not be awaited a second time.
+The shared sources, package test layout and test entitlement expand selection
+to the complete bilingual catalog. Scoped storage journeys remain diagnostic
+coverage, not that final qualification.
+
+The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when LaunchServices holds stale claimants of the `portavoz:` scheme: every build product that ever registered stays in that database, including temp copies whose paths are long gone, and `testRecordingAutomationRoutesStartAndStopThroughVisibleApp` can resolve to one — the launch fails silently and the test reports whichever app happened to be frontmost, which reads as a code regression and is not one. Observed on this machine: 21 of 31 claimants pointed at paths that no longer exist, and the test passed 4/4 in isolation on the same commit. A warning rather than a gate, because rebuilding the database is a system-wide action with its own side effects. **No UI gate asserts generated text** (D306): `testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState` used to pin an exact `RAGAnswerer` sentence and failed 3 of 6 runs on a quiet machine, because the workflow honestly falls back to "Closest passages from your meetings:" whenever the on-device model is unavailable or throttled. It now asserts `palette-answer`, which renders only from `state.answer` and therefore proves Enter ran the full Ask workflow, plus the citation that proves the receipt reaches the exact second — 6 of 6 after the change. A model's availability is not a property of this repository, and a gate that fails for it teaches the team to ignore red. It verifies the UI through automation instead of driving the screen. The harness treats `-portavoz-open-settings` only as a runner-side hint, removes it before launch, and opens the real production Settings scene with `⌘,`; no test-only sheet or app-owned window lifecycle can leak into the following case. Every relaunch first observes the prior process terminate, waits on the content-free running-process inventory to clear, and uses its app-specific scratch `TMPDIR` so AppKit saved state cannot race another case. Launch args: `-NSTreatUnknownArgumentsAsOpen NO`, `-ApplePersistenceIgnoreState YES`, `-use-temp-store` (disposable DB; Settings does not touch the real Keychain, local voice identity, or CloudKit/APNs and completion does not invoke host Shortcuts), `-simulate-reminder-open` (routes one content-free stale reminder response through the production delegate path to Radar and is legal only with the disposable store), `-simulate-app-entity-route meeting|person|commitment` (invokes the production SDK-only open-action logic shared with each `OpenIntent` after the bounded disposable catalog is seeded), `-seed-demo` (deterministic meeting with transcript, summary, typed overview, decision, action-item, and role-separated Apuntador sources, coauthorship bullet "▸", action item, audio, and a content-free remote-attempt receipt), `-seed-stale-derived` (appends one deterministic correction after seeded Summary and Apuntador provenance so stale presentation is exercised without a model), `-seed-commitment-inbox` (links the disposable Ana speaker to one exact canonical person and exposes an evidence-backed pending candidate), `-seed-commitment-radar` (adds four bounded confirmed commitments across owner, due, and lifecycle states), `-seed-showcase` (fictional bilingual library used only by the public screenshot contract), `-seed-unnamed-speaker` (leaves the disposable remote speaker unnamed so the explicit name-suggestion action can be verified without invoking a real model), `-seed-ai-suggestions` (adds deterministic title, recipe, and speaker-name recommendations so each dismiss path can be verified without invoking a real model), `-seed-live-translation-ui` (adds a deterministic translated row so the labeled translation rail can be verified without language assets), `-seed-latest-recipe` (adds a newer Standup snapshot to prove D45 reload selection), `-seed-recovery` (a staging-only recovery fixture, allowed only with the temp store), `-seed-processing` (a model-free durable-processing fixture, also temp-store-only), `-seed-processing-failure` (converts the disposable seed's first job into an exhausted failure), `-seed-refine-running` (a model-free cancellable refine fixture, temp-store-only), `-seed-just-recorded` (marks only the disposable seed as freshly captured so the opted-in mirror can be verified), `-seed-without-summary` (omits only the disposable summary), `-seed-scale` plus optional `-scale-auto-summary-update` (a temp-store-only 5k-detail fixture), `-simulate-sequoia-capabilities` (forces the app-owned Foundation Models capability unavailable), `-simulate-apuntador-refresh-success` (replaces a disposable stale snapshot through the production refresh action without invoking a real model), `-simulate-ask-progressive-handshake` (holds disposable lexical evidence and the partial local answer at two finite XCUITest-owned boundaries), `-simulate-semantic-assets-missing` (substitutes a disposable embedding model only with temporary storage so the explicit Settings transition cannot touch host assets), `-simulate-voice-storage-unavailable` (returns a typed missing key to both voice stores only with temporary storage so the recovery UI cannot touch host biometric data), `-simulate-recording-start-failure` (injects one typed preparation failure), `-simulate-system-capture-stall` (injects a prolonged content-free stall, the two-minute Stop affordance, and recovery), `-simulate-system-audio-clipping` (feeds only compact persisted-level evidence for a sustained ceiling warning), `-simulate-live-transcription-attach` (moves one active recording from preparing to a live caption), `-simulate-live-transcript-browsing` (emits an initial caption history, pauses, then appends rows while the reader owns scroll position), `-simulate-live-apuntador` (replaces one remote row with the locale-matched frozen public-synthetic question while the real bundled classifier remains authoritative), `-simulate-skill-receipt-scope-unavailable` (returns unavailable only for non-Recent Skill activity loads so verified durable controls and explicit retry remain testable), `-simulate-standing-reconciliation-cancellation-once` (throws one cancellation-shaped event-resolution failure only with temporary storage so stale standing-rule mutations remain locked until verified reload), `-simulate-skill-control-mutation-unavailable` (commits only a temporary-store policy mutation and then fails its response while the following durable read remains healthy, so recovery must adopt durable truth without replaying the ambiguous write), `-simulate-skill-receipt-refresh-handshake` (holds only non-Recent temporary-store receipt refreshes at a finite XCUITest-owned boundary so stale-row transitions and explicit refresh remain observable without a fixed delay), `-simulate-skill-receipt-policy-unavailable` (fails only the receipt inspector’s optional policy port so audit-only source review remains testable), `-simulate-skill-proposal-refresh-handshake` (holds each temporary-store proposal read at a finite XCUITest-owned boundary so retained inert actions and explicit refresh remain observable without a fixed delay), `-simulate-skill-proposal-unavailable` (fails only the content-free proposed-offer read so independently verified policy remains usable), `-simulate-skill-proposal-review-unavailable` (fails only the opaque review-to-context read while retaining the verified row and retry), `-simulate-skill-proposal-dismiss-unavailable` (fails only one opaque proposal-dismissal write while retaining the verified row and retry), `-seed-duplicate-skill-proposals` (uses the real meeting-offer producer for two disposable meetings so same-Skill assistive names must stay unique), `-seed-skill-history` (adds 25 content-free confirmed executions only to prove explicit 20-to-50 history expansion and same-scope refresh), `-seed-skill-exact-page-history` (adds exactly 20 matching executions so a full visible page cannot invent continuation), `-seed-skill-waiting` (adds one content-free confirmed execution that stops before begin), `-simulate-skill-receipt-revoke-unavailable` (fails only the waiting-revocation write while retaining its receipt and retry), `-seed-skill-failed-recoverable` (adds one failed local execution with an exact meeting subject), and `-simulate-skill-receipt-recovery-unavailable` (fails only the opaque receipt-to-context resolution while retaining its evidence and retry); all are legal only with the temp store. The runner-only Settings hint is never visible to the app process; after the main window is ready, the harness invokes the production `⌘,` command and waits for the real Settings category control. Every launch receives a unique `PORTAVOZ_AUDIO_ROOT`; tests that exercise copied real audio may explicitly override it with `PORTAVOZ_TEST_AUDIO_ROOT`. The diagnostics case additionally supplies a unique `PORTAVOZ_UI_TEST_DIAGNOSTICS_PATH`, and the backup case a unique `PORTAVOZ_UI_TEST_BACKUP_FOLDER`; production launches ignore both overrides. Only disposable `-use-temp-store` launches place the throwaway main window and real Settings scene on AppKit's zero screen. The main frame retains left clearance for desktop overlays; Settings is constrained inside the same screen's visible frame, and the harness requires its navigation anchor to have nonnegative global coordinates before continuing. Production multi-display placement remains unchanged. Localized, asynchronously populated controls that can still reflow must hold a stable hittable frame before XCUITest activates them; existence alone does not make a cached click coordinate reliable. The native recording-route case additionally proves the elapsed clock remains wider than it is tall and Stop stays hittable inside the minimum-width window, protecting the responsive two-row recording bar without screenshot pixel matching. The seed synthesizes a two-tone clip (mic/system) or adopts only that scratch copy. Covers 105 cases in `AutomationUITests`, `LibraryUITests`, `InterviewAssistUITests`, `InsightsUITests`, `OnboardingUITests`, `MeetingDetailUITests`, `CommitmentRadarUITests`, `PublicShowcaseUITests`, `SettingsUITests`, and `SkillsSettingsUITests`: the targeted production `portavoz://record` handoff into a visible disposable recording, exact meeting/person/commitment App Entity routes, library and grouping, the global bounded Commitment Radar with separate generated-review triage and exact source navigation, exact Library result-to-timestamp seek, return from a browsed meeting to the still-active recording, source-grounded upcoming-meeting preparation, exact local-data receipts, full Ask and command-palette answer/citation paths (the palette case begins with its destination detail already open so it proves same-route delivery), interrupted staging recovery to a playable detail, durable processing resume/retry, typed recording-start failure/retry/reference, cold-model live-caption attachment, reader-owned live-caption history with an explicit Jump to live, visible prolonged system-callback outage, sustained incoming-clipping warning and dismissal, explicit Stop exit into the guarded typed no-audio Retry state, one complete heatmap/interlocutors journey, one sequential first-listen-to-local-voice enrollment journey, 5k-detail rendering plus scoped summary update, overview, decision, action-item, and Apuntador source-to-transcript/audio navigation, explicit summary-claim correction/unsupported/clear review, focused transcript text/speaker correction with original evidence and durable undo, explicit merge/hide/restore structural correction with hidden accepted evidence, correction-stale Summary/Apuntador evidence with explicit regeneration plus simulated-Sequoia preservation, summary/transcript/player/rail/privacy receipt/clip plus scoped action-item mutation, dismissible AI recommendations, reversible clear playback, a visually distinct live-translation rail, correction-aware SRT/WebVTT export-menu availability, explicit transcript/calendar name-suggestion entry, confirmed-person memory, newest-recipe reload, refine cancellation, the post-meeting mirror sheet, Sequoia intelligence recovery, Settings navigation, explicit iCloud sync opt-in/existing-library separation, redacted support export, readable whole-library Markdown backup, independent transcript/summary language controls, explicit semantic-asset preparation, custom structures, audio capture, local-voice enrollment, unreadable voice-storage recovery, mirror opt-in, live locale, truthful Skills activity transitions, distinct positional assistive names for repeated same-Skill proposals, read-only control recovery after an unverified committed mutation, cancellation-shaped automatic-action failure with stale-mutation lock and verified reload, bounded explicit Skills history expansion, same-selection explicit Skills refresh, exact query-level Skill and rolling-period filtering with 20/50 reset, exact-page continuation suppression, and the three public showcase surfaces. The palette screenshot targets its identified `NSPanel`; every other retained attachment targets an app window. The automation route retains `automation-visible-recording`; the App Entity route retains `app-entity-commitment-route`; the scaled detail, Ask surfaces, Meeting Detail claim review and overview/decision/action-item/Apuntador source/player, rail/player waveform, confirmed-person memory, grouped Library, global Commitment Radar, `commitment-review-queue`, `commitment-review-exact-source`, `commitment-reminder-open-radar`, Insights heatmap, post-meeting mirror, Sequoia capability, semantic-search preparation, diagnostics, recovery, recording-failure, remote-audio-recovery, remote-audio-stop-recovery, system-audio-clipping, live-transcript-hot-attach, live-transcript-history-paused, live-translation-rail, transcript-correction-original-evidence, transcript-structural-correction-evidence, meeting-detail-stale-derived-artifacts, meeting-detail-apuntador-refreshed, meeting-detail-correction-aware-export, transcript/calendar-name, local-voice, voice-storage-recovery, dismissible-AI, Skills activity transition, `skills-activity-expanded-history`, `skills-activity-explicit-refresh`, `skills-activity-period-filter`, `skills-activity-exact-page`, and public showcase cases keep named app-only `XCTAttachment` screenshots, including `public-meeting-detail`, `public-live-translation`, and `public-insights`, so feature-band runs can export and inspect deterministic visual evidence without screen driving or exposing unrelated desktop content. `make public-screenshots` runs only those three showcase cases, exports their attachments, and replaces the synchronized README/site assets. `make test-ui-en` and `make test-ui-es` use Xcode's `-testLanguage`/`-testRegion` contract; a shell environment variable alone is not accepted as localization evidence. Export itself (`AudioClipExporter`) is tested as a unit test — a 15 s clip from a 30 s source exports to m4a in a fraction of a second (comfortably below the < 2 s M11 criterion).
 
 ## Measurement harnesses
 
@@ -4685,11 +4742,19 @@ complete English catalogue retained 11 failures across Radar, Meeting Detail,
 Settings, and Skills despite otherwise valid product state. D453 therefore
 forwards the exact override into disposable `-use-temp-store` launches and
 places only their main and Settings windows at AppKit's standard status-bar
-level. The accepted overlay can no longer occlude hit targets, but no alert is
-read, dismissed, answered, or removed. Authentication windows and active
-automation still block; the isolated Secure Input bit is advisory under D468.
-CI never enables the Notification Center override, and the UI bundle still
-installs no interruption monitor. Its receipt distinguishes an accepted live
+level. This reduces occlusion by the accepted overlay; it does not prevent
+system-modal interruptions. The app's window-placement code reads or answers
+no alert. XCTest itself can still invoke built-in fallback handlers, however:
+an actual microphone permission prompt was answered despite the absence of a
+custom monitor. D527 therefore installs a content-blind monitor in the shared
+test base. It cleans only registered apps and identity-owned scratch, records a
+failure through its owning case, and exits the worker if XCTest returns; no
+handler Bool permits fallback or a resumed event. The execution receipt remains
+`evidence-failure`, including after a restart or exit-zero summary, and the writer
+returns nonzero so local and hosted gates both reject it. Authentication windows
+and active automation still block; the isolated Secure Input bit is advisory
+under D468. CI never enables the Notification Center override. Its receipt
+distinguishes an accepted live
 overlay, reported through the two content-free Notification Center counts,
 from a clear-host run where the override relaxed nothing; the latter is not
 live-overlay evidence.
@@ -6895,14 +6960,34 @@ remains the default.
 Only a passing case that crosses an individual ceiling, or participates in a
 complete-catalogue total/p95 overage, is inspected. Its exact activity tree
 must contain one top-level `Start Test`, one `Set Up`, and one later `Tear Down`;
-only the finite `Set Up`-to-`Tear Down` span that leaves at least one second
-outside the test-owned boundary may become the budget duration. The receipt
+only independently bounded runner intervals totaling at least one second may
+be excluded from the budget duration. The `Set Up`-to-`Tear Down` span remains
+a lower bound on owned work, not proof that cleanup has finished. The receipt
 retains the test identifier, reported span, attributed span, separate pre-setup
 and post-teardown exclusions, their total, and one closed reason. Hosted and
 candidate gates reject forged identity, duplicate adjustments, arithmetic
 drift, non-passing owners, unknown reasons, or a shorter exclusion. Missing or
 ambiguous activity evidence keeps the reported duration and fails closed. No
 retry, timeout, budget, assertion, selector, or locale changes.
+
+The `Tear Down` marker is a start timestamp, not proof that cleanup finished.
+When it contains child activities or is followed by another top-level activity,
+the reader preserves the entire reported post-setup duration: app termination
+and owned scratch cleanup are test work, not a runner stall. An independently
+proven empty pre-setup interval may still be excluded, with zero post-teardown
+exclusion. The retained duration must cover at least the known marker span;
+inconsistent clocks retain the raw duration. Start and setup must be the first
+two top-level activities, and the start marker must have no child work. Malformed
+child activity collections also prevent attribution. A normalized real-app activity fixture drives both
+the parser and the command-line enforcement path; a diagnostic ceiling between
+the body-only and complete duration must fail, not become green by subtracting
+cleanup. The CLI also exercises simultaneous pre-setup delay and active cleanup:
+short owned work may qualify, but slow cleanup, a one-millisecond ceiling overage,
+failed cases, intervening pre-setup work and malformed boundaries cannot become
+green. Both locale receipts retain the exact pre-setup exclusion and all cleanup.
+Epoch-sized timestamp subtraction preserves xcresult's written decimal precision;
+an exact budget boundary is not widened by an epsilon or binary rounding residue.
+The ordinary runtime budgets and receipt schema are unchanged.
 
 This policy was introduced after the first OBS-0 complete English run passed
 103/103 but reported one 40.353-second Summary-feedback case. Its exact
@@ -7484,20 +7569,27 @@ necessary; passing these tests is not closure of the observed resource variance.
 
 ### Native search-editing boundary in UI setup
 
-The shared XCUITest setup ends native search editing with an ordinary click and
-Tab traversal, then checks that the field value is unchanged. Both existing and
-newly opened Settings windows use that boundary before category navigation.
-Seeded Library setup applies it only when its meeting row is not already
-hittable, after the existing foreign-keystroke query cleanup if needed. The
-normal fast path and final meeting hittability requirement remain intact.
+The shared XCUITest setup ends the active native search edit with app-scoped
+Tab traversal, then checks that the identified field value is unchanged. It
+does not click or address a key event to a field that its own popup may cover.
+Both existing and newly opened Settings windows use that boundary before
+category navigation.
+Seeded Library setup applies the handoff before its already-hittable row fast
+path. A real-app adversary focuses an empty search with a visible row, calls the
+actual helper, then sends a normal key and verifies that search remains empty.
+Query cleanup still applies only to the prior recovery case with no hittable
+meeting row. The final meeting hittability requirement remains intact.
 
-This prevents a still-active native field editor from leaving an autocomplete
-popover over a subsequent control. It does not dismiss a named system window,
-choose a suggestion, mutate AutoFill preferences, install a prompt handler or
-retry a failed assertion. Existing Skills missing-policy/retry and Library
+This avoids reopening an editor merely to close it. The earlier field click and
+field-scoped Tab both reached an app-owned interruption in real Settings
+journeys; neither is an appropriate prerequisite for ending the existing edit.
+The focus helper does not dismiss a named system window, choose a suggestion,
+mutate AutoFill preferences, install a prompt handler or retry a failed
+assertion. Existing Skills missing-policy/retry and Library
 search/palette journeys retain their full assertions. The source-level owner
-pins click/Tab/value-check ordering and both settings branches; only a complete
-bilingual real-app run can qualify the shared harness.
+pins app-scoped Tab/value-check ordering, absence of a new field click, and both
+settings branches; only a complete bilingual real-app run can qualify the
+shared harness.
 
 The Library recency/FTS journey additionally ends its deliberate query edit
 before selecting the result. It checks the exact literal query both before and
@@ -7609,3 +7701,142 @@ observed state; catalogue ownership, retired-journey rejection, bounded scrollin
 unchanged runtime budgets and screenshot roles remain enforced. A tooling test
 attempts to restore either retired receipt journey with an otherwise valid scope
 and confirms that the actual duplicate policy rejects it.
+
+
+### Permission-free interruption controls
+
+The local-data ledger journey opens Settings from the seeded main window through
+the same window-opening boundary as Settings-launch fixtures. A raw Command-comma
+had bypassed the initial search-editor handoff and allowed an app-owned element
+to interrupt the following sidebar scroll. The journey verifies that the empty
+query survives opening before navigating to the exact ledger values. An earlier
+passing full suite did not prove that every entry reached this boundary.
+
+The same native-field editing handoff also applies to the commitment editor's
+initial proposed wording. A failed Spanish run captured a completion window over
+the owner picker even though the synthesized click matched its settled frame.
+The journey ends editing through ordinary app-scoped Tab, asserts the unchanged
+proposal, and then selects the exact local-user menu item before confirmation.
+Settings, Library and this editor reuse `finishTextFieldEditing`; no popup query,
+extra delay, suggestion choice, failed-click retry or system setting is involved.
+The retained failure is not evidence of a layout race or another app's intrusion.
+
+`make test-ui-interruption-safety UI_INTERRUPTION_RESULTS=<new-private-directory>`
+builds a tiny separate app/overlay/runner target once. It uses the exact shared
+`PortavozUITestCase`, `UITestStorage`, `UITestScratch` and wait-helper sources;
+there is no copied guard implementation. Its original four pointer controls distinguish:
+
+- an uninterrupted action, which must produce an observable synthetic effect;
+- a deliberate synthetic choice, which calibrates the choice effect detector;
+- a synchronous blocked action, which must fail before fallback or either effect;
+- the same blocked action from an asynchronous journey, which must also fail.
+
+Negative controls require exactly one failed case, a completed owned-cleanup
+receipt, no scratch or owned app process left behind, and no fallback sentinel.
+Any control that opens the overlay also requires its parent-exit callback's
+content-free acknowledgement. The Dispatch source targets the main queue because
+the callback inherits the AppKit delegate's main actor. A crashed helper that
+merely disappears cannot satisfy the lifecycle proof; the no-overlay positive
+must not produce that acknowledgement. Effects are inspected after all owned
+processes have exited. This does not claim that an acknowledgement alone proves
+every possible exit failure is absent.
+Zero-test restarts are not passes. The separate qualification receipt records
+expected failures, source hashes and content-free effects; it never substitutes
+for a product UI receipt. Tooling tests reject missing readiness, absent guard,
+late action, dialog choice, cleanup failure, skipped/empty/extra cases and an
+exit-zero restart. Changes to the guard, keyboard, storage, wait or scratch
+sources, the fixture target, the execution classifier or their CI/Make owners
+select this once, as do explicit full bilingual local runs and full-suite
+dispatches; localization-only and other unrelated full-bilingual fallbacks do not. CI executes the controls in
+the product-builder job before publishing one reusable product build. Synthetic
+fixtures request no microphone, authentication or accessibility permission.
+
+
+### Bounded scroll evidence is separate from interruption controls
+
+The shared `UITestSupport.swift` owns the existing geometry-based bounded scroll
+helper; no measured response or pending-input accumulator is active. The
+structural-correction journey uses ordinary disposable window placement, retains
+all split/merge/hide/restore effects and stops before activation if reveal fails.
+The forced compact-window argument and calibration fixture were unqualified
+experiments, not released behavior. Their withdrawal does not establish compact
+reachability: the retained compact failure and combined dropped/amplified native
+counterexample remain open in GAPS. Native interruption controls and the
+full real-app catalog remain separate mandatory gates, with unchanged runtime
+budgets and no retries that relabel failures. See D533.
+
+
+### Keyboard dispatch requires process and modal authority
+
+`UITestKeyboardSupport` is the only raw keyboard dispatch boundary. Journeys
+focus their intended editor explicitly, then use `PortavozUITestCase` wrappers;
+shared application helpers return failure on refused admission. Before each
+event, the receiver must be XCTest-foreground and the unique running process
+for the declared test-host bundle must be the frontmost application. No observed
+ownership change is repaired by implicitly activating the app. No-modal input
+rejects sheets, alerts and hittable app-modal dialogs; expected
+modal input additionally requires exactly
+one modal containing the journey's fixed accessibility anchor. A background
+control cannot authorize typing into a new dialog. Admission re-observes for at
+most one second so a cached frontmost value or closing sheet can converge; it
+never activates or dismisses anything. Refused journey input uses the same
+nonreturning, owned-cleanup interruption guard and records a content-free
+`keyboard-owner` or `modal-context` reason; the interruption monitor records
+`interruption`. A guard that finds no live session reports `cleanup=absent`.
+
+`handOffTextFieldEditing` observes keyboard focus first and sends no key when
+the field is not the active editor, because Tab would otherwise move an
+unrelated responder into it. It never clicks the field either: its own
+completion surface can cover that click. The post-condition is the exact
+original value plus a field nothing covers any more, since a window whose only
+key view is that field keeps focus there. It reports finished, not-editing,
+field-unavailable, keyboard-refused, value-changed, surface-retained or
+focus-unobservable, and seeded-Library readiness fails with that cause. The
+focus observation reads the automation daemon's snapshot key that XCTest does
+not publish on macOS, and fails closed if a toolchain stops reporting it. The shared tear-down names its owned app exit
+and scratch removal as a Tear Down child activity, so runtime attribution keeps
+that cleanup in the case duration.
+
+Repository and topic fields assert exact values and end editing through the
+admitted Tab/value-preservation handoff before review or confirmation. Transcript
+and summary TextViews retain their explicit save controls rather than treating
+Tab as a text-free traversal. Palette and objective Enter submission and receipt
+Escape/focus restoration retain their original user actions and assertions.
+A tooling policy rejects raw keyboard calls outside the shared boundary; this
+source check is not behavioral evidence.
+
+Sixteen native controls exercise that actual boundary: four original pointer/
+choice controls; native English-to-Spanish Unicode replacement with Select All
+and Tab; synchronous/asynchronous text and traversal under a foreign overlay;
+explicit expected-modal editing and choice; synchronous/asynchronous unexpected
+same-app modal rejection; rejection of a background anchor behind that
+modal; and an `NSAlert.runModal()` app-modal dialog, observed as a hittable
+dialog, with an anchored positive edit/choice plus synchronous/asynchronous
+default-input rejection. A non-hittable dialog such as the floating Writing
+Tools affordance after a native selection is not a modal for this rule. Every
+negative control must stop through its declared reason. A failed or timed-out
+control stops only fixture processes built under its own products directory. The native Edit menu calibrates Select All, and the modal positive is
+scoped to the identified sheet rather than its duplicate Touch Bar button.
+Negative controls require no writing or choice effects and complete owned
+cleanup, plus the foreign owner's exit callback where an overlay was launched.
+Bare application typing and foreground-only typing each have a retained native
+counterexample. All controls and full bilingual product journeys are required
+for this shared-harness change. These public-API observations are point-in-time,
+not an atomic OS input guarantee or permission-dialog certification (D534).
+
+### Runtime budget re-qualified with the 1.1 recording bar (Sep 2026)
+
+`LibraryUITests/testRecordingOffersObjectivesNextQuestionAndTalkBalance` opens
+the recording More panel twice by design (opt in to proactive help, then flip
+it off and on to prove a signal is not repeated). The panel is a popover, so
+each open costs its presentation; measured runs landed between 19.2 s and
+21.0 s against the former 20.117 s pin. Its budget is now 21.5 s. No other
+per-case or aggregate budget changed, and the journey itself was trimmed to
+one admission-checked Escape.
+
+`MeetingDetailUITests/testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument`
+now opens the meeting activity popover twice (receipt after the Gist, receipt
+after the issue) because receipts moved behind the activity chip; the full
+English catalog measured 25.928 s against the former 25.789 s pin, and its
+budget is now 26.5 s. Both re-qualified budgets are the only budget changes of
+the 1.1 goal.

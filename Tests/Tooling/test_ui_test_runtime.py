@@ -1,4 +1,5 @@
 import json
+import re
 import os
 import subprocess
 import sys
@@ -32,6 +33,43 @@ def test_node(identifier: str, duration: float, result: str = "Passed") -> dict:
         "durationInSeconds": duration,
         "result": result,
     }
+
+
+def run_recorded_runtime_cli(activities: dict, duration: float, ceiling: float, locale: str,
+                             result: str = "Passed") -> tuple[subprocess.CompletedProcess, dict]:
+    identifier = "UITestStorageUITests/testSharedScratchProtectsOwnershipAndRoundTripsAppFixtures()"
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        (root / "tests.json").write_text(json.dumps({"nodes": [test_node(identifier, duration, result)]}))
+        (root / "activities.json").write_text(json.dumps(activities))
+        xcrun = root / "xcrun"
+        xcrun.write_text(
+            f"#!{sys.executable}\n"
+            "import pathlib, sys\n"
+            "assert sys.argv[1:4] == ['xcresulttool', 'get', 'test-results']\n"
+            "assert sys.argv[4] in ['tests', 'activities']\n"
+            "if sys.argv[4] == 'activities':\n"
+            f"    assert sys.argv[sys.argv.index('--test-id') + 1] == {identifier!r}\n"
+            "print((pathlib.Path(__file__).parent / (sys.argv[4] + '.json')).read_text())\n"
+        )
+        xcrun.chmod(0o700)
+        budget = root / "budget.json"
+        budget.write_text(json.dumps({
+            "catalog": {"expectedCaseCount": 1},
+            "fullSuite": {"maximumTestDurationSecondsPerLocale": ceiling,
+                          "maximumP95Seconds": ceiling},
+            "testBudgetsSeconds": {identifier: ceiling},
+        }))
+        output = root / "receipt.json"
+        invocation = subprocess.run([
+            sys.executable, str(ROOT / "scripts/ui_test_runtime.py"),
+            "--result", str(root / "recorded.xcresult"),
+            "--budget", str(budget), "--output", str(output),
+            "--locale", locale, "--selector-count", "1",
+            "--build-duration", "6", "--wall-duration", str(duration + 1), "--enforce",
+        ], env={**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"]},
+            capture_output=True, text=True, check=False)
+        return invocation, json.loads(output.read_text())
 
 
 class UITestRuntimeTests(unittest.TestCase):
@@ -133,6 +171,139 @@ class UITestRuntimeTests(unittest.TestCase):
                 ]
             }]
         }))
+
+    def test_teardown_work_cannot_be_classified_as_runner_noise(self):
+        # Retained real-app activity shape, with relative timestamps and a
+        # synthetic PID: XCTest reports only starts, not cleanup completion.
+        fixture = ROOT / "Tests/Tooling/fixtures/ui-test-active-teardown.json"
+        tree = json.loads(fixture.read_text())
+        self.assertTrue(activity_boundary_seconds(tree).preserve_reported_teardown)
+        teardown = tree["testRuns"][0]["activities"][-1]
+        for children in (None, {}, False):
+            with self.subTest(children=children):
+                teardown["childActivities"] = children
+                self.assertIsNone(activity_boundary_seconds(tree))
+        teardown["childActivities"] = [{"title": "Cerrar café’s editor"}]
+        self.assertTrue(activity_boundary_seconds(tree).preserve_reported_teardown)
+        teardown["childActivities"] = []
+        self.assertFalse(activity_boundary_seconds(tree).preserve_reported_teardown)
+        tree["testRuns"][0]["activities"].append({
+            "title": "Late completion", "startTime": 103.0,
+        })
+        self.assertTrue(activity_boundary_seconds(tree).preserve_reported_teardown)
+
+    def test_xcresult_cli_keeps_real_cleanup_in_the_enforced_duration(self):
+        fixture = ROOT / "Tests/Tooling/fixtures/ui-test-active-teardown.json"
+        for locale in ("en", "es"):
+            result, receipt = run_recorded_runtime_cli(json.loads(fixture.read_text()), 2.600, 2.0, locale)
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            self.assertEqual(receipt["budgetStatus"], "failed")
+            self.assertEqual(receipt["testDurationSeconds"], 2.600)
+            self.assertEqual(receipt["runtimeAdjustments"], [])
+
+    def test_xcresult_cli_excludes_only_pre_setup_when_cleanup_completion_is_unknown(self):
+        fixture = ROOT / "Tests/Tooling/fixtures/ui-test-active-teardown.json"
+        tree = json.loads(fixture.read_text())
+        activities = tree["testRuns"][0]["activities"]
+        activities[1]["startTime"] = 130.052
+        activities[2]["startTime"] = 135.227
+        activities[2]["childActivities"] = [{
+            "title": "Wait for café’s editor to close", "startTime": 135.228,
+        }]
+        for locale in ("en", "es"):
+            for reported, expected, passed in (
+                (35.247, 5.195, True),
+                (65.247, 35.195, False),  # Long native cleanup remains owned, not harness noise.
+                (50.052, 20.000, True),
+                (50.053, 20.001, False),
+            ):
+                with self.subTest(locale=locale, reported=reported):
+                    result, receipt = run_recorded_runtime_cli(tree, reported, 20.0, locale)
+                    self.assertEqual(receipt["testDurationSeconds"], expected)
+                    self.assertEqual(result.returncode, 0 if passed else 1, result.stdout + result.stderr)
+                    self.assertEqual(receipt["budgetStatus"], "passed" if passed else "failed")
+                    self.assertEqual(len(receipt["runtimeAdjustments"]), 1)
+                    adjustment = receipt["runtimeAdjustments"][0]
+                    self.assertEqual(adjustment["excludedPreSetupSeconds"], 30.052)
+                    self.assertEqual(adjustment["excludedPostTeardownSeconds"], 0.0)
+                    self.assertEqual(adjustment["reportedDurationSeconds"], reported)
+                    self.assertNotIn("café", json.dumps(receipt))
+            result, receipt = run_recorded_runtime_cli(tree, 35.247, 20.0, locale, result="Failed")
+            self.assertEqual(result.returncode, 1)
+            self.assertEqual(receipt["testDurationSeconds"], 35.247)
+            self.assertEqual(receipt["runtimeAdjustments"], [])
+
+    def test_epoch_precision_and_late_cleanup_keep_the_exact_written_budget_boundary(self):
+        for late_activity in (False, True):
+            activities = [
+                {"title": "Start Test at synthetic epoch", "startTime": 1700000000.000},
+                {"title": "Set Up", "startTime": 1700000030.052},
+                {"title": "Tear Down", "startTime": 1700000035.227},
+            ]
+            cleanup = {"title": "Finish owned cleanup", "startTime": 1700000035.228}
+            if late_activity:
+                activities.append(cleanup)
+            else:
+                activities[-1]["childActivities"] = [cleanup]
+            tree = {"testRuns": [{"activities": activities}]}
+            with self.subTest(late_activity=late_activity):
+                result, receipt = run_recorded_runtime_cli(tree, 50.052, 20.0, "en")
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(receipt["testDurationSeconds"], 20.0)
+                self.assertEqual(receipt["runtimeAdjustments"][0]["excludedPreSetupSeconds"], 30.052)
+                self.assertEqual(receipt["runtimeAdjustments"][0]["excludedPostTeardownSeconds"], 0.0)
+
+    def test_base_case_cleanup_activity_keeps_owned_teardown_in_the_budget(self):
+        source = (ROOT / "Tests/PortavozUITests/PortavozUITestCase.swift").read_text(encoding="utf-8")
+        match = re.search(r'XCTContext\.runActivity\(named: "([^"]+)"\)', source)
+        self.assertIsNotNone(match, "the shared base must name its owned cleanup")
+        tree = {"testRuns": [{"activities": [
+            {"title": "Start Test at synthetic epoch", "startTime": 100.0},
+            {"title": "Set Up", "startTime": 101.5},
+            {"title": "Tear Down", "startTime": 110.0,
+             "childActivities": [{"title": match.group(1), "startTime": 110.001}]},
+        ]}]}
+        boundary = activity_boundary_seconds(tree)
+        self.assertTrue(boundary.preserve_reported_teardown)
+        # Ten seconds of app exit and scratch removal after the marker stay owned:
+        # only the empty pre-setup interval is excluded.
+        for locale in ("en", "es"):
+            with self.subTest(locale=locale):
+                result, receipt = run_recorded_runtime_cli(tree, 20.0, 18.5, locale)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(receipt["testDurationSeconds"], 18.5)
+                adjustment = receipt["runtimeAdjustments"][0]
+                self.assertEqual(adjustment["excludedPreSetupSeconds"], 1.5)
+                self.assertEqual(adjustment["excludedPostTeardownSeconds"], 0.0)
+                result, receipt = run_recorded_runtime_cli(tree, 20.0, 18.0, locale)
+                self.assertEqual(result.returncode, 1, "owned cleanup must not be subtracted to pass")
+                self.assertEqual(receipt["testDurationSeconds"], 18.5)
+        # Without the named child the same shape would subtract that cleanup.
+        tree["testRuns"][0]["activities"][-1]["childActivities"] = []
+        self.assertFalse(activity_boundary_seconds(tree).preserve_reported_teardown)
+
+    def test_pre_setup_attribution_rejects_prelude_work_and_inconsistent_clocks(self):
+        fixture = ROOT / "Tests/Tooling/fixtures/ui-test-active-teardown.json"
+        base = json.loads(fixture.read_text())
+        base["testRuns"][0]["activities"][1]["startTime"] = 130.052
+        base["testRuns"][0]["activities"][2]["startTime"] = 135.227
+        for shape in ("intervening-work", "start-children", "invalid-children", "short-duration"):
+            tree = json.loads(json.dumps(base))
+            activities = tree["testRuns"][0]["activities"]
+            reported = 35.247
+            if shape == "intervening-work":
+                activities.insert(1, {"title": "Launch owned app", "startTime": 105.0})
+            elif shape == "start-children":
+                activities[0]["childActivities"] = [{"title": "Work before setup", "startTime": 105.0}]
+            elif shape == "invalid-children":
+                activities[-1]["childActivities"] = None
+            else:
+                reported = 32.0
+            with self.subTest(shape=shape):
+                result, receipt = run_recorded_runtime_cli(tree, reported, 20.0, "es")
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(receipt["testDurationSeconds"], reported)
+                self.assertEqual(receipt["runtimeAdjustments"], [])
 
     def test_reconciles_only_passing_pre_setup_harness_noise(self):
         cases = collect_test_cases({

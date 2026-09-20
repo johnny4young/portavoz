@@ -10,12 +10,9 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     case general
     case audio
     case intelligence
-    case voice
     case agenda
     case skills
     case integrations
-    case sync
-    case backgroundWork = "background-work"
     case data
 
     var id: String { rawValue }
@@ -27,12 +24,9 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .general: "General & language"
         case .audio: "Audio & dictation"
         case .intelligence: "Intelligence"
-        case .voice: "My voice & Apuntador"
         case .agenda: "Agenda & automation"
-        case .skills: "Suggested actions"
+        case .skills: "Automations"
         case .integrations: "Integrations"
-        case .sync: "Sync"
-        case .backgroundWork: "Background activity"
         case .data: "Your data"
         }
     }
@@ -41,59 +35,57 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         switch self {
         case .general: "globe"
         case .audio: "mic"
-        case .intelligence: "sparkles"
-        case .voice: "person.wave.2"
+        case .intelligence: PVSymbol.intelligence
         case .agenda: "calendar.badge.clock"
-        case .skills: "sparkles"
+        case .skills: PVSymbol.automations
         case .integrations: "link"
-        case .sync: "icloud"
-        case .backgroundWork: "clock.arrow.circlepath"
-        case .data: "lock.shield"
+        case .data: PVSymbol.privacy
         }
     }
 
     /// The one-line preview under each nav item (design system 2a): the
     /// pane's contents at a glance, so the sidebar tells you where to go.
+    var subtitle: String { L10n.text(subtitleKey) }
+
     var subtitleKey: String {
         switch self {
         case .general: "System language · English/Spanish · menu bar"
         case .audio: "Call-safe capture · dictate anywhere · ⌥⌘D"
-        case .intelligence: "Summary engine · Whisper refine · vocabulary"
-        case .voice: "Enrolled voice · your name · Apuntador"
+        case .intelligence: "Summary engine · Apuntador · your voice"
         case .agenda: "Reminder · end-of-meeting Shortcut · title template"
         case .skills: "Review · enable · history"
         case .integrations: "BYOK OpenAI-compatible · GitHub gists · MCP"
-        case .sync: "iCloud · status · existing library"
-        case .backgroundWork: "Recovery · processing · local indexes"
-        case .data: "Export Markdown · recordings folder · trash"
+        case .data: "Privacy · iCloud sync · storage · background activity"
         }
     }
 
     /// Lowercased match targets for the sidebar search: English words for
     /// what each pane contains; the localized twin lives in the catalog
-    /// (the string IS its own key), so Spanish queries land too.
-    private var keywords: String {
+    /// (each string IS its own key), so Spanish queries land too. Merged
+    /// panes keep one group per former pane, each localized on its own.
+    var keywordGroups: [String] {
         switch self {
         case .general:
-            "language english spanish menu bar launch login"
+            ["language english spanish menu bar launch login"]
         case .audio:
-            "call safe capture echo aec dictation hotkey microphone mic level"
+            ["call safe capture echo aec dictation hotkey microphone mic level"]
         case .intelligence:
-            "summary engine apple ollama mlx whisper refine vocabulary"
-        case .voice:
-            "voice enroll apuntador name remembered"
+            [
+                "summary engine apple ollama mlx whisper refine vocabulary",
+                "voice enroll apuntador name remembered"
+            ]
         case .agenda:
-            "reminder calendar shortcut title template"
+            ["reminder calendar shortcut title template"]
         case .skills:
-            "actions suggestions skills automation pause enable receipts local drafts exports"
+            ["actions suggestions skills automation automations pause enable history local drafts exports"]
         case .integrations:
-            "byok api key github gist token mcp endpoint openai"
-        case .sync:
-            "icloud cloud sync status existing library encrypted devices pause remove"
-        case .backgroundWork:
-            "background activity recovery processing jobs spotlight semantic index graph retry progress"
+            ["byok api key github gist token mcp endpoint openai"]
         case .data:
-            "export markdown backup folder recordings trash privacy local"
+            [
+                "export markdown backup folder recordings trash privacy local",
+                "icloud cloud sync status existing library encrypted devices pause remove",
+                "background activity recovery processing jobs spotlight semantic index graph retry progress"
+            ]
         }
     }
 
@@ -101,8 +93,9 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         let query = query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !query.isEmpty else { return true }
         return L10n.text(titleKey, language: language).lowercased().contains(query)
-            || keywords.contains(query)
-            || L10n.text(keywords, language: language).contains(query)
+            || keywordGroups.contains { group in
+                group.contains(query) || L10n.text(group, language: language).lowercased().contains(query)
+            }
     }
 }
 
@@ -138,8 +131,7 @@ struct LedgerSection: View {
             .padding(.vertical, 4)
             Text(
                 // One-line UI help text.
-                // swiftlint:disable:next line_length
-                "Nothing auto-uploads. Network transfers happen only after an action or opt-in, and Portavoz keeps local receipts."
+                "Nothing is sent unless you ask for it. Every transfer is logged here."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

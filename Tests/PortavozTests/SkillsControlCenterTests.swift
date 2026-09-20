@@ -304,6 +304,79 @@ final class SkillsControlCenterTests: XCTestCase {
             "an exactly full visible window must not imply a successor row")
     }
 
+    func testLastRunsAreVerifiedOutsideTheHistoryLens() async throws {
+        let store = try MeetingStore.inMemory()
+        func run(
+            _ skillID: String, version: Int, key: String, at timestamp: Date,
+            begin: Bool, succeeded: Bool?
+        ) async throws {
+            let proposalID = UUID()
+            _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
+                proposalID: proposalID,
+                skillID: skillID,
+                skillVersion: version,
+                subject: .calendarEvent("last-run-\(key)"),
+                offerKey: key,
+                idempotencyKey: key,
+                occurredAt: timestamp))
+            guard begin else { return }
+            _ = try await store.beginSkillExecution(proposalID: proposalID, at: timestamp)
+            if let succeeded {
+                _ = try await store.settleSkillExecution(
+                    proposalID: proposalID,
+                    succeeded: succeeded,
+                    failureCategory: succeeded ? nil : .recoverable,
+                    at: timestamp)
+            }
+        }
+        // Recap: 30 succeeded runs, the newest at now.
+        for index in 0..<30 {
+            try await run(
+                RecapDraftSkill.id, version: RecapDraftSkill.version, key: "recap-\(index)",
+                at: now.addingTimeInterval(TimeInterval(-3_600 * (30 - index))),
+                begin: true, succeeded: true)
+        }
+        // Export: one failed run, newer than any recap.
+        try await run(
+            MeetingPackageExportSkill.id, version: MeetingPackageExportSkill.version,
+            key: "export-failed", at: now.addingTimeInterval(60), begin: true, succeeded: false)
+        // Gist: approval still waiting, never began.
+        try await run(
+            SecretGistPublishSkill.id, version: SecretGistPublishSkill.version,
+            key: "gist-waiting", at: now.addingTimeInterval(120), begin: false, succeeded: nil)
+
+        for request in [
+            LoadSkillControlCenterRequest(),
+            LoadSkillControlCenterRequest(receiptScope: .waiting),
+            LoadSkillControlCenterRequest(
+                receiptScope: .recent, receiptSkillID: MeetingPackageExportSkill.id),
+            LoadSkillControlCenterRequest(receiptLimit: 1)
+        ] {
+            let snapshot = try await LoadSkillControlCenter(store: store).execute(request)
+            XCTAssertEqual(snapshot.lastRunLoadState, .verified)
+            let recap = try XCTUnwrap(snapshot.lastRuns[RecapDraftSkill.id])
+            XCTAssertEqual(recap.state, .succeeded)
+            XCTAssertEqual(recap.updatedAt, now.addingTimeInterval(-3_600))
+            let export = try XCTUnwrap(snapshot.lastRuns[MeetingPackageExportSkill.id])
+            XCTAssertEqual(export.state, .failed)
+            XCTAssertEqual(export.updatedAt, now.addingTimeInterval(60))
+            XCTAssertNil(
+                snapshot.lastRuns[SecretGistPublishSkill.id],
+                "an approval that never began execution is not a run")
+            XCTAssertNil(snapshot.lastRuns[ReminderDraftSkill.id])
+        }
+    }
+
+    func testLastRunReadFailureIsUnavailableNotNever() async throws {
+        let store = FailingSkillControlStore(failure: .receipts)
+
+        let snapshot = try await LoadSkillControlCenter(store: store).execute(
+            LoadSkillControlCenterRequest())
+
+        XCTAssertEqual(snapshot.lastRunLoadState, .unavailable)
+        XCTAssertTrue(snapshot.lastRuns.isEmpty)
+    }
+
     func testReceiptReadFailurePreservesVerifiedPolicyAndHidesReceipts() async throws {
         let store = FailingSkillControlStore(failure: .receipts)
 
@@ -1178,8 +1251,17 @@ final class SkillsControlCenterTests: XCTestCase {
         }
 
         let requests = await store.requests
+        // Last-run reads are one bounded row per available action and scope,
+        // independent of the lens; the lens reads must still be exact.
+        let lastRunReads = requests.filter { $0.limit == 1 }
         XCTAssertEqual(
-            requests,
+            lastRunReads.count,
+            cases.count * 2 * SkillCatalogue.entries.filter { $0.availability == .available }.count)
+        XCTAssertTrue(lastRunReads.allSatisfy {
+            ($0.scope == .completed || $0.scope == .needsAttention) && $0.updatedAfter == nil
+        })
+        XCTAssertEqual(
+            requests.filter { $0.limit != 1 },
             cases.map { _, seconds in SkillControlCenterStoreRequest(
                 scope: .needsAttention,
                 skillID: MeetingPackageExportSkill.id,

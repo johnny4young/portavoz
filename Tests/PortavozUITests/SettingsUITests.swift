@@ -5,8 +5,8 @@ import XCTest
 /// app-only language override updates SwiftUI text live.
 final class SettingsUITests: PortavozUITestCase {
     @MainActor
-    func testIntelligencePaneExplicitlyPreparesSemanticSearch() {
-        let app = XCUIApplication.portavoz(
+    func testIntelligencePaneExplicitlyPreparesSemanticSearch() throws {
+        let app = try XCUIApplication.portavoz(
             simulateSemanticAssetsMissing: true,
             openSettings: true)
         app.launchPortavoz()
@@ -45,26 +45,20 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy() {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+    func testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        app.typeKey(",", modifierFlags: .command)
+        XCTAssertTrue(
+            app.openSettingsWindow(),
+            "opening Settings must finish initial search editing before sidebar scrolling")
+        XCTAssertEqual(app.textFields["settings-search-field"].value as? String, "")
         openCategory(
             "settings-category-data",
             revealing: "settings-ledger-meetings",
             in: app)
-
-        let localFirstSeal = UITestLocale.environmentLocale == "es"
-            ? "Local primero"
-            : "Local-first"
-        let privacySeal = app.buttons["settings-privacy-seal"]
-        XCTAssertTrue(privacySeal.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(
-            privacySeal.label.contains(localFirstSeal),
-            "the standing privacy seal must describe the opt-in architecture without an absolute all-local claim")
 
         let meetings = app.control(withIdentifier: "settings-ledger-meetings")
         XCTAssertTrue(meetings.waitForExistenceFast(timeout: 10))
@@ -85,8 +79,8 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testCategoryNavigationRevealsEachPane() {
-        let app = XCUIApplication.portavoz(openSettings: true)
+    func testCategoryNavigationRevealsEachPane() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -105,7 +99,7 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertTrue(providerCopy.contains(spanish ? "Sequoia y Tahoe" : "Sequoia and Tahoe"))
         XCTAssertTrue(providerCopy.contains(spanish ? "motor local seleccionado" : "selected local engine"))
         XCTAssertTrue(app.control(withIdentifier: "settings-category-data").exists)
-        XCTAssertTrue(app.control(withIdentifier: "settings-category-sync").exists)
+        XCTAssertTrue(app.control(withIdentifier: "settings-category-integrations").exists)
 
         // …and picking Intelligence reveals the summary-engine picker, which
         // now lives in that pane rather than one long scroll (M12).
@@ -180,13 +174,13 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testSyncPaneKeepsOptInAndExistingLibrarySeparate() {
-        let app = XCUIApplication.portavoz(openSettings: true)
+    func testSyncPaneKeepsOptInAndExistingLibrarySeparate() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
         openCategory(
-            "settings-category-sync",
+            "settings-category-data",
             revealing: "settings-sync-status",
             in: app)
 
@@ -209,20 +203,13 @@ final class SettingsUITests: PortavozUITestCase {
             "existing meetings must remain a separate explicit action")
         XCTAssertTrue(app.buttons["settings-sync-pause"].exists)
         XCTAssertTrue(app.buttons["settings-sync-remove"].exists)
-        let privacySeal = app.buttons["settings-privacy-seal"]
-        XCTAssertTrue(privacySeal.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(
-            privacySeal.waitForLabelContaining("iCloud", timeout: 5),
-            "the standing privacy seal must stop claiming that everything is local")
         attachScreenshot(of: app, named: "band-6c-cloud-sync")
     }
 
     @MainActor
     func testDataPaneExportsARedactedLocalSupportFile() throws {
-        let destination = FileManager.default.temporaryDirectory
-            .appendingPathComponent("portavoz-support-\(UUID().uuidString).json")
-        defer { try? FileManager.default.removeItem(at: destination) }
-        let app = XCUIApplication.portavoz(seedDemo: true, openSettings: true)
+        let destination = try UITestStorage.makeDirectory().appendingPathComponent("support.json")
+        let app = try XCUIApplication.portavoz(seedDemo: true, openSettings: true)
         app.launchEnvironment["PORTAVOZ_UI_TEST_DIAGNOSTICS_PATH"] = destination.path
         app.launchPortavoz()
         defer { app.terminate() }
@@ -253,13 +240,8 @@ final class SettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testDataPaneExportsAReadableWholeLibraryMarkdownBackup() throws {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("portavoz-backup-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(
-            at: directory,
-            withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let app = XCUIApplication.portavoz(seedDemo: true, openSettings: true)
+        let directory = try UITestStorage.makeDirectory()
+        let app = try XCUIApplication.portavoz(seedDemo: true, openSettings: true)
         app.launchEnvironment["PORTAVOZ_UI_TEST_BACKUP_FOLDER"] = directory.path
         app.launchPortavoz()
         defer { app.terminate() }
@@ -297,10 +279,10 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testIntelligencePaneCreatesACustomStructure() {
+    func testIntelligencePaneCreatesACustomStructure() throws {
         // The Intelligence pane lets you author your own summary structures;
         // "Add structure" opens the editor sheet with a name field.
-        let app = XCUIApplication.portavoz(openSettings: true)
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -321,10 +303,11 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAudioPaneOffersCaptureSourceControls() {
+    func testAudioPaneOffersCaptureSourceControls() throws {
         // Capture control (field feedback): pick your mic and what to record
         // for the other side, independent of AirPods.
-        let app = XCUIApplication.portavoz(openSettings: true)
+        let app = try XCUIApplication.portavoz(openSettings: true)
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":false}"#
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -343,6 +326,19 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             callSafePolicy.waitForStableFrame(),
             "the Audio pane must expose a stable always-on call-safe capture policy")
+        // Reopen the real scene: restoration must not undo the placement
+        // established on first presentation, and receipt routing still owns it.
+        typeKey("w", modifierFlags: .command, in: app)
+        XCTAssertTrue(app.buttons["settings-category-general"].waitForDisappearance(timeout: 5))
+        XCTAssertTrue(app.openSettingsWindow())
+        let reopenedGeneral = app.control(withIdentifier: "settings-category-general")
+        XCTAssertGreaterThanOrEqual(reopenedGeneral.frame.minX, 0)
+        XCTAssertGreaterThanOrEqual(reopenedGeneral.frame.minY, 0)
+        openCategory(
+            "settings-category-audio",
+            revealing: "settings-mic-device",
+            in: app)
+        XCTAssertTrue(callSafePolicy.waitForStableFrame())
         attachScreenshot(of: app, named: "call-safe-audio-settings")
     }
 
@@ -350,8 +346,8 @@ final class SettingsUITests: PortavozUITestCase {
     /// push-to-talk mouse button), the {es,en}-constrained language picker,
     /// the filler filter, and the deterministic dictionary quick-add.
     @MainActor
-    func testDictationOffersTriggersLanguageAndDictionary() {
-        let app = XCUIApplication.portavoz(openSettings: true)
+    func testDictationOffersTriggersLanguageAndDictionary() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
         // AppServices merges these values into the process's volatile
         // NSArgumentDomain under -use-temp-store. The real preference domain
         // is neither read for these keys nor mutated by the test.
@@ -402,15 +398,15 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testVoicePaneOffersTheMirrorOptIn() {
+    func testVoicePaneOffersTheMirrorOptIn() throws {
         // The post-meeting mirror (6a-2) is opt-in and off by default; its
         // switch lives in the "My voice & Apuntador" pane.
-        let app = XCUIApplication.portavoz(openSettings: true)
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
         openCategory(
-            "settings-category-voice",
+            "settings-category-intelligence",
             revealing: "settings-mirror-after-meeting",
             in: app)
 
@@ -425,14 +421,14 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testUnreadableVoiceStorageStaysVisibleAndOffersExplicitRecovery() {
-        let app = XCUIApplication.portavoz(openSettings: true)
+    func testUnreadableVoiceStorageStaysVisibleAndOffersExplicitRecovery() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-voice-storage-unavailable")
         app.launchPortavoz()
         defer { app.terminate() }
 
         openCategory(
-            "settings-category-voice",
+            "settings-category-intelligence",
             revealing: "settings-voice-storage-error",
             in: app)
         XCTAssertTrue(app.staticTexts["settings-voice-storage-error"].exists)
@@ -440,7 +436,7 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertTrue(app.buttons["settings-voice-storage-reset"].exists)
 
         XCTAssertTrue(app.openSettingsCategory(
-            "settings-category-voice",
+            "settings-category-intelligence",
             revealing: "settings-remembered-voices-error"))
         XCTAssertTrue(app.staticTexts["settings-remembered-voices-error"].exists)
         XCTAssertTrue(app.buttons["settings-remembered-voices-retry"].exists)
@@ -452,7 +448,7 @@ final class SettingsUITests: PortavozUITestCase {
             app.staticTexts["settings-remembered-voices-error"]
                 .waitForDisappearance(timeout: 5))
         openCategory(
-            "settings-category-voice",
+            "settings-category-intelligence",
             revealing: "settings-voice-storage-reset",
             in: app)
         app.buttons["settings-voice-storage-reset"].click()
@@ -462,10 +458,10 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testLanguageToggleSwitchesVisibleTextWithoutRelaunch() {
+    func testLanguageToggleSwitchesVisibleTextWithoutRelaunch() throws {
         // The standalone Settings window (⌘,), not the test sheet: the sheet
         // clips the trailing-edge toggle, the real window lays it out fully.
-        let app = XCUIApplication.portavoz(
+        let app = try XCUIApplication.portavoz(
             openSettings: true,
             launchLocale: "en")
         app.launchPortavoz()

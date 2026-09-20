@@ -122,6 +122,20 @@ public struct SkillControlCenterReceipt: Equatable, Sendable, Identifiable {
     }
 }
 
+/// The newest execution of one action that actually began: succeeded,
+/// failed, interrupted or still executing. Waiting approvals never count.
+public struct SkillControlCenterLastRun: Equatable, Sendable {
+    public let skillID: String
+    public let state: SkillExecutionState
+    public let updatedAt: Date
+
+    public init(skillID: String, state: SkillExecutionState, updatedAt: Date) {
+        self.skillID = skillID
+        self.state = state
+        self.updatedAt = updatedAt
+    }
+}
+
 public struct SkillControlCenterSnapshot: Equatable, Sendable {
     public static let defaultReceiptLimit = 20
     public static let maximumReceiptLimit = 50
@@ -136,6 +150,10 @@ public struct SkillControlCenterSnapshot: Equatable, Sendable {
     /// sentinel itself is never projected into `receipts`.
     public let hasMoreReceipts: Bool
     public let receiptLoadState: SkillControlCenterReceiptLoadState
+    /// Independent of the history lens: one bounded read per available
+    /// action, so filters, pagination and waiting approvals cannot change it.
+    public let lastRuns: [String: SkillControlCenterLastRun]
+    public let lastRunLoadState: SkillControlCenterReceiptLoadState
 
     public init(
         isPaused: Bool,
@@ -145,7 +163,9 @@ public struct SkillControlCenterSnapshot: Equatable, Sendable {
         receiptSkillID: String? = nil,
         receiptPeriod: SkillExecutionReviewPeriod = .anytime,
         hasMoreReceipts: Bool = false,
-        receiptLoadState: SkillControlCenterReceiptLoadState = .verified
+        receiptLoadState: SkillControlCenterReceiptLoadState = .verified,
+        lastRuns: [String: SkillControlCenterLastRun] = [:],
+        lastRunLoadState: SkillControlCenterReceiptLoadState = .verified
     ) {
         self.isPaused = isPaused
         self.skills = skills
@@ -155,6 +175,8 @@ public struct SkillControlCenterSnapshot: Equatable, Sendable {
         self.receipts = receipts
         self.hasMoreReceipts = hasMoreReceipts
         self.receiptLoadState = receiptLoadState
+        self.lastRuns = lastRuns
+        self.lastRunLoadState = lastRunLoadState
     }
 }
 
@@ -243,6 +265,7 @@ public struct LoadSkillControlCenter: ApplicationUseCase {
             resolvedRecords = []
             receiptLoadState = .unavailable
         }
+        let (lastRuns, lastRunLoadState) = try await loadLastRuns()
         return SkillControlCenterSnapshot(
             isPaused: resolvedPolicy.isPaused,
             skills: SkillCatalogue.entries.map { entry in
@@ -260,7 +283,38 @@ public struct LoadSkillControlCenter: ApplicationUseCase {
             hasMoreReceipts:
                 receiptLoadState == .verified
                     && resolvedRecords.count > request.receiptLimit,
-            receiptLoadState: receiptLoadState)
+            receiptLoadState: receiptLoadState,
+            lastRuns: lastRuns,
+            lastRunLoadState: lastRunLoadState)
+    }
+
+    /// The newest run per available action, read outside the history lens:
+    /// the newest completed row and the newest attention row (failed,
+    /// interrupted, executing or unknown), whichever is later. Waiting
+    /// approvals are excluded by both scopes. Any read failure makes the
+    /// whole map unavailable rather than reporting a false "never run".
+    private func loadLastRuns() async throws
+        -> ([String: SkillControlCenterLastRun], SkillControlCenterReceiptLoadState) {
+        var lastRuns: [String: SkillControlCenterLastRun] = [:]
+        for entry in SkillCatalogue.entries where entry.availability == .available {
+            do {
+                async let completed = store.skillExecutions(
+                    scope: .completed, skillID: entry.id, updatedAfter: nil, limit: 1)
+                async let attention = store.skillExecutions(
+                    scope: .needsAttention, skillID: entry.id, updatedAfter: nil, limit: 1)
+                let candidates = try await completed + attention
+                if let newest = candidates.max(by: { $0.updatedAt < $1.updatedAt }) {
+                    lastRuns[entry.id] = SkillControlCenterLastRun(
+                        skillID: entry.id, state: newest.state, updatedAt: newest.updatedAt)
+                }
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                try Task.checkCancellation()
+                return ([:], .unavailable)
+            }
+        }
+        return (lastRuns, .verified)
     }
 
     private static func receiptUpdatedAfter(

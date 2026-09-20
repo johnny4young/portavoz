@@ -6,7 +6,7 @@ extension LocalSummaryProviderRecommendation {
         case .appleOnDevice:
             L10n.text("Apple Intelligence: on-device summaries, free and fast.")
         case .ollama:
-            L10n.text("Local Ollama: summaries 100% on your Mac, without Apple Intelligence.")
+            L10n.text("Local Ollama: summaries on your Mac, without Apple Intelligence.")
         case .builtIn:
             L10n.text("Built-in local model: summaries without installing anything.")
         case .unavailable:

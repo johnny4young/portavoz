@@ -724,11 +724,14 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
 
     def test_window_placement_expands_to_the_complete_bilingual_catalog(self):
-        selection = select_paths(
-            ["Sources/portavoz-app/UITestWindowPlacement.swift"]
-        )
-        self.assertEqual(selection.tests, HARNESS_TESTS)
-        self.assertEqual(selection.locales, ("en", "es"))
+        for path in (
+            "Sources/portavoz-app/UITestWindowPlacement.swift",
+            "Sources/portavoz-app/SettingsSkillReceiptNavigation.swift",
+        ):
+            with self.subTest(path=path):
+                selection = select_paths([path])
+                self.assertEqual(selection.tests, HARNESS_TESTS)
+                self.assertEqual(selection.locales, ("en", "es"))
 
     def test_seed_fixtures_expand_to_the_complete_bilingual_catalog(self):
         for path in (
@@ -810,6 +813,18 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
             self.assertEqual(len(selection.tests), 2, path)
+
+    def test_shared_fixture_build_sources_and_permission_require_full_bilingual(self):
+        for path in (
+            "Package.swift",
+            "packaging/portavoz-uitests.entitlements",
+            "Tests/Support/UITestScratch.swift",
+            "Tests/PortavozUITests/UITestStorageSupport.swift",
+        ):
+            with self.subTest(path=path):
+                selection = select_paths([path])
+                self.assertEqual(selection.tests, HARNESS_TESTS)
+                self.assertEqual(selection.locales, ("en", "es"))
 
     def test_harness_change_expands_to_the_complete_bilingual_catalog(self):
         self.assertIn(
@@ -966,14 +981,15 @@ class UITestScopeTests(unittest.TestCase):
         )
         support = (ROOT / "Tests" / "PortavozUITests" / "UITestSupport.swift")
         support_source = support.read_text(encoding="utf-8")
+        wait_source = (support.parent / "UITestWaitSupport.swift").read_text(encoding="utf-8")
 
         self.assertNotIn("Thread.sleep", sources)
         self.assertNotIn(".waitForExistence(", sources)
         self.assertNotIn(".waitForNonExistence(", sources)
-        self.assertIn("func waitForUITestCondition(", support_source)
+        self.assertIn("func waitForUITestCondition(", wait_source)
         self.assertIn("func waitForExistenceFast(", support_source)
         self.assertIn("func waitForDisappearance(", support_source)
-        self.assertIn("RunLoop.current.run", support_source)
+        self.assertIn("RunLoop.current.run", wait_source)
         settings_source = (
             ROOT / "Tests" / "PortavozUITests" / "SettingsUITests.swift"
         ).read_text(encoding="utf-8")

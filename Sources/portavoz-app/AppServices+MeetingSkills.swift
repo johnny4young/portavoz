@@ -108,8 +108,7 @@ extension AppServices {
                         ? L10n.text(
                             "This Gist attempt may have reached GitHub. Check your Gists before publishing again.")
                         : L10n.text(
-                            // swiftlint:disable:next line_length
-                            "The Gist was created, but its local receipt is incomplete. Check GitHub before continuing."),
+                            "The Gist was created, but its record here is incomplete. Check GitHub before continuing."),
                     outputURL: outputURL)
             }
             throw error

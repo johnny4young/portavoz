@@ -19,7 +19,7 @@ enum AskAnswerPresentation {
             return nil
         case .insufficientEvidence:
             return L10n.text(
-                "The selected evidence does not support an answer. Exact sources are still shown.")
+                "The sources do not support an answer. Exact matches are still shown.")
         case .unavailable:
             return L10n.text(
                 "Your selected local answer engine is unavailable. Exact passages are still shown.")
@@ -34,7 +34,7 @@ enum AskAnswerPresentation {
 
     static func text(for result: AskWebAnswer) -> String {
         guard !result.citations.isEmpty else {
-            return L10n.text("No readable evidence was found at that web source.")
+            return L10n.text("Nothing readable was found at that page.")
         }
         return result.generatedText
             ?? L10n.text("Closest passages from the selected web source:")

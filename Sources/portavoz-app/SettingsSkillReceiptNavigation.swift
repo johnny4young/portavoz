@@ -32,15 +32,15 @@ final class SettingsWindowReference {
     weak var window: NSWindow?
 }
 
-struct SettingsWindowCapture: NSViewRepresentable {
+struct SettingsWindowCapture: NSViewControllerRepresentable {
     let reference: SettingsWindowReference
 
-    func makeNSView(context: Context) -> SettingsWindowCaptureView {
-        SettingsWindowCaptureView(reference: reference)
+    func makeNSViewController(context: Context) -> SettingsWindowCaptureController {
+        SettingsWindowCaptureController(reference: reference)
     }
 
-    func updateNSView(
-        _ nsView: SettingsWindowCaptureView,
+    func updateNSViewController(
+        _ controller: SettingsWindowCaptureController,
         context: Context
     ) {}
 }
@@ -62,8 +62,34 @@ final class SettingsWindowCaptureView: NSView {
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         reference.window = window
-        if let window {
-            UITestWindowPlacement.positionSettingsWindow(window)
-        }
+    }
+}
+
+@MainActor
+final class SettingsWindowCaptureController: NSViewController {
+    private let reference: SettingsWindowReference
+    private let position: @MainActor (NSWindow) -> Void
+
+    init(
+        reference: SettingsWindowReference,
+        position: @escaping @MainActor (NSWindow) -> Void = UITestWindowPlacement.positionSettingsWindow
+    ) {
+        self.reference = reference
+        self.position = position
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { nil }
+
+    override func loadView() {
+        view = SettingsWindowCaptureView(reference: reference)
+    }
+
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        // SwiftUI placement and AppKit frame restoration happen after view
+        // attachment. Position only after presentation, using the final size.
+        if let window = view.window { position(window) }
     }
 }

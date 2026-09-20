@@ -32,7 +32,7 @@ extension AskView {
         if !failures.isEmpty {
             Label(
                 "One web source could not be read.",
-                systemImage: "exclamationmark.triangle")
+                systemImage: PVSymbol.warning)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("ask-web-source-failure")
@@ -61,7 +61,7 @@ extension AskView {
                 .accessibilityIdentifier("ask-web-consent")
             Label(
                 webPrivacyDisclosure,
-                systemImage: "lock.shield")
+                systemImage: PVSymbol.privacy)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("ask-web-disclosure")

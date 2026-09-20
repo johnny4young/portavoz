@@ -102,6 +102,124 @@ desktop that preserves its interaction context; any lifecycle change must first
 reproduce the problem at the actual window attachment/presentation boundary.
 Hosted CI and a local interactive run remain distinct evidence.
 
+### Unexpected system interruptions invalidate UI qualification
+
+A retained real-app execution proved that XCTest's default interruption monitor
+could answer a microphone permission prompt despite the absence of a custom
+handler. Its requesting executable remains unattributed: the displayed app name
+alone is not evidence that another application caused the interruption. Keep
+that failed run failed.
+
+D527 replaces the unsafe no-monitor assumption with a content-blind callback
+that cleans its owned fixtures and stops the test/worker before fallback. The
+separate repeatable harness exercises the real base and cleanup in synchronous
+and asynchronous cases, with positive controls for observable action/choice
+effects. Its controlled synthetic windows are not actual TCC/authentication
+qualification on every supported macOS version. No test should request or answer
+a system privacy decision to manufacture that evidence. An unexpected prompt,
+failed owned cleanup, or later worker restart still invalidates the invocation;
+physical OS coverage and unexplained earlier failures remain separate.
+Earlier synthetic control receipts proved process absence but did not detect an
+overlay crash at its actor-isolated exit callback. They are not sufficient
+cleanup evidence. The corrected main-queue callback must also acknowledge its
+execution; fresh controlled and hosted qualification is required. Notification
+Center metadata alone still cannot attribute a hosted alert to that crash.
+
+### Compact-window scroll reachability remains unqualified
+
+The 1.1 layout removed the fixed 240-point artifacts box (the area now
+measures its material and caps at half the column) and moved the rail's
+sections behind lenses, which reduces the scrolling the compact geometry
+needed; the harness still does not force that geometry, so the limitation
+below stands as written.
+
+The ordinary bounded `revealVertically` helper can fail to reveal a correction
+control in a short transcript viewport. Wheel-response calibration and
+pending-input attribution were withdrawn after a compact real-app failure and
+a native counterexample combining dropped input with amplified delivery. The
+individual native delivery shapes passed; the combined shape did not. Neither
+an aggregate pass count nor a restored ordinary window closes this limitation.
+
+The interruption-safety harness retains the original real-app catalog and all
+correction effects but does not force the experimental compact geometry. Its
+four native controls qualify interruption containment and owned cleanup only,
+not scrolling. The rejected experiment and failed evidence remain separate;
+a future repair must reproduce compact geometry safely, reach the actual helper,
+include composed delivery shapes and retain the existing finite interaction
+budgets. Do not infer that the underlying transcript write path is defective
+from a harness failure before activation, or claim physical macOS coverage from
+the ordinary-window catalog. See D533 for the separation boundary.
+
+### 1.1 layout items deliberately kept as they were
+
+The "sin ruido" pass (D536/D537) stopped short of four proposed changes, each
+for a reason the code records: the live Apuntador stays in the D504 split
+(captions above, assist panel below, user-owned divider) with a state chip
+rather than becoming a right-hand panel, because the split's floors, budgets
+and journeys are qualified and a side panel is not; the Automations pane keeps
+its history as a section rather than a tab, because thirteen journeys address
+receipts in the same pane; Ask keeps its By person / By topic segmented
+surfaces, because six journeys select them by identifier; and meeting-skill
+proposals stay in the detail action row rather than under the summary. Each is
+a presentation choice that can be revisited with its journeys.
+
+### Native editor entry points retain independent evidence
+
+A separate local Spanish journey reached Intelligence Settings through summary
+failure recovery, then hit an app-owned interruption when selecting Voice. This
+deep-link entry did not use the ordinary Settings field-editor handoff. The guard
+completed owned cleanup, and XCTest restarted the worker for remaining tests;
+their later success does not qualify that invocation. The exact requesting UI
+has not been attributed from the interruption's frame alone. Review deep-link
+entries as well as direct Settings openings, preserving the destination and
+selected-engine assertions. The journey now uses the existing native editing
+handoff after proving its destination; focused bilingual evidence covers that
+boundary, but does not qualify an earlier interrupted full invocation.
+
+A later focused invocation stopped at the initial Library row click, before
+compact resizing or transcript scrolling. The seeded-Library helper's already-
+hittable fast path returned before its native search-editing handoff. This is a
+separate reachable boundary, not evidence against wheel-response conversion.
+An adversarial real-app journey reproduced this omission with a focused empty
+search and already-visible meeting: a normal key after readiness still edited
+the query. The common helper now orders its handoff before that fast return.
+Focused bilingual qualification covers the repaired boundary; full and hosted
+qualification remain required. The interruption's exact UI still cannot be
+identified from its frame alone.
+
+Repository entry and topic confirmation exposed another native-editor boundary:
+a field click can open an app-owned surface before field-targeted typing. Both
+original invocations stopped with owned cleanup. Bare application typing passed
+one real bilingual journey but was disproved by a native foreign-overlay control:
+XCTest reactivated the app and wrote despite the overlay. A foreground-only
+check was then disproved by a synthetic same-app alert: a newline accepted its
+default choice without entering an interruption monitor.
+
+Process ownership plus an explicit sole-modal-contained anchor now covers
+sixteen native controls, including legitimate bilingual editing, foreign
+interruption, unexpected same-app sheet and app-modal dialog rejection, and
+background-anchor rejection. Two surfaces stay outside the rule: popovers, and
+a dialog nothing can click such as the floating Writing Tools affordance. An
+unexpected popover with a default button is therefore not refused, and an
+app-modal dialog whose hit point lies off-screen is not either. Real
+journeys use the same admitted dispatch and preserve exact values, confirmation
+and receipt assertions. Neither a focused journey nor these synthetic controls
+qualifies an earlier interrupted full invocation. The original requesting UI
+is not attributed from its frame; completion preferences and unrelated apps are
+not changed. Public-API admission remains a point-in-time observation: a window
+change after observation cannot be claimed atomically excluded. Full bilingual
+and exact-head hosted qualification remain distinct from native controls.
+
+### Unattributed asynchronous media-framework test crash
+
+A full package-test process has terminated with `SIGSEGV` in asynchronous
+MediaToolbox/CoreFoundation array handling. No application frame established the
+initiating call, and focused playback workflow tests did not reproduce it. This
+is unresolved: do not attribute it to an interleaved test-log line, dismiss it as
+host interference, or use the focused pass as a complete gate. Further diagnosis
+must retain the actual crash stack and exercise the real playback lifecycle
+before changing production teardown or declaring the failure fixed.
+
 ## Product gaps (users feel them)
 
 | # | Gap | Today | Missing | Plan |
@@ -172,7 +290,7 @@ Physical/model latency and cancellation field evidence remain open.
 | T4 | ~~**Unmeasured Mac performance numbers**~~ | **RESOLVED (PERF-001/D137)**: `make perf-ledger` re-measures the unattended journeys against `docs/evidence/perf-thresholds.json` and fails a release on a budget miss. Battery stays an iOS-phase measurement. See D83, D137. | ✅ |
 | T5 | Exact semantic retrieval remains O(n), although the reference-host budget is restored | D318 keeps the Accelerate exact authority and normalized Float32 BLOB schema, but maps up to 512 MiB of `main` only for a file-backed macOS store on a volume classified as local and internal. The 9 Aug 2026 authoritative `make perf-ledger` run on the 36 GiB Tahoe reference host measured 63.53 ms wall / 64.54 ms CPU p95 at 100,000 × 512 against the 100 ms budget, with 0.17 MiB incremental process footprint. This closes the current-host regression, not the algorithmic or field-evidence gap: no accepted Sequoia, 8/16 GiB, correction-heavy, or alternative-engine matrix exists, and SQLite's documented mapped-page I/O signal risk remains explicit. | Keep exact control as the correctness authority and retain the local/internal guard. Collect the accepted D215/D219 multi-host receipts across Sequoia and Tahoe plus the required memory profiles; require bilingual quality, cancellation, correction, rebuild, disk, and rollback parity before selecting sqlite-vec, USearch/ANN, or any new product authority. |
 | T6 | ~~Audio storage 126 MB/channel/22 min~~ | **RESOLVED (Jul 2026)**. | ✅ |
-| T7 | CI does not run model-gated tests | **ACCEPTED with a compensating local gate (Q4/D380, Aug 2026).** Hosted CI cannot provide what these tests gate on: Apple Intelligence must be enabled interactively, Apple's contextual-embedding assets download through a flaky user-session service (documented failure even on a real host), and several suites need multi-GB sha256-pinned speech models or the owner's private enrollment audio. The compensating gate is `make test-model-gated`, a required pre-flight step in docs/RELEASING.md: it runs the six model/intelligence-gated classes in Release on the release Mac, fails when a filter matches nothing (rename protection), when a class skips entirely (capability absent), or when FluidAudio DEBUG output reaches the private lane, and prints every individual skip for owner review without echoing raw failure logs | Revisit only if GitHub ships Apple-Silicon runners with Apple Intelligence, or a self-hosted runner is accepted |
+| T7 | CI does not run model-gated tests | **ACCEPTED with a compensating local gate (Q4/D380, Aug 2026).** Hosted CI cannot provide what these tests gate on: Apple Intelligence must be enabled interactively, Apple's contextual-embedding assets download through a flaky user-session service (documented failure even on a real host), and several suites need multi-GB sha256-pinned speech models or the owner's private enrollment audio. The compensating gate is `make test-model-gated`, a required pre-flight step in docs/RELEASING.md: it runs the six model/intelligence-gated classes in Release on the release Mac, fails when a filter matches nothing (rename protection), when a class skips entirely (capability absent), or when FluidAudio DEBUG output reaches the private lane, and prints every individual skip for owner review without echoing raw failure logs. The standalone target needs `PORTAVOZ_MODEL_TESTS=1` plus the two spoken fixtures (`PORTAVOZ_TEST_WAV`, `PORTAVOZ_TEST_CONVERSATION_WAV`); candidate automation runs the same classes with fixtures it generates itself and is the authoritative release lane | Revisit only if GitHub ships Apple-Silicon runners with Apple Intelligence, or a self-hosted runner is accepted |
 | T8 | ~~No SwiftLint/format in CI~~ | **RESOLVED (Jul 2026)**. | ✅ |
 | T9 | ~~FluidAudio pinned to a revision~~ | **RESOLVED (Jul 2026)**. | ✅ |
 | T10 | ~~No unified local diagnostics/provenance surface~~ | **RESOLVED through D146**. See D115, D146. | ✅ |
@@ -363,7 +481,8 @@ explicitly `not-measured`; its resource receipt describes only the actual host
 that ran it. Those visible omissions and the other hardware profiles remain
 work/evidence rather than being converted into a local PASS claim.
 
-- **Portavoz 1.0.0 Homebrew install on clean Sequoia** (D74): `brew install --cask johnny4young/tap/portavoz` must install and launch the 1.0.0 public artifact on a Mac with no prior Portavoz receipt. The local v0.6.0 cask reproduction proved the outer DMG passed while the extracted app lacked a stapled ticket; the fixed release gate now rejects that state. Preserve `brew install --verbose --debug` output if any separate failure remains.
+- **First recording on a clean install** (D535): the shipped 1.0.0 artifact quits with a resource-bundle trap when a fresh Homebrew install starts a recording, reproduced from the published app. The fix, its packaging normalization and the new payload gate are implemented and verified locally against two real packaged apps; confirming the repaired artifact on a second physical Mac remains field evidence.
+- **Portavoz 1.1.0 Homebrew install on clean Sequoia** (D74/D535): `brew install --cask johnny4young/tap/portavoz` must install, launch and start one recording with the 1.1.0 public artifact on a Mac with no prior Portavoz receipt. The local v0.6.0 cask reproduction proved the outer DMG passed while the extracted app lacked a stapled ticket; the fixed release gate now rejects that state. Preserve `brew install --verbose --debug` output if any separate failure remains.
 - **Production private sync** (D97/D116): configure `iCloud.app.portavoz.mac`, deploy the production CloudKit schema, and issue an unexpired Developer ID profile with the exact production CloudKit and macOS push capabilities. On two clean Macs using one iCloud account, prove explicit future-change opt-in, separately confirmed existing-library seed, bidirectional edits, encrypted tombstone propagation, restart/retry, silent-push wake, sign-out/in, a real account switch requiring fresh consent, pause, and remove-this-Mac without deleting local meetings or remote records. Record the actual destination's complete-protection and backup-exclusion capabilities and verify that unsupported metadata omits only the unavailable key while `0600`, durable verification, and atomic publication remain intact. Reproduce Homebrew extraction and renew the profile before expiry. Do not market sync as field-proven until this matrix passes.
 - **Apuntador < 5 s** (D26/D72/D431): on physical Sequoia and Tahoe, a real meeting question must produce the bundled-detector card in < 5 s; also validate the "you were asked" detector (exact mention of your name → ping), question-only behavior when no answer engine exists, Tahoe on-device answers when Apple Intelligence is ready, and any explicitly configured BYOK general-knowledge answer with disclosure. Settings now exposes working offline detection on Sequoia without implying that the separate post-meeting refresh or on-device generated answers work there.
 - **Call-safe raw capture (D125)**: on both Sequoia and Tahoe, begin a call

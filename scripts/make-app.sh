@@ -119,8 +119,11 @@ cp -a "$BIN_DIR/Sparkle.framework" "$APP/Contents/Frameworks/"
 # LIVE-1 question admission is a tiny SwiftPM resource bundle. It is a
 # mandatory serving asset on both Sequoia and Tahoe: shipping the executable
 # without it would expose a working toggle that can never publish a card.
+# SwiftPM stages the compiled model at the bundle root (Xcode 26) or under
+# Contents/Resources (Xcode 27's Swift Build); Foundation resolves both.
 QUESTION_BUNDLE="$BIN_DIR/Portavoz_IntelligenceKit.bundle"
-if [[ ! -d "$QUESTION_BUNDLE/PortavozLiveQuestionClassifier.mlmodelc" ]]; then
+if [[ ! -d "$QUESTION_BUNDLE/PortavozLiveQuestionClassifier.mlmodelc" \
+      && ! -d "$QUESTION_BUNDLE/Contents/Resources/PortavozLiveQuestionClassifier.mlmodelc" ]]; then
   echo "bundled Apuntador question classifier is missing from the SwiftPM build." >&2
   exit 66
 fi
@@ -299,6 +302,13 @@ SIGN_FLAGS=(--force --options runtime)
 if [[ "$SIGN_ID" != "-" ]]; then
   SIGN_FLAGS+=(--timestamp)
 fi
+
+# Every payload entry must be readable by the account that installs the app,
+# not only by the one that built it. `cp -R` preserves a build artifact's
+# modes, and a SwiftPM resource bundle can arrive owner-only; `Bundle.module`
+# then traps on a Mac whose user id differs, ending the app at first use.
+# Normalize before signing so the signature covers the corrected modes.
+chmod -R u+rwX,go+rX,go-w "$APP"
 
 codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc" 2>/dev/null || true
 codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc" 2>/dev/null || true

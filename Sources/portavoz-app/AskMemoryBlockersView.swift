@@ -35,7 +35,7 @@ struct AskMemoryBlockersView: View {
                 identifier: "ask-memory-blockers-abstained")
         case .invalidEvidence:
             failure(
-                message: "Portavoz could not verify the blocker evidence.",
+                message: "Portavoz could not verify these blockers.",
                 identifier: "ask-memory-blockers-invalid-evidence")
         case .unavailable:
             failure(
@@ -58,7 +58,7 @@ struct AskMemoryBlockersView: View {
             Text(blocker.occurredAt.formatted(date: .abbreviated, time: .shortened))
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
-            Text("Evidence")
+            Text("Sources")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
             ForEach(Array(orderedCitations(blocker).enumerated()), id: \.offset) { index, citation in
@@ -94,13 +94,13 @@ struct AskMemoryBlockersView: View {
         }
         if disclosure.omittedStaleCount > 0 {
             Label(
-                "Some blockers with outdated evidence were omitted.",
+                "Some blockers with outdated sources were left out.",
                 systemImage: "clock")
                 .accessibilityIdentifier("ask-memory-blockers-omitted-stale")
         }
         if disclosure.omittedUnavailableCount > 0 {
             Label(
-                "Some blockers without available evidence were omitted.",
+                "Some blockers without sources were left out.",
                 systemImage: "exclamationmark.shield")
                 .accessibilityIdentifier("ask-memory-blockers-omitted-unavailable")
         }
@@ -110,7 +110,7 @@ struct AskMemoryBlockersView: View {
         VStack(alignment: .leading, spacing: 8) {
             statusRow(
                 message,
-                systemImage: "exclamationmark.triangle",
+                systemImage: PVSymbol.warning,
                 identifier: identifier)
             Button("Try again", action: onRetry)
                 .accessibilityIdentifier("ask-memory-blockers-retry")
@@ -157,7 +157,7 @@ struct AskMemoryBlockersView: View {
         case .projectionNotReady:
             "Confirmed memory is still preparing. Try again shortly."
         case .staleEvidenceOnly, .evidenceUnavailable:
-            "The matching blockers need current transcript evidence before Portavoz can show them."
+            "These blockers need an up-to-date transcript before Portavoz can show them."
         case .projectionInconsistent:
             "Confirmed memory could not verify a complete projection yet."
         case .candidateBudgetExceeded:

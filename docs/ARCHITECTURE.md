@@ -822,8 +822,8 @@ Snapshots contain only closed phases/stages/outcomes/failure categories,
 aggregate counts, attempt numbers, retry dates, and timestamps. They cannot
 carry a meeting identity, title, transcript or note text, path, model payload,
 or raw error. A processing lease heartbeat remains ownership liveness and is
-never presented as percentage progress. The Settings **Background activity**
-pane renders indeterminate progress only while an owner reports running, shows
+never presented as percentage progress. The **Background activity** section of
+the Your data Settings pane renders indeterminate progress only while an owner reports running, shows
 exact safe counts/retry metadata, and routes recovery actions back to the
 original owner. A compact main-toolbar indicator exists only while work is
 active, waiting, retrying, or needs attention and deep-links to that pane.
@@ -943,8 +943,9 @@ of child presentation types; scoped action values are their mutation boundary.
 
 The child is itself a composition surface rather than the owner of every visual
 section. `MeetingDetailHeaderSection` renders identity, facts, participants,
-and optional suggestions. `MeetingDetailTrustSection` renders processing,
-recovery, and the privacy receipt. `MeetingGeneratedDocumentSection` renders
+and optional suggestions. `MeetingDetailTrustSection` renders processing and
+recovery; `MeetingDetailActivityLine` renders the privacy receipt and action
+history as one chip under the title with a popover for the detail. `MeetingGeneratedDocumentSection` renders
 the summary overview, decision/open-question sections, typed commitments, and
 claim-adjacent proof controls. Each receives only explicit values and actions;
 none can reach the route model, services, stores, or global preferences. The
@@ -1258,9 +1259,12 @@ current live summaries in one bounded database projection, overlaps commitment
 loading, and admits generated context only when its source index resolves to a
 navigable related meeting. Agenda buttons explicitly opt out of selectable
 meeting-row behavior, so opening a brief cannot race the sidebar's meeting
-route. Persistent privacy seals use local-first and explicit opt-in language;
-feature-specific on-device claims remain limited to operations that cannot use
-a remote provider.
+route. One privacy promise exists in the main window: the sidebar footer chip
+"On your Mac" (`library-privacy-chip`), whose popover explains that nothing is
+sent unless the user asks and opens Settings on Your data. Today,
+Insights, the menu-bar panel, onboarding and the Settings sidebar repeat no
+disclaimer; feature-specific on-device claims remain limited to
+operations that cannot use a remote provider. Every SF Symbol the app draws is a `PVSymbol` constant (one per concept, in `PVDesign.swift`); `sparkles` is reserved for `ChipLabel`, and an architecture ratchet keeps retired glyph literals out of view code.
 
 ## Verified model lifecycle
 
@@ -1942,8 +1946,9 @@ pure ApplicationKit projection select only the feature journeys they own.
 
 The primary Meeting Detail column keeps generated material, synchronized
 transcript, and playback as three independent layout regions. Summary,
-commitment-review, and note content has a bounded 180-to-240-point vertical
-scroll region; the transcript receives the remaining flexible height and clips
+commitment-review, and note content takes the height it needs up to half of
+the column and scrolls inside its own area only beyond that; the transcript
+receives the remaining flexible height and clips
 its focused viewport to the geometry SwiftUI actually allocated; and the
 playback dock retains its intrinsic size below that viewport. Focused-row visual
 effects transform only transcript presentation. Correction controls remain
@@ -3064,9 +3069,10 @@ ApplicationKit workflows.
 
 Secondary Meeting Detail flows use the same rule. `MeetingDetailActionSection`
 renders Refine, recap, export, Gist, and delete capabilities from immutable
-values and explicit intents. `MeetingDetailRailSection` owns the independently
-scrolling recovery, privacy, health, chapter, and persisted Companion
-presentation without reaching the model or composition root; the coordinator
+values and explicit intents. `MeetingDetailRailSection` owns the always-present
+recovery card and the three lenses (people, Apuntador, chapters) shown one at
+a time; the composition owns the selected lens and passes it in as a value,
+so the rail reaches neither state nor the composition root; the coordinator
 projects health availability once rather than making the rail rescan every
 segment during presentation. One
 scene-owned `MeetingDetailFlowState` represents mutually exclusive sheet,
@@ -5268,7 +5274,12 @@ AVAudioConverter input callback receives its immutable source through one
 lock-protected, one-shot Sendable bridge; unchecked conformance is confined to
 that bridge and no import-wide concurrency suppression is used. First-party
 Swift sources compile against the current SDK with warnings treated as errors
-both locally and in the primary GitHub Actions build lane. Hosted CI uses the
+both locally and in the primary GitHub Actions build lane, and the same
+sources compile warning-free under Xcode 27 (Swift 6.4): the FoundationModels
+`sampling:` to `samplingMode:` rename lives behind one `#if compiler(>=6.4)`
+helper in IntelligenceKit, and closures that hand model-download progress to
+the main actor capture `self` weakly at their outermost boundary. Hosted
+CI uses the
 explicit macos-26/Xcode 26.6 pair for that lane and macos-15/Xcode 26.3 for the
 oldest supported runtime lane; `DEVELOPER_DIR` is verified instead of selecting
 the newest installed Xcode. Each lane owns one complete test invocation so its
@@ -5423,6 +5434,18 @@ prove that Portavoz owns the frontmost key window throughout a long catalogue;
 startup and `prepareForInteraction()` therefore keep explicit activation. The
 first complete English attempt demonstrated that removing it can synthesize
 apparently successful clicks without publishing the expected route or mutation.
+Keyboard dispatch has a separate admission boundary in `UITestKeyboardSupport`:
+XCTest foreground state plus the unique declared bundle's frontmost process,
+and either no sheet, alert or hittable app-modal dialog or exactly one such
+modal containing the journey's explicit anchor, re-observed for at most one
+second without activating anything. A dialog nothing can click, such as the
+floating selection affordance macOS shows after Select All, never captures the
+keys and is not counted. It does not reactivate after an observed ownership change. A background
+anchor never authorizes an unexpected same-app modal. Base-case wrappers refuse
+through the owned-cleanup interruption guard; shared application helpers return
+failure. Native negative controls exercise the real wrappers, while a tooling
+policy prevents raw keyboard dispatch elsewhere. These observations are not an
+atomic OS guarantee. Startup activation remains an explicit, separate operation.
 After startup activation, the main shell uses one bounded hittability proof;
 the window is not itself clicked, while every interactive control keeps its
 own stable or contained readiness boundary. Settings owns one stable General
@@ -5578,7 +5601,8 @@ resolves its own AppKit window on attachment rather than selecting a process-wid
 first window; detachment clears the weak owner and reattachment follows the new
 window. The shared disposable-window boundary keeps
 the main and Settings windows at AppKit's standard `statusBar` level, above the
-accepted Notification Center modal, so it cannot occlude test hit targets. No
+accepted Notification Center modal, reducing occlusion without guaranteeing
+protection from later system modals. No
 production window is elevated. The palette, recording HUD, dictation and reminder
 panels retain the same elevated level only for that explicit disposable launch,
 so the main window cannot cover their input targets; ordinary launches retain
@@ -5593,20 +5617,56 @@ observation, workspace, or malformed-output failure remains fail-closed.
 An accepted run reports both content-free Notification Center window counts.
 When both are zero it instead states that the override relaxed no present
 blocker, so a clear-host run cannot be misrepresented as live-overlay proof.
-The UI-test bundle likewise installs no interruption monitor for external
-system prompts. The explicit Notification Center level isolation answers no
-control and changes no notification state; every privacy or authentication
-choice remains user-owned and invalidates that host run instead of being
-answered by automation.
+The shared UI-test base installs a content-blind interruption monitor. It ends
+only its registered apps and identity-owned scratch before recording a failure;
+if XCTest returns from that assertion it exits only the worker, rather than
+resuming the interrupted event or default handler stack. It neither inspects
+nor answers the interrupting element. The execution classifier retains this as
+`evidence-failure` even after a zero-test worker restart or an exit-zero summary.
+A separate permission-free fixture target compiles the same base and cleanup
+sources. Observable positive controls and synchronous/asynchronous negative
+controls qualify the callback without opening a system permission prompt.
+The overlay's main-queue parent-exit callback emits a separate lifecycle
+acknowledgement before exiting; process absence without it is failed cleanup,
+not success. This closes the false-positive case where a main-actor callback
+scheduled on a global queue trapped before its body ran.
+Changes to the sources these controls qualify, their fixture, classifier or
+CI/Make owners, plus explicit full runs, execute them once in addition to the
+product catalog; localization and unrelated feature runs do not pay for fixture
+qualification. A failed control stops only its own built fixture processes. The
+shared tear-down names its owned cleanup as a child activity so runtime
+attribution never subtracts it, and the editing handoff observes keyboard focus
+before sending Tab so traversal can never move focus into the field.
+These observations prove only that the host was quiet at those samples;
+automation started afterward remains an external race that the result bundle
+must classify.
+
 Disposable UI-test windows do not inherit a user's multi-display placement.
 Only with `-use-temp-store`, one shared AppKit boundary places both the primary
 window and the real Settings scene on `NSScreen.screens.first`, AppKit's zero
-screen, and constrains Settings to its visible frame. The harness asserts that
-the Settings navigation anchor has nonnegative global coordinates before any
-journey continues. Production launches never enter this boundary and retain
-SwiftUI's saved window placement.
-This proves only that the host was quiet at those samples; automation started
-afterward remains an external race that the result bundle must classify.
+screen, and constrains Settings to its visible frame. Its narrow view-controller
+bridge positions Settings after presentation: SwiftUI's initial placement and AppKit's
+frame restoration can overwrite a correction made at view attachment. The
+separate weak reference remains current at attachment for receipt navigation.
+The harness asserts that the Settings navigation anchor has nonnegative global
+coordinates before any journey continues. Production launches never enter this boundary and retain
+SwiftUI's saved window placement. No forced compact-main-window mode or
+measured wheel-response calibration is active. The ordinary bounded UI-test
+scroll helper remains separate from interruption containment; compact-window
+reachability is an unresolved quality limitation, not qualification implied by
+the normal-window catalog.
+
+The UI runner owns atomically allocated, mode-0700 scratch under one dedicated
+system-temporary base, rather than handing its protected app-container paths
+to the app. Each test has an exact cleanup owner and each app fixture has its
+own child directory for database, audio, readiness signals and AppKit state.
+Allocation errors throw before app construction. Cleanup verifies directory
+identity and waits for registered app processes to exit; another test owner
+cannot tear down the active owner. The runner alone declares read/write access
+to this dedicated fixture base while retaining its sandbox. Neither production
+entitlements nor system privacy grants change. The same test-only allocator
+source is compiled into package tests and XCUITest, not a product target.
+
 Visual-only screenshot
 assertions use visible-frame intersection rather than conflating visibility
 with a control's temporary enabled or hittable state, and their bounded scroll
@@ -5622,10 +5682,11 @@ documentation or isolated surface changes.
 
 The live recording command surface is isolated in `RecordingToolbar` rather
 than growing the already state-heavy `RecordingView`. It is responsive by
-construction rather than by control truncation. Its wide layout is one row; at
-the 900 pt minimum window, `ViewThatFits` moves secondary actions to an
-icon-only second row while keeping the elapsed clock horizontal and Stop
-visible beside it. The focused external-recording XCUITest enforces those
+construction rather than by control truncation. Three controls stay visible
+(Translate, Apuntador, Catch me up) and the rest sit in one More panel (a popover)
+with their state shown as switches. Its wide layout is one row; at the 900 pt minimum window,
+`ViewThatFits` moves secondary actions to an icon-only second row while
+keeping the elapsed clock horizontal and Stop visible beside it. The focused external-recording XCUITest enforces those
 geometric invariants in both locales.
 
 The live transcript has reader-owned scroll state independent from the

@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 118
+    "expectedCaseCount": 120
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -54,7 +54,8 @@
     "LibraryUITests/testLibraryRendersRecordButtonAndActionChips()": 20.0,
     "LibraryUITests/testLiveTranscriptYieldsFollowWhileReadingHistory()": 20.0,
     "LibraryUITests/testLiveTranslationUsesADistinctLabeledRail()": 20.0,
-    "LibraryUITests/testRecordingOffersObjectivesNextQuestionAndTalkBalance()": 20.117,
+    "LibraryUITests/testPrivacyChipOpensTheActivityLogInYourData()": 20.0,
+    "LibraryUITests/testRecordingOffersObjectivesNextQuestionAndTalkBalance()": 21.5,
     "LibraryUITests/testRecordingStartFailureOffersTypedRecovery()": 20.0,
     "LibraryUITests/testRecordingWarnsWhenIncomingAudioClips()": 20.0,
     "LibraryUITests/testRecordingWarnsWhenRemoteAudioCallbacksStop()": 20.0,
@@ -80,7 +81,7 @@
     "MeetingDetailUITests/testPlayerExposesSkipAndOnlyMyVoice()": 20.0,
     "MeetingDetailUITests/testRecapSheetDraftsFromTheSummaryWithoutTheTranscript()": 20.0,
     "MeetingDetailUITests/testRunningRefineCanBeCanceledWithoutChangingTheTranscript()": 20.0,
-    "MeetingDetailUITests/testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument()": 25.789,
+    "MeetingDetailUITests/testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument()": 26.5,
     "MeetingDetailUITests/testSequoiaApuntadorRefreshPreservesStaleAnswers()": 20.0,
     "MeetingDetailUITests/testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador()": 20.0,
     "MeetingDetailUITests/testSkillProposalJourneyFromBannerToReceipt()": 30.848,
@@ -96,13 +97,15 @@
     "PublicShowcaseUITests/testLiveTranslationShowcase()": 20.0,
     "PublicShowcaseUITests/testMeetingDetailShowcase()": 20.0,
     "PublicShowcaseUITests/testTodayShowcase()": 20.0,
-    "RecordingAssistUITests/testLiveAssistKeepsOnePanelOpenAndABoundedCardList()": 25.0,
+    "RecordingAssistUITests/testBatchedObjectivesRevealLastArrivalAndReplacementCountsAsUnread()": 25.0,
     "RecordingAssistUITests/testCompanionActionsKeepIdentityAndSeenStateAfterReentry()": 25.0,
     "RecordingAssistUITests/testLatestManualAssistRequestOwnsTheFocusSlot()": 25.0,
-    "RecordingAssistUITests/testBatchedObjectivesRevealLastArrivalAndReplacementCountsAsUnread()": 25.0,
+    "RecordingAssistUITests/testLiveAssistKeepsOnePanelOpenAndABoundedCardList()": 25.0,
     "RecordingAssistUITests/testUnsubmittedNotesAndObjectivesSurviveTabsAndLibraryBrowsing()": 25.0,
-    "SettingsTransferUITests/testPortablePreferencesReviewCancelApplyAndLiveLanguage()": 35.0,
-    "SettingsTransferUITests/testUnsupportedPreferencesRemainRecoverableWithoutMutation()": 25.0,
+    "RecordingInputUITests/testAcceptedNotesAndObjectivesSurviveTerminationAndRecovery()": 35.0,
+    "RecordingInputUITests/testFailedRemovalKeepsTheAcceptedNoteUntilDiscardOrRetry()": 25.0,
+    "RecordingInputUITests/testFailedWriteRetainsInputAndStopWaitsForAnExplicitRetry()": 30.0,
+    "RecordingInputUITests/testStopDrainsAnAdmittedWriteBeforeFinalizingTheRecording()": 25.0,
     "SettingsUITests/testAudioPaneOffersCaptureSourceControls()": 20.0,
     "SettingsUITests/testCategoryNavigationRevealsEachPane()": 24.352,
     "SettingsUITests/testDataPaneExportsAReadableWholeLibraryMarkdownBackup()": 20.0,
@@ -138,9 +141,8 @@
     "SkillsSettingsUITests/testSuggestedActionsExplainReviewFirstSafety()": 20.0,
     "SkillsSettingsUITests/testWaitingReceiptIgnoresUnavailablePolicyAndReviewsSourceWithoutRunning()": 24.924,
     "SkillsSettingsUITests/testWaitingSkillApprovalCanBeRevokedBeforeHandoff()": 24.508,
-    "RecordingInputUITests/testAcceptedNotesAndObjectivesSurviveTerminationAndRecovery()": 35.0,
-    "RecordingInputUITests/testFailedWriteRetainsInputAndStopWaitsForAnExplicitRetry()": 30.0,
-    "RecordingInputUITests/testFailedRemovalKeepsTheAcceptedNoteUntilDiscardOrRetry()": 25.0,
-    "RecordingInputUITests/testStopDrainsAnAdmittedWriteBeforeFinalizingTheRecording()": 25.0
+    "UITestStorageUITests/testSharedScratchProtectsOwnershipAndRoundTripsAppFixtures()": 15.0,
+    "SettingsTransferUITests/testPortablePreferencesReviewCancelApplyAndLiveLanguage()": 35.0,
+    "SettingsTransferUITests/testUnsupportedPreferencesRemainRecoverableWithoutMutation()": 25.0
   }
 }

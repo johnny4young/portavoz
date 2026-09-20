@@ -30,7 +30,7 @@ struct SpeakerPill: View {
             HStack(spacing: 4) {
                 Text(speaker.map { $0.displayName ?? $0.label } ?? "?")
                 if speaker?.personID != nil {
-                    Image(systemName: "checkmark.circle.fill")
+                    Image(systemName: PVSymbol.success)
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(PVDesign.accent)
                 }

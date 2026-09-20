@@ -135,13 +135,13 @@ struct AppLaunchRecoveryView: View {
             .accessibilityIdentifier(identifier)
             .accessibilityLabel(Text(working))
         case .succeeded:
-            Label(succeeded, systemImage: "checkmark.circle.fill")
+            Label(succeeded, systemImage: PVSymbol.success)
                 .foregroundStyle(.green)
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier(identifier)
                 .accessibilityLabel(Text(succeeded))
         case .failed:
-            Label(failed, systemImage: "exclamationmark.triangle.fill")
+            Label(failed, systemImage: PVSymbol.error)
                 .foregroundStyle(.red)
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier(identifier)

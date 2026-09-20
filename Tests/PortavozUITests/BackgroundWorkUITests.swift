@@ -2,8 +2,8 @@ import XCTest
 
 final class BackgroundWorkUITests: PortavozUITestCase {
     @MainActor
-    func testBackgroundWorkCenterShowsAllOwnersAndRecoversExactFailures() {
-        let app = XCUIApplication.portavoz(seedBackgroundWork: true)
+    func testBackgroundWorkCenterShowsAllOwnersAndRecoversExactFailures() throws {
+        let app = try XCUIApplication.portavoz(seedBackgroundWork: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -14,7 +14,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
         indicator.click()
 
         XCTAssertTrue(
-            app.control(withIdentifier: "settings-category-background-work")
+            app.control(withIdentifier: "settings-category-data")
                 .waitForExistenceFast(timeout: 10),
             "the compact indicator must expose the exact Settings category")
         XCTAssertTrue(
@@ -57,15 +57,23 @@ final class BackgroundWorkUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 5),
             "retrying owners must disclose their exact scheduled wake")
         let processingFailure = UITestLocale.environmentLocale == "es"
-            ? "Motivo: Evidencia de procesamiento"
-            : "Reason: Processing evidence"
+            ? "Motivo: Procesamiento"
+            : "Reason: Processing"
         XCTAssertTrue(
             app.staticTexts["background-work-failure-processing"]
                 .waitForLabelOrValue(processingFailure, timeout: 5),
             "attention states must expose only a closed localized category")
 
         let idle = UITestLocale.environmentLocale == "es" ? "Inactivo" : "Idle"
+        let settingsWindow = app.windows.containing(
+            .any,
+            identifier: "background-work-overview"
+        ).firstMatch
+        let settingsForm = settingsWindow.scrollViews.element(boundBy: 1)
         let processingRetry = app.buttons["background-work-action-processing"]
+        XCTAssertTrue(
+            processingRetry.revealVertically(in: settingsForm),
+            "the processing recovery action must be reachable in the Your data pane")
         XCTAssertTrue(processingRetry.waitForHittable(timeout: 5))
         processingRetry.click()
         XCTAssertTrue(
@@ -73,11 +81,6 @@ final class BackgroundWorkUITests: PortavozUITestCase {
                 .waitForLabelOrValue(idle, timeout: 5),
             "processing retry must route only to its owner and publish the new safe state")
 
-        let settingsWindow = app.windows.containing(
-            .any,
-            identifier: "background-work-overview"
-        ).firstMatch
-        let settingsForm = settingsWindow.scrollViews.element(boundBy: 1)
         let graphRetry = app.buttons["background-work-action-memory-graph"]
         XCTAssertTrue(
             graphRetry.revealVertically(in: settingsForm),
@@ -91,8 +94,8 @@ final class BackgroundWorkUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testRecordingDefersDerivedWorkAndStopResumesIt() {
-        let app = XCUIApplication.portavoz(
+    func testRecordingDefersDerivedWorkAndStopResumesIt() throws {
+        let app = try XCUIApplication.portavoz(
             enableBackgroundWorkFixture: true,
             simulateSystemCaptureStall: true)
         app.launchPortavoz()
@@ -118,7 +121,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
                 "\(owner) must not run through protected capture")
         }
 
-        app.typeKey("w", modifierFlags: .command)
+        typeKey("w", modifierFlags: .command, in: app)
         XCTAssertTrue(app.prepareForInteraction())
         let stop = app.buttons["recording-stop-after-remote-outage"]
         XCTAssertTrue(stop.waitForHittable(timeout: 10))

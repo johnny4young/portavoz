@@ -69,8 +69,8 @@ struct SkillProposalSection: View {
         } else if loadFailed {
             VStack(alignment: .leading, spacing: 8) {
                 Label(
-                    "Suggested actions are unavailable",
-                    systemImage: "exclamationmark.triangle")
+                    "Automations are unavailable",
+                    systemImage: PVSymbol.warning)
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier(
                         "settings-skills-proposals-error")
@@ -84,11 +84,10 @@ struct SkillProposalSection: View {
             }
         } else if let offers = snapshot?.offers, offers.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
-                Label("No suggested actions", systemImage: "sparkles")
+                Label("No suggested actions", systemImage: PVSymbol.automations)
                 Text(
                     // Keep this as one literal so localization validation sees it.
-                    // swiftlint:disable:next line_length
-                    "Suggestions appear when a meeting, commitment, or calendar event provides enough evidence for an action."
+                    "Suggestions appear when a meeting, commitment or calendar event calls for an action."
                 )
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -130,7 +129,7 @@ struct SkillProposalSection: View {
                 "settings-skills-proposals-refreshing")
         } else {
             Button(action: refresh) {
-                Label("Refresh suggested actions", systemImage: "arrow.clockwise")
+                Label("Refresh suggested actions", systemImage: PVSymbol.retry)
             }
             .accessibilityIdentifier("settings-skills-proposals-refresh")
             .disabled(isMutating)
@@ -150,7 +149,7 @@ struct SkillProposalSection: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "sparkles.rectangle.stack.fill")
+                Image(systemName: PVSymbol.generate)
                     .foregroundStyle(PVDesign.accent)
                     .frame(width: 18)
                     .accessibilityHidden(true)
@@ -276,7 +275,7 @@ struct SkillProposalSection: View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Label(
                 "This proposal could not be opened. It remains available.",
-                systemImage: "exclamationmark.triangle")
+                systemImage: PVSymbol.warning)
                 .font(.caption)
                 .foregroundStyle(.orange)
                 .accessibilityIdentifier(
@@ -306,7 +305,7 @@ struct SkillProposalSection: View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Label(
                 "This proposal could not be dismissed. It remains available.",
-                systemImage: "exclamationmark.triangle")
+                systemImage: PVSymbol.warning)
                 .font(.caption)
                 .foregroundStyle(.orange)
                 .accessibilityIdentifier(
@@ -368,7 +367,7 @@ struct SkillProposalSection: View {
         case .meetingSummary: L10n.text("meeting summary")
         case .transcript: L10n.text("transcript")
         case .notes: L10n.text("notes")
-        case .companionHistory: L10n.text("Companion history")
+        case .companionHistory: L10n.text("Apuntador history")
         case .commitment: L10n.text("confirmed commitment")
         case .calendarEvent: L10n.text("calendar event")
         case .selectedDestination: L10n.text("destination you select")

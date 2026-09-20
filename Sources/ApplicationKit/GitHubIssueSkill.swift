@@ -400,7 +400,7 @@ private struct GitHubIssueLabels {
     static let english = Self(
         meetingActionItem: "Meeting action item from",
         owner: "Agreed owner",
-        evidence: "Evidence",
+        evidence: "Sources",
         provenance: "Created by Portavoz after explicit review.")
 
     static let spanish = Self(

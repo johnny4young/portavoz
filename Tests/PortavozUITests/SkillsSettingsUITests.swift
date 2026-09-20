@@ -14,7 +14,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testSuggestedActionsExplainReviewFirstSafety() throws {
-        let app = XCUIApplication.portavoz(openSettings: true)
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -27,8 +27,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testSkillsPaneFailsClosedWhenDurablePolicyCannotLoad() {
-        let app = XCUIApplication.portavoz(openSettings: true)
+    func testSkillsPaneFailsClosedWhenDurablePolicyCannotLoad() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-control-unavailable")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -51,8 +51,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testFailedSkillControlMutationReloadsWithoutClosingSettings() {
-        let app = XCUIApplication.portavoz(openSettings: true)
+    func testFailedSkillControlMutationReloadsWithoutClosingSettings() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append(
             "-simulate-skill-control-mutation-unavailable")
         app.launchPortavoz()
@@ -95,7 +95,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testSkillActivityScopeFailureDoesNotInventRowsOrDisableVerifiedPolicy() throws {
-        let app = XCUIApplication.portavoz(openSettings: true)
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-receipt-scope-unavailable")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -133,7 +133,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testSkillActivityTransitionsHideStaleRowsAndKeepVerifiedControlsUsable() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(contentsOf: [
             "-seed-skill-waiting"
         ])
@@ -242,8 +242,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testSameSkillProposalsHaveDistinctAccessibleActions() {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+    func testSameSkillProposalsHaveDistinctAccessibleActions() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-duplicate-skill-proposals")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -259,8 +259,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testSkillActivityHidesExpansionWhenExactlyOnePageExists() {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+    func testSkillActivityHidesExpansionWhenExactlyOnePageExists() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-skill-exact-page-history")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -285,7 +285,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testSkillActivityFiltersByUpdatePeriodAndResetsExpansion() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(contentsOf: [
             "-seed-skill-history",
             "-seed-skill-recent-history"
@@ -501,7 +501,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testSkillProposalFailureDoesNotInventOffersOrDisableVerifiedPolicy() throws {
-        let app = XCUIApplication.portavoz(openSettings: true)
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-proposal-unavailable")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -533,7 +533,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testProposedSkillReviewReturnsToItsMeetingWithoutRunning() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -577,13 +577,13 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             app.menuItems["skill-offer-email-recap-draft"]
                 .waitForExistenceFast(timeout: 5),
             "the original offer must still require its exact preview")
-        app.typeKey(.escape, modifierFlags: [])
+        typeKey(.escape, modifierFlags: [], in: app)
         attachScreenshot(of: app, named: "skills-proposal-review-context")
     }
 
     @MainActor
     func testFailedProposedSkillReviewKeepsTheOfferAndAllowsRetry() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(
             "-simulate-skill-proposal-review-unavailable")
         app.launchPortavoz()
@@ -637,7 +637,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testProposedSkillDismissalRetiresTheDurableOfferEverywhere() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -676,7 +676,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testFailedProposedSkillDismissalKeepsTheOfferAndAllowsRetry() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(
             "-simulate-skill-proposal-dismiss-unavailable")
         app.launchPortavoz()
@@ -727,7 +727,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testWaitingSkillApprovalCanBeRevokedBeforeHandoff() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-skill-waiting")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -760,7 +760,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testFailedWaitingSkillRevocationKeepsTheReceiptAndRetry() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(contentsOf: [
             "-seed-skill-waiting",
             "-simulate-skill-receipt-revoke-unavailable"
@@ -793,7 +793,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testRecoverableFailedSkillReturnsToItsMeetingWithoutRunning() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-skill-failed-recoverable")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -831,13 +831,13 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             app.menuItems["skill-offer-recap-draft"]
                 .waitForExistenceFast(timeout: 5),
             "the original surface must rebuild a fresh reviewable proposal")
-        app.typeKey(.escape, modifierFlags: [])
+        typeKey(.escape, modifierFlags: [], in: app)
         attachScreenshot(of: app, named: "skills-failed-recovery-context")
     }
 
     @MainActor
     func testFailedRecoveryResolutionKeepsTheReceiptAndAllowsRetry() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(contentsOf: [
             "-seed-skill-failed-recoverable",
             "-simulate-skill-receipt-recovery-unavailable"
@@ -873,7 +873,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testWaitingReceiptIgnoresUnavailablePolicyAndReviewsSourceWithoutRunning() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(contentsOf: [
             "-seed-skill-waiting",
             "-simulate-skill-receipt-policy-unavailable"
@@ -911,7 +911,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testFailedSourceContextResolutionKeepsReceiptAndAllowsRetry() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(contentsOf: [
             "-seed-skill-waiting",
             "-simulate-skill-receipt-context-unavailable"
@@ -948,7 +948,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testSkillReceiptRestoresKeyboardFocusAndPassesAccessibilityAudit() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-skill-waiting")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -963,23 +963,23 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         // Settings surface behind the sheet and the receipt sheet itself.
         try auditSkillDescriptions(in: app)
 
-        app.typeKey(.escape, modifierFlags: [])
+        typeKey(.escape, modifierFlags: [], in: app, modalAnchor: "skill-receipt-inspection")
         XCTAssertTrue(
             waitForDisappearance(inspection),
             "Escape must close the modal receipt inspector")
         XCTAssertTrue(
             receipt.waitForExistenceFast(timeout: 5),
             "dismissal must return to the exact receipt row")
-        app.typeKey(.space, modifierFlags: [])
+        typeKey(.space, modifierFlags: [], in: app)
         XCTAssertTrue(
             inspection.waitForExistenceFast(timeout: 5),
             "keyboard focus must return to the receipt that opened the sheet")
-        app.typeKey(.escape, modifierFlags: [])
+        typeKey(.escape, modifierFlags: [], in: app, modalAnchor: "skill-receipt-inspection")
     }
 
     @MainActor
     func testSkillsPaneControlsOffersAndShowsTheConfirmedReceipt() throws {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -1007,7 +1007,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     /// until one verified read replaces it.
     @MainActor
     func testAutomaticBriefCancellationFailureRequiresVerifiedReload() throws {
-        let app = XCUIApplication.portavoz(
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedBrief: true)
         app.launchArguments.append(
@@ -1052,7 +1052,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     /// recovery still enters the production serialized supervisor.
     @MainActor
     func testAutomaticBriefRuleRecoversAndKeepsInspectableHistory() throws {
-        let app = XCUIApplication.portavoz(
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedBrief: true)
         app.launchArguments.append("-simulate-standing-brief-failure-once")
@@ -1267,6 +1267,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let submit = app.buttons["skill-confirm-submit"]
         XCTAssertTrue(submit.waitForStableFrame(timeout: 5))
         submit.click()
+        _ = app.openMeetingActivity()
         XCTAssertTrue(
             app.control(withIdentifier: "skill-receipt-recap-draft")
                 .waitForExistenceFast(timeout: 10))
@@ -1281,6 +1282,9 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             receipt.waitForExistenceFast(timeout: 10),
             "the management pane must project the confirmed durable receipt")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-skill-recap-draft-last-run").exists,
+            "each available action says when it last ran")
         XCTAssertFalse(Self.isOn(app.control(
             withIdentifier: "settings-skill-meeting-package-export-enabled")))
         try scrollToVisible(receipt, in: app)
@@ -1357,8 +1361,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let category = app.control(
             withIdentifier: "settings-category-skills")
         let expectedTitle = UITestLocale.environmentLocale == "es"
-            ? "Acciones sugeridas"
-            : "Suggested actions"
+            ? "Automatizaciones"
+            : "Automations"
         XCTAssertTrue(
             try waitForLabel(category, toContain: expectedTitle),
             "the stable internal Skills route needs a plain-language public title")
@@ -1367,8 +1371,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             withIdentifier: "settings-actions-explanation")
         XCTAssertTrue(explanation.waitForExistenceFast(timeout: 5))
         let expectedExplanation = UITestLocale.environmentLocale == "es"
-            ? "Nada se ejecuta hasta que revisas y confirmas cada acción."
-            : "Nothing runs until you review and confirm it."
+            ? "Nada se ejecuta hasta que lo confirmes."
+            : "Nothing runs until you confirm it."
         XCTAssertTrue(
             try waitForLabel(explanation, toContain: expectedExplanation),
             "the pane must explain the review-first safety contract")
@@ -1449,7 +1453,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     @MainActor
     private func closeSettings(in app: XCUIApplication) {
         cachedScrollViewport = nil
-        app.typeKey("w", modifierFlags: .command)
+        typeKey("w", modifierFlags: .command, in: app)
         XCTAssertTrue(app.prepareForInteraction())
     }
 
@@ -1508,7 +1512,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
                     .waitForExistenceFast(timeout: 5),
                 "dismissing email must not retire an unrelated recap offer")
         }
-        app.typeKey(.escape, modifierFlags: [])
+        typeKey(.escape, modifierFlags: [], in: app)
     }
 
     @MainActor

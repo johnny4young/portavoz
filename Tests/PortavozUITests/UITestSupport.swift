@@ -1,36 +1,6 @@
 import AppKit
 import XCTest
 
-/// Shared base for Portavoz UI journeys.
-///
-/// This type deliberately installs no interruption monitor. System-owned
-/// privacy or authentication prompts require a user's decision; the read-only
-/// host preflight reports them instead of allowing tests to answer them.
-class PortavozUITestCase: XCTestCase {}
-
-/// Evaluate an explicit state predicate without XCTest's one-second polling
-/// floor. The run loop stays live between probes, so asynchronous app and
-/// accessibility updates continue to arrive; there is no blind fixed delay.
-@MainActor
-@discardableResult
-func waitForUITestCondition(
-    timeout: TimeInterval,
-    pollInterval: TimeInterval = 0.05,
-    _ condition: () throws -> Bool
-) rethrows -> Bool {
-    if try condition() { return true }
-    let deadline = Date().addingTimeInterval(timeout)
-    while Date() < deadline {
-        let nextProbe = min(deadline, Date().addingTimeInterval(pollInterval))
-        // `run(mode:before:)` may return after any handled source, which turns
-        // a requested polling interval into an unbounded AX-query loop. Keep
-        // servicing the default run loop until the actual probe boundary.
-        RunLoop.current.run(until: nextProbe)
-        if try condition() { return true }
-    }
-    return false
-}
-
 /// The text a static element renders: SwiftUI exposes some labels only
 /// through `value`, others only through `label`.
 @MainActor
@@ -111,24 +81,27 @@ extension XCUIApplication {
         openSettings: Bool = false,
         showOnboarding: Bool = false,
         includeWebFixture: Bool = false,
-        launchLocale: String? = UITestLocale.environmentLocale
-    ) -> XCUIApplication {
+        launchLocale: String? = UITestLocale.environmentLocale,
+        makeTemporaryDirectory: @MainActor () throws -> URL = UITestStorage.makeDirectory
+    ) throws -> XCUIApplication {
+        let processTempRoot = try makeTemporaryDirectory()
         let app = XCUIApplication()
+        try UITestStorage.register(app)
         app.launchArguments = ["-NSTreatUnknownArgumentsAsOpen", "NO", "-ApplePersistenceIgnoreState", "YES", "-use-temp-store", "-reset-app-language"]
         if seedDemo {
             app.launchArguments.append("-seed-demo")
             app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] =
-                NSTemporaryDirectory() + "portavoz-seed-ready-\(UUID().uuidString)"
+                processTempRoot.appendingPathComponent("portavoz-seed-ready-\(UUID().uuidString)").path
         }
         if seedShowcase {
             app.launchArguments.append("-seed-showcase")
             app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] =
-                NSTemporaryDirectory() + "portavoz-showcase-ready-\(UUID().uuidString)"
+                processTempRoot.appendingPathComponent("portavoz-showcase-ready-\(UUID().uuidString)").path
         }
         if seedScale {
             app.launchArguments.append("-seed-scale")
             app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] =
-                NSTemporaryDirectory() + "portavoz-scale-ready-\(UUID().uuidString)"
+                processTempRoot.appendingPathComponent("portavoz-scale-ready-\(UUID().uuidString)").path
         }
         if let scaleSegmentCount {
             app.launchArguments += ["-scale-segments", String(scaleSegmentCount)]
@@ -141,7 +114,7 @@ extension XCUIApplication {
         if seedRecovery {
             app.launchArguments.append("-seed-recovery")
             app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] =
-                NSTemporaryDirectory() + "portavoz-recovery-ready-\(UUID().uuidString)"
+                processTempRoot.appendingPathComponent("portavoz-recovery-ready-\(UUID().uuidString)").path
         }
         if seedProcessing { app.launchArguments.append("-seed-processing") }
         if seedProcessingFailure { app.launchArguments.append("-seed-processing-failure") }
@@ -171,19 +144,19 @@ extension XCUIApplication {
             app.launchArguments.append("-simulate-live-transcription-attach")
             let signalID = UUID().uuidString
             app.launchEnvironment["PORTAVOZ_UI_TEST_ATTACH_PREPARING_PATH"] =
-                NSTemporaryDirectory() + "portavoz-attach-preparing-\(signalID)"
+                processTempRoot.appendingPathComponent("portavoz-attach-preparing-\(signalID)").path
             app.launchEnvironment["PORTAVOZ_UI_TEST_ATTACH_CONTINUE_PATH"] =
-                NSTemporaryDirectory() + "portavoz-attach-continue-\(signalID)"
+                processTempRoot.appendingPathComponent("portavoz-attach-continue-\(signalID)").path
         }
         if simulateLiveTranscriptBrowsing {
             app.launchArguments.append("-simulate-live-transcript-browsing")
             let signalID = UUID().uuidString
             app.launchEnvironment["PORTAVOZ_UI_TEST_LIVE_FRONTIER_PATH"] =
-                NSTemporaryDirectory() + "portavoz-live-frontier-\(signalID)"
+                processTempRoot.appendingPathComponent("portavoz-live-frontier-\(signalID)").path
             app.launchEnvironment["PORTAVOZ_UI_TEST_LIVE_RESUME_PATH"] =
-                NSTemporaryDirectory() + "portavoz-live-resume-\(signalID)"
+                processTempRoot.appendingPathComponent("portavoz-live-resume-\(signalID)").path
             app.launchEnvironment["PORTAVOZ_UI_TEST_LIVE_COMPLETE_PATH"] =
-                NSTemporaryDirectory() + "portavoz-live-complete-\(signalID)"
+                processTempRoot.appendingPathComponent("portavoz-live-complete-\(signalID)").path
         }
         if simulateLiveApuntador {
             app.launchArguments.append("-simulate-live-apuntador")
@@ -215,19 +188,13 @@ extension XCUIApplication {
         }
         if openSettings { app.launchArguments.append("-portavoz-open-settings") }
         if showOnboarding { app.launchArguments.append("-show-onboarding") }
-        // AppKit writes ignored-restoration state into TMPDIR. Give every
-        // process a private root so back-to-back launches cannot race the same
-        // bundle-scoped savedState directory after a preceding termination.
-        let processTempRoot = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("portavoz-uitest-process-\(UUID().uuidString)")
-        try? FileManager.default.createDirectory(
-            at: processTempRoot,
-            withIntermediateDirectories: true)
+        // AppKit and fixtures share this app-owned child of the test's
+        // explicit scratch, never a path inside the runner's app container.
         app.launchEnvironment["TMPDIR"] = processTempRoot.path + "/"
-        // Every UI launch gets an isolated audio root by default. Individual
-        // tests may replace it with an explicit scratch copy of real audio.
         app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] =
-            NSTemporaryDirectory() + "portavoz-uitest-\(UUID().uuidString)"
+            processTempRoot.appendingPathComponent("audio", isDirectory: true).path
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DATABASE_PATH"] =
+            processTempRoot.appendingPathComponent("library.sqlite").path
         // The host preflight accepts this exact value only after a local
         // operator has opted into the category-scoped D432 override. Forward
         // that decision to the disposable app process so its test windows can
@@ -305,21 +272,85 @@ extension XCUIApplication {
         }
     }
 
-    /// XCUITest can report `.notRunning` before LaunchServices removes the
-    /// process from its inventory. Observe the real host state instead of
-    /// sleeping on every launch; an already-clear host returns immediately.
-    @MainActor
-    private func waitForPortavozProcessExit(timeout: TimeInterval = 10) -> Bool {
-        waitForUITestCondition(timeout: timeout) {
-            NSRunningApplication.runningApplications(
-                withBundleIdentifier: "app.portavoz.mac.uitest-host"
-            ).isEmpty
-        }
-    }
-
     @MainActor
     func control(withIdentifier identifier: String) -> XCUIElement {
         descendants(matching: .any)[identifier]
+    }
+
+    /// Privacy and action history live behind the activity chip under a
+    /// meeting's title; the popover carries the auditable detail.
+    @MainActor
+    func openMeetingActivity(
+        timeout: TimeInterval = 10,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let popover = control(withIdentifier: "detail-activity-popover")
+        if !popover.exists {
+            // A sheet that is still going away leaves an unmappable host in
+            // the tree and makes the chip's own hit test throw on the hosted
+            // runner; let every sheet and dialog finish first.
+            guard waitForUITestCondition(timeout: timeout, {
+                self.sheets.count == 0 && self.dialogs.count == 0
+            }) else {
+                XCTFail("a sheet or dialog never closed before the activity chip", file: file, line: line)
+                return popover
+            }
+            let chip = buttons["detail-privacy-receipt"]
+            guard chip.waitForExistenceFast(timeout: timeout),
+                  chip.waitForStableFrame(timeout: timeout)
+            else {
+                XCTFail("the header never offered the activity chip", file: file, line: line)
+                return popover
+            }
+            chip.click()
+        }
+        if !popover.waitForExistenceFast(timeout: 5) {
+            XCTFail("the activity popover never opened from the chip", file: file, line: line)
+        }
+        return popover
+    }
+
+    /// Secondary recording actions live in the More panel; a journey that
+    /// needs one opens the panel first and gets the control back.
+    @MainActor
+    func recordingMoreItem(
+        _ identifier: String,
+        timeout: TimeInterval = 8,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let panel = control(withIdentifier: "recording-more-panel")
+        if !panel.exists {
+            let more = control(withIdentifier: "recording-more")
+            guard more.waitForHittable(timeout: timeout) else {
+                XCTFail("the recording bar never offered its More panel", file: file, line: line)
+                return panel
+            }
+            more.click()
+            _ = panel.waitForExistenceFast(timeout: timeout)
+        }
+        let item = panel.descendants(matching: .any)[identifier]
+        if !item.waitForHittable(timeout: timeout) {
+            XCTFail("the More panel never offered \(identifier)", file: file, line: line)
+        }
+        return item
+    }
+
+    /// Closes the More panel when it is open. Escape goes through the owned
+    /// keyboard admission (the popover is not a sheet, so no modal anchor);
+    /// a synthesized outside click is swallowed by the popover instead.
+    @MainActor
+    @discardableResult
+    func dismissRecordingMorePanel(bundleIdentifier: String) -> UITestKeyboardAdmission {
+        let panel = control(withIdentifier: "recording-more-panel")
+        guard panel.exists else { return .admitted }
+        let admission = typeKeyIfOwned(
+            .escape, modifierFlags: [], bundleIdentifier: bundleIdentifier)
+        if admission == .admitted {
+            _ = panel.waitForDisappearance(timeout: 3)
+        }
+        return admission
     }
 
     /// The live assist area shows one panel at a time (D504), so a journey
@@ -365,40 +396,66 @@ extension XCUIApplication {
             guard prepareForInteraction(timeout: timeout) else { return false }
             return general.waitForStableFrame(
                 timeout: timeout,
-                stableFor: 0.1) && finishSearchEditing(
+                stableFor: 0.1) && finishTextFieldEditing(
                     identifier: "settings-search-field", timeout: timeout)
         }
 
         for attempt in 0..<2 {
             guard prepareForInteraction(timeout: timeout) else { continue }
-            typeKey(",", modifierFlags: .command)
+            guard typeKeyIfOwned(
+                XCUIKeyboardKey(rawValue: ","), modifierFlags: .command,
+                bundleIdentifier: Self.portavozUITestHostBundleIdentifier) == .admitted
+            else { return false }
             if general.waitForStableFrame(
                 timeout: attempt == 0 ? 2 : timeout,
                 stableFor: 0.1
             ) {
-                return finishSearchEditing(
+                return finishTextFieldEditing(
                     identifier: "settings-search-field", timeout: timeout)
             }
         }
         return false
     }
 
-    /// End the native field-editor session through ordinary keyboard traversal.
-    /// A cold search can own an AutoFill popover even when its query is empty;
-    /// clicking a plain navigation button does not necessarily end that edit.
+    /// End one field's native editor and prove its value survived.
+    @MainActor
+    func finishTextFieldEditing(
+        identifier: String,
+        timeout: TimeInterval,
+        modalAnchor: String? = nil
+    ) -> Bool {
+        handOffTextFieldEditing(
+            identifier: identifier, timeout: timeout, modalAnchor: modalAnchor).succeeded
+    }
+
+    /// Ends the named field's native editor through ordinary keyboard traversal.
+    /// Tab moves whatever owns focus, so a field that is not the active editor
+    /// receives no key at all: traversal would otherwise move focus into it and
+    /// still preserve its value. The field is never clicked either, because its
+    /// own completion surface can cover it and turn that click into an
+    /// interruption. A window whose only key view is this field keeps focus
+    /// here, so the post-condition is the released surface plus the exact value.
     /// Never choose a suggestion, change system preferences, or dismiss prompts.
     @MainActor
-    private func finishSearchEditing(
+    func handOffTextFieldEditing(
         identifier: String,
-        timeout: TimeInterval
-    ) -> Bool {
-        let search = textFields[identifier]
-        guard search.waitForHittable(timeout: timeout),
-              let originalValue = search.value as? String
-        else { return false }
-        search.click()
-        search.typeKey(.tab, modifierFlags: [])
-        return search.waitForValue(originalValue, timeout: timeout)
+        timeout: TimeInterval,
+        modalAnchor: String? = nil
+    ) -> UITestTextFieldEditingHandoff {
+        let field = textFields[identifier]
+        guard field.waitForExistenceFast(timeout: timeout),
+              let originalValue = field.value as? String
+        else { return .fieldUnavailable }
+        guard let editing = field.observedKeyboardFocus else { return .focusUnobservable }
+        guard editing else { return .notEditing }
+        let admission = typeKeyIfOwned(
+            .tab, modifierFlags: [], bundleIdentifier: Self.portavozUITestHostBundleIdentifier,
+            modalAnchor: modalAnchor)
+        guard admission == .admitted else { return .keyboardRefused(admission) }
+        guard field.waitForValue(originalValue, timeout: timeout) else { return .valueChanged }
+        guard waitForUITestCondition(timeout: timeout, { field.isHittable })
+        else { return .surfaceRetained }
+        return .finished
     }
 
     /// Selects a Settings category and proves its exact destination appeared.
@@ -488,29 +545,45 @@ extension XCUIApplication {
         let meeting = descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
             .firstMatch
-        if meeting.isHittable { return true }
-
         let search = textFields["library-search-field"]
-        if search.exists,
+        let receiver = Self.portavozUITestHostBundleIdentifier
+        if !meeting.isHittable,
+           search.exists,
            let query = search.value as? String,
            !query.isEmpty {
             search.click()
-            search.typeKey("a", modifierFlags: .command)
-            search.typeKey(.delete, modifierFlags: [])
-            search.typeKey(.return, modifierFlags: [])
+            guard typeKeyIfOwned(
+                XCUIKeyboardKey(rawValue: "a"), modifierFlags: .command,
+                bundleIdentifier: receiver) == .admitted,
+                typeKeyIfOwned(.delete, modifierFlags: [], bundleIdentifier: receiver) == .admitted,
+                typeKeyIfOwned(.return, modifierFlags: [], bundleIdentifier: receiver) == .admitted
+            else {
+                XCTFail(
+                    "Portavoz did not own keyboard input while clearing a stray search query; "
+                        + "no further key was sent",
+                    file: file, line: line)
+                return false
+            }
             windows["main-AppWindow-1"]
                 .coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.5))
                 .click()
         }
 
         if search.exists {
-            guard finishSearchEditing(
+            let handoff = handOffTextFieldEditing(
                 identifier: "library-search-field", timeout: timeout)
-            else {
-                XCTFail("the search field never finished editing", file: file, line: line)
+            guard handoff.succeeded else {
+                XCTFail(
+                    "the Library search editor did not hand off: \(handoff.diagnosis)",
+                    file: file, line: line)
                 return false
             }
         }
+
+        // A visible row can coexist with a live native search editor. Its
+        // fast path may run only after the same editing handoff as recovery.
+        if meeting.isHittable { return true }
+
         // A hosted runner's window is shorter than a local display, so a
         // fixture that lengthens the sidebar can leave the first meeting below
         // the fold. There it exists but is never hittable, and the wait below

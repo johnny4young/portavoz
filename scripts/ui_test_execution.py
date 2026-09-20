@@ -16,6 +16,7 @@ from typing import Any, Sequence
 SCHEMA_VERSION = 1
 SUPPORTED_LOCALES = frozenset({"default", "en", "es"})
 MAXIMUM_LOG_BYTES = 64 * 1024 * 1024
+INTERRUPTION_SIGNATURE = b"PORTAVOZ_UI_INTERRUPTION_BLOCKED cleanup="
 HOST_INFRASTRUCTURE_SIGNATURES = {
     "automation-mode-timeout": b"Timed out while enabling automation mode",
 }
@@ -78,6 +79,10 @@ def classify(
     runtime_cases: int | None,
     log: bytes,
 ) -> tuple[str, str | None]:
+    # A runner can restart after the safety stop and print a zero-test success.
+    # Neither that summary nor a later exit 0 qualifies an interrupted journey.
+    if INTERRUPTION_SIGNATURE in log:
+        return "evidence-failure", None
     if exit_status == 0:
         if result_bundle_present and runtime_receipt_present and runtime_cases is not None:
             return "completed", None
@@ -180,7 +185,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"XCUITest execution: {arguments.locale} {classification} "
         f"(exit {exit_status})."
     )
-    return 0
+    # Preserve the raw log and fail local runners too, even if Xcode's restarted
+    # worker reported success. Other classified failures retain the writer's
+    # existing successful-receipt contract.
+    return 2 if INTERRUPTION_SIGNATURE in log else 0
 
 
 if __name__ == "__main__":

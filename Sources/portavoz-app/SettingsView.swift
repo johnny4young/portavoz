@@ -49,6 +49,7 @@ struct SettingsView: View {
     @AppStorage(BYOKSettings.companionEnabledKey) private var companionBYOKEnabled = false
     @State private var byokKey = ""
     @State private var hasStoredBYOKKey = false
+    @State private var byokAnswersReady = false
     @State private var byokMessage: String?
 
     @AppStorage("companionUserName") private var companionUserName = ""
@@ -81,12 +82,11 @@ struct SettingsView: View {
     @State private var settingsWindowReference = SettingsWindowReference()
 
     var body: some View {
-        // A fixed two-pane layout, NOT a NavigationSplitView: the settings
-        // window is a fixed size with a permanent sidebar (design system 2a),
-        // so the collapsible split view only added a misplaced toggle button
-        // and — with the fixed window width — crashed on collapse/expand. The
-        // NavigationStack is just for the centered titlebar title; it adds no
-        // collapse chrome.
+        // A two-pane layout, NOT a NavigationSplitView: the sidebar is
+        // permanent (design system 2a), so the collapsible split view only
+        // added a misplaced toggle button and crashed on collapse/expand. The
+        // window resizes between the minimum and the screen; the
+        // NavigationStack is just for the centered titlebar title.
         NavigationStack {
             settingsBody
         }
@@ -106,16 +106,15 @@ struct SettingsView: View {
                     AudioSection()
                     DictationSection()
                 case .intelligence:
+                    summaryEngineSection
                     transcriptionLanguageSection
                     summaryLanguageSection
-                    semanticSearchSection
-                    summaryEngineSection
-                    customStructuresSection
-                    vocabularySection
-                case .voice:
+                    companionSection
                     SettingsVoiceSection()
                     RememberedVoicesSection()
-                    companionSection
+                    semanticSearchSection
+                    customStructuresSection
+                    vocabularySection
                 case .agenda:
                     agendaSection
                     AutomationSection()
@@ -131,14 +130,12 @@ struct SettingsView: View {
                 case .integrations:
                     byokSection
                     GitHubSection()
-                case .sync:
+                case .data:
+                    LedgerSection(model: services.localDataLedger)
                     MeetingSyncSettingsSection()
-                case .backgroundWork:
                     BackgroundWorkCenterSection(
                         model: services.backgroundWork,
                         performAction: performBackgroundWorkAction)
-                case .data:
-                    LedgerSection(model: services.localDataLedger)
                     SettingsTransferSection()
                     SupportDiagnosticsSection()
                     BackupSection()
@@ -148,8 +145,10 @@ struct SettingsView: View {
             .formStyle(.grouped)
             .frame(maxWidth: .infinity)
         }
-        .frame(width: 760)
-        .frame(minHeight: 620)
+        // Resizable: the sidebar keeps its width and the pane takes the rest,
+        // so long Spanish help lines and the merged panes never force a scroll.
+        .frame(minWidth: 760, idealWidth: 900, maxWidth: .infinity)
+        .frame(minHeight: 620, idealHeight: 700, maxHeight: .infinity)
         .background(SettingsWindowCapture(reference: settingsWindowReference))
         .navigationTitle((category ?? .general).title)
         .sheet(isPresented: $showingStructureSheet) {
@@ -201,6 +200,11 @@ struct SettingsView: View {
         }
         .onChange(of: services.pendingSettingsCategory) { _, _ in
             applyPendingCategory()
+        }
+        // The Apuntador status reads the same validated capability that
+        // builds the provider client, and follows every input that changes it.
+        .task(id: "\(companionBYOKEnabled)|\(byokEndpoint)|\(byokModel)|\(hasStoredBYOKKey)") {
+            byokAnswersReady = await services.companionAnswersAvailable()
         }
     }
 
@@ -630,7 +634,7 @@ extension SettingsView {
                 VStack(alignment: .leading, spacing: 4) {
                     Label(
                         providerRecommendation.localizedHeadline,
-                        systemImage: "wand.and.stars.inverse")
+                        systemImage: PVSymbol.generate)
                         .font(.callout.weight(.medium))
                     ForEach(providerRecommendation.localizedReasons, id: \.self) { reason in
                         Text("• \(reason)").font(.caption).foregroundStyle(.secondary)
@@ -669,7 +673,7 @@ extension SettingsView {
                         if detectingOllama {
                             ProgressView().controlSize(.small)
                         } else {
-                            Label("Detect models", systemImage: "arrow.clockwise")
+                            Label("Detect models", systemImage: PVSymbol.retry)
                         }
                     }
                     .controlSize(.small)
@@ -703,7 +707,7 @@ extension SettingsView {
             .accessibilityIdentifier("settings-summary-provider-help")
 
             Divider()
-            Text("Refine model (Whisper large-v3)")
+            Text("Improvement model (Whisper large-v3)")
                 .font(.callout.weight(.medium))
             if whisperVariants.isEmpty {
                 HStack(spacing: 8) {
@@ -730,8 +734,7 @@ extension SettingsView {
             }
             Text(
                 // One-line UI help text.
-                // swiftlint:disable:next line_length
-                "Download Whisper here before your first Refine. Preparation continues when Settings closes, and Refine joins the same verified download instead of starting another one. Turbo is the default; Compact saves about 1 GB of disk."
+                "Download Whisper before your first improvement. Turbo is the default; Compact saves about 1 GB."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -771,6 +774,7 @@ extension SettingsView {
         CompanionSettingsSection(
             capability: services.foundationModelsCapability,
             detectorAvailable: services.companionAvailable,
+            providerAnswersAvailable: byokAnswersReady,
             companionEnabled: companionEnabledBinding,
             companionUserName: $companionUserName,
             mirrorAfterMeeting: $mirrorAfterMeeting)

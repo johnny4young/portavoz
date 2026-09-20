@@ -24,7 +24,7 @@ public enum ChapterTitler {
                 try await session.respond(
                     to: "Transcript:\n\(excerpt)",
                     generating: GeneratedChapterTitle.self,
-                    options: GenerationOptions(sampling: .greedy)
+                    options: .greedy()
                 ).content
             }
         guard let raw = generated?.title else { return nil }

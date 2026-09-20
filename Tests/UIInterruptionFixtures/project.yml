@@ -1,0 +1,50 @@
+name: InterruptionProof
+options:
+  bundleIdPrefix: app.portavoz.testing
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.4"
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGNING_ALLOWED: YES
+    GENERATE_INFOPLIST_FILE: YES
+targets:
+  InterruptionProof:
+    type: application
+    platform: macOS
+    sources: [App]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.portavoz.testing.interruption-proof
+        INFOPLIST_KEY_LSUIElement: NO
+  InterruptionOverlay:
+    type: application
+    platform: macOS
+    sources: [Overlay]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.portavoz.testing.interruption-overlay
+  InterruptionProofTests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: Tests
+      - path: ../PortavozUITests/PortavozUITestCase.swift
+      - path: ../PortavozUITests/UITestStorageSupport.swift
+      - path: ../PortavozUITests/UITestWaitSupport.swift
+      - path: ../PortavozUITests/UITestKeyboardSupport.swift
+      - path: ../Support/UITestScratch.swift
+    settings:
+      base:
+        CODE_SIGN_ENTITLEMENTS: $(PORTAVOZ_UI_FIXTURE_ENTITLEMENTS)
+    dependencies:
+      - target: InterruptionProof
+schemes:
+  InterruptionProof:
+    build:
+      targets:
+        InterruptionProof: all
+        InterruptionOverlay: all
+        InterruptionProofTests: [test]
+    test:
+      targets: [InterruptionProofTests]

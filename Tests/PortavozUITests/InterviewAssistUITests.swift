@@ -6,8 +6,8 @@ final class InterviewAssistUITests: PortavozUITestCase {
     /// pull-only answer, and exact cited source. No private meeting or model
     /// installation is required.
     @MainActor
-    func testInterviewAssistGroundsTheCurrentQuestionInExactEvidence() {
-        let app = XCUIApplication.portavoz(simulateInterviewAssist: true)
+    func testInterviewAssistGroundsTheCurrentQuestionInExactEvidence() throws {
+        let app = try XCUIApplication.portavoz(simulateInterviewAssist: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -16,9 +16,13 @@ final class InterviewAssistUITests: PortavozUITestCase {
         let isSpanish = record.label == "Nueva grabación"
         record.click()
 
-        let toggle = app.control(withIdentifier: "recording-interview-assist")
-        XCTAssertTrue(toggle.waitForExistenceFast(timeout: 15))
+        XCTAssertTrue(
+            app.control(withIdentifier: "recording-more").waitForExistenceFast(timeout: 15))
+        let toggle = app.recordingMoreItem("recording-interview-assist")
+        XCTAssertTrue(toggle.exists)
         toggle.click()
+        XCTAssertEqual(
+            app.dismissRecordingMorePanel(bundleIdentifier: keyboardReceiverBundleIdentifier), .admitted)
 
         // Interview becomes a tab once the recording opts in (D504).
         app.openAssistTab("interview")
@@ -40,8 +44,9 @@ final class InterviewAssistUITests: PortavozUITestCase {
         let objectiveText = isSpanish
             ? "Evaluar criterio de respuesta a incidentes"
             : "Evaluate incident-response judgment"
-        app.typeText(objectiveText)
-        objective.typeKey(.return, modifierFlags: [])
+        typeText(objectiveText, in: app)
+        XCTAssertTrue(objective.waitForValue(objectiveText, timeout: 5))
+        typeKey(.return, modifierFlags: [], in: app)
         // Both the admitted count and the saved row live on the objectives
         // tab, so the original order survives the D504 split untouched.
         let objectiveCount = app.control(

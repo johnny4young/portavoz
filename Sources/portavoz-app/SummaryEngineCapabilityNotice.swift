@@ -14,7 +14,7 @@ struct SummaryEngineCapabilityNotice: View {
             case .requiresMacOS26:
                 Label(
                     "Apple summaries are unavailable on this Mac. Choose Ollama or Built-in (MLX).",
-                    systemImage: "exclamationmark.triangle.fill"
+                    systemImage: PVSymbol.error
                 )
                 .font(.caption)
                 .foregroundStyle(.orange)
@@ -24,7 +24,7 @@ struct SummaryEngineCapabilityNotice: View {
                     L10n.format(
                         "Apple summaries are unavailable: %@. Choose Ollama or Built-in (MLX).",
                         reason),
-                    systemImage: "exclamationmark.triangle.fill"
+                    systemImage: PVSymbol.error
                 )
                 .font(.caption)
                 .foregroundStyle(.orange)

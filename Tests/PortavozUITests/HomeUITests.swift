@@ -5,8 +5,8 @@ import XCTest
 /// from one screen without scrolling or typing.
 final class HomeUITests: PortavozUITestCase {
     @MainActor
-    func testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold() {
-        let app = XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
+    func testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -30,7 +30,9 @@ final class HomeUITests: PortavozUITestCase {
             .matching(NSPredicate(format: "identifier BEGINSWITH 'home-recent-'"))
             .firstMatch
         XCTAssertTrue(recent.waitForExistenceFast(timeout: 10))
-        for element in [upcoming, todo, recent, app.buttons["home-ask-chip-0"], app.control(withIdentifier: "home-stat-open")] {
+        let askField = app.control(withIdentifier: "home-ask-field")
+        XCTAssertTrue(askField.waitForExistenceFast(timeout: 5), "Ask is one field on Today")
+        for element in [upcoming, todo, recent, app.buttons["home-ask-chip-0"], askField] {
             XCTAssertTrue(element.exists, "\(element) must render")
             XCTAssertTrue(window.contains(element.frame), "\(element) must sit above the fold")
         }
@@ -61,8 +63,8 @@ final class HomeUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testTodayAsksAndRecordsWithoutTyping() {
-        let app = XCUIApplication.portavoz(
+    func testTodayAsksAndRecordsWithoutTyping() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedBrief: true,
             simulateLiveTranscriptBrowsing: true)

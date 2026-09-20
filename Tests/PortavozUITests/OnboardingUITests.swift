@@ -6,8 +6,8 @@ import XCTest
 /// needs a real microphone, so it's out of XCUITest's reach and never driven.
 final class OnboardingUITests: PortavozUITestCase {
     @MainActor
-    func testAdvancesFromFirstListenToLocalVoiceEnrollment() {
-        let app = XCUIApplication.portavoz(showOnboarding: true)
+    func testAdvancesFromFirstListenToLocalVoiceEnrollment() throws {
+        let app = try XCUIApplication.portavoz(showOnboarding: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -26,7 +26,12 @@ final class OnboardingUITests: PortavozUITestCase {
         XCTAssertTrue(
             firstListen.waitForDisappearance(timeout: 2),
             "Continue must move off the first-listen step")
-        for _ in 0..<2 {
+        XCTAssertTrue(
+            app.control(withIdentifier: "onboarding-during-meeting").waitForExistenceFast(timeout: 5),
+            "the second step must introduce Apuntador, Radar and Automations")
+        XCTAssertTrue(app.control(withIdentifier: "onboarding-apuntador-toggle").exists)
+        XCTAssertTrue(app.control(withIdentifier: "onboarding-example-card").exists)
+        for _ in 0..<3 {
             app.control(withIdentifier: "onboarding-continue").click()
         }
 

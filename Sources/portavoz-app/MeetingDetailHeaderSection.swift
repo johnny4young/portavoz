@@ -14,6 +14,11 @@ struct MeetingDetailHeaderValues {
     let voiceSuggestions: [MeetingVoiceSuggestion]
     let personOffer: MeetingDetailRememberOffer?
     let voiceOffer: MeetingDetailRememberOffer?
+
+    var hasSuggestions: Bool {
+        !nameSuggestions.isEmpty || !voiceSuggestions.isEmpty
+            || personOffer != nil || voiceOffer != nil
+    }
 }
 
 struct MeetingDetailRememberOffer {
@@ -71,6 +76,7 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
             actionContent
             factsRow
             participantsRow
+            suggestionsRow
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-header-section")
@@ -124,10 +130,24 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
             if !unnamed.isEmpty {
                 suggestNamesControl
             }
-            nameSuggestionChips
-            voiceSuggestionChips
-            rememberPersonOffer
-            rememberVoiceOffer
+        }
+    }
+
+    /// Every ✦ suggestion and offer sits in one scrolling row under the cast,
+    /// so a meeting with many suggestions never pushes the summary down.
+    @ViewBuilder
+    private var suggestionsRow: some View {
+        if values.hasSuggestions {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    nameSuggestionChips
+                    voiceSuggestionChips
+                    rememberPersonOffer
+                    rememberVoiceOffer
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("detail-suggestions-row")
         }
     }
 
@@ -137,7 +157,7 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
             ProgressView().controlSize(.small)
         } else if values.nameSuggestions.isEmpty {
             Button(action: actions.suggestNames) {
-                Label("Suggest names", systemImage: "sparkles")
+                Label("Suggest names", systemImage: PVSymbol.generate)
                     .font(.caption)
             }
             .buttonStyle(.plain)
@@ -179,7 +199,7 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
                 })
             .fixedSize()
             .help(L10n.format(
-                "Voice match: sounds like “%@” from your remembered voices.",
+                "Matches “%@” from your remembered voices",
                 suggestion.name))
         }
     }
@@ -225,7 +245,7 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
                     help: L10n.text(
                         // One-line UI help text.
                         // swiftlint:disable:next line_length
-                        "Stores only an encrypted numeric fingerprint of their voice on this Mac — never the audio, never synced — so future meetings can suggest their name. Removable in Settings.")),
+                        "Keeps an encrypted voiceprint so future meetings can suggest this name. Removable in Settings.")),
                 accept: actions.acceptVoiceOffer,
                 dismiss: actions.dismissVoiceOffer)
         }

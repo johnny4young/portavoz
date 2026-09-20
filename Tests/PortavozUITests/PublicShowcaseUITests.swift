@@ -5,8 +5,8 @@ import XCTest
 /// the desktop outside the Portavoz window.
 final class PublicShowcaseUITests: PortavozUITestCase {
     @MainActor
-    func testMeetingDetailShowcase() {
-        let app = XCUIApplication.portavoz(seedShowcase: true)
+    func testMeetingDetailShowcase() throws {
+        let app = try XCUIApplication.portavoz(seedShowcase: true)
         app.launchArguments += ["-seed-ai-suggestions"]
         app.launchPortavoz()
         defer { app.terminate() }
@@ -42,8 +42,8 @@ final class PublicShowcaseUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testLiveTranslationShowcase() {
-        let app = XCUIApplication.portavoz(
+    func testLiveTranslationShowcase() throws {
+        let app = try XCUIApplication.portavoz(
             seedShowcase: true,
             simulateLiveTranscriptBrowsing: true)
         app.launchArguments.append("-seed-live-translation-ui")
@@ -75,8 +75,8 @@ final class PublicShowcaseUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testTodayShowcase() {
-        let app = XCUIApplication.portavoz(seedShowcase: true)
+    func testTodayShowcase() throws {
+        let app = try XCUIApplication.portavoz(seedShowcase: true)
         app.launchArguments.append("-seed-showcase-agenda")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -101,8 +101,8 @@ final class PublicShowcaseUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testInsightsShowcase() {
-        let app = XCUIApplication.portavoz(seedShowcase: true)
+    func testInsightsShowcase() throws {
+        let app = try XCUIApplication.portavoz(seedShowcase: true)
         app.launchArguments += ["-insightsScope", "month"]
         app.launchPortavoz()
         defer { app.terminate() }

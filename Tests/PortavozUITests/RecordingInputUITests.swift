@@ -5,7 +5,6 @@ final class RecordingInputUITests: PortavozUITestCase {
     @MainActor
     func testAcceptedNotesAndObjectivesSurviveTerminationAndRecovery() throws {
         let fixture = try Fixture()
-        defer { fixture.remove() }
         let app = fixture.app
         try start(fixture)
         let note = "Confirmar responsable antes de publicar"
@@ -15,7 +14,7 @@ final class RecordingInputUITests: PortavozUITestCase {
         app.openAssistTab("objectives")
         let field = app.control(withIdentifier: "recording-objective-field")
         field.click()
-        app.typeText("Check the owner's approval")
+        typeText("Check the owner's approval", in: app)
         app.buttons["recording-objective-add"].click()
         let toggle = app.buttons["recording-objective-toggle"].firstMatch
         XCTAssertTrue(toggle.waitForExistenceFast(timeout: 5))
@@ -25,7 +24,7 @@ final class RecordingInputUITests: PortavozUITestCase {
         XCTAssertEqual(try fixture.query("SELECT count(*) FROM contextItem WHERE kind = 'objective' AND timestamp > 0"), "1")
         let objectiveID = try fixture.query("SELECT id FROM contextItem WHERE kind = 'objective'")
         field.click()
-        app.typeText("Remove this temporary objective")
+        typeText("Remove this temporary objective", in: app)
         app.buttons["recording-objective-add"].click()
         XCTAssertTrue(waitForUITestCondition(timeout: 3) { field.isEnabled })
         let removedID = try fixture.query("SELECT id FROM contextItem WHERE content = 'Remove this temporary objective'")
@@ -53,7 +52,6 @@ final class RecordingInputUITests: PortavozUITestCase {
     @MainActor
     func testFailedWriteRetainsInputAndStopWaitsForAnExplicitRetry() throws {
         let fixture = try Fixture()
-        defer { fixture.remove() }
         try start(fixture)
         let app = fixture.app
         try fixture.failWrites()
@@ -61,7 +59,7 @@ final class RecordingInputUITests: PortavozUITestCase {
         let text = "No enviar hasta revisar"
         let field = app.control(withIdentifier: "recording-note-field")
         field.click()
-        app.typeText(text)
+        typeText(text, in: app)
         app.buttons["recording-note-add"].click()
         XCTAssertTrue(app.control(withIdentifier: "recording-input-save-failure").waitForExistenceFast(timeout: 5))
         XCTAssertTrue(field.waitForLabelOrValue(text, timeout: 2))
@@ -89,7 +87,6 @@ final class RecordingInputUITests: PortavozUITestCase {
     @MainActor
     func testFailedRemovalKeepsTheAcceptedNoteUntilDiscardOrRetry() throws {
         let fixture = try Fixture()
-        defer { fixture.remove() }
         let entered = fixture.root.appendingPathComponent("remove-entered")
         let release = fixture.root.appendingPathComponent("remove-release")
         fixture.app.launchEnvironment["PORTAVOZ_UI_TEST_INPUT_ENTERED_PATH"] = entered.path
@@ -126,7 +123,6 @@ final class RecordingInputUITests: PortavozUITestCase {
     @MainActor
     func testStopDrainsAnAdmittedWriteBeforeFinalizingTheRecording() throws {
         let fixture = try Fixture()
-        defer { fixture.remove() }
         let entered = fixture.root.appendingPathComponent("write-entered")
         let release = fixture.root.appendingPathComponent("write-release")
         fixture.app.launchEnvironment["PORTAVOZ_UI_TEST_INPUT_ENTERED_PATH"] = entered.path
@@ -135,7 +131,7 @@ final class RecordingInputUITests: PortavozUITestCase {
         let app = fixture.app
         app.openAssistTab("notes")
         app.control(withIdentifier: "recording-note-field").click()
-        app.typeText("Keep the write admitted before Stop")
+        typeText("Keep the write admitted before Stop", in: app)
         app.buttons["recording-note-add"].click()
         XCTAssertTrue(waitForUITestCondition(timeout: 3) { FileManager.default.fileExists(atPath: entered.path) })
         XCTAssertTrue(app.control(withIdentifier: "recording-input-saving").exists)
@@ -174,7 +170,7 @@ final class RecordingInputUITests: PortavozUITestCase {
         app.openAssistTab("notes")
         let field = app.control(withIdentifier: "recording-note-field")
         field.click()
-        app.typeText(text)
+        typeText(text, in: app)
         app.buttons["recording-note-add"].click()
         XCTAssertTrue(app.staticTexts[text].waitForExistenceFast(timeout: 5))
         XCTAssertTrue(waitForUITestCondition(timeout: 3) { field.isEnabled })
@@ -187,10 +183,9 @@ final class RecordingInputUITests: PortavozUITestCase {
         let app: XCUIApplication
 
         init() throws {
-            root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            root = try UITestStorage.makeDirectory()
             database = root.appendingPathComponent("library.sqlite")
-            app = XCUIApplication.portavoz(seedDemo: false, simulateLiveTranscriptBrowsing: true)
+            app = try XCUIApplication.portavoz(seedDemo: false, simulateLiveTranscriptBrowsing: true)
             app.launchEnvironment["PORTAVOZ_UI_TEST_DATABASE_PATH"] = database.path
             app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] = root.appendingPathComponent("audio").path
         }
@@ -217,9 +212,5 @@ final class RecordingInputUITests: PortavozUITestCase {
             return text
         }
 
-        func remove() {
-            app.terminate()
-            try? FileManager.default.removeItem(at: root)
-        }
     }
 }

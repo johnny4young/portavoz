@@ -7,19 +7,15 @@ import XCTest
 final class LibraryUITests: PortavozUITestCase {
     @MainActor
     func testDatabaseLaunchFailureOffersSafeRecovery() throws {
-        let scratch = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent(
-                "portavoz-launch-recovery-uitest-\(UUID().uuidString)",
-                isDirectory: true)
+        let scratch = try UITestStorage.makeDirectory()
         let recoveryRoot = scratch.appendingPathComponent("copies", isDirectory: true)
         let databaseURL = scratch.appendingPathComponent("failed.sqlite")
         let diagnosticsURL = scratch.appendingPathComponent("launch-diagnostics.json")
         try FileManager.default.createDirectory(
             at: recoveryRoot,
             withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: scratch) }
 
-        let app = XCUIApplication.portavoz()
+        let app = try XCUIApplication.portavoz()
         app.launchArguments.append("-simulate-database-open-failure")
         app.launchEnvironment["PORTAVOZ_UI_TEST_DATABASE_PATH"] = databaseURL.path
         app.launchEnvironment["PORTAVOZ_UI_TEST_DATABASE_RECOVERY_DIRECTORY"] =
@@ -98,8 +94,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment() {
-        let app = XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
+    func testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -129,8 +125,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testLibraryRendersRecordButtonAndActionChips() {
-        let app = XCUIApplication.portavoz()
+    func testLibraryRendersRecordButtonAndActionChips() throws {
+        let app = try XCUIApplication.portavoz()
         app.launchArguments += ["-AppleInterfaceStyle", "Light"]
         app.launchPortavoz()
         defer { app.terminate() }
@@ -149,8 +145,11 @@ final class LibraryUITests: PortavozUITestCase {
         }
         XCTAssertTrue(app.buttons["home-record"].isHittable)
         XCTAssertTrue(app.buttons["home-ask"].isHittable)
+        XCTAssertTrue(
+            app.control(withIdentifier: "library-record-menu").exists,
+            "Import lives behind the record button's menu, not in the navigation")
         let navigation = [
-            "library-import-audio-button", "library-home-button", "library-ask-button",
+            "library-home-button", "library-ask-button",
             "library-insights-button", "library-commitment-radar-button"
         ].map { app.buttons[$0] }
         for button in navigation {
@@ -170,8 +169,47 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testRecordingStartFailureOffersTypedRecovery() {
-        let app = XCUIApplication.portavoz(simulateRecordingStartFailure: true)
+    func testPrivacyChipOpensTheActivityLogInYourData() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+
+        func openActivity() {
+            let chip = app.buttons["library-privacy-chip"]
+            XCTAssertTrue(chip.waitForExistenceFast(timeout: 10))
+            XCTAssertTrue(chip.waitForStableFrame(timeout: 10))
+            chip.click()
+            XCTAssertTrue(
+                app.control(withIdentifier: "library-privacy-note").waitForExistenceFast(timeout: 5),
+                "the chip must open its short privacy note")
+            let seeActivity = app.buttons["library-privacy-activity"]
+            XCTAssertTrue(seeActivity.waitForHittable(timeout: 5))
+            seeActivity.click()
+            XCTAssertTrue(
+                app.control(withIdentifier: "settings-ledger-audio").waitForExistenceFast(timeout: 10),
+                "See activity must land on Your data, where the activity log lives")
+            XCTAssertTrue(app.buttons["settings-category-data"].isSelected)
+        }
+
+        // A fresh Settings window.
+        openActivity()
+        // A window previously showing another pane. On a small display the
+        // Settings window covers the main window, so bring the main window
+        // forward (⌘`) before reaching for the chip; Settings stays open.
+        XCTAssertTrue(app.openSettingsCategory(
+            "settings-category-general", revealing: "settings-category-list"))
+        XCTAssertTrue(app.buttons["settings-category-general"].isSelected)
+        typeKey("`", modifierFlags: .command, in: app)
+        XCTAssertTrue(
+            app.buttons["library-privacy-chip"].waitForHittable(timeout: 10),
+            "the main window must be in front before the chip is used again")
+        openActivity()
+    }
+
+    @MainActor
+    func testRecordingStartFailureOffersTypedRecovery() throws {
+        let app = try XCUIApplication.portavoz(simulateRecordingStartFailure: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -203,10 +241,8 @@ final class LibraryUITests: PortavozUITestCase {
 
     @MainActor
     func testCaptureFailureSurvivesStopAndRelaunchWithPlayablePrefix() throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let app = XCUIApplication.portavoz()
+        let directory = try UITestStorage.makeDirectory()
+        let app = try XCUIApplication.portavoz()
         app.launchEnvironment["PORTAVOZ_UI_TEST_DATABASE_PATH"] = directory.appendingPathComponent("library.sqlite").path
         app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] = directory.appendingPathComponent("audio").path
         app.launchArguments.append("-simulate-capture-prefix-failure")
@@ -239,8 +275,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testRecordingWarnsWhenRemoteAudioCallbacksStop() {
-        let app = XCUIApplication.portavoz(simulateSystemCaptureStall: true)
+    func testRecordingWarnsWhenRemoteAudioCallbacksStop() throws {
+        let app = try XCUIApplication.portavoz(simulateSystemCaptureStall: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -285,8 +321,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testRecordingWarnsWhenIncomingAudioClips() {
-        let app = XCUIApplication.portavoz(simulateSystemAudioClipping: true)
+    func testRecordingWarnsWhenIncomingAudioClips() throws {
+        let app = try XCUIApplication.portavoz(simulateSystemAudioClipping: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -312,8 +348,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testColdRecordingStartsLiveCaptionsWhenModelBecomesReady() {
-        let app = XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
+    func testColdRecordingStartsLiveCaptionsWhenModelBecomesReady() throws {
+        let app = try XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -327,12 +363,15 @@ final class LibraryUITests: PortavozUITestCase {
             "the fixture must enter the model-preparing state")
         let preparing = app.control(withIdentifier: "recording-transcript-deferred")
         XCTAssertTrue(preparing.waitForExistenceFast(timeout: 20))
-        let preparingPrefix = isSpanish
-            ? "El audio sigue guardándose correctamente."
-            : "Audio is safe."
         XCTAssertTrue(
-            preparing.label.contains(preparingPrefix),
-            "expected localized preparing copy, saw: \(preparing.label)")
+            app.control(withIdentifier: "recording-apuntador-state").exists,
+            "the assist panel must always say what Apuntador is doing")
+        let preparingPrefix = isSpanish
+            ? "Grabando. Los subtítulos empiezan"
+            : "Recording. Captions start"
+        XCTAssertTrue(
+            renderedText(of: preparing).contains(preparingPrefix),
+            "expected localized preparing copy, saw: \(renderedText(of: preparing))")
         XCTAssertTrue(
             app.continueLiveTranscriptionAttachFixture(),
             "the fixture must release the model-ready transition")
@@ -351,14 +390,13 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testLiveTranscriptYieldsFollowWhileReadingHistory() {
-        let app = XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
+    func testLiveTranscriptYieldsFollowWhileReadingHistory() throws {
+        let app = try XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
-        let isSpanish = record.label == "Nueva grabación"
         record.click()
 
         XCTAssertTrue(
@@ -424,8 +462,8 @@ final class LibraryUITests: PortavozUITestCase {
     /// One live-assist journey covers objectives, proactive source disclosure,
     /// pause/resume, the next-question action, and measured talk balance.
     @MainActor
-    func testRecordingOffersObjectivesNextQuestionAndTalkBalance() {
-        let app = XCUIApplication.portavoz(
+    func testRecordingOffersObjectivesNextQuestionAndTalkBalance() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             simulateSequoiaCapabilities: true,
             simulateLiveTranscriptBrowsing: true,
@@ -479,29 +517,29 @@ final class LibraryUITests: PortavozUITestCase {
         let field = app.control(withIdentifier: "recording-objective-field")
         XCTAssertTrue(field.waitForExistenceFast(timeout: 5))
         field.click()
-        app.typeText("Cerrar el presupuesto del trimestre")
+        typeText("Cerrar el presupuesto del trimestre", in: app)
         app.control(withIdentifier: "recording-objective-add").click()
         XCTAssertTrue(
             app.staticTexts["Cerrar el presupuesto del trimestre"]
                 .waitForExistenceFast(timeout: 5),
             "an added objective must appear in the checklist")
 
-        XCTAssertTrue(
-            app.control(withIdentifier: "recording-next-question").exists,
-            "the bar must offer the next-question action")
         XCTAssertTrue(app.control(withIdentifier: "recording-translation-picker").exists)
-        XCTAssertTrue(app.control(withIdentifier: "recording-hud").exists)
         XCTAssertTrue(
             app.control(withIdentifier: "recording-talk-balance")
                 .waitForExistenceFast(timeout: 8),
             "closed captions must surface the talk-balance cue")
-
-        let proactive = app.control(withIdentifier: "recording-proactive-assist")
-        XCTAssertTrue(proactive.exists)
         XCTAssertFalse(
             app.control(withIdentifier: "recording-assist-tab-proactive").exists,
             "proactive help must be off until this recording explicitly opts in")
-        proactive.click()
+
+        XCTAssertTrue(
+            app.recordingMoreItem("recording-next-question").exists,
+            "the More menu must offer the next-question action")
+        XCTAssertTrue(app.control(withIdentifier: "recording-hud").exists)
+        app.recordingMoreItem("recording-proactive-assist").click()
+        XCTAssertEqual(
+            app.dismissRecordingMorePanel(bundleIdentifier: keyboardReceiverBundleIdentifier), .admitted)
 
         // Suggestions only becomes a tab once this recording opts in.
         app.openAssistTab("proactive")
@@ -532,18 +570,24 @@ final class LibraryUITests: PortavozUITestCase {
         let running = isSpanish ? "Observando señales locales" : "Watching local signals"
         XCTAssertTrue(proactiveStatus.waitForLabelOrValue(running, timeout: 3))
 
-        proactive.click()
+        // One panel open for both flips: the switch stays put while the
+        // suggestions panel below it disappears and returns.
+        // Each flip goes through the helper: a slower host can close the
+        // panel between the two clicks, and the helper reopens it.
+        app.recordingMoreItem("recording-proactive-assist").click()
         XCTAssertTrue(proactivePanel.waitForDisappearance(timeout: 3))
-        proactive.click()
+        app.recordingMoreItem("recording-proactive-assist").click()
         XCTAssertTrue(proactivePanel.waitForExistenceFast(timeout: 3))
+        // The panel may stay open: the last assertion reads the suggestions
+        // panel underneath, and teardown terminates the app.
         XCTAssertFalse(
             objectiveSuggestion.exists,
             "re-enabling the same recording must not repeat an emitted evidence signal")
     }
 
     @MainActor
-    func testLiveTranslationUsesADistinctLabeledRail() {
-        let app = XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
+    func testLiveTranslationUsesADistinctLabeledRail() throws {
+        let app = try XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
         app.launchArguments.append("-seed-live-translation-ui")
         app.launchPortavoz()
         defer { app.terminate() }
@@ -565,15 +609,15 @@ final class LibraryUITests: PortavozUITestCase {
             "a translated row must expose its own labeled visual boundary")
         let targetLanguageLabel =
             isSpanish ? "Traducción al inglés" : "English translation"
-        XCTAssertTrue(
-            app.staticTexts[targetLanguageLabel].exists,
-            "translated copy must visibly say which language it represents")
+        XCTAssertEqual(
+            translation.label, targetLanguageLabel,
+            "the translation mark must name its language for assistive technology")
         attachScreenshot(of: app, named: "recording-live-translation-rail")
     }
 
     @MainActor
-    func testActiveRecordingRemainsReachableAfterBrowsingTheLibrary() {
-        let app = XCUIApplication.portavoz(
+    func testActiveRecordingRemainsReachableAfterBrowsingTheLibrary() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             simulateLiveTranscriptBrowsing: true)
         app.launchPortavoz()
@@ -612,8 +656,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testSeededMeetingsGroupByRecency() {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+    func testSeededMeetingsGroupByRecency() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -633,12 +677,32 @@ final class LibraryUITests: PortavozUITestCase {
         // real FTS projection before publishing a new Library snapshot.
         let search = app.textFields["library-search-field"]
         XCTAssertTrue(search.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(app.finishTextFieldEditing(identifier: "library-search-field", timeout: 5))
+        // Prove the row is already visible before focusing search: the click can
+        // raise a native completion surface over the sidebar, which says
+        // nothing about the launch fast path under test.
+        let visibleMeeting = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
+            .firstMatch
+        XCTAssertTrue(
+            visibleMeeting.waitForHittable(timeout: 5),
+            "exercise the already-visible launch fast path")
         search.click()
-        search.typeText("viernes")
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        // A normal key after launch readiness must not keep editing the search.
+        // This tests actual responder ownership without private focus attributes
+        // or requiring a particular native suggestion popover to appear.
+        typeKey("x", modifierFlags: [], in: app)
+        guard search.waitForValue("", timeout: 5) else {
+            XCTFail("seed readiness must finish editing even when the meeting was already hittable")
+            return
+        }
+        search.click()
+        typeText("viernes", in: app)
         XCTAssertTrue(search.waitForValue("viernes", timeout: 5))
         // Commit native editing without accepting an AutoFill suggestion over
         // the real FTS hit; retain the exact query and destination assertions.
-        search.typeKey(.tab, modifierFlags: [])
+        typeKey(.tab, modifierFlags: [], in: app)
         XCTAssertTrue(search.waitForValue("viernes", timeout: 5))
         let hit = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-search-hit-'"))
@@ -661,7 +725,7 @@ final class LibraryUITests: PortavozUITestCase {
     func testAskConversationAnswersAndSeeksToExactCitation() throws {
         let webFixture = try ApuntadorWebFixtureDescriptor
             .loadFromRunnerEnvironment()
-        let app = XCUIApplication.portavoz(
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             simulateSequoiaCapabilities: true,
             includeWebFixture: true)
@@ -713,13 +777,15 @@ final class LibraryUITests: PortavozUITestCase {
             ? "/source/fresh-es"
             : "/source/fresh-en"
         field.click()
-        field.typeText(webQuestion)
+        typeText(webQuestion, in: app)
+        XCTAssertTrue(field.waitForValue(webQuestion, timeout: 5))
         let webSourceField = app.textFields["ask-web-source-field"]
         XCTAssertTrue(webSourceField.waitForExistenceFast(timeout: 5))
         webSourceField.click()
         let webURL = try XCTUnwrap(
             URL(string: webPath, relativeTo: webFixture.baseURL)?.absoluteURL)
-        webSourceField.typeText(webURL.absoluteString)
+        typeText(webURL.absoluteString, in: app)
+        XCTAssertTrue(webSourceField.waitForValue(webURL.absoluteString, timeout: 5))
         let consent = app.checkBoxes["ask-web-consent"]
         XCTAssertTrue(consent.waitForEnabled(timeout: 5))
         XCTAssertFalse(
@@ -771,7 +837,8 @@ final class LibraryUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 5),
             "Notes must disclose the raw-local-note-only boundary")
         field.click()
-        field.typeText("budget Q3")
+        typeText("budget Q3", in: app)
+        XCTAssertTrue(field.waitForValue("budget Q3", timeout: 5))
         app.buttons["ask-submit"].click()
         XCTAssertTrue(
             app.descendants(matching: .any)["ask-pending-source-notes"]
@@ -830,7 +897,8 @@ final class LibraryUITests: PortavozUITestCase {
             "the exact seeded meeting must be exposed as an identified menu item")
         meetingOption.click()
         field.click()
-        field.typeText("sinresultado")
+        typeText("sinresultado", in: app)
+        XCTAssertTrue(field.waitForValue("sinresultado", timeout: 5))
         XCTAssertTrue(app.buttons["ask-submit"].isEnabled)
         app.buttons["ask-submit"].click()
         XCTAssertTrue(
@@ -846,7 +914,8 @@ final class LibraryUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 5))
 
         field.click()
-        field.typeText("viernes")
+        typeText("viernes", in: app)
+        XCTAssertTrue(field.waitForValue("viernes", timeout: 5))
         app.buttons["ask-submit"].click()
         XCTAssertTrue(
             app.waitForFeatureUITestHandshakeRelease(
@@ -917,8 +986,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence() {
-        let app = XCUIApplication.portavoz(
+    func testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedAskMemory: true)
         app.launchPortavoz()
@@ -970,8 +1039,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence() {
-        let app = XCUIApplication.portavoz(
+    func testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedAskMemory: true)
         app.launchPortavoz()
@@ -1025,8 +1094,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence() {
-        let app = XCUIApplication.portavoz(
+    func testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedAskTopicMemory: true)
         app.launchPortavoz()
@@ -1081,8 +1150,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence() {
-        let app = XCUIApplication.portavoz(
+    func testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedAskTopicMemory: true)
         app.launchPortavoz()
@@ -1132,8 +1201,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence() {
-        let app = XCUIApplication.portavoz(
+    func testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedAskTopicMemory: true)
         app.launchPortavoz()
@@ -1189,8 +1258,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence() {
-        let app = XCUIApplication.portavoz(
+    func testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence() throws {
+        let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedAskTopicMemory: true)
         app.launchPortavoz()
@@ -1219,7 +1288,8 @@ final class LibraryUITests: PortavozUITestCase {
         let anchorSearch = app.textFields["ask-topic-anchor-search"]
         XCTAssertTrue(anchorSearch.waitForExistenceFast(timeout: 5))
         anchorSearch.click()
-        anchorSearch.typeText("Planning")
+        typeText("Planning", in: app)
+        XCTAssertTrue(anchorSearch.waitForValue("Planning", timeout: 5))
 
         let anchor = app.buttons[
             "ask-topic-anchor-option-B5D40000-0000-4000-8000-000000000003"]
@@ -1273,8 +1343,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState() {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+    func testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -1288,7 +1358,7 @@ final class LibraryUITests: PortavozUITestCase {
         meeting.click()
         XCTAssertTrue(
             app.control(withIdentifier: "player-current-time").waitForExistenceFast(timeout: 10))
-        app.typeKey("k", modifierFlags: .command)
+        typeKey("k", modifierFlags: .command, in: app)
         let field = app.textFields["palette-query-field"]
         XCTAssertTrue(field.waitForExistenceFast(timeout: 10))
         let source = app.descendants(matching: .any)["palette-source-library"]
@@ -1299,11 +1369,12 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(source.waitForLabelOrValue(expectedSource, timeout: 5))
         XCTAssertTrue(field.isHittable, "the palette must stay above the main window")
         field.click()
-        field.typeText("viernes")
+        typeText("viernes", in: app)
+        XCTAssertTrue(field.waitForValue("viernes", timeout: 5))
         XCTAssertTrue(
             app.buttons["palette-hit-0"].waitForExistenceFast(timeout: 10),
             "the palette must publish instant local FTS results")
-        field.typeKey(.return, modifierFlags: [])
+        typeKey(.return, modifierFlags: [], in: app)
         // `palette-answer` renders only from `state.answer`, which nothing but
         // `submit()` sets — so its presence *is* the proof that Enter ran the
         // full Ask workflow rather than reusing the instant FTS hits.
@@ -1334,8 +1405,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testLaunchRecoversInterruptedStagingAudio() {
-        let app = XCUIApplication.portavoz(seedRecovery: true)
+    func testLaunchRecoversInterruptedStagingAudio() throws {
+        let app = try XCUIApplication.portavoz(seedRecovery: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -1356,8 +1427,8 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testLaunchResumesDurablePostCaptureProcessing() {
-        let app = XCUIApplication.portavoz(seedProcessing: true)
+    func testLaunchResumesDurablePostCaptureProcessing() throws {
+        let app = try XCUIApplication.portavoz(seedProcessing: true)
         app.launchPortavoz()
         defer { app.terminate() }
 

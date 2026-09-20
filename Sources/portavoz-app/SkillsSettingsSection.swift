@@ -47,8 +47,7 @@ struct SkillsSettingsSection: View {
             Section("Control") {
                 Text(
                     // Keep this as one literal so localization validation sees it.
-                    // swiftlint:disable:next line_length
-                    "Portavoz suggests actions based on evidence from your meetings. Nothing runs until you review and confirm it."
+                    "Portavoz suggests actions from your meetings. Nothing runs until you confirm it."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -67,14 +66,6 @@ struct SkillsSettingsSection: View {
                 Section("Available actions") {
                     ForEach(availableSkills) { skill in
                         availableSkillRow(skill)
-                    }
-                }
-
-                if !plannedSkills.isEmpty {
-                    Section("Coming later") {
-                        ForEach(plannedSkills) { skill in
-                            plannedSkillRow(skill)
-                        }
                     }
                 }
 
@@ -143,10 +134,6 @@ struct SkillsSettingsSection: View {
         snapshot?.skills.filter { $0.availability == .available } ?? []
     }
 
-    private var plannedSkills: [SkillControlCenterItem] {
-        snapshot?.skills.filter { $0.availability == .planned } ?? []
-    }
-
     private func availableSkillRow(
         _ skill: SkillControlCenterItem
     ) -> some View {
@@ -160,6 +147,10 @@ struct SkillsSettingsSection: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 skillDisclosure(skill)
+                Text(lastRunText(skill))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .accessibilityIdentifier("settings-skill-\(skill.id)-last-run")
             }
             Spacer(minLength: 12)
             Toggle("", isOn: skillBinding(skill))
@@ -175,30 +166,17 @@ struct SkillsSettingsSection: View {
         .accessibilityElement(children: .contain)
     }
 
-    private func plannedSkillRow(
-        _ skill: SkillControlCenterItem
-    ) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            skillIcon(skill)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(skillTitle(skill.id))
-                    .font(.callout.weight(.semibold))
-                Text(skillDescription(skill.id))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 12)
-            Text("Planned")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(.quaternary, in: Capsule())
+    /// Reads the verified per-action map, never the filtered history page:
+    /// an unavailable read says so instead of claiming "never".
+    private func lastRunText(_ skill: SkillControlCenterItem) -> String {
+        guard let snapshot, snapshot.lastRunLoadState == .verified else {
+            return L10n.text("Last run unavailable")
         }
-        .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("settings-skill-\(skill.id)-planned")
+        guard let run = snapshot.lastRuns[skill.id] else { return L10n.text("Never run") }
+        let when = run.updatedAt.formatted(.relative(presentation: .named))
+        return run.state == .succeeded
+            ? L10n.format("Last run %@", when)
+            : L10n.format("Last run %@ · did not finish", when)
     }
 
     private func skillIcon(_ skill: SkillControlCenterItem) -> some View {
@@ -218,7 +196,7 @@ struct SkillsSettingsSection: View {
             case .noDirectNetworkHandoff:
                 Label(
                     "No direct network handoff",
-                    systemImage: "lock.shield.fill")
+                    systemImage: PVSymbol.privacy)
                     .foregroundStyle(.green)
                     .accessibilityIdentifier(
                         "settings-skill-\(skill.id)-boundary")
@@ -521,7 +499,7 @@ private extension SkillsSettingsSection {
             .accessibilityIdentifier("settings-skills-loading")
         } else if controlLoadFailed, snapshot == nil {
             VStack(alignment: .leading, spacing: 8) {
-                Label("Action controls are unavailable", systemImage: "exclamationmark.triangle")
+                Label("Action controls are unavailable", systemImage: PVSymbol.warning)
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("settings-skills-load-error")
                 Text("Nothing can be changed until Portavoz reads the durable policy.")
@@ -556,7 +534,7 @@ private extension SkillsSettingsSection {
                 VStack(alignment: .leading, spacing: 8) {
                     Label(
                         "The last change could not be verified. Reload controls before trying again.",
-                        systemImage: "exclamationmark.triangle")
+                        systemImage: PVSymbol.warning)
                         .font(.caption)
                         .foregroundStyle(.orange)
                         .accessibilityIdentifier("settings-skills-stale-error")
@@ -671,7 +649,7 @@ private extension SkillsSettingsSection {
         case MeetingPackageExportSkill.id: "shippingbox"
         case ReminderDraftSkill.id: "checklist"
         case PreMeetingBriefSkill.id: "calendar.badge.clock"
-        default: "sparkles"
+        default: PVSymbol.automations
         }
     }
 

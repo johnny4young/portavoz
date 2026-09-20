@@ -25,7 +25,7 @@ struct MenuBarBriefConfirmSheet: View {
             .accessibilityIdentifier("menu-bar-brief-preview")
             capabilities
             if let failure {
-                Label(failure, systemImage: "exclamationmark.triangle.fill")
+                Label(failure, systemImage: PVSymbol.error)
                     .font(.callout)
                     .foregroundStyle(.red)
                     .fixedSize(horizontal: false, vertical: true)
@@ -72,7 +72,7 @@ struct MenuBarBriefConfirmSheet: View {
         HStack(spacing: 6) {
             capability("reads meeting material", id: "read")
             capability("writes a local draft", id: "write")
-            capability("nothing leaves this Mac", id: "local")
+            capability("stays on your Mac", id: "local")
         }
     }
 
@@ -98,7 +98,7 @@ struct MenuBarPreparedBriefSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Brief ready", systemImage: "checkmark.circle.fill")
+            Label("Brief ready", systemImage: PVSymbol.success)
                 .font(.headline)
                 .foregroundStyle(.green)
             ScrollView {
@@ -112,7 +112,7 @@ struct MenuBarPreparedBriefSheet: View {
                 Button("Done", action: dismiss)
                     .accessibilityIdentifier("menu-bar-brief-result-close")
                 Button(action: record) {
-                    Label("Record this meeting", systemImage: "record.circle")
+                    Label("Record this meeting", systemImage: PVSymbol.record)
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("menu-bar-brief-result-record")

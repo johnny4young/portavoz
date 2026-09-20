@@ -28,6 +28,7 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/MeetingActionItemsView.swift",
     "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
     "Sources/portavoz-app/MeetingDetailActionSection.swift",
+    "Sources/portavoz-app/MeetingDetailActivityLine.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator+Commitments.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift",
@@ -190,7 +191,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
                 "anchor": '"skill-confirm-sheet"',
             },
             {
-                "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+                "path": "Sources/portavoz-app/MeetingDetailActivityLine.swift",
                 "anchor": '"skill-receipt-\\(receipt.skillID)"',
             },
         ],

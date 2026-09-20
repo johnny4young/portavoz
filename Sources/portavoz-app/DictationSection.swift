@@ -40,8 +40,7 @@ struct DictationSection: View {
             }
             Text(
                 // One-line UI help text.
-                // swiftlint:disable:next line_length
-                "Press ⌥⌘D in any app, speak, press it again: your words are typed where your cursor is — transcribed on this Mac with your custom vocabulary, never stored. Inserting text needs the Accessibility permission (macOS asks on first use)."
+                "Press ⌥⌘D in any app, speak, press it again. Needs the Accessibility permission to type."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

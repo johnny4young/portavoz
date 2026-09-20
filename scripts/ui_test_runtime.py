@@ -11,6 +11,7 @@ import subprocess
 import sys
 from collections import Counter
 from dataclasses import dataclass
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
 
@@ -43,6 +44,7 @@ class RuntimeAdjustment:
 class ActivityBoundary:
     attributed_duration_seconds: float
     excluded_pre_setup_seconds: float
+    preserve_reported_teardown: bool = False
 
 
 def finite_nonnegative(value: Any) -> float | None:
@@ -50,6 +52,12 @@ def finite_nonnegative(value: Any) -> float | None:
         return None
     number = float(value)
     return number if math.isfinite(number) and number >= 0 else None
+
+
+def duration_difference(end: float, start: float) -> float:
+    # Honor the decimal precision written by xcresult, not cancellation error
+    # from subtracting epoch-sized binary floats at an exact budget boundary.
+    return float(Decimal(str(end)) - Decimal(str(start)))
 
 
 def expected_case_count(budget: dict[str, Any]) -> int | None:
@@ -174,29 +182,41 @@ def activity_boundary_seconds(tree: Any) -> ActivityBoundary | None:
     if not isinstance(activities, list):
         return None
     starts = [
-        activity.get("startTime")
+        activity
         for activity in activities
         if isinstance(activity, dict)
         and isinstance(activity.get("title"), str)
         and activity["title"].startswith("Start Test at ")
     ]
     setups = [
-        activity.get("startTime")
+        activity
         for activity in activities
         if isinstance(activity, dict)
         and activity.get("title") == "Set Up"
     ]
     teardowns = [
-        activity.get("startTime")
+        activity
         for activity in activities
         if isinstance(activity, dict)
         and activity.get("title") == "Tear Down"
     ]
     if len(starts) != 1 or len(setups) != 1 or len(teardowns) != 1:
         return None
-    start = finite_nonnegative(starts[0])
-    setup = finite_nonnegative(setups[0])
-    teardown = finite_nonnegative(teardowns[0])
+    # Work logged before setup is not an empty framework-admission interval.
+    if activities[0] is not starts[0] or activities[1] is not setups[0]:
+        return None
+    if starts[0].get("childActivities", []) != []:
+        return None
+    teardown_activity = teardowns[0]
+    children = teardown_activity.get("childActivities", [])
+    # Start markers cannot prove cleanup completion. A known pre-setup gap
+    # remains independent evidence, but everything after setup stays owned.
+    if not isinstance(children, list):
+        return None
+    preserve_teardown = bool(children) or activities[-1] is not teardown_activity
+    start = finite_nonnegative(starts[0].get("startTime"))
+    setup = finite_nonnegative(setups[0].get("startTime"))
+    teardown = finite_nonnegative(teardown_activity.get("startTime"))
     if (
         start is None
         or setup is None
@@ -206,8 +226,9 @@ def activity_boundary_seconds(tree: Any) -> ActivityBoundary | None:
     ):
         return None
     return ActivityBoundary(
-        attributed_duration_seconds=teardown - setup,
-        excluded_pre_setup_seconds=setup - start,
+        attributed_duration_seconds=duration_difference(teardown, setup),
+        excluded_pre_setup_seconds=duration_difference(setup, start),
+        preserve_reported_teardown=preserve_teardown,
     )
 
 
@@ -261,13 +282,26 @@ def reconcile_activity_boundary_noise(
         excluded_pre_setup = finite_nonnegative(
             boundary.excluded_pre_setup_seconds if boundary is not None else None
         )
+        if boundary is not None and boundary.preserve_reported_teardown:
+            retained = (
+                duration_difference(reported, excluded_pre_setup)
+                if reported is not None and excluded_pre_setup is not None
+                else None
+            )
+            # The marker span is only a lower bound when cleanup is active.
+            # An inconsistent reported duration must never yield an exclusion.
+            attributed = (
+                retained
+                if retained is not None and attributed is not None and retained >= attributed
+                else None
+            )
         excluded = (
-            reported - attributed
+            duration_difference(reported, attributed)
             if reported is not None and attributed is not None
             else None
         )
         raw_excluded_post_teardown = (
-            excluded - excluded_pre_setup
+            duration_difference(excluded, excluded_pre_setup)
             if excluded is not None and excluded_pre_setup is not None
             else None
         )

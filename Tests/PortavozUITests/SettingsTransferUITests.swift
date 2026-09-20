@@ -3,13 +3,12 @@ import XCTest
 final class SettingsTransferUITests: PortavozUITestCase {
     @MainActor
     func testPortablePreferencesReviewCancelApplyAndLiveLanguage() throws {
-        let directory = try scratchDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
+        let directory = try UITestStorage.makeDirectory()
         let input = directory.appendingPathComponent("input.json")
         let output = directory.appendingPathComponent("output.json")
         let target = UITestLocale.environmentLocale == "es" ? "en" : "es"
         try writeSettings(["interfaceLanguage": target, "vocabulary": "Cóndor, Don’t, C++"], to: input)
-        let app = application(input: input, output: output)
+        let app = try application(input: input, output: output)
         app.launchPortavoz()
         defer { app.terminate() }
         XCTAssertTrue(app.openSettingsCategory("settings-category-data", revealing: "settings-export-preferences"))
@@ -66,12 +65,11 @@ final class SettingsTransferUITests: PortavozUITestCase {
 
     @MainActor
     func testUnsupportedPreferencesRemainRecoverableWithoutMutation() throws {
-        let directory = try scratchDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
+        let directory = try UITestStorage.makeDirectory()
         let input = directory.appendingPathComponent("input.json")
         let output = directory.appendingPathComponent("output.json")
         try writeSettings(["globalDictationEnabled": true, "vocabulary": "must-not-apply"], to: input)
-        let app = application(input: input, output: output)
+        let app = try application(input: input, output: output)
         let legacy = #"[ { "replacement" : "Don't", "trigger" : "Don\u2019t" } ]"#
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = String(
             decoding: try JSONSerialization.data(withJSONObject: ["dictationReplacements": legacy]), as: UTF8.self)
@@ -104,7 +102,7 @@ final class SettingsTransferUITests: PortavozUITestCase {
         let review = app.staticTexts["settings-preferences-review"]
         XCTAssertTrue(review.waitForExistenceFast(timeout: 5))
         XCTAssertEqual(renderedText(of: app.staticTexts["settings-preferences-change-vocabulary"]), "Existing, Recovered")
-        app.typeKey(.escape, modifierFlags: [])
+        typeKey(.escape, modifierFlags: [], in: app, modalAnchor: "settings-preferences-review")
         XCTAssertTrue(review.waitForDisappearance(timeout: 5))
         try FileManager.default.removeItem(at: output)
         app.buttons["settings-export-preferences"].click()
@@ -114,18 +112,12 @@ final class SettingsTransferUITests: PortavozUITestCase {
     }
 
     @MainActor
-    private func application(input: URL, output: URL) -> XCUIApplication {
-        let app = XCUIApplication.portavoz(openSettings: true)
+    private func application(input: URL, output: URL) throws -> XCUIApplication {
+        let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments += ["-seed-settings-transfer", "-customVocabulary", "Existing"]
         app.launchEnvironment["PORTAVOZ_UI_TEST_SETTINGS_IMPORT"] = input.path
         app.launchEnvironment["PORTAVOZ_UI_TEST_SETTINGS_EXPORT"] = output.path
         return app
-    }
-
-    private func scratchDirectory() throws -> URL {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("settings-ui-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
-        return directory
     }
 
     private func writeSettings(_ settings: [String: Any], to url: URL) throws {

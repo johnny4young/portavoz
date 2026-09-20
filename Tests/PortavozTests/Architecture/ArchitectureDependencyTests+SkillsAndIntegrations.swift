@@ -334,7 +334,7 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(receiptInspection.contains(".idempotencyKey"))
         XCTAssertTrue(receiptSheet.contains("skill-receipt-inspection-privacy"))
         XCTAssertTrue(receiptSheet.contains(
-            "never runs or retries an action"))
+            "Nothing runs or retries from here"))
         XCTAssertTrue(decisions.contains("## D317"))
         XCTAssertTrue(decisions.contains("## D333"))
         XCTAssertTrue(decisions.contains("## D370"))
@@ -535,8 +535,8 @@ extension ArchitectureDependencyTests {
         let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
 
         XCTAssertEqual(SettingsCategory.skills.rawValue, "skills")
-        XCTAssertEqual(SettingsCategory.skills.titleKey, "Suggested actions")
-        for query in ["actions", "suggestions", "skills", "automation", "pause", "enable", "receipts"] {
+        XCTAssertEqual(SettingsCategory.skills.titleKey, "Automations")
+        for query in ["actions", "suggestions", "skills", "automation", "pause", "enable", "history"] {
             XCTAssertTrue(SettingsCategory.skills.matches(query, language: .english), query)
         }
 
@@ -544,9 +544,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(settings.contains("Section(\"Suggestions to review\")"))
         XCTAssertTrue(settings.contains("Section(\"Action history\")"))
         XCTAssertTrue(settings.contains(
-            "Portavoz suggests actions based on evidence from your meetings."))
-        XCTAssertTrue(settings.contains(
-            "Nothing runs until you review and confirm it."))
+            "Portavoz suggests actions from your meetings. Nothing runs until you confirm it."))
         XCTAssertTrue(settings.contains("settings-actions-explanation"))
         XCTAssertTrue(settings.contains(
             ".accessibilityLabel(\"Pause all actions\")"))
@@ -555,7 +553,7 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(settings.contains("Section(\"Skill activity\")"))
 
         XCTAssertTrue(proposals.contains("Loading suggested actions…"))
-        XCTAssertTrue(proposals.contains("Suggested actions are unavailable"))
+        XCTAssertTrue(proposals.contains("Automations are unavailable"))
         XCTAssertTrue(proposals.contains("No suggested actions"))
         XCTAssertTrue(proposals.contains("Refresh suggested actions"))
         XCTAssertTrue(activity.contains("Text(\"Action\")"))
@@ -564,16 +562,16 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(activity.contains("Button(\"All skills\")"))
         XCTAssertFalse(activity.contains("Text(\"Skill\")"))
         XCTAssertTrue(offerBanner.contains(
-            ".accessibilityLabel(L10n.text(\"Suggested actions\"))"))
+            ".accessibilityLabel(L10n.text(\"Automations\"))"))
         XCTAssertTrue(receiptSheet.contains("change the action run"))
         XCTAssertFalse(receiptSheet.contains("change the Skill run"))
         XCTAssertTrue(receiptPresentation.contains("Unknown action"))
 
-        XCTAssertTrue(catalogue.contains("\"Suggested actions\""))
-        XCTAssertTrue(catalogue.contains("\"Acciones sugeridas\""))
+        XCTAssertTrue(catalogue.contains("\"Automations\""))
+        XCTAssertTrue(catalogue.contains("\"Automatizaciones\""))
         XCTAssertTrue(catalogue.contains("\"Pausar todas las acciones\""))
         XCTAssertTrue(catalogue.contains(
-            "Nada se ejecuta hasta que revisas y confirmas cada acción."))
+            "Nada se ejecuta hasta que lo confirmes."))
         XCTAssertTrue(uiTest.contains("assertSuggestedActionsComprehension"))
         XCTAssertTrue(uiTest.contains(
             "testSuggestedActionsExplainReviewFirstSafety"))
@@ -953,7 +951,7 @@ extension ArchitectureDependencyTests {
         let sheet = try Self.contents(
             of: "Sources/portavoz-app/SkillConfirmSheet.swift")
         let trust = try Self.contents(
-            of: "Sources/portavoz-app/MeetingDetailTrustSection.swift")
+            of: "Sources/portavoz-app/MeetingDetailActivityLine.swift")
         let receiptPresentation = try Self.contents(
             of: "Sources/portavoz-app/SkillReceiptPresentation.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")

@@ -60,10 +60,10 @@ struct MeetingCommitmentInboxSection: View {
 
     private var sectionHeader: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Label("Commitments to confirm", systemImage: "checkmark.seal")
+            Label("Commitments to confirm", systemImage: PVSymbol.success)
                 .font(.headline)
                 .accessibilityIdentifier("detail-commitment-inbox-title")
-            Text("Review the evidence before adding anything to your commitment list.")
+            Text("Check the source before adding anything to your commitments.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

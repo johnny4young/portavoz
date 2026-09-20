@@ -102,7 +102,7 @@ final class RefineService {
                     runID: runID)
             } catch {
                 finish(
-                    .failed(L10n.format("Refine failed: %@", error.localizedDescription)),
+                    .failed(L10n.format("Improvement failed: %@", error.localizedDescription)),
                     meetingID: meetingID,
                     runID: runID)
             }
