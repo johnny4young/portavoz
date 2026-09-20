@@ -128,24 +128,43 @@ extension XCUIApplication {
     /// selection as a non-hittable dialog, and it never receives the keys.
     @MainActor
     private func ownsModalContext(anchor: String?) -> Bool {
-        let attached = descendants(matching: .any).matching(NSPredicate(
+        // An open panel remains in the tree while its Go to Folder sheet owns
+        // input. Count independent innermost receivers, not their ancestors.
+        let surfaces = activeModalSurfaces(in: self)
+        // A sole active surface cannot have another active receiver below it.
+        let receivers = surfaces.count < 2 ? surfaces : surfaces.filter {
+            activeModalSurfaces(in: $0).isEmpty
+        }
+        guard let anchor else { return receivers.isEmpty }
+        guard receivers.count == 1 else { return false }
+        let receiver = receivers[0]
+        return receiver.identifier == anchor
+            || receiver.descendants(matching: .any).matching(identifier: anchor).count == 1
+    }
+
+    @MainActor
+    private func activeModalSurfaces(in element: XCUIElement) -> [XCUIElement] {
+        let attached = element.descendants(matching: .any).matching(NSPredicate(
             format: "elementType == %lu OR elementType == %lu",
             XCUIElement.ElementType.sheet.rawValue,
             XCUIElement.ElementType.alert.rawValue))
         let attachedCount = attached.count
-        let dialogs = descendants(matching: .dialog)
+        let dialogs = element.descendants(matching: .dialog)
         let interactiveDialogs = (0..<dialogs.count)
             .map { dialogs.element(boundBy: $0) }
-            .filter(\.isHittable)
-        guard let anchor else { return attachedCount + interactiveDialogs.count == 0 }
-        guard attachedCount + interactiveDialogs.count == 1 else { return false }
-        guard attachedCount == 1 else {
-            let dialog = interactiveDialogs[0]
-            return dialog.identifier == anchor
-                || dialog.descendants(matching: .any).matching(identifier: anchor).count == 1
-        }
-        return attached.matching(identifier: anchor).count == 1
-            || attached.containing(.any, identifier: anchor).count == 1
+            .filter { dialog in
+                // A dialog containing an attached modal is already an ancestor.
+                // Avoid its expensive native hit test while its child owns input.
+                if attachedCount > 0 {
+                    let nested = dialog.descendants(matching: .any).matching(NSPredicate(
+                        format: "elementType == %lu OR elementType == %lu",
+                        XCUIElement.ElementType.sheet.rawValue,
+                        XCUIElement.ElementType.alert.rawValue))
+                    if nested.count > 0 { return false }
+                }
+                return dialog.isHittable
+            }
+        return (0..<attachedCount).map { attached.element(boundBy: $0) } + interactiveDialogs
     }
 
     @MainActor

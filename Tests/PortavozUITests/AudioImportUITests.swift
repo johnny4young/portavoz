@@ -160,14 +160,38 @@ final class AudioImportUITests: PortavozUITestCase {
 
     @MainActor
     private func chooseAudio(in folder: URL, app: XCUIApplication) -> Bool {
-        app.buttons["library-import-audio-button"].click()
-        app.typeKey("g", modifierFlags: [.command, .shift])
-        let path = app.textFields.firstMatch
-        XCTAssertTrue(path.waitForExistenceFast(timeout: 5))
-        app.typeText(folder.path + "/")
-        app.typeKey(.return, modifierFlags: [])
+        let menu = app.control(withIdentifier: "library-record-menu")
+        guard menu.waitForHittable(timeout: 5) else {
+            XCTFail("The Library must expose the import menu")
+            return false
+        }
+        menu.click()
+        let action = app.menuItems["library-import-audio-button"]
+        guard action.waitForExistenceFast(timeout: 5) else {
+            XCTFail("The import action must be available in the record menu")
+            return false
+        }
+        action.click()
+        let picker = app.dialogs["open-panel"]
+        guard picker.waitForExistenceFast(timeout: 5) else {
+            XCTFail("The import action must open the native audio picker")
+            return false
+        }
+        typeKey("g", modifierFlags: [.command, .shift], in: app, modalAnchor: "open-panel")
+        let folderSheet = picker.sheets["GoToWindow"]
+        let path = folderSheet.textFields["PathTextField"]
+        guard path.waitForExistenceFast(timeout: 5) else {
+            XCTFail("The native picker must expose its Go to Folder field")
+            return false
+        }
+        typeText(folder.path + "/", in: app, modalAnchor: "GoToWindow")
+        typeKey(.return, modifierFlags: [], in: app, modalAnchor: "GoToWindow")
+        guard folderSheet.waitForDisappearance(timeout: 5) else {
+            XCTFail("Go to Folder must close before selecting files")
+            return false
+        }
         // List view avoids NSOpenPanel's offscreen column frames for deep paths.
-        app.typeKey("2", modifierFlags: .command)
+        typeKey("2", modifierFlags: .command, in: app, modalAnchor: "open-panel")
         let first = app.textFields.matching(NSPredicate(format: "value == %@", "Audio 00.wav")).firstMatch
         guard first.waitForExistenceFast(timeout: 5) else {
             XCTFail("The native picker did not reach the selected synthetic audio folder")
@@ -176,8 +200,7 @@ final class AudioImportUITests: PortavozUITestCase {
         // The modal panel already owns keyboard focus after Go to Folder.
         // Select its files with the native command; read-only AX name fields
         // are not clickable controls even when their frames are visible.
-        app.typeKey("a", modifierFlags: .command)
-        let picker = app.dialogs["open-panel"]
+        typeKey("a", modifierFlags: .command, in: app, modalAnchor: "open-panel")
         guard picker.buttons["OKButton"].waitForEnabled(timeout: 5) else {
             XCTFail("The native picker did not enable import for its selected audio")
             return false
@@ -185,7 +208,7 @@ final class AudioImportUITests: PortavozUITestCase {
         // Complete the keyboard-owned selection with its native default action.
         // An enabled XPC button can lack a usable click activation point; do not
         // repeat submission or mistake an open picker for worker progress.
-        app.typeKey(.return, modifierFlags: [])
+        typeKey(.return, modifierFlags: [], in: app, modalAnchor: "open-panel")
         guard picker.waitForDisappearance(timeout: 5) else {
             XCTFail("The native picker did not acknowledge the import selection")
             return false

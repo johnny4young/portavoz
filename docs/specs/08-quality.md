@@ -74,8 +74,8 @@ ASR-quality evidence (D532).
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The combined catalog contains 122 UI cases, including both portable-settings
-and shortcut-recovery journeys; their existing time budgets remain unchanged.
+The combined catalog includes the portable-settings, shortcut-recovery and
+audio-import journeys; their existing time budgets remain unchanged.
 Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -123,8 +123,9 @@ stale restored rows; a still-running native writer; restoration between file and
 database deletion; and restore/re-delete after an expiry snapshot was read.
 Original selected files remain unchanged. These call the real purge/restore use
 cases with SQLite and native exclusion, not only a pure path policy.
-These are not real-ASR or
-XCUITest evidence; the Library queue remains unconnected.
+These deterministic use-case tests are not real-ASR or XCUITest evidence.
+Separate `AudioImportUITests` exercise the connected Library queue through the
+native picker, including paging, cancellation/retry and relaunch recovery.
 The shared
 `waitForSeededLibraryToSettle` helper scrolls a sidebar row into view before
 waiting on it and names the cause when it gives up, so a fixture that lengthens
@@ -7823,7 +7824,7 @@ for the declared test-host bundle must be the frontmost application. No observed
 ownership change is repaired by implicitly activating the app. No-modal input
 rejects sheets, alerts and hittable app-modal dialogs; expected
 modal input additionally requires exactly
-one modal containing the journey's fixed accessibility anchor. A background
+one innermost active modal containing the journey's fixed accessibility anchor. A background
 control cannot authorize typing into a new dialog. Admission re-observes for at
 most one second so a cached frontmost value or closing sheet can converge; it
 never activates or dismisses anything. Refused journey input uses the same
@@ -7972,3 +7973,35 @@ while the queue changes. Missing or incorrect text still fails the original
 deadline. Native picker filenames are queried as read-only text fields. The
 21-file workload, paging/close/reopen checks, per-file recovery assertions and
 all timing budgets remain unchanged.
+
+The import journey enters through the Library record menu and the identified
+native open panel. Every synthesized key uses the shared ownership gate with
+the current panel or Go to Folder sheet as its explicit anchor. A missing
+action, field, or closing acknowledgement ends the journey before further
+input; native focus and returned-file evidence cannot be replaced by a scripted
+admission call.
+
+Nested native pickers keep their ancestor open-panel dialog in the accessibility
+tree. Keyboard admission removes an active modal ancestor only when it contains
+another active modal, then requires one remaining receiver. The journey's anchor
+must identify that receiver or one of its descendants. An open-panel anchor cannot
+authorize typing into its Go to Folder child, and multiple independent receivers
+remain ambiguous. Non-hittable dialogs still do not receive keyboard authority.
+An observed dialog ancestor of an attached modal is eliminated before hit
+testing, and a sole active surface needs no repeated descendant scan. Neither
+shortcut caches observations across keyboard events or changes the admission rule.
+
+Four additional native controls use an actual multi-file `NSOpenPanel`: the
+positive traverses Go to Folder, selects two exact Unicode/spaced filenames and
+checks the returned URL set; missing, background and ancestor anchors must stop
+without any file-choice effect. They complement the existing sixteen controls
+and the full bilingual product catalog, rather than replacing them. This is a
+point-in-time observed containment rule, not atomic OS keyboard ownership.
+
+After owned cleanup, the interruption boundary writes its content-free refusal
+receipt and exits the worker directly (D540). It does not reenter XCTest issue
+recording from an asynchronous main-actor callback. All twenty native controls
+still use the same strict validator: exactly one non-skipped case, complete
+owned cleanup, exact refusal category and no unintended effect for negatives;
+normal success and the expected effect for positives. Empty restarts and
+timeouts remain failures.

@@ -64,6 +64,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     }
 
     @objc private func arm() {
+        if ProcessInfo.processInfo.environment["PROOF_NATIVE_SOURCE_ROOT"] != nil {
+            perform(#selector(presentNativePicker), with: nil, afterDelay: 0)
+            return
+        }
         if ProcessInfo.processInfo.environment["PROOF_APP_MODAL_DIALOG"] == "1" {
             status.stringValue = "Dialog armed"
             // Return from the click first; the app-modal session then owns the
@@ -123,6 +127,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         alert.addButton(withTitle: "Synthetic dialog choice").setAccessibilityIdentifier("proof-dialog-choice")
         _ = alert.runModal()
         recordEffect("modal-choice")
+    }
+
+    @objc private func presentNativePicker() {
+        guard let source = ProcessInfo.processInfo.environment["PROOF_NATIVE_SOURCE_ROOT"] else { exit(64) }
+        let picker = NSOpenPanel()
+        picker.canChooseFiles = true
+        picker.canChooseDirectories = false
+        picker.allowsMultipleSelection = true
+        picker.directoryURL = URL(fileURLWithPath: source)
+        guard picker.runModal() == .OK else { return }
+        let selection = URL(fileURLWithPath: source).appendingPathComponent("Selection with spaces")
+        let expected = Set(["Mañana – owner’s plan.txt", "Don’t send 2.txt"].map {
+            selection.appendingPathComponent($0)
+        })
+        recordEffect(Set(picker.urls) == expected ? "file-choice" : "unexpected-file-choice")
     }
 }
 let app = NSApplication.shared

@@ -195,10 +195,12 @@ XCTest reactivated the app and wrote despite the overlay. A foreground-only
 check was then disproved by a synthetic same-app alert: a newline accepted its
 default choice without entering an interruption monitor.
 
-Process ownership plus an explicit sole-modal-contained anchor now covers
-sixteen native controls, including legitimate bilingual editing, foreign
-interruption, unexpected same-app sheet and app-modal dialog rejection, and
-background-anchor rejection. Two surfaces stay outside the rule: popovers, and
+Process ownership plus an explicit innermost-modal-contained anchor now covers
+twenty native controls, including legitimate bilingual editing, foreign
+interruption, unexpected same-app sheet and app-modal dialog rejection,
+background-anchor rejection, and actual nested open-panel selection. The picker
+controls prove exact Unicode file selection and refuse missing, background or
+ancestor anchors; they do not qualify unrelated application journeys. Two surfaces stay outside the rule: popovers, and
 a dialog nothing can click such as the floating Writing Tools affordance. An
 unexpected popover with a default button is therefore not refused, and an
 app-modal dialog whose hit point lies off-screen is not either. Real
@@ -209,6 +211,17 @@ is not attributed from its frame; completion preferences and unrelated apps are
 not changed. Public-API admission remains a point-in-time observation: a window
 change after observation cannot be claimed atomically excluded. Full bilingual
 and exact-head hosted qualification remain distinct from native controls.
+
+A later Spanish Background Work journey stopped during its first Settings-form
+scroll after the indicator had opened Your data and the exact owner counts were
+verified. XCTest reported an interrupting `Other` owned by the disposable app;
+the guard completed cleanup before dispatch. The interrupted recording did not
+finish, so neither the element's frame nor the remaining passing tests identifies
+the surface or qualifies the invocation. This deep link does not use the ordinary
+Settings search-editor handoff, but that omission alone does not establish the
+interruption's cause. Preserve the failed evidence and reproduce the actual
+entry boundary before applying a handoff or changing scroll admission. Do not
+attribute the interruption to another application or dismiss an unknown surface.
 
 ### Unattributed asynchronous media-framework test crash
 

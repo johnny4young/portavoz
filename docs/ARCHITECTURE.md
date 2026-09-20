@@ -5658,6 +5658,12 @@ nor answers the interrupting element. The execution classifier retains this as
 A separate permission-free fixture target compiles the same base and cleanup
 sources. Observable positive controls and synchronous/asynchronous negative
 controls qualify the callback without opening a system permission prompt.
+Keyboard admission treats a nested open-panel/Go to Folder hierarchy as one
+innermost active modal receiver. Only that receiver or its descendants can supply
+the explicit anchor; ancestor and background controls grant no authority. The
+existing non-hittable-dialog exclusion and unique frontmost-process check remain.
+After cleanup, the worker emits its refusal receipt and exits directly rather
+than reentering XCTest issue recording from the callback.
 The overlay's main-queue parent-exit callback emits a separate lifecycle
 acknowledgement before exiting; process absence without it is failed cleanup,
 not success. This closes the false-positive case where a main-actor callback

@@ -20243,3 +20243,39 @@ resolves resources through `Bundle`, which reads either. A future Xcode that
 removes the old label deletes the `#else` branch in one file. Decoding behavior is unchanged: greedy
 everywhere, same token caps.
 
+
+## D540 — Exit interrupted test workers without reentering XCTest
+
+The asynchronous native interruption control reached complete owned cleanup and
+XCTest issue recording, then stalled in teardown until its unchanged deadline.
+Calling the framework's failure API from that main-actor callback is not a
+reliable prerequisite for terminating the worker.
+
+The guard writes the existing content-free refusal receipt and exits the worker
+directly after cleanup. This replaces only the issue-recording step of D527,
+not its consent policy, cleanup ownership, or failure classification. The native
+validator must still observe exactly one failed, non-skipped case, the exact
+refusal category, complete owned cleanup, and no action or fallback effect.
+Timeouts and empty restarted suites remain failures. Real synchronous and
+asynchronous controls, not source-text assertions, qualify this boundary.
+
+## D541 — Anchor native keyboard input to the innermost active modal
+
+An `NSOpenPanel` remains a hittable dialog in the accessibility tree while its
+Go to Folder sheet owns input. Counting both as independent receivers rejects a
+legitimate explicitly anchored edit. Three real import journeys reproduced that
+refusal before processing began; excluding non-hittable dialogs alone was not
+enough.
+
+Determine active modal surfaces using the existing sheet/alert and hittable-dialog
+rules, then discard only surfaces containing another active modal. Require one
+innermost receiver and an anchor belonging to it. Never let an ancestor panel,
+background editor or ambiguous independent modal authorize a key. The existing
+unique-process/frontmost fence and nonreturning cleanup remain unchanged.
+
+The native picker positive must return exactly the two selected public Unicode
+filenames. Missing, background and ancestor anchors are separate negative controls
+with no choice effect. All existing controls and full bilingual product journeys
+remain required: a picker success must not regress ordinary selection followed by
+a non-hittable Writing Tools affordance. These are point-in-time observations,
+not permission approval or an atomic input guarantee.

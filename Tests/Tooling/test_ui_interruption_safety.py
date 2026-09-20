@@ -90,13 +90,15 @@ class InterruptionSafetyTests(unittest.TestCase):
     def test_same_application_modal_does_not_expect_a_foreign_owner_receipt(self):
         for name in ("testSynchronousSameApplicationModalInterruption",
                      "testAsynchronousSameApplicationModalInterruption", "testSameApplicationModalRejectsBackgroundAnchor",
-                     "testSynchronousAppModalDialogInterruption", "testAsynchronousAppModalDialogInterruption"):
+                     "testSynchronousAppModalDialogInterruption", "testAsynchronousAppModalDialogInterruption",
+                     "testUnexpectedNativePickerRejectsTraversal", "testNativePickerRejectsBackgroundAnchor",
+                     "testNativePickerRejectsAncestorAnchor"):
             with self.subTest(name=name):
                 data = self.evidence()
                 data.update(name=name, effects=set())
                 data["log"] = data["log"].replace(b"reason=interruption", b"reason=modal-context")
                 safety.validate_case(**data)
-                for effect in ("modal-choice", "typed"):
+                for effect in ("modal-choice", "typed", "file-choice", "unexpected-file-choice"):
                     with self.assertRaises(RuntimeError):
                         safety.validate_case(**dict(data, effects={effect}))
                 wrong_path = data["log"].replace(b"reason=modal-context", b"reason=keyboard-owner")
@@ -125,7 +127,8 @@ class InterruptionSafetyTests(unittest.TestCase):
                              ("testUninterruptedActionAndTeardown", "target"),
                              ("testUninterruptedKeyboardInputAndTeardown", "typed"),
                              ("testSameApplicationModalChoiceIsObservable", "modal-choice"),
-                             ("testAppModalDialogChoiceIsObservable", "modal-choice")):
+                             ("testAppModalDialogChoiceIsObservable", "modal-choice"),
+                             ("testExpectedNativePickerChoiceIsObservable", "file-choice")):
             data = self.evidence()
             data.update(name=name, code=0, effects={effect})
             if name in ("testSameApplicationModalChoiceIsObservable", "testAppModalDialogChoiceIsObservable"):
