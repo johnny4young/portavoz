@@ -81,6 +81,31 @@ final class ModelIdleReleaseTests: XCTestCase {
         await clock.resumeAll()
     }
 
+    func testActualProfileActionSurvivesServiceReconstructionWithoutChangingOtherChoices() async throws {
+        let suite = "model-profile-roundtrip-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(false, forKey: "whisperCompact")
+        defaults.set("ollama", forKey: "summaryEngine")
+        for original: Any in ["unknown — inválido", -1, false, "balanced", "lightweight"] {
+            for selected in AppModelMemoryPreferences.Profile.allCases {
+                defaults.set(original, forKey: AppModelMemoryPreferences.key)
+                let owner = try services(defaults: defaults, scheduler: .init(sleep: { _ in
+                    throw ClockFailure.failed
+                }))
+                owner.setModelMemoryProfile(selected)
+                let independentDefaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+                let rebuilt = try services(defaults: independentDefaults, scheduler: .init(sleep: { _ in
+                    throw ClockFailure.failed
+                }))
+                XCTAssertEqual(rebuilt.modelMemoryPreferences.profile, selected)
+                XCTAssertEqual(independentDefaults.string(forKey: AppModelMemoryPreferences.key), selected.rawValue)
+                XCTAssertEqual(independentDefaults.object(forKey: "whisperCompact") as? Bool, false)
+                XCTAssertEqual(independentDefaults.string(forKey: "summaryEngine"), "ollama")
+            }
+        }
+    }
+
     func testLightweightReleaseDoesNotEraseInFlightPreparationState() async throws {
         let scheduler = AppModelIdleReleaseScheduler()
         let services = try services(scheduler: scheduler)

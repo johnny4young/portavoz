@@ -158,7 +158,8 @@ extension ArchitectureDependencyTests {
             [],
             "Application workflows must receive an injected embedding runtime")
         XCTAssertTrue(whisper.contains("modelIdleReleaseScheduler.schedule(.quality"))
-        XCTAssertTrue(services.contains("modelIdleReleaseScheduler.schedule(.recording"))
+        XCTAssertTrue(try Self.contents(of: "Sources/portavoz-app/AppServices+ModelMemory.swift")
+            .contains("modelIdleReleaseScheduler.schedule(.recording"))
         XCTAssertTrue(liveSpeech.contains("modelResidencyLedger.beginUse(.liveSpeech)"))
         XCTAssertTrue(mlx.contains("private static let idleRelease: Duration = .seconds(120)"))
         XCTAssertFalse(mlx.contains("static let shared"))

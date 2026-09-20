@@ -3936,7 +3936,8 @@ cleanup and the original deadlines. No assertion or runtime budget is removed.
 
 ### Explicit model-memory profile (D526)
 
-Intelligence Settings offers an identified Lightweight model memory toggle.
+Intelligence Settings offers an identified Lightweight model memory toggle
+immediately after model selection, before language and assist settings.
 Balanced remains the default for both new and existing installations; missing or
 invalid values resolve without rewriting model choices. A change persists
 `modelMemoryProfile` and reschedules the recording (Parakeet/diarization), quality

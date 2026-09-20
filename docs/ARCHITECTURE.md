@@ -3239,7 +3239,9 @@ captions to the closed session.
 Dictation, durable post-capture transcription, onboarding readiness, and the
 recording resource benchmark also hold explicit leases for their complete
 operations. The balanced profile retains the 600-second idle deadline; explicit
-lightweight mode releases idle weights promptly. The ledger rejects either
+lightweight mode releases idle weights promptly. The app-owned
+`AppServices+ModelMemory.swift` extension coordinates these idle-release requests;
+runtime adapters retain lease authority. The ledger rejects either
 release while any live or batch consumer is active. Verified assets remain independent, and no model wait or residency
 transition enters the audio writer callback.
 
