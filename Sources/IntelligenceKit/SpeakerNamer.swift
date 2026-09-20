@@ -162,7 +162,7 @@ public struct SpeakerNamer: Sendable {
             let response = try await session.respond(
                 to: finalPrompt,
                 generating: GeneratedNameSuggestions.self,
-                options: GenerationOptions(sampling: .greedy))
+                options: .greedy())
             return response.content.suggestions.map {
                 NameSuggestion(label: $0.label, name: $0.name, evidence: $0.evidence)
             }

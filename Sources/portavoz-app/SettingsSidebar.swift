@@ -4,7 +4,6 @@ import SwiftUI
 struct SettingsSidebar: View {
     @Binding var category: SettingsCategory?
     @Binding var query: String
-    @Environment(AppServices.self) private var services
 
     private var filtered: [SettingsCategory] {
         SettingsCategory.allCases.filter { $0.matches(query) }
@@ -24,7 +23,6 @@ struct SettingsSidebar: View {
             }
             .accessibilityIdentifier("settings-category-list")
             Spacer(minLength: 0)
-            localSeal
         }
         .background { AuroraSidebarBackground() }
     }
@@ -83,34 +81,4 @@ struct SettingsSidebar: View {
         .accessibilityIdentifier("settings-category-\(item.rawValue)")
     }
 
-    /// The standing privacy seal: local by design, one click from the ledger.
-    private var localSeal: some View {
-        Button {
-            category = services.meetingSync.status.isEnabled ? .sync : .data
-        } label: {
-            VStack(alignment: .leading, spacing: 4) {
-                Label(
-                    services.meetingSync.status.isEnabled ? "Private iCloud sync" : "Local-first",
-                    systemImage: services.meetingSync.status.isEnabled ? "checkmark.icloud" : "lock.shield")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(
-                        services.meetingSync.status.isEnabled ? Color.accentColor : Color.green)
-                Text(services.meetingSync.status.isEnabled
-                    ? "Meeting text syncs privately. Audio and device-only data stay here."
-                    : "Nothing auto-uploads. Check the receipts in \u{201C}Your data\u{201D}.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(10)
-            .background(Color.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(Color.green.opacity(0.22)))
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("settings-privacy-seal")
-        .padding(10)
-    }
 }

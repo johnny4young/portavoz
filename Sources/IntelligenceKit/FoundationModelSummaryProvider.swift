@@ -122,7 +122,7 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
         let overview = try await IntelligenceScheduler.shared.run(priority) {
             try await LanguageModelSession(instructions: instructions).respond(
                 to: overviewPrompt,
-                options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 350)
+                options: .greedy(maximumResponseTokens: 350)
             ).content
         }.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !overview.isEmpty else {
@@ -141,7 +141,7 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
                     .respond(
                         to: prompt,
                         generating: TranslatedSection.self,
-                        options: GenerationOptions(sampling: .greedy))
+                        options: .greedy())
                 return StructuredSummary.Section(
                     heading: response.content.heading, bullets: response.content.bullets)
             }
@@ -168,7 +168,7 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
                 try await LanguageModelSession(instructions: instructions).respond(
                     to: itemsPrompt,
                     generating: TranslatedItems.self,
-                    options: GenerationOptions(sampling: .greedy)
+                    options: .greedy()
                 ).content.items
             }
             guard texts.count == pivot.actionItems.count else {
@@ -291,7 +291,7 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
         return try await IntelligenceScheduler.shared.run(priority) {
             try await session.respond(
                 to: prompt,
-                options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 120)
+                options: .greedy(maximumResponseTokens: 120)
             ).content
         }
     }
@@ -314,7 +314,7 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
         return try await IntelligenceScheduler.shared.run(priority) {
             try await session.respond(
                 to: "Excerpt of the last few minutes:\n\n\(clipped)",
-                options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 200)
+                options: .greedy(maximumResponseTokens: 200)
             ).content
         }
     }
@@ -366,7 +366,7 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
                     transcriptOrNotes: condensed, targetLanguage: request.targetLanguage,
                     userNotes: notesBlock),
                 generating: GeneratedSummary.self,
-                options: GenerationOptions(sampling: .greedy))
+                options: .greedy())
             return response.content.structured.draft(
                 for: request,
                 includeEvidence: includeEvidence)
@@ -430,7 +430,7 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
                 try await session.respond(
                     to: PromptFactory.notesPrompt(
                         chunk: chunk, index: index, total: total),
-                    options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 250)
+                    options: .greedy(maximumResponseTokens: 250)
                 ).content
             }
             return [note]

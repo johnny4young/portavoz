@@ -48,13 +48,16 @@ struct BYOKSettingsSection: View {
                 isOn: $isEnabled
             )
             .disabled(!isReady || !companionAvailable)
-            Text(
-                // One-line UI help text.
-                // swiftlint:disable:next line_length
-                "Any /chat/completions endpoint works: OpenAI, OpenRouter, Groq, or a local Ollama/LM Studio server (http://localhost:11434/v1 — there, nothing leaves your device). When the switch is on, Apuntador sends ONLY the detected question text — never audio or the rest of the meeting — and each card says who answered. If the provider fails, the answer falls back to the local model."
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            HStack(spacing: 10) {
+                Text("Sends only the detected question, never audio or meeting text.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                HowItWorksLink(
+                    text: L10n.text(
+                        // swiftlint:disable:next line_length
+                        "Any /chat/completions endpoint works, including a local Ollama or LM Studio server. Apuntador sends only the detected question, never audio or meeting text."),
+                    identifier: "settings-byok-how-it-works")
+            }
             if let message {
                 Text(message).font(.caption).foregroundStyle(.secondary)
             }

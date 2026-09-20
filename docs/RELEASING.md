@@ -2,7 +2,7 @@
 
 The end-to-end recipe for cutting a public release: a notarized DMG that
 updates existing users via **Sparkle** and new users via **Homebrew**. Written
-from the real flow (v0.1.0 → v1.0.0, nine releases). Follow it top to bottom.
+from the real flow (v0.1.0 → v1.1.0, eleven releases). Follow it top to bottom.
 
 Distribution is direct-download only (no App Store) — decision D10/D20.
 
@@ -65,6 +65,7 @@ scripts/check-repository-hygiene.sh
   as an early local check with fixtures of your own.
 - **CHANGELOG.md** has every user-visible change since the last release, newest first.
 - Decide the **version** (SemVer): patch for fixes, minor for features. Last tag: `git tag --list 'v*' | sort -V | tail -1`.
+- The release host's selected Xcode must pass the same strict gates as CI. Xcode 27 needs the separately downloaded Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`) because `mlx-swift` compiles Metal kernels, and a fresh Xcode needs its license accepted before `swift` runs at all.
 - Stray SwiftPM artifacts (`*.d`, `*.dia`, `*.swiftdeps`) sometimes leak to the repo root from an Xcode/XCUITest build — they are **not** git-ignored, so delete them before releasing.
 
 ### Reliability identity and deterministic receipt (D147)
@@ -291,6 +292,14 @@ scripts/verify_release_appcast.py \
   --dmg "dist/release/Portavoz-$PORTAVOZ_RELEASE_VERSION.dmg"
 grep -E 'version |sha256 ' dist/release/portavoz.rb            # match the DMG
 ```
+
+Distribution verification also runs `scripts/verify-app-payload.sh` on the
+extracted copy (D535): every payload entry must be readable by the installing
+account, the Apuntador classifier must be staged inside `Contents/Resources`,
+and the app itself must report resolving that bundle from within its own copy.
+Portavoz 1.0.0 shipped before this gate existed and fails it: its resources
+resolved only on the build machine, so a clean install quit at the first
+recording.
 
 The distribution verifier is intentionally stricter than opening the DMG. A
 stapled outer image can open while a cask-extracted app has no embedded ticket
@@ -534,6 +543,8 @@ gh workflow run update-cask.yml -f tag=v<version>      # bumps johnny4young/home
 
 | Tag | Title |
 |---|---|
+| v1.1.0 | Portavoz 1.1.0 — less noise, one place for everything |
+| v1.0.1 | Portavoz 1.0.1 — recording starts on every Mac |
 | v1.0.0 | Portavoz 1.0.0 — today's agenda, yesterday's answers |
 | v0.7.0 | Portavoz 0.7.0 — live help, safer recordings |
 | v0.6.0 | Portavoz 0.6.0 — the Companion remembers, and you choose what it hears |

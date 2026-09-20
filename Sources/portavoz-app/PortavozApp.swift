@@ -30,7 +30,8 @@ struct PortavozApp: App {
             PortavozAppIntentBridge.requestStartRecording()
         }
 
-        // These two hidden modes do not require the application database.
+        // These hidden modes do not require the application database.
+        BundledAssetsStatus.runIfRequested(arguments: process.arguments)
         BenchMode.runIfRequested()
         BenchMode.runMLXSmokeIfRequested()
 

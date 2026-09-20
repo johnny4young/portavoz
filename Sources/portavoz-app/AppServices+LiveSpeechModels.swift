@@ -35,7 +35,7 @@ extension AppServices {
         }
         let telemetry = workloadTelemetry
         let store = modelStore
-        let task = Task { @MainActor in
+        let task = Task { @MainActor [weak self] in
             try await telemetry.measure(ResourceWorkloadDescriptor(
                 workloadClass: workloadClass,
                 kind: .liveTranscription,
@@ -43,7 +43,7 @@ extension AppServices {
             ) {
                 try await ParakeetEngine.loadRecommended(store: store) { progress in
                     let percent = Int(progress.fraction * 100)
-                    Task { @MainActor [weak self] in
+                    Task { @MainActor in
                         self?.modelsState = .downloading(
                             L10n.format(
                                 "Downloading transcription model… %d%%",

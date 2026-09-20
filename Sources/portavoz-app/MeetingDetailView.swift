@@ -18,6 +18,7 @@ struct MeetingDetailView: View {
     let sceneActions: MeetingDetailSceneActions
 
     @State private var playbackNavigation = MeetingDetailPlaybackNavigation()
+    @State private var railTab = MeetingDetailRailTab.people
     private var detail: MeetingReviewReadModel? { model.state.readModel }
     private var summary: MeetingReviewSummary? { detail?.summary }
     private var player: MeetingPlaybackSession? { model.state.playback?.session }
@@ -75,6 +76,10 @@ private extension MeetingDetailView {
             accepted: accepted)
         return VStack(alignment: .leading, spacing: 12) {
             headerSection(detail)
+            MeetingDetailActivityLine(values: MeetingDetailActivityValues(
+                privacyReceipt: detail.privacyReceipt,
+                skillReceipts: model.state.skillReceipts,
+                presentation: presentation))
             if let report = detail.meeting.captureReport, report.requiresAttention {
                 CaptureReportNotice(report: report)
             }
@@ -82,20 +87,22 @@ private extension MeetingDetailView {
                 progress: refine.status ?? flow.applyingStatus,
                 error: refine.error ?? flow.operationError ?? model.state.lastActionError)
             HStack(alignment: .top, spacing: 16) {
-                VStack(alignment: .leading, spacing: 10) {
-                    MeetingDetailArtifactsSection {
-                        summaryOrGenerate(detail)
-                        commitmentInboxSection(detail)
-                        notesSection(detail)
+                GeometryReader { column in
+                    VStack(alignment: .leading, spacing: 10) {
+                        MeetingDetailArtifactsSection(columnHeight: column.size.height) {
+                            summaryOrGenerate(detail)
+                            commitmentInboxSection(detail)
+                            notesSection(detail)
+                        }
+                        transcriptSection(
+                            detail,
+                            content: transcript,
+                            structureProjection: structureProjection)
+                            .layoutPriority(1)
+                        playerSection
                     }
-                    transcriptSection(
-                        detail,
-                        content: transcript,
-                        structureProjection: structureProjection)
-                        .layoutPriority(1)
-                    playerSection
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
                 detailRail(detail, transcript: transcript)
             }
             .frame(maxHeight: .infinity)
@@ -161,13 +168,9 @@ private extension MeetingDetailView {
         _ detail: MeetingReviewReadModel,
         transcript: MeetingTranscriptContent
     ) -> some View {
-        let trust = MeetingDetailTrustValues.make(
-            detail: detail,
-            skillReceipts: model.state.skillReceipts,
-            presentation: presentation)
-        return MeetingDetailRailSection(
+        MeetingDetailRailSection(
             values: MeetingDetailRailValues(
-                trust: trust,
+                trust: MeetingDetailTrustValues.make(detail: detail),
                 hasHealth: detail.segments.contains { $0.speakerID != nil },
                 speakers: detail.speakers,
                 segments: detail.segments,
@@ -180,6 +183,7 @@ private extension MeetingDetailView {
                 transcriptRevision: detail.meeting.transcriptRevision,
                 hasPlayback: player != nil,
                 isRefreshingCompanion: flow.isRefreshingCompanion,
+                selectedTab: railTab,
                 presentation: presentation),
             actions: MeetingDetailRailActions(
                 retryProcessing: coordinator.retryProcessing,
@@ -189,7 +193,8 @@ private extension MeetingDetailView {
                 focusEvidence: focusEvidence,
                 copyAnswer: coordinator.copyAnswer,
                 refreshCompanionCards: { coordinator.refreshCompanionCards(detail) },
-                removeCompanionCard: coordinator.removeCompanionCard))
+                removeCompanionCard: coordinator.removeCompanionCard,
+                selectTab: { railTab = $0 }))
     }
 
     @ViewBuilder
@@ -249,12 +254,7 @@ private extension MeetingDetailView {
                 alternateEngine: coordinator.alternateEngine,
                 presentation: presentation),
             actions: MeetingDetailNotesActions(
-                enhance: { language, engine in
-                    coordinator.enhanceNotes(
-                        language: language,
-                        engine: engine,
-                        detail: detail)
-                }))
+                enhance: { coordinator.enhanceNotes(language: $0, engine: $1, detail: detail) }))
     }
 
     private func commitmentInboxSection(
@@ -334,16 +334,10 @@ private extension MeetingDetailView {
                 skillOffers: model.state.skillOffers),
             actions: MeetingDetailActionActions(
                 startRefine: { coordinator.startRefine(detail) },
-                startSpanishRefine: {
-                    coordinator.startRefine(detail, languagePolicy: .fixed(.spanish))
-                },
-                startEnglishRefine: {
-                    coordinator.startRefine(detail, languagePolicy: .fixed(.english))
-                },
+                startSpanishRefine: { coordinator.startRefine(detail, languagePolicy: .fixed(.spanish)) },
+                startEnglishRefine: { coordinator.startRefine(detail, languagePolicy: .fixed(.english)) },
                 cancelRefine: sceneActions.cancelRefine,
-                setIncludeCorrectionProvenance: {
-                    flow.includeCorrectionProvenance = $0
-                },
+                setIncludeCorrectionProvenance: { flow.includeCorrectionProvenance = $0 },
                 export: { coordinator.handleExportAction($0, detail: detail) },
                 deleteMeeting: { Task { await deleteMeeting() } },
                 openSkillOffer: { coordinator.openSkillOffer($0, detail: detail) },
@@ -385,12 +379,7 @@ private extension MeetingDetailView {
         MeetingDetailFlowActions(
             renameMeeting: { coordinator.renameMeeting(detail.meeting, title: $0) },
             renameSpeaker: coordinator.renameSpeaker,
-            createStructure: { recipe in
-                coordinator.createStructure(
-                    recipe,
-                    detail: detail,
-                    summary: summary)
-            },
+            createStructure: { coordinator.createStructure($0, detail: detail, summary: summary) },
             publishGist: coordinator.publishGist,
             linkPerson: coordinator.linkPerson,
             clearRefine: sceneActions.clearRefine,

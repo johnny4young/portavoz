@@ -543,7 +543,7 @@ public struct LiveCompanion: Sendable {
             let response = try await session.respond(
                 to: "Caption: \"\(candidate)\"",
                 generating: DetectedQuestion.self,
-                options: GenerationOptions(sampling: .greedy))
+                options: .greedy())
             return response.content
         }
     }
@@ -572,7 +572,7 @@ public struct LiveCompanion: Sendable {
         return try await IntelligenceScheduler.shared.run(.interactive) {
             try await session.respond(
                 to: question,
-                options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 220)
+                options: .greedy(maximumResponseTokens: 220)
             ).content
         }
     }

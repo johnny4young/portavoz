@@ -30,7 +30,9 @@ final class HomeUITests: PortavozUITestCase {
             .matching(NSPredicate(format: "identifier BEGINSWITH 'home-recent-'"))
             .firstMatch
         XCTAssertTrue(recent.waitForExistenceFast(timeout: 10))
-        for element in [upcoming, todo, recent, app.buttons["home-ask-chip-0"], app.control(withIdentifier: "home-stat-open")] {
+        let askField = app.control(withIdentifier: "home-ask-field")
+        XCTAssertTrue(askField.waitForExistenceFast(timeout: 5), "Ask is one field on Today")
+        for element in [upcoming, todo, recent, app.buttons["home-ask-chip-0"], askField] {
             XCTAssertTrue(element.exists, "\(element) must render")
             XCTAssertTrue(window.contains(element.frame), "\(element) must sit above the fold")
         }

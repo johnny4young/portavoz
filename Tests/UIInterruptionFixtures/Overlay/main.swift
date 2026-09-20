@@ -35,6 +35,11 @@ final class OverlayDelegate: NSObject, NSApplicationDelegate {
         window.contentView!.addSubview(choice)
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        // Launch latency belongs to fixture preparation, not to the behaviour
+        // under test. Publish an explicit readiness receipt so a control waits
+        // for this owner instead of polling another process's window.
+        do { try Data().write(to: URL(fileURLWithPath: args[4]).appendingPathComponent("overlay-ready")) }
+        catch { exit(74) }
     }
 
     @objc private func choiceMade() {

@@ -16,7 +16,7 @@ extension MeetingDetailModel {
                 "The transcript changed. Regenerate the summary before creating an issue."))
         } catch {
             recordLastActionError(L10n.text(
-                "This action item does not have current evidence for an issue draft."))
+                "This action item has no current source for an issue draft."))
         }
         return nil
     }

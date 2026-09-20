@@ -614,7 +614,7 @@ extension ArchitectureDependencyTests {
             "BundledLiveQuestionDetector.resourceIsLoadable"))
         XCTAssertTrue(settings.contains("settings-apuntador-enabled"))
         XCTAssertTrue(settings.contains(
-            "the bundled bilingual detector works fully offline"))
+            "On macOS Sequoia, cards show the question only."))
         XCTAssertTrue(packager.contains("Portavoz_IntelligenceKit.bundle"))
         XCTAssertTrue(packager.contains(
             "PortavozLiveQuestionClassifier.mlmodelc"))

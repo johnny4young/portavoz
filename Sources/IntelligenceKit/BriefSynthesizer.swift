@@ -38,7 +38,7 @@ public enum BriefSynthesizer {
                 try await session.respond(
                     to: "Context:\n\(context)\n\nUpcoming meeting: \(eventTitle)",
                     generating: GeneratedBrief.self,
-                    options: GenerationOptions(sampling: .greedy)
+                    options: .greedy()
                 ).content
             }
         guard let generated else { return [] }

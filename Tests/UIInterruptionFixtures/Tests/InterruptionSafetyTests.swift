@@ -6,6 +6,10 @@ import XCTest
 /// product failures. Both use the real shared base's installation call site.
 final class InterruptionSafetyTests: PortavozUITestCase {
     private var ownedRoot: URL?
+    /// Launching a second synthetic app is fixture preparation, not the
+    /// behaviour under test, so it gets a generous readiness budget. No
+    /// admission threshold, effect or cleanup requirement changes with it.
+    private let readinessTimeout: TimeInterval = 15
 
     override var keyboardReceiverBundleIdentifier: String { "app.portavoz.testing.interruption-proof" }
 
@@ -98,6 +102,46 @@ final class InterruptionSafetyTests: PortavozUITestCase {
         XCTFail("FIXTURE_TARGET_CONTINUED")
     }
 
+    func testAppModalDialogChoiceIsObservable() throws {
+        let app = try launchOwnedApp(appModalDialog: true)
+        try armAppModalDialog(app)
+        let editor = app.dialogs.textFields["proof-dialog-editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5), "a runModal alert must be exposed as a dialog")
+        editor.click()
+        typeText("Owner’s plan", in: app, modalAnchor: "proof-dialog-editor")
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { editor.value as? String == "Owner’s plan" })
+        app.dialogs.buttons["proof-dialog-choice"].click()
+        let effects = try XCTUnwrap(ProcessInfo.processInfo.environment["PROOF_EFFECTS_ROOT"])
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            FileManager.default.fileExists(atPath: effects + "/modal-choice")
+        })
+    }
+
+    func testSynchronousAppModalDialogInterruption() throws {
+        try exerciseAppModalDialogInterruption()
+    }
+
+    func testAsynchronousAppModalDialogInterruption() async throws {
+        await Task.yield()
+        try exerciseAppModalDialogInterruption()
+    }
+
+    private func exerciseAppModalDialogInterruption() throws {
+        let app = try launchOwnedApp(appModalDialog: true)
+        try armAppModalDialog(app)
+        print("FIXTURE_INTERRUPTION_READY")
+        typeText("proof\n", in: app)
+        XCTFail("FIXTURE_TARGET_CONTINUED")
+    }
+
+    private func armAppModalDialog(_ app: XCUIApplication) throws {
+        app.buttons["proof-arm"].click()
+        guard app.dialogs.staticTexts["Synthetic app-modal interruption"]
+            .waitForExistence(timeout: readinessTimeout) else {
+            throw NSError(domain: "FIXTURE_NOT_READY", code: 3)
+        }
+    }
+
     private func exerciseSameApplicationModalInterruption() throws {
         let app = try launchOwnedApp(sameApplicationModal: true)
         try armSameApplicationModal(app)
@@ -108,7 +152,8 @@ final class InterruptionSafetyTests: PortavozUITestCase {
 
     private func armSameApplicationModal(_ app: XCUIApplication) throws {
         app.buttons["proof-arm"].click()
-        guard app.staticTexts["Synthetic modal interruption"].waitForExistence(timeout: 5) else {
+        guard app.staticTexts["Synthetic modal interruption"]
+            .waitForExistence(timeout: readinessTimeout) else {
             throw NSError(domain: "FIXTURE_NOT_READY", code: 2)
         }
     }
@@ -129,7 +174,10 @@ final class InterruptionSafetyTests: PortavozUITestCase {
         })
     }
 
-    private func launchOwnedApp(sameApplicationModal: Bool = false) throws -> XCUIApplication {
+    private func launchOwnedApp(
+        sameApplicationModal: Bool = false,
+        appModalDialog: Bool = false
+    ) throws -> XCUIApplication {
         let directory = try UITestStorage.makeDirectory()
         ownedRoot = directory.deletingLastPathComponent()
         // Only a newly allocated public-synthetic fixture path is recorded.
@@ -137,6 +185,7 @@ final class InterruptionSafetyTests: PortavozUITestCase {
         let app = XCUIApplication()
         try UITestStorage.register(app)
         app.launchEnvironment["PROOF_SAME_APP_MODAL"] = sameApplicationModal ? "1" : "0"
+        app.launchEnvironment["PROOF_APP_MODAL_DIALOG"] = appModalDialog ? "1" : "0"
         app.launchEnvironment["PROOF_OVERLAY_EXECUTABLE"] =
             ProcessInfo.processInfo.environment["PROOF_OVERLAY_EXECUTABLE"]
         app.launchEnvironment["PROOF_EFFECTS_ROOT"] =
@@ -161,9 +210,14 @@ final class InterruptionSafetyTests: PortavozUITestCase {
 
     private func armInterruption(_ app: XCUIApplication) throws -> XCUIApplication {
         app.buttons["proof-arm"].click()
-        XCTAssertTrue(app.staticTexts["Dialog armed"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Dialog armed"].waitForExistence(timeout: readinessTimeout))
+        let effects = try XCTUnwrap(ProcessInfo.processInfo.environment["PROOF_EFFECTS_ROOT"])
+        guard waitForUITestCondition(timeout: readinessTimeout, {
+            FileManager.default.fileExists(atPath: effects + "/overlay-ready")
+        }) else { throw NSError(domain: "FIXTURE_NOT_READY", code: 1) }
         let overlay = XCUIApplication(bundleIdentifier: "app.portavoz.testing.interruption-overlay")
-        guard overlay.windows["Synthetic interruption owner"].waitForExistence(timeout: 5) else {
+        guard overlay.windows["Synthetic interruption owner"]
+            .waitForExistence(timeout: readinessTimeout) else {
             throw NSError(domain: "FIXTURE_NOT_READY", code: 1)
         }
         return overlay

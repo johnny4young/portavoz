@@ -145,8 +145,11 @@ final class LibraryUITests: PortavozUITestCase {
         }
         XCTAssertTrue(app.buttons["home-record"].isHittable)
         XCTAssertTrue(app.buttons["home-ask"].isHittable)
+        XCTAssertTrue(
+            app.control(withIdentifier: "library-record-menu").exists,
+            "Import lives behind the record button's menu, not in the navigation")
         let navigation = [
-            "library-import-audio-button", "library-home-button", "library-ask-button",
+            "library-home-button", "library-ask-button",
             "library-insights-button", "library-commitment-radar-button"
         ].map { app.buttons[$0] }
         for button in navigation {
@@ -163,6 +166,45 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(app.control(withIdentifier: "ask-question-field").waitForExistenceFast(timeout: 5))
         XCTAssertTrue(app.buttons["library-ask-button"].isSelected)
         XCTAssertFalse(app.buttons["library-insights-button"].isSelected)
+    }
+
+    @MainActor
+    func testPrivacyChipOpensTheActivityLogInYourData() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+
+        func openActivity() {
+            let chip = app.buttons["library-privacy-chip"]
+            XCTAssertTrue(chip.waitForExistenceFast(timeout: 10))
+            XCTAssertTrue(chip.waitForStableFrame(timeout: 10))
+            chip.click()
+            XCTAssertTrue(
+                app.control(withIdentifier: "library-privacy-note").waitForExistenceFast(timeout: 5),
+                "the chip must open its short privacy note")
+            let seeActivity = app.buttons["library-privacy-activity"]
+            XCTAssertTrue(seeActivity.waitForHittable(timeout: 5))
+            seeActivity.click()
+            XCTAssertTrue(
+                app.control(withIdentifier: "settings-ledger-audio").waitForExistenceFast(timeout: 10),
+                "See activity must land on Your data, where the activity log lives")
+            XCTAssertTrue(app.buttons["settings-category-data"].isSelected)
+        }
+
+        // A fresh Settings window.
+        openActivity()
+        // A window previously showing another pane. On a small display the
+        // Settings window covers the main window, so bring the main window
+        // forward (⌘`) before reaching for the chip; Settings stays open.
+        XCTAssertTrue(app.openSettingsCategory(
+            "settings-category-general", revealing: "settings-category-list"))
+        XCTAssertTrue(app.buttons["settings-category-general"].isSelected)
+        typeKey("`", modifierFlags: .command, in: app)
+        XCTAssertTrue(
+            app.buttons["library-privacy-chip"].waitForHittable(timeout: 10),
+            "the main window must be in front before the chip is used again")
+        openActivity()
     }
 
     @MainActor
@@ -321,12 +363,15 @@ final class LibraryUITests: PortavozUITestCase {
             "the fixture must enter the model-preparing state")
         let preparing = app.control(withIdentifier: "recording-transcript-deferred")
         XCTAssertTrue(preparing.waitForExistenceFast(timeout: 20))
-        let preparingPrefix = isSpanish
-            ? "El audio sigue guardándose correctamente."
-            : "Audio is safe."
         XCTAssertTrue(
-            preparing.label.contains(preparingPrefix),
-            "expected localized preparing copy, saw: \(preparing.label)")
+            app.control(withIdentifier: "recording-apuntador-state").exists,
+            "the assist panel must always say what Apuntador is doing")
+        let preparingPrefix = isSpanish
+            ? "Grabando. Los subtítulos empiezan"
+            : "Recording. Captions start"
+        XCTAssertTrue(
+            renderedText(of: preparing).contains(preparingPrefix),
+            "expected localized preparing copy, saw: \(renderedText(of: preparing))")
         XCTAssertTrue(
             app.continueLiveTranscriptionAttachFixture(),
             "the fixture must release the model-ready transition")
@@ -479,22 +524,22 @@ final class LibraryUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 5),
             "an added objective must appear in the checklist")
 
-        XCTAssertTrue(
-            app.control(withIdentifier: "recording-next-question").exists,
-            "the bar must offer the next-question action")
         XCTAssertTrue(app.control(withIdentifier: "recording-translation-picker").exists)
-        XCTAssertTrue(app.control(withIdentifier: "recording-hud").exists)
         XCTAssertTrue(
             app.control(withIdentifier: "recording-talk-balance")
                 .waitForExistenceFast(timeout: 8),
             "closed captions must surface the talk-balance cue")
-
-        let proactive = app.control(withIdentifier: "recording-proactive-assist")
-        XCTAssertTrue(proactive.exists)
         XCTAssertFalse(
             app.control(withIdentifier: "recording-assist-tab-proactive").exists,
             "proactive help must be off until this recording explicitly opts in")
-        proactive.click()
+
+        XCTAssertTrue(
+            app.recordingMoreItem("recording-next-question").exists,
+            "the More menu must offer the next-question action")
+        XCTAssertTrue(app.control(withIdentifier: "recording-hud").exists)
+        app.recordingMoreItem("recording-proactive-assist").click()
+        XCTAssertEqual(
+            app.dismissRecordingMorePanel(bundleIdentifier: keyboardReceiverBundleIdentifier), .admitted)
 
         // Suggestions only becomes a tab once this recording opts in.
         app.openAssistTab("proactive")
@@ -525,10 +570,16 @@ final class LibraryUITests: PortavozUITestCase {
         let running = isSpanish ? "Observando señales locales" : "Watching local signals"
         XCTAssertTrue(proactiveStatus.waitForLabelOrValue(running, timeout: 3))
 
-        proactive.click()
+        // One panel open for both flips: the switch stays put while the
+        // suggestions panel below it disappears and returns.
+        // Each flip goes through the helper: a slower host can close the
+        // panel between the two clicks, and the helper reopens it.
+        app.recordingMoreItem("recording-proactive-assist").click()
         XCTAssertTrue(proactivePanel.waitForDisappearance(timeout: 3))
-        proactive.click()
+        app.recordingMoreItem("recording-proactive-assist").click()
         XCTAssertTrue(proactivePanel.waitForExistenceFast(timeout: 3))
+        // The panel may stay open: the last assertion reads the suggestions
+        // panel underneath, and teardown terminates the app.
         XCTAssertFalse(
             objectiveSuggestion.exists,
             "re-enabling the same recording must not repeat an emitted evidence signal")
@@ -558,9 +609,9 @@ final class LibraryUITests: PortavozUITestCase {
             "a translated row must expose its own labeled visual boundary")
         let targetLanguageLabel =
             isSpanish ? "Traducción al inglés" : "English translation"
-        XCTAssertTrue(
-            app.staticTexts[targetLanguageLabel].exists,
-            "translated copy must visibly say which language it represents")
+        XCTAssertEqual(
+            translation.label, targetLanguageLabel,
+            "the translation mark must name its language for assistive technology")
         attachScreenshot(of: app, named: "recording-live-translation-rail")
     }
 
@@ -627,11 +678,16 @@ final class LibraryUITests: PortavozUITestCase {
         let search = app.textFields["library-search-field"]
         XCTAssertTrue(search.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(app.finishTextFieldEditing(identifier: "library-search-field", timeout: 5))
-        search.click()
+        // Prove the row is already visible before focusing search: the click can
+        // raise a native completion surface over the sidebar, which says
+        // nothing about the launch fast path under test.
         let visibleMeeting = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
             .firstMatch
-        XCTAssertTrue(visibleMeeting.isHittable, "exercise the already-visible launch fast path")
+        XCTAssertTrue(
+            visibleMeeting.waitForHittable(timeout: 5),
+            "exercise the already-visible launch fast path")
+        search.click()
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         // A normal key after launch readiness must not keep editing the search.
         // This tests actual responder ownership without private focus attributes

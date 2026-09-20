@@ -82,7 +82,7 @@ enum RecordingAssistTab: String, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .companion: L10n.text("Companion")
+        case .companion: L10n.text("Apuntador")
         case .objectives: L10n.text("Objectives")
         case .notes: L10n.text("Notes")
         case .interview: L10n.text("Interview")
@@ -93,12 +93,12 @@ enum RecordingAssistTab: String, CaseIterable, Identifiable, Sendable {
 
     var symbol: String {
         switch self {
-        case .companion: "questionmark.bubble.fill"
+        case .companion: PVSymbol.apuntador
         case .objectives: "target"
         case .notes: "square.and.pencil"
         case .interview: "person.wave.2"
         case .proactive: "lightbulb"
-        case .summary: "sparkles"
+        case .summary: PVSymbol.generate
         }
     }
 

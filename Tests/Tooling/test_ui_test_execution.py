@@ -88,12 +88,12 @@ class UITestExecutionTests(unittest.TestCase):
 
     def test_interruption_stop_cannot_be_hidden_by_worker_restart_or_success(self):
         for exit_status in (0, 65):
-            for cleanup in ("complete", "failed"):
+            for cleanup in ("complete", "failed", "absent"):
                 for case_count in (None, 0, 1):
                     with self.subTest(exit_status=exit_status, cleanup=cleanup, cases=case_count):
                         temporary, completed, document = self.run_writer(
                             exit_status=exit_status,
-                            log=f"PORTAVOZ_UI_INTERRUPTION_BLOCKED cleanup={cleanup}\n"
+                            log=f"PORTAVOZ_UI_INTERRUPTION_BLOCKED cleanup={cleanup} reason=keyboard-owner\n"
                                 "Test Suite passed. Executed 0 tests, with 0 failures.",
                             result=True,
                             runtime_cases=case_count,

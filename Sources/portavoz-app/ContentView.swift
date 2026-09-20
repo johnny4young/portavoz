@@ -66,6 +66,10 @@ struct ContentView: View {
                         meetingID: hit.meetingID,
                         timestamp: hit.startTime)
                     route = .meeting(hit.meetingID)
+                },
+                onOpenActivity: {
+                    services.pendingSettingsCategory = .data
+                    openSettings()
                 })
                 .navigationSplitViewColumnWidth(min: 260, ideal: 300)
                 .background { AuroraSidebarBackground() }
@@ -141,7 +145,7 @@ struct ContentView: View {
                 BackgroundWorkIndicator(
                     model: services.backgroundWork,
                     openCenter: {
-                        services.pendingSettingsCategory = .backgroundWork
+                        services.pendingSettingsCategory = .data
                         openSettings()
                     })
             }

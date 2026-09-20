@@ -16,9 +16,13 @@ final class InterviewAssistUITests: PortavozUITestCase {
         let isSpanish = record.label == "Nueva grabación"
         record.click()
 
-        let toggle = app.control(withIdentifier: "recording-interview-assist")
-        XCTAssertTrue(toggle.waitForExistenceFast(timeout: 15))
+        XCTAssertTrue(
+            app.control(withIdentifier: "recording-more").waitForExistenceFast(timeout: 15))
+        let toggle = app.recordingMoreItem("recording-interview-assist")
+        XCTAssertTrue(toggle.exists)
         toggle.click()
+        XCTAssertEqual(
+            app.dismissRecordingMorePanel(bundleIdentifier: keyboardReceiverBundleIdentifier), .admitted)
 
         // Interview becomes a tab once the recording opts in (D504).
         app.openAssistTab("interview")

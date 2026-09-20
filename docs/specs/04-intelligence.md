@@ -123,7 +123,7 @@ Requires macOS 26 + active Apple Intelligence (`unavailabilityReason()` provides
 **3B model budgets (measured, nonnegotiable):**
 - The 4096-token window counts EVERYTHING: instructions + prompt + guided-generation schema + output. Structured-pass material ≤ 3000 chars (`TranscriptFormatter.onDeviceReduceBudget`).
 - Recursive map-reduce: 4000-char chunks (`onDeviceChunkBudget`) → notes with `maximumResponseTokens: 250` (guarantees ≥4× compression per level → convergence; without the cap, it does NOT converge) → recurse until it fits; max depth 4. A 4500-character chunk reached 4089/4096 tokens on macOS 26.5.2 after OS-owned instructions/tokenization evolved, so it is no longer admissible. One oversized transcript line is hard-split in one forward Character-boundary traversal so it cannot bypass the cap or trigger repeated remainder scans. If the framework still reports `exceededContextWindowSize` for unusually dense Unicode or future tokenizer drift, only that map chunk is retried in fresh sessions at successively halved budgets down to a 500-character floor; cancellation and other generation failures are never retried.
-- **Always greedy decoding** (`GenerationOptions(sampling: .greedy)`): with sampling, the 3B invents action items (observed). Strict guidance: "solo compromisos explícitos, array vacío si no hubo".
+- **Always greedy decoding** (`GenerationOptions.greedy(maximumResponseTokens:)`, the one IntelligenceKit helper that picks the `sampling:` or `samplingMode:` initializer per compiler, D538): with sampling, the 3B invents action items (observed). Strict guidance: "solo compromisos explícitos, array vacío si no hubo".
 - FRESH session per chunk (sessions accumulate context and overflow on the second chunk).
 
 The canonical real-model preflight runs all six gated classes in the SwiftPM
@@ -2175,6 +2175,12 @@ message without attempting provider fallback.
 
 ## Live Apuntador (D26/D431) — bundled admission + provider-neutral serving
 
+The recording screen states the lane in one chip with four values: listening
+(detector and an answer engine available), questions only (detector without an
+answer engine), off (the recording has not opted in), unavailable (the bundled
+detector cannot load). The chip is presentation over the same admission and
+serving state described below; it never changes admission.
+
 A remote caption becomes a semantic candidate when the next row closes it or
 when the shared two-second silence endpointer observes no further delta. The
 pure `TurnEndpointPolicy` still rejects microphone rows, noise, low-confidence
@@ -2298,8 +2304,9 @@ released prefilter and Foundation Models adapters remain comparison controls;
 the added `bundled-question` adapter executes the real compiled model over the
 same complete fixture and can request target enforcement without gaining
 serving authority from measurement alone. SwiftPM copies the compiled resource
-into `Portavoz_IntelligenceKit.bundle`, and app packaging fails when it is
-absent. A deterministic bilingual real-app journey enables Apuntador through
+into `Portavoz_IntelligenceKit.bundle`, at the bundle root on Xcode 26 and
+under `Contents/Resources` with Xcode 27's Swift Build; packaging and the
+payload verifier accept either layout and fail when the model is in neither. A deterministic bilingual real-app journey enables Apuntador through
 volatile temporary-store preferences, emits one frozen public-synthetic remote
 question, exercises the bundled model, and expects the Sequoia question-only
 state. It never reads a private meeting or requires an installed generative

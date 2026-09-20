@@ -71,6 +71,11 @@ xcrun stapler validate "$APP_COPY"
 spctl -a -vvv -t exec "$APP_COPY"
 scripts/verify-cloudkit-capabilities.sh "$APP_COPY"
 
+# Only a copy whose signature, ticket and Gatekeeper verdict already passed is
+# executed. An install-unreadable or build-machine-dependent payload passes all
+# three, then ends the app at a user's first recording, so this gate runs last.
+scripts/verify-app-payload.sh "$APP_COPY"
+
 SOURCE_COMMIT="$({
   /usr/libexec/PlistBuddy \
     -c 'Print :PortavozSourceCommit' \

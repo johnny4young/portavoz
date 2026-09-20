@@ -432,9 +432,7 @@ public struct RAGAnswerer: RAGTextAnswering {
         return try await IntelligenceScheduler.shared.run(.interactive) {
             try await session.respond(
                 to: prompt.user,
-                options: GenerationOptions(
-                    sampling: .greedy,
-                    maximumResponseTokens: RAGAnswerPrompt.maximumResponseTokens)
+                options: .greedy(maximumResponseTokens: RAGAnswerPrompt.maximumResponseTokens)
             ).content
         }
     }
@@ -461,9 +459,7 @@ public struct RAGAnswerer: RAGTextAnswering {
         return try await IntelligenceScheduler.shared.run(.interactive) {
             let stream = session.streamResponse(
                 to: prompt.user,
-                options: GenerationOptions(
-                    sampling: .greedy,
-                    maximumResponseTokens: RAGAnswerPrompt.maximumResponseTokens))
+                options: .greedy(maximumResponseTokens: RAGAnswerPrompt.maximumResponseTokens))
             var finalText = ""
             for try await snapshot in stream {
                 try Task.checkCancellation()
@@ -490,9 +486,7 @@ public struct RAGAnswerer: RAGTextAnswering {
         return try await IntelligenceScheduler.shared.run(.interactive) {
             try await session.respond(
                 to: prompt.user,
-                options: GenerationOptions(
-                    sampling: .greedy,
-                    maximumResponseTokens: RAGAnswerPrompt.maximumResponseTokens)
+                options: .greedy(maximumResponseTokens: RAGAnswerPrompt.maximumResponseTokens)
             ).content
         }
     }
@@ -513,9 +507,7 @@ public struct RAGAnswerer: RAGTextAnswering {
         return try await IntelligenceScheduler.shared.run(.interactive) {
             let stream = session.streamResponse(
                 to: prompt.user,
-                options: GenerationOptions(
-                    sampling: .greedy,
-                    maximumResponseTokens: RAGAnswerPrompt.maximumResponseTokens))
+                options: .greedy(maximumResponseTokens: RAGAnswerPrompt.maximumResponseTokens))
             var finalText = ""
             for try await snapshot in stream {
                 try Task.checkCancellation()
@@ -542,9 +534,7 @@ public struct RAGAnswerer: RAGTextAnswering {
         return try await IntelligenceScheduler.shared.run(.interactive) {
             try await session.respond(
                 to: prompt.user,
-                options: GenerationOptions(
-                    sampling: .greedy,
-                    maximumResponseTokens: RAGAnswerPrompt.maximumResponseTokens)
+                options: .greedy(maximumResponseTokens: RAGAnswerPrompt.maximumResponseTokens)
             ).content
         }
     }
@@ -577,9 +567,7 @@ public struct RAGAnswerer: RAGTextAnswering {
         return try await IntelligenceScheduler.shared.run(.interactive) {
             try await session.respond(
                 to: prompt,
-                options: GenerationOptions(
-                    sampling: .greedy,
-                    maximumResponseTokens: 500)
+                options: .greedy(maximumResponseTokens: 500)
             ).content
         }
     }
@@ -602,7 +590,7 @@ public struct RAGAnswerer: RAGTextAnswering {
                 operation: {
                     try await session.respond(
                         to: question,
-                        options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 60)
+                        options: .greedy(maximumResponseTokens: 60)
                     ).content
                 })
         } catch is CancellationError {

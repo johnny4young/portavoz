@@ -32,7 +32,7 @@ struct AudioSection: View {
             Text(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "What Portavoz records besides your mic. Automatic captures your system audio, switching to recognized meeting apps on AirPods. Pick “The meeting app” to always record recognized call apps (Zoom, Meet, Teams, supported browsers) even without AirPods; their audio helpers are included, unrelated apps are not. If none is found, Portavoz falls back to all system audio."
+                "What to record besides your mic: Automatic picks system audio or the meeting app; Nothing records only your microphone."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

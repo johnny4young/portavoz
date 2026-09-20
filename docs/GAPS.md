@@ -127,6 +127,12 @@ Center metadata alone still cannot attribute a hosted alert to that crash.
 
 ### Compact-window scroll reachability remains unqualified
 
+The 1.1 layout removed the fixed 240-point artifacts box (the area now
+measures its material and caps at half the column) and moved the rail's
+sections behind lenses, which reduces the scrolling the compact geometry
+needed; the harness still does not force that geometry, so the limitation
+below stands as written.
+
 The ordinary bounded `revealVertically` helper can fail to reveal a correction
 control in a short transcript viewport. Wheel-response calibration and
 pending-input attribution were withdrawn after a compact real-app failure and
@@ -143,6 +149,19 @@ include composed delivery shapes and retain the existing finite interaction
 budgets. Do not infer that the underlying transcript write path is defective
 from a harness failure before activation, or claim physical macOS coverage from
 the ordinary-window catalog. See D533 for the separation boundary.
+
+### 1.1 layout items deliberately kept as they were
+
+The "sin ruido" pass (D536/D537) stopped short of four proposed changes, each
+for a reason the code records: the live Apuntador stays in the D504 split
+(captions above, assist panel below, user-owned divider) with a state chip
+rather than becoming a right-hand panel, because the split's floors, budgets
+and journeys are qualified and a side panel is not; the Automations pane keeps
+its history as a section rather than a tab, because thirteen journeys address
+receipts in the same pane; Ask keeps its By person / By topic segmented
+surfaces, because six journeys select them by identifier; and meeting-skill
+proposals stay in the detail action row rather than under the summary. Each is
+a presentation choice that can be revisited with its journeys.
 
 ### Native editor entry points retain independent evidence
 
@@ -177,8 +196,12 @@ check was then disproved by a synthetic same-app alert: a newline accepted its
 default choice without entering an interruption monitor.
 
 Process ownership plus an explicit sole-modal-contained anchor now covers
-thirteen native controls, including legitimate bilingual editing, foreign
-interruption, unexpected same-app modal and background-anchor rejection. Real
+sixteen native controls, including legitimate bilingual editing, foreign
+interruption, unexpected same-app sheet and app-modal dialog rejection, and
+background-anchor rejection. Two surfaces stay outside the rule: popovers, and
+a dialog nothing can click such as the floating Writing Tools affordance. An
+unexpected popover with a default button is therefore not refused, and an
+app-modal dialog whose hit point lies off-screen is not either. Real
 journeys use the same admitted dispatch and preserve exact values, confirmation
 and receipt assertions. Neither a focused journey nor these synthetic controls
 qualifies an earlier interrupted full invocation. The original requesting UI
@@ -458,7 +481,8 @@ explicitly `not-measured`; its resource receipt describes only the actual host
 that ran it. Those visible omissions and the other hardware profiles remain
 work/evidence rather than being converted into a local PASS claim.
 
-- **Portavoz 1.0.0 Homebrew install on clean Sequoia** (D74): `brew install --cask johnny4young/tap/portavoz` must install and launch the 1.0.0 public artifact on a Mac with no prior Portavoz receipt. The local v0.6.0 cask reproduction proved the outer DMG passed while the extracted app lacked a stapled ticket; the fixed release gate now rejects that state. Preserve `brew install --verbose --debug` output if any separate failure remains.
+- **First recording on a clean install** (D535): the shipped 1.0.0 artifact quits with a resource-bundle trap when a fresh Homebrew install starts a recording, reproduced from the published app. The fix, its packaging normalization and the new payload gate are implemented and verified locally against two real packaged apps; confirming the repaired artifact on a second physical Mac remains field evidence.
+- **Portavoz 1.1.0 Homebrew install on clean Sequoia** (D74/D535): `brew install --cask johnny4young/tap/portavoz` must install, launch and start one recording with the 1.1.0 public artifact on a Mac with no prior Portavoz receipt. The local v0.6.0 cask reproduction proved the outer DMG passed while the extracted app lacked a stapled ticket; the fixed release gate now rejects that state. Preserve `brew install --verbose --debug` output if any separate failure remains.
 - **Production private sync** (D97/D116): configure `iCloud.app.portavoz.mac`, deploy the production CloudKit schema, and issue an unexpired Developer ID profile with the exact production CloudKit and macOS push capabilities. On two clean Macs using one iCloud account, prove explicit future-change opt-in, separately confirmed existing-library seed, bidirectional edits, encrypted tombstone propagation, restart/retry, silent-push wake, sign-out/in, a real account switch requiring fresh consent, pause, and remove-this-Mac without deleting local meetings or remote records. Record the actual destination's complete-protection and backup-exclusion capabilities and verify that unsupported metadata omits only the unavailable key while `0600`, durable verification, and atomic publication remain intact. Reproduce Homebrew extraction and renew the profile before expiry. Do not market sync as field-proven until this matrix passes.
 - **Apuntador < 5 s** (D26/D72/D431): on physical Sequoia and Tahoe, a real meeting question must produce the bundled-detector card in < 5 s; also validate the "you were asked" detector (exact mention of your name → ping), question-only behavior when no answer engine exists, Tahoe on-device answers when Apple Intelligence is ready, and any explicitly configured BYOK general-knowledge answer with disclosure. Settings now exposes working offline detection on Sequoia without implying that the separate post-meeting refresh or on-device generated answers work there.
 - **Call-safe raw capture (D125)**: on both Sequoia and Tahoe, begin a call

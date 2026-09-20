@@ -21,7 +21,7 @@ struct MeetingBriefView: View {
                     dismiss()
                     route = .recording(brief.event)
                 } label: {
-                    Label("Record this meeting", systemImage: "record.circle")
+                    Label("Record this meeting", systemImage: PVSymbol.record)
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("brief-record-button")

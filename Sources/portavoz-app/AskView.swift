@@ -50,9 +50,12 @@ struct AskView: View {
         .onDisappear { model.cancelAllWork() }
     }
 
+    /// The question comes first: sources, then the field, then the answers,
+    /// so the entry never sits a page away from the last exchange.
     @ViewBuilder
     private var conversation: some View {
         sourcePolicy
+        inputBar
         Divider()
         if model.state.exchanges.isEmpty && !model.state.isAsking {
             ContentUnavailableView(
@@ -64,7 +67,6 @@ struct AskView: View {
         } else {
             exchangeList
         }
-        inputBar
     }
 
     private var surfacePicker: some View {
@@ -140,7 +142,7 @@ struct AskView: View {
                     .accessibilityIdentifier("ask-cancel")
                 }
                 if !model.state.pendingCitations.isEmpty {
-                    Text("Evidence available now")
+                    Text("Sources found")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     citationButtons(
@@ -148,7 +150,7 @@ struct AskView: View {
                         identifierPrefix: "ask-pending-citation")
                 }
                 if !model.state.pendingNoteCitations.isEmpty {
-                    Text("Evidence from your notes")
+                    Text("From your notes")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     noteCitationButtons(
@@ -195,31 +197,28 @@ struct AskView: View {
                     .accessibilityIdentifier(
                         "ask-generation-\(exchange.generationOutcome.rawValue)")
             }
-            if !exchange.citations.isEmpty {
-                Text("Sources")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                citationButtons(
-                    exchange.citations,
-                    identifierPrefix: "ask-citation-\(exchange.id.uuidString)")
-            }
-            if !exchange.noteCitations.isEmpty {
-                Text("Your note sources")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                noteCitationButtons(
-                    exchange.noteCitations,
-                    identifierPrefix:
-                        "ask-note-citation-\(exchange.id.uuidString)")
-            }
-            if !exchange.webCitations.isEmpty {
-                Text("Web sources")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                webCitationLinks(
-                    exchange.webCitations,
-                    identifierPrefix:
-                        "ask-web-citation-\(exchange.id.uuidString)")
+            if !exchange.citations.isEmpty || !exchange.noteCitations.isEmpty
+                || !exchange.webCitations.isEmpty {
+                // One line of sources per answer: meeting moments, your notes
+                // and web pages flow together; each keeps its own mark.
+                FlowLayout(spacing: 10, rowSpacing: 4) {
+                    Text("Sources")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    citationButtons(
+                        exchange.citations,
+                        identifierPrefix: "ask-citation-\(exchange.id.uuidString)")
+                    noteCitationButtons(
+                        exchange.noteCitations,
+                        identifierPrefix:
+                            "ask-note-citation-\(exchange.id.uuidString)")
+                    webCitationLinks(
+                        exchange.webCitations,
+                        identifierPrefix:
+                            "ask-web-citation-\(exchange.id.uuidString)")
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("ask-sources-\(exchange.id.uuidString)")
             }
             webFailureNotice(exchange.webSourceFailures)
         }
@@ -281,11 +280,11 @@ extension AskView {
     private func progressText(for phase: AskModel.PendingPhase) -> LocalizedStringKey {
         switch phase {
         case .findingEvidence:
-            "Finding exact evidence…"
+            "Finding exact matches…"
         case .refiningEvidence:
-            "Exact evidence found — checking related meaning…"
+            "Exact matches found, checking related ones…"
         case .generatingAnswer:
-            "Evidence ready — generating answer…"
+            "Sources ready, writing the answer…"
         }
     }
 
@@ -391,7 +390,7 @@ extension AskView {
             .accessibilityIdentifier("ask-source-meetings-loading")
         case .failed:
             HStack(spacing: 8) {
-                Label("Meeting list unavailable.", systemImage: "exclamationmark.triangle")
+                Label("Meeting list unavailable.", systemImage: PVSymbol.warning)
                 Button("Try again") { model.retrySourceMeetings() }
                     .accessibilityIdentifier("ask-source-meetings-retry")
             }

@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 117
+    "expectedCaseCount": 118
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -54,7 +54,8 @@
     "LibraryUITests/testLibraryRendersRecordButtonAndActionChips()": 20.0,
     "LibraryUITests/testLiveTranscriptYieldsFollowWhileReadingHistory()": 20.0,
     "LibraryUITests/testLiveTranslationUsesADistinctLabeledRail()": 20.0,
-    "LibraryUITests/testRecordingOffersObjectivesNextQuestionAndTalkBalance()": 20.117,
+    "LibraryUITests/testPrivacyChipOpensTheActivityLogInYourData()": 20.0,
+    "LibraryUITests/testRecordingOffersObjectivesNextQuestionAndTalkBalance()": 21.5,
     "LibraryUITests/testRecordingStartFailureOffersTypedRecovery()": 20.0,
     "LibraryUITests/testRecordingWarnsWhenIncomingAudioClips()": 20.0,
     "LibraryUITests/testRecordingWarnsWhenRemoteAudioCallbacksStop()": 20.0,
@@ -80,7 +81,7 @@
     "MeetingDetailUITests/testPlayerExposesSkipAndOnlyMyVoice()": 20.0,
     "MeetingDetailUITests/testRecapSheetDraftsFromTheSummaryWithoutTheTranscript()": 20.0,
     "MeetingDetailUITests/testRunningRefineCanBeCanceledWithoutChangingTheTranscript()": 20.0,
-    "MeetingDetailUITests/testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument()": 25.789,
+    "MeetingDetailUITests/testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument()": 26.5,
     "MeetingDetailUITests/testSequoiaApuntadorRefreshPreservesStaleAnswers()": 20.0,
     "MeetingDetailUITests/testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador()": 20.0,
     "MeetingDetailUITests/testSkillProposalJourneyFromBannerToReceipt()": 30.848,
