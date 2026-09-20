@@ -477,15 +477,6 @@ final class AppServices {
         memoryGraphProjectionSupervisor.kick()
     }
 
-    /// Explicit readiness for workflows that truly need both models.
-    func loadEnginesIfNeeded() async throws {
-        let liveSpeech = try await acquireLiveSpeechRuntime()
-        defer { _ = finishLiveSpeechRuntime(liveSpeech) }
-        let diarization = try await acquireDiarizationRuntime()
-        defer { _ = finishDiarizationRuntime(diarization) }
-        modelsState = .ready
-    }
-
     /// Drops idle speech-model weights. In-flight preparation owns its result
     /// until the workflow schedules a later release.
     func releaseRecordingEngines() {

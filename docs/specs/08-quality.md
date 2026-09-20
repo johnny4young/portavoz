@@ -175,6 +175,11 @@ the native gate passed. No general clipboard, real meeting, model download or mi
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
 
+The receiver is an Xcode-only application target. SwiftPM's shared `Tests`
+root excludes that directory explicitly, alongside the UI and interruption
+fixtures; strict package diagnostics must not treat its entry point as an
+unhandled unit-test resource.
+
 UI builds remain ad-hoc by default. A local owner may explicitly set both
 `UI_TEST_CODE_SIGN_IDENTITY` (the certificate's 40-character SHA-1 identifier)
 and `UI_TEST_DEVELOPMENT_TEAM` (the 10-character team ID) when invoking the

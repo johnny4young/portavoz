@@ -175,7 +175,8 @@ data into a field qualification.
 cancellation path for production and disposable tests. Its session dependencies
 provide audio preparation, the existing `LiveTranscriptionRuntime` lease,
 permission/destination/insertion effects, preferences and the capture clock.
-Production composition still acquires and finishes the shared live-speech lease;
+Explicit combined speech/diarization readiness stays in the live-speech
+composition extension. Production composition still acquires and finishes the shared live-speech lease;
 this seam neither selects a different engine nor moves platform types into Core.
 
 Temporary meeting-store composition never registers Carbon hotkeys or mouse
