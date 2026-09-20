@@ -79,6 +79,11 @@ Lightweight ADR format: each entry is a decision made, its context, and its rati
 
 ## D15 — M2 STT: FluidAudio pinned by minor + Parakeet v3 pinned by multi-artifact sha256
 
+> **Version requirement superseded by D516 (11 Sep 2026).** FluidAudio is
+> pinned to an exact patch release; the minor range below is historical.
+> Everything else in this decision — the multi-artifact sha256 registry,
+> the pinned `resolveBase` commit and the `folderName` rule — stands.
+
 **Context:** M2 needs on-device live and batch STT (D7). CoreML models are distributed as `.mlmodelc` bundles (directories of N files) in Hugging Face repos — a single `sha256` per model is insufficient.
 **Decision:** (1) FluidAudio as an SPM dependency with `.upToNextMinor(from: "0.15.4")` — it renames public APIs between minors. (2) The registry (`ModelDescriptor`) lists **every file** as `ModelArtifact {path, sha256, sizeBytes}` with `resolveBase` fixed to an exact commit (`…/resolve/<sha>`); `ModelStore` verifies size + sha256 of each download before the atomic move, and `verify()` re-hashes everything before loading. (3) Only the subset used by the v3 int8 loader is downloaded (Preprocessor/Encoder/Decoder/JointDecisionv3 + vocab = 483 MB, not the repo's 3 GB). The sha256 values come from the HF tree API (LFS provides sha256; small files are hashed manually when pinning).
 **Critical rule discovered:** the descriptor's `folderName` MUST be the name FluidAudio resolves (repo without `-coreml`, e.g. `parakeet-tdt-0.6b-v3`); with any other name FluidAudio **re-downloads the repo without verification** into a sibling directory, bypassing the registry. Protected by a test.
@@ -19488,9 +19493,19 @@ the upgrade. No engine default, window configuration, model weight, download
 consent, import/refine behavior or deployment floor changes with this pin.
 
 **Validation boundary.** Architecture tests check the manifest requirement,
-resolver version/revision, dependency consumers and all production imports.
-SwiftPM's evaluated manifest and the real build verify resolver admission;
-these checks do not independently qualify real-model accuracy or performance.
+resolver version/revision, dependency consumers and every import in `Sources`
+and `Tests`, including re-export forms. The requirement is the single source of
+truth: the tests read the version out of the manifest instead of repeating it,
+so an approved upgrade is a manifest edit plus a reviewed revision, not a hunt
+for literals. SwiftPM's evaluated manifest and the real build verify resolver
+admission; these checks do not independently qualify real-model accuracy or
+performance.
+
+**Accepted cost.** Freezing the engine means the gap to upstream grows, and
+upstream patches land on mechanisms Portavoz depends on. That lag and its
+re-evaluation trigger are tracked as gap T35 in docs/GAPS.md, not here.
+Dependabot's grouped Swift refresh excludes FluidAudio (`.github/dependabot.yml`)
+so an unrelated security update never arrives blocked by this pin.
 
 ## D523 — UI fixtures own explicit cross-process scratch, not runner containers
 

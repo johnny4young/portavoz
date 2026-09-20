@@ -25,8 +25,12 @@ let package = Package(
     ],
     dependencies: [
         // Parakeet ASR + pyannote diarization on CoreML/ANE (Apache-2.0).
-        // Exact: patch releases also change decoder/caption behavior. An
-        // upgrade requires matched ASR, diarization and resource evidence.
+        // Exact on purpose (D516): patch releases also change decoder and
+        // caption behavior, so an upgrade needs matched ASR, diarization and
+        // resource evidence. A minor bump is categorically riskier still —
+        // FluidAudio renames public types across minors (0.12 → 0.15 did).
+        // 0.15.5 shipped the upstream #732 type-checker fix that replaced our
+        // old revision pin.
         .package(
             url: "https://github.com/FluidInference/FluidAudio.git",
             exact: "0.15.6"),
