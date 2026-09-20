@@ -7770,8 +7770,10 @@ late action, dialog choice, cleanup failure, skipped/empty/extra cases and an
 exit-zero restart. Changes to the guard, keyboard, storage, wait or scratch
 sources, the fixture target, the execution classifier or their CI/Make owners
 select this once, as do explicit full bilingual local runs and full-suite
-dispatches; localization-only and other unrelated full-bilingual fallbacks do not. CI executes the controls in
-the product-builder job before publishing one reusable product build. Synthetic
+dispatches; localization-only and other unrelated full-bilingual fallbacks do not. CI executes the controls on a separate hosted Mac concurrently with the single
+product build. Locale jobs wait for both prerequisites; an unselected controls
+job must be skipped, while a selected job must succeed. The final classifier
+checks both states again before the exact-head verification anchor can publish. Synthetic
 fixtures request no microphone, authentication or accessibility permission.
 
 
@@ -7901,3 +7903,37 @@ preserve format-2 compatibility and reject unknown/private keys, wrong types,
 nonfinite or overflowing counters and duplicate ownership before publication.
 The existing redacted-support XCUITest also inspects host JSON and its disclosure;
 synthetic unit cases do not establish physical Sequoia/Tahoe or benchmark timing.
+
+### Publication state and render coverage without duplicate navigation
+
+The combined real-app journey keeps both reviewed/confirmed GitHub mutations,
+exact canonical document/URLs, localized consent boundaries, and both independently
+rendered Meeting Detail and Settings receipts. One final activity snapshot proves
+both Skill receipts and the exact localized operation/host multiset: the seeded
+summary event, one Gist, and one issue. Missing, overwritten, duplicate, or extra
+events fail. Settings waits for both identifiers and reads one window snapshot.
+Neither render site is replaced by a unit test.
+
+Intermediate publication state belongs to the actual adapter tests: immediately
+after each first publication, before replay or another action, they query real
+SQLite egress and the same `AppServices.loadSkillControlCenter` path Settings uses.
+They require the exact proposal, successful state, operation, destination and one
+receipt. Existing replay and changed-preview counterexamples remain. This removes
+a duplicated open/close of Activity, not a publication, receipt assertion, locale,
+screenshot, or runtime budget. Snapshot failures propagate instead of becoming
+empty or stale observations. Sheet readiness uses its actionable child rather
+than a separate ancestor-existence poll; content is still read from its required
+owning sheet snapshot. The asynchronously loaded offer menu retains an existence
+poll before its stable-hittability check: resolving it too early invokes XCTest's
+slower implicit lookup retry.
+
+### Nonreentrant interruption termination
+
+After owned cleanup, the interruption boundary writes its existing content-free
+receipt and exits the worker directly. Calling XCTest issue recording inside
+the callback can reenter asynchronous teardown before the callback returns;
+this was reproduced by the real asynchronous native control. The fixture
+validator still requires exactly one failed, non-skipped case, complete cleanup,
+the expected refusal reason, and no fallback/action effect. A timeout, empty
+worker restart, missing receipt or unexpected effect is not an accepted negative
+control. Positive controls still require normal successful action and teardown.

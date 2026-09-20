@@ -171,5 +171,92 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertNotIn("PREVIOUS_HEAD_SHA", workflow)
 
 
+class UIPrerequisiteTests(unittest.TestCase):
+    """Exercise the workflow's real final shell, not a duplicate Python policy."""
+
+    @classmethod
+    def setUpClass(cls):
+        import re
+        import textwrap
+
+        cls.workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text()
+        cls.jobs = dict(re.findall(
+            r"^  ([a-z][a-z-]+):\n(.*?)(?=^  [a-z][a-z-]+:\n|\Z)",
+            cls.workflow, re.MULTILINE | re.DOTALL))
+        final_step = cls.jobs["ui-test-gate"].split(
+            "      - name: Require selected evidence and allow an honest no-UI skip\n", 1)[1]
+        cls.shell = textwrap.dedent(final_step.split("        run: |\n", 1)[1])
+
+    def run_gate(self, **overrides):
+        import os
+        import subprocess
+
+        environment = dict(os.environ, SCOPE_RESULT="success", UI_REQUIRED="true",
+                           BUILD_RESULT="success", CONTROLS_REQUIRED="true",
+                           CONTROLS_RESULT="success", UI_RESULT="success",
+                           UI_VERIFIED="true", UI_STATE="passed")
+        environment.update(overrides)
+        return subprocess.run(["bash", "-euo", "pipefail", "-c", self.shell],
+                              env=environment, text=True, capture_output=True, timeout=5)
+
+    def test_native_and_product_builds_are_independent_single_owners(self):
+        native = self.jobs["interruption-controls"]
+        build = self.jobs["build-ui-products"]
+        for job in (native, build):
+            self.assertIn("    needs: scope\n", job)
+            self.assertIn("runs-on: macos-26", job)
+        self.assertIn("if: needs.scope.outputs.interruption_controls == 'true'", native)
+        self.assertEqual(native.count("run: make test-ui-interruption-safety "), 1)
+        self.assertNotIn("test-ui-build", native)
+        self.assertNotIn("test-ui-interruption-safety", build)
+        self.assertEqual(build.count("run: make test-ui-build"), 1)
+        self.assertIn("if: always()", native)
+        self.assertIn("name: ui-interruption-safety-${{ github.run_id }}", native)
+
+    def test_locales_join_both_prerequisites_even_when_native_is_skipped(self):
+        lane = self.jobs["scoped-ui-tests"]
+        self.assertIn("needs: [scope, build-ui-products, interruption-controls]", lane)
+        self.assertIn("always() && !cancelled()", lane)
+        self.assertIn("needs.build-ui-products.result == 'success'", lane)
+        self.assertIn("needs.interruption-controls.result == 'success'", lane)
+        self.assertIn("needs.interruption-controls.result == 'skipped'", lane)
+        gate = self.jobs["ui-test-gate"]
+        self.assertIn("needs: [scope, build-ui-products, interruption-controls, scoped-ui-tests]", gate)
+        self.assertIn("CONTROLS_REQUIRED: ${{ needs.scope.outputs.interruption_controls }}", gate)
+        self.assertIn("CONTROLS_RESULT: ${{ needs.interruption-controls.result }}", gate)
+        self.assertIn("needs.ui-test-gate.result == 'success'", self.jobs["verification-anchor"])
+
+    def test_actual_gate_rejects_every_invalid_native_outcome_even_with_green_ui(self):
+        states = ("success", "failure", "cancelled", "skipped", "", "neutral")
+        for required in ("true", "false", "", "TRUE"):
+            for result in states:
+                with self.subTest(required=required, result=result):
+                    accepted = (required, result) in (("true", "success"), ("false", "skipped"))
+                    run = self.run_gate(CONTROLS_REQUIRED=required, CONTROLS_RESULT=result)
+                    self.assertEqual(run.returncode == 0, accepted, run.stdout + run.stderr)
+                    if not accepted:
+                        self.assertIn("Native interruption controls contradict selection", run.stderr)
+
+    def test_no_ui_change_requires_no_native_work(self):
+        run = self.run_gate(UI_REQUIRED="false", CONTROLS_REQUIRED="false",
+                            CONTROLS_RESULT="skipped", BUILD_RESULT="skipped",
+                            UI_RESULT="skipped", UI_VERIFIED="", UI_STATE="")
+        self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_no_ui_selection_rejects_unexpected_native_work(self):
+        run = self.run_gate(UI_REQUIRED="false")
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn("cannot require native controls", run.stderr)
+
+    def test_other_failures_cannot_hide_behind_successful_native_controls(self):
+        for key in ("SCOPE_RESULT", "BUILD_RESULT", "UI_RESULT"):
+            for result in ("failure", "cancelled", "skipped", ""):
+                with self.subTest(key=key, result=result):
+                    run = self.run_gate(**{key: result})
+                    self.assertNotEqual(run.returncode, 0, run.stdout)
+        run = self.run_gate(UI_STATE="passed", UI_VERIFIED="false")
+        self.assertNotEqual(run.returncode, 0, run.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

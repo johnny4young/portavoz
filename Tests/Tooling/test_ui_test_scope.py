@@ -1,4 +1,5 @@
 import hashlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -339,7 +340,9 @@ class UITestScopeTests(unittest.TestCase):
         self.assertIn('--spanish-outcome "$(outcome es)"', workflow)
         self.assertIn("runs-on: macos-26", workflow)
         self.assertIn("Xcode_26.6.app/Contents/Developer", workflow)
-        self.assertEqual(workflow.count("scripts/install-ci-xcodegen.sh"), 1)
+        for job in ("interruption-controls", "build-ui-products"):
+            body = re.search(rf"(?ms)^  {job}:\n(.*?)(?=^  [a-z][a-z-]+:\n|\Z)", workflow).group(1)
+            self.assertEqual(body.count("scripts/install-ci-xcodegen.sh"), 1, job)
         self.assertNotIn("brew install xcodegen", workflow)
         artifact = workflow.index("Preserve ${{ matrix.locale }} UI evidence")
         gate = workflow.index("Classify functional evidence and hosted runtime drift")
