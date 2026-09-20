@@ -5842,6 +5842,26 @@ or rewrite the host's persistent Apuntador opt-in.
     assertion and is allowed only where the duplicate is genuinely reachable
     and the collision policy is the intended behavior.
 
+## Reviewed speech-engine dependency
+
+The Swift package requires an exact FluidAudio release; the recorded decision in
+docs/DECISIONS.md owns the version and the review an upgrade requires, and
+docs/GAPS.md tracks the resulting distance from upstream. Vendor types enter
+production only through the existing transcription and diarization adapters:
+`ParakeetEngine`, `ParakeetSegmentMapper`,
+`NemotronLatin1120Engine`, `PyannoteDiarizer` and `DiarizationEvaluation`. Core,
+ApplicationKit and executable presentation consume Portavoz contracts instead. In
+the test tree the vendor import is confined to the two engine suites,
+`TranscriptionTests` and `NemotronLatin1120Tests`.
+
+The checked-in resolver revision and the architectural import inventory are tested
+together, over `Sources` and `Tests`, against code with comments and string
+literals elided, and re-export forms (`@_exported`/`public import`, a public
+typealias onto a vendor type) are rejected outright. A dependency refresh cannot
+silently move the recognized engine version, spread vendor imports through the
+application, or smuggle them in behind a re-export. Model artifact hashes and
+active-use ownership remain separate existing contracts.
+
 ## Runtime composition facts
 
 The following facts are part of the implemented architecture and are not hidden

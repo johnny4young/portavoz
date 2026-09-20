@@ -10,6 +10,13 @@ updates:
       swift-dependencies:
         patterns:
           - "*"
+        exclude-patterns:
+          - "*FluidAudio*"
+    ignore:
+      # D516: the speech engine moves only through an explicit review with
+      # matched recognition, diarization and resource evidence. Excluding it
+      # from the grouped refresh keeps an unrelated security update mergeable.
+      - dependency-name: "*FluidAudio*"
     labels:
       - dependencies
       - swift
