@@ -2575,12 +2575,53 @@ answer, app-panel-only screenshot, and exact three-second citation seek (D100).
 
 `MenuBarExtra(isInserted:)` bound to `@AppStorage("menuBarEnabled")` (toggle in Settings → Menu bar, on by default): template icon `waveform.and.mic` that changes to `record.circle.fill` while recording — the "¿estoy grabando?" at a glance. Menu: Start/Stop (Start fronts the value-scoped primary window via `openWindow(id: "main", value: .primary)` + `pendingRoute = .recording(nil)`; Stop calls shared controller), Dictate (only with dictation enabled), Open Portavoz, Launch at login (`SMAppService.mainApp` — requires /Applications, which is the installation story), Quit. **Architectural precondition**: `RecordingController` moved from `@State` of RecordingView to `AppServices.recording` (shared) — view, HUD and menu bar observe THE SAME session and navigation never can orphan a recording (same fix as RefineService).
 
+## Host support snapshot (D520)
+
+The existing Your-data support-export action adds format-3 `environment.host`:
+physical RAM, optional current process footprint and cumulative CPU seconds,
+optional known thermal state, Low Power Mode, and a canonical
+closed-family residency snapshot. Each family carries lifecycle state, active
+lease count and an optional owner-measured footprint. Export neither acquires nor
+releases runtime leases. Missing process measurements are omitted rather than
+reported as zero. Governor memory pressure is not included: its initial nominal
+policy value is not a sampled host measurement. A future native thermal case is
+omitted, not converted to the governor's conservative fallback. Old reports
+without a host object still decode.
+
+Sampling happens only at the explicit export call site, after readiness reads;
+there is no persistent host history, polling or network transmission. CPU seconds
+are not dictation latency. Existing capture/job timings remain independently
+identified. The disclosure and exported JSON are covered by the actual Settings
+XCUITest in both locales; physical-machine qualification remains separate.
+Exports also retain compatibility with field collection and reliability checks:
+both accept format 3 while preserving format-2 readers' existing workflows.
+The collector rejects unknown host fields and invalid typed measurements before
+creating an evidence package; it does not certify an unobserved real-world check.
+
 ## Global dictation (Jul 2026)
 
 **Hold-to-talk (Jul 2026)**: `GlobalHotkey` listens to kEventHotKeyPressed AND kEventHotKeyReleased (`GetEventKind` in same handler). Gesture without setting: a TAP (release < 0.5 s) preserves toggle; HOLD combination while speaking and release delivers at release — walkie-talkie. Verified E2E: hold of 2.5 s opens panel on press and closes only on release.
 
-**Configurable hotkey (Jul 2026)**: `HotkeySetting` (keyCode + Carbon mask + label, AppStorage; default ⌥⌘D) + `HotkeyRecorder` in Settings (NSEvent local monitor captures next combo; Esc cancels; combos WITHOUT ⌘/⌥ rejected with beep — single letter as global hotkey would hijack typing). `syncHotkey` now always unregister-first so new combo applies live. Verified E2E: record ⌃⌥⌘M and trigger opens panel.
- — ⌥⌘D in any app
+**Configurable hotkey**: `HotkeySetting` stores a key code, Carbon modifier mask
+and display label in UserDefaults (default ⌥⌘D). The local `HotkeyRecorder`
+requires Command or Option; Escape cancels. Return, Tab, Delete and function
+keys retain their existing bindings but display readable key glyphs. Restoration
+rejects booleans, strings masquerading as integers, fractions, negatives,
+out-of-range key codes, unsupported modifier bits and missing/malformed labels.
+A corrupt saved combination uses the default without silently writing over the
+saved values; Settings shows the fallback and an explicit default-repair action.
+An explicit edit writes just those three preferences and removes only their
+higher-priority startup overrides, so repair takes effect in the same process.
+
+`DictationShortcut` owns the observable binding and its exact registration handle
+on MainActor. Each rebind unregisters the previous handle and invalidates its
+callbacks before registering. Carbon requests exclusive ownership; failure is
+shown as unavailable, not asserted to be a particular OS conflict. Settings
+provides Retry and the recorder, and help always follows the selected binding.
+Neither recovery action begins capture or requests microphone/Accessibility
+permission. There is no automatic retry loop. Ordinary temporary-store launches
+register neither Carbon hotkeys nor the mouse event tap; the explicit shortcut
+fixture exercises failed registration and recovery with an inert registrar.
 
 Surface validated by MacParakeet: global hotkey → speak → hotkey again → text written where cursor is. `GlobalHotkey` uses Carbon `RegisterEventHotKey` — the only API consuming the keystroke without Accessibility permission — and is registered from app initialization so it survives without a window. `DictationController` owns one process-scoped, UUID-fenced session: mic → Parakeet streaming with custom vocabulary → the shared `CaptionCoalescer`; no meeting, database row, or audio file is created. The non-activating `DictationPanel` shows live text and offers explicit cancellation.
 
@@ -2899,6 +2940,50 @@ exercises this same production path in the durable-resume XCUITest (D63).
   the publishing credential, or construct the publisher/network gateway.
 
 **SettingsView (⌘,)**: Language (use system language or force English/Spanish, saved in `@AppStorage("app-language")`, applies `\.locale` live to `ContentView` and `SettingsView`) · Intelligence language policies (`transcriptionLanguage`: "Auto-detect" / "English" / "Español" for recognition only; `summaryLanguage`: "Meeting language" / "English" / "Español" for generated output only) · capability-aware Summary engine selection whose localized recommendation action is prominent and whose unavailable Apple state names Ollama/MLX recovery · proactive Whisper Turbo/Compact rows with select/download/retry/delete, background preparation progress that says download occurs only when needed, stable `settings-whisper-*` accessibility identifiers, and full catalog-integrity verification before any model is shown as downloaded (D71/D113). Whisper artifacts live under user Application Support rather than either app bundle, so Dev reinstall and normal application updates preserve them · Audio (always-on call-safe raw capture status, preferred mic with visible fallback, capture mode auto/app/system and disclosure of scope; no VPIO/AEC recording toggle, D125) · Recordings (configurable folder with migration and progress) · Titles (template with help popover of tokens, insertable chips, `Reset` button, and live preview) · Vocabulary (list editor: Enter adds, − removes) · My voice (enroll 12 s / delete — destroys file+key) · Apuntador activation/status (enabled here or from recording only when the macOS 26 Apple classifier is available; Sequoia explains the requirement while retaining Mirror) · External model BYOK (endpoint/model in defaults, key through the async application secret boundary into this-device-only Keychain, answer-provider opt-in disabled until everything and the Apuntador classifier are available; deleting key turns it off — spec 04) · GitHub (same injected secret boundary) · explicit local redacted support export in Your data (`settings-export-diagnostics`, D76) · whole-library Markdown backup with the native `NSOpenPanel`, visible progress, localized complete/partial/fatal status, bounded bookmark access plus a private publication/failure journal, and no Store or IntegrationsKit coordination in SwiftUI (`settings-export-all-button`, `settings-backup-progress`, `settings-backup-status`, D99/D180–D189). A one-shot app route lets any feature open an existing or new Settings window at an exact category (D72). `AppServices` is the sole app constructor of PlatformKit security and permission adapters; onboarding renders permission state and invokes app adapters rather than importing AVFoundation or EventKit.
+
+## Portable settings contract
+
+The version-one `portavoz-settings` envelope accepts only `format`, `version`
+and `settings`. Settings use nine semantic allowlisted keys rather than a dump
+of the app preference domain: interface/recognition/summary/dictation language,
+menu-bar visibility, title template, vocabulary, filler removal and replacements.
+Unknown settings, future versions, wrong scalar types, malformed replacement
+JSON, nulls, NUL text and out-of-bound content are rejected. The whole file is
+bounded to 1 MiB, each text value to 64 KiB, and replacement collections to 1,000
+rules, including after merging. Exported vocabulary and replacements may contain
+user-authored text; this is not a redacted support artifact.
+
+Preparing a review performs no writes. Incoming vocabulary and replacements
+merge with existing collections; non-conflicting local entries remain and an
+incoming replacement wins only for its matching case-insensitive trigger through
+the existing dictation codec. Ordered normalized rules and merged vocabulary
+terms determine whether a collection changed, not JSON key order, whitespace or
+Unicode escapes. Empty or equivalent imports preserve the original stored text
+and show the no-change status without offering Apply. Other incoming values
+replace only their own key.
+The write adapter rejects a changed portable snapshot or active capture before
+any preference mutation. It preserves unrelated preferences and startup overrides;
+an explicit production import supersedes only its changed keys' overrides.
+Temporary composition changes only volatile preferences. Settings → Your data
+offers explicit Export/Import preferences actions. Native panels choose one JSON
+document; cancelling file selection performs no write. The review shows full
+current and resulting values, including merged collections. Apply rechecks the
+portable snapshot and recording/dictation activity synchronously at mutation.
+The sidebar observes the app-language preference directly and passes its value
+to shared localization for row titles, hints and category filtering. Prelocalized
+strings do not inherit SwiftUI locale invalidation by themselves. Updating the
+language preserves the current category, query and review rather than remounting
+Settings. The live UI check targets the selected sidebar button, not the General
+pane title that is absent while Your data is open.
+Stale/capture failures keep the review open with an actionable explanation;
+Cancel/Escape discard it. Late file reads cannot reopen a cancelled review.
+
+File IO runs off MainActor. Reads are bounded at the open descriptor, reject
+final symlinks and non-regular files, and never wait on a named pipe. Private
+same-directory staging publishes an owner-only export atomically; it does not
+claim disk-flush durability. No network operation or permission request is part
+of transfer. The native-panel bypass requires both temporary-store composition
+and the explicit settings-transfer fixture flag; ordinary launches ignore it.
 
 ## Verified in real world (Jul 2026)
 

@@ -19507,6 +19507,120 @@ re-evaluation trigger are tracked as gap T35 in docs/GAPS.md, not here.
 Dependabot's grouped Swift refresh excludes FluidAudio (`.github/dependabot.yml`)
 so an unrelated security update never arrives blocked by this pin.
 
+## D517 — Make shortcut restoration and registration recoverable
+
+**Date:** 2026-09-11
+
+**Context.** Persisted key integers were coerced through UserDefaults and then
+converted to UInt32, allowing a negative or oversized value to terminate launch.
+A bare saved key bypassed the recorder's modifier rule; its characterization test
+failed on the actual restoration path. Carbon failure silently left an enabled
+feature without a trigger, while Settings always described the default chord.
+
+**Decision.** Validate types and representable bounds before conversion, apply
+the recorder's modifier contract on restoration, and retain existing special-key
+bindings through normalized display glyphs. Absent preferences are normal;
+corrupt preferences use a visible fallback without automatic persistent repair.
+An explicit edit supersedes only the owned three startup overrides as well as
+writing the persisted setting. This is needed because writing a lower-priority
+domain alone cannot repair an active command-line override.
+
+Keep one MainActor observable registration owner under the dictation controller.
+Request exclusive Carbon ownership, expose unavailable state with explicit
+Retry/change/default recovery, unregister before rebind, and fence old callbacks.
+No timer competes for shortcuts and no recovery action starts audio. The view
+observes the current binding rather than caching another label. AppServices
+chooses the real registrar only outside temporary storage; test registration is
+an explicit temporary-composition fixture and never a production controller flag.
+
+**Boundary.** Registration failure does not identify which application or OS
+reservation caused it. Deterministic owner tests and actual Settings journeys
+cover recovery, not all physical keyboard layouts, global Carbon conflicts or
+ASR quality. Tap/hold timing, insertion, dictionary and language behavior remain
+unchanged; registration availability is not a claim that every downstream
+permission or model is ready.
+
+## D520 — Export host facts on demand through existing support ownership
+
+The support report already projects redacted capture and durable-processing
+facts, but omitted RAM, thermal conditions and current runtime ownership. Reuse
+that explicit local export instead of adding background history or a diagnostic
+service. Format 3 adds a typed host snapshot; older absent host fields remain
+absent. Core resource enums retain their meaning and gain closed Codable forms,
+not model/provider names or content-bearing metadata.
+
+PlatformKit samples only its own process, using the stable V0 counters on the
+deployment floor. The benchmark reuses that bridge with explicitly requested
+current extended counters; it must not substitute zero for missing energy or I/O.
+App composition reads its existing residency ledger. It does not export the
+pressure monitor: that owner publishes a nominal policy default before receiving
+an OS memory event, and an actual export test demonstrated that the default would
+be mislabeled as a host measurement. Unknown reads remain unknown, and duplicate
+or invalid family evidence is omitted instead of inventing an idle runtime.
+Export does not mutate the ledger or storage. Known native thermal states map
+directly to the closed vocabulary; a future state is omitted instead of becoming
+the governor's conservative fair fallback. Both boundaries have call-site tests.
+
+Cumulative CPU seconds, current process footprint and optional per-family
+measurements are distinct facts, not a latency benchmark or summed RAM estimate.
+A failing real AppServices export test first established the missing host object;
+regressions also enter the export sanitizer with malformed decoded observations.
+The real Settings export journey inspects the saved artifact rather than only
+checking the button. No automatic sharing or sampling history is introduced.
+
+The report format also belongs to its consumers. An actual AppServices export
+failed at the field collector even though exporter and collector unit suites
+were green: every collector fixture still used format 2. Both the collector and
+reliability metadata validator now admit formats 2 and 3. Host fields remain
+closed and strictly validated, not an arbitrary optional JSON escape hatch.
+Cross-language tests pass actual Swift exports and every typed residency state
+through collection and reliability validation; the synthetic result stays
+not-observed. Old reports and protocol-1 invocations remain supported.
+
+Native CPU validation uses `task_info(TASK_ABSOLUTETIME_INFO)` as the independent
+API around both production resource flavors and actual exported seconds. The
+earlier `getrusage` oracle failed on Sequoia because its thread-wise rounding and
+separate live/terminated snapshots invalidate a fixed quantization allowance.
+Replace that oracle, not production counters or numeric tolerances. Keep strict
+before/after bounds, test after native worker termination, and retain independent
+conversion so a wrong-unit mutation at the real adapter cannot pass merely
+because its pure helper is correct. This establishes API agreement, not physical
+hardware qualification or performance.
+
+## D521 — Transfer portable preferences through an explicit review
+
+**Date:** 2026-09-12
+
+A settings export is a user-owned text artifact, not a defaults-domain dump or
+a redacted diagnostic. Keep a versioned semantic allowlist and bounded decoding
+in ApplicationKit. It contains portable language, title, vocabulary and dictation
+text preferences, never credentials, consent, automatic capability activation,
+remote providers, hardware bindings or filesystem destinations. Configure those
+sensitive or host-specific choices explicitly on the destination Mac.
+
+Import prepares an immutable review without changing preferences. Merge local
+vocabulary and deterministic replacements instead of erasing unrelated entries;
+reuse the existing replacement codec so case-insensitive conflicts have the same
+meaning as the editor. Compare ordered semantic rules and vocabulary terms,
+not re-encoded strings: Foundation encoder key order is not stable across OS
+versions, and legacy whitespace or Unicode escapes do not imply changed rules.
+Keep original bytes for equivalent imports; keep exact snapshot comparison for
+stale-review admission, which is a separate conservative guarantee.
+Before applying, the MainActor app adapter rechecks the
+portable snapshot and capture admission next to its synchronous writes. A stale
+review must be prepared again, not silently rebased over a newer user choice.
+Only changed keys may supersede their startup overrides. Temporary-store
+composition stays volatile, and the adapter does not claim crash-atomic disk
+durability for UserDefaults. Native adapter tests must cover the persistent
+branch as well as isolated overrides; file and UI call sites require their own
+evidence rather than inheriting a pure codec's green result.
+
+The Settings sidebar observes app language for prelocalized rows and filtering.
+Do not assume that a SwiftUI environment locale change invalidates a value
+computed through an unobserved defaults read. Actual mounted-sidebar assertions
+must target the selected navigation button, not another pane's title; update
+labels in place rather than resetting Settings or discarding review state.
+
 ## D523 — UI fixtures own explicit cross-process scratch, not runner containers
 
 A real seeded launch blocked its main thread while creating synthetic audio.
@@ -19986,3 +20100,4 @@ resource bundles as `Contents/Resources` bundles instead of flat directories;
 resolves resources through `Bundle`, which reads either. A future Xcode that
 removes the old label deletes the `#else` branch in one file. Decoding behavior is unchanged: greedy
 everywhere, same token caps.
+

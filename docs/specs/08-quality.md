@@ -1,5 +1,34 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
+`PortableSettingsTests` exercises the real defaults adapter using private suites,
+including its persistent-write branch and startup-override precedence. Coverage
+includes exclusion of secrets/consents/host bindings, non-destructive vocabulary
+and replacement merge, Unicode and literal replacement syntax, capture beginning
+after preview, concurrent preference edits, replayed approval, future/unknown
+fields, scalar coercion, malformed collections, byte limits and empty imports.
+Legacy whitespace/reordered-key/Unicode-escaped JSON is tested at the actual
+write seam: equivalent collections retain exact bytes, while changed literal
+replacement text still applies.
+`PortableSettingsFileTests` reaches actual selected-file IO, including symlinks,
+FIFOs, empty/exact-limit/oversized files, private permissions, replacement and
+cancelled/failed-publication cleanup. `PortableSettingsObservationTests` checks
+real effective-value notifications in temporary and persistent-override branches,
+and preserves the shortcut-neutral Audio subtitle localization key.
+`SettingsTransferModelTests` reaches the real defaults
+adapter through injected IO for explicit approval, capture/stale rejection,
+cancelled late reads, duplicate actions, empty review and IO errors. The dedicated
+`settings-transfer` XCUITest scope exercises real-app Export → Review → Cancel →
+Import → Apply → Export and verifies the selected sidebar button's localized
+label before and after import without changing panes and the translated Audio
+category label, plus
+recovery from a rejected sensitive key followed by an empty collection import
+that must show no change and retain the original legacy JSON. File selection
+alone is injected; parsing,
+review, defaults mutation and file IO remain real. Native panel interaction and
+physical macOS compatibility are separate from these deterministic journeys.
+The Suggested Actions vocabulary ratchet checks category identity, title key and
+search behavior directly, not the source spelling of an eager localization call.
+
 Library presentation coverage retains the existing catalogue: the entry journey
 asserts full-width, non-overlapping labeled destinations and selected-state
 semantics, captures the light workspace, and enters Ask through its first-action
@@ -12,8 +41,26 @@ The Settings journey also checks that localized provider help retains Sequoia
 and Tahoe support plus the selected local engine, rather than stale Apple-only
 live-summary wording.
 
+Portable-preference UI journeys allocate input and output documents through the
+shared identity-owned `UITestStorage` cross-process scratch boundary. They use
+the throwing application factory and admit review-sheet Escape through the
+keyboard receiver guard; no runner-container path or raw keyboard bypass is
+needed for import/export coverage.
+
+Shortcut recovery coverage exercises stored preference decoding and the actual
+registration owner: malformed types, integer boundaries, Unicode and legacy
+special keys, failed registration, stale callbacks, rebind and disable. Settings
+journeys use a temporary-store-only rejected/inert registrar, exercise Retry,
+record a new native local key event, repair corrupt startup overrides and revisit
+the pane. They do not claim native Carbon conflict, microphone, ASR or cross-app
+insertion qualification. Global input hooks are absent from ordinary disposable
+launches. Per-journey budgets are declared before execution; adding these cases
+does not relax the full-suite or p95 limits.
+
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
+The combined catalog contains 122 UI cases, including both portable-settings
+and shortcut-recovery journeys; their existing time budgets remain unchanged.
 Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -196,7 +243,7 @@ local justification.
 | RecordingsLocationTests | 9: marker, fallback, resolve, resumable migration, and safe same-root aliases |
 | CoreTypesTests | Types + **TitleTemplate** + canonical `LanguageCode`, canonical person/alias normalization, independent transcript/summary policies, and backward-compatible role-separated Apuntador evidence resolution |
 | ResourceGovernorPolicyTests / ResourceGovernorCaptureExclusionTests / ResourceModelResidencyTests / AppResourceGovernorReleaseTests / ResourceWorkloadTests / IntelligenceSchedulerTests / TranscriptionSchedulerTests / SpotlightIndexerTests | Pure categorical admission/deferral/checkpoint/recovery and idle-model-eviction matrix; generation-fenced model load/use/release lifecycle, active-use exclusion, stable governor projection, and uninterpreted measured footprints; deterministic macOS memory/thermal mapping, stable idle-family dispatch, and last-use reconciliation outside the ledger lock; protected-capture state mirroring plus unknown-host idle-peer eviction, busy-peer deferral, standard-host parity, and post-release readmission for the Whisper/MLX pair; closed and stable workload taxonomy; matched success, cancellation, and relay behavior; payload-free intelligence queue versus inference; separate live/batch transcription classes with deterministic FIFO, already-cancelled rejection, and immediate queued-caller removal; and maintenance-only index reconciliation |
-| SupportDiagnosticsTests / LocalizationTests / EnglishSourceTests | Path/checksum/content-free support format v2 audio-channel health and transcript-count evidence plus one matched support-export workload; EN/ES String Catalogs, placeholders, `.lproj` export, public-source English hygiene (README/top-level tooling, scripts, `.github`, packaging, app source), and English explanatory prose throughout `docs/` |
+| SupportDiagnosticsTests / HostSupportDiagnosticsTests / LocalizationTests / EnglishSourceTests | Path/checksum/content-free support format v3 host resources, audio-channel health and transcript-count evidence plus one matched support-export workload; EN/ES String Catalogs, placeholders, `.lproj` export, public-source English hygiene (README/top-level tooling, scripts, `.github`, packaging, app source), and English explanatory prose throughout `docs/` |
 | SemanticCorpusIndexingTests / SemanticCorpusIndexingCoordinatorTests / SemanticCorpusIndexingSupervisorTests / AppResourceGovernorReleaseTests / RAGTests / MCPServerTests / VoiceIdentityTests / IntegrationsTests | Validated bounded/complete corpus persistence; admission pause without embedding; one-batch checkpoint commit, explicit policy suspension, durable missing-row resume, and protected-capture mapping across starting/active/stopping; one concurrent Library/background-maintenance flight, bounded coalescing, complete-demand precedence, last-waiter cancellation before persistence; serialized signal bursts with one rerun and no polling; disabled temporary-store ownership; capture-first runtime exclusion; installed-assets-only background preparation with no download; term-level lexical RRF, multi-term evidence, duplicate suppression, complete segment context, long-question broad-OR fallback, production-width semantic top-k, scalar-oracle equivalence, stable ties, safe limits, malformed/non-finite-vector exclusion, hybrid RAG fusion, MCP protocol, encrypted voiceprint/gallery round trips, missing/corrupt-key and unreadable-ciphertext preservation until explicit reset, and offline exporters |
 | ExactPathScaleBenchmarkTests / ExactPathMatrixTests / ExactPathCrossHostTests / ExactPathBaselineTests | Test-only Accelerate/sqlite-vec exact comparison at canonical scales; separated non-comparable build lifecycles; alternating query order; content-free schema-1 observation shape; sqlite-vec exact scan beyond the 4,096 KNN window; three-observation schema-2 host receipts with externally recomputable timing/agreement state; exact scalar/aggregate validation; duplicate-key, copied-observation, mixed-host, wrong-tier, non-finite, missing-scale, instability, top-hit/top-k-set disagreement, and visible non-blocking lower-rank drift; three-profile plus two-OS coverage; source/toolchain comparability; versioned within-host query ratios with zero denominators blocked as `not-comparable`; malformed versus blocked CLI outcomes; aggregate-only stdout scorecards; and digest/source-bound, clean-checkout, ignored-destination, owner-only, atomic, non-overwriting retention whose fixed research authority cannot select a product engine |
 | ParakeetIntegrationTests / NemotronLatin1120IntegrationTests + gated | Real models — Parakeet requires the canonical Release-configured `PORTAVOZ_MODEL_TESTS=1` lane; the optional non-serving challenger requires `PORTAVOZ_NEMOTRON_MODEL_TESTS=1`; both require the relevant model to be installed and `PORTAVOZ_TEST_WAV` (conversation/enrollment gates retain their existing Parakeet variables). Parakeet's arbitrary-WAV assertion and canonical runner output are content-free (D380) |
@@ -789,7 +836,7 @@ panel. The slice gate is 667 package tests (13 gated), strict SwiftLint is
 clean across 249 Swift source files, and all 23 XCUITest cases pass in English
 and Spanish (D76).
 
-The real-call protocol in `docs/FIELD-VALIDATION.md` revalidates every format-2
+The real-call protocol in `docs/FIELD-VALIDATION.md` revalidates every format-2/3
 support key and bounded value before atomically publishing a new owner-only
 evidence directory. `scripts/collect-field-evidence.py` rejects unknown fields,
 content-bearing additions, malformed counts/digests/timestamps, mismatched app
@@ -7807,3 +7854,41 @@ after the issue) because receipts moved behind the activity chip; the full
 English catalog measured 25.928 s against the former 25.789 s pin, and its
 budget is now 26.5 s. Both re-qualified budgets are the only budget changes of
 the 1.1 goal.
+
+## Host support export coverage
+
+`HostSupportDiagnosticsTests` enters actual temporary `AppServices` export with
+a populated library, checks the closed host field set and rejects meeting text
+or home paths. It exercises a failed process read without inventing zeros or
+consuming a resident runtime lease, decoded invalid CPU/duplicate/negative owner
+evidence at the exporter, legacy environment decoding, and real stable-prefix
+process reads. Another actual export installs the pressure monitor before its
+first event and rejects its nominal policy default as a host measurement. The
+composition/export boundary also admits all known thermal states while omitting
+a future raw state instead of reporting the governor's fair fallback.
+Resource probe tests retain the extended-counter contract.
+Native CPU-unit coverage brackets both `proc_pid_rusage` flavors with independent
+`task_info(TASK_ABSOLUTETIME_INFO)` totals and checks the actual exported CPU
+field against that API. Both include terminated threads and retain native Mach
+precision. The oracle converts without calling the production helper and uses
+strict before/after bounds: no tolerance or sleep compensates for a unit mismatch.
+A bounded native-worker lifecycle also exercises both resource flavors and the
+actual export after joining the workers. On Sequoia, `getrusage` rounds each live
+thread separately and reads terminated work in a different snapshot; neither a
+fixed microsecond allowance nor `CLOCK_PROCESS_CPUTIME_ID` (which delegates to
+`getrusage`) provides the required oracle. See Apple's
+[Sequoia task accounting](https://github.com/apple-oss-distributions/xnu/blob/xnu-11417.140.69/osfmk/kern/task.c#L5425-L5497)
+and [process-clock implementation](https://github.com/apple-oss-distributions/Libc/blob/Libc-1698.140.3/gen/clock_gettime.c).
+This is an independent API path over OS accounting, not an independent physical
+measurement. It supplements the pure Mach-timebase tests without claiming a
+latency benchmark or universal physical-host qualification.
+`HostSupportFieldEvidenceTests` sends the actual AppServices JSON, without
+rewriting its format or host fields, through collection and release reliability
+validation. It also serializes every typed residency state and family through
+the same consumers so a changed Swift vocabulary cannot silently drift from
+the Python allowlist. Its subprocess is bounded and all data is synthetic and
+temporary; the resulting field checks must remain not-observed. Tooling tests
+preserve format-2 compatibility and reject unknown/private keys, wrong types,
+nonfinite or overflowing counters and duplicate ownership before publication.
+The existing redacted-support XCUITest also inspects host JSON and its disclosure;
+synthetic unit cases do not establish physical Sequoia/Tahoe or benchmark timing.

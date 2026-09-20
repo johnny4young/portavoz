@@ -136,6 +136,7 @@ struct SettingsView: View {
                     BackgroundWorkCenterSection(
                         model: services.backgroundWork,
                         performAction: performBackgroundWorkAction)
+                    SettingsTransferSection()
                     SupportDiagnosticsSection()
                     BackupSection()
                     recordingsSection

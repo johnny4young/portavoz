@@ -4,9 +4,12 @@ import SwiftUI
 struct SettingsSidebar: View {
     @Binding var category: SettingsCategory?
     @Binding var query: String
+    @AppStorage(AppLanguage.storageKey) private var appLanguageRaw = AppLanguage.system.rawValue
+
+    private var language: AppLanguage { .fromStorage(appLanguageRaw) }
 
     private var filtered: [SettingsCategory] {
-        SettingsCategory.allCases.filter { $0.matches(query) }
+        SettingsCategory.allCases.filter { $0.matches(query, language: language) }
     }
 
     var body: some View {
@@ -56,9 +59,9 @@ struct SettingsSidebar: View {
                     .frame(width: 20)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(item.title)
+                    Text(L10n.text(item.titleKey, language: language))
                         .font(.body.weight(on ? .semibold : .regular))
-                    Text(item.subtitle)
+                    Text(L10n.text(item.subtitleKey, language: language))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
@@ -75,8 +78,8 @@ struct SettingsSidebar: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(Text(item.title))
-        .accessibilityHint(Text(item.subtitle))
+        .accessibilityLabel(Text(L10n.text(item.titleKey, language: language)))
+        .accessibilityHint(Text(L10n.text(item.subtitleKey, language: language)))
         .accessibilityAddTraits(on ? .isSelected : [])
         .accessibilityIdentifier("settings-category-\(item.rawValue)")
     }
