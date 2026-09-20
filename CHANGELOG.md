@@ -81,6 +81,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 ## September 12, 2026
 
 - **⌨️ Reliable dictation shortcuts** — recover unavailable shortcuts and keep on-screen help in sync with your chosen keys.
+- **🩺 Clearer support diagnostics** — export a private snapshot of RAM, CPU time, thermal state and model residency without sharing meeting content.
 
 ## September 10, 2026
 
