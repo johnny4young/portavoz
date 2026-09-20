@@ -90,9 +90,13 @@ extension ArchitectureDependencyTests {
         }
     }
 
+    /// - Parameter codeOnly: when true, comments and string literals are blanked
+    ///   out before matching, so prose that merely quotes the pattern (a doc
+    ///   comment, a regex written as a literal in a test) cannot trip a ratchet.
     static func sourceMatches(
         under relativeDirectory: String,
-        pattern: String
+        pattern: String,
+        codeOnly: Bool = false
     ) throws -> [String] {
         let root = repoRoot.appendingPathComponent(relativeDirectory)
         guard let enumerator = FileManager.default.enumerator(atPath: root.path) else {
@@ -103,8 +107,9 @@ extension ArchitectureDependencyTests {
             .filter { $0.hasSuffix(".swift") }
             .sorted()
             .compactMap { file in
-                let source = try String(
+                let contents = try String(
                     contentsOf: root.appendingPathComponent(file), encoding: .utf8)
+                let source = codeOnly ? SwiftSourceScanner.codeOnly(contents) : contents
                 let range = NSRange(source.startIndex..., in: source)
                 return regex.firstMatch(in: source, range: range) == nil ? nil : file
             }
@@ -216,6 +221,96 @@ extension ArchitectureDependencyTests {
             of: #"\basync\b"#,
             options: .regularExpression) == nil else { return nil }
         return String(declaration.dropFirst("func ".count).prefix { $0 != "(" })
+    }
+}
+
+/// Blanks out Swift comments and string literals so an architectural regex
+/// matches real code instead of prose. Elided characters become spaces and
+/// newlines are preserved, so line-anchored patterns keep working and reported
+/// offsets still line up with the original source. Raw strings (`#"…"#`) and
+/// multi-line literals are recognized, which is what keeps a regex written as a
+/// literal inside this suite from matching itself.
+enum SwiftSourceScanner {
+    static func codeOnly(_ source: String) -> String {
+        var output = ""
+        output.reserveCapacity(source.count)
+        var index = source.startIndex
+
+        while index < source.endIndex {
+            let rest = source[index...]
+            if rest.hasPrefix("//") {
+                let end = rest.firstIndex(of: "\n") ?? source.endIndex
+                index = blank(source[index..<end], into: &output)
+            } else if rest.hasPrefix("/*") {
+                index = blank(
+                    source[index..<endOfBlockComment(in: source, from: index)], into: &output)
+            } else if let end = endOfStringLiteral(in: source, from: index) {
+                index = blank(source[index..<end], into: &output)
+            } else {
+                output.append(source[index])
+                index = source.index(after: index)
+            }
+        }
+        return output
+    }
+
+    private static func blank(_ slice: Substring, into output: inout String) -> String.Index {
+        for character in slice { output.append(character == "\n" ? "\n" : " ") }
+        return slice.endIndex
+    }
+
+    /// Swift block comments nest, so the scan is depth-counted.
+    private static func endOfBlockComment(
+        in source: String, from start: String.Index
+    ) -> String.Index {
+        var depth = 0
+        var index = start
+        while index < source.endIndex {
+            let rest = source[index...]
+            if rest.hasPrefix("/*") {
+                depth += 1
+                index = source.index(index, offsetBy: 2)
+            } else if rest.hasPrefix("*/") {
+                depth -= 1
+                index = source.index(index, offsetBy: 2)
+                if depth == 0 { return index }
+            } else {
+                index = source.index(after: index)
+            }
+        }
+        return source.endIndex
+    }
+
+    /// The index just past a string literal starting at `start`, or nil when no
+    /// literal starts there. Covers `"…"`, `"""…"""` and any raw-string pound count.
+    private static func endOfStringLiteral(
+        in source: String, from start: String.Index
+    ) -> String.Index? {
+        var index = start
+        var pounds = 0
+        while index < source.endIndex, source[index] == "#" {
+            pounds += 1
+            index = source.index(after: index)
+        }
+        guard index < source.endIndex, source[index] == "\"" else { return nil }
+        let pads = String(repeating: "#", count: pounds)
+        let delimiter = source[index...].hasPrefix("\"\"\"") ? "\"\"\"" : "\""
+        let terminator = delimiter + pads
+        let escape = "\\" + pads
+        index = source.index(index, offsetBy: delimiter.count)
+        while index < source.endIndex {
+            let rest = source[index...]
+            if rest.hasPrefix(escape),
+                let afterEscape = source.index(
+                    index, offsetBy: escape.count + 1, limitedBy: source.endIndex) {
+                index = afterEscape
+            } else if rest.hasPrefix(terminator) {
+                return source.index(index, offsetBy: terminator.count)
+            } else {
+                index = source.index(after: index)
+            }
+        }
+        return source.endIndex
     }
 }
 

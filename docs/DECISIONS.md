@@ -79,6 +79,11 @@ Lightweight ADR format: each entry is a decision made, its context, and its rati
 
 ## D15 — M2 STT: FluidAudio pinned by minor + Parakeet v3 pinned by multi-artifact sha256
 
+> **Version requirement superseded by D516 (11 Sep 2026).** FluidAudio is
+> pinned to an exact patch release; the minor range below is historical.
+> Everything else in this decision — the multi-artifact sha256 registry,
+> the pinned `resolveBase` commit and the `folderName` rule — stands.
+
 **Context:** M2 needs on-device live and batch STT (D7). CoreML models are distributed as `.mlmodelc` bundles (directories of N files) in Hugging Face repos — a single `sha256` per model is insufficient.
 **Decision:** (1) FluidAudio as an SPM dependency with `.upToNextMinor(from: "0.15.4")` — it renames public APIs between minors. (2) The registry (`ModelDescriptor`) lists **every file** as `ModelArtifact {path, sha256, sizeBytes}` with `resolveBase` fixed to an exact commit (`…/resolve/<sha>`); `ModelStore` verifies size + sha256 of each download before the atomic move, and `verify()` re-hashes everything before loading. (3) Only the subset used by the v3 int8 loader is downloaded (Preprocessor/Encoder/Decoder/JointDecisionv3 + vocab = 483 MB, not the repo's 3 GB). The sha256 values come from the HF tree API (LFS provides sha256; small files are hashed manually when pinning).
 **Critical rule discovered:** the descriptor's `folderName` MUST be the name FluidAudio resolves (repo without `-coreml`, e.g. `parakeet-tdt-0.6b-v3`); with any other name FluidAudio **re-downloads the repo without verification** into a sibling directory, bypassing the registry. Protected by a test.
@@ -19473,6 +19478,34 @@ Library reentry, retry/discard and a held-write Stop handshake. Injected failure
 remain distinct from physical disk failure, and interrupted-process tests do
 not certify hardware power-loss behavior.
 
+## D516 — Require explicit review for speech-engine patch updates
+
+**Decision.** Pin FluidAudio to exact `0.15.6`, retaining the already checked-in
+revision `4dbf4f9f9a5ff3a53ade848d7ba4e3df13db859b`. This supersedes the minor-range
+requirement in D15: source compatibility is not a guarantee of identical decoder,
+caption or diarization behavior. Keep direct vendor imports in the five existing
+transcription/diarization adapter files and their current package targets.
+
+**Consequences.** An unrelated package refresh cannot admit a FluidAudio patch.
+Engine upgrades require an explicit manifest/resolution change plus matched
+recognition, diarization, latency and memory evidence; an evaluation may reject
+the upgrade. No engine default, window configuration, model weight, download
+consent, import/refine behavior or deployment floor changes with this pin.
+
+**Validation boundary.** Architecture tests check the manifest requirement,
+resolver version/revision, dependency consumers and every import in `Sources`
+and `Tests`, including re-export forms. The requirement is the single source of
+truth: the tests read the version out of the manifest instead of repeating it,
+so an approved upgrade is a manifest edit plus a reviewed revision, not a hunt
+for literals. SwiftPM's evaluated manifest and the real build verify resolver
+admission; these checks do not independently qualify real-model accuracy or
+performance.
+
+**Accepted cost.** Freezing the engine means the gap to upstream grows, and
+upstream patches land on mechanisms Portavoz depends on. That lag and its
+re-evaluation trigger are tracked as gap T35 in docs/GAPS.md, not here.
+Dependabot's grouped Swift refresh excludes FluidAudio (`.github/dependabot.yml`)
+so an unrelated security update never arrives blocked by this pin.
 
 ## D523 — UI fixtures own explicit cross-process scratch, not runner containers
 
