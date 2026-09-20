@@ -6,6 +6,10 @@ import XCTest
 
 @MainActor
 final class PortableSettingsObservationTests: XCTestCase {
+    func testAudioCategoryKeepsShortcutNeutralLocalizationKey() async {
+        XCTAssertEqual(SettingsCategory.audio.subtitleKey, "Call-safe capture · global dictation")
+    }
+
     func testTemporaryImportNotifiesMountedPreferenceObservers() async throws {
         try await verifyNotification(temporary: true)
     }

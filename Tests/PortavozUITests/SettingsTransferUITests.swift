@@ -51,10 +51,10 @@ final class SettingsTransferUITests: PortavozUITestCase {
         let translatedCategory = target == "es" ? "Tus datos" : "Your data"
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { dataCategory.label == translatedCategory })
         XCTAssertTrue(dataCategory.isSelected, "language changes must preserve the current pane")
-        let audioSubtitle = target == "es"
-            ? "Captura segura · dictado global" : "Call-safe capture · global dictation"
-        XCTAssertTrue(waitForUITestCondition(timeout: 5) { app.staticTexts[audioSubtitle].exists },
-                      "the mounted sidebar must translate dictation help without restoring a fixed shortcut")
+        let audioTitle = target == "es" ? "Audio y dictado" : "Audio & dictation"
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            app.buttons["settings-category-audio"].label == audioTitle
+        }, "the mounted Audio category must also follow the imported language")
         try FileManager.default.removeItem(at: output)
         export.click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { FileManager.default.fileExists(atPath: output.path) })

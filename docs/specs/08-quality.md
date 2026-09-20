@@ -12,14 +12,15 @@ replacement text still applies.
 `PortableSettingsFileTests` reaches actual selected-file IO, including symlinks,
 FIFOs, empty/exact-limit/oversized files, private permissions, replacement and
 cancelled/failed-publication cleanup. `PortableSettingsObservationTests` checks
-real effective-value notifications in temporary and persistent-override branches.
+real effective-value notifications in temporary and persistent-override branches,
+and preserves the shortcut-neutral Audio subtitle localization key.
 `SettingsTransferModelTests` reaches the real defaults
 adapter through injected IO for explicit approval, capture/stale rejection,
 cancelled late reads, duplicate actions, empty review and IO errors. The dedicated
 `settings-transfer` XCUITest scope exercises real-app Export → Review → Cancel →
 Import → Apply → Export and verifies the selected sidebar button's localized
-label before and after import without changing panes and the translated audio
-subtitle without a hard-coded shortcut, plus
+label before and after import without changing panes and the translated Audio
+category label, plus
 recovery from a rejected sensitive key followed by an empty collection import
 that must show no change and retain the original legacy JSON. File selection
 alone is injected; parsing,
