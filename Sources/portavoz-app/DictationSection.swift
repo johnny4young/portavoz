@@ -21,7 +21,7 @@ struct DictationSection: View {
                         services: services, promptIfNeeded: enabled)
                 }
             if enabled {
-                HotkeyRecorder {
+                DictationShortcutSettings(shortcut: services.dictation.shortcut) {
                     services.dictation.syncHotkey(services: services)
                 }
                 MouseButtonRecorder {
@@ -39,8 +39,7 @@ struct DictationSection: View {
                 DictationDictionaryEditor()
             }
             Text(
-                // One-line UI help text.
-                "Press ⌥⌘D in any app, speak, press it again. Needs the Accessibility permission to type."
+                "Dictation stays on this Mac and is not stored. Inserting text requires Accessibility permission."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

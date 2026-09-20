@@ -46,7 +46,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     var subtitle: String {
         switch self {
         case .general: L10n.text("System language · English/Spanish · menu bar")
-        case .audio: L10n.text("Call-safe capture · dictate anywhere · ⌥⌘D")
+        case .audio: L10n.text("Call-safe capture · global dictation")
         case .intelligence: L10n.text("Summary engine · Apuntador · your voice")
         case .agenda: L10n.text("Reminder · end-of-meeting Shortcut · title template")
         case .skills: L10n.text("Review · enable · history")
