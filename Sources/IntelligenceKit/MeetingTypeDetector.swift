@@ -39,7 +39,7 @@ public enum MeetingTypeDetector {
                 try await session.respond(
                     to: prompt,
                     generating: DetectedMeetingType.self,
-                    options: GenerationOptions(sampling: .greedy)
+                    options: .greedy()
                 ).content
             }
         guard let detected else { return nil }

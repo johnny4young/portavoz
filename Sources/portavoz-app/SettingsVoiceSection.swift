@@ -51,7 +51,7 @@ struct SettingsVoiceSection: View {
             Text(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "With your voice enrolled, Portavoz also recognizes you when you arrive through system audio (hybrid meetings). Only an encrypted numeric fingerprint is stored on this device — never audio, never cloud data; delete it with one click."
+                "Lets Portavoz tag you as “Me” on any microphone. Only an encrypted voiceprint is kept; delete it any time."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

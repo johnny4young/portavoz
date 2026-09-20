@@ -34,6 +34,9 @@ struct RecordingView: View {
     private var assistFraction = RecordingAssistLayout.defaultFraction
     /// The fraction the current divider drag started from.
     @State private var dividerAnchor: Double?
+    /// Whether an answer engine exists for Apuntador, resolved from the same
+    /// validated capability that builds the provider client.
+    @State private var apuntadorAnswersAvailable = false
     /// The fraction being dragged right now. `@AppStorage` is written once, on
     /// release: writing it per frame put a `UserDefaults` round trip and a full
     /// `RecordingView` invalidation — captions re-projected and all — into every
@@ -55,38 +58,7 @@ struct RecordingView: View {
                 // — the words ARE the interface. Captions are the focal
                 // lyrics area; the Companion cards and notes flow below.
                 recordingBar
-                if controller.micLevelLow {
-                    micLowBanner
-                }
-                if controller.systemAudioMissing && !systemWarningDismissed {
-                    systemAudioBanner
-                }
-                if controller.systemAudioClipping && !clippingWarningDismissed {
-                    systemAudioClippingBanner
-                }
-                if controller.microphoneCaptureFailed {
-                    Label(L10n.text("Microphone capture failed. Stop and start a new recording."),
-                          systemImage: "mic.slash.fill")
-                        .foregroundStyle(.orange)
-                        .accessibilityIdentifier("recording-microphone-capture-failure")
-                }
-                if controller.systemCaptureHealth != .healthy {
-                    systemCaptureHealthBanner
-                }
-                if !controller.tappedMeetingApps.isEmpty && !appTapNoteDismissed {
-                    appTapBanner
-                }
-                if controller.liveTranscriptState == .preparing
-                    || controller.liveTranscriptState == .failed {
-                    liveTranscriptStatusBanner
-                }
-                if controller.translationNeedsDownload {
-                    translationDownloadBanner
-                } else if controller.translationState.shouldPresentStatus(
-                    liveTranscriptState: controller.liveTranscriptState
-                ) {
-                    translationStatusBanner
-                }
+                RecordingStatusStrip(notices: notices)
                 RecordingInputStatusView(controller: controller)
                 assistSplit
 
@@ -110,7 +82,7 @@ struct RecordingView: View {
             case .failed(let message):
                 Spacer()
                 ContentUnavailableView {
-                    Label("Something went wrong", systemImage: "exclamationmark.triangle")
+                    Label("Something went wrong", systemImage: PVSymbol.error)
                         .accessibilityIdentifier("recording-failure")
                 } description: {
                     VStack(spacing: 8) {
@@ -136,6 +108,7 @@ struct RecordingView: View {
         .navigationTitle("Recording")
         .liveTranslation(controller)
         .task { await startRecording() }
+        .task { apuntadorAnswersAvailable = await services.companionAnswersAvailable() }
         .onDisappear { hud.close() }
     }
 
@@ -161,7 +134,16 @@ struct RecordingView: View {
                     .frame(height: split.captions)
                     .padding(.horizontal, 20)
                 assistDivider(total: geo.size.height)
-                RecordingAssistPanel(controller: controller)
+                RecordingAssistPanel(
+                    controller: controller,
+                    apuntadorState: RecordingApuntadorState.resolve(
+                        enabled: controller.companionEnabled,
+                        detectorAvailable: services.companionAvailable,
+                        answersAvailable: apuntadorAnswersAvailable),
+                    openApuntadorSettings: {
+                        services.pendingSettingsCategory = .intelligence
+                        openSettings()
+                    })
                     .frame(height: split.assist)
                     .padding(.horizontal, 20)
             }
@@ -320,16 +302,17 @@ private struct LiveRecordingCaptionsView: View {
                 .fill(Color.indigo)
                 .frame(width: 3)
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    Image(systemName: "character.bubble")
-                        .accessibilityHidden(true)
-                    Text(liveTranslationLabel)
-                        .accessibilityLabel(liveTranslationLabel)
-                        .accessibilityIdentifier(
-                            "recording-live-translation-\(segmentID.uuidString)")
-                }
+                // The language is named once, in the Translate picker; each
+                // line carries only the mark and keeps the full name for
+                // assistive technology.
+                Label(liveTranslationLabel, systemImage: "translate")
+                    .labelStyle(.iconOnly)
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.indigo)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(liveTranslationLabel)
+                    .accessibilityIdentifier(
+                        "recording-live-translation-\(segmentID.uuidString)")
                 Text(translated)
                     .font(.callout)
                     .foregroundStyle(.primary)
@@ -379,218 +362,155 @@ private struct LiveRecordingCaptionsView: View {
     }
 }
 
-// MARK: - Capture / translation nudges
+// MARK: - Status notices
 //
-// The dismissable banners over the caption area, split out to keep the main
-// view body under the length limit. `private` stays file-scoped, so these
-// still reach `controller` and `systemWarningDismissed`.
+// Everything the recording wants to say, ranked. The strip shows the first
+// and folds the rest; each notice keeps the identifier it always had.
 extension RecordingView {
-    /// A tap that stops invoking its callback is different from silent audio:
-    /// the remote timeline has stopped advancing. This critical notice cannot
-    /// be dismissed; it clears only after frames return or the recording ends.
-    var systemCaptureHealthBanner: some View {
-        HStack(spacing: 10) {
-            Label {
-                Text(systemCaptureHealthMessage)
-            } icon: {
-                Image(systemName: systemCaptureHealthIcon)
-            }
-            .accessibilityIdentifier("recording-system-capture-health")
-            Spacer(minLength: 4)
-            if controller.shouldSuggestStopForRemoteOutage {
-                Button("Stop now") {
-                    Task { await controller.stop(services: services) }
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .tint(.red)
-                .accessibilityIdentifier("recording-stop-after-remote-outage")
-            }
+    var notices: [RecordingNotice] {
+        var list: [RecordingNotice] = []
+        if controller.microphoneCaptureFailed {
+            list.append(RecordingNotice(
+                id: "recording-microphone-capture-failure",
+                severity: .error,
+                message: L10n.text("Microphone capture failed. Stop and start a new recording."),
+                symbol: "mic.slash.fill"))
         }
-        .font(.caption.weight(.medium))
-        .foregroundStyle(systemCaptureHealthColor)
-        .padding(.horizontal, 20)
-    }
-
-    private var systemCaptureHealthMessage: String {
-        switch controller.systemCaptureHealth {
-        case .healthy:
-            ""
-        case .stalled, .recovering:
-            if controller.shouldSuggestStopForRemoteOutage {
-                L10n.text(
-                    "Remote audio has been unavailable for two minutes. If the call ended, stop this recording.")
-            } else {
-                L10n.text(
-                    "Remote audio stopped — reconnecting… Your microphone is still recording.")
-            }
-        case .recovered:
-            L10n.text("Remote audio capture recovered.")
-        case .failed:
-            L10n.text(
-                "Remote audio capture failed. Stop and start a new recording to avoid losing the call.")
+        if let health = systemCaptureHealthNotice { list.append(health) }
+        if controller.liveTranscriptState == .failed {
+            list.append(RecordingNotice(
+                id: "recording-transcript-deferred",
+                severity: .error,
+                message: L10n.text(
+                    "Live captions could not start. Audio is safe; Stop will create the complete transcript.")))
         }
-    }
-
-    private var systemCaptureHealthIcon: String {
-        switch controller.systemCaptureHealth {
-        case .recovered: "checkmark.circle.fill"
-        case .healthy, .stalled, .recovering, .failed: "exclamationmark.triangle.fill"
+        if controller.systemAudioMissing && !systemWarningDismissed {
+            list.append(RecordingNotice(
+                id: "recording-system-audio-missing",
+                severity: .warning,
+                message: L10n.text("Can't hear the others. Check your output device."),
+                symbol: "speaker.slash.fill",
+                actions: [dismissAction("recording-system-audio-missing-dismiss") {
+                    systemWarningDismissed = true
+                }]))
         }
-    }
-
-    private var systemCaptureHealthColor: Color {
-        switch controller.systemCaptureHealth {
-        case .recovered: .green
-        case .healthy, .stalled, .recovering, .failed: .orange
+        if controller.systemAudioClipping && !clippingWarningDismissed {
+            list.append(RecordingNotice(
+                id: "recording-system-audio-clipping",
+                severity: .warning,
+                message: L10n.text(
+                    "The other participants' audio is clipping — transcript accuracy may be lower."),
+                symbol: "waveform.badge.exclamationmark",
+                actions: [dismissAction("recording-system-audio-clipping-dismiss") {
+                    clippingWarningDismissed = true
+                }]))
         }
-    }
-
-    /// Audio is the primary artifact: a fresh install starts recording now,
-    /// while the verified local model prepares in the background. The durable
-    /// worker fills the complete transcript from the saved channels after Stop.
-    var liveTranscriptStatusBanner: some View {
-        Label {
-            Text(liveTranscriptStatusMessage)
-        } icon: {
-            Image(systemName: controller.liveTranscriptState == .failed
-                ? "exclamationmark.triangle.fill" : "waveform.badge.clock")
+        if controller.micLevelLow {
+            list.append(RecordingNotice(
+                id: "recording-mic-low",
+                severity: .warning,
+                message: L10n.text(
+                    "Your voice sounds low — move closer or use headphones with a microphone")))
         }
-        .font(.caption)
-        .foregroundStyle(controller.liveTranscriptState == .failed ? .orange : .secondary)
-        .padding(.horizontal, 20)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(liveTranscriptStatusMessage)
-        .accessibilityIdentifier("recording-transcript-deferred")
-    }
-
-    private var liveTranscriptStatusMessage: String {
-        switch controller.liveTranscriptState {
-        case .preparing:
-            L10n.text(
-                // swiftlint:disable:next line_length
-                "Audio is safe. Live captions will start automatically when the local model is ready; Stop still creates the complete transcript.")
-        case .failed:
-            L10n.text(
-                "Live captions could not start. Audio is safe; Stop will create the complete transcript.")
-        case .idle, .available:
-            ""
+        if controller.liveTranscriptState == .preparing {
+            list.append(RecordingNotice(
+                id: "recording-transcript-deferred",
+                severity: .info,
+                message: L10n.text("Recording. Captions start when the model is ready."),
+                symbol: "waveform.badge.clock"))
         }
-    }
-
-    /// Shown only when the mic stays quiet — the far-field-mic nudge (field
-    /// bug jul 2026), out of the compact bar so it never crowds it.
-    var micLowBanner: some View {
-        Label(
-            "Your voice sounds low — move closer or use headphones with a microphone",
-            systemImage: "exclamationmark.triangle.fill")
-        .font(.caption)
-        .foregroundStyle(.orange)
-        .padding(.horizontal, 20)
-    }
-
-    /// Shown when the incoming (system) channel stays near-silent — likely a
-    /// call whose audio isn't reaching the tap (Bluetooth output, or the
-    /// system-audio permission). Dismissable, since an in-person meeting has
-    /// no incoming audio by design.
-    var systemAudioBanner: some View {
-        HStack(spacing: 8) {
-            Label(
-                // One-line UI copy.
-                // swiftlint:disable:next line_length
-                "Barely hearing the other participants — if this is a call, check your output device or system-audio permission.",
-                systemImage: "speaker.slash.fill")
-                .font(.caption)
-                .foregroundStyle(.orange)
-            Button("Dismiss") { systemWarningDismissed = true }
-                .buttonStyle(.plain)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 20)
-    }
-
-    /// Repeated ceiling hits mean the call source is likely already distorted.
-    /// Portavoz reports the quality risk but never changes the call graph or
-    /// rewrites the evidence that Refine will later review.
-    var systemAudioClippingBanner: some View {
-        HStack(spacing: 8) {
-            Label(
-                "The other participants' audio is clipping — transcript accuracy may be lower.",
-                systemImage: "waveform.badge.exclamationmark")
-                .font(.caption)
-                .foregroundStyle(.orange)
-            Button("Dismiss") { clippingWarningDismissed = true }
-                .buttonStyle(.plain)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(.secondary)
-                .accessibilityIdentifier("recording-system-audio-clipping-dismiss")
-        }
-        .padding(.horizontal, 20)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("recording-system-audio-clipping")
-    }
-
-    /// Shown when a Bluetooth output made Portavoz tap the meeting app's
-    /// process directly so the call stays isolated from unrelated app audio
-    /// (and still works on AirPods, where HFP silences the global tap).
-    /// Informational; names the app(s).
-    var appTapBanner: some View {
-        HStack(spacing: 8) {
-            Label(
-                L10n.format(
+        list.append(contentsOf: translationNotices)
+        if !controller.tappedMeetingApps.isEmpty && !appTapNoteDismissed {
+            list.append(RecordingNotice(
+                id: "recording-app-tap",
+                severity: .info,
+                message: L10n.format(
                     "Capturing %@ directly; unrelated app audio stays out.",
                     controller.tappedMeetingApps.joined(separator: ", ")),
-                systemImage: "airpods")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Button("Got it") { appTapNoteDismissed = true }
-                .buttonStyle(.plain)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(.secondary)
+                symbol: "airpods",
+                actions: [RecordingNotice.Action(
+                    title: L10n.text("Got it"),
+                    identifier: "recording-app-tap-dismiss",
+                    prominent: false) { appTapNoteDismissed = true }]))
         }
-        .padding(.horizontal, 20)
+        return list
     }
 
-    /// Live translation needs a language pack Apple hasn't downloaded yet. We
-    /// never let the system sheet pop up on its own mid-meeting — this banner
-    /// makes the download a deliberate choice, and the fetch runs in the
-    /// background once approved.
-    var translationDownloadBanner: some View {
-        HStack(spacing: 8) {
-            Label(
-                "Live translation needs a one-time language download.",
-                systemImage: "arrow.down.circle")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Button("Download") { controller.translationDownloadApproved = true }
-                .buttonStyle(.plain)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.tint)
-            Button("Not now") { controller.translationTarget = nil }
-                .buttonStyle(.plain)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(.secondary)
+    /// A tap that stops invoking its callback is different from silent audio:
+    /// the remote timeline has stopped advancing. This notice cannot be
+    /// dismissed; it clears only after frames return or the recording ends.
+    private var systemCaptureHealthNotice: RecordingNotice? {
+        let id = "recording-system-capture-health"
+        switch controller.systemCaptureHealth {
+        case .healthy:
+            return nil
+        case .stalled, .recovering:
+            if controller.shouldSuggestStopForRemoteOutage {
+                return RecordingNotice(
+                    id: id,
+                    severity: .warning,
+                    message: L10n.text(
+                        "Remote audio has been unavailable for two minutes. If the call ended, stop this recording."),
+                    actions: [RecordingNotice.Action(
+                        title: L10n.text("Stop now"),
+                        identifier: "recording-stop-after-remote-outage",
+                        prominent: true) { Task { await controller.stop(services: services) } }])
+            }
+            return RecordingNotice(
+                id: id,
+                severity: .warning,
+                message: L10n.text(
+                    "Remote audio stopped — reconnecting… Your microphone is still recording."))
+        case .recovered:
+            return RecordingNotice(
+                id: id, severity: .success, message: L10n.text("Remote audio capture recovered."))
+        case .failed:
+            return RecordingNotice(
+                id: id,
+                severity: .error,
+                message: L10n.text(
+                    "Remote audio capture failed. Stop and start a new recording to avoid losing the call."))
         }
-        .padding(.horizontal, 20)
     }
 
-    var translationStatusBanner: some View {
-        Label {
-            Text(translationStatusMessage)
-        } icon: {
-            Image(systemName: controller.translationState == .failed
-                ? "exclamationmark.triangle.fill" : "character.bubble")
+    /// Live translation needs a language pack Apple hasn't downloaded yet. The
+    /// system sheet never pops up on its own mid-meeting — the notice makes
+    /// the download a deliberate choice, and the fetch runs in the background.
+    private var translationNotices: [RecordingNotice] {
+        if controller.translationNeedsDownload {
+            return [RecordingNotice(
+                id: "recording-translation-download",
+                severity: .info,
+                message: L10n.text("Live translation needs a one-time language download."),
+                symbol: "arrow.down.circle",
+                actions: [
+                    RecordingNotice.Action(
+                        title: L10n.text("Download"),
+                        identifier: "recording-translation-download-approve",
+                        prominent: true) { controller.translationDownloadApproved = true },
+                    RecordingNotice.Action(
+                        title: L10n.text("Not now"),
+                        identifier: "recording-translation-download-decline",
+                        prominent: false) { controller.translationTarget = nil }
+                ])]
         }
-        .font(.caption)
-        .foregroundStyle(controller.translationState == .failed ? .orange : .secondary)
-        .padding(.horizontal, 20)
-        .accessibilityIdentifier("recording-live-translation-status")
+        guard controller.translationState.shouldPresentStatus(
+            liveTranscriptState: controller.liveTranscriptState),
+            let key = controller.translationState.statusMessageKey
+        else { return [] }
+        return [RecordingNotice(
+            id: "recording-live-translation-status",
+            severity: controller.translationState == .failed ? .error : .info,
+            message: L10n.text(key),
+            symbol: controller.translationState == .failed ? nil : "character.bubble")]
     }
 
-    private var translationStatusMessage: String {
-        guard let key = controller.translationState.statusMessageKey else { return "" }
-        return L10n.text(key)
+    private func dismissAction(
+        _ identifier: String,
+        perform: @escaping @MainActor () -> Void
+    ) -> RecordingNotice.Action {
+        RecordingNotice.Action(
+            title: L10n.text("Dismiss"), identifier: identifier, prominent: false, perform: perform)
     }
 }
 
@@ -600,26 +520,38 @@ private extension RecordingView {
         if let context = controller.failureContext {
             switch context.recovery {
             case .retry:
-                Button("Try again") {
+                Button {
                     Task { await controller.start(services: services, event: event) }
+                } label: {
+                    Label("Try again", systemImage: PVSymbol.retry)
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("recording-retry")
             case .library:
-                Button("Open Library") { route = nil }
-                    .buttonStyle(.borderedProminent)
+                Button {
+                    route = nil
+                } label: {
+                    Label("Open Library", systemImage: "books.vertical")
+                }
+                .buttonStyle(.borderedProminent)
                     .accessibilityIdentifier("recording-open-library")
             case .supportDiagnostics:
-                Button("Open support diagnostics") {
+                Button {
                     services.pendingSettingsCategory = .data
                     openSettings()
+                } label: {
+                    Label("Open support diagnostics", systemImage: "stethoscope")
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("recording-open-support-diagnostics")
             }
         }
-        Button("Back") { route = nil }
-            .accessibilityIdentifier("recording-back")
+        Button {
+            route = nil
+        } label: {
+            Label("Back", systemImage: "chevron.left")
+        }
+        .accessibilityIdentifier("recording-back")
     }
 
     private var preparingText: String {

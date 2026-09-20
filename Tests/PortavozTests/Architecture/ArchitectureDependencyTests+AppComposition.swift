@@ -1837,8 +1837,32 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(support.contains("if !geometryChanged { continue }"))
         XCTAssertFalse(support.contains("guard targetMoved else { return false }"))
         // Reachability in compact windows remains open. Pin readiness and
-        // ownership, not the previously unsuccessful frame-to-wheel formula.
-        XCTAssertTrue(support.contains("self.isHittable"))
+        // ownership, not the previously unsuccessful frame-to-wheel formula:
+        // every successful reveal must pass the stable, contained and hittable
+        // proof rather than ending on geometric containment alone.
+        let revealStart = try XCTUnwrap(support.range(of: "func revealVertically("))
+        let anchorRevealStart = try XCTUnwrap(support.range(
+            of: "func revealVertically(",
+            range: revealStart.upperBound..<support.endIndex))
+        let revealBody = support[revealStart.lowerBound..<anchorRevealStart.lowerBound]
+        XCTAssertEqual(
+            revealBody.components(separatedBy: "if viewportFrame.contains(frame),").count - 1, 2)
+        XCTAssertEqual(
+            revealBody.components(separatedBy: "waitForStableContainedFrame(").count - 1, 2,
+            "geometric containment alone must not terminate before hittability")
+        XCTAssertEqual(revealBody.components(separatedBy: "return true").count - 1, 2)
+        let containedProofStart = try XCTUnwrap(support.range(
+            of: "private func waitForStableContainedFrame("))
+        let containedProof = support[containedProofStart.lowerBound...]
+        let containment = try XCTUnwrap(containedProof.range(
+            of: "viewportFrame.contains(controlFrame),"))
+        let hittable = try XCTUnwrap(containedProof.range(
+            of: "self.isHittable",
+            range: containment.upperBound..<containedProof.endIndex))
+        XCTAssertLessThan(containment.lowerBound, hittable.lowerBound)
+        XCTAssertLessThan(
+            containedProof.distance(from: containment.upperBound, to: hittable.lowerBound), 64,
+            "the hittability proof must belong to the same containment guard")
         XCTAssertTrue(uiTests.contains(
             "guard correct.revealVertically(in: transcriptScroll, maxScrolls: 4) else {"))
         XCTAssertTrue(decisions.contains("## D533"))
@@ -1857,7 +1881,7 @@ extension ArchitectureDependencyTests {
                 + "        .id(objective.id)"))
         // Objective reveal behavior belongs to the real-app single/batched
         // arrival journeys, not an assertion freezing the predicate's spelling.
-        XCTAssertTrue(recording.contains("RecordingAssistPanel(controller: controller)"))
+        XCTAssertTrue(recording.contains("RecordingAssistPanel(\n                    controller: controller,"))
         XCTAssertFalse(
             recording.contains(".frame(maxHeight: 260)"),
             "the assist area must grow with the window, not sit at a pinned height")
@@ -1956,8 +1980,11 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(view.contains("MeetingDetailFlowHost("))
         XCTAssertTrue(view.contains("MeetingDetailPlaybackNavigation()"))
         XCTAssertTrue(view.contains("MeetingDetailArtifactsSection"))
-        XCTAssertTrue(artifacts.contains(
-            ".frame(minHeight: 180, idealHeight: 240, maxHeight: 240)"))
+        XCTAssertTrue(artifacts.contains(".onGeometryChange(for: CGFloat.self)"))
+        XCTAssertTrue(artifacts.contains(".frame(height: resolvedHeight)"))
+        XCTAssertFalse(artifacts.contains("maxHeight: 240"), "content decides the height (D536)")
+        XCTAssertTrue(view.contains("GeometryReader { column in"))
+        XCTAssertTrue(view.contains("MeetingDetailArtifactsSection(columnHeight: column.size.height)"))
         XCTAssertTrue(view.contains(".layoutPriority(1)"))
         XCTAssertTrue(flowHost.contains("MeetingDetailRefineReviewSheet("))
         XCTAssertTrue(flowHost.contains("TranscriptCorrectionEditor("))
@@ -2012,6 +2039,42 @@ extension ArchitectureDependencyTests {
             "AudioCaptureKit", "services.", "store."
         ] {
             XCTAssertFalse(coordinatorSources.contains(forbidden), forbidden)
+        }
+    }
+
+    /// D536 rule 2: one SF Symbol per concept. Views name concepts through
+    /// `PVSymbol`; `sparkles` is reserved for the generated-content chip.
+    func testSymbolsAreDeclaredOncePerConcept() throws {
+        let design = try Self.contents(of: "Sources/portavoz-app/PVDesign.swift")
+        XCTAssertTrue(design.contains("enum PVSymbol"))
+        for concept in [
+            "today", "ask", "insights", "radar", "apuntador", "apuntadorOff", "generate", "proactive",
+            "automations", "intelligence", "privacy", "success", "warning", "error",
+            "retry", "history", "record", "stop"
+        ] {
+            XCTAssertTrue(design.contains("static let \(concept) = \""), concept)
+        }
+
+        let sparkleOwners = try Self.sourceMatches(
+            under: "Sources/portavoz-app", pattern: #""sparkles""#)
+        XCTAssertEqual(sparkleOwners, ["ChipLabel.swift"], "sparkles marks generated content only")
+
+        let retired = [
+            "sun.max", "scope", "lock.fill", "lock.shield.fill", "lock.shield",
+            "network.badge.shield.half.filled", "arrow.triangle.2.circlepath",
+            "exclamationmark.arrow.triangle.2.circlepath", "arrow.clockwise",
+            "clock.arrow.trianglehead.counterclockwise.rotate.90", "clock.arrow.circlepath",
+            "exclamationmark.triangle.fill", "exclamationmark.triangle",
+            "wand.and.stars.inverse", "wand.and.stars", "sparkle",
+            "sparkles.rectangle.stack.fill", "questionmark.bubble.fill",
+            "questionmark.bubble", "record.circle", "stop.circle.fill", "stop.fill",
+            "checkmark.seal.fill", "checkmark.seal", "checkmark.circle.fill"
+        ]
+        for literal in retired {
+            let owners = try Self.sourceMatches(
+                under: "Sources/portavoz-app",
+                pattern: "\"" + NSRegularExpression.escapedPattern(for: literal) + "\"")
+            XCTAssertEqual(owners.filter { $0 != "PVDesign.swift" }, [], literal)
         }
     }
 }

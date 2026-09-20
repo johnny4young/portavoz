@@ -24,6 +24,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         stack.translatesAutoresizingMaskIntoConstraints = false
         status.setAccessibilityIdentifier("proof-status")
         input.setAccessibilityIdentifier("proof-input")
+        // The synthetic app must not raise its own completion popover: that
+        // surface covers this fixture's own controls and interrupts the control
+        // before it reaches the behaviour under test. Real completion belongs to
+        // product journeys, not to this disposable harness proof.
+        input.isAutomaticTextCompletionEnabled = false
         input.delegate = self
         input.widthAnchor.constraint(equalToConstant: 280).isActive = true
         let arm = NSButton(title: "Arm synthetic dialog", target: self, action: #selector(arm))
@@ -31,6 +36,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         let target = NSButton(title: "Unrelated action", target: self, action: #selector(targetAction))
         target.setAccessibilityIdentifier("proof-target")
         for view in [status, input, arm, target] { stack.addArrangedSubview(view) }
+        // Launch with the button focused so no editor owns the keyboard before
+        // a control deliberately clicks the field.
+        window.initialFirstResponder = arm
         window.contentView!.addSubview(stack)
         NSLayoutConstraint.activate([
             stack.centerXAnchor.constraint(equalTo: window.contentView!.centerXAnchor),
@@ -56,12 +64,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     }
 
     @objc private func arm() {
+        if ProcessInfo.processInfo.environment["PROOF_APP_MODAL_DIALOG"] == "1" {
+            status.stringValue = "Dialog armed"
+            // Return from the click first; the app-modal session then owns the
+            // run loop exactly like a product `NSSavePanel.runModal()`.
+            perform(#selector(presentAppModalDialog), with: nil, afterDelay: 0)
+            return
+        }
         if ProcessInfo.processInfo.environment["PROOF_SAME_APP_MODAL"] == "1" {
             let alert = NSAlert()
             alert.messageText = "Synthetic modal interruption"
             alert.informativeText = "Disposable fixture only; this is not a system permission request."
             let editor = NSTextField(string: "")
             editor.setAccessibilityIdentifier("proof-modal-editor")
+            editor.isAutomaticTextCompletionEnabled = false
             editor.delegate = self
             editor.frame.size = NSSize(width: 240, height: 24)
             alert.accessoryView = editor
@@ -92,6 +108,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
                 status.stringValue = "Fixture launch failed"
             }
         }
+    }
+
+    @objc private func presentAppModalDialog() {
+        let alert = NSAlert()
+        alert.messageText = "Synthetic app-modal interruption"
+        alert.informativeText = "Disposable fixture only; this is not a system permission request."
+        let editor = NSTextField(string: "")
+        editor.setAccessibilityIdentifier("proof-dialog-editor")
+        editor.isAutomaticTextCompletionEnabled = false
+        editor.delegate = self
+        editor.frame.size = NSSize(width: 240, height: 24)
+        alert.accessoryView = editor
+        alert.addButton(withTitle: "Synthetic dialog choice").setAccessibilityIdentifier("proof-dialog-choice")
+        _ = alert.runModal()
+        recordEffect("modal-choice")
     }
 }
 let app = NSApplication.shared

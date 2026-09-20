@@ -492,8 +492,10 @@ class UITestHostPreflightTests(unittest.TestCase):
         source = (UI_TEST_SUPPORT.parent / "PortavozUITestCase.swift").read_text(encoding="utf-8")
 
         self.assertIn("addUIInterruptionMonitor", source)
-        self.assertIn("self.stopForUnexpectedInterruption()", source)
-        self.assertIn("private func stopForUnexpectedInterruption() -> Never", source)
+        self.assertIn('self.stopForUnexpectedInterruption(reason: "interruption")', source)
+        self.assertIn("private func stopForUnexpectedInterruption(reason: String) -> Never", source)
+        # Cleanup is reported as complete only when this owner's session ended.
+        self.assertIn('? "complete" : "absent"', source)
         self.assertNotIn("com.apple.UserNotificationCenter", source)
         self.assertNotIn("typeKey(.escape", source)
         self.assertNotIn(".click()", source)

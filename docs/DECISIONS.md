@@ -19575,8 +19575,8 @@ not permission-prompt testing or a claim that every OS interruption has been
 reproduced.
 
 `make test-ui-interruption-safety` builds these tiny fixtures once and records
-all four outcomes. Full bilingual selections require it once, not per feature
-or locale. Hosted runs execute it in the product-builder job using the existing
+every control outcome (four at this decision; D534 extends the set). Changes to
+the sources it qualifies require it once, not per feature or locale. Hosted runs execute it in the product-builder job using the existing
 pinned XcodeGen; locale lanes still share one product build. A worker restart
 printing a zero-test success cannot qualify the invocation: the execution
 classifier emits `evidence-failure`, returns nonzero and retains the raw local
@@ -19640,7 +19640,8 @@ work. A known marker span is a lower bound, never a substitute for that retained
 duration. Require adjacent start/setup markers without child work under start;
 ambiguous boundaries, malformed children, inconsistent clocks and failed cases
 keep the raw duration. An empty terminal teardown retains the existing attribution
-policy. Timestamp differences preserve the decimal precision written by
+policy, so the shared base names its owned cleanup as a Tear Down child activity
+(D534): product cases therefore never have that cleanup subtracted. Timestamp differences preserve the decimal precision written by
 xcresult, so binary subtraction residue cannot turn an exact budget boundary
 into an overage. No epsilon, numeric budget, threshold, retry or receipt schema
 changes.
@@ -19777,9 +19778,9 @@ handoff, and a failed transcript reveal stops before clicking. Removing an
 experiment does not justify removing an independently demonstrated repair.
 
 **Consequences:** the ordinary real-app catalog and its correction effects remain
-required. The interruption fixture returns to four positive/negative controls
-that test the real guard and owned cleanup; it no longer claims to qualify wheel
-delivery. Compact geometry and composed delivery-shape evidence remain an open
+required. The interruption fixture returns to its positive/negative controls
+that test the real guard and owned cleanup (four at this decision; D534 extends
+them); it no longer claims to qualify wheel delivery. Compact geometry and composed delivery-shape evidence remain an open
 quality gap. Fresh native controls, full bilingual product runs and exact-head
 CI are required for the narrower change. A passing ordinary-window catalog must
 not be presented as closure of the retained compact failures.
@@ -19796,18 +19797,192 @@ not inferred from aggregate passing product tests.
 
 Use one shared dispatch boundary: the unique declared test-host process must be
 frontmost, XCTest must agree it is foreground, and the modal context must match
-the journey. Default input requires no sheet or alert. A journey editing or
+the journey. Default input requires no sheet, alert or app-modal dialog. A journey editing or
 closing an expected modal supplies a fixed accessibility anchor that must belong
 to the sole modal, never an arbitrary visible control behind it. This admission
 never activates another window or answers a permission prompt. Rejection keeps
 the nonreturning owned-cleanup guard. Product tests preserve focus actions,
 exact editor values, original submit/confirmation semantics and durable receipts.
 
-Thirteen native controls calibrate successful pointer, keyboard and explicitly
-expected modal input against foreign-overlay and same-app modal counterexamples.
-Negative effect receipts must contain no typing or choice. A source policy
+Sixteen native controls calibrate successful pointer, keyboard and explicitly
+expected modal input against foreign-overlay, same-app sheet and app-modal
+dialog counterexamples. Each negative control must stop through its exact
+content-free refusal path (`interruption`, `keyboard-owner` or `modal-context`)
+with completed owned cleanup. Negative effect receipts must contain no typing or
+choice. A source policy
 prevents bypassing this boundary but does not replace those runtime controls or
 the full bilingual catalog. The checks use public point-in-time observations;
 no atomic check-and-input guarantee or physical permission certification is
 claimed. No product feature, system completion preference or host permission
 policy changes.
+
+**Review corrections (Sep 2026):** a review of this boundary found six concrete
+gaps, each now closed at its owner rather than in a journey:
+
+- *App-modal dialogs.* Counting only sheets and alerts admitted Return while an
+  app-modal window such as `NSSavePanel.runModal()` was up, which the product
+  uses for import and export. Sheets and alerts still count through one
+  predicate query, and a dialog counts when it is hittable. An `NSAlert.runModal()`
+  fixture proves the dialog is observable (hittable, 272x258, five children),
+  that an anchored edit and choice work, and that synchronous and asynchronous
+  default input is refused with no effect. Hittability is the discriminator
+  because macOS exposes the floating Writing Tools affordance that follows a
+  native selection as a non-hittable 53x48 dialog: a real catalog run proved
+  that counting it refused an expected anchored edit inside the transcript
+  correction sheet. Nothing can click that affordance, so it never receives the
+  keys. A dialog whose hit point lies off-screen is likewise not counted, and
+  popovers remain outside this rule.
+- *Observation convergence.* Admission re-observes for at most one second while
+  the run loop services workspace notifications, so a cached frontmost value or a
+  closing sheet converges. It never activates, dismisses or answers anything,
+  and a persistent mismatch is refused with its category.
+- *Editing handoff.* Tab moves whatever owns focus, so ending a field's editor
+  without first owning that editor could move focus into the field and still
+  preserve its value. A real-app diagnostic reproduced exactly that: a second Tab
+  returned focus to the Library search field. Re-establishing the editor with a
+  click is not available either, because the field's own completion surface can
+  cover it, and a catalog run turned three Settings journeys into interruption
+  stops that way. The handoff therefore observes keyboard focus first and sends
+  no key at all when the field is not the active editor. Its post-condition is
+  the exact value plus a field nothing covers any more, because a window whose
+  only key view is that field keeps focus there through Tab. Outcomes are
+  distinct (not-editing, field-unavailable, keyboard-refused, value-changed,
+  surface-retained, focus-unobservable) so seeded-Library readiness reports the
+  actual cause. XCTest publishes no macOS focus attribute; the handoff reads the
+  automation daemon's own snapshot key and fails closed when a toolchain stops
+  publishing it rather than sending a key on an assumption.
+- *Owned cleanup attribution.* The shared tear-down wraps app exit and scratch
+  removal in a named child activity. Runtime attribution then keeps that work
+  instead of subtracting an apparently empty teardown.
+- *Cleanup receipts.* A guard that finds no live session for its owner reports
+  `cleanup=absent`, never `complete`; controls reject both absent and failed.
+- *Control lifecycle and selection.* A failed or timed-out control stops only the
+  fixture processes built under its own products directory before failing, so a
+  modal-level overlay cannot interrupt the next UI command. The controls are
+  selected by changes to the sources they qualify, their fixture, classifier or
+  CI/Make owners, and by explicit full requests, not by every full-bilingual
+  fallback such as localization.
+
+
+## D535 — An install must read and resolve its own payload
+
+**Context:** Portavoz 1.0.0 quit at the first recording on a clean Sequoia
+install from Homebrew, with `Fatal error: could not load resource bundle` raised
+by the generated SwiftPM accessor while `RecordingView` read the bundled
+question detector's availability. The crash was reproduced from the published
+artifact, not inferred: the accessor searches only the `.app` root and one
+absolute build-directory path from the machine that compiled the binary, while
+packaging stages that bundle in `Contents/Resources`. The release therefore
+resolved its resources on the build Mac alone. The same staged copy also kept
+its build-time owner-only modes (`drwx------`, owner 501), so an account with a
+different user id could not have read it even at the searched path.
+
+**Decision:** an installed app must read and resolve its own payload, and the
+release must prove it before publication.
+
+- `IntelligenceResourceBundle` resolves this module's resources without
+  trapping, searching `Contents/Resources` first and the build directory last.
+  An absent or unreadable bundle disables the bundled detector and leaves the
+  app running; it never ends the process.
+- `make-app.sh` normalizes payload modes (`u+rwX,go+rX,go-w`) after staging and
+  before signing, so the signature covers modes every installing account can
+  read.
+- `portavoz-app --bundled-assets-status` reports the resolved bundle path and
+  whether its model loads, then exits. It prints one path from the app's own
+  bundle and no user data.
+- `scripts/verify-app-payload.sh`, run by distribution verification before any
+  receipt is written, rejects an unreadable entry, a missing staged classifier,
+  a resolution outside the extracted app, and a bundle whose model cannot load.
+
+**Consequences:** the released 1.0.0 artifact fails this gate, which is the
+point: a fix must ship before another install repeats the crash. Synthetic
+payload trees plus the two real packaged apps, one built with the trapping
+accessor and one without, exercise the gate in both directions. This changes no
+product feature, consent default, model asset or budget. Field confirmation on a
+second physical Mac remains external evidence (GAPS).
+
+## D536 — UI language, icons and heights speak the user's vocabulary
+
+**Context:** a review of the shipped 1.0 interface, grounded in the XCUITest
+catalog screenshots and the 1,728-key localization catalog, found the product
+explaining itself in engineering terms and repeating itself: 47 "on this/your
+Mac" phrases, 54 strings with "evidence", 19 with "receipt", three simultaneous
+privacy disclaimers per window, 27 strings longer than 160 characters, one
+symbol (`sparkles`) standing for ten concepts, and content boxes with fixed
+heights that force scrolling on large displays.
+
+**Decision:** presentation and copy follow three rules, enforced where the
+repository already enforces truth.
+
+1. *Language.* User-facing strings name what the user does, not how Portavoz is
+   built. "Sources" replaces "evidence"; "activity" and "history" replace
+   "receipt" and "provenance"; "authority", "boundary", "admitted", "honest",
+   "pull-only" and "100%" do not appear. Help texts and tooltips stay at or
+   under 90 characters; longer explanations move behind an explicit control.
+   One privacy phrase, "On your Mac", replaces every disclaimer variant. The
+   in-meeting assistant is "Apuntador" in both languages; "Skills" and
+   "Suggested actions" are "Automations". `Tests/Tooling/test_ui_copy_policy.py`
+   keeps these rules in repository hygiene.
+2. *Icons.* One SF Symbol per concept, declared in one place; `sparkles` marks
+   generated content and nothing else. `PVSymbol` (`PVDesign.swift`) is the
+   single declaration and `testSymbolsAreDeclaredOncePerConcept` is the ratchet.
+3. *Heights.* Content decides height. First-level views fit a 1,280×800 window
+   without page scrolling; only long lists scroll, inside their own area.
+   (Implemented by the layout slices of the same goal.)
+
+**Consequences:** the 1.1 goal "Portavoz sin ruido" delivers these rules in
+fifteen slices, each with its own XCUITest update and changelog line. Product
+data, engines, consent defaults and runtime budgets do not change. Strings that
+XCUITest asserts by text are limited to seeded content and a few navigation
+titles; journeys assert identifiers, which do not change.
+
+## D537 — Settings: seven categories, a resizable window, one Apuntador status
+
+**Context:** Settings had ten categories with overlapping subjects (voice and
+Apuntador apart from Intelligence; Sync and Background activity apart from
+Your data), a fixed 760-point window that forced scrolling in Spanish, long
+paragraphs under every control, and an Apuntador status that showed a green
+check above a failure message.
+
+**Decision:** seven categories (General & language, Audio & dictation,
+Intelligence, Agenda & automation, Automations, Integrations, Your data);
+"My voice & Apuntador" merges into Intelligence, "Sync" and "Background
+activity" into Your data. Controls, identifiers and deep links are unchanged.
+The window resizes from 760×620 up to the screen. Long explanations move
+behind a "How it works" popover (`HowItWorksLink`), leaving one caption line
+per control. Apuntador shows one status with three values (ready, questions
+only, unavailable) and one cause line.
+
+**Consequences:** XCUITest journeys select the merged categories; the
+`settings-category-voice`, `-sync` and `-background-work` identifiers no
+longer exist. The architecture and interaction ratchets that pin control
+identifiers keep passing because only the containers changed.
+
+
+---
+
+## D538 — One source compiles warning-free on Xcode 26 and Xcode 27
+
+**Context:** Xcode 27 (Swift 6.4, MacOSX27 SDK) deprecates the FoundationModels
+`GenerationOptions(sampling:)` initializer in favor of `samplingMode:`, flags a
+weak inner capture whose outer closure implicitly captures the same reference
+strongly, and warns when Combine types appear in a file that never imports
+Combine. The warnings-as-errors gate rejected all three, so the 1.1.0 release
+could not be built on a Mac whose only Xcode is 27, while hosted CI still pins
+Xcode 26.6, whose SDK has only the old initializer label.
+
+**Decision:** every greedy prompt goes through one IntelligenceKit helper,
+`GenerationOptions.greedy(maximumResponseTokens:)`, which selects the label
+behind `#if compiler(>=6.4)`; no call site names the initializer. Progress
+closures that hop to the main actor capture `self` weakly at the outermost
+`Task` instead of only in the nested hop. Files that use Combine publishers
+import Combine. CI keeps its Xcode 26.6/26.3 pins until Xcode 27 leaves the
+hosted preview image.
+
+**Consequences:** the strict build, the package suite and the release recipe
+run unchanged on either toolchain. Xcode 27's Swift Build also stages SwiftPM
+resource bundles as `Contents/Resources` bundles instead of flat directories;
+`make-app.sh` and `verify-app-payload.sh` accept both layouts because the app
+resolves resources through `Bundle`, which reads either. A future Xcode that
+removes the old label deletes the `#else` branch in one file. Decoding behavior is unchanged: greedy
+everywhere, same token caps.

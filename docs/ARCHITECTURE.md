@@ -822,8 +822,8 @@ Snapshots contain only closed phases/stages/outcomes/failure categories,
 aggregate counts, attempt numbers, retry dates, and timestamps. They cannot
 carry a meeting identity, title, transcript or note text, path, model payload,
 or raw error. A processing lease heartbeat remains ownership liveness and is
-never presented as percentage progress. The Settings **Background activity**
-pane renders indeterminate progress only while an owner reports running, shows
+never presented as percentage progress. The **Background activity** section of
+the Your data Settings pane renders indeterminate progress only while an owner reports running, shows
 exact safe counts/retry metadata, and routes recovery actions back to the
 original owner. A compact main-toolbar indicator exists only while work is
 active, waiting, retrying, or needs attention and deep-links to that pane.
@@ -943,8 +943,9 @@ of child presentation types; scoped action values are their mutation boundary.
 
 The child is itself a composition surface rather than the owner of every visual
 section. `MeetingDetailHeaderSection` renders identity, facts, participants,
-and optional suggestions. `MeetingDetailTrustSection` renders processing,
-recovery, and the privacy receipt. `MeetingGeneratedDocumentSection` renders
+and optional suggestions. `MeetingDetailTrustSection` renders processing and
+recovery; `MeetingDetailActivityLine` renders the privacy receipt and action
+history as one chip under the title with a popover for the detail. `MeetingGeneratedDocumentSection` renders
 the summary overview, decision/open-question sections, typed commitments, and
 claim-adjacent proof controls. Each receives only explicit values and actions;
 none can reach the route model, services, stores, or global preferences. The
@@ -1263,9 +1264,12 @@ current live summaries in one bounded database projection, overlaps commitment
 loading, and admits generated context only when its source index resolves to a
 navigable related meeting. Agenda buttons explicitly opt out of selectable
 meeting-row behavior, so opening a brief cannot race the sidebar's meeting
-route. Persistent privacy seals use local-first and explicit opt-in language;
-feature-specific on-device claims remain limited to operations that cannot use
-a remote provider.
+route. One privacy promise exists in the main window: the sidebar footer chip
+"On your Mac" (`library-privacy-chip`), whose popover explains that nothing is
+sent unless the user asks and opens Settings on Your data. Today,
+Insights, the menu-bar panel, onboarding and the Settings sidebar repeat no
+disclaimer; feature-specific on-device claims remain limited to
+operations that cannot use a remote provider. Every SF Symbol the app draws is a `PVSymbol` constant (one per concept, in `PVDesign.swift`); `sparkles` is reserved for `ChipLabel`, and an architecture ratchet keeps retired glyph literals out of view code.
 
 ## Verified model lifecycle
 
@@ -1947,8 +1951,9 @@ pure ApplicationKit projection select only the feature journeys they own.
 
 The primary Meeting Detail column keeps generated material, synchronized
 transcript, and playback as three independent layout regions. Summary,
-commitment-review, and note content has a bounded 180-to-240-point vertical
-scroll region; the transcript receives the remaining flexible height and clips
+commitment-review, and note content takes the height it needs up to half of
+the column and scrolls inside its own area only beyond that; the transcript
+receives the remaining flexible height and clips
 its focused viewport to the geometry SwiftUI actually allocated; and the
 playback dock retains its intrinsic size below that viewport. Focused-row visual
 effects transform only transcript presentation. Correction controls remain
@@ -3069,9 +3074,10 @@ ApplicationKit workflows.
 
 Secondary Meeting Detail flows use the same rule. `MeetingDetailActionSection`
 renders Refine, recap, export, Gist, and delete capabilities from immutable
-values and explicit intents. `MeetingDetailRailSection` owns the independently
-scrolling recovery, privacy, health, chapter, and persisted Companion
-presentation without reaching the model or composition root; the coordinator
+values and explicit intents. `MeetingDetailRailSection` owns the always-present
+recovery card and the three lenses (people, Apuntador, chapters) shown one at
+a time; the composition owns the selected lens and passes it in as a value,
+so the rail reaches neither state nor the composition root; the coordinator
 projects health availability once rather than making the rail rescan every
 segment during presentation. One
 scene-owned `MeetingDetailFlowState` represents mutually exclusive sheet,
@@ -5273,7 +5279,12 @@ AVAudioConverter input callback receives its immutable source through one
 lock-protected, one-shot Sendable bridge; unchecked conformance is confined to
 that bridge and no import-wide concurrency suppression is used. First-party
 Swift sources compile against the current SDK with warnings treated as errors
-both locally and in the primary GitHub Actions build lane. Hosted CI uses the
+both locally and in the primary GitHub Actions build lane, and the same
+sources compile warning-free under Xcode 27 (Swift 6.4): the FoundationModels
+`sampling:` to `samplingMode:` rename lives behind one `#if compiler(>=6.4)`
+helper in IntelligenceKit, and closures that hand model-download progress to
+the main actor capture `self` weakly at their outermost boundary. Hosted
+CI uses the
 explicit macos-26/Xcode 26.6 pair for that lane and macos-15/Xcode 26.3 for the
 oldest supported runtime lane; `DEVELOPER_DIR` is verified instead of selecting
 the newest installed Xcode. Each lane owns one complete test invocation so its
@@ -5430,8 +5441,11 @@ first complete English attempt demonstrated that removing it can synthesize
 apparently successful clicks without publishing the expected route or mutation.
 Keyboard dispatch has a separate admission boundary in `UITestKeyboardSupport`:
 XCTest foreground state plus the unique declared bundle's frontmost process,
-and either no modal or exactly one modal containing the journey's explicit
-anchor. It does not reactivate after an observed ownership change. A background
+and either no sheet, alert or hittable app-modal dialog or exactly one such
+modal containing the journey's explicit anchor, re-observed for at most one
+second without activating anything. A dialog nothing can click, such as the
+floating selection affordance macOS shows after Select All, never captures the
+keys and is not counted. It does not reactivate after an observed ownership change. A background
 anchor never authorizes an unexpected same-app modal. Base-case wrappers refuse
 through the owned-cleanup interruption guard; shared application helpers return
 failure. Native negative controls exercise the real wrappers, while a tooling
@@ -5621,8 +5635,13 @@ The overlay's main-queue parent-exit callback emits a separate lifecycle
 acknowledgement before exiting; process absence without it is failed cleanup,
 not success. This closes the false-positive case where a main-actor callback
 scheduled on a global queue trapped before its body ran.
-Full bilingual runs execute this once in addition to the unchanged product
-catalog; scoped feature runs do not pay for unrelated fixture qualification.
+Changes to the sources these controls qualify, their fixture, classifier or
+CI/Make owners, plus explicit full runs, execute them once in addition to the
+product catalog; localization and unrelated feature runs do not pay for fixture
+qualification. A failed control stops only its own built fixture processes. The
+shared tear-down names its owned cleanup as a child activity so runtime
+attribution never subtracts it, and the editing handoff observes keyboard focus
+before sending Tab so traversal can never move focus into the field.
 These observations prove only that the host was quiet at those samples;
 automation started afterward remains an external race that the result bundle
 must classify.
@@ -5668,10 +5687,11 @@ documentation or isolated surface changes.
 
 The live recording command surface is isolated in `RecordingToolbar` rather
 than growing the already state-heavy `RecordingView`. It is responsive by
-construction rather than by control truncation. Its wide layout is one row; at
-the 900 pt minimum window, `ViewThatFits` moves secondary actions to an
-icon-only second row while keeping the elapsed clock horizontal and Stop
-visible beside it. The focused external-recording XCUITest enforces those
+construction rather than by control truncation. Three controls stay visible
+(Translate, Apuntador, Catch me up) and the rest sit in one More panel (a popover)
+with their state shown as switches. Its wide layout is one row; at the 900 pt minimum window,
+`ViewThatFits` moves secondary actions to an icon-only second row while
+keeping the elapsed clock horizontal and Stop visible beside it. The focused external-recording XCUITest enforces those
 geometric invariants in both locales.
 
 The live transcript has reader-owned scroll state independent from the

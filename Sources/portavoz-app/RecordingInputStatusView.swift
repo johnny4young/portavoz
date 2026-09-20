@@ -7,7 +7,7 @@ struct RecordingInputStatusView: View {
         if controller.inputPersistence.hasFailure {
             VStack(alignment: .leading, spacing: 8) {
                 Label(L10n.text("Couldn’t save this change. Your input has been kept."),
-                      systemImage: "exclamationmark.triangle")
+                      systemImage: PVSymbol.warning)
                     .foregroundStyle(.orange)
                 if !controller.inputPersistence.retainedText.isEmpty {
                     Text(controller.inputPersistence.retainedText)

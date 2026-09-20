@@ -48,7 +48,7 @@ struct AskMeetingAnchorView: View {
             VStack(alignment: .leading, spacing: 8) {
                 statusRow(
                     "Could not search meetings.",
-                    systemImage: "exclamationmark.triangle")
+                    systemImage: PVSymbol.warning)
                 Button("Try again") { topicModel.retryMeetingAnchorSearch() }
                     .accessibilityIdentifier("ask-topic-anchor-retry")
             }

@@ -277,6 +277,82 @@ extension XCUIApplication {
         descendants(matching: .any)[identifier]
     }
 
+    /// Privacy and action history live behind the activity chip under a
+    /// meeting's title; the popover carries the auditable detail.
+    @MainActor
+    func openMeetingActivity(
+        timeout: TimeInterval = 10,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let popover = control(withIdentifier: "detail-activity-popover")
+        if !popover.exists {
+            // A sheet that is still going away leaves an unmappable host in
+            // the tree and makes the chip's own hit test throw on the hosted
+            // runner; let every sheet and dialog finish first.
+            guard waitForUITestCondition(timeout: timeout, {
+                self.sheets.count == 0 && self.dialogs.count == 0
+            }) else {
+                XCTFail("a sheet or dialog never closed before the activity chip", file: file, line: line)
+                return popover
+            }
+            let chip = buttons["detail-privacy-receipt"]
+            guard chip.waitForExistenceFast(timeout: timeout),
+                  chip.waitForStableFrame(timeout: timeout)
+            else {
+                XCTFail("the header never offered the activity chip", file: file, line: line)
+                return popover
+            }
+            chip.click()
+        }
+        if !popover.waitForExistenceFast(timeout: 5) {
+            XCTFail("the activity popover never opened from the chip", file: file, line: line)
+        }
+        return popover
+    }
+
+    /// Secondary recording actions live in the More panel; a journey that
+    /// needs one opens the panel first and gets the control back.
+    @MainActor
+    func recordingMoreItem(
+        _ identifier: String,
+        timeout: TimeInterval = 8,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let panel = control(withIdentifier: "recording-more-panel")
+        if !panel.exists {
+            let more = control(withIdentifier: "recording-more")
+            guard more.waitForHittable(timeout: timeout) else {
+                XCTFail("the recording bar never offered its More panel", file: file, line: line)
+                return panel
+            }
+            more.click()
+            _ = panel.waitForExistenceFast(timeout: timeout)
+        }
+        let item = panel.descendants(matching: .any)[identifier]
+        if !item.waitForHittable(timeout: timeout) {
+            XCTFail("the More panel never offered \(identifier)", file: file, line: line)
+        }
+        return item
+    }
+
+    /// Closes the More panel when it is open. Escape goes through the owned
+    /// keyboard admission (the popover is not a sheet, so no modal anchor);
+    /// a synthesized outside click is swallowed by the popover instead.
+    @MainActor
+    @discardableResult
+    func dismissRecordingMorePanel(bundleIdentifier: String) -> UITestKeyboardAdmission {
+        let panel = control(withIdentifier: "recording-more-panel")
+        guard panel.exists else { return .admitted }
+        let admission = typeKeyIfOwned(
+            .escape, modifierFlags: [], bundleIdentifier: bundleIdentifier)
+        if admission == .admitted {
+            _ = panel.waitForDisappearance(timeout: 3)
+        }
+        return admission
+    }
+
     /// The live assist area shows one panel at a time (D504), so a journey
     /// that asserts a panel must open its tab first. Fails with the tab name
     /// rather than letting the panel's own assertion time out.
@@ -328,7 +404,7 @@ extension XCUIApplication {
             guard prepareForInteraction(timeout: timeout) else { continue }
             guard typeKeyIfOwned(
                 XCUIKeyboardKey(rawValue: ","), modifierFlags: .command,
-                bundleIdentifier: "app.portavoz.mac.uitest-host")
+                bundleIdentifier: Self.portavozUITestHostBundleIdentifier) == .admitted
             else { return false }
             if general.waitForStableFrame(
                 timeout: attempt == 0 ? 2 : timeout,
@@ -341,27 +417,45 @@ extension XCUIApplication {
         return false
     }
 
-    /// End the native field-editor session through ordinary keyboard traversal.
-    /// A focused field can own an AutoFill popover even when its value is empty;
-    /// clicking the field again can itself be blocked by that popover. Route
-    /// Tab to the already-active app's current editor instead of its covered
-    /// field; do not start a new editing session just to end it.
-    /// Never choose a suggestion, change system preferences, or dismiss prompts.
+    /// End one field's native editor and prove its value survived.
     @MainActor
     func finishTextFieldEditing(
         identifier: String,
         timeout: TimeInterval,
         modalAnchor: String? = nil
     ) -> Bool {
+        handOffTextFieldEditing(
+            identifier: identifier, timeout: timeout, modalAnchor: modalAnchor).succeeded
+    }
+
+    /// Ends the named field's native editor through ordinary keyboard traversal.
+    /// Tab moves whatever owns focus, so a field that is not the active editor
+    /// receives no key at all: traversal would otherwise move focus into it and
+    /// still preserve its value. The field is never clicked either, because its
+    /// own completion surface can cover it and turn that click into an
+    /// interruption. A window whose only key view is this field keeps focus
+    /// here, so the post-condition is the released surface plus the exact value.
+    /// Never choose a suggestion, change system preferences, or dismiss prompts.
+    @MainActor
+    func handOffTextFieldEditing(
+        identifier: String,
+        timeout: TimeInterval,
+        modalAnchor: String? = nil
+    ) -> UITestTextFieldEditingHandoff {
         let field = textFields[identifier]
-        guard field.waitForHittable(timeout: timeout),
+        guard field.waitForExistenceFast(timeout: timeout),
               let originalValue = field.value as? String
-        else { return false }
-        guard typeKeyIfOwned(
-            .tab, modifierFlags: [], bundleIdentifier: "app.portavoz.mac.uitest-host",
+        else { return .fieldUnavailable }
+        guard let editing = field.observedKeyboardFocus else { return .focusUnobservable }
+        guard editing else { return .notEditing }
+        let admission = typeKeyIfOwned(
+            .tab, modifierFlags: [], bundleIdentifier: Self.portavozUITestHostBundleIdentifier,
             modalAnchor: modalAnchor)
-        else { return false }
-        return field.waitForValue(originalValue, timeout: timeout)
+        guard admission == .admitted else { return .keyboardRefused(admission) }
+        guard field.waitForValue(originalValue, timeout: timeout) else { return .valueChanged }
+        guard waitForUITestCondition(timeout: timeout, { field.isHittable })
+        else { return .surfaceRetained }
+        return .finished
     }
 
     /// Selects a Settings category and proves its exact destination appeared.
@@ -452,6 +546,7 @@ extension XCUIApplication {
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
             .firstMatch
         let search = textFields["library-search-field"]
+        let receiver = Self.portavozUITestHostBundleIdentifier
         if !meeting.isHittable,
            search.exists,
            let query = search.value as? String,
@@ -459,23 +554,32 @@ extension XCUIApplication {
             search.click()
             guard typeKeyIfOwned(
                 XCUIKeyboardKey(rawValue: "a"), modifierFlags: .command,
-                bundleIdentifier: "app.portavoz.mac.uitest-host"),
-                typeKeyIfOwned(.delete, modifierFlags: [], bundleIdentifier: "app.portavoz.mac.uitest-host"),
-                typeKeyIfOwned(.return, modifierFlags: [], bundleIdentifier: "app.portavoz.mac.uitest-host")
-            else { return false }
+                bundleIdentifier: receiver) == .admitted,
+                typeKeyIfOwned(.delete, modifierFlags: [], bundleIdentifier: receiver) == .admitted,
+                typeKeyIfOwned(.return, modifierFlags: [], bundleIdentifier: receiver) == .admitted
+            else {
+                XCTFail(
+                    "Portavoz did not own keyboard input while clearing a stray search query; "
+                        + "no further key was sent",
+                    file: file, line: line)
+                return false
+            }
             windows["main-AppWindow-1"]
                 .coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.5))
                 .click()
         }
 
         if search.exists {
-            guard finishTextFieldEditing(
+            let handoff = handOffTextFieldEditing(
                 identifier: "library-search-field", timeout: timeout)
-            else {
-                XCTFail("the search field never finished editing", file: file, line: line)
+            guard handoff.succeeded else {
+                XCTFail(
+                    "the Library search editor did not hand off: \(handoff.diagnosis)",
+                    file: file, line: line)
                 return false
             }
         }
+
         // A visible row can coexist with a live native search editor. Its
         // fast path may run only after the same editing handoff as recovery.
         if meeting.isHittable { return true }

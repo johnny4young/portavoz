@@ -24,7 +24,7 @@ struct MeetingDetailRefineReviewSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Review the refined transcript", systemImage: "wand.and.stars")
+            Label("Review the refined transcript", systemImage: PVSymbol.generate)
                 .font(.title3.weight(.semibold))
 
             if draft.looksLossy {
@@ -32,7 +32,7 @@ struct MeetingDetailRefineReviewSheet: View {
                     // One-line UI text.
                     // swiftlint:disable:next line_length
                     "The refine covers much less speech than the current transcript — it probably failed. Do not apply it.",
-                    systemImage: "exclamationmark.triangle.fill"
+                    systemImage: PVSymbol.error
                 )
                 .foregroundStyle(.red)
             }
@@ -61,7 +61,7 @@ struct MeetingDetailRefineReviewSheet: View {
             GridRow {
                 Text("").font(.caption)
                 Text("Current").font(.caption.weight(.semibold))
-                Text("Refined").font(.caption.weight(.semibold))
+                Text("Improved").font(.caption.weight(.semibold))
             }
             GridRow {
                 Text("Segments").foregroundStyle(.secondary)

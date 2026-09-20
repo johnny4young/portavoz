@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; public release 1.0.0 independently notarizes and staples both the app bundle and DMG. D74 keeps a clean-Sequoia Homebrew install as explicit field validation instead of treating notarization as launch proof. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (atomic Stop handoff), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Apuntador evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness), D114 (executable dependency and presentation boundaries), D115 (honest private-iCloud receipt disclosure), D121 (bounded live-transcription hot attachment and explicit translation state), D123 (long-outage Stop affordance and capture-shape support evidence), D127 (audio-priority Stop recovery), D128 (explicit live-translation lanes), D129 (reader-owned live transcript position), D130 (unhinted automatic Refine), D131/D142 (bounded temporal live-caption bleed admission and view-only paragraphs), D132 (cast-grounded summary owners), D133 (stable split lineage), D135 (regenerable enhanced notes), D143 (deterministic bilingual Library search and exact hit seeks), D144 (reversible role-aware clear playback), D287/D302 (pure clear-playback volume schedule, ordered on the timescale it is delivered on), D145 (exact-first Library semantic augmentation), D157–D189 (pure resource policy, generation-fenced residency, one composition owner, pinned model-family leases, pressure-driven idle release, capture-exclusive Whisper/MLX admission, bounded persisted-level presentation, signal-driven bounded live translation, recording-scoped bounded live Apuntador generation, signal-driven bounded live-summary delivery, deterministic generated-intelligence admission, observational clipping evidence, policy-owned live-caption presentation bounds, route-cancellable bounded waveform delivery, one shared bounded semantic-indexing flight, capture-prioritized semantic checkpoints, signal-driven semantic maintenance, capture-safe existing-library sync admission, staged whole-library backup checkpoints, crash-safe stage ownership, bounded backup-destination identity, durable publication evidence, strict staged-source adoption, successful-publication source checkpoints, fail-closed pending-publication reconciliation, durable typed backup failure outcomes, and fail-closed launch continuation), D224–D234 (Meeting Detail decomposition, correction editing, derived-artifact lineage, correction-aware export, and protected private-sync convergence), D238 (source-bound commitment-review read foundation), D273 (signal-driven typed memory-graph projection), D319 (fail-closed database launch recovery), D331 (explicit correction-aware Apuntador refresh), D332 (explicit semantic asset preparation), D357 (fail-closed encrypted voice identity recovery), D384 (bounded progressive Ask UI), D385 (selected local-engine manual Ask), D386 (explicit Ask source UI and ownership), D387 (one-request direct-Web Ask UI), D388 (pull-based cited interview assistance), D389 (typed raw-note Ask UI), D427 (one content-free owner-fed background-work projection with recording priority), D431 (provider-neutral live Apuntador admission on Sequoia and Tahoe).
+Status: implemented, signed with Developer ID, and used in real meetings; public release 1.0.0 independently notarizes and staples both the app bundle and DMG. Its payload is now also verified to be readable by the installing account and to resolve the bundled Apuntador classifier from inside the app; 1.0.0 itself fails that gate and crashed at the first recording on any other Mac (D535). D74 keeps a clean-Sequoia Homebrew install as explicit field validation instead of treating notarization as launch proof. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (atomic Stop handoff), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Apuntador evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness), D114 (executable dependency and presentation boundaries), D115 (honest private-iCloud receipt disclosure), D121 (bounded live-transcription hot attachment and explicit translation state), D123 (long-outage Stop affordance and capture-shape support evidence), D127 (audio-priority Stop recovery), D128 (explicit live-translation lanes), D129 (reader-owned live transcript position), D130 (unhinted automatic Refine), D131/D142 (bounded temporal live-caption bleed admission and view-only paragraphs), D132 (cast-grounded summary owners), D133 (stable split lineage), D135 (regenerable enhanced notes), D143 (deterministic bilingual Library search and exact hit seeks), D144 (reversible role-aware clear playback), D287/D302 (pure clear-playback volume schedule, ordered on the timescale it is delivered on), D145 (exact-first Library semantic augmentation), D157–D189 (pure resource policy, generation-fenced residency, one composition owner, pinned model-family leases, pressure-driven idle release, capture-exclusive Whisper/MLX admission, bounded persisted-level presentation, signal-driven bounded live translation, recording-scoped bounded live Apuntador generation, signal-driven bounded live-summary delivery, deterministic generated-intelligence admission, observational clipping evidence, policy-owned live-caption presentation bounds, route-cancellable bounded waveform delivery, one shared bounded semantic-indexing flight, capture-prioritized semantic checkpoints, signal-driven semantic maintenance, capture-safe existing-library sync admission, staged whole-library backup checkpoints, crash-safe stage ownership, bounded backup-destination identity, durable publication evidence, strict staged-source adoption, successful-publication source checkpoints, fail-closed pending-publication reconciliation, durable typed backup failure outcomes, and fail-closed launch continuation), D224–D234 (Meeting Detail decomposition, correction editing, derived-artifact lineage, correction-aware export, and protected private-sync convergence), D238 (source-bound commitment-review read foundation), D273 (signal-driven typed memory-graph projection), D319 (fail-closed database launch recovery), D331 (explicit correction-aware Apuntador refresh), D332 (explicit semantic asset preparation), D357 (fail-closed encrypted voice identity recovery), D384 (bounded progressive Ask UI), D385 (selected local-engine manual Ask), D386 (explicit Ask source UI and ownership), D387 (one-request direct-Web Ask UI), D388 (pull-based cited interview assistance), D389 (typed raw-note Ask UI), D427 (one content-free owner-fed background-work projection with recording priority), D431 (provider-neutral live Apuntador admission on Sequoia and Tahoe).
 
 Library navigation uses full-width, labeled destinations with semantic selected
 state rather than compact icon tiles. Import progress keeps the other
@@ -382,8 +382,8 @@ strings, and raw errors never enter it. Post-capture's quarter-lease heartbeat
 is still only durable liveness; the UI never converts it into percentage
 progress.
 
-Settings adds a searchable **Background activity** category with one row per
-owner. Running work uses an indeterminate progress indicator. Safe aggregate
+Settings shows a searchable **Background activity** section inside Your data
+with one row per owner. Running work uses an indeterminate progress indicator. Safe aggregate
 counts, attempt number, localized retry time, and closed failure reason remain
 visible after settlement. Owner-specific actions call only the existing owner:
 Library route for recovery, processing kick, Spotlight reindex, semantic wake,
@@ -503,9 +503,21 @@ ApplicationKit continue to own playback preparation, compression, file re-
 resolution, and pending seeks.
 
 `MeetingDetailActionSection` separately renders Refine, recap, export, Gist,
-and delete capabilities. `MeetingDetailRailSection` renders recovery, privacy,
-health, chapters, and persisted Companion cards in one independently scrolling
-column. Neither section can reach the model, services, store, or preferences.
+and delete capabilities. `MeetingDetailRailSection` is the always-present 260-point column beside the
+transcript: processing that needs attention sits on top, then three lenses,
+People (`detail-rail-tab-people`, meeting health), Apuntador
+(`detail-rail-tab-apuntador`, persisted cards) and Chapters
+(`detail-rail-tab-chapters`), of which exactly one fills the remaining height
+and scrolls on its own; a lens without material shows one sentence
+(`detail-rail-empty-*`). The selected lens is composition state passed in as a
+value with a `selectTab` action, so the rail itself stays stateless.
+`MeetingDetailActivityLine` renders the privacy receipt and the action history
+as one chip under the title (`detail-privacy-receipt`) whose popover
+(`detail-activity-popover`) carries the remote attempts, the private iCloud
+disclosure and every `skill-receipt-<skillID>` row. The header keeps every ✦
+suggestion and remember offer in one horizontal row
+(`detail-suggestions-row`). None of these sections can reach the model,
+services, store, or preferences.
 `MeetingDetailScene` owns one observable `MeetingDetailFlowState`; its typed
 sheet, dialog, alert, and export routes replace independent modal flags while
 preserving Refine and mirror presentations owned by their source services.
@@ -526,10 +538,15 @@ already prepared session and cannot resolve audio or storage. Architecture
 tests keep the root at 500 lines or fewer and reject model effects or broad
 composition dependencies in presentation children.
 
-The composed primary column assigns generated material to a bounded
-180-to-240-point scroll region, gives the transcript the remaining flexible
-height, clips its focused viewport to that exact allocation, and keeps the
-player as a separate dock below it. Transcript correction buttons are
+The composed primary column lets generated material take the height its
+content needs, capped at half of the column (never below 180 points):
+`MeetingDetailArtifactsSection` measures its material (`onGeometryChange`)
+and takes exactly that height up to the cap, scrolling inside its own area
+only beyond it, so a short summary leaves the transcript most of the window
+and a long one still cannot collapse it. Notes render at content height inside
+that area instead of nesting a second scroll view. The transcript receives the
+remaining flexible height, clips its focused viewport to that exact
+allocation, and the player stays as a separate dock below it. Transcript correction buttons are
 28-point accessories outside focus blur and scale effects. Long summaries,
 notes, or commitment review can therefore scroll without collapsing their own
 controls, covering transcript corrections, or allowing the player to intercept
@@ -2096,8 +2113,8 @@ uploads the report. A deterministic temp-store destination lets XCUITest prove
 the file was created and contains no seeded transcript.
 
 The same slice adds processing as Meeting Detail's fifth independent update.
-The right rail distinguishes pending/running local recovery, exhausted durable
-jobs, and a `needsAttention` shell without a job. Exhausted work exposes one
+The top of the right rail distinguishes pending/running local recovery,
+exhausted durable jobs, and a `needsAttention` shell without a job. Exhausted work exposes one
 `detail-retry-processing` action through the route-owned model; retry preserves
 the job's identity/idempotency/input evidence and then kicks the normal worker.
 A recoverable audio shell instead offers Refine, while a shell without audio
@@ -2334,6 +2351,96 @@ deterministic under XCUITest (D91).
 
 **Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running or a speech-model load is in flight). `ApplicationKit.RefineMeeting` schedules both policies on every success, failure, or cancellation after model ownership begins; its processor and Import end their pinned Whisper use leases before arming the timer. `ApplicationKit.StartRecording` schedules the recording-engine policy after every failed mic/channel/reservation/source-start attempt, while a successful audio-first start either transfers a resident live-speech lease to the attacher or starts one shared cold load after capture is active; `ApplicationKit.StopRecording` schedules the policy after every accepted Stop request outcome without waiting for that load, and the recovery worker refreshes it after publishing. `AppServices+MLXModels` does the same with the AppServices-owned Qwen3.5 runtime (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: durable first-pass recovery, dictation, onboarding, and benchmark work hold the exact live-speech lease they acquired; Refine and Import hold their exact Whisper lease; durable attribution and Import still request the degradable diarizer through its current owner. A cold live-speech load that completes after Stop cannot attach to the inactive session and immediately finishes its lease. Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
 
+## UI language policy (Sep 2026, D536)
+
+User-facing strings name what the user does, not how Portavoz is built. The
+catalog keys are the English source text; `Tests/Tooling/test_ui_copy_policy.py`
+runs in repository hygiene and rejects "evidence", "receipt", "provenance",
+"authority", "boundary", "admitted", "honest", "100%", "pull-only", "cited
+captions", "integrity-verified" and the "nothing leaves" / "local-first"
+disclaimer variants in English keys and their Spanish equivalents, requires
+every `.help(...)` tooltip to stay at or under 90 characters, and requires the
+single privacy phrase "On your Mac" to exist while the old disclaimer variants
+do not. The in-meeting assistant is "Apuntador" in both languages; the Skills
+category and its proposals are "Automations" / "Automatizaciones"; transcript
+Refine is presented as "Improve"; clear playback as "Voice only"; note
+enhancement as "Tidy up". Architecture ratchets that pin control labels
+(`ArchitectureDependencyTests+SkillsAndIntegrations`, `+CaptureAndLive`) and
+the meeting-detail interaction contract snapshot follow the same wording.
+
+Icons follow the same rule: `PVSymbol` in `Sources/portavoz-app/PVDesign.swift`
+declares one SF Symbol per concept (today, ask, insights, radar, apuntador,
+generate, proactive, automations, intelligence, privacy, success, warning,
+error, retry, history, record, stop) and views reference the concept, never
+the glyph. `sparkles` appears only in `ChipLabel`, where it marks generated
+content; the retired glyphs (`sun.max`, `scope`, `lock.fill`,
+`wand.and.stars.inverse`, `sparkle`, `questionmark.bubble`, `stop.circle.fill`,
+the `exclamationmark.triangle` and `arrow.triangle.2.circlepath` families, and
+so on) exist only as `PVSymbol` values.
+`ArchitectureDependencyTests+AppComposition.testSymbolsAreDeclaredOncePerConcept`
+keeps both facts true.
+
+Severity is encoded in the glyph, not only in colour: `PVSymbol.warning`
+(open circle, orange) marks recoverable states such as a stalled system-audio
+tap, a low microphone or open to-dos; `PVSymbol.error` (filled triangle, red)
+marks failures such as the recording failure screen, a failed live transcript
+or a failed automation; `PVSymbol.success` marks recovered and completed
+states. Tooltips start with the verb that names what the control does ("Recap
+the last few minutes", "Shrink to a floating mini panel"), never with a
+disclaimer. Primary actions on the recording failure screen and its banners
+carry an icon (`PVSymbol.retry`, Library, diagnostics, download) next to the
+verb, and the Today ask chips carry the Ask symbol.
+
+## First-run setup (Sep 2026, D536)
+
+`OnboardingView` runs five steps in a 520×520 window: the live first listen;
+**During the meeting** (`onboarding-during-meeting`), which introduces
+Apuntador (with the real opt-in switch, `onboarding-apuntador-toggle`, bound
+to the recording controller), Radar and Automations in one line each plus one
+example card (`onboarding-example-card`) drawn like a live Apuntador card;
+permissions; on-device models; and the optional voice enrollment. Skip stays
+available on every step (`onboarding-skip`).
+
+## Ask and Radar layout (Sep 2026, D536)
+
+Ask puts the question first: the source picker, then the field
+(`ask-question-field`, `ask-submit`), then the answers, so the entry never
+sits a page below the last exchange. Each answer carries one flowing line of
+sources (`ask-sources-<exchange>`) where meeting moments, note sources and web
+pages keep their own marks and identifiers (`ask-citation-`,
+`ask-note-citation-`, `ask-web-citation-`). The By person and By topic
+surfaces keep their segmented picker. Commitment Radar shows the reminders
+state as one chip in the header (`commitment-reminder-card`, with the same
+enable/retry/settings controls), drops the "Showing N of M" line in favour of a
+single hint when more rows exist, and moves each commitment's full sources and
+history behind a popover (`commitment-radar-details-<id>`) while the first
+source stays visible on the card.
+
+## Settings layout (Sep 2026, D537)
+
+Settings has seven categories: General & language, Audio & dictation,
+Intelligence (summary engine, languages, Apuntador, your voice, remembered
+voices, semantic search, structures, vocabulary), Agenda & automation,
+Automations, Integrations, and Your data (ledger, iCloud sync, background
+activity, diagnostics, backup, recordings folder). The former "My voice &
+Apuntador", "Sync" and "Background activity" categories merged into
+Intelligence and Your data; their controls and accessibility identifiers are
+unchanged, and every deep link (`pendingSettingsCategory`) resolves to one of
+the seven. The window resizes between 760×620 and the screen (ideal 900×700)
+with a fixed 224-point sidebar. Long explanations live behind
+`HowItWorksLink` ("How it works", a popover next to a one-line caption);
+Apuntador reports one status with three values, `Apuntador: ready`,
+`Apuntador: questions only`, `Apuntador: unavailable`
+(`settings-apuntador-status`), followed by one cause line
+(`settings-apuntador-status-cause`), never a green check above a failure. The Automations pane lists only the
+actions that exist (the "Coming later" list is gone); each row carries its
+switch, its disclosure and when it last ran (`settings-skill-<id>-last-run`,
+from `SkillControlCenterSnapshot.lastRuns`, one bounded completed plus one
+attention read per action outside the history lens, so filters, pagination
+and waiting approvals cannot change it; an unavailable read says so instead of
+"Never run"), followed by the suggestions
+to review, the standing rules and the action history.
+
 ## Design system in app (Jul 2026) — tokens + voices B + accent
 
 Font: `docs/design/ds/` (authored in Claude Design, pine project). (1) `PVDesign` (app): Swift mirror of `tokens/*.css` — spacing 12/16/24, radios 8/10/12/14, tints 0.14/0.08, brand amber/violet/slate. When a value changes in the DS, it changes THERE and nowhere else. (2) **Voice B direction «el color ES la voz»**: `VoiceHue.index` (ApplicationKit, pure, FNV-1a — Swift hashValue is randomized by launch and DOESN'T work; 3 tests) assigns stable hue: named by hash of normalized name (same person = same color in all meetings), S-labels by appearance order; `VoicePalette` (app) maps to DS light/dark colors. Applied in: SpeakerPill (Me = solid amber + amber-contrast text; others hue 0.26), MeetingHealth bars (0.85), transcript pills, mic channel of waveform player (amber) and live recording labels. Indigo reserved for interaction (chips ✦, links, selection). (3) **App accent**: `assets/Assets.xcassets/AccentColor` (indigo #5856D6/#5E5CE6) compiled with `xcrun actool` in make-app.sh + `NSAccentColorName` — resolves system-accent debt for multicolor users (macOS gives priority to user who chose explicit color). **DS batch Jul 11 (2nd night — pull 9f11623 + implementation)**: (1) **Icon «La P que habla»**: assets/AppIcon.icns regenerated from DS SVG — the P is Fraunces (NOT installed locally): rendered in browser with Google Fonts via `scripts/icon-p.html` (canvas 1024, macOS grid: square 824 + radius 185) and `scripts/make-icns.sh` builds .icns; menu bar = `assets/icon/pv-menubar-32.png` pre-rendered as NSImage template (MenuBarIcon.swift) — the P adapts to appearance; recording follows record.circle.fill red (the «asta que pulsa» of DS remains flourish web). scripts/make-icon.swift (old icon) removed. (2) **Chips by evidence** (tokens --chip-* new): ChipLabel.swift (ai/voice/offer) + dynamic light/dark tokens in PVDesign (NSColor(name:dynamicProvider:)) — AI = violet tint + spark ✦ AMBER, voice = cyan + waveform, offer = neutral; applied to suggested title, S→name, voice matches, «Summarize as X?» and voice reminder offer. CONTROLS ✦ (Suggest names) follow indigo — deliberate distinction suggestion≠button. (3) **Settings 2a**: NavigationSplitView with 7 categories (SettingsCategories.swift) + search (.searchable filters by title and keyword bags EN/ES — ES live in catalog because EnglishSourceTests scans strings in code) + banner «100% local» → ledger; LedgerSection = real numbers (du of recordings root in Task.detached, count of meetings, enrolled+recorded voices) + honesty line of what actually goes out. gitHubSection extracted to GitHubSection.swift (file_length 700). (4) **Live lyrics 4a**: captionRow with colored voice pills (hash of label — S1/S2 stable, names = canonical hue), active line .title3, YOUR card in amber (me 0.12 + ring 0.35); FocusedTranscriptView already had fade/shrink/blur cylinder. **DS batch Jul 11 (3rd — pull 35264fb: Settings/Menubar/Dictation.jsx + menu bar implementation + mix)**: (1) **Menu bar 2b**: MenuBarContent rewritten as panel `.menuBarExtraStyle(.window)` (previously flat menu) — status header (mini waveform with amber/red peak when recording + a green local-first/opt-in-transfer policy), quick actions grid (Record red / Dictate indigo / Ask), next meeting card (only if calendar access — never prompt here) with «grabar al empezar» → route .recording(event), recent with relative dates, footer (Open / Launch at login / Quit). Panel closes only on focus loss (opening window closes it). (2) **Voice mix in sidebar** (kit signature): `MeetingStore.voiceMixes(for:)` (StorageKit) — ONE added query that sums segment durations by (meeting, speaker), normalizes to assigned voice of each meeting and returns ordered slices by talk-time (isMe/displayName/fraction/order); 3 tests (fractions sum to 1 + order, empty input, meeting without attributed speech absent). `VoiceMixBar` under each meeting row colors each slice with `VoicePalette.color(for slice:)` — amber = you, stable hue by name, order for S-labels. Meetings without attributed segments simply don't show bar (honest).
@@ -2350,7 +2457,7 @@ Font: `docs/design/ds/` (authored in Claude Design, pine project). (1) `PVDesign
 
 **Pixel-perfect refinement (Jul 12 — user feedback: app fell short vs DS)**: (1) **Settings** (SettingsSidebar.swift): native one-line nav becomes custom — icon + title + single-line subtitle per category (SettingsCategory.subtitle), selection with indigo→violet gradient, own search field and green «Todo local» badge below, over AuroraSidebarBackground. LedgerSection: 3 rows → 4 tiles (allocated audio/live meetings/opt-in network policy/encrypted voices); exact local metrics come from D101 and the network tile makes no synthetic byte claim. (2) **Insights** (InsightsView): Swift Charts bar chart replaced by rhythm HEATMAP — LibraryStats.heatmap[week][day] (pure grid, 2 tests) rendered as 12 columns × 7 rows of day with relative indigo intensity to peak; meetings tile gains mini-waveform amber + real week-over-week delta. NO «hallazgos ✦» (no engine, no invention). (3) **Library sidebar** (LibraryView): «New recording» = gradient indigo→violet pill + mini-waveform (amber peak); Import/Ask/Insights = 3 vertical icon+label chips grid; search with keycap ⌘K; footer «100% local — nada sale de tu Mac» with green dot. `accessibilityIdentifier` preserved for XCUITest. **Refinement 2 (Jul 12 — DS screenshots): sidebar timeline + indigo selection + buttons under title.** (1) **MeetingDetail**: the 3 action buttons (refine/export/delete) MOVE from `.toolbar` (top-right) to a ROUND BUTTON ROW under title (actionRow/roundButton) — export tinted accent, delete red; matches DS (buttons live with meeting, not window chrome). (2) **Library sidebar timeline**: meetings grouped by recency (meetingGroups: Today/This week/Last week/Earlier, empty buckets dropped) instead of flat «Meetings». (3) **Indigo selection**: `.tint` does NOT override native sidebar highlight (which follows user's system accent — green on their Mac); solution: `.listRowBackground` with indigo→violet gradient when `route == .meeting(id)` + white text, which beats native highlight. Helpers moved to `extension LibraryView` (type_body_length). Menu bar and detail tabs/chapters/player-chips: DONE (see below).
 
-**Recording 4a (Jul 12)**: RecordingView restructured to DS mockup. `RecordingToolbar` owns the live command surface and uses `ViewThatFits`: a wide window keeps red dot + single-line 24 pt timer + compact mic meter, Translate, Apuntador, HUD, and **Stop red** in one row; the 900 pt minimum window switches to two rows, pins Stop beside the timer, and uses icon-only secondary actions instead of clipping or wrapping the clock. The component boundary keeps rendering policy separate from `RecordingView`'s session-state composition. The meter publishes at most 20 Hz inside its own observation boundary, while low-mic and missing-system-audio flags publish only on transitions. Caption projection owns a separate bounded observation boundary, so audio chunks do not rebuild translation, Apuntador, notes, and window controls. `recording-elapsed-time` and `recording-stop` are geometry-checked by the external-recording XCUITest. SINGLE column (previously two): live captions (`maxHeight:.infinity`) + ScrollView bounded (260) with companion cards + notes + live summary. `micLowBanner` is separate (only when level is low). Translations render as labeled indigo rails under their spoken row; amber remains reserved for the user's voice.
+**Recording 4a (Jul 12)**: RecordingView restructured to DS mockup. `RecordingToolbar` owns the live command surface and uses `ViewThatFits`: a wide window keeps red dot + single-line 24 pt timer + compact mic meter, then three visible controls (Translate ▾, Apuntador, Catch me up; plus Pause/Resume while proactive help is on), a **More** panel (`recording-more` opens `recording-more-panel`: Proactive and Interview as switches, Suggest a question, Floating mini panel; a popover rather than a menu so caption re-renders cannot close it) and **Stop red** in one row; the 900 pt minimum window switches to two rows, pins Stop beside the timer, and uses icon-only secondary actions instead of clipping or wrapping the clock. XCUITest reaches the menu items through `recordingMoreItem(_:)`. The component boundary keeps rendering policy separate from `RecordingView`'s session-state composition. The meter publishes at most 20 Hz inside its own observation boundary, while low-mic and missing-system-audio flags publish only on transitions. Caption projection owns a separate bounded observation boundary, so audio chunks do not rebuild translation, Apuntador, notes, and window controls. `recording-elapsed-time` and `recording-stop` are geometry-checked by the external-recording XCUITest. SINGLE column (previously two): live captions (`maxHeight:.infinity`) + ScrollView bounded (260) with companion cards + notes + live summary. `micLowBanner` is separate (only when level is low). Translations render as labeled indigo rails under their spoken row; amber remains reserved for the user's voice.
 
 **Recording/review polish (Jul 14)**: local mic mute in bar (zeros aligned, doesn't control call); floating HUD that grows with current utterance and returns to compact on speaker change/pause; unlimited Apuntador cards newest-first, persisted and reviewable; refine re-derives them; chapter titles with Foundation Models and literal fallback bounded to chapter. `MeetingDetailView` invalidates player/waveform and discards canceled loads when switching meetings so nothing from previous detail leaks into next.
 
@@ -2378,6 +2485,10 @@ rows and removals survive process termination because recovery preserves their
 canonical storage authority, including when no audio file survived. The bounded
 file-handshake adapter used to test Stop races is selectable only in disposable
 `AppServices` composition; production recording has no handshake or delay.
+
+**One status strip (Sep 2026, D536)**: the seven stacked recording banners are one `RecordingStatusStrip` under the bar. `RecordingView.notices` ranks every active notice (microphone capture failure, remote capture health, failed live captions, missing system audio, clipping, low mic, captions preparing, translation download or status, direct app tap) into `RecordingNotice` values with a severity, one message and at most two actions; the strip renders the first one and folds the rest behind a "N more" popover (`recording-status-more`, `recording-status-secondary`). Each notice keeps the accessibility identifier it always had (`recording-system-capture-health`, `recording-system-audio-clipping` with `-dismiss`, `recording-transcript-deferred`, `recording-microphone-capture-failure`, `recording-live-translation-status`, `recording-stop-after-remote-outage`), so journeys address the same element wherever it renders. The input-persistence status stays its own row below the strip.
+
+**Apuntador state chip (Sep 2026, D536)**: the assist panel's tab row ends with `RecordingApuntadorStateChip` (`recording-apuntador-state`), resolved by the composition from the recording's opt-in, the bundled detector and `AppServices.companionAnswersAvailable` (on-device model or an enabled BYOK provider) into one of four states: Listening for questions, Questions only (with a Settings link, `recording-apuntador-settings`), Apuntador is off (with `recording-apuntador-turn-on`), Apuntador is unavailable (with the Settings link). The Apuntador tab's empty state repeats the same explanation, so the feature never disappears. Translated caption lines carry only the `translate` mark (`recording-live-translation-<segment>` keeps the full language name as its accessibility label); the language is named once in the Translate picker.
 
 **Live assist corrections (Sep 2026, D507)**: `RecordingAssistLayout.split` shrinks both floors together when the window is too short for either — paying one in full drove the captions to zero height, and with several banners stacked on a small window the meeting had no words on screen. `RecordingFocusSlot.resolve` ranks catch-up and the suggested next question — which have this slot as their only home — above a directed card, which is also reachable in the Companion tab: the previous order let one undismissed directed card swallow every later press of "Suggest a question" for the rest of the meeting, and ranking anything above an item with no other home only moves the loss (D508). The initial note-draft fix moved state above the tab switch; D513 moves both editor drafts to the recording controller because library navigation also reconstructs that parent panel. `LiveSpeakerHints.changed` no longer compares `speakerID`: `SpeakerAttributor` mints a fresh one per pass, so the comparison reported a change every time and the guard suppressed nothing. The divider commits its fraction to `@AppStorage` once on release rather than on every frame, and sets the resize cursor rather than pushing it onto a stack that a teardown would never pop.
 
@@ -2502,21 +2613,24 @@ Capture timing starts when the microphone stream actually opens, not when model 
 ## Today (home) — the default destination (D495, Sep 2026)
 
 `Route.library` and the empty route render `HomeView`, the screen a daily
-caller lands on: the header date with `New recording`/`Return to recording` and
-`Ask`; a this-week strip (`HomeWeekFacts`: meetings, recorded time, open
-to-dos) computed from the Library snapshot; **Up next** (today's and up to three
-of tomorrow's calendar events, each with `Brief` and an event-linked `Record`,
-or the calendar offer); **Open to-dos** (the first five open action items with
-the same checkbox action as the sidebar and a link to the source meeting, plus
-"N more in Radar"); **Pick up where you left off** (the three newest meetings
-with voice mix, duration, open count and lifecycle badge); and **Ask your
-meetings** chips that submit a catalogued question through `AskModel` before
-routing to Ask, so the common daily questions cost one click. The view owns no
-store, observation, `.task`, or `@State`: it renders `LibraryModel.State` and
-sends the sidebar's own actions, and `ContentView` supplies the Ask and record
-closures. The sidebar gains a `Today` destination (`library-home-button`)
+caller lands on: the header date with one primary action, `New
+recording`/`Return to recording`; the Ask field (`HomeAskField`,
+`home-ask-field`, submit button `home-ask`) with three ready questions under
+it (`home-ask-chip-<n>`) that submit through `AskModel` before routing to Ask;
+**Next meeting** as the hero row (large time, title, countdown, attendees,
+`Brief` and an event-linked `Record`), followed compactly by the rest of today
+and up to three of tomorrow's events, or the calendar offer plus `Record now`
+(`home-hero-record`) when nothing is scheduled; then **Open to-dos** (the
+first five open action items with the same checkbox action as the sidebar and
+a link to the source meeting, plus "N more in Radar") beside **Pick up where
+you left off** (the three newest meetings with voice mix, duration, open count
+and lifecycle badge), both at content height. The week's totals live in
+Insights, not on Today. `HomeView` owns no store, observation, `.task`, or
+`@State` (the typed question lives in `HomeAskField`): it renders
+`LibraryModel.State` and sends the sidebar's own actions, and `ContentView`
+supplies the Ask and record closures. The sidebar gains a `Today` destination (`library-home-button`)
 selected for both the nil and `.library` routes. Identifiers:
-`home-title`, `home-record`, `home-ask`, `home-stat-*`, `home-upcoming-<id>`
+`home-title`, `home-record`, `home-ask`, `home-ask-field`, `home-hero-record`, `home-upcoming-<id>`
 (+`-brief-`/`-record-`), `home-todo-<uuid>`/`home-todo-toggle-<uuid>`,
 `home-recent-<uuid>`, `home-ask-chip-<n>`, `home-calendar-offer`. The showcase
 seed adds a fictional agenda and two clock-relative meetings so the public
@@ -2524,7 +2638,7 @@ Today screenshot reads lived-in without touching the operator's calendar.
 
 ## Views and flows
 
-**LibraryView + LibraryModel**: `New recording` (⌘N), FTS search with snippets, **"To-dos" section** (open action items from ALL meetings; click navigates to the meeting), recency-grouped meetings with `Rename`/`Delete`, Recently Deleted restore/permanent purge, import progress/errors, and calendar briefs. The per-window model owns data, debounce, mutations, and effects through its narrow client; the SwiftUI views own rendering, native presentation, AppStorage disclosure state, file picking/drop acceptance, and route binding. Library and Meeting Detail deletion plus Recently Deleted restore/permanent purge still enter through ApplicationKit use cases; launch cleanup uses the same purge boundary for tombstones strictly older than 30 days. Existing controls, navigation, and degradable filesystem behavior remain while scoped observations update only their owning sections. `library-search-field` provides a stable automation boundary for the real FTS/model wiring. The query adapter expands a deterministic local English/Spanish meeting lexicon and StorageKit ORs complete language variants while keeping terms inside each variant conjunctive; `unicode61` folds Latin accents. Exact rows publish first. When Apple Latin embedding assets are already installed and capture is inactive, a shared ApplicationKit search actor appends bounded semantic paraphrase/cross-language hits from already-published vectors without downloading assets, writing the corpus, or replacing exact rank (D145/D197). Ask and Library share one typed readiness resolver; launch, searchable mutations, and capture completion wake the sole no-poll product writer, which uses the process coordinator and installed assets (D176/D178/D197). Search rows publish their exact timestamp through the shared one-shot seek channel before routing. While capture is preparing, recording, or processing, the main action becomes identified `Return to recording`; browsing history cannot hide the live timer and Stop control or create a second session. UITests use `firstMatch` for to-dos because a meeting title also appears as the row caption.
+**LibraryView + LibraryModel**: `New recording` (⌘N) with a ▾ menu that holds `Import audio…` (`library-record-menu`, `library-import-audio-button`; the navigation list is destinations only), meeting rows titled without a leading ISO date (`MeetingRowTitle.display`, the date stays on the row's second line), FTS search with snippets, **"To-dos" section** (open action items from ALL meetings; click navigates to the meeting), recency-grouped meetings with `Rename`/`Delete`, Recently Deleted restore/permanent purge, import progress/errors, and calendar briefs. The per-window model owns data, debounce, mutations, and effects through its narrow client; the SwiftUI views own rendering, native presentation, AppStorage disclosure state, file picking/drop acceptance, and route binding. Library and Meeting Detail deletion plus Recently Deleted restore/permanent purge still enter through ApplicationKit use cases; launch cleanup uses the same purge boundary for tombstones strictly older than 30 days. Existing controls, navigation, and degradable filesystem behavior remain while scoped observations update only their owning sections. `library-search-field` provides a stable automation boundary for the real FTS/model wiring. The query adapter expands a deterministic local English/Spanish meeting lexicon and StorageKit ORs complete language variants while keeping terms inside each variant conjunctive; `unicode61` folds Latin accents. Exact rows publish first. When Apple Latin embedding assets are already installed and capture is inactive, a shared ApplicationKit search actor appends bounded semantic paraphrase/cross-language hits from already-published vectors without downloading assets, writing the corpus, or replacing exact rank (D145/D197). Ask and Library share one typed readiness resolver; launch, searchable mutations, and capture completion wake the sole no-poll product writer, which uses the process coordinator and installed assets (D176/D178/D197). Search rows publish their exact timestamp through the shared one-shot seek channel before routing. While capture is preparing, recording, or processing, the main action becomes identified `Return to recording`; browsing history cannot hide the live timer and Stop control or create a second session. UITests use `firstMatch` for to-dos because a meeting title also appears as the row caption.
 
 **RecordingView + RecordingController** (full live pipeline):
 1. `start`: `RecordingController` resets live visual state and sends callbacks
@@ -3013,7 +3127,7 @@ artifact — the composed recap verbatim, complete Gist Markdown/filename/host,
 or the meeting title plus the destination already chosen in the native save
 panel — and the declared capability chips. Confirming runs `ExecuteSkill`
 (claim before effect, typed failure categories); the durable receipts render in
-`MeetingDetailTrustSection` beside the privacy receipt as
+the `MeetingDetailActivityLine` popover beside the privacy receipt as
 `skill-receipt-<skillID>` rows.
 
 Offer policy is durable state, never session memory: dismissal writes

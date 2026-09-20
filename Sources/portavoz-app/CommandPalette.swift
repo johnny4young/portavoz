@@ -170,7 +170,7 @@ private struct CommandPaletteView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .help(L10n.text(
-                    "The command palette searches only your local meeting library."))
+                    "Searches only your meeting library"))
                 .accessibilityLabel(L10n.text("Answer source: Library"))
                 .accessibilityIdentifier("palette-source-library")
             if model.state.answer != nil {
@@ -210,7 +210,7 @@ private struct CommandPaletteView: View {
                 .padding(.vertical, 5)
                 .accessibilityIdentifier("palette-hit-\(index)")
             }
-            Text("Press Enter for a full answer with receipts.")
+            Text("Enter for a full answer with sources.")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 14)

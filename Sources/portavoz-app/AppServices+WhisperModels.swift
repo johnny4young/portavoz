@@ -359,7 +359,7 @@ extension AppServices {
     ) -> Task<WhisperEngine.PreparedModel, Error> {
         let telemetry = workloadTelemetry
         let store = modelStore
-        return Task {
+        return Task { [weak self] in
             try await telemetry.measure(ResourceWorkloadDescriptor(
                 workloadClass: workloadClass,
                 kind: .qualityTranscription,
@@ -370,7 +370,7 @@ extension AppServices {
                     descriptor: descriptor
                 ) { update in
                     let percent = min(100, max(0, Int(update.fraction * 100)))
-                    Task { @MainActor [weak self] in
+                    Task { @MainActor in
                         self?.reportWhisperProgress(
                             descriptorID: descriptor.id,
                             size: size,

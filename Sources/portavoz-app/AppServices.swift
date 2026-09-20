@@ -540,6 +540,19 @@ final class AppServices {
         BundledLiveQuestionDetector.resourceIsLoadable
     }
 
+    /// Whether Apuntador can draft answers, not only show questions: the
+    /// on-device model, or a BYOK provider that would actually build a client
+    /// (enabled, valid endpoint, model and readable key), never the consent
+    /// flag alone.
+    func companionAnswersAvailable() async -> Bool {
+        if appleSummaryAvailable { return true }
+        // The disposable UI-test store never reaches the Keychain (the same
+        // rule the BYOK pane follows), so journeys never pay for or prompt on
+        // a Keychain read.
+        if usesTemporaryMeetingStore { return false }
+        return await companionBYOKClient() != nil
+    }
+
     // MARK: - Embedded MLX model (D25 last mile)
 
     @discardableResult

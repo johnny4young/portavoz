@@ -1267,6 +1267,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let submit = app.buttons["skill-confirm-submit"]
         XCTAssertTrue(submit.waitForStableFrame(timeout: 5))
         submit.click()
+        _ = app.openMeetingActivity()
         XCTAssertTrue(
             app.control(withIdentifier: "skill-receipt-recap-draft")
                 .waitForExistenceFast(timeout: 10))
@@ -1281,6 +1282,9 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             receipt.waitForExistenceFast(timeout: 10),
             "the management pane must project the confirmed durable receipt")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-skill-recap-draft-last-run").exists,
+            "each available action says when it last ran")
         XCTAssertFalse(Self.isOn(app.control(
             withIdentifier: "settings-skill-meeting-package-export-enabled")))
         try scrollToVisible(receipt, in: app)
@@ -1357,8 +1361,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let category = app.control(
             withIdentifier: "settings-category-skills")
         let expectedTitle = UITestLocale.environmentLocale == "es"
-            ? "Acciones sugeridas"
-            : "Suggested actions"
+            ? "Automatizaciones"
+            : "Automations"
         XCTAssertTrue(
             try waitForLabel(category, toContain: expectedTitle),
             "the stable internal Skills route needs a plain-language public title")
@@ -1367,8 +1371,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             withIdentifier: "settings-actions-explanation")
         XCTAssertTrue(explanation.waitForExistenceFast(timeout: 5))
         let expectedExplanation = UITestLocale.environmentLocale == "es"
-            ? "Nada se ejecuta hasta que revisas y confirmas cada acción."
-            : "Nothing runs until you review and confirm it."
+            ? "Nada se ejecuta hasta que lo confirmes."
+            : "Nothing runs until you confirm it."
         XCTAssertTrue(
             try waitForLabel(explanation, toContain: expectedExplanation),
             "the pane must explain the review-first safety contract")

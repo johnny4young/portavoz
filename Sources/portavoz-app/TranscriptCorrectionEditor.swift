@@ -57,7 +57,7 @@ struct TranscriptCorrectionEditor: View {
             originalEvidence
             history
             if let operationError {
-                Label(operationError, systemImage: "exclamationmark.triangle")
+                Label(operationError, systemImage: PVSymbol.warning)
                     .font(.callout)
                     .foregroundStyle(.red)
                     .accessibilityIdentifier("transcript-correction-error")
@@ -77,8 +77,7 @@ struct TranscriptCorrectionEditor: View {
             Text("Correct transcript")
                 .font(.title2.bold())
             Text(
-                // swiftlint:disable:next line_length
-                "The original remains available as evidence. Existing summaries and search results are not regenerated.")
+                "The original text stays available. Summaries and search results are not regenerated.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -115,7 +114,7 @@ struct TranscriptCorrectionEditor: View {
     }
 
     private var originalEvidence: some View {
-        DisclosureGroup("Original evidence") {
+        DisclosureGroup("Original text") {
             VStack(alignment: .leading, spacing: 3) {
                 Text(speakerName(context.original.speakerID))
                     .font(.caption.bold())

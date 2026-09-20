@@ -197,28 +197,29 @@ public actor BundledLiveQuestionDetector: LiveQuestionDetecting {
     private let model: NLModel?
 
     nonisolated public static var resourceIsPresent: Bool {
-        Bundle.module.url(
-            forResource: "PortavozLiveQuestionClassifier",
-            withExtension: "mlmodelc") != nil
+        classifierURL != nil
     }
 
     nonisolated public static let resourceIsLoadable: Bool = {
-        guard let url = Bundle.module.url(
-            forResource: "PortavozLiveQuestionClassifier",
-            withExtension: "mlmodelc")
-        else { return false }
+        guard let url = classifierURL else { return false }
         return (try? NLModel(contentsOf: url)) != nil
     }()
+
+    /// Resolved through the non-trapping module lookup: an absent or
+    /// unreadable resource bundle disables this detector instead of ending
+    /// the app at its first use.
+    nonisolated static var classifierURL: URL? {
+        IntelligenceResourceBundle.url(
+            forResource: "PortavozLiveQuestionClassifier",
+            withExtension: "mlmodelc")
+    }
 
     init(model: NLModel?) {
         self.model = model
     }
 
     private init() {
-        let url = Bundle.module.url(
-            forResource: "PortavozLiveQuestionClassifier",
-            withExtension: "mlmodelc")
-        model = url.flatMap { try? NLModel(contentsOf: $0) }
+        model = Self.classifierURL.flatMap { try? NLModel(contentsOf: $0) }
     }
 
     public func detect(

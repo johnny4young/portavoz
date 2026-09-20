@@ -37,7 +37,7 @@ struct SkillConfirmSheet: View {
         preview
         capabilities
         if let failure {
-            Label(failure, systemImage: "exclamationmark.triangle.fill")
+            Label(failure, systemImage: PVSymbol.error)
                 .font(.callout)
                 .foregroundStyle(.red)
                 .fixedSize(horizontal: false, vertical: true)
@@ -71,7 +71,7 @@ struct SkillConfirmSheet: View {
         VStack(alignment: .leading, spacing: 14) {
             switch result {
             case .gistPublished(let url):
-                Label(L10n.text("Gist published"), systemImage: "checkmark.circle.fill")
+                Label(L10n.text("Gist published"), systemImage: PVSymbol.success)
                     .font(.headline)
                     .foregroundStyle(.green)
                     .accessibilityIdentifier("gist-result-title")
@@ -80,7 +80,7 @@ struct SkillConfirmSheet: View {
             case .gistOutcomeUnknown(let outputURL, let message):
                 Label(
                     L10n.text("Publication outcome unknown — check GitHub"),
-                    systemImage: "exclamationmark.triangle.fill")
+                    systemImage: PVSymbol.error)
                     .font(.headline)
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("gist-result-title")
@@ -198,7 +198,7 @@ struct SkillConfirmSheet: View {
                     in: RoundedRectangle(cornerRadius: 7))
                 Label(
                     gistBoundary,
-                    systemImage: "network.badge.shield.half.filled")
+                    systemImage: PVSymbol.privacy)
                     .font(.caption)
                     .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
@@ -244,7 +244,7 @@ struct SkillConfirmSheet: View {
         let boundary = switch target.offer.kind {
         case .emailRecapDraft: L10n.text("you still press Send")
         case .secretGistPublish: L10n.text("the full document leaves this Mac")
-        case .recapDraft, .packageExport: L10n.text("nothing leaves this Mac")
+        case .recapDraft, .packageExport: L10n.text("stays on your Mac")
         }
         return [L10n.text("reads meeting material"), effect, boundary]
     }

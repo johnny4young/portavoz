@@ -11,23 +11,28 @@ class PortavozUITestCase: XCTestCase {
         try await super.setUp()
         try UITestStorage.begin(ownerID: storageOwnerID)
         addUIInterruptionMonitor(withDescription: "Stop without answering an unexpected interruption") { _ in
-            self.stopForUnexpectedInterruption()
+            self.stopForUnexpectedInterruption(reason: "interruption")
         }
     }
 
     override func tearDown() async throws {
-        let cleanup = Result { try UITestStorage.end(ownerID: storageOwnerID) }
+        // A named child activity makes owned app exit and scratch removal
+        // visible inside Tear Down. Runtime attribution then retains that work
+        // instead of treating an apparently empty teardown as harness noise.
+        let cleanup = XCTContext.runActivity(named: "Finish owned UI test cleanup") { _ in
+            Result { try UITestStorage.end(ownerID: storageOwnerID) }
+        }
         try await super.tearDown()
-        try cleanup.get()
+        _ = try cleanup.get()
     }
 
-    var keyboardReceiverBundleIdentifier: String { "app.portavoz.mac.uitest-host" }
+    var keyboardReceiverBundleIdentifier: String { XCUIApplication.portavozUITestHostBundleIdentifier }
 
     func typeText(_ text: String, in app: XCUIApplication, modalAnchor: String? = nil) {
-        guard app.typeTextIfOwned(
+        let admission = app.typeTextIfOwned(
             text, bundleIdentifier: keyboardReceiverBundleIdentifier, modalAnchor: modalAnchor)
-        else {
-            stopForUnexpectedInterruption()
+        guard admission == .admitted else {
+            stopForUnexpectedInterruption(reason: admission.stopReason)
         }
     }
 
@@ -38,10 +43,12 @@ class PortavozUITestCase: XCTestCase {
         in app: XCUIApplication,
         modalAnchor: String? = nil
     ) {
-        guard app.typeKeyIfOwned(
+        let admission = app.typeKeyIfOwned(
             key, modifierFlags: modifierFlags,
             bundleIdentifier: keyboardReceiverBundleIdentifier, modalAnchor: modalAnchor)
-        else { stopForUnexpectedInterruption() }
+        guard admission == .admitted else {
+            stopForUnexpectedInterruption(reason: admission.stopReason)
+        }
     }
 
     @nonobjc
@@ -54,18 +61,19 @@ class PortavozUITestCase: XCTestCase {
         typeKey(XCUIKeyboardKey(rawValue: key), modifierFlags: modifierFlags, in: app, modalAnchor: modalAnchor)
     }
 
-    private func stopForUnexpectedInterruption() -> Never {
+    private func stopForUnexpectedInterruption(reason: String) -> Never {
         // Cleanup precedes the assertion: synchronous XCTest unwinds here,
         // whereas async XCTest can return and would try its default handler.
         let cleanup: String
         do {
-            try UITestStorage.end(ownerID: storageOwnerID)
-            cleanup = "complete"
+            // `absent` means this owner had no live session to clean; it is
+            // never reported as completed cleanup.
+            cleanup = try UITestStorage.end(ownerID: storageOwnerID) ? "complete" : "absent"
         } catch {
             // Do not interpolate errors: they may contain a private file path.
             cleanup = "failed"
         }
-        let message = "PORTAVOZ_UI_INTERRUPTION_BLOCKED cleanup=\(cleanup)"
+        let message = "PORTAVOZ_UI_INTERRUPTION_BLOCKED cleanup=\(cleanup) reason=\(reason)"
         FileHandle.standardError.write(Data("\(message)\n".utf8))
         continueAfterFailure = false
         record(XCTIssue(type: .assertionFailure, compactDescription: message))

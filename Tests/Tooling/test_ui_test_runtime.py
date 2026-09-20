@@ -1,4 +1,5 @@
 import json
+import re
 import os
 import subprocess
 import sys
@@ -251,6 +252,35 @@ class UITestRuntimeTests(unittest.TestCase):
                 self.assertEqual(receipt["testDurationSeconds"], 20.0)
                 self.assertEqual(receipt["runtimeAdjustments"][0]["excludedPreSetupSeconds"], 30.052)
                 self.assertEqual(receipt["runtimeAdjustments"][0]["excludedPostTeardownSeconds"], 0.0)
+
+    def test_base_case_cleanup_activity_keeps_owned_teardown_in_the_budget(self):
+        source = (ROOT / "Tests/PortavozUITests/PortavozUITestCase.swift").read_text(encoding="utf-8")
+        match = re.search(r'XCTContext\.runActivity\(named: "([^"]+)"\)', source)
+        self.assertIsNotNone(match, "the shared base must name its owned cleanup")
+        tree = {"testRuns": [{"activities": [
+            {"title": "Start Test at synthetic epoch", "startTime": 100.0},
+            {"title": "Set Up", "startTime": 101.5},
+            {"title": "Tear Down", "startTime": 110.0,
+             "childActivities": [{"title": match.group(1), "startTime": 110.001}]},
+        ]}]}
+        boundary = activity_boundary_seconds(tree)
+        self.assertTrue(boundary.preserve_reported_teardown)
+        # Ten seconds of app exit and scratch removal after the marker stay owned:
+        # only the empty pre-setup interval is excluded.
+        for locale in ("en", "es"):
+            with self.subTest(locale=locale):
+                result, receipt = run_recorded_runtime_cli(tree, 20.0, 18.5, locale)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(receipt["testDurationSeconds"], 18.5)
+                adjustment = receipt["runtimeAdjustments"][0]
+                self.assertEqual(adjustment["excludedPreSetupSeconds"], 1.5)
+                self.assertEqual(adjustment["excludedPostTeardownSeconds"], 0.0)
+                result, receipt = run_recorded_runtime_cli(tree, 20.0, 18.0, locale)
+                self.assertEqual(result.returncode, 1, "owned cleanup must not be subtracted to pass")
+                self.assertEqual(receipt["testDurationSeconds"], 18.5)
+        # Without the named child the same shape would subtract that cleanup.
+        tree["testRuns"][0]["activities"][-1]["childActivities"] = []
+        self.assertFalse(activity_boundary_seconds(tree).preserve_reported_teardown)
 
     def test_pre_setup_attribution_rejects_prelude_work_and_inconsistent_clocks(self):
         fixture = ROOT / "Tests/Tooling/fixtures/ui-test-active-teardown.json"

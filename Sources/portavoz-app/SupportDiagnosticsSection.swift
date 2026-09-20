@@ -32,8 +32,7 @@ struct SupportDiagnosticsSection: View {
             }
             Text(
                 // One-line UI help text.
-                // swiftlint:disable:next line_length
-                "Includes app, macOS, model, audio-channel health and timing, transcript counts, processing, provenance, and privacy-receipt status. Never includes meeting text, generated output, prompts, secrets, checksums, full URLs, or file paths. Nothing is sent automatically."
+                "App, macOS, model, audio health and processing status. Never meeting text, prompts, secrets or paths."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

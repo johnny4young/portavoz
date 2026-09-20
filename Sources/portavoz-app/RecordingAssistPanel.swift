@@ -11,6 +11,9 @@ import SwiftUI
 /// the tabs (D504).
 struct RecordingAssistPanel: View {
     @Bindable var controller: RecordingController
+    /// Resolved by the composition (it knows the detector and answer engines).
+    let apuntadorState: RecordingApuntadorState
+    let openApuntadorSettings: @MainActor () -> Void
     @State private var selection: RecordingAssistTab = .companion
     /// Owned here so switching tabs does not reset what the user opened.
     @State private var presentations: [UUID: CompanionCardPresentation] = [:]
@@ -150,6 +153,10 @@ private extension RecordingAssistPanel {
                 tabButton(candidate)
             }
             Spacer(minLength: 0)
+            RecordingApuntadorStateChip(
+                state: apuntadorState,
+                turnOn: { controller.companionEnabled = true },
+                openSettings: openApuntadorSettings)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("recording-assist-tabs")
@@ -200,7 +207,8 @@ private extension RecordingAssistPanel {
             RecordingCompanionCardsView(
                 controller: controller,
                 presentations: $presentations,
-                focused: focusedCardID)
+                focused: focusedCardID,
+                emptyMessage: apuntadorState.explanation)
         case .objectives:
             objectivesTab
         case .notes:
@@ -238,7 +246,7 @@ private extension RecordingAssistPanel {
             .accessibilityIdentifier("recording-live-summary")
         } else {
             RecordingAssistEmptyState(
-                symbol: "sparkles",
+                symbol: PVSymbol.generate,
                 message: L10n.text("A running summary appears once there is enough to say."))
         }
     }
@@ -254,7 +262,7 @@ struct RecordingCatchUpCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Label(L10n.text("Catch me up"), systemImage: "clock.arrow.circlepath")
+                Label(L10n.text("Catch me up"), systemImage: PVSymbol.history)
                     .font(.headline)
                 Spacer()
                 Button(action: dismiss) {

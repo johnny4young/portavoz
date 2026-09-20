@@ -65,7 +65,7 @@ struct MeetingTranscriptSection: View {
                 }
                 .buttonStyle(.borderless)
                 .accessibilityIdentifier("transcript-hidden-lines")
-                .help("Review hidden transcript evidence")
+                .help("Review hidden lines")
             }
             if values.player != nil {
                 Text("Click a line to jump there")
@@ -115,7 +115,7 @@ struct MeetingTranscriptChaptersSection: View {
     var body: some View {
         if !chapters.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Label("Chapters", systemImage: "sparkles")
+                Label("Chapters", systemImage: PVSymbol.generate)
                     .font(.headline)
                     .foregroundStyle(PVDesign.accent)
                 ForEach(chapters) { chapter in
@@ -152,6 +152,6 @@ struct MeetingTranscriptChaptersSection: View {
         .accessibilityIdentifier("chapter-\(Int(chapter.startTime))")
         .help(hasPlayback
             ? L10n.text("Jump to this moment")
-            : L10n.text("Chapters jump the player — this meeting has no audio."))
+            : L10n.text("Jumping needs audio, and this meeting has none"))
     }
 }

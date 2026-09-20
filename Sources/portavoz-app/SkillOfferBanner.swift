@@ -43,7 +43,7 @@ struct SkillOfferMenu: View {
                             "skill-offer-dismiss-\(offer.kind.rawValue)")
                 }
             } label: {
-                Image(systemName: "sparkles")
+                Image(systemName: PVSymbol.automations)
                     .font(.system(size: 13))
                     .foregroundStyle(PVDesign.accent)
                     .frame(width: 30, height: 30)
@@ -59,12 +59,12 @@ struct SkillOfferMenu: View {
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
-            .accessibilityLabel(L10n.text("Suggested actions"))
+            .accessibilityLabel(L10n.text("Automations"))
             .accessibilityIdentifier("skill-offer-menu")
             .help(L10n.text(
                 // Keep the catalog key as one literal: LocalizationTests deliberately
                 // scans call-site prose rather than evaluating Swift concatenation.
-                "Things Portavoz can prepare from this meeting — always previewed and always confirmed by you."))
+                "See what Portavoz can prepare from this meeting. You confirm each one."))
         }
     }
 

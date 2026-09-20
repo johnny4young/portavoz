@@ -140,3 +140,32 @@ enum VoicePalette {
             colorScheme: colorScheme)
     }
 }
+
+/// One SF Symbol per concept (D536). Views name the concept, never the glyph,
+/// so a symbol cannot drift between screens and `sparkles` stays reserved for
+/// the ✦ chip that marks generated content (`ChipLabel`).
+enum PVSymbol {
+    // Navigation
+    static let today = "calendar"
+    static let ask = "bubble.left.and.text.bubble.right"
+    static let insights = "chart.bar.xaxis"
+    static let radar = "checklist"
+    // Assistants and generated work
+    static let apuntador = "questionmark.bubble.fill"
+    /// The same mark, outlined: Apuntador exists here but is switched off.
+    static let apuntadorOff = "questionmark.bubble"
+    static let generate = "wand.and.stars"
+    static let proactive = "bell.badge"
+    static let automations = "bolt.badge.checkmark"
+    static let intelligence = "brain.head.profile"
+    // Trust and state
+    static let privacy = "lock.shield"
+    static let success = "checkmark.circle.fill"
+    static let warning = "exclamationmark.circle"
+    static let error = "exclamationmark.triangle.fill"
+    static let retry = "arrow.clockwise"
+    static let history = "clock.arrow.circlepath"
+    // Recording
+    static let record = "record.circle"
+    static let stop = "stop.fill"
+}

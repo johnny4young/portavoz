@@ -132,7 +132,7 @@ struct MeetingSyncSettingsSection: View {
                 Button {
                     run(.synchronize)
                 } label: {
-                    Label("Sync now", systemImage: "arrow.triangle.2.circlepath")
+                    Label("Sync now", systemImage: PVSymbol.retry)
                 }
                 .accessibilityIdentifier("settings-sync-now")
                 .disabled(model.isBusy || status.accountStatus != .available)
@@ -220,7 +220,7 @@ struct MeetingSyncSettingsSection: View {
         case .pending: "icloud.and.arrow.up"
         case .synchronized: "checkmark.icloud"
         case .paused: "pause.circle"
-        case .retrying: "clock.arrow.circlepath"
+        case .retrying: PVSymbol.history
         case .failed: "exclamationmark.icloud"
         }
     }

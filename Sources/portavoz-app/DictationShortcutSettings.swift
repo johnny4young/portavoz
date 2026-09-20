@@ -18,7 +18,7 @@ struct DictationShortcutSettings: View {
         }
         if shortcut.availability == .unavailable {
             Label(L10n.format("Shortcut %@ is unavailable.", shortcut.setting.label),
-                  systemImage: "exclamationmark.triangle")
+                  systemImage: PVSymbol.warning)
                 .foregroundStyle(.orange)
                 .accessibilityIdentifier("settings-dictation-shortcut-unavailable")
             Text("Another app or the system may reserve it. Choose another combination or retry.")

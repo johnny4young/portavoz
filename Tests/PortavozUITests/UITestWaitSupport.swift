@@ -25,6 +25,10 @@ func waitForUITestCondition(
 }
 
 extension XCUIApplication {
+    /// The only bundle the disposable Portavoz UI-test launch runs as. Shared
+    /// helpers and the base case's default keyboard receiver use this value.
+    nonisolated static let portavozUITestHostBundleIdentifier = "app.portavoz.mac.uitest-host"
+
     /// XCUITest can report `.notRunning` before LaunchServices removes the
     /// process from its inventory. Observe the real host state instead of
     /// sleeping on every launch; an already-clear host returns immediately.
@@ -32,9 +36,8 @@ extension XCUIApplication {
     func waitForPortavozProcessExit(timeout: TimeInterval = 10) -> Bool {
         waitForUITestCondition(timeout: timeout) {
             NSRunningApplication.runningApplications(
-                withBundleIdentifier: "app.portavoz.mac.uitest-host"
+                withBundleIdentifier: Self.portavozUITestHostBundleIdentifier
             ).isEmpty
         }
     }
-
 }

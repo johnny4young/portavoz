@@ -57,7 +57,7 @@ struct MeetingPlayerBar: View {
                             get: { player.clearPlayback },
                             set: { player.clearPlayback = $0 })
                     ) {
-                        Label("Clear playback", systemImage: "waveform.badge.minus")
+                        Label("Voice only", systemImage: "waveform.badge.minus")
                     }
                     .toggleStyle(.button)
                     .controlSize(.small)

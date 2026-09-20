@@ -62,8 +62,8 @@ struct GitHubIssueSkillSheet: View {
                     .foregroundStyle(.secondary)
             }
             Label(
-                "Reviewing is local. Nothing leaves this Mac until you confirm the exact issue.",
-                systemImage: "lock.shield")
+                "Nothing is sent until you confirm the issue.",
+                systemImage: PVSymbol.privacy)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -99,7 +99,7 @@ struct GitHubIssueSkillSheet: View {
             citationSummary(draft.citations)
             Label(
                 "Confirming sends this title, body, and cited excerpts to this repository and creates one issue.",
-                systemImage: "network.badge.shield.half.filled")
+                systemImage: PVSymbol.privacy)
                 .font(.caption)
                 .foregroundStyle(.orange)
                 .fixedSize(horizontal: false, vertical: true)
@@ -183,7 +183,7 @@ struct GitHubIssueSkillSheet: View {
         _ citations: [GitHubIssueCitation]
     ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Evidence included").font(.caption.weight(.semibold))
+            Text("Sources included").font(.caption.weight(.semibold))
             ForEach(Array(citations.enumerated()), id: \.element.id) { index, citation in
                 Text("\(time(citation.timestamp)) · \(citation.speaker): \(citation.excerpt)")
                     .font(.caption)
@@ -200,7 +200,7 @@ struct GitHubIssueSkillSheet: View {
     ) -> some View {
         switch result {
         case .published(let outputURL):
-            Label("GitHub issue created", systemImage: "checkmark.circle.fill")
+            Label("GitHub issue created", systemImage: PVSymbol.success)
                 .font(.headline)
                 .foregroundStyle(.green)
                 .accessibilityIdentifier("github-issue-result-title")
@@ -215,7 +215,7 @@ struct GitHubIssueSkillSheet: View {
         case .outcomeUnknown(let outputURL, let message):
             Label(
                 "Issue outcome unknown — check GitHub",
-                systemImage: "exclamationmark.triangle.fill")
+                systemImage: PVSymbol.error)
                 .font(.headline)
                 .foregroundStyle(.orange)
                 .accessibilityIdentifier("github-issue-result-title")
@@ -257,7 +257,7 @@ struct GitHubIssueSkillSheet: View {
 
     @ViewBuilder private var failureView: some View {
         if let failure {
-            Label(failure, systemImage: "exclamationmark.triangle.fill")
+            Label(failure, systemImage: PVSymbol.error)
                 .font(.callout)
                 .foregroundStyle(.red)
                 .fixedSize(horizontal: false, vertical: true)
