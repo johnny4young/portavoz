@@ -1,5 +1,5 @@
 /// Lifecycle state of one heavyweight runtime family.
-public enum ResourceModelResidencyStatus: String, CaseIterable, Sendable {
+public enum ResourceModelResidencyStatus: String, CaseIterable, Codable, Sendable {
     case unloaded
     case loading
     case resident
@@ -8,7 +8,7 @@ public enum ResourceModelResidencyStatus: String, CaseIterable, Sendable {
 
 /// Public, content-free view of one family. The ledger never stores model
 /// names, paths, prompts, transcript content, or provider payloads.
-public struct ResourceModelResidencyRecord: Equatable, Sendable {
+public struct ResourceModelResidencyRecord: Codable, Equatable, Sendable {
     public let family: ResourceModelFamily
     public let status: ResourceModelResidencyStatus
     public let activeUseCount: Int

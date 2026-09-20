@@ -7,7 +7,7 @@ close those gaps without copying meeting content.
 
 ## Privacy boundary
 
-Field evidence contains only Portavoz's redacted support format 2 and a
+Field evidence contains only Portavoz's redacted support format 2 or 3 and a
 content-free manifest. It must never contain:
 
 - audio, transcripts, summaries, notes, prompts, meeting titles, or speaker names;
@@ -23,8 +23,11 @@ refuses to inspect `/Applications/Portavoz.app`. Field work uses
 ## Canonical protocol
 
 Protocol 2 packages one named fixture, one pseudonymous meeting reference, and
-stable evidence IDs. The support JSON remains format 2; no application schema
-change is required.
+stable evidence IDs. Support format 3 adds the explicitly exported, content-free
+host snapshot; existing format-2 reports remain accepted. This does not change
+the evidence protocol or SQLite schema. The collector validates closed host
+fields, finite nonnegative counters, typed runtime families and unique ownership;
+unknown fields or invalid measurements cannot enter a published package.
 
 ### Before the call
 
@@ -190,8 +193,10 @@ or support reports.
 Protocol-1 `--scenario` invocations remain accepted for one release and keep
 their original manifest and `support-diagnostics.json` filename. New field work
 uses `--fixture`, `--evidence`, and protocol 2. This compatibility window lets
-existing evidence automation migrate without changing the shipped support
-format.
+existing evidence automation migrate independently of support-report format.
+Both protocols preserve accepted format-2 and format-3 reports without dropping
+host fields. The reliability evaluator accepts either report format in protocol-2
+metadata. A host snapshot never upgrades an unobserved field check to a pass.
 
 The historical `app-intents-siri` scenario passed on July 27, 2026: the
 Portavoz-icon action was visible in the Shortcuts picker, and a saved **Start

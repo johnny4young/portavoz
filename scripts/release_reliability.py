@@ -781,8 +781,8 @@ def validate_support_report(value, path):
         path,
         ("formatVersion", "generatedAt", "meetingCount", "selectedMeeting"),
     )
-    if integer(report["formatVersion"], f"{path}.formatVersion") != 2:
-        raise ReliabilityError(f"{path}.formatVersion must be 2")
+    if integer(report["formatVersion"], f"{path}.formatVersion") not in (2, 3):
+        raise ReliabilityError(f"{path}.formatVersion must be 2 or 3")
     timestamp(report["generatedAt"], f"{path}.generatedAt")
     integer(report["meetingCount"], f"{path}.meetingCount")
     meeting = object_shape(

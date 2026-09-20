@@ -36,6 +36,10 @@ struct SupportDiagnosticsSection: View {
             )
             .font(.caption)
             .foregroundStyle(.secondary)
+            Text("Host snapshot: RAM, CPU time, thermal state and runtime-family residency. Not a benchmark.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("settings-diagnostics-host-disclosure")
         }
     }
 
