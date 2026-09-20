@@ -106,6 +106,7 @@ final class AutomationUITests: PortavozUITestCase {
 
         XCTAssertTrue(opened, "LaunchServices must deliver the production recording URL")
         assertVisibleRecording(in: app, route: "URL")
+        try requireDisposableWindowOnZeroScreen(in: app)
         attachScreenshot(of: app, named: "automation-visible-recording")
         app.terminate()
         XCTAssertTrue(
@@ -217,9 +218,21 @@ final class AutomationUITests: PortavozUITestCase {
             seedCommitmentRadar: true,
             simulateAppEntityRoute: route)
         app.launchPortavoz()
+        try requireDisposableWindowOnZeroScreen(in: app)
         XCTAssertTrue(
             app.waitForSeedFixtureReady(),
             "the disposable entity catalog must exist before route assertions")
         return app
     }
+
+    @MainActor
+    private func requireDisposableWindowOnZeroScreen(in app: XCUIApplication) throws {
+        let window = app.windows["main-AppWindow-1"]
+        let contained = waitForUITestCondition(timeout: 5) {
+            window.exists && window.frame.minX >= 0 && window.frame.minY >= 0
+        }
+        _ = try XCTUnwrap(contained ? window : nil,
+                          "Restored disposable windows must stay on the zero screen before screenshots")
+    }
+
 }

@@ -167,11 +167,6 @@ struct ContentView: View {
             await services.routeAutomationEntityIfRequested()
         }
         .task { await services.seedScaleBenchmarkIfRequested() }
-        .background {
-            if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
-                UITestMainWindowCapture()
-            }
-        }
         .task { await services.purgeExpiredTrash() }
         .task { await services.seedShowcaseIfRequested() }
         .onOpenURL { url in

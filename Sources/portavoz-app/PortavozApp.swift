@@ -59,6 +59,11 @@ struct PortavozApp: App {
                     .portavozLocalized()
                     .frame(minWidth: 900, minHeight: 560)
                     .tint(PVDesign.accent)
+                    .background {
+                        if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
+                            UITestMainWindowCapture()
+                        }
+                    }
             }
         } defaultValue: {
             .primary
