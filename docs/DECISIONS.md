@@ -79,6 +79,11 @@ Lightweight ADR format: each entry is a decision made, its context, and its rati
 
 ## D15 — M2 STT: FluidAudio pinned by minor + Parakeet v3 pinned by multi-artifact sha256
 
+> **Version requirement superseded by D516 (11 Sep 2026).** FluidAudio is
+> pinned to an exact patch release; the minor range below is historical.
+> Everything else in this decision — the multi-artifact sha256 registry,
+> the pinned `resolveBase` commit and the `folderName` rule — stands.
+
 **Context:** M2 needs on-device live and batch STT (D7). CoreML models are distributed as `.mlmodelc` bundles (directories of N files) in Hugging Face repos — a single `sha256` per model is insufficient.
 **Decision:** (1) FluidAudio as an SPM dependency with `.upToNextMinor(from: "0.15.4")` — it renames public APIs between minors. (2) The registry (`ModelDescriptor`) lists **every file** as `ModelArtifact {path, sha256, sizeBytes}` with `resolveBase` fixed to an exact commit (`…/resolve/<sha>`); `ModelStore` verifies size + sha256 of each download before the atomic move, and `verify()` re-hashes everything before loading. (3) Only the subset used by the v3 int8 loader is downloaded (Preprocessor/Encoder/Decoder/JointDecisionv3 + vocab = 483 MB, not the repo's 3 GB). The sha256 values come from the HF tree API (LFS provides sha256; small files are hashed manually when pinning).
 **Critical rule discovered:** the descriptor's `folderName` MUST be the name FluidAudio resolves (repo without `-coreml`, e.g. `parakeet-tdt-0.6b-v3`); with any other name FluidAudio **re-downloads the repo without verification** into a sibling directory, bypassing the registry. Protected by a test.
@@ -19472,6 +19477,115 @@ recovery, plus real-app acceptance, termination/relaunch, removal failure,
 Library reentry, retry/discard and a held-write Stop handshake. Injected failures
 remain distinct from physical disk failure, and interrupted-process tests do
 not certify hardware power-loss behavior.
+
+## D516 — Require explicit review for speech-engine patch updates
+
+**Decision.** Pin FluidAudio to exact `0.15.6`, retaining the already checked-in
+revision `4dbf4f9f9a5ff3a53ade848d7ba4e3df13db859b`. This supersedes the minor-range
+requirement in D15: source compatibility is not a guarantee of identical decoder,
+caption or diarization behavior. Keep direct vendor imports in the five existing
+transcription/diarization adapter files and their current package targets.
+
+**Consequences.** An unrelated package refresh cannot admit a FluidAudio patch.
+Engine upgrades require an explicit manifest/resolution change plus matched
+recognition, diarization, latency and memory evidence; an evaluation may reject
+the upgrade. No engine default, window configuration, model weight, download
+consent, import/refine behavior or deployment floor changes with this pin.
+
+**Validation boundary.** Architecture tests check the manifest requirement,
+resolver version/revision, dependency consumers and every import in `Sources`
+and `Tests`, including re-export forms. The requirement is the single source of
+truth: the tests read the version out of the manifest instead of repeating it,
+so an approved upgrade is a manifest edit plus a reviewed revision, not a hunt
+for literals. SwiftPM's evaluated manifest and the real build verify resolver
+admission; these checks do not independently qualify real-model accuracy or
+performance.
+
+**Accepted cost.** Freezing the engine means the gap to upstream grows, and
+upstream patches land on mechanisms Portavoz depends on. That lag and its
+re-evaluation trigger are tracked as gap T35 in docs/GAPS.md, not here.
+Dependabot's grouped Swift refresh excludes FluidAudio (`.github/dependabot.yml`)
+so an unrelated security update never arrives blocked by this pin.
+
+## D517 — Make shortcut restoration and registration recoverable
+
+**Date:** 2026-09-11
+
+**Context.** Persisted key integers were coerced through UserDefaults and then
+converted to UInt32, allowing a negative or oversized value to terminate launch.
+A bare saved key bypassed the recorder's modifier rule; its characterization test
+failed on the actual restoration path. Carbon failure silently left an enabled
+feature without a trigger, while Settings always described the default chord.
+
+**Decision.** Validate types and representable bounds before conversion, apply
+the recorder's modifier contract on restoration, and retain existing special-key
+bindings through normalized display glyphs. Absent preferences are normal;
+corrupt preferences use a visible fallback without automatic persistent repair.
+An explicit edit supersedes only the owned three startup overrides as well as
+writing the persisted setting. This is needed because writing a lower-priority
+domain alone cannot repair an active command-line override.
+
+Keep one MainActor observable registration owner under the dictation controller.
+Request exclusive Carbon ownership, expose unavailable state with explicit
+Retry/change/default recovery, unregister before rebind, and fence old callbacks.
+No timer competes for shortcuts and no recovery action starts audio. The view
+observes the current binding rather than caching another label. AppServices
+chooses the real registrar only outside temporary storage; test registration is
+an explicit temporary-composition fixture and never a production controller flag.
+
+**Boundary.** Registration failure does not identify which application or OS
+reservation caused it. Deterministic owner tests and actual Settings journeys
+cover recovery, not all physical keyboard layouts, global Carbon conflicts or
+ASR quality. Tap/hold timing, insertion, dictionary and language behavior remain
+unchanged; registration availability is not a claim that every downstream
+permission or model is ready.
+
+## D520 — Export host facts on demand through existing support ownership
+
+The support report already projects redacted capture and durable-processing
+facts, but omitted RAM, thermal conditions and current runtime ownership. Reuse
+that explicit local export instead of adding background history or a diagnostic
+service. Format 3 adds a typed host snapshot; older absent host fields remain
+absent. Core resource enums retain their meaning and gain closed Codable forms,
+not model/provider names or content-bearing metadata.
+
+PlatformKit samples only its own process, using the stable V0 counters on the
+deployment floor. The benchmark reuses that bridge with explicitly requested
+current extended counters; it must not substitute zero for missing energy or I/O.
+App composition reads its existing residency ledger. It does not export the
+pressure monitor: that owner publishes a nominal policy default before receiving
+an OS memory event, and an actual export test demonstrated that the default would
+be mislabeled as a host measurement. Unknown reads remain unknown, and duplicate
+or invalid family evidence is omitted instead of inventing an idle runtime.
+Export does not mutate the ledger or storage. Known native thermal states map
+directly to the closed vocabulary; a future state is omitted instead of becoming
+the governor's conservative fair fallback. Both boundaries have call-site tests.
+
+Cumulative CPU seconds, current process footprint and optional per-family
+measurements are distinct facts, not a latency benchmark or summed RAM estimate.
+A failing real AppServices export test first established the missing host object;
+regressions also enter the export sanitizer with malformed decoded observations.
+The real Settings export journey inspects the saved artifact rather than only
+checking the button. No automatic sharing or sampling history is introduced.
+
+The report format also belongs to its consumers. An actual AppServices export
+failed at the field collector even though exporter and collector unit suites
+were green: every collector fixture still used format 2. Both the collector and
+reliability metadata validator now admit formats 2 and 3. Host fields remain
+closed and strictly validated, not an arbitrary optional JSON escape hatch.
+Cross-language tests pass actual Swift exports and every typed residency state
+through collection and reliability validation; the synthetic result stays
+not-observed. Old reports and protocol-1 invocations remain supported.
+
+Native CPU validation uses `task_info(TASK_ABSOLUTETIME_INFO)` as the independent
+API around both production resource flavors and actual exported seconds. The
+earlier `getrusage` oracle failed on Sequoia because its thread-wise rounding and
+separate live/terminated snapshots invalidate a fixed quantization allowance.
+Replace that oracle, not production counters or numeric tolerances. Keep strict
+before/after bounds, test after native worker termination, and retain independent
+conversion so a wrong-unit mutation at the real adapter cannot pass merely
+because its pure helper is correct. This establishes API agreement, not physical
+hardware qualification or performance.
 
 ## D521 — Transfer portable preferences through an explicit review
 

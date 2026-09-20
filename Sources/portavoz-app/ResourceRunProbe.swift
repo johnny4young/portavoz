@@ -2,6 +2,7 @@ import Darwin
 import Foundation
 import IOKit.ps
 import PortavozCore
+import PlatformKit
 
 enum ResourceProbeThermalState: String, Codable, Sendable {
     case nominal
@@ -120,28 +121,17 @@ struct ResourceProbeUsage: Equatable, Sendable {
     let lowPowerModeEnabled: Bool
 
     static func current() throws -> ResourceProbeUsage {
-        var usage = rusage_info_current()
-        let result = withUnsafeMutablePointer(to: &usage) { pointer in
-            pointer.withMemoryRebound(
-                to: rusage_info_t?.self,
-                capacity: 1
-            ) { reboundPointer in
-                proc_pid_rusage(
-                    getpid(),
-                    RUSAGE_INFO_CURRENT,
-                    reboundPointer)
-            }
-        }
-        guard result == 0 else {
-            throw ResourceRunProbeError.processUsageUnavailable
-        }
+        guard let usage = try? OwnProcessResourceUsage.current(extendedCounters: true),
+              let energy = usage.energyNanojoules,
+              let diskRead = usage.diskReadBytes, let diskWritten = usage.diskWrittenBytes
+        else { throw ResourceRunProbeError.processUsageUnavailable }
         let availableDisk = try ResourceProbeDiskCapacity.availableBytes()
         return ResourceProbeUsage(
-            cpuAbsoluteTime: usage.ri_user_time + usage.ri_system_time,
-            physicalFootprintBytes: usage.ri_phys_footprint,
-            energyNanojoules: usage.ri_energy_nj,
-            diskReadBytes: usage.ri_diskio_bytesread,
-            diskWrittenBytes: usage.ri_diskio_byteswritten,
+            cpuAbsoluteTime: usage.cpuAbsoluteTime,
+            physicalFootprintBytes: usage.physicalFootprintBytes,
+            energyNanojoules: energy,
+            diskReadBytes: diskRead,
+            diskWrittenBytes: diskWritten,
             availableDiskBytes: availableDisk,
             thermalState: ProcessInfo.processInfo.resourceProbeThermalState,
             powerSource: resourceProbePowerSource(),

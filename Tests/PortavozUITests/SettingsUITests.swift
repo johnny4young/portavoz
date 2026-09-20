@@ -223,13 +223,22 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             export.waitForExistenceFast(timeout: 5),
             "the Your-data pane must offer an explicit redacted support export")
+        XCTAssertTrue(app.staticTexts["settings-diagnostics-host-disclosure"].exists)
         export.click()
         XCTAssertTrue(
             app.staticTexts["settings-diagnostics-status"].waitForExistenceFast(timeout: 10),
             "the export must confirm that no meeting content was included")
         XCTAssertTrue(FileManager.default.fileExists(atPath: destination.path))
         let text = try String(contentsOf: destination, encoding: .utf8)
-        XCTAssertTrue(text.contains("\"formatVersion\" : 2"))
+        XCTAssertTrue(text.contains("\"formatVersion\" : 3"))
+        let report = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any])
+        let environment = try XCTUnwrap(report["environment"] as? [String: Any])
+        let host = try XCTUnwrap(environment["host"] as? [String: Any])
+        XCTAssertGreaterThan(try XCTUnwrap(host["physicalMemoryBytes"] as? UInt64), 0)
+        XCTAssertNotNil(host["thermalState"])
+        XCTAssertNotNil(host["processFootprintBytes"])
+        XCTAssertNotNil(host["processCPUSeconds"])
+        XCTAssertEqual((host["modelResidency"] as? [Any])?.count, 5)
         XCTAssertTrue(text.contains("\"audioAssets\""))
         XCTAssertTrue(text.contains("\"transcript\""))
         XCTAssertFalse(text.contains("relativePath"))
@@ -395,6 +404,73 @@ final class SettingsUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 5),
             "a seeded replacement must expose its removal control")
         attachScreenshot(of: app, named: "dictation-triggers-language-dictionary")
+    }
+
+    @MainActor
+    func testDictationRecoversShortcutConflictAndRefreshesHelp() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
+        app.launchArguments.append("-seed-dictation-shortcut-conflict")
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationMouseButton":0,"dictationHotkeyKeyCode":46,"#
+            + #""dictationHotkeyModifiers":2304,"dictationHotkeyLabel":"⌥⌘M"}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+        openCategory("settings-category-audio", revealing: "settings-dictation-shortcut-retry", in: app)
+
+        let unavailable = app.control(withIdentifier: "settings-dictation-shortcut-unavailable")
+        XCTAssertTrue(unavailable.exists)
+        let retry = app.buttons["settings-dictation-shortcut-retry"]
+        XCTAssertTrue(retry.exists)
+        retry.click()
+        let help = app.staticTexts["settings-dictation-shortcut-help"]
+        XCTAssertTrue(help.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(renderedText(of: help).contains("⌥⌘M"))
+        XCTAssertFalse(unavailable.exists)
+        XCTAssertFalse(retry.exists, "retry must not leave a stale failure surface")
+
+        let recorder = app.buttons["settings-dictation-hotkey-recorder"]
+        XCTAssertTrue(recorder.waitForStableFrame())
+        recorder.click()
+        typeKey("n", modifierFlags: [.control, .option, .command], in: app)
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            renderedText(of: help).contains("⌃⌥⌘N") && recorder.label.contains("⌃⌥⌘N")
+        }, "the recorder and help must observe the new registration rather than their initial label")
+        let useDefault = app.buttons["settings-dictation-shortcut-default"]
+        XCTAssertTrue(useDefault.exists)
+        useDefault.click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: help).contains("⌥⌘D") })
+        XCTAssertFalse(useDefault.exists)
+        XCTAssertFalse(app.control(withIdentifier: "settings-dictation-shortcut-recovered").exists)
+        attachScreenshot(of: app, named: "dictation-shortcut-recovery")
+    }
+
+    @MainActor
+    func testDictationRepairsCorruptShortcutWithoutLeavingSettings() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
+        app.launchArguments.append("-seed-dictation-shortcut-conflict")
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationMouseButton":0,"dictationHotkeyKeyCode":-1,"#
+            + #""dictationHotkeyModifiers":-1,"dictationHotkeyLabel":"invalid"}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+        openCategory("settings-category-audio", revealing: "settings-dictation-shortcut-default", in: app)
+
+        let recovered = app.staticTexts["settings-dictation-shortcut-recovered"]
+        XCTAssertTrue(recovered.exists, "malformed startup settings must reach a recoverable app, not a trap")
+        XCTAssertTrue(renderedText(of: recovered).contains("⌥⌘D"))
+        let useDefault = app.buttons["settings-dictation-shortcut-default"]
+        XCTAssertTrue(useDefault.exists)
+        useDefault.click()
+        XCTAssertTrue(recovered.waitForDisappearance(timeout: 5), "explicit repair must supersede the corrupt override")
+        XCTAssertFalse(useDefault.exists)
+        XCTAssertFalse(app.control(withIdentifier: "settings-dictation-shortcut-unavailable").exists)
+        let help = app.staticTexts["settings-dictation-shortcut-help"]
+        XCTAssertTrue(help.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(renderedText(of: help).contains("⌥⌘D"))
+        openCategory("settings-category-general", revealing: "settings-language-system-toggle", in: app)
+        openCategory("settings-category-audio", revealing: "settings-dictation-shortcut-help", in: app)
+        XCTAssertFalse(recovered.exists, "pane reconstruction must not restore stale corrupt settings")
+        XCTAssertTrue(renderedText(of: help).contains("⌥⌘D"))
     }
 
     @MainActor

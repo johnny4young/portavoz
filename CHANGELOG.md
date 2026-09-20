@@ -86,6 +86,9 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 - 📦 **Preferences that travel safely** — export language, vocabulary and text settings, then review every change before importing; permissions and feature activation stay yours.
 
+- **⌨️ Reliable dictation shortcuts** — recover unavailable shortcuts and keep on-screen help in sync with your chosen keys.
+- **🩺 Clearer support diagnostics** — export a private snapshot of RAM, CPU time, thermal state and model residency without sharing meeting content.
+
 ## September 10, 2026
 
 - **💾 Safer live notes and objectives** — accepted changes survive interrupted recordings, and failed saves keep your input available to retry.

@@ -50,7 +50,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     var subtitleKey: String {
         switch self {
         case .general: "System language · English/Spanish · menu bar"
-        case .audio: "Call-safe capture · dictate anywhere · ⌥⌘D"
+        case .audio: "Call-safe capture · global dictation"
         case .intelligence: "Summary engine · Apuntador · your voice"
         case .agenda: "Reminder · end-of-meeting Shortcut · title template"
         case .skills: "Review · enable · history"

@@ -39,7 +39,7 @@ public enum ResourceMemoryPressure: String, CaseIterable, Sendable {
     case critical
 }
 
-public enum ResourceThermalState: String, CaseIterable, Sendable {
+public enum ResourceThermalState: String, CaseIterable, Codable, Sendable {
     case nominal
     case fair
     case serious
@@ -60,7 +60,7 @@ public enum ResourceDurableBacklog: String, CaseIterable, Sendable {
 
 /// Heavyweight runtime families. Values are capability identities, not model
 /// names, file paths, or provider payloads.
-public enum ResourceModelFamily: String, CaseIterable, Sendable {
+public enum ResourceModelFamily: String, CaseIterable, Codable, Sendable {
     case liveSpeech
     case qualitySpeech
     case speakerDiarization

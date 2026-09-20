@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-FORMAT_VERSION = 2
+SUPPORT_FORMAT_VERSIONS = (2, 3)
 LEGACY_PROTOCOL_VERSION = 1
 PROTOCOL_VERSION = 2
 MAX_REPORT_BYTES = 25 * 1024 * 1024
@@ -163,7 +163,10 @@ def integer(value, path, minimum=0):
 def number(value, path, minimum=None, maximum=None):
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise EvidenceError(f"{path} must be numeric")
-    value = float(value)
+    try:
+        value = float(value)
+    except OverflowError as error:
+        raise EvidenceError(f"{path} must be finite") from error
     if not math.isfinite(value):
         raise EvidenceError(f"{path} must be finite")
     if minimum is not None and value < minimum:
@@ -212,10 +215,11 @@ def validate_report(report):
         "report",
         ("formatVersion", "generatedAt", "environment", "storage", "meetings"),
     )
-    if integer(root["formatVersion"], "report.formatVersion") != FORMAT_VERSION:
-        raise EvidenceError(f"report.formatVersion must be {FORMAT_VERSION}")
+    version = integer(root["formatVersion"], "report.formatVersion")
+    if version not in SUPPORT_FORMAT_VERSIONS:
+        raise EvidenceError("report.formatVersion must be 2 or 3")
     timestamp(root["generatedAt"], "report.generatedAt")
-    validate_environment(root["environment"])
+    validate_environment(root["environment"], version)
     validate_storage(root["storage"])
     meetings = array(root["meetings"], "report.meetings", maximum=100_000)
     for index, meeting in enumerate(meetings):
@@ -224,12 +228,13 @@ def validate_report(report):
         raise EvidenceError("report.storage.meetingCount does not match meetings")
 
 
-def validate_environment(value):
+def validate_environment(value, version):
     path = "report.environment"
     value = object_shape(
         value,
         path,
         ("appVersion", "buildVersion", "operatingSystem", "models"),
+        ("host",) if version == 3 else (),
     )
     string(value["appVersion"], f"{path}.appVersion", VERSION_PATTERN)
     string(value["buildVersion"], f"{path}.buildVersion", VERSION_PATTERN)
@@ -243,6 +248,47 @@ def validate_environment(value):
         model = object_shape(model, model_path, ("capability", "state"))
         string(model["capability"], f"{model_path}.capability", CODE_PATTERN)
         string(model["state"], f"{model_path}.state", CODE_PATTERN)
+    optional(value, "host", validate_host, path)
+
+
+def validate_host(value, path):
+    value = object_shape(
+        value, path, ("physicalMemoryBytes", "lowPowerModeEnabled", "modelResidency"),
+        ("processFootprintBytes", "processCPUSeconds", "thermalState"),
+    )
+    unsigned_bytes(value["physicalMemoryBytes"], f"{path}.physicalMemoryBytes")
+    optional(value, "processFootprintBytes", unsigned_bytes, path)
+    optional(value, "processCPUSeconds", lambda item, item_path: number(item, item_path, 0), path)
+    optional(value, "thermalState", lambda item, item_path: closed_value(
+        item, item_path, ("nominal", "fair", "serious", "critical")), path)
+    if not isinstance(value["lowPowerModeEnabled"], bool):
+        raise EvidenceError(f"{path}.lowPowerModeEnabled must be a boolean")
+    families = ("liveSpeech", "qualitySpeech", "speakerDiarization", "languageIntelligence", "semanticEmbedding")
+    states = ("unloaded", "loading", "resident", "releasing")
+    seen = set()
+    for index, record in enumerate(array(value["modelResidency"], f"{path}.modelResidency", len(families))):
+        record_path = f"{path}.modelResidency[{index}]"
+        record = object_shape(
+            record, record_path, ("family", "status", "activeUseCount"), ("measuredFootprintBytes",))
+        family = closed_value(record["family"], f"{record_path}.family", families)
+        if family in seen:
+            raise EvidenceError(f"{record_path}.family must be unique")
+        seen.add(family)
+        closed_value(record["status"], f"{record_path}.status", states)
+        if integer(record["activeUseCount"], f"{record_path}.activeUseCount") > (1 << 63) - 1:
+            raise EvidenceError(f"{record_path}.activeUseCount exceeds Int64")
+        optional(record, "measuredFootprintBytes", unsigned_bytes, record_path)
+
+
+def unsigned_bytes(value, path):
+    if integer(value, path) > (1 << 64) - 1:
+        raise EvidenceError(f"{path} exceeds UInt64")
+
+
+def closed_value(value, path, allowed):
+    if not isinstance(value, str) or value not in allowed:
+        raise EvidenceError(f"{path} has an unsupported value")
+    return value
 
 
 def validate_storage(value):
@@ -762,11 +808,11 @@ def parser():
     result.add_argument(
         "--report",
         required=True,
-        help="Exported format-v2 support JSON; before-Refine in fixture mode",
+        help="Exported format-v2/v3 support JSON; before-Refine in fixture mode",
     )
     result.add_argument(
         "--after-refine-report",
-        help="Optional paired format-v2 support JSON exported after Refine",
+        help="Optional paired format-v2/v3 support JSON exported after Refine",
     )
     result.add_argument(
         "--meeting-reference",

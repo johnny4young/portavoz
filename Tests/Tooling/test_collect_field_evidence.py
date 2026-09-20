@@ -21,9 +21,93 @@ COLLECTOR_SPEC = importlib.util.spec_from_file_location(
 assert COLLECTOR_SPEC is not None and COLLECTOR_SPEC.loader is not None
 collector = importlib.util.module_from_spec(COLLECTOR_SPEC)
 COLLECTOR_SPEC.loader.exec_module(collector)
+RELIABILITY_SPEC = importlib.util.spec_from_file_location(
+    "release_reliability", REPOSITORY / "scripts/release_reliability.py")
+reliability = importlib.util.module_from_spec(RELIABILITY_SPEC)
+RELIABILITY_SPEC.loader.exec_module(reliability)
 
 
 class CollectFieldEvidenceTests(unittest.TestCase):
+    def test_both_support_formats_reach_collection_and_reliability_without_claiming_field_proof(self):
+        for version, include_host in [(2, False), (3, False), (3, True)]:
+            with self.subTest(version=version, host=include_host), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                payload = self.valid_report()
+                payload["formatVersion"] = version
+                if include_host:
+                    payload["environment"]["host"] = self.host_snapshot()
+                output = root / "evidence"
+                result = self.run_fixture(self.write_report(root, payload), self.write_app(root),
+                                          output, "model-cold-start")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads((output / "support-before-refine.json").read_text()), payload)
+                manifest = json.loads((output / "manifest.json").read_text())
+                verified = reliability.validate_field_manifest(manifest, "test")
+                self.assertEqual(verified["outcome"], "not-observed")
+                self.assertEqual(manifest["supportReports"]["beforeRefine"]["formatVersion"], version)
+
+    def test_collector_rejects_malformed_host_before_creating_an_evidence_directory(self):
+        cases = [
+            ("title", "PRIVATE reunión — Don’t export"),
+            ("physicalMemoryBytes", -1), ("physicalMemoryBytes", True),
+            ("physicalMemoryBytes", 1 << 64), ("processFootprintBytes", -1),
+            ("processCPUSeconds", -0.1), ("processCPUSeconds", True),
+            ("processCPUSeconds", float("nan")), ("processCPUSeconds", float("inf")),
+            ("processCPUSeconds", 10 ** 400), ("thermalState", "unknown"),
+            ("lowPowerModeEnabled", 1), ("modelResidency", {}),
+            ("modelResidency", [{"family": "secret", "status": "resident", "activeUseCount": 0}]),
+        ]
+        for key, value in cases:
+            with self.subTest(key=key, value=repr(value)), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                payload = self.valid_report()
+                payload["formatVersion"] = 3
+                payload["environment"]["host"] = self.host_snapshot()
+                payload["environment"]["host"][key] = value
+                output = root / "evidence"
+                result = self.run_collector(self.write_report(root, payload), self.write_app(root), output)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("error: report.environment.host", result.stderr)
+                self.assertNotIn("PRIVATE", result.stderr)
+                self.assertFalse(output.exists())
+
+    def test_host_residency_rejects_duplicate_or_untyped_owner_evidence(self):
+        original = {"family": "liveSpeech", "status": "resident", "activeUseCount": 1}
+        records = [[original, original]]
+        for key, value in [("status", "failed"), ("activeUseCount", -1),
+                           ("activeUseCount", True), ("activeUseCount", 1 << 63),
+                           ("measuredFootprintBytes", -1), ("measuredFootprintBytes", 1 << 64),
+                           ("modelName", "PRIVATE")]:
+            records.append([{**original, key: value}])
+        for residency in records:
+            with self.subTest(residency=residency), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                payload = self.valid_report()
+                payload["formatVersion"] = 3
+                payload["environment"]["host"] = {**self.host_snapshot(), "modelResidency": residency}
+                output = root / "evidence"
+                result = self.run_fixture(self.write_report(root, payload), self.write_app(root),
+                                          output, "model-cold-start")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("error: report.environment.host.modelResidency", result.stderr)
+                self.assertFalse(output.exists())
+
+    def test_legacy_format_does_not_silently_admit_new_host_fields(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            payload = self.valid_report()
+            payload["environment"]["host"] = self.host_snapshot()
+            result = self.run_collector(self.write_report(root, payload), self.write_app(root), root / "evidence")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("forbidden keys: host", result.stderr)
+            self.assertFalse((root / "evidence").exists())
+
+    @staticmethod
+    def host_snapshot():
+        return {"physicalMemoryBytes": 16 * 1024 ** 3, "processFootprintBytes": 123,
+                "processCPUSeconds": 1.25, "thermalState": "nominal",
+                "lowPowerModeEnabled": False, "modelResidency": []}
+
     def test_packages_valid_report_without_source_paths(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
