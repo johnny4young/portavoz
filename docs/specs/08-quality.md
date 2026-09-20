@@ -1,5 +1,34 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
+`PortableSettingsTests` exercises the real defaults adapter using private suites,
+including its persistent-write branch and startup-override precedence. Coverage
+includes exclusion of secrets/consents/host bindings, non-destructive vocabulary
+and replacement merge, Unicode and literal replacement syntax, capture beginning
+after preview, concurrent preference edits, replayed approval, future/unknown
+fields, scalar coercion, malformed collections, byte limits and empty imports.
+Legacy whitespace/reordered-key/Unicode-escaped JSON is tested at the actual
+write seam: equivalent collections retain exact bytes, while changed literal
+replacement text still applies.
+`PortableSettingsFileTests` reaches actual selected-file IO, including symlinks,
+FIFOs, empty/exact-limit/oversized files, private permissions, replacement and
+cancelled/failed-publication cleanup. `PortableSettingsObservationTests` checks
+real effective-value notifications in temporary and persistent-override branches,
+and preserves the shortcut-neutral Audio subtitle localization key.
+`SettingsTransferModelTests` reaches the real defaults
+adapter through injected IO for explicit approval, capture/stale rejection,
+cancelled late reads, duplicate actions, empty review and IO errors. The dedicated
+`settings-transfer` XCUITest scope exercises real-app Export → Review → Cancel →
+Import → Apply → Export and verifies the selected sidebar button's localized
+label before and after import without changing panes and the translated Audio
+category label, plus
+recovery from a rejected sensitive key followed by an empty collection import
+that must show no change and retain the original legacy JSON. File selection
+alone is injected; parsing,
+review, defaults mutation and file IO remain real. Native panel interaction and
+physical macOS compatibility are separate from these deterministic journeys.
+The Suggested Actions vocabulary ratchet checks category identity, title key and
+search behavior directly, not the source spelling of an eager localization call.
+
 Library presentation coverage retains the existing catalogue: the entry journey
 asserts full-width, non-overlapping labeled destinations and selected-state
 semantics, captures the light workspace, and enters Ask through its first-action
@@ -11,6 +40,12 @@ unrelated windows. These assertions do not claim physical assistive validation.
 The Settings journey also checks that localized provider help retains Sequoia
 and Tahoe support plus the selected local engine, rather than stale Apple-only
 live-summary wording.
+
+Portable-preference UI journeys allocate input and output documents through the
+shared identity-owned `UITestStorage` cross-process scratch boundary. They use
+the throwing application factory and admit review-sheet Escape through the
+keyboard receiver guard; no runner-container path or raw keyboard bypass is
+needed for import/export coverage.
 
 Shortcut recovery coverage exercises stored preference decoding and the actual
 registration owner: malformed types, integer boundaries, Unicode and legacy
@@ -24,6 +59,8 @@ does not relax the full-suite or p95 limits.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
+The combined catalog contains 122 UI cases, including both portable-settings
+and shortcut-recovery journeys; their existing time budgets remain unchanged.
 Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI

@@ -17,15 +17,17 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: String {
+    var title: String { L10n.text(titleKey) }
+
+    var titleKey: String {
         switch self {
-        case .general: L10n.text("General & language")
-        case .audio: L10n.text("Audio & dictation")
-        case .intelligence: L10n.text("Intelligence")
-        case .agenda: L10n.text("Agenda & automation")
-        case .skills: L10n.text("Automations")
-        case .integrations: L10n.text("Integrations")
-        case .data: L10n.text("Your data")
+        case .general: "General & language"
+        case .audio: "Audio & dictation"
+        case .intelligence: "Intelligence"
+        case .agenda: "Agenda & automation"
+        case .skills: "Automations"
+        case .integrations: "Integrations"
+        case .data: "Your data"
         }
     }
 
@@ -43,15 +45,17 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
 
     /// The one-line preview under each nav item (design system 2a): the
     /// pane's contents at a glance, so the sidebar tells you where to go.
-    var subtitle: String {
+    var subtitle: String { L10n.text(subtitleKey) }
+
+    var subtitleKey: String {
         switch self {
-        case .general: L10n.text("System language · English/Spanish · menu bar")
-        case .audio: L10n.text("Call-safe capture · global dictation")
-        case .intelligence: L10n.text("Summary engine · Apuntador · your voice")
-        case .agenda: L10n.text("Reminder · end-of-meeting Shortcut · title template")
-        case .skills: L10n.text("Review · enable · history")
-        case .integrations: L10n.text("BYOK OpenAI-compatible · GitHub gists · MCP")
-        case .data: L10n.text("Privacy · iCloud sync · storage · background activity")
+        case .general: "System language · English/Spanish · menu bar"
+        case .audio: "Call-safe capture · global dictation"
+        case .intelligence: "Summary engine · Apuntador · your voice"
+        case .agenda: "Reminder · end-of-meeting Shortcut · title template"
+        case .skills: "Review · enable · history"
+        case .integrations: "BYOK OpenAI-compatible · GitHub gists · MCP"
+        case .data: "Privacy · iCloud sync · storage · background activity"
         }
     }
 
@@ -85,12 +89,12 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         }
     }
 
-    func matches(_ query: String) -> Bool {
+    func matches(_ query: String, language: AppLanguage = .current) -> Bool {
         let query = query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !query.isEmpty else { return true }
-        return title.lowercased().contains(query)
+        return L10n.text(titleKey, language: language).lowercased().contains(query)
             || keywordGroups.contains { group in
-                group.contains(query) || L10n.text(group).contains(query)
+                group.contains(query) || L10n.text(group, language: language).lowercased().contains(query)
             }
     }
 }

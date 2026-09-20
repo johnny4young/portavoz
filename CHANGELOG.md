@@ -80,6 +80,12 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 12, 2026
 
+- 🌐 **Settings in your chosen language** — importing a language updates navigation immediately without changing your current pane.
+
+- 🧩 **Import only real changes** — equivalent vocabulary and dictation rules stay untouched, including settings saved on older macOS versions.
+
+- 📦 **Preferences that travel safely** — export language, vocabulary and text settings, then review every change before importing; permissions and feature activation stay yours.
+
 - **⌨️ Reliable dictation shortcuts** — recover unavailable shortcuts and keep on-screen help in sync with your chosen keys.
 - **🩺 Clearer support diagnostics** — export a private snapshot of RAM, CPU time, thermal state and model residency without sharing meeting content.
 
