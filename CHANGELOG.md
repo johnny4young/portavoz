@@ -6,6 +6,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 20, 2026
 
+- **🌐 Import queue in your language** — readiness and page navigation now follow your selected language.
 - **📥 Audio import queue** — import multiple files, follow each file’s progress, and cancel or retry without changing your originals.
 
 ## 1.1.0 — September 17, 2026

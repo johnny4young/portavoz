@@ -295,6 +295,7 @@ struct LibraryView: View {
         panel.allowedContentTypes = Self.importTypes
         panel.prompt = L10n.text("Import")
         panel.message = L10n.text("Choose audio files to transcribe, or one .portavoz meeting file")
+        AudioImportUITestFixture.configurePicker(panel)
         guard panel.runModal() == .OK else { return }
         importAudio(from: panel.urls)
     }

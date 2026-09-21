@@ -102,6 +102,14 @@ desktop that preserves its interaction context; any lifecycle change must first
 reproduce the problem at the actual window attachment/presentation boundary.
 Hosted CI and a local interactive run remain distinct evidence.
 
+The native same-application sheet positive has also encountered an unattributed
+own-app `Other` surface while focusing its accessory editor. The guard completed
+cleanup without typing or choosing anything, so the native prerequisite failed
+before the product catalog started. A separately instrumented observation reached
+the expected editor and choice; that did not reproduce or identify the original
+surface and is not a fix. Preserve the failed control rather than weakening its
+effect checks or treating the later diagnostic as full qualification.
+
 ### Unexpected system interruptions invalidate UI qualification
 
 A retained real-app execution proved that XCTest's default interruption monitor

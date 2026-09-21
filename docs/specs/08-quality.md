@@ -7942,6 +7942,17 @@ bilingual aggregate limit are unchanged. The catalogue owns their import scope.
 
 Native open-panel file selection uses the panel's List view and Select All
 command; read-only filename text fields are not treated as clickable controls.
+Import journeys prepare the initial directory through the explicitly gated
+import-picker fixture. It requires temporary-store, import-fixture and picker-fixture
+flags together, and uses only an existing `selection` directory under the
+disposable app's `TMPDIR`. It neither selects files nor presents or confirms the
+panel. Missing roots and non-directory selections leave navigation unchanged.
+The same configuration is tested against a real `NSOpenPanel`, including every
+missing-flag combination. Real-app journeys still enter the Library menu and
+select all original files through the native panel before ordinary admission.
+Go to Folder typing, Unicode filenames and nested-modal rejection remain in the
+mandatory native interruption controls; repeating host-folder setup in every
+import recovery journey is not a model or import performance measurement.
 The runner allocates synthetic sources through `UITestStorage` and selects them
 explicitly. The app factory supplies the same owner's database, audio destination
 and process temporary root; import fixtures do not override those paths. Shared
@@ -7969,14 +7980,32 @@ database-polling reads.
 Import assertions scope row/action queries to the actual queue panel. The
 completion count is matched by identifier and localized label/value in one
 native predicate, rather than independent existence, label and value snapshots
-while the queue changes. Missing or incorrect text still fails the original
-deadline. Native picker filenames are queried as read-only text fields. The
+while the queue changes. This asynchronous batch uses the shared bounded predicate
+wait with an immediate check and one-second probes instead of repeatedly
+snapshotting the changing twenty-row accessibility tree every fifty milliseconds.
+The main run loop remains live between probes. Missing or incorrect text still fails the
+original deadline. The same journey asserts localized readiness and both paging
+labels in the real app. Settled pages use one fresh accessibility snapshot for
+their complete Open/status identity sets, localized readiness, paging labels and
+enabled states, and absence of error/retry/cancel controls. The journey verifies
+the first page again after Previous, not only the click itself. The cancellation
+journey checks both successful rows after retry. These snapshots are never
+reused across actions or for input ownership. Native picker filenames are queried as read-only text fields. The
 21-file workload, paging/close/reopen checks, per-file recovery assertions and
 all timing budgets remain unchanged.
 
+`AudioImportBatchIntegrationTests` separately processes twenty-one real synthetic
+WAV files through native bookmark/copy verification, file-backed SQLite, the
+durable worker and the same explicitly gated model fixture. It checks both pages,
+every meeting's bilingual text and exact retained audio bytes when optional
+diarizer preparation fails. It does not include AppServices, SwiftUI or native
+file selection and therefore cannot replace the corresponding XCUITest journey
+or establish model quality.
+
 The import journey enters through the Library record menu and the identified
 native open panel. Every synthesized key uses the shared ownership gate with
-the current panel or Go to Folder sheet as its explicit anchor. A missing
+the current panel as its explicit anchor. The separate native controls exercise
+the Go to Folder sheet and reject its ancestor as an input owner. A missing
 action, field, or closing acknowledgement ends the journey before further
 input; native focus and returned-file evidence cannot be replaced by a scripted
 admission call.

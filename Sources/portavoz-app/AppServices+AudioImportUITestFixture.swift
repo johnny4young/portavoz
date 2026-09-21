@@ -1,3 +1,4 @@
+import AppKit
 import AVFoundation
 import ApplicationKit
 import DiarizationKit
@@ -15,6 +16,26 @@ actor AudioImportUITestFixture: ImportMeetingProcessor, ImportMeetingSummaryProv
     private var rejectsCancellation: Bool
     private var rejectsDeletion: Bool
     nonisolated let clockOffset: TimeInterval
+
+    /// Only prepares navigation inside the existing disposable app root. The
+    /// real panel still owns selection, confirmation and returned file URLs.
+    @MainActor
+    static func configurePicker(
+        _ panel: NSOpenPanel,
+        arguments: [String] = ProcessInfo.processInfo.arguments,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) {
+        guard arguments.contains("-use-temp-store"),
+              arguments.contains("-audio-import-ui-fixture"),
+              arguments.contains("-audio-import-picker-fixture"),
+              let root = environment["TMPDIR"], root.hasPrefix("/"), root != "/" else { return }
+        let directory = URL(fileURLWithPath: root, isDirectory: true)
+            .appendingPathComponent("selection", isDirectory: true)
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: directory.path, isDirectory: &isDirectory),
+              isDirectory.boolValue else { return }
+        panel.directoryURL = directory
+    }
 
     static func makeIfRequested(arguments: [String] = ProcessInfo.processInfo.arguments) -> AudioImportUITestFixture? {
         guard arguments.contains("-use-temp-store"), arguments.contains("-audio-import-ui-fixture") else { return nil }

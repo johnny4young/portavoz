@@ -2051,7 +2051,8 @@ or stealing navigation on completion. The queue projects twenty rows at a time,
 puts unfinished work first, excludes trash, uses stable meeting identifiers,
 and exposes Cancel, Retry, Open, paging and close controls. Current attempt
 phases are observational; no total progress percentage is invented. A failed
-file cannot suppress another file's result. Original files remain read-only.
+file cannot suppress another file's result. Readiness and both paging controls
+use the same English/Spanish catalog as the rest of the queue. Original files remain read-only.
 Moving the recordings root rejects while an admission/drain/pending job exists;
 the model prevents a new selection from racing the subsequent root change.
 

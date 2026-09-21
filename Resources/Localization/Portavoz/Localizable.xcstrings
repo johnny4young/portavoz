@@ -7779,6 +7779,16 @@
         }
       }
     },
+    "Next": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siguiente"
+          }
+        }
+      }
+    },
     "Next Steps": {
       "localizations": {
         "es": {
@@ -9869,6 +9879,16 @@
         }
       }
     },
+    "Previous": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anterior"
+          }
+        }
+      }
+    },
     "Preview": {
       "localizations": {
         "es": {
@@ -10405,6 +10425,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Léelo, edita lo que quieras y luego elige a dónde va."
+          }
+        }
+      }
+    },
+    "Ready": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listo"
           }
         }
       }

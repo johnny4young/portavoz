@@ -16,30 +16,33 @@ final class AudioImportUITests: PortavozUITestCase {
 
     @MainActor
     func testMultipleAudioFilesReachPagedQueueAndOpenTheirMeeting() throws {
-        let folder = try makeAudioSelection(count: 21)
         let app = try fixtureApp()
+        let folder = try makeAudioSelection(count: 21, app: app)
         // The entire queue must still finish when optional model preparation
         // fails, not merely when an already prepared diarizer returns no turns.
         app.launchArguments.append("-audio-import-diarizer-unavailable")
         app.launchPortavoz()
         defer { app.terminate() }
-        guard chooseAudio(in: folder.appendingPathComponent("selection"), app: app) else { return }
+        guard chooseAudio(app: app) else { return }
         let panel = app.control(withIdentifier: "import-queue-panel")
         XCTAssertTrue(panel.waitForExistenceFast(timeout: 15))
         let expected = UITestLocale.environmentLocale == "es"
             ? "21 importaciones · 0 sin terminar" : "21 imports · 0 unfinished"
-        XCTAssertTrue(queueCount(expected, in: panel).waitForExistenceFast(timeout: 30))
+        // This is an asynchronous batch, not an already-rendered control.
+        // Pace snapshots while the main actor publishes progress, rather than
+        // repeatedly rebuilding the changing twenty-row AX tree every 50 ms.
+        let finished = queueCount(expected, in: panel)
+        XCTAssertTrue(waitForUITestCondition(timeout: 30, pollInterval: 1) { finished.exists })
         let completed = panel.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "import-queue-open-"))
-        XCTAssertEqual(completed.count, 20, "Every first-page import must publish a readable meeting")
         let next = panel.buttons["import-queue-next"]
         let previous = panel.buttons["import-queue-previous"]
-        XCTAssertFalse(previous.isEnabled)
-        XCTAssertTrue(next.isEnabled)
+        try assertReadyPage(panel, count: 20, previousEnabled: false, nextEnabled: true)
         next.click()
         XCTAssertTrue(previous.waitForEnabled(timeout: 5))
-        XCTAssertFalse(next.isEnabled)
-        XCTAssertEqual(completed.count, 1, "The last import must also publish without speaker models")
+        try assertReadyPage(panel, count: 1, previousEnabled: true, nextEnabled: false)
         previous.click()
+        XCTAssertTrue(next.waitForEnabled(timeout: 5))
+        try assertReadyPage(panel, count: 20, previousEnabled: false, nextEnabled: true)
         panel.buttons["import-queue-close"].click()
         app.buttons["library-import-queue-open"].click()
         let open = completed.firstMatch
@@ -52,12 +55,12 @@ final class AudioImportUITests: PortavozUITestCase {
 
     @MainActor
     func testCancelOneImportContinuesTheNextAndExplicitRetryReusesTheQueue() throws {
-        let folder = try makeAudioSelection(count: 2)
         let app = try fixtureApp(holdFirst: true)
+        let folder = try makeAudioSelection(count: 2, app: app)
         app.launchArguments.append("-audio-import-fail-mutations-once")
         app.launchPortavoz()
         defer { app.terminate() }
-        guard chooseAudio(in: folder.appendingPathComponent("selection"), app: app) else { return }
+        guard chooseAudio(app: app) else { return }
         let panel = app.control(withIdentifier: "import-queue-panel")
         XCTAssertTrue(panel.waitForExistenceFast(timeout: 15))
         let state = panel.staticTexts.matching(NSPredicate(
@@ -79,8 +82,7 @@ final class AudioImportUITests: PortavozUITestCase {
         XCTAssertTrue(other.waitForExistenceFast(timeout: 10))
         retry.click()
         XCTAssertTrue(panel.buttons["import-queue-open-\(id)"].waitForExistenceFast(timeout: 15))
-        XCTAssertFalse(retry.exists)
-        XCTAssertFalse(panel.staticTexts["import-queue-error"].exists)
+        try assertReadyPage(panel, count: 2, previousEnabled: false, nextEnabled: false)
         panel.buttons["import-queue-close"].click()
         verifyRejectedLibraryDeletion(id: id, app: app)
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: folder.appendingPathComponent("selection").path).count, 2)
@@ -88,11 +90,11 @@ final class AudioImportUITests: PortavozUITestCase {
 
     @MainActor
     func testRelaunchResumesPublishedAudioWithoutTheSelectedOriginals() throws {
-        let folder = try makeAudioSelection(count: 1)
         let app = try fixtureApp(holdFirst: true)
+        let folder = try makeAudioSelection(count: 1, app: app)
         app.launchPortavoz()
         defer { app.terminate() }
-        guard chooseAudio(in: folder.appendingPathComponent("selection"), app: app) else { return }
+        guard chooseAudio(app: app) else { return }
         let panel = app.control(withIdentifier: "import-queue-panel")
         XCTAssertTrue(panel.waitForExistenceFast(timeout: 15))
         let state = panel.staticTexts.matching(NSPredicate(
@@ -131,6 +133,49 @@ final class AudioImportUITests: PortavozUITestCase {
     }
 
     @MainActor
+    private func assertReadyPage(
+        _ panel: XCUIElement, count: Int, previousEnabled: Bool, nextEnabled: Bool
+    ) throws {
+        // One coherent observation after each acknowledged state change. Never
+        // reuse it across navigation, mutation, or input ownership decisions.
+        var pending: [any XCUIElementSnapshot] = [try panel.snapshot()]
+        var buttons: [any XCUIElementSnapshot] = []
+        var statuses: [any XCUIElementSnapshot] = []
+        while let element = pending.popLast() {
+            if element.elementType == .button { buttons.append(element) }
+            if element.elementType == .staticText {
+                XCTAssertNotEqual(element.identifier, "import-queue-error")
+                if element.identifier.hasPrefix("import-queue-state-") { statuses.append(element) }
+            }
+            pending.append(contentsOf: element.children)
+        }
+        let opens = buttons.filter { $0.identifier.hasPrefix("import-queue-open-") }
+        XCTAssertEqual(opens.count, count, "Every page entry must publish a readable meeting")
+        XCTAssertEqual(statuses.count, count)
+        let meetingIDs = Set(opens.map { String($0.identifier.dropFirst("import-queue-open-".count)) })
+        XCTAssertEqual(meetingIDs.count, count, "Duplicate rows cannot substitute for missing meetings")
+        XCTAssertEqual(meetingIDs, Set(statuses.map { String($0.identifier.dropFirst("import-queue-state-".count)) }))
+        XCTAssertFalse(buttons.contains {
+            $0.identifier.hasPrefix("import-queue-retry-") || $0.identifier.hasPrefix("import-queue-cancel-")
+        }, "A completed page must not retain failed or unfinished actions")
+        let spanish = UITestLocale.environmentLocale == "es"
+        for status in statuses {
+            let expected = spanish ? "Listo" : "Ready"
+            XCTAssertTrue(status.label == expected || status.value as? String == expected)
+        }
+        for (identifier, label, enabled) in [
+            ("import-queue-next", spanish ? "Siguiente" : "Next", nextEnabled),
+            ("import-queue-previous", spanish ? "Anterior" : "Previous", previousEnabled)
+        ] {
+            let matches = buttons.filter { $0.identifier == identifier }
+            XCTAssertEqual(matches.count, 1)
+            let button = try XCTUnwrap(matches.first)
+            XCTAssertEqual(button.label, label)
+            XCTAssertEqual(button.isEnabled, enabled)
+        }
+    }
+
+    @MainActor
     private func verifyRejectedLibraryDeletion(id: String, app: XCUIApplication) {
         let row = app.control(withIdentifier: "library-meeting-\(id)").firstMatch
         XCTAssertTrue(row.waitForExistenceFast(timeout: 5))
@@ -150,7 +195,7 @@ final class AudioImportUITests: PortavozUITestCase {
     @MainActor
     private func fixtureApp(holdFirst: Bool = false) throws -> XCUIApplication {
         let app = try XCUIApplication.portavoz()
-        app.launchArguments.append("-audio-import-ui-fixture")
+        app.launchArguments += ["-audio-import-ui-fixture", "-audio-import-picker-fixture"]
         for key in ["TMPDIR", "PORTAVOZ_UI_TEST_DATABASE_PATH", "PORTAVOZ_AUDIO_ROOT"] {
             ownedArtifacts.append(URL(fileURLWithPath: try XCTUnwrap(app.launchEnvironment[key])))
         }
@@ -159,7 +204,7 @@ final class AudioImportUITests: PortavozUITestCase {
     }
 
     @MainActor
-    private func chooseAudio(in folder: URL, app: XCUIApplication) -> Bool {
+    private func chooseAudio(app: XCUIApplication) -> Bool {
         let menu = app.control(withIdentifier: "library-record-menu")
         guard menu.waitForHittable(timeout: 5) else {
             XCTFail("The Library must expose the import menu")
@@ -177,19 +222,9 @@ final class AudioImportUITests: PortavozUITestCase {
             XCTFail("The import action must open the native audio picker")
             return false
         }
-        typeKey("g", modifierFlags: [.command, .shift], in: app, modalAnchor: "open-panel")
-        let folderSheet = picker.sheets["GoToWindow"]
-        let path = folderSheet.textFields["PathTextField"]
-        guard path.waitForExistenceFast(timeout: 5) else {
-            XCTFail("The native picker must expose its Go to Folder field")
-            return false
-        }
-        typeText(folder.path + "/", in: app, modalAnchor: "GoToWindow")
-        typeKey(.return, modifierFlags: [], in: app, modalAnchor: "GoToWindow")
-        guard folderSheet.waitForDisappearance(timeout: 5) else {
-            XCTFail("Go to Folder must close before selecting files")
-            return false
-        }
+        // The disposable fixture sets only the initial directory, never the
+        // selection. Go to Folder and nested-modal ownership remain exercised
+        // by the mandatory native interruption controls instead of every batch.
         // List view avoids NSOpenPanel's offscreen column frames for deep paths.
         typeKey("2", modifierFlags: .command, in: app, modalAnchor: "open-panel")
         let first = app.textFields.matching(NSPredicate(format: "value == %@", "Audio 00.wav")).firstMatch
@@ -197,7 +232,7 @@ final class AudioImportUITests: PortavozUITestCase {
             XCTFail("The native picker did not reach the selected synthetic audio folder")
             return false
         }
-        // The modal panel already owns keyboard focus after Go to Folder.
+        // The modal panel owns keyboard focus after switching to List view.
         // Select its files with the native command; read-only AX name fields
         // are not clickable controls even when their frames are visible.
         typeKey("a", modifierFlags: .command, in: app, modalAnchor: "open-panel")
@@ -216,12 +251,13 @@ final class AudioImportUITests: PortavozUITestCase {
         return true
     }
 
-    private func makeAudioSelection(count: Int) throws -> URL {
+    @MainActor
+    private func makeAudioSelection(count: Int, app: XCUIApplication) throws -> URL {
         // One owner joins app exit before removing originals and copied audio,
         // including interruption exits where a method's defer cannot run.
-        let folder = try UITestStorage.makeDirectory()
-        ownedArtifacts.append(folder)
+        let folder = URL(fileURLWithPath: try XCTUnwrap(app.launchEnvironment["TMPDIR"]), isDirectory: true)
         let selection = folder.appendingPathComponent("selection")
+        ownedArtifacts.append(selection)
         try FileManager.default.createDirectory(at: selection, withIntermediateDirectories: true)
         let format = try XCTUnwrap(AVAudioFormat(standardFormatWithSampleRate: 16_000, channels: 1))
         let buffer = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 1_600))
