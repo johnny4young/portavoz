@@ -195,6 +195,18 @@ class UITestScopeTests(unittest.TestCase):
                 path,
             )
 
+    def test_audio_import_sources_reach_the_queue_instead_of_playback_settings(self):
+        expected = set(FEATURE_TESTS["audio-imports"]) | set(FEATURE_TESTS["library"])
+        paths = sorted(ROOT.glob("Sources/**/*AudioImport*.swift"))
+        self.assertTrue(paths)
+        for source in paths:
+            path = source.relative_to(ROOT).as_posix()
+            with self.subTest(path=path):
+                selection = select_paths([path])
+                self.assertEqual(set(selection.tests), expected)
+                self.assertEqual(selection.locales, ("en",))
+                self.assertFalse(selection.interruption_controls)
+
     def test_detail_secondary_sections_select_only_owned_journeys(self):
         expected = {
             "Sources/portavoz-app/MeetingDetailActionSection.swift": (

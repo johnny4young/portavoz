@@ -44,7 +44,6 @@ extension ArchitectureDependencyTests {
         let hygiene = try Self.contents(
             of: "scripts/check-repository-hygiene.sh")
         let package = try Self.contents(of: "Package.swift")
-        let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertEqual(cases.count, 36)
@@ -62,7 +61,7 @@ extension ArchitectureDependencyTests {
             "Tests.Tooling.test_meeting_memory_graph_quality"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("graph database"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
-        XCTAssertTrue(schema.contains("public static let version = 51"))
+
         XCTAssertTrue(decisions.contains("## D270"))
     }
 

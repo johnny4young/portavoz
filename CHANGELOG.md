@@ -4,6 +4,15 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## September 21, 2026
+
+- **🛡️ Safer import cancellation** — already-cancelled work leaves your staged audio untouched.
+
+## September 20, 2026
+
+- **🌐 Import queue in your language** — readiness and page navigation now follow your selected language.
+- **📥 Audio import queue** — import multiple files, follow each file’s progress, and cancel or retry without changing your originals.
+
 ## 1.1.0 — September 17, 2026
 
 **Less noise, one place for everything.**
@@ -77,6 +86,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **A clearer review loop** — reversible clear playback, dismissible suggestions, enhanced notes, recaps, subtitles, chapters, privacy receipts, and actionable processing recovery make finished meetings easier to trust and use.
 - **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
 - **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
+
+## September 15, 2026
+
+- **📝 Import without speaker models** — keep your transcript when speaker identification is unavailable, instead of failing the whole import.
 
 ## September 12, 2026
 

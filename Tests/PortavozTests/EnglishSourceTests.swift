@@ -166,6 +166,9 @@ final class EnglishSourceTests: XCTestCase {
         _ relative: String,
         line: String
     ) -> Bool {
+        if relative == "Sources/portavoz-app/AppServices+AudioImportUITestFixture.swift" {
+            return line.trimmingCharacters(in: .whitespaces) == "let text = \"No envíes 2. Don’t send 2.\""
+        }
         if relative == "Sources/portavoz-app/AppServices+Showcase.swift" {
             // The -seed-showcase library is deliberately Spanish fictional
             // prose: the bilingual transcript is what the screenshot shows.

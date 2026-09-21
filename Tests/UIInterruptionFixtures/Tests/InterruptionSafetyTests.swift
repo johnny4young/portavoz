@@ -174,9 +174,69 @@ final class InterruptionSafetyTests: PortavozUITestCase {
         })
     }
 
+    func testUnexpectedNativePickerRejectsTraversal() throws {
+        let app = try armNativePicker()
+        print("FIXTURE_INTERRUPTION_READY")
+        typeKey("g", modifierFlags: [.command, .shift], in: app)
+        XCTFail("FIXTURE_TARGET_CONTINUED")
+    }
+
+    func testNativePickerRejectsBackgroundAnchor() throws {
+        let app = try armNativePicker()
+        print("FIXTURE_INTERRUPTION_READY")
+        typeKey("g", modifierFlags: [.command, .shift], in: app, modalAnchor: "proof-input")
+        XCTFail("FIXTURE_TARGET_CONTINUED")
+    }
+
+    func testNativePickerRejectsAncestorAnchor() throws {
+        let app = try armNativePicker()
+        typeKey("g", modifierFlags: [.command, .shift], in: app, modalAnchor: "open-panel")
+        XCTAssertTrue(app.sheets["GoToWindow"].waitForExistence(timeout: 5))
+        print("FIXTURE_INTERRUPTION_READY")
+        typeText("proof\n", in: app, modalAnchor: "open-panel")
+        XCTFail("FIXTURE_TARGET_CONTINUED")
+    }
+
+    func testExpectedNativePickerChoiceIsObservable() throws {
+        let app = try armNativePicker()
+        typeKey("g", modifierFlags: [.command, .shift], in: app, modalAnchor: "open-panel")
+        let goTo = app.sheets["GoToWindow"]
+        XCTAssertTrue(goTo.waitForExistence(timeout: 5))
+        let source = try XCTUnwrap(app.launchEnvironment["PROOF_NATIVE_SOURCE_ROOT"])
+        let folder = URL(fileURLWithPath: source).appendingPathComponent("Selection with spaces")
+        typeText(folder.path + "/", in: app, modalAnchor: "PathTextField")
+        typeKey(.return, modifierFlags: [], in: app, modalAnchor: "GoToWindow")
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { !goTo.exists })
+        typeKey("2", modifierFlags: .command, in: app, modalAnchor: "open-panel")
+        let picker = app.dialogs["open-panel"]
+        // APFS/native AX can decompose the accented filename. Swift equality
+        // preserves canonical equivalence without ignoring accents or case.
+        let expectedNames: Set<String> = ["Mañana – owner’s plan.txt", "Don’t send 2.txt"]
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            let names = Set(picker.textFields.allElementsBoundByIndex.compactMap { $0.value as? String })
+            return names.isSuperset(of: expectedNames)
+        })
+        typeKey("a", modifierFlags: .command, in: app, modalAnchor: "open-panel")
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { picker.buttons["OKButton"].isEnabled })
+        typeKey(.return, modifierFlags: [], in: app, modalAnchor: "open-panel")
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { !picker.exists })
+        let effects = try XCTUnwrap(ProcessInfo.processInfo.environment["PROOF_EFFECTS_ROOT"])
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            FileManager.default.fileExists(atPath: effects + "/file-choice")
+        })
+    }
+
+    private func armNativePicker() throws -> XCUIApplication {
+        let app = try launchOwnedApp(nativePicker: true)
+        app.buttons["proof-arm"].click()
+        XCTAssertTrue(app.dialogs["open-panel"].waitForExistence(timeout: 5))
+        return app
+    }
+
     private func launchOwnedApp(
         sameApplicationModal: Bool = false,
-        appModalDialog: Bool = false
+        appModalDialog: Bool = false,
+        nativePicker: Bool = false
     ) throws -> XCUIApplication {
         let directory = try UITestStorage.makeDirectory()
         ownedRoot = directory.deletingLastPathComponent()
@@ -190,6 +250,15 @@ final class InterruptionSafetyTests: PortavozUITestCase {
             ProcessInfo.processInfo.environment["PROOF_OVERLAY_EXECUTABLE"]
         app.launchEnvironment["PROOF_EFFECTS_ROOT"] =
             ProcessInfo.processInfo.environment["PROOF_EFFECTS_ROOT"]
+        if nativePicker {
+            let source = directory.appendingPathComponent("Native picker")
+            let selection = source.appendingPathComponent("Selection with spaces")
+            try FileManager.default.createDirectory(at: selection, withIntermediateDirectories: true)
+            for name in ["Mañana – owner’s plan.txt", "Don’t send 2.txt"] {
+                try Data("Public fixture".utf8).write(to: selection.appendingPathComponent(name))
+            }
+            app.launchEnvironment["PROOF_NATIVE_SOURCE_ROOT"] = source.path
+        }
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "-NSQuitAlwaysKeepsWindows", "NO"]
         app.launch()
         let arm = app.buttons["proof-arm"]

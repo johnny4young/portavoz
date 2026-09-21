@@ -102,6 +102,14 @@ desktop that preserves its interaction context; any lifecycle change must first
 reproduce the problem at the actual window attachment/presentation boundary.
 Hosted CI and a local interactive run remain distinct evidence.
 
+The native same-application sheet positive has also encountered an unattributed
+own-app `Other` surface while focusing its accessory editor. The guard completed
+cleanup without typing or choosing anything, so the native prerequisite failed
+before the product catalog started. A separately instrumented observation reached
+the expected editor and choice; that did not reproduce or identify the original
+surface and is not a fix. Preserve the failed control rather than weakening its
+effect checks or treating the later diagnostic as full qualification.
+
 ### Unexpected system interruptions invalidate UI qualification
 
 A retained real-app execution proved that XCTest's default interruption monitor
@@ -195,10 +203,12 @@ XCTest reactivated the app and wrote despite the overlay. A foreground-only
 check was then disproved by a synthetic same-app alert: a newline accepted its
 default choice without entering an interruption monitor.
 
-Process ownership plus an explicit sole-modal-contained anchor now covers
-sixteen native controls, including legitimate bilingual editing, foreign
-interruption, unexpected same-app sheet and app-modal dialog rejection, and
-background-anchor rejection. Two surfaces stay outside the rule: popovers, and
+Process ownership plus an explicit innermost-modal-contained anchor now covers
+twenty native controls, including legitimate bilingual editing, foreign
+interruption, unexpected same-app sheet and app-modal dialog rejection,
+background-anchor rejection, and actual nested open-panel selection. The picker
+controls prove exact Unicode file selection and refuse missing, background or
+ancestor anchors; they do not qualify unrelated application journeys. Two surfaces stay outside the rule: popovers, and
 a dialog nothing can click such as the floating Writing Tools affordance. An
 unexpected popover with a default button is therefore not refused, and an
 app-modal dialog whose hit point lies off-screen is not either. Real
@@ -209,6 +219,17 @@ is not attributed from its frame; completion preferences and unrelated apps are
 not changed. Public-API admission remains a point-in-time observation: a window
 change after observation cannot be claimed atomically excluded. Full bilingual
 and exact-head hosted qualification remain distinct from native controls.
+
+A later Spanish Background Work journey stopped during its first Settings-form
+scroll after the indicator had opened Your data and the exact owner counts were
+verified. XCTest reported an interrupting `Other` owned by the disposable app;
+the guard completed cleanup before dispatch. The interrupted recording did not
+finish, so neither the element's frame nor the remaining passing tests identifies
+the surface or qualifies the invocation. This deep link does not use the ordinary
+Settings search-editor handoff, but that omission alone does not establish the
+interruption's cause. Preserve the failed evidence and reproduce the actual
+entry boundary before applying a handoff or changing scroll admission. Do not
+attribute the interruption to another application or dismiss an unknown surface.
 
 ### Unattributed asynchronous media-framework test crash
 
@@ -735,3 +756,47 @@ Backend queue backpressure and exception-path cancellation draining remain
 unverified risks, not newly reproduced product defects. Preserve the failed
 receipt and unchanged stability thresholds; do not replace this gap with a
 retry-until-green candidate or a synthetic unit-test claim.
+
+### Multi-file audio import qualification
+
+The Library now admits multiple audio files into the same SQLite job authority,
+with app-owned serial supervision and a paged queue for progress, cancellation,
+retry and explicit result navigation. Storage/native/controller tests cover
+owner-fenced publication, preserved originals, cancellation, retry, and resuming
+a published copy without its source. These are not model-quality measurements.
+
+Real-app picker, pagination, cancellation and retry journeys are being qualified
+with synthetic PCM and a scripted recognition adapter gated by both temporary
+storage and its explicit fixture flag. Full hosted bilingual functional coverage
+has passed, but per-case and aggregate timing budgets have not been qualified.
+Native picker navigation, keyboard dispatch and accessibility queries before
+admission remain part of those unchanged journey budgets; total case duration
+is not an import-worker or ASR latency measurement. Consolidating queue queries
+does not establish a processing speedup or resolve these timing findings.
+Physical power loss, removable-volume TCC behavior and
+real-model throughput remain separate evidence. Required Whisper recognition
+is not replaced by live first-pass recovery; speaker preparation is optional
+under D532.
+
+A missing/changed original before copy publication leaves staged bytes intact
+but cannot certify their source. Only published audio resumes without the original.
+Purge and restore share native exclusion and fresh tombstone checks; filesystem
+removal and SQLite purge are still not one crash-atomic transaction.
+
+Native filesystem cancellation is cooperative, not a promise to interrupt a
+kernel call waiting for filesystem access or an OS permission decision. An accepted cancellation
+invalidates the file's durable publication authority immediately; the serial
+supervisor still joins native cleanup before starting another attempt. File-lock
+acquisition is nonblocking, but that does not make directory creation, bookmark
+resolution or file I/O nonblocking. Physical permission/removable-volume behavior
+remains separate from deterministic local-file tests.
+
+Shared real-app fixtures now use the explicit D523 scratch owner, and import
+fixtures retain its database/audio paths rather than assigning unowned temporary
+destinations. Sources use that owner too. Actual import teardown assertions check
+their removal after the app exits. Earlier full runs stopped by protected
+runner-container access remain invalid; a later ownership repair does not
+retroactively qualify them. Cumulative import qualification must retain the
+original functional and timing budgets, native picker, relaunch and storage
+assertions. A focused import success does not establish the separate compact
+correction interaction recorded elsewhere in this document.

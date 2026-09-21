@@ -49,6 +49,10 @@ CASES = {
     "testAppModalDialogChoiceIsObservable": {"modal-choice", "typed"},
     "testSynchronousAppModalDialogInterruption": set(),
     "testAsynchronousAppModalDialogInterruption": set(),
+    "testExpectedNativePickerChoiceIsObservable": {"file-choice"},
+    "testUnexpectedNativePickerRejectsTraversal": set(),
+    "testNativePickerRejectsBackgroundAnchor": set(),
+    "testNativePickerRejectsAncestorAnchor": set(),
 }
 NO_OVERLAY_CASES = {
     "testUninterruptedActionAndTeardown", "testUninterruptedKeyboardInputAndTeardown",
@@ -56,6 +60,8 @@ NO_OVERLAY_CASES = {
     "testAsynchronousSameApplicationModalInterruption", "testSameApplicationModalRejectsBackgroundAnchor",
     "testAppModalDialogChoiceIsObservable", "testSynchronousAppModalDialogInterruption",
     "testAsynchronousAppModalDialogInterruption",
+    "testExpectedNativePickerChoiceIsObservable", "testUnexpectedNativePickerRejectsTraversal",
+    "testNativePickerRejectsBackgroundAnchor", "testNativePickerRejectsAncestorAnchor",
 }
 # Each negative control must stop through the exact refusal path it targets:
 # a pointer interruption enters the monitor, a foreign overlay removes keyboard
@@ -72,6 +78,9 @@ STOP_REASONS = {
     "testSameApplicationModalRejectsBackgroundAnchor": "modal-context",
     "testSynchronousAppModalDialogInterruption": "modal-context",
     "testAsynchronousAppModalDialogInterruption": "modal-context",
+    "testUnexpectedNativePickerRejectsTraversal": "modal-context",
+    "testNativePickerRejectsBackgroundAnchor": "modal-context",
+    "testNativePickerRejectsAncestorAnchor": "modal-context",
 }
 OWNED_EXIT_SECONDS = 10
 OWNED_STOP_GRACE_SECONDS = 5

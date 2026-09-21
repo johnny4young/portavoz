@@ -68,6 +68,11 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testSeededMeetingsGroupByRecency"),
         test_id("LibraryUITests", "testActiveRecordingRemainsReachableAfterBrowsingTheLibrary"),
     ),
+    "audio-imports": (
+        test_id("AudioImportUITests", "testMultipleAudioFilesReachPagedQueueAndOpenTheirMeeting"),
+        test_id("AudioImportUITests", "testCancelOneImportContinuesTheNextAndExplicitRetryReusesTheQueue"),
+        test_id("AudioImportUITests", "testRelaunchResumesPublishedAudioWithoutTheSelectedOriginals"),
+    ),
     "meeting-brief": (
         test_id("LibraryUITests", "testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment"),
     ),
@@ -563,6 +568,7 @@ FEATURE_SOURCE_SENTINELS: dict[str, str] = {
     "automation-entry": "Sources/portavoz-app/PortavozAppIntents.swift",
     "home": "Sources/portavoz-app/HomeView.swift",
     "library": "Sources/portavoz-app/LibraryView.swift",
+    "audio-imports": "Sources/portavoz-app/AudioImportQueueView.swift",
     "meeting-brief": "Sources/portavoz-app/MeetingBriefView.swift",
     "menu-bar-brief": "Sources/portavoz-app/MenuBarView.swift",
     "recording-recovery": "Sources/portavoz-app/RecordingView.swift",
@@ -690,6 +696,11 @@ def app_features(filename: str) -> set[str]:
         # Today composes the Library snapshot; its own journeys plus the
         # sidebar canary cover navigation from and back to it.
         return {"home", "library"}
+    if lowered in {
+        "audioimportqueuemodel.swift", "audioimportqueueview.swift", "audioimportqueuepresentation.swift",
+        "libraryimportstatusview.swift", "appservices+audioimportuitestfixture.swift",
+    }:
+        return {"audio-imports", "library"}
     if lowered == "librarynavigationcontrols.swift":
         return {"home", "library"}
     if lowered in {
@@ -907,6 +918,24 @@ def lower_layer_features(path: str) -> set[str]:
     }:
         return {"settings-transfer"}
     lowered = path.lower()
+    if lowered in {
+        "sources/applicationkit/processaudioimports+ownedadapters.swift",
+        "sources/applicationkit/processaudioimports.swift",
+        "sources/platformkit/audioimportfiletransfer.swift",
+        "sources/platformkit/localaudioimportfiles+acquisition.swift",
+        "sources/platformkit/localaudioimportfiles.swift",
+        "sources/portavozcore/audioimport.swift",
+        "sources/portavozcore/audioimportfiles.swift",
+        "sources/portavozcore/audioimportqueue.swift",
+        "sources/storagekit/meetingstore+audioimportpublication.swift",
+        "sources/storagekit/meetingstore+audioimportqueue.swift",
+        "sources/storagekit/meetingstore+audioimports.swift",
+        "sources/storagekit/records+audioimport.swift",
+        "sources/storagekit/schema+audioimport.swift",
+    }:
+        # These boundaries own durable import and Library lifecycle behavior,
+        # not playback or microphone preferences despite their "audio" names.
+        return {"audio-imports", "library"}
     exact_owners = {
         # Shared-store roots affect startup/model preparation, not every
         # feature that happens to consume the stores after composition.
