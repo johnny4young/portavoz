@@ -7946,6 +7946,12 @@ copy/verification code; only the model adapter is replaced, behind both
 returns labeled scripted bilingual text, not measured ASR output. New journeys
 have explicit 30-second budgets before measurement; prior budgets and the full
 bilingual aggregate limit are unchanged. The catalogue owns their import scope.
+The native copy/acquisition adapter, import domain contracts, durable worker and
+import-specific storage files select these queue journeys plus Library canaries.
+They do not fall through the generic audio-to-playback/Settings filename rule.
+A selector regression enumerates every current import source and enters the
+actual changed-path selector, so a green unrelated audio scope cannot substitute
+for import coverage. Shared-harness and unknown-path fallbacks remain intact.
 
 Native open-panel file selection uses the panel's List view and Select All
 command; read-only filename text fields are not treated as clickable controls.

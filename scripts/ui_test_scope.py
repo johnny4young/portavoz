@@ -918,6 +918,24 @@ def lower_layer_features(path: str) -> set[str]:
     }:
         return {"settings-transfer"}
     lowered = path.lower()
+    if lowered in {
+        "sources/applicationkit/processaudioimports+ownedadapters.swift",
+        "sources/applicationkit/processaudioimports.swift",
+        "sources/platformkit/audioimportfiletransfer.swift",
+        "sources/platformkit/localaudioimportfiles+acquisition.swift",
+        "sources/platformkit/localaudioimportfiles.swift",
+        "sources/portavozcore/audioimport.swift",
+        "sources/portavozcore/audioimportfiles.swift",
+        "sources/portavozcore/audioimportqueue.swift",
+        "sources/storagekit/meetingstore+audioimportpublication.swift",
+        "sources/storagekit/meetingstore+audioimportqueue.swift",
+        "sources/storagekit/meetingstore+audioimports.swift",
+        "sources/storagekit/records+audioimport.swift",
+        "sources/storagekit/schema+audioimport.swift",
+    }:
+        # These boundaries own durable import and Library lifecycle behavior,
+        # not playback or microphone preferences despite their "audio" names.
+        return {"audio-imports", "library"}
     exact_owners = {
         # Shared-store roots affect startup/model preparation, not every
         # feature that happens to consume the stores after composition.
