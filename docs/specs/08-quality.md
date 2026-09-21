@@ -98,7 +98,21 @@ fails any test file over 2 400 lines: SwiftLint covers only `Sources`, so a
 test file has no size ceiling of its own, which is how the architecture
 ratchets reached a single 13 519-line file before D503 split them by family.
 This is a per-file readability limit, not a bound on the combined class or proof
-of behavioral coverage. One architecture test compares the documented schema
+of behavioral coverage.
+
+Each locale publishes a compact classifier artifact containing only its
+runtime receipt, execution receipt and recorded step outcome. The Linux gate
+downloads only these artifacts, merged under their locale-qualified filenames;
+it does not download the result bundles or logs it never reads. Full raw UI
+artifacts retain their separate names and seven-day retention for audit. Missing,
+malformed or contradictory receipts still fail the same classifier; splitting
+transport never turns an incomplete lane into verified evidence. Tooling tests
+project the workflow's actual declared paths and run its real classifier shell
+with both locales, absent/corrupt files and retained-but-untransported raw data.
+The artifact root follows the upload action's documented
+[common-ancestor path rule](https://github.com/actions/upload-artifact#upload-using-multiple-paths-and-exclusions).
+
+One architecture test compares the documented schema
 version with `StorageSchema.version`; domain tests must not pin a stale literal
 version or historical test totals independently. Populated file-backed `SkillDisablementUpgradeTests`
 exercise actual library-open migration and new-write constraints, while

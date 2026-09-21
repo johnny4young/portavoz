@@ -210,6 +210,20 @@ jobs:
           mkdir -p dist/ui-test-results
           printf '%s\n' "$OUTCOME" > "dist/ui-test-results/$LOCALE-outcome.txt"
 
+      # The classifier reads these three files, not hundreds of MB of
+      # xcresult attachments. Preserve the full forensic artifact separately.
+      - name: Publish compact classifier receipts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: scoped-ui-receipts-${{ matrix.locale }}-${{ github.run_id }}
+          path: |
+            dist/ui-test-results/${{ matrix.locale }}-runtime.json
+            dist/ui-test-results/${{ matrix.locale }}-execution.json
+            dist/ui-test-results/${{ matrix.locale }}-outcome.txt
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Preserve ${{ matrix.locale }} UI evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -244,7 +258,7 @@ jobs:
         if: needs.scope.outputs.required == 'true'
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
-          pattern: scoped-ui-*-${{ github.run_id }}
+          pattern: scoped-ui-receipts-*-${{ github.run_id }}
           path: dist/ui-test-results
           merge-multiple: true
 
