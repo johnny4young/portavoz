@@ -103,6 +103,9 @@ public struct LocalAudioImportFiles: AudioImportFiles {
     static func offMainActor<Value: Sendable>(
         _ operation: @escaping @Sendable () throws -> Value
     ) async throws -> Value {
+        // A detached task does not inherit cancellation. Reject an already
+        // cancelled caller before it can race the cancellation handler.
+        try Task.checkCancellation()
         let task = Task.detached(priority: .utility, operation: operation)
         return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
     }

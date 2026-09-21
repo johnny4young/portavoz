@@ -6,6 +6,7 @@ extension LocalAudioImportFiles {
     public func withAcquisitionAccess<Result: Sendable>(
         _ operation: @escaping @Sendable () async throws -> Result
     ) async throws -> Result {
+        try Task.checkCancellation()
         let task = Task.detached(priority: .utility) {
             try Task.checkCancellation()
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

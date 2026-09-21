@@ -2006,6 +2006,11 @@ current input, validates the original and replaces only that unpublished stage.
 Rejected publication retains its durable staging identity; published input takes
 the verification path instead. Purge uses the same reserved location, so both
 unpublished staging and published audio participate in the existing trash policy.
+Native copy and acquisition bridges reject cancellation in the calling task
+before spawning detached work. Child-only cancellation checks are insufficient:
+an already-cancelled caller could otherwise reclaim its prior unpublished stage
+before the cancellation handler reaches the new task. Cancellation after launch
+still forwards to and joins that task; it does not promise to undo completed I/O.
 `deletedMeeting` is a single-row tombstone lookup, not aggregate hydration or a
 whole-trash scan per deletion. The app purger reads it under native acquisition
 exclusion shared with restoration; automatic expiry rechecks the strict cutoff

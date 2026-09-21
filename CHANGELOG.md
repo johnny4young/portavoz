@@ -4,6 +4,10 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## September 21, 2026
+
+- **🛡️ Safer import cancellation** — already-cancelled work leaves your staged audio untouched.
+
 ## September 20, 2026
 
 - **🌐 Import queue in your language** — readiness and page navigation now follow your selected language.

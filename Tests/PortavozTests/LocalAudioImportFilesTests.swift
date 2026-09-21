@@ -1,5 +1,6 @@
 import Foundation
-import PlatformKit
+import os
+@testable import PlatformKit
 import PortavozCore
 import StorageKit
 import XCTest
@@ -119,6 +120,43 @@ final class LocalAudioImportFilesTests: XCTestCase {
             XCTAssertTrue(error is CancellationError)
         }
         XCTAssertEqual(try Data(contentsOf: original.fileURL), fixture.bytes)
+    }
+
+    func testPreCancelledOffloadNeverEntersDetachedWork() async {
+        let calls = OSAllocatedUnfairLock(initialState: 0)
+        let cancelled = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await LocalAudioImportFiles.offMainActor {
+                calls.withLock { $0 += 1 }
+                return true
+            }
+        }
+        do {
+            _ = try await cancelled.value
+            XCTFail("Pre-cancelled callers cannot create independently scheduled file work")
+        } catch { XCTAssertTrue(error is CancellationError) }
+        XCTAssertEqual(calls.withLock { $0 }, 0)
+    }
+
+    func testPreCancelledAcquisitionDoesNotCreateItsRootOrLock() async throws {
+        let fixture = try AudioImportFileFixture()
+        defer { fixture.remove() }
+        let root = fixture.directory.appendingPathComponent("uncreated-root")
+        let files = LocalAudioImportFiles(root: root)
+        let calls = OSAllocatedUnfairLock(initialState: 0)
+        let cancelled = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await files.withAcquisitionAccess {
+                calls.withLock { $0 += 1 }
+                return true
+            }
+        }
+        do {
+            _ = try await cancelled.value
+            XCTFail("Pre-cancelled acquisition cannot prepare filesystem ownership")
+        } catch { XCTAssertTrue(error is CancellationError) }
+        XCTAssertEqual(calls.withLock { $0 }, 0)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.path))
     }
 
     func testUnpublishedPartialIsReclaimedOnlyAfterSourceValidation() async throws {

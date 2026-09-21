@@ -7929,6 +7929,13 @@ synthetic unit cases do not establish physical Sequoia/Tahoe or benchmark timing
 
 ### Durable audio-import coverage
 
+Cancellation coverage enters both native file bridges from an already-cancelled
+task. A deterministic offload counter proves that no detached operation starts;
+real-file tests verify unchanged staged bytes and absence of a new acquisition
+root/lock. Cancelling only the child after its creation is not equivalent: the
+child may already have reclaimed the stage. Existing in-flight cancellation and
+lock-release tests remain separate from this admission boundary.
+
 Real-file/store/controller tests exercise whole-selection admission, bounded
 pagination, cancellation followed by a different file, published-copy resume
 without the source, and single-bundle import parity. Invalid/mixed selections
