@@ -856,7 +856,7 @@ class UITestScopeTests(unittest.TestCase):
         # Includes five distinct assist journeys: layout, identity/reentry,
         # manual requests, coalesced arrivals and unsubmitted drafts, plus four
         # durable-input journeys: recovery, retry, removal and held-write Stop.
-        self.assertEqual(len(expected), 21)
+        self.assertEqual(len(expected), 20)
         self.assertTrue(ui_scope.APUNTADOR_LEAK_EVIDENCE_FILES.isdisjoint(
             ui_scope.FULL_BILINGUAL_HARNESS_FILES
         ))
@@ -1060,19 +1060,21 @@ class UITestScopeTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "known duplicate tests returned"):
                 ui_scope.validate_catalog(root, runtime_budget_required=False)
 
-    def test_consolidated_receipt_duplicates_cannot_return_even_with_valid_scopes(self):
-        for method in (
-            "testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest",
-            "testSkillActivityRefreshPreservesTheExpandedCurrentScope",
+    def test_consolidated_journey_duplicates_cannot_return_even_with_valid_scopes(self):
+        for test_class, method in (
+            ("SkillsSettingsUITests", "testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest"),
+            ("SkillsSettingsUITests", "testSkillActivityRefreshPreservesTheExpandedCurrentScope"),
+            ("LibraryUITests", "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence"),
+            ("LibraryUITests", "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence"),
         ):
             with self.subTest(method=method):
-                selector = ui_scope.test_id("SkillsSettingsUITests", method)
+                selector = ui_scope.test_id(test_class, method)
                 temporary, root = self.minimal_catalog_root(method)
                 with temporary:
                     source = root / "Tests/PortavozUITests/InsightsUITests.swift"
                     source.write_text(source.read_text().replace(
-                        "class InsightsUITests", "class SkillsSettingsUITests"))
-                    source.rename(source.with_name("SkillsSettingsUITests.swift"))
+                        "class InsightsUITests", f"class {test_class}"))
+                    source.rename(source.with_name(f"{test_class}.swift"))
                     with mock.patch.multiple(
                         ui_scope,
                         FEATURE_TESTS={"insights": (selector,)},

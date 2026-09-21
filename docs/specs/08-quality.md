@@ -57,9 +57,20 @@ insertion qualification. Global input hooks are absent from ordinary disposable
 launches. Per-journey budgets are declared before execution; adding these cases
 does not relax the full-suite or p95 limits.
 
+The confirmed-person commitments and blocker UI assertions share one bounded
+journey instead of repeating the identical seeded app launch and person load.
+It retains the exact selected identity, localized title, both screenshots,
+blocker action and source labels, plus real playback navigation to 0:03 and 0:04
+and exact destination titles in each Meeting Detail header.
+After the first citation it returns through the actual Ask sidebar action and
+checks the selected identity again. Policy tests reject both retired entry
+points even if someone restores valid scopes for them. The combined journey's
+20-second budget is declared before measurement; the full-suite and p95 limits
+are unchanged. Functional and timing qualification still require actual runs.
+
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The combined catalog contains 122 UI cases, including both portable-settings
+The combined catalog contains 121 UI cases, including both portable-settings
 and shortcut-recovery journeys; their existing time budgets remain unchanged.
 Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
