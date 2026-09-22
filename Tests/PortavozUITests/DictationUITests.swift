@@ -3,6 +3,53 @@ import XCTest
 
 final class DictationUITests: PortavozUITestCase {
     @MainActor
+    func testClipboardRefusalKeepsRichContentAndExplainsRecovery() throws {
+        let name = "app.portavoz.dictation-test.\(UUID().uuidString)"
+        let board = NSPasteboard(name: .init(name))
+        defer { board.releaseGlobally() }
+        let original = NSPasteboardItem()
+        original.setString("Keep private original", forType: .string)
+        original.setData(Data("<p>Keep private original</p>".utf8), forType: .html)
+        original.setData(Data(), forType: .init("org.nspasteboard.ConcealedType"))
+        XCTAssertTrue(board.writeObjects([original]))
+        let generation = board.changeCount
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-clipboard"]
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DICTATION_PASTEBOARD"] = name
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+        let dictate = app.buttons["menu-bar-dictate"]
+        XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+        dictate.click()
+        let transcript = app.staticTexts["dictation-panel-transcript"]
+        XCTAssertTrue(transcript.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            renderedText(of: transcript).contains("No borres estas notas.")
+        })
+        // The production controller deliberately cancels audio shorter than
+        // 0.75 s. Measure from the first caption, not an arbitrary launch wait.
+        let firstCaption = ContinuousClock.now
+        XCTAssertTrue(waitForUITestCondition(timeout: 2) {
+            firstCaption.duration(to: .now) >= .milliseconds(800)
+        })
+        dictate.click()
+        let reason = UITestLocale.environmentLocale == "es"
+            ? "El dictado no cambió tu portapapeles. Copia otra cosa y vuelve a intentarlo."
+            : "Dictation left your clipboard unchanged. Copy something else and try again."
+        let state = app.staticTexts["dictation-panel-state"]
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: state) == reason })
+        XCTAssertEqual(board.changeCount, generation)
+        XCTAssertEqual(board.string(forType: .string), "Keep private original")
+        XCTAssertEqual(board.data(forType: .html), Data("<p>Keep private original</p>".utf8))
+        XCTAssertTrue(board.types?.contains(.init("org.nspasteboard.ConcealedType")) == true)
+        let cancel = app.buttons["dictation-panel-cancel"]
+        XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
+        cancel.click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { !cancel.exists })
+    }
+
+    @MainActor
     func testDictationPanelCancelsAndRestartsWithoutGlobalInput() throws {
         let app = try XCUIApplication.portavoz(showMenuBarContent: true)
         app.launchArguments.append("-seed-dictation")
@@ -43,7 +90,12 @@ final class DictationUITests: PortavozUITestCase {
         let name = "app.portavoz.dictation-test.\(UUID().uuidString)"
         let pasteboard = NSPasteboard(name: .init(name))
         defer { pasteboard.releaseGlobally() }
-        pasteboard.setString("original fixture", forType: .string)
+        let original = NSPasteboardItem()
+        original.setString("original fixture", forType: .string)
+        original.setData(Data("<p>original fixture</p>".utf8), forType: .html)
+        let second = NSPasteboardItem()
+        second.setString("second fixture — café", forType: .string)
+        XCTAssertTrue(pasteboard.writeObjects([original, second]))
         let app = try XCUIApplication.portavoz(showMenuBarContent: true)
         app.launchArguments.append("-seed-dictation-native")
         app.launchEnvironment["PORTAVOZ_UI_TEST_DICTATION_PASTEBOARD"] = name
@@ -81,7 +133,8 @@ final class DictationUITests: PortavozUITestCase {
         _ = waitForUITestCondition(timeout: 5) { editor.value as? String == text }
         XCTAssertEqual(editor.value as? String, text, "Inspect actual receiver content, not event dispatch alone")
         XCTAssertTrue(waitForUITestCondition(timeout: 5) {
-            pasteboard.string(forType: .string) == "original fixture"
+            pasteboard.pasteboardItems?.map { $0.string(forType: .string) } == ["original fixture", "second fixture — café"]
         })
+        XCTAssertEqual(pasteboard.pasteboardItems?.first?.data(forType: .html), Data("<p>original fixture</p>".utf8))
     }
 }

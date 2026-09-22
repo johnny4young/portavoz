@@ -431,6 +431,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testIntelligencePaneCreatesACustomStructure"),
     ),
     "dictation": (
+        test_id("DictationUITests", "testClipboardRefusalKeepsRichContentAndExplainsRecovery"),
         test_id("DictationUITests", "testDictationPanelCancelsAndRestartsWithoutGlobalInput"),
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
         test_id("SettingsUITests", "testDictationRecoversShortcutConflictAndRefreshesHelp"),
@@ -744,7 +745,7 @@ def app_features(filename: str) -> set[str]:
     # the Settings controls. Keep this ahead of generic presentation buckets.
     if any(
         token in lowered
-        for token in ("dictation", "mousebutton", "mouseptt", "hotkey", "textinserter")
+        for token in ("dictation", "mousebutton", "mouseptt", "hotkey", "textinserter", "pasteboardsnapshot")
     ):
         return {"dictation"}
     if "semanticsearchpreparation" in lowered:

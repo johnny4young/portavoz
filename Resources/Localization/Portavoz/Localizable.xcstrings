@@ -4213,6 +4213,16 @@
         }
       }
     },
+    "Dictation left your clipboard unchanged. Copy something else and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado no cambió tu portapapeles. Copia otra cosa y vuelve a intentarlo."
+          }
+        }
+      }
+    },
     "Dictation needs the Accessibility permission to type into other apps — grant it in System Settings and try again.": {
       "localizations": {
         "es": {

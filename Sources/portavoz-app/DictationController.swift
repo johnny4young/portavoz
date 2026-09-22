@@ -457,7 +457,12 @@ final class DictationController {
                 id: sessionID,
                 message: L10n.text(
                     "Release Command, Option, Control, and Shift, then try again."))
-        case .clipboardUnavailable, .eventUnavailable:
+        case .clipboardUnavailable:
+            failSession(
+                id: sessionID,
+                message: L10n.text(
+                    "Dictation left your clipboard unchanged. Copy something else and try again."))
+        case .eventUnavailable:
             failSession(
                 id: sessionID,
                 message: L10n.text(
