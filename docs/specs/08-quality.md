@@ -6952,6 +6952,31 @@ every functional case passed. The same unchanged budget file remains enforced
 by default for local/stable-Mac integration and release runs; only the hosted
 workflow opts out of hard wall-clock enforcement.
 
+An execution receipt marked `evidence-failure` is well-formed refusal evidence,
+not an assertion that output files are absent. A stopped XCTest worker can
+leave a result bundle and runtime receipt, then restart with exit zero; a
+runtime file can also exist without valid contents. The final classifier
+therefore accepts that producer state independently of file-presence flags or
+exit code, but always fails it as unusable execution evidence with
+`verified=false`. Even a reported successful step or all-passing runtime rows
+cannot promote it to functional authority or a hosted-infrastructure advisory.
+Completion requires at least one executed case. An empty or malformed runtime
+file is unusable evidence even when the log includes the known automation-mode
+timeout: only an absent runtime receipt can enter the pre-case advisory lane.
+Execution schema versions must be integers, not booleans or integral floats;
+classifications and optional signatures must have their declared string types.
+Malformed metadata produces a classified refusal rather than an uncaught
+collection-membership exception.
+
+CPU-only contract tests invoke the real execution-writer CLI and pass its exact
+file to the real final-gate CLI. They cover both locales, interrupted worker
+restarts, both exit statuses, missing/empty/malformed/present artifacts, failed and
+absent cleanup, contradictory step outcomes, and unchanged success, functional
+failure and pre-case advisory behavior. These reachable cases replace the package
+test's source-spelling assertion for the executed-case predicate; the package
+test retains its workflow wiring and dependency checks. They do not replace the native
+interruption controls, answer prompts, or make unsafe runs qualify.
+
 Incremental scope is proof-carrying rather than based on the previous push.
 Only a successful first-attempt run with one non-expired exact-SHA verification
 artifact can become the next base; the candidate must be inside the current PR
