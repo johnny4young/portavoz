@@ -19,7 +19,11 @@ import PortavozCore
 /// thread-safe).
 public final class ParakeetEngine: TranscriptionEngine, Sendable {
     public let descriptor: EngineDescriptor
-    private let models: AsrModels
+    typealias LiveManagerPreparation = @Sendable (SlidingWindowAsrConfig) async throws -> SlidingWindowAsrManager
+    typealias BatchManagerPreparation = @Sendable (ASRConfig) async throws -> AsrManager
+
+    private let prepareLiveManager: LiveManagerPreparation
+    private let prepareBatchManager: BatchManagerPreparation
     private let liveWorkObserver: (@Sendable (ParakeetLiveWorkSample) -> Void)?
 
     /// Loads the engine from a directory the `ModelStore` has verified.
@@ -46,14 +50,50 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
     public func observingLiveWork(
         _ observer: @escaping @Sendable (ParakeetLiveWorkSample) -> Void
     ) -> ParakeetEngine {
-        ParakeetEngine(models: models, liveWorkObserver: observer)
+        ParakeetEngine(
+            prepareLiveManager: prepareLiveManager,
+            prepareBatchManager: prepareBatchManager,
+            liveWorkObserver: observer)
     }
 
-    init(
+    convenience init(
         models: AsrModels,
         liveWorkObserver: (@Sendable (ParakeetLiveWorkSample) -> Void)? = nil
     ) {
-        self.models = models
+        self.init(
+            prepareLiveManager: { config in
+                let manager = SlidingWindowAsrManager(config: config)
+                do {
+                    try await manager.loadModels(models)
+                    return manager
+                } catch {
+                    await manager.cleanup()
+                    throw error
+                }
+            },
+            prepareBatchManager: { config in
+                let manager = AsrManager(config: config)
+                do {
+                    try await manager.loadModels(models)
+                    return manager
+                } catch {
+                    await manager.cleanup()
+                    throw error
+                }
+            },
+            liveWorkObserver: liveWorkObserver)
+    }
+
+    /// Each preparation owns a fresh manager until its verified models are
+    /// ready, then transfers cleanup to the job. The closures share only the
+    /// immutable weights, never decoder state, between concurrent jobs.
+    init(
+        prepareLiveManager: @escaping LiveManagerPreparation,
+        prepareBatchManager: @escaping BatchManagerPreparation,
+        liveWorkObserver: (@Sendable (ParakeetLiveWorkSample) -> Void)? = nil
+    ) {
+        self.prepareLiveManager = prepareLiveManager
+        self.prepareBatchManager = prepareBatchManager
         self.liveWorkObserver = liveWorkObserver
         self.descriptor = EngineDescriptor(
             id: "parakeet-tdt-0.6b-v3",
@@ -87,42 +127,28 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
         _ audio: AsyncStream<AudioChunk>,
         hints: TranscriptionHints
     ) -> AsyncThrowingStream<TranscriptSegment, Error> {
-        let models = self.models
+        let prepareLiveManager = self.prepareLiveManager
         let observer = liveWorkObserver
         return AsyncThrowingStream { continuation in
             let job = Task {
                 let probe = observer.map { _ in ParakeetLiveWorkProbe() }
-                let manager = SlidingWindowAsrManager(config: Self.liveWindowConfig)
+                var preparedManager: SlidingWindowAsrManager?
                 do {
-                    try await manager.loadModels(models)
+                    // Parakeet's hint filters writing systems, not languages
+                    // sharing an alphabet: Spanish and English remain multilingual.
+                    let configuration = Self.liveWindowConfig.applying(
+                        language: hints.language.flatMap { Language(rawValue: $0) })
+                    let manager = try await prepareLiveManager(configuration)
+                    preparedManager = manager
                     try await manager.startStreaming(source: .microphone)
                     probe?.begin(.feed)
 
-                    let meetingID = hints.meetingID ?? MeetingID()
                     let channelHolder = ChannelHolder()
                     let updates = await manager.transcriptionUpdates
-
                     let consumer = Task {
-                        var lastEndTime: TimeInterval = 0
-                        for await update in updates {
-                            probe?.update(tokens: update.tokenIds.count,
-                                          timings: update.tokenTimings.count,
-                                          confirmed: update.isConfirmed)
-                            let segment = ParakeetSegmentMapper.segment(
-                                text: update.text,
-                                isConfirmed: update.isConfirmed,
-                                confidence: update.confidence,
-                                tokenTimings: update.tokenTimings,
-                                meetingID: meetingID,
-                                channel: await channelHolder.current,
-                                language: hints.language,
-                                fallbackTime: lastEndTime
-                            )
-                            if let segment {
-                                lastEndTime = segment.endTime
-                                continuation.yield(segment)
-                            }
-                        }
+                        await Self.consume(
+                            updates, hints: hints, channelHolder: channelHolder,
+                            continuation: continuation, probe: probe)
                     }
 
                     try await Self.feed(audio, manager: manager, channelHolder: channelHolder, probe: probe)
@@ -143,7 +169,7 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
                     continuation.finish()
                 } catch {
                     probe?.begin(.cleanup)
-                    await manager.cleanup()
+                    await preparedManager?.cleanup()
                     let outcome: ParakeetLiveWorkSample.Outcome =
                         error is CancellationError || Task.isCancelled ? .cancelled : .failed
                     if let sample = probe?.finish(outcome: outcome) { observer?(sample) }
@@ -151,6 +177,35 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
                 }
             }
             continuation.onTermination = { _ in job.cancel() }
+        }
+    }
+
+    private static func consume(
+        _ updates: AsyncStream<SlidingWindowTranscriptionUpdate>,
+        hints: TranscriptionHints,
+        channelHolder: ChannelHolder,
+        continuation: AsyncThrowingStream<TranscriptSegment, Error>.Continuation,
+        probe: ParakeetLiveWorkProbe?
+    ) async {
+        let meetingID = hints.meetingID ?? MeetingID()
+        var lastEndTime: TimeInterval = 0
+        for await update in updates {
+            probe?.update(tokens: update.tokenIds.count,
+                          timings: update.tokenTimings.count,
+                          confirmed: update.isConfirmed)
+            let segment = ParakeetSegmentMapper.segment(
+                text: update.text,
+                isConfirmed: update.isConfirmed,
+                confidence: update.confidence,
+                tokenTimings: update.tokenTimings,
+                meetingID: meetingID,
+                channel: await channelHolder.current,
+                language: hints.language,
+                fallbackTime: lastEndTime)
+            if let segment {
+                lastEndTime = segment.endTime
+                continuation.yield(segment)
+            }
         }
     }
 
@@ -190,8 +245,7 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
             // Recommended off for v3 multilingual long-form (FluidAudio #594).
             melChunkContext: false
         )
-        let manager = AsrManager(config: config)
-        try await manager.loadModels(models)
+        let manager = try await prepareBatchManager(config)
 
         let language = hints.language.flatMap { Language(rawValue: $0) }
         var decoderState = try TdtDecoderState()

@@ -9019,6 +9019,16 @@
         }
       }
     },
+    "Parakeet filters alphabets, not languages. Spanish and English can still be recognized together.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parakeet filtra alfabetos, no idiomas. El español y el inglés pueden seguir reconociéndose juntos."
+          }
+        }
+      }
+    },
     "Past 24 hours": {
       "localizations": {
         "es": {

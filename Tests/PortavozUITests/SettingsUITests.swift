@@ -352,7 +352,7 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     /// Enabling dictation must reveal both physical triggers (hotkey +
-    /// push-to-talk mouse button), the {es,en}-constrained language picker,
+    /// push-to-talk mouse button), the {es,en} language preference picker,
     /// the filler filter, and the deterministic dictionary quick-add.
     @MainActor
     func testDictationOffersTriggersLanguageAndDictionary() throws {
@@ -390,7 +390,15 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "settings-dictation-language")
                 .waitForExistenceFast(timeout: 5),
-            "enabling dictation must reveal the constrained language picker")
+            "enabling dictation must reveal the language preference picker")
+        let languageSupport = app.staticTexts["settings-dictation-language-support"]
+        XCTAssertTrue(languageSupport.waitForExistenceFast(timeout: 5))
+        let expectedSupport = UITestLocale.environmentLocale == "es"
+            ? "Parakeet filtra alfabetos, no idiomas. El español y el inglés pueden seguir reconociéndose juntos."
+            : "Parakeet filters alphabets, not languages. Spanish and English can still be recognized together."
+        XCTAssertTrue(
+            app.staticTexts[expectedSupport].waitForExistenceFast(timeout: 5),
+            "the actual Audio pane must render the localized capability boundary")
         XCTAssertTrue(
             app.control(withIdentifier: "settings-dictation-filler")
                 .waitForExistenceFast(timeout: 5),

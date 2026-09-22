@@ -169,6 +169,17 @@ challenger or change model weights.
 ## Live: ParakeetEngine + mapper
 
 - Custom sliding window **left 11 s / chunk 1.0 s / right 0.4 s** (≤ 15 s model limit). FluidAudio's `.streaming` preset does NOT work: its `hypothesisChunkSeconds` is dead code (it emits only on `chunkSeconds` = 11 s → 13+ s latency).
+- A supported `TranscriptionHints.language` is passed to each live manager's
+  `SlidingWindowAsrConfig.language`; absent or unsupported values leave the
+  configuration unhinted. The existing window sizes and confirmation policy do
+  not change. FluidAudio's v3 hint filters writing systems, not same-alphabet
+  languages: Spanish and English both allow Latin-script text. It is not
+  translation, a strict language lock, or a quality guarantee.
+- Engine-internal preparation closures construct a fresh live/batch manager and
+  load the already verified immutable weights. Preparation cleans up on failure;
+  the returned manager transfers cleanup ownership to that transcription job.
+  This boundary permits model-free tests through the real engine entry points;
+  those tests verify requested configuration and error routing, not ASR quality.
 - **Custom delta filter** (`ParakeetSegmentMapper`): upstream dedup fails with small chunks (re-emits ~all left context). Updates' `tokenTimings` use absolute stream time → filter `startTime > last emitted boundary` and reconstruct text with `joinedText` (handles SentencePiece `▁`).
 - Batch: long-form disk-backed `AsrManager`, `parallelChunkConcurrency: 1` (courtesy to the live slot), `melChunkContext: false` (recommended for multilingual v3). Sentence segments by punctuation (TDT timings contain no gaps: pause splitting almost never triggers; `sentenceTerminators` + 0.5 s pauseSplit + 15 s max).
 - `TranscriptionScheduler` (D7): immediate live lane; serial FIFO batch slot in
@@ -215,7 +226,9 @@ ends without throwing. No audio, text, token IDs or timing arrays are retained.
 
 The pinned backend does not expose its internal prediction attempts, failed
 windows or queue depth; the sidecar explicitly says those counts are unavailable.
-Existing exception-path cleanup semantics are unchanged. This instrumentation
+Failed manager preparation includes its owned cleanup in the load phase; no
+prepared manager transfers to the job in that case. Once preparation succeeds,
+the existing stream cleanup/drain behavior is unchanged. This instrumentation
 does not demonstrate backend backpressure or cancellation drain correctness.
 
 ## Research-only live challenger: Nemotron Latin 1120 ms (D355)
