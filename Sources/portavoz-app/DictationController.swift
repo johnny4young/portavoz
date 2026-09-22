@@ -293,17 +293,20 @@ final class DictationController {
             pump = makeAudioPump(stream: micStream, feed: feed, sessionID: id)
 
             let hints = transcriptionHints(defaults: dependencies.defaults)
-            var captions: [TranscriptSegment] = []
-            let coalescer = CaptionCoalescer()
+            var transcript = DictationTranscriptProjection()
             for try await segment in runtime.engine.transcribe(audio, hints: hints) {
                 try Task.checkCancellation()
                 guard activeSessionID == id else { throw CancellationError() }
-                coalescer.apply(segment, to: &captions)
-                let closed = captions.dropLast().map(\.text)
-                confirmedText = closed.joined(separator: " ")
-                partialText = captions.last?.text ?? ""
+                if transcript.apply(segment) {
+                    confirmedText = transcript.confirmedText
+                }
+                partialText = transcript.partialText
             }
-            confirmedText = captions.map(\.text).joined(separator: " ")
+            // Cancellation may end an AsyncStream normally, without throwing.
+            // Fence final publication too, before an old tail can repopulate UI.
+            try Task.checkCancellation()
+            guard activeSessionID == id else { throw CancellationError() }
+            confirmedText = transcript.finalText
             partialText = ""
             await pump?.value
             try Task.checkCancellation()
@@ -388,6 +391,9 @@ final class DictationController {
     /// Esc in the panel: throw everything away.
     func cancel() {
         activeSessionID = nil
+        confirmedText = ""
+        partialText = ""
+        micLevel = 0
         captureStartedAt = nil
         mouseOwnsSession = false
         stopTask?.cancel()

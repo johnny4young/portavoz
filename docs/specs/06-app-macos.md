@@ -2610,6 +2610,19 @@ admission. The menu-bar Dictate action and panel expose stable identifiers for
 restart/cancellation journeys. This is not a change to the production trigger,
 recognition, capture-loss or delivery-success policies documented below.
 
+**Incremental transcript projection (D545).** The actual stream consumer retains
+closed text instead of mapping and joining the entire caption history for each
+partial. It appends newly closed rows and reads the latest admitted tail;
+coalescer-reported earlier invalidation rebuilds the prefix, including a direct
+channel replacing a microphone echo and reopening the previous row. Admission,
+arrival order, punctuation, overlap trimming and final deterministic replacements
+are unchanged. Cancellation and UUID checks precede final text publication as
+well as individual deltas: an old stream ending normally cannot restore discarded
+text or write into a restarted session. Cancel synchronously clears both text
+projections before awaiting microphone teardown. This does not add ASR rescoring, change
+decoder windows, resolve timestamp/replay quality gaps or bound total transcript
+storage. SwiftUI still renders the existing two-line panel.
+
 `TextInserter.insert` accepts a pasteboard with `.general` as its production
 default. The native receiver journey executes in the temporary app process, not
 XCTest's sandboxed runner. It uses an explicitly armed fixture and a UUID-named board, while

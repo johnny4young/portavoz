@@ -35,6 +35,30 @@ final class DictationUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart() throws {
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-streaming"]
+        let english = UITestLocale.environmentLocale != "es"
+        if english { app.launchArguments.append("-seed-dictation-english") }
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+        XCTAssertTrue(app.prepareForInteraction())
+        let dictate = app.buttons["menu-bar-dictate"]
+        let expected = (english ? "Don't delete these notes." : "No borres estas notas.") + " Café C++. Final"
+        for _ in 0..<2 {
+            XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+            dictate.click()
+            let transcript = app.staticTexts["dictation-panel-transcript"]
+            XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: transcript) == expected })
+            let cancel = app.buttons["dictation-panel-cancel"]
+            XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
+            cancel.click()
+            XCTAssertTrue(waitForUITestCondition(timeout: 5) { !transcript.exists })
+        }
+    }
+
+    @MainActor
     func testNativeInserterUsesDisposableReceiverAndClipboard() async throws {
         let products = Bundle.main.bundleURL.deletingLastPathComponent()
         let receiverURL = products.appendingPathComponent("PortavozDictationReceiver.app")
