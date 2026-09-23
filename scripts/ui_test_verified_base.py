@@ -3,9 +3,10 @@
 
 The resolver never trusts the immediately previous push by itself. A commit is
 eligible only when a successful first-attempt Scoped UI run published the
-workflow-owned, content-free verification artifact for that exact SHA. Any API,
-shape, history, or artifact uncertainty falls back to the PR base so selection
-expands rather than silently dropping evidence.
+workflow-owned, content-free verification artifact for that exact SHA. For a
+direct-to-default-branch PR, API, shape, history, or artifact uncertainty
+falls back to the PR base. A stacked PR instead uses the default-branch merge
+base on every push, including parent changes, and fails closed if unknown.
 """
 
 from __future__ import annotations
@@ -61,6 +62,7 @@ class Resolution:
     base: str
     anchor_found: bool
     inspected_runs: int
+    stacked_root: bool = False
 
 
 class GitHubRESTClient:
@@ -132,6 +134,22 @@ class GitCommitHistory:
         if result.returncode not in (0, 1):
             raise VerifiedBaseError("git could not validate candidate ancestry")
         return result.returncode == 0
+
+    def merge_base(self, first: str, second: str) -> str:
+        try:
+            result = subprocess.run(
+                ["git", "merge-base", "--all", first, second],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+            raise VerifiedBaseError("git could not resolve the default-branch merge base") from error
+        roots = result.stdout.splitlines()
+        if len(roots) != 1:
+            raise VerifiedBaseError("default-branch merge base is ambiguous")
+        return exact_sha(roots[0], "default-branch merge base")
 
 
 def exact_sha(value: Any, label: str) -> str:
@@ -251,6 +269,8 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--branch", required=True)
     value.add_argument("--head", required=True)
     value.add_argument("--fallback", required=True)
+    value.add_argument("--base-branch", required=True)
+    value.add_argument("--default-branch", required=True)
     value.add_argument("--token-env", default="GITHUB_TOKEN")
     value.add_argument("--api-url", default="https://api.github.com")
     value.add_argument("--api-version", default="2026-03-10")
@@ -260,9 +280,13 @@ def parser() -> argparse.ArgumentParser:
 
 def render(resolution: Resolution, output_format: str) -> str:
     summary = (
-        f"verified UI ancestor {resolution.base}"
-        if resolution.anchor_found
-        else f"no verified UI ancestor; fail-safe PR base {resolution.base}"
+        f"stacked PR cumulative default-branch base {resolution.base}"
+        if resolution.stacked_root
+        else (
+            f"verified UI ancestor {resolution.base}"
+            if resolution.anchor_found
+            else f"no verified UI ancestor; fail-safe PR base {resolution.base}"
+        )
     )
     if output_format == "github":
         return "\n".join(
@@ -287,12 +311,38 @@ def main(argv: Sequence[str] | None = None) -> int:
     if BRANCH_PATTERN.fullmatch(arguments.branch) is None or ".." in arguments.branch:
         print("branch is invalid", file=sys.stderr)
         return 2
+    for label, branch in (
+        ("base branch", arguments.base_branch),
+        ("default branch", arguments.default_branch),
+    ):
+        if (
+            BRANCH_PATTERN.fullmatch(branch) is None
+            or ".." in branch
+            or branch.startswith("-")
+            or branch.startswith("/")
+            or branch.endswith("/")
+            or "//" in branch
+        ):
+            print(f"{label} is invalid", file=sys.stderr)
+            return 2
     try:
         head = exact_sha(arguments.head, "head")
         fallback = exact_sha(arguments.fallback, "fallback")
     except VerifiedBaseError as error:
         print(str(error), file=sys.stderr)
         return 2
+
+    if arguments.base_branch != arguments.default_branch:
+        try:
+            root = GitCommitHistory().merge_base(
+                f"refs/remotes/origin/{arguments.default_branch}", head
+            )
+        except VerifiedBaseError as error:
+            # A parent-PR fallback would silently omit the parent's changes.
+            print(f"stacked UI scope failed closed: {error}", file=sys.stderr)
+            return 2
+        print(render(Resolution(root, False, 0, stacked_root=True), arguments.format))
+        return 0
 
     token = os.environ.get(arguments.token_env, "")
     try:

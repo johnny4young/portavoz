@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 from pathlib import Path
 import subprocess
@@ -146,6 +148,132 @@ class UITestVerifiedBaseTests(unittest.TestCase):
     def test_git_ancestry_timeout_becomes_fail_safe_error(self, _run):
         with self.assertRaisesRegex(VerifiedBaseError, "could not validate"):
             GitCommitHistory().is_ancestor(BASE, HEAD)
+
+    @patch(
+        "ui_test_verified_base.subprocess.run",
+        return_value=subprocess.CompletedProcess(
+            args=["git", "merge-base", "--all"],
+            returncode=0,
+            stdout=f"{BASE}\n{OLDER}\n",
+        ),
+    )
+    def test_ambiguous_merge_base_cannot_narrow_stacked_scope(self, _run):
+        with self.assertRaisesRegex(VerifiedBaseError, "ambiguous"):
+            GitCommitHistory().merge_base("refs/remotes/origin/main", HEAD)
+
+
+class StackedPRSelectionIntegrationTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.repository = Path(self.temporary.name)
+        self.git("init", "-q")
+        self.git("config", "user.email", "fixture@example.invalid")
+        self.git("config", "user.name", "Fixture")
+        self.write_commit("README.md", "base\n")
+        self.root = self.git("rev-parse", "HEAD").stdout.strip()
+        self.git("update-ref", "refs/remotes/origin/main", self.root)
+        self.write_commit("Sources/portavoz-app/DictationSection.swift", "parent view\n")
+        self.parent = self.git("rev-parse", "HEAD").stdout.strip()
+        self.write_commit("docs/GAPS.md", "child documentation\n")
+        self.head = self.git("rev-parse", "HEAD").stdout.strip()
+
+    def git(self, *arguments):
+        return subprocess.run(
+            ["git", *arguments],
+            cwd=self.repository,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+    def write_commit(self, path, content):
+        target = self.repository / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
+        self.git("add", path)
+        self.git("commit", "-qm", f"Add {path}")
+
+    def resolve(self, *, base_branch="codex/parent", fallback=None):
+        return subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "scripts/ui_test_verified_base.py"),
+                "--repository", "owner/repo",
+                "--workflow", "ui-tests.yml",
+                "--branch", "codex/child",
+                "--head", self.head,
+                "--fallback", fallback or self.parent,
+                "--base-branch", base_branch,
+                "--default-branch", "main",
+                "--format", "github",
+            ],
+            cwd=self.repository,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "GITHUB_TOKEN": ""},
+        )
+
+    def select(self, base):
+        return subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "scripts/ui_test_scope.py"),
+                "--base", base,
+                "--head", self.head,
+                "--format", "github",
+            ],
+            cwd=self.repository,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+    def test_child_docs_change_still_selects_parent_view_journey(self):
+        child_only = self.select(self.parent)
+        self.assertIn("required=false", child_only.stdout)
+
+        base = self.resolve()
+        self.assertEqual(base.returncode, 0, base.stderr)
+        outputs = dict(line.split("=", 1) for line in base.stdout.splitlines())
+        self.assertEqual(outputs["base"], self.root)
+        self.assertEqual(outputs["anchor_found"], "false")
+        self.assertIn("stacked PR cumulative", outputs["summary"])
+
+        cumulative = self.select(outputs["base"])
+        self.assertIn("required=true", cumulative.stdout)
+        self.assertIn("testDictationOffersTriggersLanguageAndDictionary", cumulative.stdout)
+
+    def test_parent_shared_harness_change_requires_both_child_locales(self):
+        self.git("reset", "--hard", self.parent)
+        self.write_commit("project.yml", "parent shared UI harness\n")
+        self.parent = self.git("rev-parse", "HEAD").stdout.strip()
+        self.write_commit("docs/GAPS.md", "new child documentation\n")
+        self.head = self.git("rev-parse", "HEAD").stdout.strip()
+
+        base = self.resolve()
+        self.assertEqual(base.returncode, 0, base.stderr)
+        resolved = dict(line.split("=", 1) for line in base.stdout.splitlines())
+        self.assertEqual(resolved["base"], self.root)
+        cumulative = self.select(resolved["base"])
+        self.assertIn("locales=en es", cumulative.stdout)
+        self.assertIn("testDictationOffersTriggersLanguageAndDictionary", cumulative.stdout)
+
+    def test_missing_default_branch_ref_fails_instead_of_using_parent(self):
+        self.git("update-ref", "-d", "refs/remotes/origin/main")
+
+        result = self.resolve()
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("stacked UI scope failed closed", result.stderr)
+        self.assertNotIn(f"base={self.parent}", result.stdout)
+
+    def test_direct_main_pr_retains_existing_verified_anchor_fallback(self):
+        result = self.resolve(base_branch="main", fallback=self.root)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f"base={self.root}", result.stdout)
+        self.assertIn("fail-safe PR base", result.stdout)
 
 
 if __name__ == "__main__":

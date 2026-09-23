@@ -78,7 +78,13 @@ the PR diff and allocates macOS UI runners only when product presentation is
 affected: one job builds the exact products once into an `xctestproducts`
 bundle, one matrix lane per selected locale restores it and runs
 `test-without-building`, and one Linux classifier gates on every lane's
-receipts (D496). Because a prebuilt-products run does not hand the XCTest
+receipts (D496). Direct-to-main PRs may advance the selection base only from a
+first-attempt verified ancestor. A stacked PR always selects from the merge
+base of its head and the fetched default branch, including unmerged parent
+changes. It ignores earlier child anchors because they may prove only the
+child diff; an unavailable default-branch ref fails selection rather than
+falling back to the parent (D542). Manual dispatch selects the complete
+bilingual catalog. Because a prebuilt-products run does not hand the XCTest
 process the app's language, bilingual expectations read
 `UITestLocale.environmentLocale` — the locale the run declared — rather than
 the ambient `Locale.current`; `scripts/check-repository-hygiene.sh` rejects the

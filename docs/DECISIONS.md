@@ -20101,3 +20101,27 @@ resolves resources through `Bundle`, which reads either. A future Xcode that
 removes the old label deletes the `#else` branch in one file. Decoding behavior is unchanged: greedy
 everywhere, same token caps.
 
+## D542 — Stacked UI PRs qualify their cumulative default-branch change
+
+**Context:** D429's first-attempt verification anchor prevents an unverified
+push from becoming the next incremental base. Its fallback was the PR base.
+For a stacked PR, that is the unmerged parent branch. A child documentation
+change could therefore earn a green no-UI or English-only hosted result while
+the full parent-plus-child diff against `main` requires bilingual XCUITest.
+An earlier child anchor is insufficient too: it may have qualified only the
+child diff under the old fallback rule.
+
+**Decision:** direct-to-default-branch PRs retain D429's artifact-backed
+incremental selection. For a PR targeting another branch, compare the head
+with its merge base against the fetched default branch on every push. Do not
+reuse a child verification anchor to narrow that cumulative set. If the
+default-branch ref or merge base is unavailable, fail scope selection rather
+than silently using the parent. Manual dispatch remains a complete bilingual
+run; no runtime budget, retry, or native-permission rule changes.
+
+**Consequences:** stacked pushes may repeat already covered parent journeys,
+but every child check covers the code that would enter `main`. Once the parent
+merges and the PR is retargeted, normal verified-ancestor selection resumes.
+The tiny synthetic Git integration test executes the resolver and real UI
+selector at the call site: the child changes only documentation while its
+parent changes Dictation Settings, and the parent journey must remain selected.
