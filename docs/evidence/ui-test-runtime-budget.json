@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 124
+    "expectedCaseCount": 123
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -25,7 +25,6 @@
   "schemaVersion": 1,
   "testBudgetsSeconds": {
     "DictationUITests/testDictationPanelCancelsAndRestartsWithoutGlobalInput()": 20.0,
-    "DictationUITests/testNativeInserterUsesDisposableReceiverAndClipboard()": 20.0,
     "AutomationUITests/testAppEntitiesOpenExactVisibleDestinations()": 20.0,
     "AutomationUITests/testRecordingAutomationRoutesStartAndStopThroughVisibleApp()": 20.0,
     "BackgroundWorkUITests/testBackgroundWorkCenterShowsAllOwnersAndRecoversExactFailures()": 25.0,

@@ -19667,6 +19667,9 @@ designated requirement. This makes repeated user-authorized native validation
 maintainable without automating consent; the native gate still fails if the
 disposable app lacks Accessibility trust. No signing credential is persisted.
 
+D540 narrows the unattended selector claim: this permission-owned native case
+remains an explicit failing gate, not a hosted-catalog success.
+
 
 ## D523 — UI fixtures own explicit cross-process scratch, not runner containers
 
@@ -20148,3 +20151,31 @@ resolves resources through `Bundle`, which reads either. A future Xcode that
 removes the old label deletes the `#else` branch in one file. Decoding behavior is unchanged: greedy
 everywhere, same token caps.
 
+
+---
+
+## D540 — Keep native dictation delivery outside unattended UI qualification
+
+**Context:** D515's real app-to-receiver journey correctly refuses to insert
+without Accessibility trust for the disposable app. GitHub-hosted macOS runners
+can automate XCTest but cannot grant that separate, user-owned TCC decision.
+The 124-case unattended catalog therefore deterministically fails before a
+paste attempt; treating that failure as a product defect or a skipped success
+would both misstate the evidence.
+
+**Decision:** the unattended feature/full bilingual catalog contains the 123
+permission-independent journeys. Its policy validator still discovers the
+native receiver test and rejects either its removal or its accidental return
+to unattended scope. The no-selector runner excludes only that exact test;
+explicit selectors are never filtered. `make test-ui-native-dictation` runs the
+real receiver journey in both languages and remains red without app TCC trust.
+Its own one-case runtime manifest retains the original 20-second ceiling,
+without polluting or widening the unattended catalog's 123 budgets.
+No mock paste, automatic TCC grant, retry-to-green, or aggregate substitute is
+accepted as native delivery evidence.
+
+**Consequences:** hosted EN/ES UI success qualifies the automatable controller,
+panel, Settings and other journeys, **not** cross-process insertion. The latter
+remains an explicit permission/field gate with its own positive receipt before
+claiming it works. Existing runtime budgets for unattended journeys stay fixed;
+the permission-gated journey is not counted in the unattended runtime total.

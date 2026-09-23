@@ -26,8 +26,12 @@ target; `.inserted` still denotes dispatched events rather than a verified
 external edit. These require call-site regressions and fixes before broad
 reliability claims. Model quality, Bluetooth transitions and the external-editor
 matrix require separate evidence; a synthetic caption fixture cannot establish
-those results. Missing Accessibility permission makes the native delivery gate
-unqualified, not proof that insertion works.
+those results. Missing Accessibility permission makes the separately selected
+native delivery gate unqualified, not proof that insertion works. Hosted
+unattended EN/ES UI qualification excludes exactly that TCC-owned receiver case
+(D540); run `make test-ui-native-dictation` on an explicitly authorized
+disposable app and retain its actual receipt before claiming cross-process
+delivery.
 
 ### Accepted live input survives interrupted recordings
 

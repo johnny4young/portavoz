@@ -59,8 +59,14 @@ does not relax the full-suite or p95 limits.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The combined catalog contains 122 UI cases, including both portable-settings
-and shortcut-recovery journeys; their existing time budgets remain unchanged.
+The unattended catalog contains 123 UI cases, including portable-settings,
+shortcut-recovery, and the real dictation-panel journey. The one native
+dictation-receiver test is discovered and kept outside this catalog because
+its app process needs a user-granted Accessibility TCC decision. Its explicit
+`make test-ui-native-dictation` lane still runs the real XCUITest and fails
+closed without that grant. The unattended suite neither skips a failure into
+success nor qualifies cross-process insertion; its existing time budgets remain
+unchanged.
 Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -148,8 +154,8 @@ hints at the engine invocation, punctuation-only output and late model
 preparation after cancellation. All preference changes use a volatile domain.
 Fixture selection is checked both with and without temporary composition.
 
-`DictationUITests` owns a dedicated `dictation` selector alongside the existing
-Settings assertions. Its panel journey uses the production menu-bar action in
+`DictationUITests` owns a dedicated unattended `dictation` selector alongside
+the existing Settings assertions. Its panel journey uses the production menu-bar action in
 the disposable main-window host and cancels/restarts the actual controller.
 It requires distinct identifiers for the rendered transcript, state, target,
 meter and cancel button. The structural SwiftUI `Group` does not assign an
@@ -174,6 +180,16 @@ or destination identity fencing. The presence of this test is not evidence that
 the native gate passed. No general clipboard, real meeting, model download or microphone participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
+`make test-ui-bilingual` and scoped hosted runs select the 123 unattended cases;
+`make test-ui-native-dictation` selects the one real receiver case in EN and ES.
+The catalog policy requires that case to remain discoverable but disjoint from
+unattended selectors. The runner excludes it only when no explicit selectors
+were supplied, while an explicit native selector is never silently skipped.
+Its separate one-case runtime budget retains the original 20-second ceiling;
+an explicit native run cannot fail solely because its case was removed from
+the unattended manifest.
+Neither a green hosted catalog nor a failed permissionless native run is
+positive native-delivery evidence.
 
 The receiver is an Xcode-only application target. SwiftPM's shared `Tests`
 root excludes that directory explicitly, alongside the UI and interruption

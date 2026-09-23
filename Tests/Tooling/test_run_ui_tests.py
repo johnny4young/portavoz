@@ -244,6 +244,12 @@ class RunUITestsTests(unittest.TestCase):
         self.assertIn("build-for-testing", calls[0])
         self.assertIn("test-without-building", calls[1])
         self.assertNotIn("-only-testing:", calls[1])
+        native_skip = (
+            "-skip-testing:PortavozUITests/DictationUITests/"
+            "testNativeInserterUsesDisposableReceiverAndClipboard"
+        )
+        self.assertEqual(calls[1].count("-skip-testing:"), 1)
+        self.assertIn(native_skip, calls[1])
         self.assertIn("Running all tests in locale: en", result.stdout)
 
     def test_explicit_notification_override_reaches_xcode_runner(self):
@@ -290,8 +296,21 @@ class RunUITestsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(len(calls), 2)
         self.assertIn(f"-only-testing:{selector}", calls[1])
+        self.assertNotIn("-skip-testing:", calls[1])
         self.assertIn("Running 1 scoped selectors in locale: en", result.stdout)
         self.assertEqual(self.defaults_calls, [])
+
+    def test_explicit_native_selector_is_not_silently_skipped(self):
+        selector = (
+            "PortavozUITests/DictationUITests/"
+            "testNativeInserterUsesDisposableReceiverAndClipboard"
+        )
+        result, calls = self.run_runner(selector)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(calls), 2)
+        self.assertIn(f"-only-testing:{selector}", calls[1])
+        self.assertNotIn("-skip-testing:", calls[1])
 
     def test_build_only_writes_receipt_without_mutating_ui_preferences(self):
         result, calls = self.run_runner("", phase="build-only")

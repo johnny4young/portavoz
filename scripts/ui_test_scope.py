@@ -432,7 +432,6 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "dictation": (
         test_id("DictationUITests", "testDictationPanelCancelsAndRestartsWithoutGlobalInput"),
-        test_id("DictationUITests", "testNativeInserterUsesDisposableReceiverAndClipboard"),
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
         test_id("SettingsUITests", "testDictationRecoversShortcutConflictAndRefreshesHelp"),
         test_id("SettingsUITests", "testDictationRepairsCorruptShortcutWithoutLeavingSettings"),
@@ -459,6 +458,13 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
 }
 
 ALL_TESTS = tuple(dict.fromkeys(test for tests in FEATURE_TESTS.values() for test in tests))
+# The real cross-process inserter requires a TCC Accessibility grant for the
+# disposable app itself. Hosted macOS runners cannot provide that user-owned
+# decision. Keep its selector discoverable and explicitly runnable; never
+# count its presence, a synthetic receiver, or a skipped invocation as a pass.
+PERMISSION_GATED_TESTS = frozenset({
+    test_id("DictationUITests", "testNativeInserterUsesDisposableReceiverAndClipboard"),
+})
 ALL_FEATURES = frozenset(FEATURE_TESTS)
 MEETING_FEATURES = frozenset(
     feature
@@ -1262,7 +1268,7 @@ def discovered_test_catalog(root: Path) -> set[str]:
 
 
 def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> None:
-    expected = set(ALL_TESTS)
+    expected = set(ALL_TESTS) | PERMISSION_GATED_TESTS
     discovered = discovered_test_catalog(root)
     missing = sorted(discovered - expected)
     stale = sorted(expected - discovered)
@@ -1275,6 +1281,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         feature for feature, tests in FEATURE_TESTS.items() if not tests
     )
     retired = sorted(discovered & RETIRED_DUPLICATE_TESTS)
+    permission_overlap = sorted(set(ALL_TESTS) & PERMISSION_GATED_TESTS)
     sentinel_mismatch = sorted(ALL_FEATURES ^ FEATURE_SOURCE_SENTINELS.keys())
     orphan_scopes: list[str] = []
     for feature, path in FEATURE_SOURCE_SENTINELS.items():
@@ -1314,12 +1321,34 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
                     f"runtime budget count {budget_count!r} != {len(ALL_TESTS)}"
                 )
 
+        native_budget_path = root / "docs/evidence/ui-test-native-dictation-runtime-budget.json"
+        if not native_budget_path.is_file():
+            runtime_budget_errors.append(
+                f"missing {native_budget_path.relative_to(root)}"
+            )
+        else:
+            native_budget = json.loads(native_budget_path.read_text(encoding="utf-8"))
+            native_ids = set(native_budget.get("testBudgetsSeconds", {}))
+            expected_native_ids = {
+                "/".join(selector.split("/")[1:]) + "()"
+                for selector in PERMISSION_GATED_TESTS
+            }
+            if native_ids != expected_native_ids:
+                runtime_budget_errors.append(
+                    "permission-gated runtime budgets do not match their catalog"
+                )
+            if native_budget.get("catalog", {}).get("expectedCaseCount") != len(PERMISSION_GATED_TESTS):
+                runtime_budget_errors.append(
+                    "permission-gated runtime budget count is stale"
+                )
+
     if (
         missing
         or stale
         or duplicates
         or empty_scopes
         or retired
+        or permission_overlap
         or sentinel_mismatch
         or orphan_scopes
         or runtime_budget_errors
@@ -1335,6 +1364,8 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
             details.append("empty feature scopes: " + ", ".join(empty_scopes))
         if retired:
             details.append("known duplicate tests returned: " + ", ".join(retired))
+        if permission_overlap:
+            details.append("permission-gated tests in hosted catalog: " + ", ".join(permission_overlap))
         if sentinel_mismatch:
             details.append("feature/source sentinel mismatch: " + ", ".join(sentinel_mismatch))
         if orphan_scopes:
