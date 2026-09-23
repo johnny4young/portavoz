@@ -34,7 +34,10 @@ Two SEPARATE streams, never mixed before diarization:
   graph mutation is serialized on one queue.
 - **Device-change resilience (D163)**: observes `AVAudioEngineConfigurationChange` (connecting headphones silently stops and uninitializes the engine). The callback only submits a delayed request and returns from AVFAudio's internal queue. A pure generation gate coalesces burst notifications and invalidates pending work at Stop. The admitted handoff retires the old graph and creates a fresh `AVAudioEngine`, where exactly one noncoercing tap (`format: nil`) follows the settled hardware. It derives the source rate from each delivered buffer, retries every 0.5 s while no usable input exists, resamples the new device to the stream's original rate and **fills the gap with silence** so the timeline remains aligned with the system channel (gap = samples expected by clock − delivered; 0.5 s threshold). This prevents both stale-format failures and the field-observed process-terminating duplicate-tap exception during a built-in-mic/AirPods transition.
 - **Rate conversion carries its phase (D503)**: each source owns one
-  `LinearResampler` under its delivery lock. It keeps the fractional read
+  `LinearResampler` under its delivery lock. Its capture-specific geometry
+  wrapper delegates interpolation to the pure shared
+  `PortavozCore.StreamingLinearResampler` (D548), which is also usable by
+  off-callback analysis without making transcription depend on capture. It keeps the fractional read
   position and the last sample between callbacks, so a device running at a
   different rate than the stream cannot lose the per-buffer remainder and
   drift away from the system channel. The unused single-shot `Resample.linear`

@@ -114,6 +114,7 @@ extension ArchitectureDependencyTests {
             "TranscriptionKit/NemotronLatin1120Engine.swift",
             "TranscriptionKit/ParakeetEngine.swift",
             "TranscriptionKit/ParakeetSegmentMapper.swift",
+            "TranscriptionKit/SileroVoiceActivityDetector.swift",
         ])
         let targets = try TargetManifestParser.declarations(in: Self.contents(of: "Package.swift"))
         let consumers = targets.values.filter { $0.dependencies.contains("FluidAudio") }.map(\.name).sorted()
@@ -128,6 +129,7 @@ extension ArchitectureDependencyTests {
         XCTAssertEqual(imports, [
             "PortavozTests/NemotronLatin1120Tests.swift",
             "PortavozTests/ParakeetLanguageConfigurationTests.swift",
+            "PortavozTests/SileroVoiceActivityDetectorTests.swift",
             "PortavozTests/TranscriptionTests.swift",
         ])
     }
@@ -137,7 +139,7 @@ extension ArchitectureDependencyTests {
             try Self.sourceMatches(
                 under: "Sources", pattern: Self.fluidAudioReExportPattern, codeOnly: true),
             [],
-            "A re-exported import would spread vendor types past the five adapters")
+            "A re-exported import would spread vendor types past the reviewed adapters")
         XCTAssertEqual(
             try Self.sourceMatches(
                 under: "Sources", pattern: Self.fluidAudioTypealiasExportPattern, codeOnly: true),

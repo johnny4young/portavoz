@@ -1,5 +1,6 @@
 import AVFAudio
 import Foundation
+import PortavozCore
 
 public enum AudioCaptureError: Error, Sendable {
     case noInputDevice
@@ -81,23 +82,15 @@ final class HostClock: @unchecked Sendable {
 ///
 /// Not thread-safe: each capture source owns one behind its own lock.
 struct LinearResampler {
-    /// Where the next output sample falls, relative to the next buffer's
-    /// index 0. Negative means it interpolates from `carried`.
-    private var nextPosition = 0.0
-    private var carried: Float?
-    private var sourceRate: Double?
-    private var targetRate: Double?
+    private var converter = StreamingLinearResampler()
 
     mutating func reset() {
-        nextPosition = 0
-        carried = nil
-        sourceRate = nil
-        targetRate = nil
+        converter.reset()
     }
 
     /// Mute must discard prior voice without changing the timeline's phase.
     mutating func discardCarriedSample() {
-        carried = nil
+        converter.discardCarriedSample()
     }
 
     mutating func resample(
@@ -108,39 +101,15 @@ struct LinearResampler {
         let geometry = try CapturePCMGeometry.resampling(
             inputCount: samples.count, source: source, target: target)
         guard !samples.isEmpty else { return [] }
-        // A callback can report a new Bluetooth profile before the engine
-        // sends a configuration notification. Its phase has different units.
-        if sourceRate != source || targetRate != target {
-            reset()
-            sourceRate = source
-            targetRate = target
+        let output: [Float]
+        do {
+            output = try converter.resample(
+                samples, from: source, to: target,
+                maximumOutputSamples: geometry.frameCount
+                    + CaptureDeliveryBuffer.streamingCarryFrames)
+        } catch {
+            throw AudioCaptureError.unsupportedFormat
         }
-        guard source != target else {
-            carried = samples.last
-            return samples
-        }
-        let ratio = geometry.ratio
-        let last = Double(samples.count - 1)
-
-        func sample(at index: Int) -> Float {
-            if index < 0 { return carried ?? samples[0] }
-            return samples[min(index, samples.count - 1)]
-        }
-
-        var output: [Float] = []
-        output.reserveCapacity(Int(((last - nextPosition) / ratio).rounded(.up)) + 1)
-        var position = nextPosition
-        while position <= last {
-            let base = Int(position.rounded(.down))
-            let fraction = Float(position - Double(base))
-            let start = sample(at: base)
-            let end = sample(at: base + 1)
-            output.append(start + (end - start) * fraction)
-            position += ratio
-        }
-        // Rebase onto the next buffer, which starts where this one ended.
-        nextPosition = position - Double(samples.count)
-        carried = samples[samples.count - 1]
         _ = try CapturePCMGeometry.nativeFrameCount(output.count)
         return output
     }

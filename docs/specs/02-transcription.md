@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption), D231 (focused Meeting Detail text/speaker correction), D232 (explicit structural correction commands), D233 (correction-aware derived-artifact lineage and invalidation), D234 (correction-aware document projection and replica convergence), D320 (structured SpeechAnalyzer and First Listen lifetime), D355 (pinned non-serving Nemotron challenger), D433 (pinned non-serving compact MLX challengers and exact live-translation admission), D516 (reviewed exact speech-engine pin), D539 (evidence-backed FluidAudio 0.15.8 upgrade).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption), D231 (focused Meeting Detail text/speaker correction), D232 (explicit structural correction commands), D233 (correction-aware derived-artifact lineage and invalidation), D234 (correction-aware document projection and replica convergence), D320 (structured SpeechAnalyzer and First Listen lifetime), D355 (pinned non-serving Nemotron challenger), D433 (pinned non-serving compact MLX challengers and exact live-translation admission), D516 (reviewed exact speech-engine pin), D539 (evidence-backed FluidAudio 0.15.8 upgrade), D548 (verified non-serving Silero VAD capability).
 
 Additional decision: D235 (correction recovery and scale gates).
 
@@ -161,11 +161,34 @@ challenger or change model weights.
 
 ## Model registry — ModelStoreKit
 
-- `ModelCatalog` with 10 pinned descriptors: `parakeetTdtV3` (21 artifacts, 483 MB, int8 subset), research-only `nemotronLatin1120` (10 artifacts, ~588 MB, lean fused-decoder subset), `speakerDiarization` (10 artifacts, ~14 MB), `whisperLargeV3Turbo` (24 artifacts, ~1.6 GB), `whisperLargeV3_626MB`, `whisperTokenizer` (3 files), the default `mlxQwen35`, the retained `mlxQwen3` A/B alternative, and evaluation-only Qwen3.5 0.8B/2B MLX challengers. Each `ModelArtifact` = relative path + sha256 + size; `resolveBase` is pinned to an exact Hugging Face commit. The compact challengers are reachable only through exact `--mlx-smoke qwen35-0.8b` or `qwen35-2b` tokens and never through Settings, product routing, or `recommended(for:)`; promotion requires Portavoz quality/resource evidence rather than upstream claims (D433).
+- `ModelCatalog` with 11 pinned descriptors: `parakeetTdtV3` (21 artifacts, 483 MB, int8 subset), research-only `nemotronLatin1120` (10 artifacts, ~588 MB, lean fused-decoder subset), `speakerDiarization` (10 artifacts, ~14 MB), `sileroVAD` (five artifacts, ~1 MB, MIT, non-serving), `whisperLargeV3Turbo` (24 artifacts, ~1.6 GB), `whisperLargeV3_626MB`, `whisperTokenizer` (3 files), the default `mlxQwen35`, the retained `mlxQwen3` A/B alternative, and evaluation-only Qwen3.5 0.8B/2B MLX challengers. Each `ModelArtifact` = relative path + sha256 + size; `resolveBase` is pinned to an exact Hugging Face commit. The compact challengers are reachable only through exact `--mlx-smoke qwen35-0.8b` or `qwen35-2b` tokens and never through Settings, product routing, or `recommended(for:)`; promotion requires Portavoz quality/resource evidence rather than upstream claims (D433).
 - `ModelStore` (actor): download each artifact into a sibling on the destination volume → verify size + sha256 (CryptoKit streaming 1 MiB) → atomically rename or replace. `verify()` re-hashes; `ensureAvailable()` heals missing/corrupt artifacts without first deleting the old destination. The default is `Portavoz/Models/` inside the platform Application Support container (`~/Library/Application Support` on macOS; the app container on iOS), with a `--models-dir` override.
 - `VerifiedModelLifecycle` (actor): coalesces complete descriptor checks, returns an opaque `VerifiedInstallation` only after every pinned digest passes, and caches only successful evidence by descriptor ID + revision. Missing/corrupt results are never cached. Same-descriptor install/remove operations execute in invocation order; invalidation and forced verification supersede stale checks, and waiting callers retry current evidence rather than returning an obsolete result. Cancellation is honored before publication but not reported as false failure after a verified install commits. No app readiness path infers installation from one filename or aggregate size.
 - **Gotcha protected by a test**: Parakeet's `folderName` must be `parakeet-tdt-0.6b-v3` (WITHOUT the `-coreml` suffix) — FluidAudio resolves the folder that way, and if it does not find the files it **re-downloads the entire repository without verification** into a sibling directory.
 - The sha256 values come from the HF tree API (`/api/models/<repo>/tree/<rev>?recursive=true`): LFS provides `lfs.oid`; small files are hashed manually. Procedure in the doc comment for `ModelCatalog.parakeetTdtV3`.
+
+### Optional Silero voice-activity capability (D548)
+
+`SileroVoiceActivityDetector` is a session-scoped actor over one `AudioChannel`.
+It calls only `ModelStore.verifiedInstallation` before Core ML's asynchronous
+loader, then supplies the preloaded model to FluidAudio 0.15.8's `VadManager`;
+neither the detector nor its loader downloads on failure. Inference runs on
+CPU by default to avoid taking the live ASR accelerator slot. Its input is
+mono `AudioChunk` PCM, converted by Core's phase-carrying streaming resampler
+to 16 kHz and assembled into exact 4,096-sample frames. Missing or reordered
+PCM and native rate changes reset model state and report a discontinuity, never
+manufactured silence. A failed or cancelled inference commits no partial
+model/resampler state; a concurrent producer is rejected rather than interleaved.
+
+The capability does not yet attach to recording or dictation. It cannot end
+capture, filter a transcript, alter a CAF, consume the model in the background,
+or claim improved meeting talk-time. Activation, explicit model preparation,
+resource admission, bilingual quality/latency evidence and the opt-in silence
+countdown belong to the later serving slice (GAPS T37). An opt-in local test
+reaches the actual Core ML/FluidAudio call site over pinned model bytes,
+digital silence and a public English speech fixture; ordinary deterministic
+tests cover chunk loss, rate transitions, cancellation-safe failure and
+concurrency without treating that one fixture as universal accuracy evidence.
 
 ## Live: ParakeetEngine + mapper
 

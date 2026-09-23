@@ -20250,3 +20250,38 @@ merges and the PR is retargeted, normal verified-ancestor selection resumes.
 The tiny synthetic Git integration test executes the resolver and real UI
 selector at the call site: the child changes only documentation while its
 parent changes Dictation Settings, and the parent journey must remain selected.
+
+---
+
+## D548 — Keep Silero VAD verified and non-serving until capture admission
+
+**Date:** 2026-09-23
+
+**Context.** Voice activity is needed for a future optional silence countdown
+and more faithful meeting speech metrics. The 0.15.8 FluidAudio package offers
+Silero inference, but its convenient initializers call ModelHub and can
+download outside Portavoz's pinned model authority. Its streaming state advances
+by the caller's input length even when the model silently pads or truncates that
+input to 4,096 samples. A naive per-callback `AudioConverter` would also reset
+resampling phase and run allocation/inference on the realtime capture path.
+
+**Decision.** Pin only the five files of the MIT unified 256 ms v6.2.1 Core ML
+bundle at one immutable repository revision. The TranscriptionKit adapter
+requires a complete `ModelStore.verifiedInstallation`, loads through Core ML's
+macOS-14-compatible asynchronous API, and passes the already loaded `MLModel`
+to `VadManager`. No constructor with implicit network access is used. The
+capture converter's interpolation state moves into pure PortavozCore; its
+existing geometry/error wrapper remains in AudioCaptureKit. A separate
+session-scoped actor consumes mono `AudioChunk`s off callback, retains phase,
+supplies exact 4,096-sample 16 kHz frames, resets on loss or rate transition,
+and commits model state only after a complete noncancelled batch. CPU-only is
+the default until resource-interference evidence justifies another choice.
+
+**Consequences.** This slice is a reusable, real-model-tested capability, not
+an automatic dictation or meeting behavior. It does not install a model, alter
+original audio, gate transcripts, infer talk-time or end capture. The public
+English speech and silence lanes prove reachable positive/negative inference;
+they do not establish bilingual quality, device continuity, field acoustics,
+latency budgets, or safe app serving. T37 remains open for explicit preparation,
+resource admission and product-path integration before an opt-in auto-stop may
+rely on it.
