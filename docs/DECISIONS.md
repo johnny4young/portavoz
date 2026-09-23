@@ -20101,3 +20101,45 @@ resolves resources through `Bundle`, which reads either. A future Xcode that
 removes the old label deletes the `#else` branch in one file. Decoding behavior is unchanged: greedy
 everywhere, same token caps.
 
+## D539 — Admit FluidAudio 0.15.8 only after matched product evidence
+
+**Date:** 2026-09-22
+
+**Context.** D516 fixed FluidAudio at 0.15.6 because a patch can change the
+decoder, caption seams and diarizer without changing Portavoz source. The P15
+review therefore compared preserved Release test binaries for 0.15.6, 0.15.7
+and 0.15.8 through the real Parakeet manager, `ParakeetSegmentMapper` and
+production coalescer over the same six public/synthetic English, Spanish, mixed
+and silence cells, with twelve repetitions and two passes. Version 0.15.7 was
+production-identical to 0.15.6. Version 0.15.8 improved every speech cell; mean
+production WER moved from 0.475694 to 0.420332 while the silence cell remained
+unchanged. Mean first update stayed 1.49 versus 1.48 seconds and mean completion
+stayed 33.95 versus 33.93 seconds. The measurements characterize this corpus;
+they are not a universal accuracy claim.
+
+The same exact public AMI sample and RTTM retained 7.6 percent DER at the
+0.25-second collar on both versions. Batch and live two-speaker model paths
+passed. Three matched process observations kept the candidate below the
+baseline's observed maxima for resident set and peak memory footprint; their
+medians differed by less than two percent. They are local content-free
+observations, not cross-host Sequoia/Tahoe certification. Stock FluidAudio
+0.16.1 could not enter the comparison: its NemoTextProcessing 0.3.1 XCFramework
+declares `Headers` but places `module.modulemap` under
+`Headers/CNemoTextProcessing`, so SwiftPM fails before compilation. Its speech
+source is otherwise identical to 0.15.8; Portavoz does not repair a malformed
+vendor binary in place to manufacture green evidence.
+
+**Decision.** Require exact FluidAudio 0.15.8 at revision
+`87a39dfe4068fef0f1c69bfe704b2b3ef4fbc5bc`. Keep the D516 explicit-review
+policy, adapter/import boundary, model artifacts, engine selection, live window
+configuration and deployment floor unchanged. Pin the revision in the
+architecture test as well as `Package.resolved`; a moved tag must fail closed.
+
+**Consequences.** Live dictation and meeting captions receive the reviewed
+streaming fixes without adding a model, network path or background resident
+engine. The vendor final-window replay was materially smaller in 0.15.8 but
+remained observable; it is not promoted to product output because Portavoz still
+treats its own mapped and coalesced result as authority. The unchanged silence
+hallucination remains a separate admission problem, not evidence against or in
+favor of this upgrade. Every future FluidAudio release still requires matched
+recognition, diarization, latency and memory evidence and may be rejected.

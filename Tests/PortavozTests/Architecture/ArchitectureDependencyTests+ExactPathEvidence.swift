@@ -1198,7 +1198,7 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(makefile.contains(#"tail -20 "$$log""#))
 
         XCTAssertTrue(architecture.contains("4096-token guided-generation context"))
-        XCTAssertTrue(intelligenceSpec.contains("FluidAudio 0.15.6"))
+        XCTAssertTrue(intelligenceSpec.contains("FluidAudio 0.15.8"))
         XCTAssertTrue(decisions.contains("## D380"))
     }
 
