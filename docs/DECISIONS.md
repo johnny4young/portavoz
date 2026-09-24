@@ -20196,9 +20196,10 @@ child diff under the old fallback rule.
 **Decision:** direct-to-default-branch PRs retain D429's artifact-backed
 incremental selection. For a PR targeting another branch, compare the head
 with its merge base against the fetched default branch on every push. Do not
-reuse a child verification anchor to narrow that cumulative set. If the
-default-branch ref or merge base is unavailable, fail scope selection rather
-than silently using the parent. Manual dispatch remains a complete bilingual
+reuse a child verification anchor to narrow that cumulative set. Criss-cross
+history with several merge bases selects from their common ancestor, which only
+widens the set. If the default-branch ref or merge base is unavailable, fail
+scope selection with an error annotation rather than silently using the parent. Manual dispatch remains a complete bilingual
 run; no runtime budget, retry, or native-permission rule changes.
 
 **Consequences:** stacked pushes may repeat already covered parent journeys,

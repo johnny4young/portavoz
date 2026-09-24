@@ -149,17 +149,36 @@ class UITestVerifiedBaseTests(unittest.TestCase):
         with self.assertRaisesRegex(VerifiedBaseError, "could not validate"):
             GitCommitHistory().is_ancestor(BASE, HEAD)
 
+    @patch("ui_test_verified_base.subprocess.run")
+    def test_multiple_merge_bases_widen_to_their_common_ancestor(self, run):
+        run.side_effect = [
+            subprocess.CompletedProcess(args=[], returncode=0, stdout=f"{BASE}\n{NEWER}\n"),
+            subprocess.CompletedProcess(args=[], returncode=0, stdout=f"{OLDER}\n"),
+        ]
+
+        root = GitCommitHistory().merge_base("refs/remotes/origin/main", HEAD)
+
+        self.assertEqual(root, OLDER)
+        self.assertEqual(run.call_args.args[0], ["git", "merge-base", "--octopus", BASE, NEWER])
+
+    @patch("ui_test_verified_base.subprocess.run")
+    def test_unresolvable_merge_bases_cannot_narrow_stacked_scope(self, run):
+        run.side_effect = [
+            subprocess.CompletedProcess(args=[], returncode=0, stdout=f"{BASE}\n{NEWER}\n"),
+            subprocess.CompletedProcess(args=[], returncode=0, stdout=""),
+        ]
+        with self.assertRaisesRegex(VerifiedBaseError, "ambiguous"):
+            GitCommitHistory().merge_base("refs/remotes/origin/main", HEAD)
+
     @patch(
         "ui_test_verified_base.subprocess.run",
         return_value=subprocess.CompletedProcess(
-            args=["git", "merge-base", "--all"],
-            returncode=0,
-            stdout=f"{BASE}\n{OLDER}\n",
-        ),
+            args=[], returncode=0, stdout="--output=/tmp/x\nnot-a-sha\n"),
     )
-    def test_ambiguous_merge_base_cannot_narrow_stacked_scope(self, _run):
-        with self.assertRaisesRegex(VerifiedBaseError, "ambiguous"):
+    def test_malformed_merge_bases_never_reach_git_as_arguments(self, run):
+        with self.assertRaisesRegex(VerifiedBaseError, "full lowercase commit SHA"):
             GitCommitHistory().merge_base("refs/remotes/origin/main", HEAD)
+        self.assertEqual(run.call_count, 1)
 
 
 class StackedPRSelectionIntegrationTests(unittest.TestCase):
@@ -194,18 +213,20 @@ class StackedPRSelectionIntegrationTests(unittest.TestCase):
         self.git("add", path)
         self.git("commit", "-qm", f"Add {path}")
 
-    def resolve(self, *, base_branch="codex/parent", fallback=None):
+    def resolve(
+        self, *, base_branch="codex/parent", fallback=None, branch="codex/child", default_branch="main"
+    ):
         return subprocess.run(
             [
                 sys.executable,
                 str(ROOT / "scripts/ui_test_verified_base.py"),
                 "--repository", "owner/repo",
                 "--workflow", "ui-tests.yml",
-                "--branch", "codex/child",
+                f"--branch={branch}",
                 "--head", self.head,
                 "--fallback", fallback or self.parent,
-                "--base-branch", base_branch,
-                "--default-branch", "main",
+                f"--base-branch={base_branch}",
+                f"--default-branch={default_branch}",
                 "--format", "github",
             ],
             cwd=self.repository,
@@ -265,8 +286,39 @@ class StackedPRSelectionIntegrationTests(unittest.TestCase):
         result = self.resolve()
 
         self.assertEqual(result.returncode, 2)
-        self.assertIn("stacked UI scope failed closed", result.stderr)
-        self.assertNotIn(f"base={self.parent}", result.stdout)
+        self.assertIn("::error title=Stacked UI scope::stacked UI scope failed closed", result.stderr)
+        self.assertEqual(result.stdout, "")
+
+    def test_criss_cross_history_widens_to_the_shared_root(self):
+        self.git("checkout", "-q", "-B", "main-line", self.root)
+        self.write_commit("docs/ROADMAP-public.md", "main side\n")
+        main_side = self.git("rev-parse", "HEAD").stdout.strip()
+        self.git("checkout", "-q", "-B", "child-line", self.root)
+        self.write_commit("Sources/portavoz-app/DictationSection.swift", "child view\n")
+        child_side = self.git("rev-parse", "HEAD").stdout.strip()
+        self.git("merge", "-q", "--no-edit", main_side)
+        self.head = self.git("rev-parse", "HEAD").stdout.strip()
+        self.git("checkout", "-q", "main-line")
+        self.git("merge", "-q", "--no-edit", child_side)
+        self.git("update-ref", "refs/remotes/origin/main", "HEAD")
+        roots = self.git("merge-base", "--all", "refs/remotes/origin/main", self.head).stdout.split()
+        self.assertEqual(set(roots), {main_side, child_side})
+
+        base = self.resolve()
+
+        self.assertEqual(base.returncode, 0, base.stderr)
+        resolved = dict(line.split("=", 1) for line in base.stdout.splitlines())
+        self.assertEqual(resolved["base"], self.root)
+        self.assertIn("testDictationOffersTriggersLanguageAndDictionary", self.select(resolved["base"]).stdout)
+
+    def test_malformed_branch_names_never_reach_git(self):
+        for field in ("branch", "base_branch", "default_branch"):
+            for name in ("-main", "../main", "/main", "main/", "a//b", "main branch"):
+                with self.subTest(field=field, name=name):
+                    result = self.resolve(**{field: name})
+                    self.assertEqual(result.returncode, 2)
+                    self.assertIn("is invalid", result.stderr)
+                    self.assertEqual(result.stdout, "")
 
     def test_direct_main_pr_retains_existing_verified_anchor_fallback(self):
         result = self.resolve(base_branch="main", fallback=self.root)
@@ -274,6 +326,9 @@ class StackedPRSelectionIntegrationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn(f"base={self.root}", result.stdout)
         self.assertIn("fail-safe PR base", result.stdout)
+        self.assertIn("::warning title=UI verified-base fallback::", result.stderr)
+        for line in result.stdout.splitlines():
+            self.assertRegex(line, r"^[a-z_]+=", "stdout is the step's GITHUB_OUTPUT")
 
 
 if __name__ == "__main__":

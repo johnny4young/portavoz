@@ -88,8 +88,9 @@ receipts (D496). Direct-to-main PRs may advance the selection base only from a
 first-attempt verified ancestor. A stacked PR always selects from the merge
 base of its head and the fetched default branch, including unmerged parent
 changes. It ignores earlier child anchors because they may prove only the
-child diff; an unavailable default-branch ref fails selection rather than
-falling back to the parent (D542). Manual dispatch selects the complete
+child diff; several criss-cross merge bases widen to their common ancestor,
+and an unavailable default-branch ref fails selection rather than falling back
+to the parent (D542). Manual dispatch selects the complete
 bilingual catalog. Because a prebuilt-products run does not hand the XCTest
 process the app's language, bilingual expectations read
 `UITestLocale.environmentLocale` — the locale the run declared — rather than

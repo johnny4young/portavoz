@@ -5360,8 +5360,11 @@ successful first-attempt ancestor that published one exact-SHA, content-free
 verification artifact after complete selected functional evidence (or a
 verified no-UI selection). The resolver rejects retries, failed runs,
 duplicate or expired artifacts, and candidates outside the current base-to-head
-ancestry. Any API, artifact, or force-push uncertainty expands from the PR base
-instead of failing narrow. Manual integration runs remain explicit complete-
+ancestry. For a PR into the default branch, any API, artifact, or force-push
+uncertainty expands from the PR base instead of failing narrow. A stacked PR
+always selects from its head's merge base with the fetched default branch,
+including unmerged parent changes; criss-cross roots widen to their common
+ancestor, and an unavailable default-branch ref fails selection. Manual integration runs remain explicit complete-
 catalogue runs. Every feature scope names a checked-in
 production owner, and
 catalog validation rejects unscoped tests, empty or orphaned scopes, duplicate
@@ -6103,6 +6106,8 @@ reliability evidence retained from 9 Aug, is:
 - pull-request scope advances only from a first-attempt exact-SHA functional
   verification artifact inside current ancestry; retry, expiry, duplication,
   API uncertainty, or force-push divergence expands fail-safe from the PR base;
+  a stacked PR selects from its default-branch merge base and fails closed
+  rather than narrowing to its parent;
 - the first phased hosted classifier proved that separation fails closed: Spanish
   passed 101/101 with only runtime advisories, while one English structural-
   correction interaction remained non-passing and therefore blocked the job.
