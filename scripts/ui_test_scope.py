@@ -431,6 +431,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testIntelligencePaneCreatesACustomStructure"),
     ),
     "dictation": (
+        test_id("DictationUITests", "testDictationCaptureFailureIsVisibleAndCanBeDismissed"),
         test_id("DictationUITests", "testDictationPanelCancelsAndRestartsWithoutGlobalInput"),
         test_id("DictationUITests", "testMicrophoneDenialRemainsRecoverableWithoutOpeningAudio"),
         test_id("DictationUITests", "testMissingMicrophoneAudioShowsFallbackAndAllowsRestart"),

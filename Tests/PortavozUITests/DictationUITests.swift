@@ -3,6 +3,32 @@ import XCTest
 
 final class DictationUITests: PortavozUITestCase {
     @MainActor
+    func testDictationCaptureFailureIsVisibleAndCanBeDismissed() async throws {
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-capture-failure"]
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+        let message = UITestLocale.environmentLocale == "es"
+            ? "Se interrumpió la captura de audio. No se insertó nada. Vuelve a dictar."
+            : "Audio capture was interrupted. Nothing was inserted. Try dictating again."
+
+        for _ in 0..<2 {
+            XCTAssertTrue(app.prepareForInteraction())
+            let dictate = app.buttons["menu-bar-dictate"]
+            XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+            dictate.click()
+            let state = app.staticTexts["dictation-panel-state"]
+            XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: state) == message })
+            XCTAssertFalse(app.descendants(matching: .any)["dictation-panel-meter"].exists)
+            let cancel = app.buttons["dictation-panel-cancel"]
+            XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
+            cancel.click()
+            XCTAssertTrue(waitForUITestCondition(timeout: 5) { !cancel.exists })
+        }
+    }
+
+    @MainActor
     func testDictationPanelCancelsAndRestartsWithoutGlobalInput() throws {
         let app = try XCUIApplication.portavoz(showMenuBarContent: true)
         app.launchArguments.append("-seed-dictation")

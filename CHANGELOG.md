@@ -4,6 +4,10 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## September 25, 2026
+
+- **🛡️ Dictation stops before a broken paste** — interrupted or overloaded audio now shows a clear failure instead of automatically inserting an incomplete result.
+
 ## September 24, 2026
 
 - **🎙️ Dictation that waits for your microphone** — clear preparation and recovery messages, your preferred input, and no accidental delivery while audio is still getting ready.

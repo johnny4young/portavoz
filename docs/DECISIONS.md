@@ -20277,3 +20277,44 @@ controller/adapter and real-app surface with deliberately delayed/invalid input.
 They do not claim physical microphone behavior, ASR quality, forced cancellation
 of a native call or verified external insertion. No new model, capability-module
 edge, microphone framework or network default is introduced.
+
+---
+
+## D547 — Capture integrity owns dictation delivery until the edit boundary
+
+**Date:** 2026-09-25
+
+**Context.** Dictation has no durable audio original. Treating a source error as
+EOF or dropping a relay buffer could turn an incomplete transcript into an
+automatic paste. A producer can also report failure before its admitted queue
+drains, so waiting only for the iterator's terminal error is insufficient.
+
+**Decision.** The controller observes the existing producer-failure capability
+and every bounded-relay yield. Any capture failure revokes delivery for that
+session before closing the feed. It cancels owned work, enters existing cleanup
+and reports a localized failure. An upstream cancellation error is not a user
+Cancel unless the owning task is cancelled. A cancelled caption iterator may end
+normally; check cancellation before joining its detached pump or publishing text.
+
+The final producer report is checked after draining and before delivery. Once
+delivery relinquishes capture, a delayed capture notification cannot claim that
+an already-dispatched edit was prevented. This is not rollback or proof of a
+verified external edit. Session identity fences obsolete callbacks; source and
+runtime cleanup stay with their existing owners. Buffer capacity, models,
+meeting capture and the silent user-cancellation path are unchanged.
+
+A clean source EOF does not itself authorize delivery. If it precedes the
+controller actually issuing Stop, including during the pending Stop tail, treat
+it as an interrupted capture even when the producer has no failure report: the
+partial may omit the rest of the utterance.
+
+**Evidence boundary.** Actual-controller regressions cover both languages,
+127/128/129 pending buffers, ordinary and cancellation-shaped source errors,
+pre-EOF notifications, unnotified final failure and post-dispatch notifications.
+They also close a normally ending source before Stop and during its pending
+tail in both languages and assert the controller refuses to insert its partial.
+The disposable UI fixture exercises failure visibility and dismissal without
+real audio or paste. Native hardware, recognition quality and external-editor
+verification remain independent qualifications. The added failure journey
+raises the current permission-independent unattended catalog from 126 to 127
+without restoring the native receiver to that catalog.
