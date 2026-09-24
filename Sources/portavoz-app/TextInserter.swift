@@ -22,6 +22,15 @@ enum TextInserter {
     enum EventTarget {
         case session
         case process(pid_t)
+
+        /// A process target must still name a running application; anything else fails closed.
+        @MainActor
+        var isAvailable: Bool {
+            guard case .process(let processID) = self else { return true }
+            guard processID > 0, let application = NSRunningApplication(processIdentifier: processID)
+            else { return false }
+            return !application.isTerminated
+        }
     }
 
     enum InsertionResult: Equatable {
@@ -58,13 +67,17 @@ enum TextInserter {
     /// Security classification for the element that would receive the paste.
     /// Any failed or malformed AX inspection is unavailable, not regular: a
     /// privacy boundary must fail closed when macOS cannot prove the target.
+    /// A process target is inspected in that application, not wherever focus is.
     @MainActor
-    static func focusedFieldSecurity() -> FocusedFieldSecurity {
+    static func focusedFieldSecurity(in target: EventTarget = .session) -> FocusedFieldSecurity {
         guard AXIsProcessTrusted() else { return .unavailable }
-        let systemWide = AXUIElementCreateSystemWide()
+        let root = switch target {
+        case .session: AXUIElementCreateSystemWide()
+        case .process(let processID): AXUIElementCreateApplication(processID)
+        }
         var focused: CFTypeRef?
         let status = AXUIElementCopyAttributeValue(
-            systemWide, kAXFocusedUIElementAttribute as CFString, &focused)
+            root, kAXFocusedUIElementAttribute as CFString, &focused)
         guard status == .success, let focused,
             CFGetTypeID(focused) == AXUIElementGetTypeID()
         else { return .unavailable }
@@ -117,15 +130,16 @@ enum TextInserter {
     static func insert(
         _ text: String, pasteboard: NSPasteboard = .general, eventTarget: EventTarget = .session
     ) async -> InsertionResult {
-        if case .process(let processID) = eventTarget, processID <= 0 { return .eventUnavailable }
+        guard eventTarget.isAvailable else { return .eventUnavailable }
         guard await waitForModifierRelease() else {
             return Task.isCancelled ? .cancelled : .modifiersStillPressed
         }
         guard !Task.isCancelled else { return .cancelled }
+        guard eventTarget.isAvailable else { return .eventUnavailable }
 
         // This is intentionally the final check before clipboard mutation.
         // Focus may change while the hotkey modifiers are being released.
-        switch focusedFieldSecurity() {
+        switch focusedFieldSecurity(in: eventTarget) {
         case .secure:
             return .secureField
         case .unavailable:

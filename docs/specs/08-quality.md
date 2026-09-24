@@ -173,8 +173,10 @@ keyboard events address that receiver's process, never a global fallback: a
 named pasteboard alone cannot contain a global Paste shortcut if focus changes.
 The receiver establishes its own first responder instead of requiring a click
 through possible desktop overlays. Both app processes register with the existing
-journey owner before launch so interruption cleanup cannot orphan the receiver. Nonpositive process IDs fail in the actual
-inserter before borrowing even the scratch clipboard. A passing native journey
+journey owner before launch so interruption cleanup cannot orphan the receiver. Process IDs that do not name a running
+application fail in the actual inserter before borrowing even the scratch
+clipboard, and secure-field inspection reads the addressed process's focus. The
+fixture waits up to 20 s for the receiver, then 5 s for its focus to be ready. A passing native journey
 qualifies that inserter/receiver path, not production's session-wide event routing
 or destination identity fencing. The presence of this test is not evidence that
 the native gate passed. No general clipboard, real meeting, model download or microphone participates.

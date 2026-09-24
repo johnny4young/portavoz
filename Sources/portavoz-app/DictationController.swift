@@ -49,8 +49,8 @@ final class DictationController {
     /// (`DictationTextRules` codec).
     static let replacementsKey = "dictationReplacements"
 
-    static var fillerFilterEnabled: Bool {
-        (UserDefaults.standard.object(forKey: fillerFilterKey) as? Bool) ?? true
+    static func fillerFilterEnabled(in defaults: UserDefaults) -> Bool {
+        (defaults.object(forKey: fillerFilterKey) as? Bool) ?? true
     }
 
     enum Phase: Equatable {
@@ -88,7 +88,7 @@ final class DictationController {
     private var activeSessionID: UUID?
     private let panel = DictationPanelController()
     private let presentsPanel: Bool
-    private var dependencies: DictationSessionDependencies?
+    private var sessionClock: (() -> Date)?
 
     init(presentsPanel: Bool = true) {
         self.presentsPanel = presentsPanel
@@ -225,7 +225,6 @@ final class DictationController {
     }
 
     private func start(using dependencies: DictationSessionDependencies) {
-        self.dependencies = dependencies
         failureDismissTask?.cancel()
         failureDismissTask = nil
         // The paste needs Accessibility; ask BEFORE recording so the user
@@ -251,6 +250,7 @@ final class DictationController {
         stopTask = nil
         let sessionID = UUID()
         activeSessionID = sessionID
+        sessionClock = dependencies.now
         showPanel()
 
         session = Task { [weak self] in
@@ -308,7 +308,7 @@ final class DictationController {
             await pump?.value
             try Task.checkCancellation()
             guard activeSessionID == id else { return }
-            await deliver(sessionID: id)
+            await deliver(sessionID: id, dependencies: dependencies)
         } catch is CancellationError {
             localFeed?.finish()
             pump?.cancel()
@@ -364,7 +364,7 @@ final class DictationController {
         guard phase == .listening else { return }
         guard stopTask == nil else { return }
         guard DictationCapturePolicy.finishDecision(
-            captureStartedAt: captureStartedAt, now: dependencies?.now() ?? Date()) == .stopAfterTail
+            captureStartedAt: captureStartedAt, now: sessionClock?() ?? Date()) == .stopAfterTail
         else {
             cancel()
             return
@@ -388,6 +388,7 @@ final class DictationController {
     /// Esc in the panel: throw everything away.
     func cancel() {
         activeSessionID = nil
+        sessionClock = nil
         captureStartedAt = nil
         mouseOwnsSession = false
         stopTask?.cancel()
@@ -405,8 +406,8 @@ final class DictationController {
         panel.close()
     }
 
-    private func deliver(sessionID: UUID) async {
-        guard activeSessionID == sessionID, let dependencies else { return }
+    private func deliver(sessionID: UUID, dependencies: DictationSessionDependencies) async {
+        guard activeSessionID == sessionID else { return }
         // The two-tier dictionary's deterministic tier plus the filler
         // filter run on the final text only — meeting transcripts stay
         // verbatim records and never pass through here.
@@ -416,7 +417,7 @@ final class DictationController {
             replacements: DictationTextRules.decode(
                 replacements: dependencies.defaults.string(
                     forKey: Self.replacementsKey) ?? ""),
-            removeFillers: (dependencies.defaults.object(forKey: Self.fillerFilterKey) as? Bool) ?? true)
+            removeFillers: Self.fillerFilterEnabled(in: dependencies.defaults))
         microphone = nil
         feed = nil
         stopTask = nil
@@ -469,6 +470,7 @@ final class DictationController {
     private func completeSession(id: UUID) {
         guard activeSessionID == id else { return }
         activeSessionID = nil
+        sessionClock = nil
         session = nil
         microphone = nil
         feed = nil

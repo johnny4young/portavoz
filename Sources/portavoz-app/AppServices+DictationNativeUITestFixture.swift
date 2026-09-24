@@ -28,27 +28,34 @@ final class DictationNativeUITestFixture {
     }
 
     private func deliverOnce() async {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(10))
+        // Arming precedes the receiver's launch, so readiness is timed from its arrival.
+        var deadline = ContinuousClock.now.advanced(by: .seconds(20))
+        var receiverSeen = false
         while ContinuousClock.now < deadline, !Task.isCancelled {
             if let receiver = NSWorkspace.shared.frontmostApplication,
                receiver.bundleIdentifier == "app.portavoz.dictation-test-receiver", !receiver.isTerminated {
+                if !receiverSeen {
+                    receiverSeen = true
+                    deadline = ContinuousClock.now.advanced(by: .seconds(5))
+                }
                 guard TextInserter.canInsert(promptIfNeeded: false) else {
                     status = "accessibility-required-for-app"
                     return
                 }
                 // Launch can precede first-responder installation. Read-only
                 // readiness may repeat; the insertion itself never does.
-                if TextInserter.focusedFieldSecurity() == .regular {
+                let target = TextInserter.EventTarget.process(receiver.processIdentifier)
+                if TextInserter.focusedFieldSecurity(in: target) == .regular {
                     let board = NSPasteboard(name: .init(pasteboardName))
                     let result = await TextInserter.insert(
                         "Don't delete — no borres: café, C++, 1.250,50 €.", pasteboard: board,
-                        eventTarget: .process(receiver.processIdentifier))
+                        eventTarget: target)
                     status = String(describing: result)
                     return
                 }
             }
             do { try await Task.sleep(for: .milliseconds(50)) } catch { return }
         }
-        status = "receiver-unavailable"
+        status = receiverSeen ? "receiver-focus-unavailable" : "receiver-unavailable"
     }
 }

@@ -19643,8 +19643,9 @@ and cannot stand in for this native client. Fixture admission requires the exact
 launch flag and a UUID clipboard namespace; insertion is attempted at most once
 for the fixed receiver bundle. The real event pair is process-addressed to that
 receiver, not injected into the global stream: a named clipboard does not contain
-a misrouted global Paste shortcut. Nonpositive process IDs fail before clipboard
-mutation and never fall back to session routing. Production's session dispatch
+a misrouted global Paste shortcut. Process IDs that do not name a running application
+fail before clipboard mutation, secure-field inspection reads the addressed
+application's focus, and they never fall back to session routing. Production's session dispatch
 remains unchanged and is not qualified by this fixture. The user clipboard and
 library are untouched.
 App Accessibility must already be authorized; the journey fails explicitly

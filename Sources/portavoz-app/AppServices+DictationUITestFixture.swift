@@ -17,9 +17,7 @@ struct DictationUITestFixture: Sendable {
 
     init?(arguments: [String], usesTemporaryStore: Bool) {
         guard usesTemporaryStore, arguments.contains("-seed-dictation") else { return nil }
-        text = arguments.contains("-seed-dictation-english")
-            ? "Don't delete these notes."
-            : "No borres estas notas."
+        text = "No borres estas notas."
     }
 
     @MainActor

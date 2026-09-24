@@ -1084,7 +1084,8 @@ restores only captured pasteboard representations when its change count still
 owns the clipboard. Secure or uninspectable focus, unavailable clipboard or
 event delivery, and held modifiers become visible failures rather than false
 insertion success. Disposable native tests share the inserter but supply a named
-pasteboard and a process-addressed event target. This contains fixture input if
+pasteboard and a process-addressed event target whose secure-field inspection
+reads that application's focus. This contains fixture input if
 focus changes without altering production session routing; it is not evidence
 of a production destination fence.
 

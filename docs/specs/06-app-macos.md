@@ -2616,8 +2616,9 @@ XCTest's sandboxed runner. It uses an explicitly armed fixture and a UUID-named 
 retaining modifier-release, real AX inspection, keyboard events and delayed
 ownership-checked restoration. Its event pair addresses the fixed receiver's
 process: a UUID clipboard alone cannot contain a global Paste shortcut after a
-focus change. Nonpositive process targets fail before clipboard mutation and
-never fall back to session routing. The receiver establishes its own first
+focus change. A process target that does not name a running application fails
+before clipboard mutation, its secure-field inspection reads that application's
+focused element, and it never falls back to session routing. The receiver establishes its own first
 responder; the test asserts actual Unicode content rather than clicking through
 desktop overlays. Production session routing remains unchanged and is not
 qualified by this fixture. It does not read the user's clipboard. Actual
