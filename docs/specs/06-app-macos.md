@@ -2676,7 +2676,40 @@ Surface validated by MacParakeet: global hotkey → speak → hotkey again → t
 
 `TextInserter` implements the fail-closed delivery boundary. It waits up to one second for all physical modifiers to lift and refuses delivery rather than posting a combined shortcut when they remain held or cancellation arrives. It then inspects the focused Accessibility element immediately before touching the clipboard: `AXSecureTextField`, lost trust, missing role, malformed values, and transient inspection errors all block insertion with localized feedback; an explicitly absent/unsupported subrole on an otherwise valid ordinary text control remains admissible. Only after that check does it snapshot every pasteboard representation it can actually capture, write the dictation, and post a complete layout-aware ⌘V pair. Borrowed Text Input Source properties are promoted while their owning source remains alive, must match their declared Core Foundation runtime type, and must contain a complete keyboard-layout header; a missing, wrong-typed, or truncated value falls back to the standard QWERTY shortcut instead of reaching typed Carbon translation. Clipboard-write or event-construction failure restores immediately. Successful delivery restores captured representations after 1.5 seconds only if `changeCount` still identifies Portavoz's write, preserving rich content without overwriting a clipboard manager.
 
-Capture timing starts when the microphone stream actually opens, not when model preparation or the panel starts. A finish before readiness or before 0.75 seconds of real audio cancels silently; one owned 250 ms tail task preserves the last phoneme and suppresses duplicate finish gestures. Session cancellation closes the transcription feed immediately, stops local resources, fences stale state, and prevents later insertion. Audio feeding and peak calculation run off the main actor; only the meter mutation crosses back. A single cancellable failure-dismiss task prevents an older error from closing a restarted session. `DictationAssembler` joins confirmed plus partial text and requires lexical content, so punctuation-only noise never pastes. A pre-transcription VAD is deliberately absent because live Parakeet silence yields no segment; the batch-Whisper hallucination class is handled elsewhere. The Settings toggle remains off by default. Verified E2E: the hotkey triggers with the app in the background, the panel transcribes live audio, and final insertion works in the field.
+Capture timing starts when the microphone stream actually opens, not when model preparation or the panel starts. A finish before readiness or before 0.75 seconds of real audio cancels silently; one owned 250 ms tail task preserves the last phoneme and suppresses duplicate finish gestures. Session cancellation closes the transcription feed immediately, stops local resources, fences stale state, and prevents later insertion. Carbon key-up can finish only the session that received its key-down; a second press recovers a lost release, while a stale release cannot stop a newer menu-started capture. Audio feeding and peak calculation run off the main actor; only the meter mutation crosses back. Success and failure feedback share one cancellable task with its own UUID, independent from the completed capture session. Starting or cancelling dictation invalidates that feedback identity before changing phase. Even a deadline that ignores cancellation cannot close a newer equal-word-count confirmation, denial or active capture. Successful insertion returns from the session before the confirmation expires, so cosmetic feedback does not retain the live model lease. `DictationAssembler` joins confirmed plus partial text and requires lexical content, so punctuation-only noise never pastes. A pre-transcription VAD is deliberately absent because live Parakeet silence yields no segment; the batch-Whisper hallucination class is handled elsewhere. The Settings toggle remains off by default. Verified E2E: the hotkey triggers with the app in the background, the panel transcribes live audio, and final insertion works in the field.
+
+**Completion requires source Stop to have been issued.** A normal microphone EOF
+or recognizer completion does not authorize delivery. A finish gesture after the
+existing capture minimum schedules one Stop; duplicate gestures do not enqueue
+another. A clean EOF before the controller actually issues that source Stop,
+including during its pending tail, still means an interrupted capture. Without
+the issued Stop, completion releases local
+capture/runtime resources and shows a localized failure with the captured text,
+without invoking insertion. The authorization check precedes waiting for the
+microphone pump, because a recognizer can finish while that pump is still live.
+Cancellation and session replacement revoke authorization, and terminal caption
+publication checks cancellation and the exact session identity just like streamed
+captions. A cancelled stream cannot write its final text into a newer preparing
+session. Cleanup classifies cancellation by task and session ownership, not just
+the thrown error's type. A dependency that throws `CancellationError` while the
+owner is still active reports an interruption and leaves a restartable failed
+state; it cannot strand the panel in listening after preparation or recognition
+has ended. User cancellation and late errors from replaced sessions stay silent.
+This does not yet repair dropped capture buffers or verify native edits.
+
+An issued Stop joins both the audio pump and the exact native Stop task before
+delivery. Finishing the source's stream is not proof that its asynchronous
+teardown returned. The speech-runtime lease covers normal completion and error
+or cancellation cleanup, rather than ending when control first enters `catch`.
+Cancellation while native Stop is pending still prevents delivery; restarting
+cannot replace the old task that the previous session is draining.
+
+The temporary app's optional `-seed-dictation-unexpected-completion` fixture
+requires `-seed-dictation` and disposable-store composition. Its first created
+capture emits synthetic audio and ends; later captures remain open until Stop or
+Cancel. The attempt belongs to the app fixture, not dependency construction,
+which the menu action repeats. The real panel journey checks localized failure,
+preserved fixture text, cancellation and successful restart in both locales.
 
 **Mouse-button push-to-talk (Jul 2026)**: `MouseButtonPTT` owns one session `CGEventTap` over `otherMouseDown`/`otherMouseUp` that CONSUMES the configured button (the app under the cursor never sees the click) and passes every other button through; a tap disabled by timeout is always re-armed. CGEvent index 2+ is eligible — vendor-facing Button 3+ means middle click or an additional button — while indices 0/1 (left/right) can never become a trigger. Invalid persisted values normalize to Off. The tap needs the same Accessibility trust as the paste path: choosing a button prompts once, a denied/pending prompt leaves the keyboard trigger working, and returning from System Settings retries registration. Rebinding first cancels any mouse-owned capture so its consumed release cannot strand the session. `MousePTTGesture` (app input boundary, pure, 3 tests) is the decision table: press starts when idle and finishes a listening session whoever started it; release delivers only when the button itself started the session, so a stray release can never double-finish a hotkey session. There is no tap-vs-hold discriminator on the mouse — the capture minimum already cancels an accidental click. `MouseButtonRecorder` in Settings captures the next middle/additional-button click (`settings-dictation-mouse-recorder`; Esc cancels) with an explicit clear control; both mouse and keyboard recorders remove their local monitors when their Settings row disappears.
 

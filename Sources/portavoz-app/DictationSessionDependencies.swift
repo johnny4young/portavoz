@@ -19,6 +19,9 @@ struct DictationSessionDependencies {
     var insert: (String) async -> TextInserter.InsertionResult
     var defaults: UserDefaults
     var now: () -> Date = Date.init
+    var waitForFeedbackDismissal: @MainActor (Duration) async throws -> Void = {
+        try await Task.sleep(for: $0)
+    }
 
     static func live(services: AppServices) -> Self {
         Self(

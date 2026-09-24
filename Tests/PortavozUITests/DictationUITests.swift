@@ -61,6 +61,39 @@ final class DictationUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testDictationUnexpectedCompletionIsVisibleAndCanRestart() throws {
+        let english = UITestLocale.environmentLocale == "en"
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-unexpected-completion"]
+        if english { app.launchArguments.append("-seed-dictation-english") }
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+        let expectedText = english ? "Don't delete these notes." : "No borres estas notas."
+        let expectedFailure = english
+            ? "Dictation failed: The dictation session ended unexpectedly. Nothing was typed."
+            : "El dictado falló: La sesión de dictado terminó inesperadamente. No se escribió nada."
+
+        for attempt in 0..<2 {
+            XCTAssertTrue(app.prepareForInteraction())
+            let dictate = app.buttons["menu-bar-dictate"]
+            XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+            dictate.click()
+            let state = app.staticTexts["dictation-panel-state"]
+            let expectedState = attempt == 0 ? expectedFailure : (english ? "Dictating" : "Dictando")
+            XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: state) == expectedState })
+            let transcript = app.staticTexts["dictation-panel-transcript"]
+            XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+                renderedText(of: transcript).contains(expectedText)
+            })
+            let cancel = app.buttons["dictation-panel-cancel"]
+            XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
+            cancel.click()
+            XCTAssertTrue(waitForUITestCondition(timeout: 5) { !cancel.exists })
+        }
+    }
+
+    @MainActor
     func testNativeInserterUsesDisposableReceiverAndClipboard() async throws {
         let products = Bundle.main.bundleURL.deletingLastPathComponent()
         let receiverURL = products.appendingPathComponent("PortavozDictationReceiver.app")

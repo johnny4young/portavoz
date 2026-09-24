@@ -1052,12 +1052,15 @@ awaits are cancellation- and owner-fenced before the model publishes state.
 
 Global dictation has one process-scoped, main-actor owner and one UUID-fenced
 session task. Microphone duration starts only after the real stream opens;
-finish-before-readiness cancels, one owned tail task drains an accepted finish,
-and cancellation closes the transcription feed immediately while fencing every
-later state mutation and delivery side effect. Audio sample reduction and feed
-delivery stay off the main actor; only the observable meter update crosses back.
-Failure-dismiss tasks are single-owner and cancelled on restart so an older
-error cannot dismiss a newer session.
+finish-before-readiness cancels, and one owned tail task issues source Stop.
+Clean producer or recognizer completion before Stop is issued cannot authorize
+delivery; afterward, the owner joins the audio pump and native Stop before
+releasing the live-speech lease or dispatching an edit. Cancellation closes the
+transcription feed immediately while fencing later state mutation and delivery.
+Audio sample reduction and feed delivery stay off the main actor; only the
+observable meter update crosses back. A separate UUID-fenced feedback task
+dismisses success or failure without retaining that completed speech lease.
+Carbon release callbacks are fenced to the session that owned their press.
 System-wide input adapters remain at the app boundary: Carbon owns the keyboard
 hotkey and a session `CGEventTap` owns one explicitly configured middle or
 additional mouse button. `DictationShortcut` is the process-owned observable
