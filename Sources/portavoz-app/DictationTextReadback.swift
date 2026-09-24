@@ -53,7 +53,8 @@ struct DictationTextReadback {
                 let observed = string(span)
                 guard !Task.isCancelled, now() < deadline,
                       target.validate() == nil, !Task.isCancelled, now() < deadline,
-                      position() == expected, !Task.isCancelled, now() < deadline else { return false }
+                      position() == expected, !Task.isCancelled, now() < deadline,
+                      target.validate() == nil, !Task.isCancelled, now() < deadline else { return false }
                 // Exact code units: typographic substitutions and normalization
                 // are not confirmation of the literal output we sent.
                 return observed.map { $0.utf16.elementsEqual(text.utf16) } ?? false

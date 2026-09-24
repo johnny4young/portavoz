@@ -2684,13 +2684,16 @@ the board. The result distinguishes `verified`, `dispatched` and `refused`;
 no automatic repeat is safe after dispatch, including cancellation or failed
 readback. Empty inserter input refuses before borrowing the clipboard.
 
-**Bounded delivery observation.** When the captured field supports AX selection,
+**Bounded delivery observation (D545).** When the captured field supports AX selection,
 character count and string-for-range, insertion snapshots only selection/count
 immediately before borrowing the clipboard. A changed selection or unavailable
-previously readable metadata during final validation refuses the attempt. After posting once, a bounded observer requires
+previously readable metadata during final validation refuses the attempt. After
+posting once, a bounded observer requires
 the expected character-count delta, collapsed caret, exact inserted UTF-16 span,
-unchanged destination and matching metadata after the read. It never reads the
-old selection, full field value, title, URL or screen. Comparing code units does
+unchanged destination and matching metadata after the read. Destination identity
+is checked again after the final metadata read, which can itself service a
+focus change. It never reads the old selection, full field value, title, URL or
+screen. Comparing code units does
 not silently accept smart quotes, canonical normalization or other changes.
 
 The requested span is limited to 16,384 UTF-16 units; longer output is still sent

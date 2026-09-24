@@ -123,9 +123,9 @@ final class DictationUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testDeliveredDictationDistinguishesDispatchFromVerification() {
+    func testDeliveredDictationDistinguishesDispatchFromVerification() throws {
         for verified in [false, true] {
-            let app = XCUIApplication.portavoz(showMenuBarContent: true)
+            let app = try XCUIApplication.portavoz(showMenuBarContent: true)
             app.launchArguments += ["-seed-dictation", "-seed-dictation-delivery"]
             app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
             if verified { app.launchArguments.append("-seed-dictation-verified") }

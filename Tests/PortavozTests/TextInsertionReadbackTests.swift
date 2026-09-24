@@ -110,6 +110,24 @@ final class TextInsertionReadbackTests: XCTestCase {
                       "Rejection after reading private text is too late; metadata can service a security transition")
     }
 
+    func testFinalMetadataReadCannotVerifyAfterFocusChangesInsideThatAXCall() async {
+        let receiver = TextReadbackHarness()
+        defer { receiver.board.releaseGlobally() }
+        var reads = 0
+        receiver.positionOverride = {
+            reads += 1
+            let snapshot = DictationTextReadback.Position(
+                selection: receiver.selection, characterCount: receiver.document.utf16.count)
+            if reads == 4 { receiver.targetFailure = .targetChanged }
+            return snapshot
+        }
+        let result = await receiver.insert("No borres — don’t delete")
+        XCTAssertEqual(reads, 4, "Reach the final AX metadata call, not only the policy function")
+        XCTAssertEqual(result, .dispatched, "A posted event cannot become retryable or verified after focus moves")
+        XCTAssertEqual(receiver.posts, 1)
+        XCTAssertEqual(receiver.document, "Before No borres — don’t delete after")
+    }
+
     func testClipboardSnapshotFollowsTheBaselineAXCallThatMayServiceANewOwner() async {
         let receiver = TextReadbackHarness()
         defer { receiver.board.releaseGlobally() }

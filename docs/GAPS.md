@@ -32,8 +32,11 @@ editors remain explicitly unverified. Deterministic controller/inserter coverage
 cannot qualify native AX observation. The dedicated receiver requires the
 verified result and actual text, but its existence does not establish a passed
 gate. Specific AX timeouts limit requested work, not arbitrary server allocation
-or later external edits. These remaining failures
-and evidence boundaries prevent broad reliability claims. Recovery is RAM-only;
+or later external edits. An unverified dispatch shows an amber banner for four
+seconds but does not expose its output afterward; an editor that silently drops
+the event can still leave the user without a recoverable copy. This needs a
+separate, explicit non-retrying recovery design before claiming no lost dictation.
+These failures and evidence boundaries prevent broad reliability claims. Recovery is RAM-only;
 quitting does not preserve the output. Clipboard snapshot size/materialization
 remains an independent limitation. Model quality, Bluetooth transitions and the external-editor
 matrix require separate evidence; a synthetic caption fixture cannot establish

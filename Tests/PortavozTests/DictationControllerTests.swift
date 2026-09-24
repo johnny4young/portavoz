@@ -34,7 +34,7 @@ final class DictationControllerTests: XCTestCase {
         exited.waitUntilExit()
         let target = TextInserter.Target(processID: exited.processIdentifier, validate: { nil })
         let result = await TextInserter.insert("Must never be delivered", into: target, pasteboard: board)
-        XCTAssertEqual(result, .eventUnavailable)
+        XCTAssertEqual(result, .refused(.eventUnavailable))
         XCTAssertEqual(board.changeCount, originalCount)
         XCTAssertEqual(board.string(forType: .string), "original")
     }
