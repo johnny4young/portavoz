@@ -17,7 +17,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 22, 2026
 
-- **🎙️ Sharper live dictation** — a reviewed speech-engine update keeps more bilingual phrases intact without changing your models, privacy settings or workflow.
+- **🎙️ Sharper live captions and dictation** — a reviewed speech-engine update keeps more bilingual phrases intact in meeting captions and dictation, without changing your models, privacy settings or workflow.
 
 ## September 16, 2026
 

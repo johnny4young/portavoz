@@ -20157,7 +20157,7 @@ everywhere, same token caps.
 **Date:** 2026-09-22
 
 **Context.** D516 fixed FluidAudio at 0.15.6 because a patch can change the
-decoder, caption seams and diarizer without changing Portavoz source. The P15
+decoder, caption seams and diarizer without changing Portavoz source. The upgrade
 review therefore compared preserved Release test binaries for 0.15.6, 0.15.7
 and 0.15.8 through the real Parakeet manager, `ParakeetSegmentMapper` and
 production coalescer over the same six public/synthetic English, Spanish, mixed

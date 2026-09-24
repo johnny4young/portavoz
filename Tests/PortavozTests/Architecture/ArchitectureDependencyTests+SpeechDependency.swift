@@ -6,8 +6,8 @@ extension ArchitectureDependencyTests {
     /// reviewed engine version, so the version is read out of it rather than
     /// repeated here. An approved upgrade then edits the manifest, the resolved
     /// revision below, and the docs — never a version literal hidden in a regex.
-    func testFluidAudioRequirementAndResolutionStayAtReviewedVersion() throws {
-        let manifest = try Self.contents(of: "Package.swift")
+    static func requiredFluidAudioVersion() throws -> String {
+        let manifest = try contents(of: "Package.swift")
         let requirement = try NSRegularExpression(pattern:
             #"\.package\(\s*url:\s*"https://github\.com/FluidInference/FluidAudio\.git",\s*exact:\s*"([0-9]+\.[0-9]+\.[0-9]+)"\s*\)"#)
         let matches = requirement.matches(
@@ -15,7 +15,11 @@ extension ArchitectureDependencyTests {
         XCTAssertEqual(matches.count, 1,
             "The speech engine must require an explicitly reviewed exact release, not a patch range")
         let match = try XCTUnwrap(matches.first)
-        let requiredVersion = String(manifest[try XCTUnwrap(Range(match.range(at: 1), in: manifest))])
+        return String(manifest[try XCTUnwrap(Range(match.range(at: 1), in: manifest))])
+    }
+
+    func testFluidAudioRequirementAndResolutionStayAtReviewedVersion() throws {
+        let requiredVersion = try Self.requiredFluidAudioVersion()
 
         let resolved = try Self.jsonObject(at: "Package.resolved")
         let pins = try XCTUnwrap(resolved["pins"] as? [[String: Any]])
