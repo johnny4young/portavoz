@@ -59,8 +59,14 @@ does not relax the full-suite or p95 limits.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The combined catalog contains 122 UI cases, including both portable-settings
-and shortcut-recovery journeys; their existing time budgets remain unchanged.
+The unattended catalog contains 123 UI cases, including portable-settings,
+shortcut-recovery, and the real dictation-panel journey. The one native
+dictation-receiver test is discovered and kept outside this catalog because
+its app process needs a user-granted Accessibility TCC decision. Its explicit
+`make test-ui-native-dictation` lane still runs the real XCUITest and fails
+closed without that grant. The unattended suite neither skips a failure into
+success nor qualifies cross-process insertion; its existing time budgets remain
+unchanged.
 Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -144,6 +150,83 @@ removed through cohesive Meeting Detail, graph, decision-query, processing,
 correction, job, Skills-storage, and search owner splits rather than blanket
 suppressions. Existing inherent exceptions remain suppressed inline with their
 local justification.
+
+## Dictation controller and native delivery coverage
+
+`DictationControllerTests` enters the real controller with disposable effects:
+permission denial before model/audio work, EN/ES cancellation after a partial,
+final deterministic replacements with literal regex metacharacters, effective
+hints at the engine invocation, punctuation-only output and late model
+preparation after cancellation. All preference changes use a volatile domain.
+Fixture selection is checked both with and without temporary composition.
+
+`DictationUITests` owns a dedicated unattended `dictation` selector alongside
+the existing Settings assertions. Its panel journey uses the production menu-bar action in
+the disposable main-window host and cancels/restarts the actual controller.
+It requires distinct identifiers for the rendered transcript, state, target,
+meter and cancel button. The structural SwiftUI `Group` does not assign an
+inherited identifier that would replace those child identifiers in the AX tree.
+The separate native journey explicitly arms a temporary-app fixture, launches
+`PortavozDictationReceiver`, and checks exact bilingual Unicode text plus
+restoration of a UUID-named scratch pasteboard. The receiver disables automatic
+quote, dash, text-replacement and spelling substitutions: it is a literal delivery
+oracle, independent of the host's smart-editing preferences. The production inserter runs in
+the actual app process: XCTest's sandboxed runner cannot supply native AX-client
+capability merely because brokered UI automation works. The fixture admits only
+temporary composition, an explicit launch flag and its UUID clipboard namespace;
+it waits for the fixed receiver bundle and invokes insertion at most once. Real
+keyboard events address that receiver's process, never a global fallback: a
+named pasteboard alone cannot contain a global Paste shortcut if focus changes.
+The receiver establishes its own first responder instead of requiring a click
+through possible desktop overlays. Both app processes register with the existing
+journey owner before launch so interruption cleanup cannot orphan the receiver. Process IDs that do not name a running
+application fail in the actual inserter before borrowing even the scratch
+clipboard, and secure-field inspection reads the addressed process's focus. The
+fixture waits up to 20 s for the receiver, then 5 s for its focus to be ready. A passing native journey
+qualifies that inserter/receiver path, not production's session-wide event routing
+or destination identity fencing. The presence of this test is not evidence that
+the native gate passed. No general clipboard, real meeting, model download or microphone participates.
+Missing Accessibility permission for the disposable app is an explicit failing
+native gate, not a skipped success, a trust prompt or a simulated delivery.
+`make test-ui-bilingual` and scoped hosted runs select the 123 unattended cases;
+`make test-ui-native-dictation` selects the one real receiver case in EN and ES.
+The catalog policy requires that case to remain discoverable but disjoint from
+unattended selectors. The runner excludes it only when no explicit selectors
+were supplied, while an explicit native selector is never silently skipped.
+Its separate one-case runtime budget retains the original 20-second ceiling;
+an explicit native run cannot fail solely because its case was removed from
+the unattended manifest.
+Neither a green hosted catalog nor a failed permissionless native run is
+positive native-delivery evidence.
+
+The receiver is an Xcode-only application target. SwiftPM's shared `Tests`
+root excludes that directory explicitly, alongside the UI and interruption
+fixtures; strict package diagnostics must not treat its entry point as an
+unhandled unit-test resource.
+
+UI builds remain ad-hoc by default. A local owner may explicitly set both
+`UI_TEST_CODE_SIGN_IDENTITY` (the certificate's 40-character SHA-1 identifier)
+and `UI_TEST_DEVELOPMENT_TEAM` (the 10-character team ID) when invoking the
+maintained UI runner. It forwards those validated values as distinct Xcode
+build settings with explicit Manual style for SwiftPM-generated plugin/resource
+targets as well; those targets do not inherit the app project's signing style.
+Partial or malformed input fails before building or changing
+UI preferences. No certificate, team identity or signing secret is stored in
+the repository. Certificate-backed designated requirements can remain stable
+across builds, unlike an ad-hoc code-hash requirement. Inspect the actual built
+app's requirement and authorize that disposable app through macOS; signing does
+not itself grant Accessibility, qualify native insertion, or authorize release.
+CI without those explicit inputs keeps the existing signing policy. The runner's
+command-boundary tests cover absent, exact, partial, oversized and injected
+values; the real signed build remains separate evidence.
+
+The two new journeys have individual 20-second budgets; existing per-test,
+full-suite duration and p95 budgets are unchanged. Source/harness changes still
+expand conservatively. Lockfile changes select the complete English suite rather than bypassing UI
+evidence. The package manifest retains the shared-harness bilingual requirement,
+as do simultaneous localization or shared-harness changes. This coverage does not certify
+real ASR quality, physical
+audio devices, all external editors, or the outstanding capture/delivery gaps.
 
 ## Test suite — `Tests/PortavozTests/`
 

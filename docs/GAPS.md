@@ -16,6 +16,23 @@ protocols and full-certification scorecard preserve those missing results.
 Code readiness does not authorize publication or establish notarization,
 production sync reliability, universal hardware support or real-world quality.
 
+### Global dictation capture and delivery qualification
+
+The controller and native-receiver test seams (D515) improve reachability, not
+all dictation behavior. The microphone pump still finishes its transcription
+feed after a source error and does not promote dropped-yield evidence into a
+terminal failure. The displayed application name is not yet a pinned delivery
+target; `.inserted` still denotes dispatched events rather than a verified
+external edit. These require call-site regressions and fixes before broad
+reliability claims. Model quality, Bluetooth transitions and the external-editor
+matrix require separate evidence; a synthetic caption fixture cannot establish
+those results. Missing Accessibility permission makes the separately selected
+native delivery gate unqualified, not proof that insertion works. Hosted
+unattended EN/ES UI qualification excludes exactly that TCC-owned receiver case
+(D540); run `make test-ui-native-dictation` on an explicitly authorized
+disposable app and retain its actual receipt before claiming cross-process
+delivery.
+
 ### Accepted live input survives interrupted recordings
 
 **Implemented:** explicit notes and objective changes commit to canonical context

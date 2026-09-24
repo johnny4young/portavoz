@@ -16,6 +16,23 @@ enum TextInserter {
         }
     }
 
+    /// Native fixtures route real keyboard events to their disposable receiver
+    /// so a focus race cannot send a paste shortcut to an unrelated application.
+    /// Production keeps session routing; this seam does not qualify that routing.
+    enum EventTarget {
+        case session
+        case process(pid_t)
+
+        /// A process target must still name a running application; anything else fails closed.
+        @MainActor
+        var isAvailable: Bool {
+            guard case .process(let processID) = self else { return true }
+            guard processID > 0, let application = NSRunningApplication(processIdentifier: processID)
+            else { return false }
+            return !application.isTerminated
+        }
+    }
+
     enum InsertionResult: Equatable {
         case inserted
         case secureField
@@ -50,13 +67,17 @@ enum TextInserter {
     /// Security classification for the element that would receive the paste.
     /// Any failed or malformed AX inspection is unavailable, not regular: a
     /// privacy boundary must fail closed when macOS cannot prove the target.
+    /// A process target is inspected in that application, not wherever focus is.
     @MainActor
-    static func focusedFieldSecurity() -> FocusedFieldSecurity {
+    static func focusedFieldSecurity(in target: EventTarget = .session) -> FocusedFieldSecurity {
         guard AXIsProcessTrusted() else { return .unavailable }
-        let systemWide = AXUIElementCreateSystemWide()
+        let root = switch target {
+        case .session: AXUIElementCreateSystemWide()
+        case .process(let processID): AXUIElementCreateApplication(processID)
+        }
         var focused: CFTypeRef?
         let status = AXUIElementCopyAttributeValue(
-            systemWide, kAXFocusedUIElementAttribute as CFString, &focused)
+            root, kAXFocusedUIElementAttribute as CFString, &focused)
         guard status == .success, let focused,
             CFGetTypeID(focused) == AXUIElementGetTypeID()
         else { return .unavailable }
@@ -106,15 +127,19 @@ enum TextInserter {
     /// hotkey modifiers to be released first, so the synthesized ⌘V cannot
     /// combine with a still-held ⌥/⇧/⌃ into a different app shortcut.
     @MainActor
-    static func insert(_ text: String) async -> InsertionResult {
+    static func insert(
+        _ text: String, pasteboard: NSPasteboard = .general, eventTarget: EventTarget = .session
+    ) async -> InsertionResult {
+        guard eventTarget.isAvailable else { return .eventUnavailable }
         guard await waitForModifierRelease() else {
             return Task.isCancelled ? .cancelled : .modifiersStillPressed
         }
         guard !Task.isCancelled else { return .cancelled }
+        guard eventTarget.isAvailable else { return .eventUnavailable }
 
         // This is intentionally the final check before clipboard mutation.
         // Focus may change while the hotkey modifiers are being released.
-        switch focusedFieldSecurity() {
+        switch focusedFieldSecurity(in: eventTarget) {
         case .secure:
             return .secureField
         case .unavailable:
@@ -123,23 +148,22 @@ enum TextInserter {
             break
         }
 
-        let pasteboard = NSPasteboard.general
         let snapshot = PasteboardSnapshot(of: pasteboard)
         pasteboard.declareTypes([.string], owner: nil)
         guard pasteboard.setString(text, forType: .string) else {
-            restoreIfStillOurs(snapshot, expectedChangeCount: pasteboard.changeCount)
+            restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: pasteboard.changeCount)
             return .clipboardUnavailable
         }
         let ourChangeCount = pasteboard.changeCount
 
-        guard postCommandV() else {
-            restoreIfStillOurs(snapshot, expectedChangeCount: ourChangeCount)
+        guard postCommandV(to: eventTarget) else {
+            restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
             return .eventUnavailable
         }
 
         Task {
             try? await Task.sleep(for: restoreDelay)
-            restoreIfStillOurs(snapshot, expectedChangeCount: ourChangeCount)
+            restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
         }
         return .inserted
     }
@@ -152,9 +176,9 @@ enum TextInserter {
     @MainActor
     private static func restoreIfStillOurs(
         _ snapshot: PasteboardSnapshot?,
+        pasteboard: NSPasteboard,
         expectedChangeCount: Int
     ) {
-        let pasteboard = NSPasteboard.general
         guard pasteboard.changeCount == expectedChangeCount else { return }
         guard let snapshot else {
             pasteboard.clearContents()
@@ -185,7 +209,7 @@ enum TextInserter {
         return false
     }
 
-    private static func postCommandV() -> Bool {
+    private static func postCommandV(to target: EventTarget) -> Bool {
         let source = CGEventSource(stateID: .combinedSessionState)
         let keyCode = pasteKeyCode()
         guard
@@ -196,8 +220,14 @@ enum TextInserter {
         else { return false }
         keyDown.flags = .maskCommand
         keyUp.flags = .maskCommand
-        keyDown.post(tap: .cghidEventTap)
-        keyUp.post(tap: .cghidEventTap)
+        switch target {
+        case .session:
+            keyDown.post(tap: .cghidEventTap)
+            keyUp.post(tap: .cghidEventTap)
+        case .process(let processID):
+            keyDown.postToPid(processID)
+            keyUp.postToPid(processID)
+        }
         return true
     }
 
