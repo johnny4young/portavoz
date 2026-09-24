@@ -151,7 +151,8 @@ final class DictationControllerTests: XCTestCase {
         XCTAssertNil(DictationUITestFixture(arguments: [], usesTemporaryStore: true))
         XCTAssertNotNil(DictationUITestFixture(
             arguments: ["-seed-dictation"], usesTemporaryStore: true))
-        XCTAssertFalse(DictationUITestFixture.dependencies(fixture: nil).canInsert())
+        XCTAssertFalse(DictationUITestFixture.dependencies(
+            fixture: nil, beginCapture: { {} }).canInsert())
     }
 
     private func awaitEventually(_ condition: @MainActor () -> Bool) async -> Bool {
@@ -202,7 +203,9 @@ private final class Harness {
                 self?.insertions.append(text)
                 return .inserted
             },
-            defaults: defaults, now: { [weak self] in self?.now ?? .distantPast })
+            defaults: defaults,
+            now: { [weak self] in self?.now ?? .distantPast },
+            beginCapture: { {} })
     }
 }
 

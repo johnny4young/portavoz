@@ -161,9 +161,20 @@ hints at the engine invocation, punctuation-only output and late model
 preparation after cancellation. All preference changes use a volatile domain.
 Fixture selection is checked both with and without temporary composition.
 
+`DictationResourceOwnershipTests` uses real `AppServices` composition and the
+actual controller, with disposable bilingual speech effects. It checks
+maintenance admission and the search-reconciliation entry point while dictating,
+both orders of meeting/dictation completion, held cold preparation, native
+teardown overlapping a replacement, denied starts, failures and duplicate
+completion. Explicit gates hold asynchronous work; no model availability or
+physical-device behavior is inferred from these tests.
+The existing background-work XCUITest checks the shared waiting-for-capture
+status in both locales through its stable row identifiers.
+
 `DictationUITests` owns a dedicated unattended `dictation` selector alongside
-the existing Settings assertions. Its panel journey uses the production menu-bar action in
-the disposable main-window host and cancels/restarts the actual controller.
+the existing Settings assertions. Its panel journey uses the production
+menu-bar action in the disposable main-window host and cancels/restarts the
+actual controller.
 It requires distinct identifiers for the rendered transcript, state, target,
 meter and cancel button. The structural SwiftUI `Group` does not assign an
 inherited identifier that would replace those child identifiers in the AX tree.

@@ -5,10 +5,15 @@ import TranscriptionKit
 
 extension AppServices {
     func makeDictationSessionDependencies() -> DictationSessionDependencies {
-        guard usesTemporaryMeetingStore else { return .live(services: self) }
         // Temporary composition must never open real audio or prompt for
         // Accessibility just because a test clicked the production menu item.
-        return DictationUITestFixture.dependencies(fixture: dictationUITestFixture)
+        let beginCapture: () -> () -> Void = { [weak self] in
+            self?.beginDictationCapture() ?? {}
+        }
+        return usesTemporaryMeetingStore
+            ? DictationUITestFixture.dependencies(
+                fixture: dictationUITestFixture, beginCapture: beginCapture)
+            : .live(services: self, beginCapture: beginCapture)
     }
 }
 
@@ -21,7 +26,9 @@ struct DictationUITestFixture: Sendable {
     }
 
     @MainActor
-    static func dependencies(fixture: Self?) -> DictationSessionDependencies {
+    static func dependencies(
+        fixture: Self?, beginCapture: @escaping () -> () -> Void
+    ) -> DictationSessionDependencies {
         DictationSessionDependencies(
             makeMicrophone: {
                 .init(source: DictationFixtureMicrophone(), warmUp: {})
@@ -36,7 +43,8 @@ struct DictationUITestFixture: Sendable {
             // This fixture qualifies the controller and panel, not native
             // paste. The separate receiver journey calls TextInserter itself.
             insert: { _ in .focusUnavailable },
-            defaults: .standard)
+            defaults: .standard,
+            beginCapture: beginCapture)
     }
 }
 
