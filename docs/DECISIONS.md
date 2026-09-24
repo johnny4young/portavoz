@@ -20250,3 +20250,30 @@ merges and the PR is retargeted, normal verified-ancestor selection resumes.
 The tiny synthetic Git integration test executes the resolver and real UI
 selector at the call site: the child changes only documentation while its
 parent changes Dictation Settings, and the parent journey must remain selected.
+
+---
+
+## D543 — Dictation begins with authorized, observed microphone input
+
+**Context:** the controller advertised listening before microphone permission
+or a first buffer, ignored the preferred Audio input, and timed capture from
+stream opening. Actual controller regressions with delayed/empty PCM admitted
+a short dictation after startup waiting. A held native Stop also showed the
+model lease ending before cleanup because its defer lived inside do/catch.
+
+**Decision:** reuse PlatformKit microphone authorization and one app-level
+preferred-input resolver across meeting/dictation composition. Permission
+precedes source/model construction. The panel remains Preparing until finite,
+nonempty microphone PCM arrives; silent PCM is valid, empty input is not
+readiness. One session-owned deadline starts before warm-up/stream opening.
+Failure retires input authority and remains actionable; fallback is visible and
+never replaces the user's saved preference. Native teardown stays owned by the
+controller and the runtime defer spans its catch cleanup.
+
+**Consequences:** the gesture and first-audio clocks remain separate, the
+existing minimum/tail durations do not change, and preparation is also an
+active capture state for portable-settings admission. Tests reach the real
+controller/adapter and real-app surface with deliberately delayed/invalid input.
+They do not claim physical microphone behavior, ASR quality, forced cancellation
+of a native call or verified external insertion. No new model, capability-module
+edge, microphone framework or network default is introduced.

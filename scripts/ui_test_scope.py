@@ -432,6 +432,9 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "dictation": (
         test_id("DictationUITests", "testDictationPanelCancelsAndRestartsWithoutGlobalInput"),
+        test_id("DictationUITests", "testMicrophoneDenialRemainsRecoverableWithoutOpeningAudio"),
+        test_id("DictationUITests", "testMissingMicrophoneAudioShowsFallbackAndAllowsRestart"),
+        test_id("DictationUITests", "testPreparingDictationCanCancelWithoutAListeningClaim"),
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
         test_id("SettingsUITests", "testDictationRecoversShortcutConflictAndRefreshesHelp"),
         test_id("SettingsUITests", "testDictationRepairsCorruptShortcutWithoutLeavingSettings"),
@@ -718,8 +721,12 @@ def app_features(filename: str) -> set[str]:
         return {"automation-entry", "commitment-radar"}
     if lowered == "appservices+meetingsync.swift":
         return {"settings-data"}
+    if lowered == "microphoneinputselection.swift":
+        return {"dictation", "recording-recovery", "settings-audio"}
+    if lowered == "appservices+settingstransfer.swift":
+        return {"settings-transfer", "dictation"}
     if lowered in {
-        "appportablesettingsstore.swift", "appservices+settingstransfer.swift",
+        "appportablesettingsstore.swift",
         "portablesettings.swift", "portablesettingstransfer.swift", "portablesettingsfile.swift",
         "settingstransfermodel.swift", "settingstransfersection.swift",
     }:

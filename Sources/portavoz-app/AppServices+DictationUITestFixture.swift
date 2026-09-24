@@ -12,19 +12,43 @@ extension AppServices {
     }
 }
 
-struct DictationUITestFixture: Sendable {
+@MainActor
+final class DictationUITestFixture {
     let text: String
+    let deniesMicrophoneOnce: Bool
+    let missesAudioOnce: Bool
+    let holdsPermission: Bool
+    private var permissionRequests = 0
+    private var sourceCreations = 0
 
     init?(arguments: [String], usesTemporaryStore: Bool) {
         guard usesTemporaryStore, arguments.contains("-seed-dictation") else { return nil }
-        text = "No borres estas notas."
+        deniesMicrophoneOnce = arguments.contains("-seed-dictation-microphone-denied")
+        missesAudioOnce = arguments.contains("-seed-dictation-microphone-no-audio")
+        holdsPermission = arguments.contains("-seed-dictation-preparation-held")
+        text = arguments.contains("-seed-dictation-english")
+            ? "Don't delete these notes."
+            : "No borres estas notas."
     }
 
     @MainActor
-    static func dependencies(fixture: Self?) -> DictationSessionDependencies {
-        DictationSessionDependencies(
+    static func dependencies(fixture: DictationUITestFixture?) -> DictationSessionDependencies {
+        return DictationSessionDependencies(
+            authorizeMicrophone: {
+                guard let fixture else { return false }
+                fixture.permissionRequests += 1
+                if fixture.holdsPermission {
+                    do { try await Task.sleep(for: .seconds(3_600)) } catch { return false }
+                }
+                return !(fixture.deniesMicrophoneOnce && fixture.permissionRequests == 1)
+            },
             makeMicrophone: {
-                .init(source: DictationFixtureMicrophone(), warmUp: {})
+                if let fixture { fixture.sourceCreations += 1 }
+                return .init(
+                    source: DictationFixtureMicrophone(
+                        emitsAudio: !(fixture?.missesAudioOnce == true && fixture?.sourceCreations == 1)),
+                    warmUp: {},
+                    usesSystemFallback: fixture?.missesAudioOnce == true)
             },
             acquireRuntime: {
                 guard let fixture else { throw CancellationError() }
@@ -43,12 +67,17 @@ struct DictationUITestFixture: Sendable {
 private actor DictationFixtureMicrophone: AudioCaptureSource {
     nonisolated let channel = AudioChannel.microphone
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
+    private let emitsAudio: Bool
+
+    init(emitsAudio: Bool) { self.emitsAudio = emitsAudio }
 
     func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
         let (stream, continuation) = AsyncThrowingStream.makeStream(of: AudioChunk.self)
         self.continuation = continuation
-        continuation.yield(AudioChunk(
-            channel: .microphone, samples: [0.1, -0.1], sampleRate: 16_000, timestamp: 0))
+        if emitsAudio {
+            continuation.yield(AudioChunk(
+                channel: .microphone, samples: [0.1, -0.1], sampleRate: 16_000, timestamp: 0))
+        }
         return stream
     }
 
