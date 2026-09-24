@@ -169,6 +169,34 @@ publication rather than ignoring new fields. A producer-to-consumer test passes
 an actual AppServices export through both consumers without converting synthetic
 data into a field qualification.
 
+### Dictation session test boundary
+
+`DictationController` owns the same session, coalescing, final text rules and
+cancellation path for production and disposable tests. Its session dependencies
+provide audio preparation, the existing `LiveTranscriptionRuntime` lease,
+permission/destination/insertion effects, preferences and the capture clock.
+Explicit combined speech/diarization readiness stays in the live-speech
+composition extension. Production composition still acquires and finishes the shared live-speech lease;
+this seam neither selects a different engine nor moves platform types into Core.
+
+Temporary meeting-store composition never registers Carbon hotkeys or mouse
+event taps. The explicit dictation fixture supplies synthetic PCM and a bounded
+caption producer; without that fixture it refuses dictation without requesting
+permissions, downloading models or opening a microphone. Fixture selection lives
+in `AppServices+DictationUITestFixture.swift`, not in the controller's pipeline.
+
+A separate Xcode-only receiver builds no shipping product. An explicitly armed
+`DictationNativeUITestFixture` calls the production `TextInserter` inside the
+temporary app, not XCTest's sandboxed runner. It requires a UUID-named clipboard
+and the fixed receiver bundle; the receiver's native Paste action reads that
+board. The real event pair is directed to the receiver process so a focus change
+cannot route fixture Paste into another application. Production callers retain
+the general pasteboard and session-event defaults with unchanged change-count
+ownership protection; their global routing is not qualified by this fixture. The native journey requires real app
+Accessibility permission and must not bypass or silently grant it. Synthetic
+controller coverage and an event-dispatched result are not ASR or native-delivery
+qualification; the receiver's actual value is the oracle.
+
 ### Database launch recovery
 
 The macOS composition root is two-stage. `AppLaunchModel` first asks the
@@ -1055,7 +1083,11 @@ posts a complete synthetic paste pair or restores synchronously, and later
 restores only captured pasteboard representations when its change count still
 owns the clipboard. Secure or uninspectable focus, unavailable clipboard or
 event delivery, and held modifiers become visible failures rather than false
-insertion success.
+insertion success. Disposable native tests share the inserter but supply a named
+pasteboard and a process-addressed event target whose secure-field inspection
+reads that application's focus. This contains fixture input if
+focus changes without altering production session routing; it is not evidence
+of a production destination fence.
 
 Live Apuntador keeps endpoint and semantic admission split across layers. The
 pure `TurnEndpointPolicy` in `IntelligenceKit` owns the remote-channel, noise,
@@ -5328,8 +5360,11 @@ successful first-attempt ancestor that published one exact-SHA, content-free
 verification artifact after complete selected functional evidence (or a
 verified no-UI selection). The resolver rejects retries, failed runs,
 duplicate or expired artifacts, and candidates outside the current base-to-head
-ancestry. Any API, artifact, or force-push uncertainty expands from the PR base
-instead of failing narrow. Manual integration runs remain explicit complete-
+ancestry. For a PR into the default branch, any API, artifact, or force-push
+uncertainty expands from the PR base instead of failing narrow. A stacked PR
+always selects from its head's merge base with the fetched default branch,
+including unmerged parent changes; criss-cross roots widen to their common
+ancestor, and an unavailable default-branch ref fails selection. Manual integration runs remain explicit complete-
 catalogue runs. Every feature scope names a checked-in
 production owner, and
 catalog validation rejects unscoped tests, empty or orphaned scopes, duplicate
@@ -6072,6 +6107,8 @@ reliability evidence retained from 9 Aug, is:
 - pull-request scope advances only from a first-attempt exact-SHA functional
   verification artifact inside current ancestry; retry, expiry, duplication,
   API uncertainty, or force-push divergence expands fail-safe from the PR base;
+  a stacked PR selects from its default-branch merge base and fails closed
+  rather than narrowing to its parent;
 - the first phased hosted classifier proved that separation fails closed: Spanish
   passed 101/101 with only runtime advisories, while one English structural-
   correction interaction remained non-passing and therefore blocked the job.

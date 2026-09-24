@@ -43,6 +43,8 @@ jobs:
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           python3 scripts/ui_test_verified_base.py \
             --repository "$REPOSITORY" \
@@ -50,6 +52,8 @@ jobs:
             --branch "$HEAD_BRANCH" \
             --head "$HEAD_SHA" \
             --fallback "$BASE_SHA" \
+            --base-branch "$BASE_BRANCH" \
+            --default-branch "$DEFAULT_BRANCH" \
             --format github >> "$GITHUB_OUTPUT"
 
       - name: Select UI evidence
