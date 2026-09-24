@@ -4,12 +4,12 @@ import SwiftUI
 /// their combined minimum heights cannot fit above the docked player.
 struct MeetingDetailPrimaryColumn<Material: View, Transcript: View, Player: View>: View {
     let columnHeight: CGFloat
+    @Binding var selectedPane: MeetingDetailReadingPane
     @ViewBuilder let material: () -> Material
     @ViewBuilder let transcript: () -> Transcript
     @ViewBuilder let player: () -> Player
 
     @State private var playerHeight: CGFloat = 0
-    @State private var selectedPane = Pane.transcript
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -68,10 +68,11 @@ struct MeetingDetailPrimaryColumn<Material: View, Transcript: View, Player: View
         .controlSize(.small)
     }
 
-    private enum Pane {
-        case transcript
-        case summary
-    }
+}
+
+enum MeetingDetailReadingPane {
+    case transcript
+    case summary
 }
 
 enum MeetingDetailPrimaryColumnLayout {

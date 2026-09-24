@@ -1435,12 +1435,6 @@
       "occurrences": 1
     },
     {
-      "path": "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift",
-      "category": "state",
-      "source": "@State private var selectedPane = Pane.transcript",
-      "occurrences": 1
-    },
-    {
       "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
       "category": "control",
       "source": "Button {",
@@ -1684,6 +1678,12 @@
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "state",
       "source": "@State private var railTab = MeetingDetailRailTab.people",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "state",
+      "source": "@State private var readingPane = MeetingDetailReadingPane.transcript",
       "occurrences": 1
     },
     {

@@ -65,6 +65,11 @@ The compact journey checks the actual post-restoration AppKit frame at two
 short heights, opens both reading panes, retains the player, and reaches the
 existing correction editor. Its own per-case budget is 30 seconds; the
 existing per-case, p95, and full-suite budgets remain unchanged.
+Other Meeting Detail journeys choose Summary or Transcript when the hosted
+window activates the compact presentation. The evidence-citation journey
+asserts the real action returns from Summary to Transcript, rather than only
+testing the pane selector. This keeps a smaller runner window from silently
+dropping the older summary, notes, commitment, and correction coverage.
 Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -7785,10 +7790,11 @@ The shared `UITestSupport.swift` owns the existing geometry-based bounded scroll
 helper; no measured response or pending-input accumulator is active. The
 structural-correction journey uses ordinary disposable window placement, retains
 all split/merge/hide/restore effects and stops before activation if reveal fails.
-The forced compact-window argument and calibration fixture were unqualified
-experiments, not released behavior. Their withdrawal does not establish compact
-reachability: the retained compact failure and combined dropped/amplified native
-counterexample remain open in GAPS. Native interruption controls and the
+The earlier attachment-time forced compact-window argument and wheel-calibration
+fixture were unqualified experiments and withdrawn. The accepted fixture instead
+sets its frame after native restoration and asserts the actual AppKit result;
+its focused correction journey reaches the real editor in both locales. The
+combined dropped/amplified native counterexample remains open in GAPS. Native interruption controls and the
 full real-app catalog remain separate mandatory gates, with unchanged runtime
 budgets and no retries that relabel failures. See D533.
 

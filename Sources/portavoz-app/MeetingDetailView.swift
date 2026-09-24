@@ -18,6 +18,7 @@ struct MeetingDetailView: View {
     let sceneActions: MeetingDetailSceneActions
 
     @State private var playbackNavigation = MeetingDetailPlaybackNavigation()
+    @State private var readingPane = MeetingDetailReadingPane.transcript
     @State private var railTab = MeetingDetailRailTab.people
     private var detail: MeetingReviewReadModel? { model.state.readModel }
     private var summary: MeetingReviewSummary? { detail?.summary }
@@ -88,7 +89,10 @@ private extension MeetingDetailView {
                 error: refine.error ?? flow.operationError ?? model.state.lastActionError)
             HStack(alignment: .top, spacing: 16) {
                 GeometryReader { column in
-                    MeetingDetailPrimaryColumn(columnHeight: column.size.height) {
+                    MeetingDetailPrimaryColumn(
+                        columnHeight: column.size.height,
+                        selectedPane: $readingPane
+                    ) {
                         summaryOrGenerate(detail)
                         commitmentInboxSection(detail)
                         notesSection(detail)
@@ -414,6 +418,7 @@ private extension MeetingDetailView {
 
     private func focusEvidence(_ segment: TranscriptSegment) {
         guard let detail else { return }
+        readingPane = .transcript
         playbackNavigation.focusEvidence(
             segment,
             content: transcriptContent(detail),
@@ -436,6 +441,7 @@ private extension MeetingDetailView {
             content: transcriptContent(detail),
             player: player)
         if didApply {
+            readingPane = .transcript
             sceneActions.acknowledgePendingSeek(request.id)
         }
     }
@@ -453,6 +459,7 @@ private extension MeetingDetailView {
 
     private func seekAndPlay(_ seconds: TimeInterval) {
         guard let detail else { return }
+        readingPane = .transcript
         playbackNavigation.seekAndPlay(
             seconds,
             content: transcriptContent(detail),

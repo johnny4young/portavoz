@@ -558,6 +558,10 @@ transcript input.
 their spacing cannot fit together, it exposes distinct Summary and Transcript
 buttons instead of squeezing the transcript viewport to zero. Both panes
 render the existing material and commands, and the player remains docked.
+The root's existing evidence and playback navigation also owns the selected
+pane: a citation from Summary, an incoming scene seek, or a chapter seek
+reveals Transcript before focusing its row. No storage or route service owns
+this presentation-only choice.
 The regular taller layout is unchanged. Disposable XCUITest launches request
 620-point and minimum-content-height windows; AppKit may clamp the latter's
 outer frame above 560 points to accommodate the titlebar. The test asserts

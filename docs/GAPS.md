@@ -160,6 +160,17 @@ host stability, full bilingual product/runtime qualification, and physical
 macOS coverage remain separate pending gates. See D533 for the separation
 boundary.
 
+The first exact-head hosted run exposed a separate integration gap: its
+ordinary window also entered compact mode, while older Meeting Detail journeys
+expected Summary and Transcript simultaneously. The new correction journey
+passed in both locales, but summary/notes/commitment controls were absent
+until Summary was selected; twelve Meeting Detail journeys failed in each
+locale and the Spanish public showcase also failed. The follow-up candidate
+routes evidence seeks back to Transcript and makes those journeys choose the
+responsive pane explicitly. It still needs fresh exact-head bilingual proof;
+the prior hosted failure remains evidence, not a passing gate. Hosted full
+runtime was also over budget (EN 1847.868 s, ES 1596.299 s).
+
 ### 1.1 layout items deliberately kept as they were
 
 The "sin ruido" pass (D536/D537) stopped short of four proposed changes, each

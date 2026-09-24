@@ -1986,7 +1986,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(artifacts.contains(".frame(height: resolvedHeight)"))
         XCTAssertFalse(artifacts.contains("maxHeight: 240"), "content decides the height (D536)")
         XCTAssertTrue(view.contains("GeometryReader { column in"))
-        XCTAssertTrue(view.contains("MeetingDetailPrimaryColumn(columnHeight: column.size.height)"))
+        XCTAssertTrue(view.contains("selectedPane: $readingPane"))
         XCTAssertTrue(primaryColumn.contains("MeetingDetailArtifactsSection(columnHeight: columnHeight)"))
         XCTAssertTrue(primaryColumn.contains(".layoutPriority(1)"))
         XCTAssertTrue(flowHost.contains("MeetingDetailRefineReviewSheet("))

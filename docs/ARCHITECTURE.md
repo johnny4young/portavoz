@@ -3133,7 +3133,10 @@ observes the actual player-dock height and keeps the established simultaneous
 summary/transcript layout where both retain useful reading space. In a shorter
 window it offers explicit Summary and Transcript panes while retaining the
 same docked player and the existing content/actions. This avoids placing
-window-size policy in the route model or a transcript scroll helper.
+window-size policy in the route model or a transcript scroll helper. The
+Meeting Detail root owns only the selected reading pane so its existing
+evidence/seek navigation can reveal a transcript target from Summary. The
+primary column still owns the measured layout, not the navigation effect.
 
 Transcript correction follows the same modal boundary. The flow captures the
 editor context, structural context, accepted reading, and revision as one

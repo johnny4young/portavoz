@@ -20115,6 +20115,12 @@ the existing simultaneous layout only when the column can reserve 180 points
 for generated material and 160 for transcript reading, plus player and spacing.
 Below that boundary, Summary and Transcript become explicit, identified panes;
 the player remains docked and both panes reuse the existing content/actions.
+The Meeting Detail root owns pane selection beside its existing playback
+navigation: evidence citations, pending scene seeks, and chapter seeks select
+Transcript before targeting a row. This keeps a citation in Summary from
+seeking into an unmounted transcript. UI journeys explicitly select Summary
+when their host window uses the compact layout instead of assuming both
+regions always render together.
 The normal window keeps its content-measured artifact section. Disposable
 620-point and minimum-size fixtures use the post-restoration window owner and
 assert the actual AppKit frame rather than the requested height.
