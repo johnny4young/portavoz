@@ -67,6 +67,14 @@ its app process needs a user-granted Accessibility TCC decision. Its explicit
 closed without that grant. The unattended suite neither skips a failure into
 success nor qualifies cross-process insertion; its existing time budgets remain
 unchanged.
+`LiveEngineLeaseIntegrationTests` enters the real dictation dependency factory
+with a pre-cancelled task and requires zero model-load or residency side effects.
+Its opt-in installed-model case (`PORTAVOZ_LIVE_LEASE_TESTS=1`) verifies that
+recording's resident-only call site and dictation's live call site borrow the
+same verified Parakeet runtime independently; releasing one token cannot drop
+the other. Missing assets are an explicit skip, never a simulated ASR-quality
+result. The injected controller and recording-attacher tests retain their
+late-result, failure and cancellation coverage.
 Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI

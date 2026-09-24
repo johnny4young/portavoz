@@ -806,6 +806,17 @@ is two-phase and restores the runtime if ledger confirmation fails. The
 existing 600-second generation fence remains unchanged, but it can no longer
 drop Parakeet while any production borrower is active.
 
+The live-facing acquisition methods return `LiveTranscriptionRuntime` to both
+recording and Dictation. That handle pairs `any TranscriptionEngine` with the
+composition-owned completion; its resident-only variant cannot start a model
+load before audio capture. The current adapter still borrows the verified
+Parakeet residency token and applies the benchmark observer at that boundary.
+Post-capture and batch callers keep the concrete Parakeet lease. Type erasure
+is a call-site boundary, not a new engine choice or SpeechAnalyzer adoption.
+An already-cancelled borrower is rejected before the shared model-load task or
+residency admission begins; cancellation after an admitted load keeps the
+existing process-owned preparation semantics for later sessions.
+
 ### Diarization residency adapter (D164)
 
 `DiarizationKit.PyannoteDiarizationRuntime` separates process-reusable Core ML

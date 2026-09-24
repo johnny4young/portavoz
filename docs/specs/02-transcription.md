@@ -281,6 +281,11 @@ when it completes. The attacher retains that exact engine/use token until every
 live stream drains. Stop cancels only its waiter and returns immediately; if the
 process load later completes, the inactive attacher ends the new lease without
 publishing captions.
+Recording and Dictation acquire the same type-erased live-engine handle from
+AppServices; its completion retains and ends the underlying Parakeet use token.
+The resident-only acquisition remains synchronous and cannot trigger a model
+load. This changes the borrower boundary, not the default engine or batch
+recovery model.
 Only recent context and future frames enter the late live consumers, so a long
 download cannot accumulate an unbounded inference backlog. Typed preparing,
 available, and failed state keeps the recording UI honest.

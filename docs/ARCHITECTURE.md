@@ -176,8 +176,11 @@ cancellation path for production and disposable tests. Its session dependencies
 provide audio preparation, the existing `LiveTranscriptionRuntime` lease,
 permission/destination/insertion effects, preferences and the capture clock.
 Explicit combined speech/diarization readiness stays in the live-speech
-composition extension. Production composition still acquires and finishes the shared live-speech lease;
-this seam neither selects a different engine nor moves platform types into Core.
+composition extension. Production composition acquires the shared live-speech
+token through a type-erased live-engine handle that ends it on completion.
+Recording and dictation share that boundary; batch callers retain the concrete
+Parakeet lease. It neither selects a different engine nor moves platform types
+into Core.
 
 Temporary meeting-store composition never registers Carbon hotkeys or mouse
 event taps. The explicit dictation fixture supplies synthetic PCM and a bounded
@@ -3268,9 +3271,10 @@ ends it after their streams drain. A load that completes after Stop sees the
 inactive attachment and ends its lease without delaying Stop or attaching
 captions to the closed session.
 
-Dictation, durable post-capture transcription, onboarding readiness, and the
-recording resource benchmark also hold explicit leases for their complete
-operations. Runtime release remains behind the existing 600-second generation
+Dictation borrows the same type-erased live-engine handle as recording;
+durable post-capture transcription, onboarding readiness, and the recording
+resource benchmark retain concrete leases for their complete operations.
+Runtime release remains behind the existing 600-second generation
 fence, but the ledger now rejects that release while any live or batch consumer
 is active. Verified assets remain independent, and no model wait or residency
 transition enters the audio writer callback.
