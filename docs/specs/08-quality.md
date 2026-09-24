@@ -7859,6 +7859,16 @@ nonreturning, owned-cleanup interruption guard and records a content-free
 `keyboard-owner` or `modal-context` reason; the interruption monitor records
 `interruption`. A guard that finds no live session reports `cleanup=absent`.
 
+A refused ownership admission emits one content-free
+`PORTAVOZ_UI_KEYBOARD_REFUSAL cause=...` line before that guard. The cause names
+the first failed ownership check in the final bounded-wait observation:
+`target-not-foreground`, `receiver-missing`, `receiver-ambiguous`,
+`frontmost-unavailable`, or `frontmost-mismatch`. It does not take a second
+snapshot to diagnose a possibly different state. Transient failures that
+converge to admission and modal-context refusals emit no ownership line. No
+process identity, window name, key value or field text is recorded, and neither
+the admission conditions nor the timeout changes.
+
 `handOffTextFieldEditing` observes keyboard focus first and sends no key when
 the field is not the active editor, because Tab would otherwise move an
 unrelated responder into it. It never clicks the field either: its own
@@ -7894,6 +7904,13 @@ control stops only fixture processes built under its own products directory. The
 scoped to the identified sheet rather than its duplicate Touch Bar button.
 Negative controls require no writing or choice effects and complete owned
 cleanup, plus the foreign owner's exit callback where an overlay was launched.
+The four foreign-keyboard controls additionally require exactly one ownership
+line before their guard, naming `target-not-foreground` or `frontmost-mismatch`.
+A missing or ambiguous fixture receiver, an unavailable frontmost application,
+or a late, duplicated or malformed line cannot qualify that control. Positive,
+pointer and modal controls reject any ownership-refusal line. The tooling tests
+exercise this validator with malformed evidence; they do not replace the native
+controls that exercise the dispatch boundary itself.
 Bare application typing and foreground-only typing each have a retained native
 counterexample. All controls and full bilingual product journeys are required
 for this shared-harness change. These public-API observations are point-in-time,
