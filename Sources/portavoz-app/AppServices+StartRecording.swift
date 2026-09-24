@@ -394,8 +394,7 @@ private enum UITestRuntimeSignal {
 private struct AppStartRecordingPreferences: StartRecordingPreferences {
     func startRecordingPreferences() async -> StartRecordingPreferencesSnapshot {
         let defaults = UserDefaults.standard
-        let inputID = defaults.string(forKey: "preferredInputUID")
-        let preferredInput = inputID == nil || inputID == "default" ? nil : inputID
+        let preferredInput = MicrophoneInputSelection.preferredIdentifier(defaults: defaults)
         let mode: StartRecordingCaptureMode
         switch defaults.string(forKey: "captureMode") {
         case "app": mode = .meetingApps
@@ -450,10 +449,8 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
         guard await services.authorizeMicrophoneForRecording() else {
             throw StartRecordingRuntimeError.preparationUnavailable
         }
-        let microphoneID = preferences.preferredInputDeviceID.flatMap { identifier in
-            (try? AudioDeviceCatalog.inputDevice(matching: identifier)) != nil
-                ? identifier : nil
-        }
+        let microphoneID = MicrophoneInputSelection.resolve(
+            preferences.preferredInputDeviceID).deviceIdentifier
         let liveSpeech = try services.acquireResidentLiveSpeechRuntime()
         let liveTranscriptionRuntime = liveSpeech.map {
             services.liveTranscriptionRuntime($0)

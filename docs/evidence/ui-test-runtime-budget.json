@@ -1,6 +1,7 @@
 {
   "catalog": {
-    "expectedCaseCount": 124
+    "expectedCaseCount": 127
+
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -24,7 +25,6 @@
   },
   "schemaVersion": 1,
   "testBudgetsSeconds": {
-    "DictationUITests/testDictationPanelCancelsAndRestartsWithoutGlobalInput()": 20.0,
     "AutomationUITests/testAppEntitiesOpenExactVisibleDestinations()": 20.0,
     "AutomationUITests/testRecordingAutomationRoutesStartAndStopThroughVisibleApp()": 20.0,
     "BackgroundWorkUITests/testBackgroundWorkCenterShowsAllOwnersAndRecoversExactFailures()": 25.0,
@@ -34,6 +34,10 @@
     "CommitmentRadarUITests/testReminderAlertOpensCommitmentRadar()": 20.0,
     "CommitmentRadarUITests/testReminderDraftRequiresExplicitAccessAndLeavesDurableReceipt()": 20.0,
     "CommitmentRadarUITests/testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence()": 20.0,
+    "DictationUITests/testDictationPanelCancelsAndRestartsWithoutGlobalInput()": 20.0,
+    "DictationUITests/testMicrophoneDenialRemainsRecoverableWithoutOpeningAudio()": 20.0,
+    "DictationUITests/testMissingMicrophoneAudioShowsFallbackAndAllowsRestart()": 25.0,
+    "DictationUITests/testPreparingDictationCanCancelWithoutAListeningClaim()": 15.0,
     "HomeUITests/testTodayAsksAndRecordsWithoutTyping()": 25.0,
     "HomeUITests/testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold()": 25.0,
     "InsightsUITests/testInsightsShowsCompleteLocalDashboard()": 20.0,
@@ -107,6 +111,8 @@
     "RecordingInputUITests/testFailedRemovalKeepsTheAcceptedNoteUntilDiscardOrRetry()": 25.0,
     "RecordingInputUITests/testFailedWriteRetainsInputAndStopWaitsForAnExplicitRetry()": 30.0,
     "RecordingInputUITests/testStopDrainsAnAdmittedWriteBeforeFinalizingTheRecording()": 25.0,
+    "SettingsTransferUITests/testPortablePreferencesReviewCancelApplyAndLiveLanguage()": 35.0,
+    "SettingsTransferUITests/testUnsupportedPreferencesRemainRecoverableWithoutMutation()": 25.0,
     "SettingsUITests/testAudioPaneOffersCaptureSourceControls()": 20.0,
     "SettingsUITests/testCategoryNavigationRevealsEachPane()": 24.352,
     "SettingsUITests/testDataPaneExportsAReadableWholeLibraryMarkdownBackup()": 20.0,
@@ -145,8 +151,7 @@
     "SkillsSettingsUITests/testWaitingReceiptIgnoresUnavailablePolicyAndReviewsSourceWithoutRunning()": 24.924,
     "SkillsSettingsUITests/testWaitingSkillApprovalCanBeRevokedBeforeHandoff()": 24.508,
     "UITestStorageUITests/testSharedScratchProtectsOwnershipAndRoundTripsAppFixtures()": 15.0,
-    "SettingsTransferUITests/testPortablePreferencesReviewCancelApplyAndLiveLanguage()": 35.0,
-    "SettingsTransferUITests/testUnsupportedPreferencesRemainRecoverableWithoutMutation()": 25.0,
     "DictationUITests/testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart()": 20.0
+
   }
 }

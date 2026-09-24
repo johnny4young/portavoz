@@ -911,6 +911,16 @@
         }
       }
     },
+    "Allow microphone access in System Settings, then try dictation again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permite el acceso al micrófono en Ajustes del Sistema y vuelve a intentar el dictado."
+          }
+        }
+      }
+    },
     "Allow this one web request": {
       "localizations": {
         "es": {
@@ -7999,6 +8009,26 @@
         }
       }
     },
+    "No microphone audio arrived. Check the microphone in Audio settings and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No llegó audio del micrófono. Revisa el micrófono en los ajustes de Audio e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "No microphone is available. Choose an input in Audio settings and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay un micrófono disponible. Elige una entrada en los ajustes de Audio e inténtalo de nuevo."
+          }
+        }
+      }
+    },
     "No one has been identified yet.": {
       "localizations": {
         "es": {
@@ -9649,12 +9679,32 @@
         }
       }
     },
+    "Preparing dictation…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando el dictado…"
+          }
+        }
+      }
+    },
     "Preparing local search": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Preparando búsqueda local"
+          }
+        }
+      }
+    },
+    "Preparing microphone…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando el micrófono…"
           }
         }
       }
@@ -14031,6 +14081,16 @@
         }
       }
     },
+    "The microphone sent unusable audio. Check the input device and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El micrófono envió audio no válido. Revisa el dispositivo de entrada e inténtalo de nuevo."
+          }
+        }
+      }
+    },
     "The original text stays available. Summaries and search results are not regenerated.": {
       "localizations": {
         "es": {
@@ -16077,6 +16137,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tus notas"
+          }
+        }
+      }
+    },
+    "Your preferred microphone is unavailable. Using the system default for this dictation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu micrófono preferido no está disponible. Se usará el predeterminado del sistema para este dictado."
           }
         }
       }
