@@ -20,10 +20,11 @@ production sync reliability, universal hardware support or real-world quality.
 
 The controller and native-receiver test seams (D515) improve reachability, not
 all dictation behavior. Source errors, producer failure notifications and
-dropped relay yields now revoke automatic delivery for their owning session;
-the final producer report is rechecked before delivery. These repairs do not
-provide durable recovery of interrupted dictation audio. The displayed
-application name is not yet a pinned delivery
+dropped relay yields revoke automatic delivery for their owning session;
+normal source or recognizer completion also requires the controller to have
+issued Stop, and cancelled terminal captions cannot overwrite a new session.
+These repairs do not provide durable recovery of interrupted dictation audio.
+The displayed application name is not yet a pinned delivery
 target; `.inserted` still denotes dispatched events rather than a verified
 external edit. These require call-site regressions and fixes before broad
 reliability claims. Model quality, Bluetooth transitions and the external-editor

@@ -12,9 +12,12 @@ extension AppServices {
     }
 }
 
-struct DictationUITestFixture: Sendable {
+@MainActor
+final class DictationUITestFixture {
     let text: String
     let captureFailure: Bool
+    private var finishesNextCapture: Bool
+    private var activeMicrophone: DictationFixtureMicrophone?
 
     init?(arguments: [String], usesTemporaryStore: Bool) {
         guard usesTemporaryStore, arguments.contains("-seed-dictation") else { return nil }
@@ -22,20 +25,26 @@ struct DictationUITestFixture: Sendable {
         text = arguments.contains("-seed-dictation-english")
             ? "Don't delete these notes."
             : "No borres estas notas."
+        finishesNextCapture = arguments.contains("-seed-dictation-unexpected-completion")
     }
 
-    @MainActor
-    static func dependencies(fixture: Self?) -> DictationSessionDependencies {
-        let microphone = DictationFixtureMicrophone()
-        return DictationSessionDependencies(
+    static func dependencies(fixture: DictationUITestFixture?) -> DictationSessionDependencies {
+        DictationSessionDependencies(
             makeMicrophone: {
-                .init(source: microphone, warmUp: {})
+                // AppServices recreates dependencies for menu actions. Consume
+                // the first failure only when this app owner creates capture.
+                let finishesImmediately = fixture?.finishesNextCapture ?? false
+                fixture?.finishesNextCapture = false
+                let microphone = DictationFixtureMicrophone(finishesImmediately: finishesImmediately)
+                fixture?.activeMicrophone = microphone
+                return .init(source: microphone, warmUp: {})
             },
             acquireRuntime: {
                 guard let fixture else { throw CancellationError() }
+                let microphone = fixture.activeMicrophone
                 return LiveTranscriptionRuntime(
                     engine: DictationFixtureEngine(text: fixture.text, onFirstCaption: {
-                        if fixture.captureFailure { await microphone.fail() }
+                        if fixture.captureFailure { await microphone?.fail() }
                     }), completion: {})
             },
             canInsert: { fixture != nil },
@@ -49,13 +58,19 @@ struct DictationUITestFixture: Sendable {
 
 private actor DictationFixtureMicrophone: AudioCaptureSource {
     nonisolated let channel = AudioChannel.microphone
+    private let finishesImmediately: Bool
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
+
+    init(finishesImmediately: Bool) {
+        self.finishesImmediately = finishesImmediately
+    }
 
     func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
         let (stream, continuation) = AsyncThrowingStream.makeStream(of: AudioChunk.self)
         self.continuation = continuation
         continuation.yield(AudioChunk(
             channel: .microphone, samples: [0.1, -0.1], sampleRate: 16_000, timestamp: 0))
+        if finishesImmediately { continuation.finish() }
         return stream
     }
 

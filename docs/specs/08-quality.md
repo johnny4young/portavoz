@@ -59,10 +59,11 @@ does not relax the full-suite or p95 limits.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 124 UI cases, including portable-settings,
-shortcut-recovery, and the real dictation-panel journey. The one native
-dictation-receiver test is discovered and kept outside this catalog because
-its app process needs a user-granted Accessibility TCC decision. Its explicit
+The unattended catalog contains 125 UI cases, including portable-settings,
+shortcut recovery, dictation capture failure, and unexpected-completion
+recovery. The one native dictation-receiver test remains discoverable but
+outside this catalog: its app process needs a user-granted Accessibility TCC
+decision. Its explicit
 `make test-ui-native-dictation` lane still runs the real XCUITest and fails
 closed without that grant. The unattended suite neither skips a failure into
 success nor qualifies cross-process insertion; its existing time budgets remain
@@ -7993,3 +7994,60 @@ preserve format-2 compatibility and reject unknown/private keys, wrong types,
 nonfinite or overflowing counters and duplicate ownership before publication.
 The existing redacted-support XCUITest also inspects host JSON and its disclosure;
 synthetic unit cases do not establish physical Sequoia/Tahoe or benchmark timing.
+
+### Dictation terminal feedback ownership
+
+`DictationControllerTests` drives real capture, coalescing, Stop, insertion and
+runtime completion using controlled audio and a deliberately
+cancellation-insensitive feedback deadline. Two equal-word-count dictations run
+in both Spanish/English orders before the first deadline completes; the old
+completion must leave the newer confirmation untouched. Additional interleavings
+cover cancellation, repeated permission failures, restarted capture, final
+confirmation dismissal and runtime completion while feedback remains visible.
+The injected wait changes no production duration: success remains 1.6 seconds,
+failure six seconds, and gesture/capture clocks remain distinct. These are
+controller lifecycle proofs, not native insertion or ASR-quality claims; the
+existing real-app panel cancellation/restart journey still covers presentation
+and temporary-store composition without registering global input.
+
+### Dictation Stop authorization and unexpected completion
+
+Real-controller regressions end the microphone without any Stop at 0.1, 0.75
+and 1.0 seconds, using English/Spanish negations, a typographic apostrophe,
+punctuation-only output and an empty stream. All must fail without invoking the
+inserter. Another case ends only the recognizer output while the microphone
+remains live, proving that rejection cannot wait forever for the audio pump.
+Accepted repeated Stop delivers exactly once; cancellation before the tail
+expires and a restarted session cannot reuse that authorization. A separately
+held model-preparation boundary proves that a cancelled session's terminal text
+cannot overwrite the next preparing session. These tests enter the real
+controller, not only `DictationCapturePolicy`.
+
+Additional call-site regressions throw `CancellationError` from preparation and
+from a recognizer after its first caption, in English and Spanish, both before
+and after an accepted Stop. They require an explicit failure, no insertion,
+exact runtime completion and a new attempt from the failed state. A cancelled
+dependency is not evidence that the owner requested cancellation. Existing
+cancel/restart and late-caption cases also run against the unified cleanup path.
+
+A native-Stop regression deliberately closes the audio stream while retaining
+the source's asynchronous `stop()` call. In both languages, with and without
+cancellation during that wait, an inverted delivery expectation and exact lease
+count reject typing or release before the native boundary returns. Releasing
+the controlled boundary permits exactly one normal delivery, or none after
+cancellation. This checks the actual controller and cleanup, not only its
+capture-duration policy; it does not certify a physical audio device.
+
+Carbon callback tests also exercise a missing key-up followed by a second
+press, and an obsolete key-up after a newer menu-started capture. They assert
+that only the press owner can finish that capture; the callback boundary is
+tested directly without registering a global hotkey in the test process.
+
+`testDictationUnexpectedCompletionIsVisibleAndCanRestart` opens the actual panel
+from the menu action, requires the exact localized unexpected-completion error
+and captured fixture text, cancels and starts a second, listening session. The
+fixture never synthesizes a controller phase or grants insertion success. Its
+first failure is consumed by actual capture creation, not repeated dependency
+construction; unit tests also cover that ownership and the admission flags.
+The journey has its own 20-second budget declared before measurement. It tests
+presentation/composition, not native delivery, ASR quality or physical hardware.
