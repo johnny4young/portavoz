@@ -14,22 +14,29 @@ extension AppServices {
 
 struct DictationUITestFixture: Sendable {
     let text: String
+    let captureFailure: Bool
 
     init?(arguments: [String], usesTemporaryStore: Bool) {
         guard usesTemporaryStore, arguments.contains("-seed-dictation") else { return nil }
-        text = "No borres estas notas."
+        captureFailure = arguments.contains("-seed-dictation-capture-failure")
+        text = arguments.contains("-seed-dictation-english")
+            ? "Don't delete these notes."
+            : "No borres estas notas."
     }
 
     @MainActor
     static func dependencies(fixture: Self?) -> DictationSessionDependencies {
-        DictationSessionDependencies(
+        let microphone = DictationFixtureMicrophone()
+        return DictationSessionDependencies(
             makeMicrophone: {
-                .init(source: DictationFixtureMicrophone(), warmUp: {})
+                .init(source: microphone, warmUp: {})
             },
             acquireRuntime: {
                 guard let fixture else { throw CancellationError() }
                 return LiveTranscriptionRuntime(
-                    engine: DictationFixtureEngine(text: fixture.text), completion: {})
+                    engine: DictationFixtureEngine(text: fixture.text, onFirstCaption: {
+                        if fixture.captureFailure { await microphone.fail() }
+                    }), completion: {})
             },
             canInsert: { fixture != nil },
             targetName: { "Dictation test receiver" },
@@ -56,10 +63,18 @@ private actor DictationFixtureMicrophone: AudioCaptureSource {
         continuation?.finish()
         continuation = nil
     }
+
+    func fail() {
+        continuation?.finish(throwing: FixtureFailure.interrupted)
+        continuation = nil
+    }
+
+    private enum FixtureFailure: Error { case interrupted }
 }
 
 private struct DictationFixtureEngine: TranscriptionEngine {
     let text: String
+    let onFirstCaption: @Sendable () async -> Void
     let descriptor = EngineDescriptor(
         id: "dictation-ui-fixture", displayName: "Dictation fixture",
         realTimeFactor: 0, runsOnDevice: true, approximateMemoryMB: 0)
@@ -77,6 +92,7 @@ private struct DictationFixtureEngine: TranscriptionEngine {
                     continuation.yield(TranscriptSegment(
                         meetingID: hints.meetingID ?? MeetingID(),
                         channel: .microphone, text: text, startTime: 0, endTime: 1))
+                    await onFirstCaption()
                 }
             }
             continuation.finish()

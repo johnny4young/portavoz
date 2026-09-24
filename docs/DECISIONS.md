@@ -20152,26 +20152,23 @@ resolves resources through `Bundle`, which reads either. A future Xcode that
 removes the old label deletes the `#else` branch in one file. Decoding behavior is unchanged: greedy
 everywhere, same token caps.
 
-
----
-
 ## D540 — Keep native dictation delivery outside unattended UI qualification
 
 **Context:** D515's real app-to-receiver journey correctly refuses to insert
 without Accessibility trust for the disposable app. GitHub-hosted macOS runners
 can automate XCTest but cannot grant that separate, user-owned TCC decision.
-The 124-case unattended catalog therefore deterministically fails before a
+The then-124-case unattended catalog therefore deterministically failed before a
 paste attempt; treating that failure as a product defect or a skipped success
 would both misstate the evidence.
 
-**Decision:** the unattended feature/full bilingual catalog contains the 123
-permission-independent journeys. Its policy validator still discovers the
-native receiver test and rejects either its removal or its accidental return
-to unattended scope. The no-selector runner excludes only that exact test;
+**Decision:** the unattended feature/full bilingual catalog contains only
+permission-independent journeys (123 at this decision). Its policy validator
+still discovers the native receiver test and rejects its removal or accidental
+return to unattended scope. The no-selector runner excludes only that exact test;
 explicit selectors are never filtered. `make test-ui-native-dictation` runs the
 real receiver journey in both languages and remains red without app TCC trust.
 Its own one-case runtime manifest retains the original 20-second ceiling,
-without polluting or widening the unattended catalog's 123 budgets.
+without polluting or widening the then-123 unattended budgets.
 No mock paste, automatic TCC grant, retry-to-green, or aggregate substitute is
 accepted as native delivery evidence.
 
@@ -20180,3 +20177,44 @@ panel, Settings and other journeys, **not** cross-process insertion. The latter
 remains an explicit permission/field gate with its own positive receipt before
 claiming it works. Existing runtime budgets for unattended journeys stay fixed;
 the permission-gated journey is not counted in the unattended runtime total.
+
+---
+
+## D547 — Capture integrity owns dictation delivery until the edit boundary
+
+**Date:** 2026-09-21
+
+**Context.** Dictation has no durable audio original. Treating a source error as
+EOF or dropping a relay buffer could turn an incomplete transcript into an
+automatic paste. A producer can also report failure before its admitted queue
+drains, so waiting only for the iterator's terminal error is insufficient.
+
+**Decision.** The controller observes the existing producer-failure capability
+and every bounded-relay yield. Any capture failure revokes delivery for that
+session before closing the feed. It cancels owned work, enters existing cleanup
+and reports a localized failure. An upstream cancellation error is not a user
+Cancel unless the owning task is cancelled. A cancelled caption iterator may end
+normally; check cancellation before joining its detached pump or publishing text.
+
+The final producer report is checked after draining and before delivery. Once
+delivery relinquishes capture, a delayed capture notification cannot claim that
+an already-dispatched edit was prevented. This is not rollback or proof of a
+verified external edit. Session identity fences obsolete callbacks; source and
+runtime cleanup stay with their existing owners. Buffer capacity, models,
+meeting capture and the silent user-cancellation path are unchanged.
+
+A clean source EOF does not itself authorize delivery. If it precedes the
+controller actually issuing Stop, including during the pending Stop tail, treat
+it as an interrupted capture even when the producer has no failure report: the
+partial may omit the rest of the utterance.
+
+**Evidence boundary.** Actual-controller regressions cover both languages,
+127/128/129 pending buffers, ordinary and cancellation-shaped source errors,
+pre-EOF notifications, unnotified final failure and post-dispatch notifications.
+They also close a normally ending source before Stop and during its pending
+tail in both languages and assert the controller refuses to insert its partial.
+The disposable UI fixture exercises failure visibility and dismissal without
+real audio or paste. Native hardware, recognition quality and external-editor
+verification remain independent qualifications. The added failure journey
+raises the permission-independent unattended catalog from D540's 123 to 124
+without restoring the native receiver to that catalog.

@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 123
+    "expectedCaseCount": 124
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -24,6 +24,7 @@
   },
   "schemaVersion": 1,
   "testBudgetsSeconds": {
+    "DictationUITests/testDictationCaptureFailureIsVisibleAndCanBeDismissed()": 20.0,
     "DictationUITests/testDictationPanelCancelsAndRestartsWithoutGlobalInput()": 20.0,
     "AutomationUITests/testAppEntitiesOpenExactVisibleDestinations()": 20.0,
     "AutomationUITests/testRecordingAutomationRoutesStartAndStopThroughVisibleApp()": 20.0,

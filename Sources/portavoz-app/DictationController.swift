@@ -84,6 +84,7 @@ final class DictationController {
     private var feed: AsyncStream<AudioChunk>.Continuation?
     private var session: Task<Void, Never>?
     private var stopTask: Task<Void, Never>?
+    private var stopIssuedSessionID: UUID?
     private var failureDismissTask: Task<Void, Never>?
     private var activeSessionID: UUID?
     private let panel = DictationPanelController()
@@ -248,6 +249,7 @@ final class DictationController {
         captureStartedAt = nil
         stopTask?.cancel()
         stopTask = nil
+        stopIssuedSessionID = nil
         let sessionID = UUID()
         activeSessionID = sessionID
         sessionClock = dependencies.now
@@ -269,6 +271,12 @@ final class DictationController {
             try Task.checkCancellation()
             guard activeSessionID == id else { return }
             self.microphone = microphone
+            let captureFailed: @MainActor @Sendable () -> Void = { [weak self] in
+                self?.failCapture(id: id)
+            }
+            (microphone as? any CaptureReportingSource)?.setCaptureFailureHandler {
+                Task { await captureFailed() }
+            }
 
             await input.warmUp()
             try Task.checkCancellation()
@@ -280,34 +288,32 @@ final class DictationController {
             }
             captureStartedAt = dependencies.now()
 
-            // Bounded like every other live audio handoff (the recording lane
-            // uses the same 128-buffer window). The pump never suspends on the
-            // consumer, so an unbounded stream lets a stalled engine grow the
-            // backlog for as long as dictation runs; dropping the oldest audio
-            // is the same trade live transcription already makes.
+            // Dictation has no durable original to replay. Keep the bounded
+            // handoff, but any dropped audio invalidates automatic delivery.
             let (audio, feed) = AsyncStream.makeStream(
                 of: AudioChunk.self,
                 bufferingPolicy: .bufferingNewest(128))
             localFeed = feed
             self.feed = feed
-            pump = makeAudioPump(stream: micStream, feed: feed, sessionID: id)
+            pump = makeAudioPump(stream: micStream, feed: feed, sessionID: id, onFailure: captureFailed)
 
-            let hints = transcriptionHints(defaults: dependencies.defaults)
-            var captions: [TranscriptSegment] = []
-            let coalescer = CaptionCoalescer()
-            for try await segment in runtime.engine.transcribe(audio, hints: hints) {
-                try Task.checkCancellation()
-                guard activeSessionID == id else { throw CancellationError() }
-                coalescer.apply(segment, to: &captions)
-                let closed = captions.dropLast().map(\.text)
-                confirmedText = closed.joined(separator: " ")
-                partialText = captions.last?.text ?? ""
-            }
-            confirmedText = captions.map(\.text).joined(separator: " ")
-            partialText = ""
+            try await consumeCaptions(
+                from: runtime.engine.transcribe(audio, hints: transcriptionHints(defaults: dependencies.defaults)),
+                sessionID: id)
             await pump?.value
             try Task.checkCancellation()
             guard activeSessionID == id else { return }
+            if (microphone as? any CaptureReportingSource)?.captureReport.failure != nil {
+                failCapture(id: id)
+                try Task.checkCancellation()
+            }
+            // A normal source EOF is not proof that the user requested Stop.
+            // Device teardown may end a stream without an error or a report.
+            guard stopIssuedSessionID == id else {
+                failCapture(id: id)
+                try Task.checkCancellation()
+                return
+            }
             await deliver(sessionID: id, dependencies: dependencies)
         } catch is CancellationError {
             localFeed?.finish()
@@ -322,6 +328,26 @@ final class DictationController {
             failSession(id: id, message: L10n.format(
                 "Dictation failed: %@", error.localizedDescription))
         }
+    }
+
+    private func consumeCaptions(
+        from stream: AsyncThrowingStream<TranscriptSegment, Error>, sessionID: UUID
+    ) async throws {
+        var captions: [TranscriptSegment] = []
+        let coalescer = CaptionCoalescer()
+        for try await segment in stream {
+            try Task.checkCancellation()
+            guard activeSessionID == sessionID else { throw CancellationError() }
+            coalescer.apply(segment, to: &captions)
+            confirmedText = captions.dropLast().map(\.text).joined(separator: " ")
+            partialText = captions.last?.text ?? ""
+        }
+        // A cancelled iterator can end normally. Enter cleanup before joining
+        // a detached pump that may still await its source, or publishing text.
+        try Task.checkCancellation()
+        guard activeSessionID == sessionID else { throw CancellationError() }
+        confirmedText = captions.map(\.text).joined(separator: " ")
+        partialText = ""
     }
 
     private func transcriptionHints(defaults: UserDefaults) -> TranscriptionHints {
@@ -339,24 +365,26 @@ final class DictationController {
     private func makeAudioPump(
         stream: AsyncThrowingStream<AudioChunk, Error>,
         feed: AsyncStream<AudioChunk>.Continuation,
-        sessionID: UUID
+        sessionID: UUID,
+        onFailure: @escaping @MainActor @Sendable () -> Void
     ) -> Task<Void, Never> {
         let updateMeter: @MainActor @Sendable (Float) -> Void = { [weak self] peak in
             if let self, self.activeSessionID == sessionID {
                 self.micLevel = max(peak, self.micLevel * 0.8)
             }
         }
-        return Task.detached {
-            do {
-                for try await chunk in stream {
-                    guard !Task.isCancelled else { break }
-                    let peak = chunk.samples.reduce(Float(0)) { max($0, abs($1)) }
-                    feed.yield(chunk)
-                    await updateMeter(peak)
-                }
-            } catch {}
-            feed.finish()
-        }
+        return makeDictationAudioPump(stream: stream, feed: feed, onLevel: updateMeter, onFailure: onFailure)
+    }
+
+    private func failCapture(id: UUID) {
+        // Delivery relinquishes capture before awaiting a platform edit. A
+        // delayed notification cannot promise to undo an event already posted.
+        guard activeSessionID == id, microphone != nil else { return }
+        session?.cancel()
+        stopTask?.cancel()
+        // Revoke delivery before closing the feed can drain a partial result.
+        failSession(id: id, message: L10n.text(
+            "Audio capture was interrupted. Nothing was inserted. Try dictating again."))
     }
 
     /// Second hotkey press: stop the mic; the drained stream delivers.
@@ -381,6 +409,7 @@ final class DictationController {
                 return
             }
             guard let self, self.activeSessionID == sessionID else { return }
+            self.stopIssuedSessionID = sessionID
             await microphone?.stop()
         }
     }
@@ -393,6 +422,7 @@ final class DictationController {
         mouseOwnsSession = false
         stopTask?.cancel()
         stopTask = nil
+        stopIssuedSessionID = nil
         failureDismissTask?.cancel()
         failureDismissTask = nil
         session?.cancel()
@@ -421,6 +451,7 @@ final class DictationController {
         microphone = nil
         feed = nil
         stopTask = nil
+        stopIssuedSessionID = nil
         captureStartedAt = nil
         guard DictationAssembler.hasLexicalContent(text) else {
             completeSession(id: sessionID)
@@ -475,6 +506,7 @@ final class DictationController {
         microphone = nil
         feed = nil
         stopTask = nil
+        stopIssuedSessionID = nil
         captureStartedAt = nil
         mouseOwnsSession = false
     }

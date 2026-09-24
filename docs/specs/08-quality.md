@@ -59,7 +59,7 @@ does not relax the full-suite or p95 limits.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 123 UI cases, including portable-settings,
+The unattended catalog contains 124 UI cases, including portable-settings,
 shortcut-recovery, and the real dictation-panel journey. The one native
 dictation-receiver test is discovered and kept outside this catalog because
 its app process needs a user-granted Accessibility TCC decision. Its explicit
@@ -135,6 +135,24 @@ resume, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
+Dictation capture-integrity tests reach the actual controller, not a relay-only
+policy. They hold its real engine consumer after one partial, fill 127, 128 and
+129 pending chunks, preserve exact-capacity success and refuse overflow delivery.
+English and Spanish cases cover ordinary source errors, unexpected upstream
+cancellation, producer notifications before buffered EOF, an unnotified failed
+final report, and notifications arriving after the insertion port has dispatched.
+Existing user-cancellation, text-rules and runtime-release cases remain in the
+same suite. Source and model inputs are controlled doubles, not native audio or
+ASR-quality evidence.
+
+The capture-failure XCUITest uses both temporary-store composition and the
+explicit dictation fixture before enabling a post-partial source error. It
+exercises the same controller failure, localized panel message, absence of an
+active meter, dismissal and restart in one bounded journey. It does not inject
+an insertion result as capture success or request real audio/Accessibility.
+Its 20-second budget is declared before measurement; existing budgets remain
+unchanged.
+
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config
 (default rules + correctness/clarity opt-ins, industry thresholds: line 120,
 function-body 60/100, cyclomatic 12/20, type-body 400/600). CI treats every
@@ -182,7 +200,7 @@ or destination identity fencing. The presence of this test is not evidence that
 the native gate passed. No general clipboard, real meeting, model download or microphone participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 123 unattended cases;
+`make test-ui-bilingual` and scoped hosted runs select the 124 unattended cases;
 `make test-ui-native-dictation` selects the one real receiver case in EN and ES.
 The catalog policy requires that case to remain discoverable but disjoint from
 unattended selectors. The runner excludes it only when no explicit selectors

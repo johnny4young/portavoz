@@ -19,9 +19,11 @@ production sync reliability, universal hardware support or real-world quality.
 ### Global dictation capture and delivery qualification
 
 The controller and native-receiver test seams (D515) improve reachability, not
-all dictation behavior. The microphone pump still finishes its transcription
-feed after a source error and does not promote dropped-yield evidence into a
-terminal failure. The displayed application name is not yet a pinned delivery
+all dictation behavior. Source errors, producer failure notifications and
+dropped relay yields now revoke automatic delivery for their owning session;
+the final producer report is rechecked before delivery. These repairs do not
+provide durable recovery of interrupted dictation audio. The displayed
+application name is not yet a pinned delivery
 target; `.inserted` still denotes dispatched events rather than a verified
 external edit. These require call-site regressions and fixes before broad
 reliability claims. Model quality, Bluetooth transitions and the external-editor
