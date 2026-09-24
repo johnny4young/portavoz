@@ -169,6 +169,34 @@ publication rather than ignoring new fields. A producer-to-consumer test passes
 an actual AppServices export through both consumers without converting synthetic
 data into a field qualification.
 
+### Dictation session test boundary
+
+`DictationController` owns the same session, coalescing, final text rules and
+cancellation path for production and disposable tests. Its session dependencies
+provide audio preparation, the existing `LiveTranscriptionRuntime` lease,
+permission/destination/insertion effects, preferences and the capture clock.
+Explicit combined speech/diarization readiness stays in the live-speech
+composition extension. Production composition still acquires and finishes the shared live-speech lease;
+this seam neither selects a different engine nor moves platform types into Core.
+
+Temporary meeting-store composition never registers Carbon hotkeys or mouse
+event taps. The explicit dictation fixture supplies synthetic PCM and a bounded
+caption producer; without that fixture it refuses dictation without requesting
+permissions, downloading models or opening a microphone. Fixture selection lives
+in `AppServices+DictationUITestFixture.swift`, not in the controller's pipeline.
+
+A separate Xcode-only receiver builds no shipping product. An explicitly armed
+`DictationNativeUITestFixture` calls the production `TextInserter` inside the
+temporary app, not XCTest's sandboxed runner. It requires a UUID-named clipboard
+and the fixed receiver bundle; the receiver's native Paste action reads that
+board. The real event pair is directed to the receiver process so a focus change
+cannot route fixture Paste into another application. Production callers retain
+the general pasteboard and session-event defaults with unchanged change-count
+ownership protection; their global routing is not qualified by this fixture. The native journey requires real app
+Accessibility permission and must not bypass or silently grant it. Synthetic
+controller coverage and an event-dispatched result are not ASR or native-delivery
+qualification; the receiver's actual value is the oracle.
+
 ### Database launch recovery
 
 The macOS composition root is two-stage. `AppLaunchModel` first asks the
@@ -1055,7 +1083,11 @@ posts a complete synthetic paste pair or restores synchronously, and later
 restores only captured pasteboard representations when its change count still
 owns the clipboard. Secure or uninspectable focus, unavailable clipboard or
 event delivery, and held modifiers become visible failures rather than false
-insertion success.
+insertion success. Disposable native tests share the inserter but supply a named
+pasteboard and a process-addressed event target whose secure-field inspection
+reads that application's focus. This contains fixture input if
+focus changes without altering production session routing; it is not evidence
+of a production destination fence.
 
 Live Apuntador keeps endpoint and semantic admission split across layers. The
 pure `TurnEndpointPolicy` in `IntelligenceKit` owns the remote-channel, noise,

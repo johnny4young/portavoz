@@ -16,6 +16,7 @@ final class DictationPanelController {
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false)
+        panel.setAccessibilityIdentifier("dictation-panel")
         panel.level = UITestWindowPlacement.floatingPanelLevel()
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.isMovableByWindowBackground = true
@@ -69,6 +70,7 @@ private struct DictationStripView: View {
                     .foregroundStyle(isFailed ? Color.orange : PVDesign.accent)
                     .symbolEffect(.pulse, isActive: controller.phase == .listening)
                 Text(title)
+                    .accessibilityIdentifier("dictation-panel-state")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                 if let target = controller.targetApp, controller.phase == .listening {
@@ -77,6 +79,7 @@ private struct DictationStripView: View {
                 Spacer()
                 if controller.phase == .listening {
                     meter
+                        .accessibilityIdentifier("dictation-panel-meter")
                 }
                 Button {
                     controller.cancel()
@@ -86,6 +89,7 @@ private struct DictationStripView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(L10n.text("Cancel dictation"))
+                .accessibilityIdentifier("dictation-panel-cancel")
             }
             if controller.confirmedText.isEmpty && controller.partialText.isEmpty {
                 Text("Listening…")
@@ -100,6 +104,7 @@ private struct DictationStripView: View {
                     + Text(controller.partialText.isEmpty ? "" : " ")
                     + Text(controller.partialText)
                     .foregroundStyle(.tertiary))
+                    .accessibilityIdentifier("dictation-panel-transcript")
                     .font(.body)
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -136,7 +141,9 @@ private struct DictationStripView: View {
     private func targetChip(_ app: String) -> some View {
         HStack(spacing: 3) {
             Image(systemName: "pencil").font(.caption2)
-            Text(app).font(.caption2.weight(.semibold))
+            Text(app)
+                .font(.caption2.weight(.semibold))
+                .accessibilityIdentifier("dictation-panel-target")
         }
         .foregroundStyle(PVDesign.accent)
         .padding(.horizontal, 7)
