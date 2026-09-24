@@ -20180,3 +20180,31 @@ panel, Settings and other journeys, **not** cross-process insertion. The latter
 remains an explicit permission/field gate with its own positive receipt before
 claiming it works. Existing runtime budgets for unattended journeys stay fixed;
 the permission-gated journey is not counted in the unattended runtime total.
+
+---
+
+## D542 — Stacked UI PRs qualify their cumulative default-branch change
+
+**Context:** D429's first-attempt verification anchor prevents an unverified
+push from becoming the next incremental base. Its fallback was the PR base.
+For a stacked PR, that is the unmerged parent branch. A child documentation
+change could therefore earn a green no-UI or English-only hosted result while
+the full parent-plus-child diff against `main` requires bilingual XCUITest.
+An earlier child anchor is insufficient too: it may have qualified only the
+child diff under the old fallback rule.
+
+**Decision:** direct-to-default-branch PRs retain D429's artifact-backed
+incremental selection. For a PR targeting another branch, compare the head
+with its merge base against the fetched default branch on every push. Do not
+reuse a child verification anchor to narrow that cumulative set. Criss-cross
+history with several merge bases selects from their common ancestor, which only
+widens the set. If the default-branch ref or merge base is unavailable, fail
+scope selection with an error annotation rather than silently using the parent. Manual dispatch remains a complete bilingual
+run; no runtime budget, retry, or native-permission rule changes.
+
+**Consequences:** stacked pushes may repeat already covered parent journeys,
+but every child check covers the code that would enter `main`. Once the parent
+merges and the PR is retargeted, normal verified-ancestor selection resumes.
+The tiny synthetic Git integration test executes the resolver and real UI
+selector at the call site: the child changes only documentation while its
+parent changes Dictation Settings, and the parent journey must remain selected.
