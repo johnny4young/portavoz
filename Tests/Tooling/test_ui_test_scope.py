@@ -23,6 +23,17 @@ from ui_test_scope import (  # noqa: E402
 
 
 class UITestScopeTests(unittest.TestCase):
+    def test_compact_detail_column_scopes_playback_correction_and_summary(self):
+        path = "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift"
+        selection = select_paths([path])
+        expected = set(
+            FEATURE_TESTS["meeting-audio"]
+            + FEATURE_TESTS["meeting-correction"]
+            + FEATURE_TESTS["meeting-summary"]
+        )
+        self.assertEqual(set(selection.tests), expected)
+        self.assertEqual(selection.locales, ("en",))
+
     def test_portable_settings_files_reach_both_actual_transfer_journeys(self):
         paths = (
             "Sources/ApplicationKit/PortableSettings.swift",

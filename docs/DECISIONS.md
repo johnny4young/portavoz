@@ -20101,3 +20101,26 @@ resolves resources through `Bundle`, which reads either. A future Xcode that
 removes the old label deletes the `#else` branch in one file. Decoding behavior is unchanged: greedy
 everywhere, same token caps.
 
+## D549 — Compact Meeting Detail preserves two usable reading surfaces
+
+**Context:** a real-app 620-point disposable window had 180 points of generated
+material above a 166-point player. The transcript section received 27 points,
+of which its scroll viewport had one point. Its correction action was absent
+from the accessibility tree; changing wheel deltas could not reach it. An
+earlier attachment-time compact fixture had also been overwritten by native
+window restoration, so source-only layout tests were insufficient.
+
+**Decision:** `MeetingDetailPrimaryColumn` measures the player dock and keeps
+the existing simultaneous layout only when the column can reserve 180 points
+for generated material and 160 for transcript reading, plus player and spacing.
+Below that boundary, Summary and Transcript become explicit, identified panes;
+the player remains docked and both panes reuse the existing content/actions.
+The normal window keeps its content-measured artifact section. Disposable
+620-point and minimum-size fixtures use the post-restoration window owner and
+assert the actual AppKit frame rather than the requested height.
+
+**Consequences:** the real correction action and summary remain reachable in
+small windows without a scroll multiplier or a second data projection. The
+minimum 560-point content frame may produce a 612-point outer NSWindow because
+of native chrome. Native policy tests and the bilingual real-app journey guard
+that distinction; ordinary-window and full-catalog evidence remain separate.

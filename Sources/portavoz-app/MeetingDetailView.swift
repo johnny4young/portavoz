@@ -88,20 +88,18 @@ private extension MeetingDetailView {
                 error: refine.error ?? flow.operationError ?? model.state.lastActionError)
             HStack(alignment: .top, spacing: 16) {
                 GeometryReader { column in
-                    VStack(alignment: .leading, spacing: 10) {
-                        MeetingDetailArtifactsSection(columnHeight: column.size.height) {
-                            summaryOrGenerate(detail)
-                            commitmentInboxSection(detail)
-                            notesSection(detail)
-                        }
+                    MeetingDetailPrimaryColumn(columnHeight: column.size.height) {
+                        summaryOrGenerate(detail)
+                        commitmentInboxSection(detail)
+                        notesSection(detail)
+                    } transcript: {
                         transcriptSection(
                             detail,
                             content: transcript,
                             structureProjection: structureProjection)
-                            .layoutPriority(1)
+                    } player: {
                         playerSection
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
                 detailRail(detail, transcript: transcript)
             }

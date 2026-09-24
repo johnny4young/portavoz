@@ -125,13 +125,17 @@ cleanup evidence. The corrected main-queue callback must also acknowledge its
 execution; fresh controlled and hosted qualification is required. Notification
 Center metadata alone still cannot attribute a hosted alert to that crash.
 
-### Compact-window scroll reachability remains unqualified
+### Compact-window correction reachability has focused evidence only
 
 The 1.1 layout removed the fixed 240-point artifacts box (the area now
 measures its material and caps at half the column) and moved the rail's
-sections behind lenses, which reduces the scrolling the compact geometry
-needed; the harness still does not force that geometry, so the limitation
-below stands as written.
+sections behind lenses, but an actual 620-point window still left a one-point
+transcript viewport below material and the player. The correction action was
+absent from accessibility before any scroll attempt. D549's focused reading
+panes preserve the player and make the real correction action reachable in
+620-point and native-minimum windows; its bilingual real-app journey reached
+the editor in both geometries. This is focused evidence, not a passing full
+catalog or proof of all window sizes and assistive modes.
 
 The ordinary bounded `revealVertically` helper can fail to reveal a correction
 control in a short transcript viewport. Wheel-response calibration and
@@ -140,15 +144,21 @@ a native counterexample combining dropped input with amplified delivery. The
 individual native delivery shapes passed; the combined shape did not. Neither
 an aggregate pass count nor a restored ordinary window closes this limitation.
 
-The interruption-safety harness retains the original real-app catalog and all
-correction effects but does not force the experimental compact geometry. Its
-four native controls qualify interruption containment and owned cleanup only,
-not scrolling. The rejected experiment and failed evidence remain separate;
-a future repair must reproduce compact geometry safely, reach the actual helper,
-include composed delivery shapes and retain the existing finite interaction
-budgets. Do not infer that the underlying transcript write path is defective
-from a harness failure before activation, or claim physical macOS coverage from
-the ordinary-window catalog. See D533 for the separation boundary.
+The new fixture forces compact geometry after native window restoration and
+asserts the actual AppKit frame, rather than trusting a requested size. Its
+focused journey reaches the existing bounded helper and correction editor;
+it does not change the wheel algorithm or qualify composed dropped/amplified
+delivery outside those layouts. The first cumulative gate stopped in the
+asynchronous interruption control before product tests. A later single-build
+product catalog passed the compact journey in both locales and all 123 Spanish
+cases; English passed 121 of 123. One English journey saw its synthesized
+Objectives click leave Summary selected, and another was correctly stopped by
+a foreign foreground window. Both locales exceeded the unchanged full-suite
+runtime budget. These are failed qualification receipts, not a green bilingual
+gate or evidence that the compact correction itself failed. Native safety,
+host stability, full bilingual product/runtime qualification, and physical
+macOS coverage remain separate pending gates. See D533 for the separation
+boundary.
 
 ### 1.1 layout items deliberately kept as they were
 

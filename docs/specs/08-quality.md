@@ -59,8 +59,12 @@ does not relax the full-suite or p95 limits.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The combined catalog contains 122 UI cases, including both portable-settings
-and shortcut-recovery journeys; their existing time budgets remain unchanged.
+The combined catalog contains 123 UI cases, including portable-settings,
+shortcut-recovery, and real-app compact Meeting Detail correction journeys.
+The compact journey checks the actual post-restoration AppKit frame at two
+short heights, opens both reading panes, retains the player, and reaches the
+existing correction editor. Its own per-case budget is 30 seconds; the
+existing per-case, p95, and full-suite budgets remain unchanged.
 Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI

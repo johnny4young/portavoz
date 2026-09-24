@@ -165,7 +165,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
         abandonedSummary: Bool = false,
         simulateSkillEffectFailureOnce: Bool = false,
         simulateApuntadorRefreshSuccess: Bool = false,
-        summaryEngine: String? = nil
+        summaryEngine: String? = nil,
+        compactWindow: Bool = false,
+        minimumWindow: Bool = false
     ) throws -> XCUIApplication {
         let app = try XCUIApplication.portavoz(
             seedDemo: true,
@@ -181,6 +183,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
             simulateApuntadorRefreshSuccess: simulateApuntadorRefreshSuccess)
         if justRecorded {
             app.launchArguments += ["-mirrorAfterMeeting", "true"]
+        }
+        if minimumWindow {
+            app.launchArguments.append("-seed-minimum-transcript-window")
+        } else if compactWindow {
+            app.launchArguments.append("-seed-compact-transcript-window")
         }
         if unnamedSpeaker {
             app.launchArguments.append("-seed-unnamed-speaker")
@@ -408,6 +415,80 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             restoredReading.waitForExistenceFast(timeout: 10),
             "undo must restore the accepted reading without deleting history")
+    }
+
+    @MainActor
+    func testCompactTranscriptCorrectionCanReachItsOwnAction() throws {
+        let compactHeight = try assertCompactTranscriptCorrection(minimumWindow: false)
+        let minimumHeight = try assertCompactTranscriptCorrection(minimumWindow: true)
+        XCTAssertLessThan(
+            minimumHeight, compactHeight,
+            "native minimum content height includes titlebar chrome but stays below 620pt")
+    }
+
+    @MainActor
+    private func assertCompactTranscriptCorrection(minimumWindow: Bool) throws -> CGFloat {
+        let app = try launchOnSeededMeeting(
+            compactWindow: !minimumWindow,
+            minimumWindow: minimumWindow)
+        defer { app.terminate() }
+
+        let window = app.windows["main-AppWindow-1"]
+        XCTAssertTrue(window.waitForStableFrame(timeout: 10))
+        XCTAssertLessThanOrEqual(
+            window.frame.height, 640,
+            "the disposable fixture must actually use a compact window")
+
+        let transcriptPane = app.buttons["detail-compact-transcript"]
+        let summaryPane = app.buttons["detail-compact-summary"]
+        guard transcriptPane.waitForExistenceFast(timeout: 10), summaryPane.exists else {
+            attachScreenshot(of: app, named: "compact-pane-selector-absent")
+            XCTFail("both compact reading panes must remain independently accessible")
+            return window.frame.height
+        }
+        XCTAssertTrue(app.buttons["player-play-pause"].exists)
+
+        summaryPane.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-generated-document")
+                .waitForExistenceFast(timeout: 5),
+            "compact layout must keep the generated summary reachable")
+        XCTAssertTrue(app.buttons["player-play-pause"].exists)
+        transcriptPane.click()
+
+        let correct = app.buttons[
+            "transcript-correct-B5B00000-0000-4000-8000-000000000002"]
+        let viewport = app.control(withIdentifier: "detail-transcript-scroll")
+        XCTAssertTrue(
+            viewport.waitForExistenceFast(timeout: 10),
+            "the transcript must expose its own scroll boundary")
+        let targetExists = correct.waitForExistenceFast(timeout: 10)
+        guard targetExists else {
+            attachScreenshot(of: app, named: "compact-transcript-target-absent")
+            let section = app.control(withIdentifier: "detail-transcript-section")
+            let artifacts = app.control(withIdentifier: "detail-artifacts-section")
+            let player = app.control(withIdentifier: "detail-player-section")
+            XCTFail(
+                "compact correction action absent; "
+                    + "viewport=\(viewport.frame) section=\(section.frame) "
+                    + "artifacts=\(artifacts.frame) player=\(player.frame) "
+                    + "window=\(window.frame)")
+            return window.frame.height
+        }
+        guard correct.revealVertically(in: viewport, maxScrolls: 4) else {
+            attachScreenshot(of: app, named: "compact-transcript-reveal-failure")
+            XCTFail(
+                "compact correction action unreachable; "
+                    + "target=\(correct.frame) viewport=\(viewport.frame) "
+                    + "window=\(window.frame) hittable=\(correct.isHittable)")
+            return window.frame.height
+        }
+        correct.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "transcript-correction-editor")
+                .waitForExistenceFast(timeout: 5),
+            "the compact action must open the real correction editor")
+        return window.frame.height
     }
 
     @MainActor

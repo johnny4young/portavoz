@@ -3128,6 +3128,13 @@ storage, model, or provider capabilities. Architecture tests cap the root at
 500 lines and reject model effects or broad composition dependencies in these
 presentation children.
 
+`MeetingDetailPrimaryColumn` owns only vertical presentation allocation. It
+observes the actual player-dock height and keeps the established simultaneous
+summary/transcript layout where both retain useful reading space. In a shorter
+window it offers explicit Summary and Transcript panes while retaining the
+same docked player and the existing content/actions. This avoids placing
+window-size policy in the route model or a transcript scroll helper.
+
 Transcript correction follows the same modal boundary. The flow captures the
 editor context, structural context, accepted reading, and revision as one
 immutable target before activating its typed route. The host never reconstructs
