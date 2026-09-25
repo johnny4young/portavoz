@@ -115,6 +115,20 @@ class UITestExecutionTests(unittest.TestCase):
         self.assertEqual(document["classification"], "known-host-infrastructure")
         self.assertEqual(document["failureSignature"], "automation-mode-timeout")
 
+    def test_zero_case_receipt_beside_a_bundle_is_unusable_evidence(self):
+        # The runner writes a zero-case receipt whenever a result bundle exists.
+        temporary, completed, document = self.run_writer(
+            exit_status=65,
+            log="error: Timed out while enabling automation mode",
+            result=True,
+            runtime_cases=0,
+        )
+        self.addCleanup(temporary.cleanup)
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(document["classification"], "evidence-failure")
+        self.assertIsNone(document["failureSignature"])
+
     def test_any_executed_case_keeps_failure_in_the_test_lane(self):
         temporary, completed, document = self.run_writer(
             exit_status=65,

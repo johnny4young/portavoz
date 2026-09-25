@@ -219,6 +219,8 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(gate.contains("automation-mode-timeout"))
         XCTAssertTrue(execution.contains(
             "Timed out while enabling automation mode"))
+        XCTAssertTrue(execution.contains(
+            "has_executed_cases = runtime_cases is not None and runtime_cases > 0"))
         XCTAssertTrue(verifiedBase.contains("raw_run.get(\"run_attempt\") != 1"))
         XCTAssertTrue(verifiedBase.contains(
             "history.is_ancestor(candidate, head)"))

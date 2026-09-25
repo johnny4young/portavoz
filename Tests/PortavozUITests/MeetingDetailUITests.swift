@@ -1236,8 +1236,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let app = try launchOnSeededMeeting()
         defer { app.terminate() }
 
-        // The offer loads asynchronously; existence polling avoids XCTest's
-        // implicit retry before the unchanged target-stability check.
+        // The offer loads asynchronously; poll existence before requiring a stable frame.
         let menu = app.control(withIdentifier: "skill-offer-menu")
         XCTAssertTrue(menu.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(menu.waitForStableFrame(timeout: 10))

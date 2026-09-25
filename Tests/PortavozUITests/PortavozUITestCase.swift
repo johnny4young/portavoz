@@ -75,10 +75,7 @@ class PortavozUITestCase: XCTestCase {
         }
         let message = "PORTAVOZ_UI_INTERRUPTION_BLOCKED cleanup=\(cleanup) reason=\(reason)"
         FileHandle.standardError.write(Data("\(message)\n".utf8))
-        // Recording an XCTest issue here can reenter asynchronous teardown
-        // while this interruption callback is still on the main actor. The
-        // content-free receipt plus a failed worker exit is the boundary;
-        // never resume XCTest or its fallback handlers from this callback.
+        // Recording an XCTest issue here can reenter async teardown on the main actor.
         exit(EXIT_FAILURE)
     }
 }

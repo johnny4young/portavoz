@@ -20302,7 +20302,7 @@ completed runs and are not promised from the graph alone. Full bilingual
 integration and first-attempt exact-head anchors remain mandatory.
 
 
-## D547 — Exit interrupted test workers without reentering XCTest
+## D553 — Exit interrupted test workers without reentering XCTest
 
 The asynchronous native interruption control reached complete owned cleanup and
 XCTest issue recording, then stalled in teardown until its unchanged deadline.
