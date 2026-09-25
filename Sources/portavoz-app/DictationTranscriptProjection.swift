@@ -16,7 +16,7 @@ struct DictationTranscriptProjection {
     mutating func apply(_ segment: TranscriptSegment) -> Bool {
         guard let invalidated = coalescer.apply(segment, to: &captions) else { return false }
         let nextClosedCount = max(0, captions.count - 1)
-        if invalidated < closedCount {
+        if invalidated < closedCount || nextClosedCount < closedCount {
             // A removed microphone echo can reopen a formerly closed remote
             // row. This uncommon correction invalidates the retained prefix.
             confirmedText = captions.prefix(nextClosedCount).map(\.text).joined(separator: " ")

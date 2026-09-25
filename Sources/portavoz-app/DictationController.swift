@@ -300,7 +300,10 @@ final class DictationController {
                 if transcript.apply(segment) {
                     confirmedText = transcript.confirmedText
                 }
-                partialText = transcript.partialText
+                // Observation reports equal writes; rejected noise stays silent.
+                if partialText != transcript.partialText {
+                    partialText = transcript.partialText
+                }
             }
             // Cancellation may end an AsyncStream normally, without throwing.
             // Fence final publication too, before an old tail can repopulate UI.

@@ -106,10 +106,11 @@ public struct CaptionCoalescer: Sendable {
         guard Self.isRemoteChannel(incoming) else { return false }
 
         // Never remove a closed microphone row: consumers may retain its
-        // identity. Only the newest microphone row is eligible for removal. Removing the tail can reopen the preceding remote
-        // row; apply reports that earlier invalidation. The normal
-        // delayed-callback case is adjacent: a microphone copy opens, then
-        // the direct system result arrives and replaces it before it closes.
+        // identity. Only the newest microphone row is eligible for removal.
+        // Removing the tail can reopen the preceding remote row; apply
+        // reports that earlier invalidation. The normal delayed-callback
+        // case is adjacent: a microphone copy opens, then the direct system
+        // result arrives and replaces it before it closes.
         if let index = captions.indices.last,
             captions[index].channel == .microphone,
             MicBleedFilter.isBleed(
