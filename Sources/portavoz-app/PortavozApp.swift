@@ -8,11 +8,13 @@ struct PortavozApp: App {
     @State private var launch: AppLaunchModel
     @AppStorage("menuBarEnabled") private var menuBarEnabled = true
     private let runsIsolatedBenchmark: Bool
+    private let usesDisposableStore: Bool
 
     init() {
         let process = ProcessInfo.processInfo
         runsIsolatedBenchmark = BenchMode.runsIsolatedBenchmark(
             arguments: process.arguments)
+        usesDisposableStore = process.arguments.contains("-use-temp-store")
         ProductionSyncProcessWatchdog.runIfRequested(
             arguments: process.arguments)
         BenchResourceProcessWatchdog.runIfRequested(
@@ -60,7 +62,7 @@ struct PortavozApp: App {
                     .frame(minWidth: 900, minHeight: 560)
                     .tint(PVDesign.accent)
                     .background {
-                        if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
+                        if usesDisposableStore {
                             UITestMainWindowCapture()
                         }
                     }

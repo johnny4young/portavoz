@@ -1496,6 +1496,9 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(app.contains("NSApp.windows.first"))
         XCTAssertFalse(content.contains("NSApp.windows.first"))
         XCTAssertTrue(placement.contains("UITestMainWindowCapture: NSViewControllerRepresentable"))
+        XCTAssertTrue(placement.contains("override func viewDidAppear()"))
+        XCTAssertFalse(placement.contains("viewDidMoveToWindow"),
+                       "attachment precedes native frame restoration")
         XCTAssertFalse(placement.contains("NSApp.windows"))
         for file in ["CommandPalette.swift", "RecordingHUD.swift",
                      "DictationPanel.swift", "MeetingReminder.swift"] {

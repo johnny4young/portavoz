@@ -90,9 +90,7 @@ final class LibraryUITests: PortavozUITestCase {
             title.waitForExistenceFast(timeout: 15),
             "a repeated failure must return to the bounded recovery state")
         XCTAssertFalse(app.buttons["library-new-recording-button"].exists)
-        let mainWindow = app.windows["main-AppWindow-1"]
-        _ = try XCTUnwrap(mainWindow.frame.minX >= 0 && mainWindow.frame.minY >= 0 ? mainWindow : nil,
-                          "Recovery must share disposable placement even when ContentView cannot load")
+        try app.requireDisposableMainWindowOnZeroScreen()
         attachScreenshot(of: app, named: "database-launch-recovery")
     }
 
