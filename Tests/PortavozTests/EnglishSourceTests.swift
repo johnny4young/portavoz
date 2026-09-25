@@ -166,6 +166,14 @@ final class EnglishSourceTests: XCTestCase {
         _ relative: String,
         line: String
     ) -> Bool {
+        if relative == "Sources/portavoz-app/AppServices+DictationUITestFixture.swift" {
+            // Only the fixed Unicode delta sequence is fixture data, not prose.
+            return line.contains(#"[("Café", 8.0), ("C++", 8.2), (".", 8.4), ("Final", 16.0)]"#)
+        }
+        if relative == "Sources/portavoz-app/AppServices+DictationNativeUITestFixture.swift" {
+            // Only this fixed bilingual native-delivery payload is fixture data.
+            return line.contains("Don't delete — no borres: café, C++, 1.250,50 €.")
+        }
         if relative == "Sources/portavoz-app/AppServices+Showcase.swift" {
             // The -seed-showcase library is deliberately Spanish fictional
             // prose: the bilingual transcript is what the screenshot shows.

@@ -36,7 +36,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	test-exact-path-cross-host exact-path-cross-host test-exact-path-baseline exact-path-baseline \
 	test-meeting-detail-baseline meeting-detail-baseline \
 	test-recording-stress test-model-gated test-ui-real-audio test-ui test-ui-en test-ui-es \
-	test-ui-bilingual test-ui-scoped test-ui-build test-ui-run test-ui-changed \
+	test-ui-bilingual test-ui-native-dictation test-ui-scoped test-ui-build test-ui-run test-ui-changed \
 	test-ui-preflight project app install \
 	production-sync-qualification-app production-sync-qualification-init \
 	production-sync-qualification-stage production-sync-qualification-status \
@@ -795,6 +795,15 @@ test-ui-es: test-ui-scoped
 test-ui-bilingual: UI_TEST_LOCALES = en es
 test-ui-bilingual: UI_TEST_INTERRUPTION_REQUIRED = true
 test-ui-bilingual: test-ui-scoped
+
+## Cross-process paste is an explicit permission-dependent physical gate. It
+## uses the real app and disposable receiver, and fails if the app has not been
+## granted Accessibility. Never count the unattended catalog as this proof.
+test-ui-native-dictation:
+	@$(MAKE) --no-print-directory test-ui-scoped \
+		UI_TESTS="PortavozUITests/DictationUITests/testNativeInserterUsesDisposableReceiverAndClipboard" \
+		UI_TEST_LOCALES="en es" \
+		UI_TEST_RUNTIME_BUDGET="$(CURDIR)/docs/evidence/ui-test-native-dictation-runtime-budget.json"
 
 ## Permission-free negative controls use the same base/cleanup as real journeys.
 ## All controls share one small fixture build, not the product catalog.

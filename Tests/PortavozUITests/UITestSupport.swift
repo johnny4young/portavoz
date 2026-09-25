@@ -247,6 +247,18 @@ extension XCUIApplication {
         app.launchArguments += ["-simulate-app-entity-route", route.rawValue]
     }
 
+    /// Throws instead of failing so a misplaced window never reaches XCTest's
+    /// screenshot-failure teardown path.
+    @MainActor
+    func requireDisposableMainWindowOnZeroScreen() throws {
+        let window = windows["main-AppWindow-1"]
+        let contained = waitForUITestCondition(timeout: 5) {
+            window.exists && window.frame.minX >= 0 && window.frame.minY >= 0
+        }
+        _ = try XCTUnwrap(contained ? window : nil,
+                          "Restored disposable windows must stay on the zero screen before screenshots")
+    }
+
     @MainActor
     func launchPortavoz() {
         let shouldOpenSettings = launchArguments.contains("-portavoz-open-settings")

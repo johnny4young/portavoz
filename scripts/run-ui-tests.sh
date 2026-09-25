@@ -32,6 +32,21 @@ common=(
   -skipMacroValidation
 )
 
+# A certificate-backed local build can retain its designated requirement across
+# rebuilds. This never grants native Accessibility trust or changes CI defaults.
+signing_identity="${UI_TEST_CODE_SIGN_IDENTITY:-}"
+signing_team="${UI_TEST_DEVELOPMENT_TEAM:-}"
+if [[ -n "$signing_identity$signing_team" ]]; then
+  if [[ ! "$signing_identity" =~ ^[0-9a-fA-F]{40}$ ]] \
+      || [[ ! "$signing_team" =~ ^[A-Z0-9]{10}$ ]]; then
+    echo "UI signing requires both a 40-character certificate SHA-1 and a 10-character team ID." >&2
+    exit 2
+  fi
+  # SwiftPM-generated plugin/resource targets do not inherit the project's
+  # Manual style. Apply it alongside the identity, not just to the app target.
+  common+=("CODE_SIGN_STYLE=Manual" "CODE_SIGN_IDENTITY=$signing_identity" "DEVELOPMENT_TEAM=$signing_team")
+fi
+
 only_testing=()
 selector_count=0
 for test in $tests; do
@@ -214,6 +229,12 @@ for locale in $locales; do
   selector_label="$selector_count scoped selectors"
   if [[ -z "$tests" ]]; then
     selector_label="all tests"
+    # The real cross-process dictation delivery test requires a user-granted
+    # Accessibility decision for this exact disposable app. It is a separate
+    # explicit gate, not part of the unattended functional catalog.
+    test_args+=(
+      -skip-testing:PortavozUITests/DictationUITests/testNativeInserterUsesDisposableReceiverAndClipboard
+    )
   else
     test_args+=("${only_testing[@]}")
   fi

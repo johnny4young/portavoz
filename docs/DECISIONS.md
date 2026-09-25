@@ -19621,6 +19621,57 @@ computed through an unobserved defaults read. Actual mounted-sidebar assertions
 must target the selected navigation button, not another pane's title; update
 labels in place rather than resetting Settings or discarding review state.
 
+## D515 — Qualify dictation through its controller and an isolated receiver
+
+**Decision.** Inject session-scoped effects into the existing dictation controller
+rather than duplicating its workflow in test code. Reuse `AudioCaptureSource`
+and `LiveTranscriptionRuntime`; production composition retains shared runtime
+acquisition and release. Keep synthetic fixture selection in disposable app
+composition and suppress global hotkey/mouse registrations for all temporary
+meeting stores, including the Settings-only journey.
+
+**Why.** The previous dictation selector exercised Settings but never entered
+capture, final text assembly or insertion. Enabling that Settings fixture could
+also register the real host shortcut. A successful policy test cannot qualify an
+unvisited controller, and a synthetic inserter cannot qualify platform delivery.
+
+**Evidence boundary.** Controller tests replace only external effects. A separate
+Xcode-only receiver reads a named pasteboard through its native Paste action;
+the explicitly armed temporary app calls the production inserter with real AX
+inspection and keyboard events. XCTest's runner has a different sandbox context
+and cannot stand in for this native client. Fixture admission requires the exact
+launch flag and a UUID clipboard namespace; insertion is attempted at most once
+for the fixed receiver bundle. The real event pair is process-addressed to that
+receiver, not injected into the global stream: a named clipboard does not contain
+a misrouted global Paste shortcut. Process IDs that do not name a running application
+fail before clipboard mutation, secure-field inspection reads the addressed
+application's focus, and they never fall back to session routing. Production's session dispatch
+remains unchanged and is not qualified by this fixture. The user clipboard and
+library are untouched.
+App Accessibility must already be authorized; the journey fails explicitly
+rather than requesting, automating or bypassing consent. Neither level claims
+real-model ASR quality, and event dispatch alone does not qualify delivery.
+
+**Consequences.** Dictation sources select controller/native-delivery journeys
+as well as Settings. Existing clipboard ownership, trigger semantics, runtime
+policy and capture-loss behavior are not silently rewritten by this test seam.
+Each added journey receives a budget without widening the existing full gate.
+Lockfile changes also select the complete English catalog: the previous no-UI
+exemption could hide a dependency update that changed app behavior. The manifest
+retains its shared-harness bilingual requirement; localization and other shared
+harness changes retain that stronger fallback.
+
+Native-client validation may use an explicitly selected local certificate and
+team rather than the default ad-hoc code-hash identity. Validate both runner
+inputs before any build, keep CI defaults unchanged, and inspect the resulting
+designated requirement. This makes repeated user-authorized native validation
+maintainable without automating consent; the native gate still fails if the
+disposable app lacks Accessibility trust. No signing credential is persisted.
+
+D540 narrows the unattended selector claim: this permission-owned native case
+remains an explicit failing gate, not a hosted-catalog success.
+
+
 ## D523 — UI fixtures own explicit cross-process scratch, not runner containers
 
 A real seeded launch blocked its main thread while creating synthetic audio.
@@ -20100,6 +20151,134 @@ resource bundles as `Contents/Resources` bundles instead of flat directories;
 resolves resources through `Bundle`, which reads either. A future Xcode that
 removes the old label deletes the `#else` branch in one file. Decoding behavior is unchanged: greedy
 everywhere, same token caps.
+
+## D539 — Admit FluidAudio 0.15.8 only after matched product evidence
+
+**Date:** 2026-09-22
+
+**Context.** D516 fixed FluidAudio at 0.15.6 because a patch can change the
+decoder, caption seams and diarizer without changing Portavoz source. The upgrade
+review therefore compared preserved Release test binaries for 0.15.6, 0.15.7
+and 0.15.8 through the real Parakeet manager, `ParakeetSegmentMapper` and
+production coalescer over the same six public/synthetic English, Spanish, mixed
+and silence cells, with twelve repetitions and two passes. Version 0.15.7 was
+production-identical to 0.15.6. Version 0.15.8 improved every speech cell; mean
+production WER moved from 0.475694 to 0.420332 while the silence cell remained
+unchanged. Mean first update stayed 1.49 versus 1.48 seconds and mean completion
+stayed 33.95 versus 33.93 seconds. The measurements characterize this corpus;
+they are not a universal accuracy claim.
+
+The same exact public AMI sample and RTTM retained 7.6 percent DER at the
+0.25-second collar on both versions. Batch and live two-speaker model paths
+passed. Three matched process observations kept the candidate below the
+baseline's observed maxima for resident set and peak memory footprint; their
+medians differed by less than two percent. They are local content-free
+observations, not cross-host Sequoia/Tahoe certification. Stock FluidAudio
+0.16.1 could not enter the comparison: its NemoTextProcessing 0.3.1 XCFramework
+declares `Headers` but places `module.modulemap` under
+`Headers/CNemoTextProcessing`, so SwiftPM fails before compilation. Its speech
+source is otherwise identical to 0.15.8; Portavoz does not repair a malformed
+vendor binary in place to manufacture green evidence.
+
+**Decision.** Require exact FluidAudio 0.15.8 at revision
+`87a39dfe4068fef0f1c69bfe704b2b3ef4fbc5bc`. Keep the D516 explicit-review
+policy, adapter/import boundary, model artifacts, engine selection, live window
+configuration and deployment floor unchanged. Pin the revision in the
+architecture test as well as `Package.resolved`; a moved tag must fail closed.
+
+**Consequences.** Live dictation and meeting captions receive the reviewed
+streaming fixes without adding a model, network path or background resident
+engine. The vendor final-window replay was materially smaller in 0.15.8 but
+remained observable; it is not promoted to product output because Portavoz still
+treats its own mapped and coalesced result as authority. The unchanged silence
+hallucination remains a separate admission problem, not evidence against or in
+favor of this upgrade. Every future FluidAudio release still requires matched
+recognition, diarization, latency and memory evidence and may be rejected.
+
+---
+
+## D540 — Keep native dictation delivery outside unattended UI qualification
+
+**Context:** D515's real app-to-receiver journey correctly refuses to insert
+without Accessibility trust for the disposable app. GitHub-hosted macOS runners
+can automate XCTest but cannot grant that separate, user-owned TCC decision.
+The 124-case unattended catalog therefore deterministically fails before a
+paste attempt; treating that failure as a product defect or a skipped success
+would both misstate the evidence.
+
+**Decision:** the unattended feature/full bilingual catalog contains the 123
+permission-independent journeys. Its policy validator still discovers the
+native receiver test and rejects either its removal or its accidental return
+to unattended scope. The no-selector runner excludes only that exact test;
+explicit selectors are never filtered. `make test-ui-native-dictation` runs the
+real receiver journey in both languages and remains red without app TCC trust.
+Its own one-case runtime manifest retains the original 20-second ceiling,
+without polluting or widening the unattended catalog's 123 budgets.
+No mock paste, automatic TCC grant, retry-to-green, or aggregate substitute is
+accepted as native delivery evidence.
+
+**Consequences:** hosted EN/ES UI success qualifies the automatable controller,
+panel, Settings and other journeys, **not** cross-process insertion. The latter
+remains an explicit permission/field gate with its own positive receipt before
+claiming it works. Existing runtime budgets for unattended journeys stay fixed;
+the permission-gated journey is not counted in the unattended runtime total.
+
+---
+
+## D542 — Stacked UI PRs qualify their cumulative default-branch change
+
+**Context:** D429's first-attempt verification anchor prevents an unverified
+push from becoming the next incremental base. Its fallback was the PR base.
+For a stacked PR, that is the unmerged parent branch. A child documentation
+change could therefore earn a green no-UI or English-only hosted result while
+the full parent-plus-child diff against `main` requires bilingual XCUITest.
+An earlier child anchor is insufficient too: it may have qualified only the
+child diff under the old fallback rule.
+
+**Decision:** direct-to-default-branch PRs retain D429's artifact-backed
+incremental selection. For a PR targeting another branch, compare the head
+with its merge base against the fetched default branch on every push. Do not
+reuse a child verification anchor to narrow that cumulative set. Criss-cross
+history with several merge bases selects from their common ancestor, which only
+widens the set. If the default-branch ref or merge base is unavailable, fail
+scope selection with an error annotation rather than silently using the parent. Manual dispatch remains a complete bilingual
+run; no runtime budget, retry, or native-permission rule changes.
+
+**Consequences:** stacked pushes may repeat already covered parent journeys,
+but every child check covers the code that would enter `main`. Once the parent
+merges and the PR is retargeted, normal verified-ancestor selection resumes.
+The tiny synthetic Git integration test executes the resolver and real UI
+selector at the call site: the child changes only documentation while its
+parent changes Dictation Settings, and the parent journey must remain selected.
+
+---
+
+## D545 — Project dictation text from explicit caption invalidation
+
+**Context.** Rejoining every closed caption on every partial made projection
+work grow with prior dictation length. Characterization before optimization also
+disproved the documented frozen-prefix assumption: removing an open microphone
+echo can expose and extend the preceding remote row. A count-only cache would
+keep old text. Separately, cancellation could end the stream normally, so final
+assembly repopulated text after Cancel despite the guarded delivery path.
+
+**Decision.** Keep coalescer admission, overlap and row behavior unchanged, and
+return the earliest written row index from `apply`. App-local
+`DictationTranscriptProjection` skips closed-text publication on ordinary partials,
+appends newly closed rows, and rebuilds when the coalescer invalidates an earlier
+row. It retains the full admitted transcript for final delivery rather than
+copying private lookback constants or truncating user text. Final publication
+checks cancellation and session UUID before changing observable state. Cancel
+clears both projections synchronously before asynchronous teardown.
+
+**Validation contract.** Test the controller stream through final rules and
+cancel/restart with separate audio owners; include bilingual Unicode,
+punctuation, empty/noise input, length boundaries, delayed callbacks, same-count
+replacement and closed-row reopening. Compare intermediate text with full
+assembly and human-authored expected text. Synthetic burst timings and digests
+are projection evidence, not ASR or native latency. Meeting-consumer revision
+risks remain explicit in GAPS; decoder word loss/replay and window evaluations
+are not resolved by this change.
 
 ## D549 — Compact Meeting Detail preserves two usable reading surfaces
 
