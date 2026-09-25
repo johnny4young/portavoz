@@ -75,6 +75,30 @@ class UITestScopeTests(unittest.TestCase):
     def test_empty_change_set_requires_no_ui_runner(self):
         self.assertFalse(select_paths([]).required)
 
+    def test_cli_and_public_dictation_corpus_do_not_run_unrelated_ui(self):
+        for path in (
+            "Sources/portavoz-cli/CLI.swift",
+            "Sources/portavoz-cli/CLIBenchLive.swift",
+            "Fixtures/DictationValidation/public-synthetic-v1.json",
+            "Fixtures/DictationValidation/README.md",
+        ):
+            self.assertFalse(select_paths([path]).required, path)
+        selection = select_paths([
+            "Sources/portavoz-cli/CLI.swift",
+            "Fixtures/DictationValidation/public-synthetic-v1.json",
+            "Sources/portavoz-app/DictationController.swift",
+        ])
+        self.assertEqual(set(selection.tests), set(FEATURE_TESTS["dictation"]))
+        self.assertEqual(selection.locales, ("en",))
+
+    def test_live_benchmark_keeps_dictation_ui_without_weakening_unknown_fallback(self):
+        benchmark = select_paths(["Sources/TranscriptionKit/LiveTranscriptionBench.swift"])
+        self.assertEqual(set(benchmark.tests), set(FEATURE_TESTS["dictation"]))
+        self.assertEqual(benchmark.locales, ("en",))
+        unknown = select_paths(["Sources/TranscriptionKit/UnknownLiveOwner.swift"])
+        self.assertEqual(unknown.tests, ALL_TESTS)
+        self.assertEqual(unknown.locales, ("en",))
+
     def test_github_summary_is_bounded_without_weakening_selected_evidence(self):
         reasons = tuple(
             f"Sources/Feature{index}.swift: " + ("mapped-impact " * 80).strip()
