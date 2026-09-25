@@ -15551,12 +15551,12 @@
         }
       }
     },
-    "Waiting for recording to end": {
+    "Waiting for capture to end": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esperando a que termine la grabación"
+            "value": "Esperando a que termine la captura"
           }
         }
       }

@@ -679,6 +679,29 @@ bytes and categorical memory tier are not compared against invented limits;
 accepted GOV-0 evidence must define numeric budgets before broader adapters
 can enforce them.
 
+### Capture-admission ownership
+
+The app's capture-admission mirror is independent of model residency. It
+combines the recording phase with an exact UUID for each dictation session.
+Dictation acquires its owner synchronously after insertion eligibility and
+before asynchronous preparation. Cancellation does not declare the app idle:
+the session ends its owner only after its own task and native microphone stop
+return. A cancelled predecessor can drain while a replacement owns another
+token; duplicate or stale completion cannot retire the replacement or the
+meeting. The shared composition installs this boundary for both production
+and disposable dictation dependencies, outside SwiftUI and audio callbacks.
+Both dependency constructors require the capture-admission callback; only
+standalone controller unit fixtures pass an explicit inert callback.
+
+Recording and dictation transitions reconcile the aggregate capture state.
+Semantic and memory-graph maintenance, standing briefs, sync, backup and model
+admission continue reading the existing mirror; ending a meeting cannot resume
+them while dictation is protected. Existing model-generation/use leases and
+idle-release delays are unchanged. Capture ownership does not itself guarantee
+transcription completeness, destination identity or native delivery.
+The background-work waiting status names capture rather than only a meeting
+recording, so it remains accurate while dictating with no meeting open.
+
 ### Pure model-residency lifecycle (D158)
 
 `PortavozCore.ResourceModelResidencyLedger` is the deterministic lifecycle

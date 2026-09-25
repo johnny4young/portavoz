@@ -20279,3 +20279,32 @@ assembly and human-authored expected text. Synthetic burst timings and digests
 are projection evidence, not ASR or native latency. Meeting-consumer revision
 risks remain explicit in GAPS; decoder word loss/replay and window evaluations
 are not resolved by this change.
+
+---
+
+## D552 — Combine capture admission by owner, not by last controller event
+
+**Date:** 2026-09-24
+
+**Context.** Meeting recording and global dictation share maintenance and model
+admission, but a single last-written recording phase cannot represent both
+captures. Ending a meeting could announce idle while dictation still owned the
+microphone; cancelling one dictation could do the same to its replacement while
+the predecessor's native source was still stopping.
+
+**Decision.** Keep the recording phase and exact dictation-owner UUIDs separate
+inside the existing synchronized capture mirror. Admit dictation synchronously
+after insertion eligibility and before any asynchronous preparation. Its owner
+is retired only after that session's native source Stop has returned, including
+on cancellation and error. Duplicate or stale retirement cannot remove another
+owner. Meeting transitions update only the recording phase; existing background
+consumers read the aggregate state. Both live and disposable dictation
+composition require the capture-admission callback explicitly, so a future
+caller cannot silently omit it. Model-use leases remain independent.
+
+**Consequences.** Search reconciliation, standing briefs, sync, backup and model
+admission defer while either capture owner remains active. The boundary adds no
+database, new scheduler, network request or lock in an audio callback. Tests
+must enter real `AppServices` composition and the controller, cover both
+completion orders and held native teardown, and not treat synthetic audio as
+physical-device qualification.

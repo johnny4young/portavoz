@@ -37,6 +37,15 @@ Feature parity is a permanent constraint: audio and user-owned data remain
 discoverable when transcription, diarization, generation, indexing, sync, or an
 external integration fails.
 
+At the macOS composition boundary, capture admission combines the meeting's
+capture status with session-owned dictation tokens. A dictation token survives cancelled
+preparation and native teardown, independently of another dictation or meeting.
+Existing background owners consume that aggregate capture mirror; model-use
+leases remain a separate generation-fenced responsibility. The dependency
+constructor requires the capture-admission callback in both live and disposable
+composition so a new caller cannot silently omit ownership. Neither SwiftUI nor
+the realtime audio callback coordinates this ownership.
+
 ## Current module graph
 
 `portavoz-app` and `portavoz-cli` are the current composition roots. They link

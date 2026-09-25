@@ -19,8 +19,13 @@ struct DictationSessionDependencies {
     var insert: (String) async -> TextInserter.InsertionResult
     var defaults: UserDefaults
     var now: () -> Date = Date.init
+    /// Capture admission is independent of the model's active-use lease.
+    /// Its completion belongs to this session, never the controller's next one.
+    var beginCapture: () -> () -> Void
 
-    static func live(services: AppServices) -> Self {
+    static func live(
+        services: AppServices, beginCapture: @escaping () -> () -> Void
+    ) -> Self {
         Self(
             makeMicrophone: {
                 let source = MicrophoneSource()
@@ -33,6 +38,7 @@ struct DictationSessionDependencies {
             canInsert: { TextInserter.canInsert(promptIfNeeded: true) },
             targetName: { NSWorkspace.shared.frontmostApplication?.localizedName },
             insert: { await TextInserter.insert($0) },
-            defaults: .standard)
+            defaults: .standard,
+            beginCapture: beginCapture)
     }
 }
