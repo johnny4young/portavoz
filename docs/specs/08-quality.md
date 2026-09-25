@@ -92,7 +92,14 @@ the PR diff and allocates macOS UI runners only when product presentation is
 affected: one job builds the exact products once into an `xctestproducts`
 bundle, one matrix lane per selected locale restores it and runs
 `test-without-building`, and one Linux classifier gates on every lane's
-receipts (D496). Because a prebuilt-products run does not hand the XCTest
+receipts (D496). Direct-to-main PRs may advance the selection base only from a
+first-attempt verified ancestor. A stacked PR always selects from the merge
+base of its head and the fetched default branch, including unmerged parent
+changes. It ignores earlier child anchors because they may prove only the
+child diff; several criss-cross merge bases widen to their common ancestor,
+and an unavailable default-branch ref fails selection rather than falling back
+to the parent (D542). Manual dispatch selects the complete
+bilingual catalog. Because a prebuilt-products run does not hand the XCTest
 process the app's language, bilingual expectations read
 `UITestLocale.environmentLocale` — the locale the run declared — rather than
 the ambient `Locale.current`; `scripts/check-repository-hygiene.sh` rejects the
@@ -161,6 +168,21 @@ final deterministic replacements with literal regex metacharacters, effective
 hints at the engine invocation, punctuation-only output and late model
 preparation after cancellation. All preference changes use a volatile domain.
 Fixture selection is checked both with and without temporary composition.
+
+`DictationStreamingProjectionTests` drives the actual controller with an explicitly
+bounded delta stream: bilingual punctuation and final rules, noise/empty inputs,
+279/280/281-character boundaries, older callbacks, same-count replacement and a
+remote/microphone/direct sequence that reopens a closed row. It waits for a changing
+sentinel after ignored input rather than counting an unchanged screen as receipt.
+Cancellation tests await old runtime teardown and restart with a separate audio
+source; cancelled streams must not republish final text. Projection parity tests
+compare each intermediate state with full coalescer assembly and explicit golden
+cases. The opt-in `PORTAVOZ_DICTATION_PROJECTION_BENCHMARK=1` lane measures a bounded
+synthetic burst through that controller at three prefix sizes with output digests.
+It is not an ASR, native destination, real UI latency or memory qualification.
+The streaming real-app journey checks the complete multi-row EN/ES projection,
+cancellation and restart; its 20-second budget is an initial
+candidate limit, not an increased full-suite allowance.
 
 `DictationUITests` owns a dedicated unattended `dictation` selector alongside
 the existing Settings assertions. Its panel journey uses the production menu-bar action in
@@ -6221,7 +6243,7 @@ and all other generation errors propagate unchanged.
 The canonical six-class model gate now compiles and runs in Release. Its
 Parakeet case accepts any spoken WAV through segment count, lexical-character
 count, and timestamp bounds only. DEBUG builds skip before opening that
-fixture because FluidAudio 0.15.6 has no public log-level control and mirrors
+fixture because FluidAudio 0.15.8 has no public log-level control and mirrors
 partial transcript diagnostics to stderr. The runner assigns captured logs
 mode 0600, rejects any FluidAudio DEBUG line, withholds raw failure output, and
 removes each log after normal completion or shell interruption. Signal
