@@ -17,6 +17,7 @@ final class DictationMicrophoneReadiness {
         case permissionRequired
         case noAudio
         case invalidAudio
+        case interrupted
 
         var message: String {
             switch self {
@@ -26,6 +27,8 @@ final class DictationMicrophoneReadiness {
                 L10n.text("No microphone audio arrived. Check the microphone in Audio settings and try again.")
             case .invalidAudio:
                 L10n.text("The microphone sent unusable audio. Check the input device and try again.")
+            case .interrupted:
+                L10n.text("Audio capture was interrupted. Nothing was inserted. Try dictating again.")
             }
         }
     }
@@ -80,6 +83,10 @@ final class DictationMicrophoneReadiness {
         reject(.noAudio)
     }
 
+    func failCapture() {
+        reject(firstFrameAt == nil ? .noAudio : .interrupted)
+    }
+
     func pump(
         stream: AsyncThrowingStream<AudioChunk, Error>,
         feed: AsyncStream<AudioChunk>.Continuation,
@@ -104,10 +111,17 @@ final class DictationMicrophoneReadiness {
                         peak = max(peak, abs(sample))
                     }
                     guard await accept(), !Task.isCancelled else { break }
-                    feed.yield(chunk)
+                    guard case .enqueued = feed.yield(chunk) else {
+                        if !Task.isCancelled { await failCapture() }
+                        feed.finish()
+                        return
+                    }
                     await updateMeter(peak)
                 }
-            } catch {}
+            } catch {
+                // An upstream CancellationError is not a user cancellation.
+                if !Task.isCancelled { await failCapture() }
+            }
             // A device can close or fail its stream before the deadline fires.
             // Finishing the feed alone would make the controller complete an
             // apparently successful, empty dictation without recovery guidance.

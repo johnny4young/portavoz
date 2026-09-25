@@ -88,6 +88,7 @@ final class DictationController {
     private var feed: AsyncStream<AudioChunk>.Continuation?
     private var session: Task<Void, Never>?
     private var stopTask: Task<Void, Never>?
+    private var stopIssuedSessionID: UUID?
     private var failureDismissTask: Task<Void, Never>?
     private var activeSessionID: UUID?
     private let panel = DictationPanelController()
@@ -256,6 +257,7 @@ final class DictationController {
         microphoneReadiness = nil
         stopTask?.cancel()
         stopTask = nil
+        stopIssuedSessionID = nil
         let sessionID = UUID()
         activeSessionID = sessionID
         sessionClock = dependencies.now
@@ -287,6 +289,7 @@ final class DictationController {
             self.microphone = input.source
             let readiness = makeMicrophoneReadiness(id: id, dependencies: dependencies)
             defer { readiness.finish() }
+            monitorCaptureFailure(input.source, id: id)
             readiness.beginDeadline(wait: dependencies.waitForFirstBufferDeadline)
             await input.warmUp()
             try Task.checkCancellation()
@@ -299,11 +302,8 @@ final class DictationController {
             // Stream construction can precede its first hardware callback.
             // Only an admitted nonempty buffer starts the capture clock.
 
-            // Bounded like every other live audio handoff (the recording lane
-            // uses the same 128-buffer window). The pump never suspends on the
-            // consumer, so an unbounded stream lets a stalled engine grow the
-            // backlog for as long as dictation runs; dropping the oldest audio
-            // is the same trade live transcription already makes.
+            // Dictation has no durable original to replay. A bounded relay
+            // remains safe only when every dropped chunk revokes delivery.
             let (audio, feed) = AsyncStream.makeStream(
                 of: AudioChunk.self,
                 bufferingPolicy: .bufferingNewest(128))
@@ -318,6 +318,7 @@ final class DictationController {
             await pump?.value
             try Task.checkCancellation()
             guard activeSessionID == id else { return }
+            try verifyCaptureIntegrity(source: input.source, id: id)
             await deliver(sessionID: id, dependencies: dependencies)
         } catch is CancellationError {
             localFeed?.finish()
@@ -336,24 +337,6 @@ final class DictationController {
                     "Dictation failed: %@", error.localizedDescription))
             }
         }
-    }
-
-    private func makeMicrophoneReadiness(
-        id: UUID, dependencies: DictationSessionDependencies
-    ) -> DictationMicrophoneReadiness {
-        let readiness = DictationMicrophoneReadiness(now: dependencies.now, onReady: { [weak self] in
-            guard let self, activeSessionID == id else { return }
-            phase = .listening
-        }, onFailure: { [weak self] failure in
-            guard let self, activeSessionID == id else { return }
-            session?.cancel()
-            feed?.finish()
-            let source = microphone
-            Task { await source?.stop() }
-            failSession(id: id, message: failure.message, autoDismiss: false)
-        })
-        microphoneReadiness = readiness
-        return readiness
     }
 
     /// Second hotkey press: stop the mic; the drained stream delivers.
@@ -379,6 +362,7 @@ final class DictationController {
                 return
             }
             guard let self, self.activeSessionID == sessionID else { return }
+            self.stopIssuedSessionID = sessionID
             await microphone?.stop()
         }
     }
@@ -395,6 +379,7 @@ final class DictationController {
         mouseOwnsSession = false
         stopTask?.cancel()
         stopTask = nil
+        stopIssuedSessionID = nil
         failureDismissTask?.cancel()
         failureDismissTask = nil
         session?.cancel()
@@ -423,6 +408,7 @@ final class DictationController {
         microphone = nil
         feed = nil
         stopTask = nil
+        stopIssuedSessionID = nil
         microphoneReadiness?.finish()
         microphoneReadiness = nil
         guard DictationAssembler.hasLexicalContent(text) else {
@@ -478,6 +464,7 @@ final class DictationController {
         microphone = nil
         feed = nil
         stopTask = nil
+        stopIssuedSessionID = nil
         microphoneReadiness?.finish()
         microphoneReadiness = nil
         mouseOwnsSession = false
@@ -508,6 +495,12 @@ final class DictationController {
 }
 
 private extension DictationController {
+    private func monitorCaptureFailure(_ source: any AudioCaptureSource, id: UUID) {
+        (source as? any CaptureReportingSource)?.setCaptureFailureHandler { [weak self] in
+            Task { @MainActor [weak self] in self?.failCapture(id: id) }
+        }
+    }
+
     private func consumeCaptions(
         _ audio: AsyncStream<AudioChunk>, runtime: LiveTranscriptionRuntime,
         id: UUID, dependencies: DictationSessionDependencies
@@ -543,5 +536,44 @@ private extension DictationController {
             vocabulary: vocabulary,
             meetingID: MeetingID(),
             filtersLiveScript: true)
+    }
+
+    private func makeMicrophoneReadiness(
+        id: UUID, dependencies: DictationSessionDependencies
+    ) -> DictationMicrophoneReadiness {
+        let readiness = DictationMicrophoneReadiness(now: dependencies.now, onReady: { [weak self] in
+            guard let self, activeSessionID == id else { return }
+            phase = .listening
+        }, onFailure: { [weak self] failure in
+            guard let self, activeSessionID == id else { return }
+            session?.cancel()
+            stopTask?.cancel()
+            feed?.finish()
+            let source = microphone
+            Task { await source?.stop() }
+            failSession(id: id, message: failure.message, autoDismiss: false)
+        })
+        microphoneReadiness = readiness
+        return readiness
+    }
+
+    private func failCapture(id: UUID) {
+        // Once delivery relinquishes capture, a late report cannot promise
+        // to undo an already-dispatched edit.
+        guard activeSessionID == id, microphone != nil else { return }
+        microphoneReadiness?.failCapture()
+    }
+
+    private func verifyCaptureIntegrity(source: any AudioCaptureSource, id: UUID) throws {
+        if (source as? any CaptureReportingSource)?.captureReport.failure != nil {
+            failCapture(id: id)
+            throw CancellationError()
+        }
+        // EOF without our actual Stop call can be device teardown, even
+        // when the source omits a failure report.
+        guard stopIssuedSessionID == id else {
+            failCapture(id: id)
+            throw CancellationError()
+        }
     }
 }
