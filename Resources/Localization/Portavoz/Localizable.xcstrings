@@ -1601,16 +1601,6 @@
         }
       }
     },
-    "Automatic (Spanish + English)": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Automático (español + inglés)"
-          }
-        }
-      }
-    },
     "Automatic action history": {
       "localizations": {
         "es": {
@@ -12867,6 +12857,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Español"
+          }
+        }
+      }
+    },
+    "Spanish and English can still mix. This setting mainly keeps out other writing systems.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El español y el inglés pueden seguir mezclándose. Este ajuste sobre todo evita otros sistemas de escritura."
           }
         }
       }

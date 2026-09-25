@@ -432,6 +432,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "dictation": (
         test_id("DictationUITests", "testClipboardRefusalKeepsRichContentAndExplainsRecovery"),
+        test_id("DictationUITests", "testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart"),
         test_id("DictationUITests", "testDictationPanelCancelsAndRestartsWithoutGlobalInput"),
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
         test_id("SettingsUITests", "testDictationRecoversShortcutConflictAndRefreshesHelp"),

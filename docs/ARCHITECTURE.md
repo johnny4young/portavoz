@@ -128,6 +128,17 @@ self-contained over system frameworks and carries no module dependency.
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners including recording-scoped proactive-assist state, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
 | `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
 
+### Parakeet job preparation
+
+Inside `TranscriptionKit`, each Parakeet transcription job receives a fresh native
+manager from an internal preparation closure. Production closures share only
+verified immutable model weights, not decoder state. Failed preparation owns its
+cleanup; a prepared manager transfers to the job for streaming/batch execution
+and cleanup. No vendor type or preparation hook crosses the module's public
+boundary. Tests can enter the real engine methods without loading model assets
+and observe configuration requests and preparation failures. That evidence does
+not replace real-model quality, latency, or cancellation measurements.
+
 ### First-listen speech lifetime
 
 The onboarding First Listen resolves the optional macOS 26 SpeechAnalyzer asset
@@ -1058,6 +1069,16 @@ later state mutation and delivery side effect. Audio sample reduction and feed
 delivery stay off the main actor; only the observable meter update crosses back.
 Failure-dismiss tasks are single-owner and cancelled on restart so an older
 error cannot dismiss a newer session.
+`DictationTranscriptProjection` retains a session-local confirmed prefix and
+reads the mutable tail from admitted captions. `CaptionCoalescer.apply` reports
+the earliest written row index: ordinary partials do not reconstruct the prefix,
+newly closed rows append, and an earlier invalidation rebuilds the affected
+projection. Removing an open microphone echo can expose and extend the previous
+remote row; row-count growth is not a revision signal. Final publication checks
+cancellation and session identity before touching observable text, including
+streams that end normally on cancellation. Cancel clears both text projections
+before its asynchronous teardown.
+
 `TextInserter` delegates temporary clipboard ownership to the app-bound
 `DictationClipboard`: bounded, ordered, all-or-nothing snapshots plus an exclusive
 per-board restoration window. Platform-call injection replaces only modifier,
@@ -5925,8 +5946,9 @@ production only through the existing transcription and diarization adapters:
 `ParakeetEngine`, `ParakeetSegmentMapper`,
 `NemotronLatin1120Engine`, `PyannoteDiarizer` and `DiarizationEvaluation`. Core,
 ApplicationKit and executable presentation consume Portavoz contracts instead. In
-the test tree the vendor import is confined to the two engine suites,
-`TranscriptionTests` and `NemotronLatin1120Tests`.
+the test tree the vendor import is confined to the engine-specific suites,
+`TranscriptionTests`, `ParakeetLanguageConfigurationTests` and
+`NemotronLatin1120Tests`.
 
 The checked-in resolver revision and the architectural import inventory are tested
 together, over `Sources` and `Tests`, against code with comments and string

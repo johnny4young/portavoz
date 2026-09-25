@@ -59,7 +59,7 @@ does not relax the full-suite or p95 limits.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 124 UI cases, including portable-settings,
+The unattended catalog contains 125 UI cases, including portable-settings,
 shortcut-recovery, and the real dictation-panel journey. The one native
 dictation-receiver test is discovered and kept outside this catalog because
 its app process needs a user-granted Accessibility TCC decision. Its explicit
@@ -182,6 +182,21 @@ hints at the engine invocation, punctuation-only output and late model
 preparation after cancellation. All preference changes use a volatile domain.
 Fixture selection is checked both with and without temporary composition.
 
+`DictationStreamingProjectionTests` drives the actual controller with an explicitly
+bounded delta stream: bilingual punctuation and final rules, noise/empty inputs,
+279/280/281-character boundaries, older callbacks, same-count replacement and a
+remote/microphone/direct sequence that reopens a closed row. It waits for a changing
+sentinel after ignored input rather than counting an unchanged screen as receipt.
+Cancellation tests await old runtime teardown and restart with a separate audio
+source; cancelled streams must not republish final text. Projection parity tests
+compare each intermediate state with full coalescer assembly and explicit golden
+cases. The opt-in `PORTAVOZ_DICTATION_PROJECTION_BENCHMARK=1` lane measures a bounded
+synthetic burst through that controller at three prefix sizes with output digests.
+It is not an ASR, native destination, real UI latency or memory qualification.
+The streaming real-app journey checks the complete multi-row EN/ES projection,
+cancellation and restart; its 20-second budget is an initial
+candidate limit, not an increased full-suite allowance.
+
 `DictationUITests` owns a dedicated unattended `dictation` selector alongside
 the existing Settings assertions. Its panel journey uses the production menu-bar action in
 the disposable main-window host and cancels/restarts the actual controller.
@@ -210,7 +225,7 @@ or destination identity fencing. The presence of this test is not evidence that
 the native gate passed. No general clipboard, real meeting, model download or microphone participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 124 unattended cases;
+`make test-ui-bilingual` and scoped hosted runs select the 125 unattended cases;
 `make test-ui-native-dictation` selects the one real receiver case in EN and ES.
 The catalog policy requires that case to remain discoverable but disjoint from
 unattended selectors. The runner excludes it only when no explicit selectors
