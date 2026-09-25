@@ -333,7 +333,8 @@ final class DictationController {
         return TranscriptionHints(
             language: ["es", "en"].contains(languageSetting) ? languageSetting : nil,
             vocabulary: vocabulary,
-            meetingID: MeetingID())
+            meetingID: MeetingID(),
+            filtersLiveScript: true)
     }
 
     private func makeAudioPump(

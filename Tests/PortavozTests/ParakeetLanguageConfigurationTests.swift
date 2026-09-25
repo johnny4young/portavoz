@@ -40,7 +40,8 @@ struct ParakeetLanguageConfigurationTests {
         let audio = AsyncStream<AudioChunk> { $0.finish() }
 
         await #expect(throws: PreparationFailure.live) {
-            for try await _ in engine.transcribe(audio, hints: .init(language: language.requested)) {
+            for try await _ in engine.transcribe(
+                audio, hints: .init(language: language.requested, filtersLiveScript: true)) {
                 Issue.record("Preparation failure must not emit a transcript segment")
             }
         }
@@ -54,6 +55,25 @@ struct ParakeetLanguageConfigurationTests {
         #expect(configuration.minContextForConfirmation == 10)
         #expect(configuration.confirmationThreshold == 0.8)
         #expect(configuration.tdtConfig == nil)
+    }
+
+    @Test(arguments: ["es", "en", "ru", "el"])
+    func meetingLanguageLabelsSegmentsWithoutFilteringLiveScript(_ language: String) async throws {
+        let observed = OSAllocatedUnfairLock<SlidingWindowAsrConfig?>(initialState: nil)
+        let engine = ParakeetEngine(
+            prepareLiveManager: { configuration in
+                observed.withLock { $0 = configuration }
+                throw PreparationFailure.live
+            },
+            prepareBatchManager: { _ in throw PreparationFailure.unexpectedRoute })
+
+        await #expect(throws: PreparationFailure.live) {
+            for try await _ in engine.transcribe(
+                AsyncStream { $0.finish() }, hints: .init(language: language, meetingID: MeetingID())) {
+                Issue.record("Preparation failure must not emit a transcript segment")
+            }
+        }
+        #expect(try #require(observed.withLock { $0 }).language == nil)
     }
 
     @Test
@@ -74,7 +94,7 @@ struct ParakeetLanguageConfigurationTests {
                 group.addTask {
                     await #expect(throws: PreparationFailure.live) {
                         for try await _ in engine.transcribe(
-                            AsyncStream { $0.finish() }, hints: .init(language: language)) {
+                            AsyncStream { $0.finish() }, hints: .init(language: language, filtersLiveScript: true)) {
                             Issue.record("Preparation failure must not yield a segment")
                         }
                     }
@@ -103,6 +123,6 @@ struct ParakeetLanguageConfigurationTests {
         }
         let configuration = try #require(observed.withLock { $0 })
         #expect(configuration.parallelChunkConcurrency == 1)
-        #expect(configuration.melChunkContext == false)
+        #expect(configuration.melChunkContextOverride == false)
     }
 }

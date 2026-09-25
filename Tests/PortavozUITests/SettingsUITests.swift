@@ -394,8 +394,8 @@ final class SettingsUITests: PortavozUITestCase {
         let languageSupport = app.staticTexts["settings-dictation-language-support"]
         XCTAssertTrue(languageSupport.waitForExistenceFast(timeout: 5))
         let expectedSupport = UITestLocale.environmentLocale == "es"
-            ? "Parakeet filtra alfabetos, no idiomas. El español y el inglés pueden seguir reconociéndose juntos."
-            : "Parakeet filters alphabets, not languages. Spanish and English can still be recognized together."
+            ? "El español y el inglés pueden seguir mezclándose. Este ajuste sobre todo evita otros sistemas de escritura."
+            : "Spanish and English can still mix. This setting mainly keeps out other writing systems."
         XCTAssertTrue(
             app.staticTexts[expectedSupport].waitForExistenceFast(timeout: 5),
             "the actual Audio pane must render the localized capability boundary")

@@ -137,7 +137,7 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
                     // Parakeet's hint filters writing systems, not languages
                     // sharing an alphabet: Spanish and English remain multilingual.
                     let configuration = Self.liveWindowConfig.applying(
-                        language: hints.language.flatMap { Language(rawValue: $0) })
+                        language: hints.filtersLiveScript == true ? Self.fluidLanguage(hints) : nil)
                     let manager = try await prepareLiveManager(configuration)
                     preparedManager = manager
                     try await manager.startStreaming(source: .microphone)
@@ -178,6 +178,10 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
             }
             continuation.onTermination = { _ in job.cancel() }
         }
+    }
+
+    private static func fluidLanguage(_ hints: TranscriptionHints) -> Language? {
+        hints.language.flatMap { Language(rawValue: $0) }
     }
 
     private static func consume(
@@ -247,7 +251,7 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
         )
         let manager = try await prepareBatchManager(config)
 
-        let language = hints.language.flatMap { Language(rawValue: $0) }
+        let language = Self.fluidLanguage(hints)
         var decoderState = try TdtDecoderState()
         let started = Date()
         let result = try await manager.transcribe(url, decoderState: &decoderState, language: language)

@@ -1601,16 +1601,6 @@
         }
       }
     },
-    "Automatic (Spanish + English)": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Automático (español + inglés)"
-          }
-        }
-      }
-    },
     "Automatic action history": {
       "localizations": {
         "es": {
@@ -9019,16 +9009,6 @@
         }
       }
     },
-    "Parakeet filters alphabets, not languages. Spanish and English can still be recognized together.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Parakeet filtra alfabetos, no idiomas. El español y el inglés pueden seguir reconociéndose juntos."
-          }
-        }
-      }
-    },
     "Past 24 hours": {
       "localizations": {
         "es": {
@@ -12867,6 +12847,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Español"
+          }
+        }
+      }
+    },
+    "Spanish and English can still mix. This setting mainly keeps out other writing systems.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El español y el inglés pueden seguir mezclándose. Este ajuste sobre todo evita otros sistemas de escritura."
           }
         }
       }

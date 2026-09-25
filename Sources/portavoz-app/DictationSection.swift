@@ -34,9 +34,7 @@ struct DictationSection: View {
                     Text("English").tag("en")
                 }
                 .accessibilityIdentifier("settings-dictation-language")
-                Text(
-                    "Parakeet filters alphabets, not languages. Spanish and English can still be recognized together."
-                )
+                Text("Spanish and English can still mix. This setting mainly keeps out other writing systems.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

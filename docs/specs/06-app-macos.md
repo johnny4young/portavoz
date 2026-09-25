@@ -2663,11 +2663,13 @@ Capture timing starts when the microphone stream actually opens, not when model 
 
 **Dictation language preference:** `dictationLanguage` accepts {es, en}; other
 stored values mean automatic. The picker retains these preference values and
-labels automatic without suggesting an es/en-only candidate set. The live
-Parakeet adapter passes the hint to `SlidingWindowAsrConfig.language`, matching
-the existing batch path's alphabet-based token filter. Spanish and English
+labels automatic without suggesting an es/en-only candidate set. Dictation
+opts into `TranscriptionHints.filtersLiveScript`, so the live Parakeet adapter
+passes the hint to `SlidingWindowAsrConfig.language`, matching the existing
+batch path's alphabet-based token filter; meeting live captions do not opt in. Spanish and English
 share Latin script: neither selection locks recognition to one language or
-translates text. Settings states this limit next to the picker through
+translates text. Settings states this limit in plain words next to the picker (Spanish and English can
+still mix; the setting mainly keeps out other writing systems) through
 `settings-dictation-language-support`, with an EN/ES XCUITest assertion.
 `TranscriptSegment.language` remains the requested hint, not a measured language
 classification. The default stays automatic and no meeting preference changes.

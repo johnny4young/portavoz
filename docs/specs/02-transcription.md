@@ -170,9 +170,12 @@ challenger or change model weights.
 ## Live: ParakeetEngine + mapper
 
 - Custom sliding window **left 11 s / chunk 1.0 s / right 0.4 s** (≤ 15 s model limit). FluidAudio's `.streaming` preset does NOT work: its `hypothesisChunkSeconds` is dead code (it emits only on `chunkSeconds` = 11 s → 13+ s latency).
-- A supported `TranscriptionHints.language` is passed to each live manager's
-  `SlidingWindowAsrConfig.language`; absent or unsupported values leave the
-  configuration unhinted. The existing window sizes and confirmation policy do
+- When `TranscriptionHints.filtersLiveScript` is true, a supported
+  `TranscriptionHints.language` is passed to the live manager's
+  `SlidingWindowAsrConfig.language`; absent, unsupported or non-opted-in hints
+  leave the configuration unhinted. Only dictation opts in: a fixed meeting
+  language still only labels live-caption segments, so a meeting fixed to a
+  non-Latin language never drops English words from its captions. The existing window sizes and confirmation policy do
   not change. FluidAudio's v3 hint filters writing systems, not same-alphabet
   languages: Spanish and English both allow Latin-script text. It is not
   translation, a strict language lock, or a quality guarantee.
