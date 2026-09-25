@@ -29,11 +29,11 @@ let package = Package(
         // caption behavior, so an upgrade needs matched ASR, diarization and
         // resource evidence. A minor bump is categorically riskier still —
         // FluidAudio renames public types across minors (0.12 → 0.15 did).
-        // 0.15.5 shipped the upstream #732 type-checker fix that replaced our
-        // old revision pin.
+        // 0.15.8 is the reviewed D539 upgrade: matched product-path ASR improved
+        // while 0.16.1 remains inadmissible because its binary target is malformed.
         .package(
             url: "https://github.com/FluidInference/FluidAudio.git",
-            exact: "0.15.6"),
+            exact: "0.15.8"),
         // SQLite toolkit (MIT) — D4: GRDB + FTS5, never SwiftData.
         .package(url: "https://github.com/groue/GRDB.swift.git", .upToNextMajor(from: "7.11.1")),
         // Whisper on CoreML (MIT) for the quality re-pass (D7). Pinned
@@ -189,7 +189,7 @@ let package = Package(
                 .product(name: "GRDB", package: "GRDB.swift"),
             ],
             path: "Tests",
-            exclude: ["PortavozUITests", "UIInterruptionFixtures", "Tooling"],
+            exclude: ["PortavozUITests", "PortavozDictationReceiver", "UIInterruptionFixtures", "Tooling"],
             sources: ["PortavozTests", "Support"]
         ),
     ]

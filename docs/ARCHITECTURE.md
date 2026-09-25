@@ -128,6 +128,17 @@ self-contained over system frameworks and carries no module dependency.
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners including recording-scoped proactive-assist state, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
 | `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
 
+### Parakeet job preparation
+
+Inside `TranscriptionKit`, each Parakeet transcription job receives a fresh native
+manager from an internal preparation closure. Production closures share only
+verified immutable model weights, not decoder state. Failed preparation owns its
+cleanup; a prepared manager transfers to the job for streaming/batch execution
+and cleanup. No vendor type or preparation hook crosses the module's public
+boundary. Tests can enter the real engine methods without loading model assets
+and observe configuration requests and preparation failures. That evidence does
+not replace real-model quality, latency, or cancellation measurements.
+
 ### First-listen speech lifetime
 
 The onboarding First Listen resolves the optional macOS 26 SpeechAnalyzer asset
@@ -168,6 +179,34 @@ formats 2 and 3. The collector validates the host's closed schema before atomic
 publication rather than ignoring new fields. A producer-to-consumer test passes
 an actual AppServices export through both consumers without converting synthetic
 data into a field qualification.
+
+### Dictation session test boundary
+
+`DictationController` owns the same session, coalescing, final text rules and
+cancellation path for production and disposable tests. Its session dependencies
+provide audio preparation, the existing `LiveTranscriptionRuntime` lease,
+permission/destination/insertion effects, preferences and the capture clock.
+Explicit combined speech/diarization readiness stays in the live-speech
+composition extension. Production composition still acquires and finishes the shared live-speech lease;
+this seam neither selects a different engine nor moves platform types into Core.
+
+Temporary meeting-store composition never registers Carbon hotkeys or mouse
+event taps. The explicit dictation fixture supplies synthetic PCM and a bounded
+caption producer; without that fixture it refuses dictation without requesting
+permissions, downloading models or opening a microphone. Fixture selection lives
+in `AppServices+DictationUITestFixture.swift`, not in the controller's pipeline.
+
+A separate Xcode-only receiver builds no shipping product. An explicitly armed
+`DictationNativeUITestFixture` calls the production `TextInserter` inside the
+temporary app, not XCTest's sandboxed runner. It requires a UUID-named clipboard
+and the fixed receiver bundle; the receiver's native Paste action reads that
+board. The real event pair is directed to the receiver process so a focus change
+cannot route fixture Paste into another application. Production callers retain
+the general pasteboard and session-event defaults with unchanged change-count
+ownership protection; their global routing is not qualified by this fixture. The native journey requires real app
+Accessibility permission and must not bypass or silently grant it. Synthetic
+controller coverage and an event-dispatched result are not ASR or native-delivery
+qualification; the receiver's actual value is the oracle.
 
 ### Database launch recovery
 
@@ -1030,6 +1069,15 @@ later state mutation and delivery side effect. Audio sample reduction and feed
 delivery stay off the main actor; only the observable meter update crosses back.
 Failure-dismiss tasks are single-owner and cancelled on restart so an older
 error cannot dismiss a newer session.
+`DictationTranscriptProjection` retains a session-local confirmed prefix and
+reads the mutable tail from admitted captions. `CaptionCoalescer.apply` reports
+the earliest written row index: ordinary partials do not reconstruct the prefix,
+newly closed rows append, and an earlier invalidation rebuilds the affected
+projection. Removing an open microphone echo can expose and extend the previous
+remote row; row-count growth is not a revision signal. Final publication checks
+cancellation and session identity before touching observable text, including
+streams that end normally on cancellation. Cancel clears both text projections
+before its asynchronous teardown.
 System-wide input adapters remain at the app boundary: Carbon owns the keyboard
 hotkey and a session `CGEventTap` owns one explicitly configured middle or
 additional mouse button. `DictationShortcut` is the process-owned observable
@@ -1055,7 +1103,11 @@ posts a complete synthetic paste pair or restores synchronously, and later
 restores only captured pasteboard representations when its change count still
 owns the clipboard. Secure or uninspectable focus, unavailable clipboard or
 event delivery, and held modifiers become visible failures rather than false
-insertion success.
+insertion success. Disposable native tests share the inserter but supply a named
+pasteboard and a process-addressed event target whose secure-field inspection
+reads that application's focus. This contains fixture input if
+focus changes without altering production session routing; it is not evidence
+of a production destination fence.
 
 Live Apuntador keeps endpoint and semantic admission split across layers. The
 pure `TurnEndpointPolicy` in `IntelligenceKit` owns the remote-channel, noise,
@@ -5328,8 +5380,11 @@ successful first-attempt ancestor that published one exact-SHA, content-free
 verification artifact after complete selected functional evidence (or a
 verified no-UI selection). The resolver rejects retries, failed runs,
 duplicate or expired artifacts, and candidates outside the current base-to-head
-ancestry. Any API, artifact, or force-push uncertainty expands from the PR base
-instead of failing narrow. Manual integration runs remain explicit complete-
+ancestry. For a PR into the default branch, any API, artifact, or force-push
+uncertainty expands from the PR base instead of failing narrow. A stacked PR
+always selects from its head's merge base with the fetched default branch,
+including unmerged parent changes; criss-cross roots widen to their common
+ancestor, and an unavailable default-branch ref fails selection. Manual integration runs remain explicit complete-
 catalogue runs. Every feature scope names a checked-in
 production owner, and
 catalog validation rejects unscoped tests, empty or orphaned scopes, duplicate
@@ -5880,15 +5935,18 @@ or rewrite the host's persistent Apuntador opt-in.
 
 ## Reviewed speech-engine dependency
 
-The Swift package requires an exact FluidAudio release; the recorded decision in
-docs/DECISIONS.md owns the version and the review an upgrade requires, and
-docs/GAPS.md tracks the resulting distance from upstream. Vendor types enter
+The Swift package requires one exact, reviewed FluidAudio release at a pinned
+revision. The decision ledger owns the version, the review policy and each
+admitted upgrade;
+`docs/GAPS.md` tracks rejected or future upstream releases rather than silently
+widening the requirement. Vendor types enter
 production only through the existing transcription and diarization adapters:
 `ParakeetEngine`, `ParakeetSegmentMapper`,
 `NemotronLatin1120Engine`, `PyannoteDiarizer` and `DiarizationEvaluation`. Core,
 ApplicationKit and executable presentation consume Portavoz contracts instead. In
-the test tree the vendor import is confined to the two engine suites,
-`TranscriptionTests` and `NemotronLatin1120Tests`.
+the test tree the vendor import is confined to the engine-specific suites,
+`TranscriptionTests`, `ParakeetLanguageConfigurationTests` and
+`NemotronLatin1120Tests`.
 
 The checked-in resolver revision and the architectural import inventory are tested
 together, over `Sources` and `Tests`, against code with comments and string
@@ -6082,6 +6140,8 @@ reliability evidence retained from 9 Aug, is:
 - pull-request scope advances only from a first-attempt exact-SHA functional
   verification artifact inside current ancestry; retry, expiry, duplication,
   API uncertainty, or force-push divergence expands fail-safe from the PR base;
+  a stacked PR selects from its default-branch merge base and fails closed
+  rather than narrowing to its parent;
 - the first phased hosted classifier proved that separation fails closed: Spanish
   passed 101/101 with only runtime advisories, while one English structural-
   correction interaction remained non-passing and therefore blocked the job.

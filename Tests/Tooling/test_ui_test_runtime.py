@@ -463,6 +463,22 @@ class UITestRuntimeTests(unittest.TestCase):
         self.assertTrue(any("missing runtime budget" in item for item in violations))
         self.assertTrue(any("result=Failed" in item for item in violations))
 
+    def test_permissioned_native_dictation_has_a_strict_one_case_budget(self):
+        budget = json.loads((
+            ROOT / "docs/evidence/ui-test-native-dictation-runtime-budget.json"
+        ).read_text(encoding="utf-8"))
+        identifier = "DictationUITests/testNativeInserterUsesDisposableReceiverAndClipboard()"
+        for duration, expected_failure in ((19.999, False), (20.001, True)):
+            with self.subTest(duration=duration):
+                cases = collect_test_cases({"nodes": [test_node(identifier, duration)]})
+                violations = budget_violations(cases, budget, selector_count=1)
+                self.assertEqual(bool(violations), expected_failure, violations)
+        missing = collect_test_cases({"nodes": [test_node("OtherUITests/testUnbudgeted()", 1.0)]})
+        self.assertTrue(any(
+            "missing runtime budget" in violation
+            for violation in budget_violations(missing, budget, selector_count=1)
+        ))
+
     def test_full_suite_budget_fails_total_and_p95_regression(self):
         slow = collect_test_cases({
             "nodes": [
