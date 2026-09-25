@@ -19643,8 +19643,9 @@ and cannot stand in for this native client. Fixture admission requires the exact
 launch flag and a UUID clipboard namespace; insertion is attempted at most once
 for the fixed receiver bundle. The real event pair is process-addressed to that
 receiver, not injected into the global stream: a named clipboard does not contain
-a misrouted global Paste shortcut. Nonpositive process IDs fail before clipboard
-mutation and never fall back to session routing. Production's session dispatch
+a misrouted global Paste shortcut. Process IDs that do not name a running application
+fail before clipboard mutation, secure-field inspection reads the addressed
+application's focus, and they never fall back to session routing. Production's session dispatch
 remains unchanged and is not qualified by this fixture. The user clipboard and
 library are untouched.
 App Accessibility must already be authorized; the journey fails explicitly
@@ -20151,6 +20152,48 @@ resolves resources through `Bundle`, which reads either. A future Xcode that
 removes the old label deletes the `#else` branch in one file. Decoding behavior is unchanged: greedy
 everywhere, same token caps.
 
+## D539 — Admit FluidAudio 0.15.8 only after matched product evidence
+
+**Date:** 2026-09-22
+
+**Context.** D516 fixed FluidAudio at 0.15.6 because a patch can change the
+decoder, caption seams and diarizer without changing Portavoz source. The upgrade
+review therefore compared preserved Release test binaries for 0.15.6, 0.15.7
+and 0.15.8 through the real Parakeet manager, `ParakeetSegmentMapper` and
+production coalescer over the same six public/synthetic English, Spanish, mixed
+and silence cells, with twelve repetitions and two passes. Version 0.15.7 was
+production-identical to 0.15.6. Version 0.15.8 improved every speech cell; mean
+production WER moved from 0.475694 to 0.420332 while the silence cell remained
+unchanged. Mean first update stayed 1.49 versus 1.48 seconds and mean completion
+stayed 33.95 versus 33.93 seconds. The measurements characterize this corpus;
+they are not a universal accuracy claim.
+
+The same exact public AMI sample and RTTM retained 7.6 percent DER at the
+0.25-second collar on both versions. Batch and live two-speaker model paths
+passed. Three matched process observations kept the candidate below the
+baseline's observed maxima for resident set and peak memory footprint; their
+medians differed by less than two percent. They are local content-free
+observations, not cross-host Sequoia/Tahoe certification. Stock FluidAudio
+0.16.1 could not enter the comparison: its NemoTextProcessing 0.3.1 XCFramework
+declares `Headers` but places `module.modulemap` under
+`Headers/CNemoTextProcessing`, so SwiftPM fails before compilation. Its speech
+source is otherwise identical to 0.15.8; Portavoz does not repair a malformed
+vendor binary in place to manufacture green evidence.
+
+**Decision.** Require exact FluidAudio 0.15.8 at revision
+`87a39dfe4068fef0f1c69bfe704b2b3ef4fbc5bc`. Keep the D516 explicit-review
+policy, adapter/import boundary, model artifacts, engine selection, live window
+configuration and deployment floor unchanged. Pin the revision in the
+architecture test as well as `Package.resolved`; a moved tag must fail closed.
+
+**Consequences.** Live dictation and meeting captions receive the reviewed
+streaming fixes without adding a model, network path or background resident
+engine. The vendor final-window replay was materially smaller in 0.15.8 but
+remained observable; it is not promoted to product output because Portavoz still
+treats its own mapped and coalesced result as authority. The unchanged silence
+hallucination remains a separate admission problem, not evidence against or in
+favor of this upgrade. Every future FluidAudio release still requires matched
+recognition, diarization, latency and memory evidence and may be rejected.
 
 ---
 
@@ -20179,6 +20222,34 @@ panel, Settings and other journeys, **not** cross-process insertion. The latter
 remains an explicit permission/field gate with its own positive receipt before
 claiming it works. Existing runtime budgets for unattended journeys stay fixed;
 the permission-gated journey is not counted in the unattended runtime total.
+
+---
+
+## D542 — Stacked UI PRs qualify their cumulative default-branch change
+
+**Context:** D429's first-attempt verification anchor prevents an unverified
+push from becoming the next incremental base. Its fallback was the PR base.
+For a stacked PR, that is the unmerged parent branch. A child documentation
+change could therefore earn a green no-UI or English-only hosted result while
+the full parent-plus-child diff against `main` requires bilingual XCUITest.
+An earlier child anchor is insufficient too: it may have qualified only the
+child diff under the old fallback rule.
+
+**Decision:** direct-to-default-branch PRs retain D429's artifact-backed
+incremental selection. For a PR targeting another branch, compare the head
+with its merge base against the fetched default branch on every push. Do not
+reuse a child verification anchor to narrow that cumulative set. Criss-cross
+history with several merge bases selects from their common ancestor, which only
+widens the set. If the default-branch ref or merge base is unavailable, fail
+scope selection with an error annotation rather than silently using the parent. Manual dispatch remains a complete bilingual
+run; no runtime budget, retry, or native-permission rule changes.
+
+**Consequences:** stacked pushes may repeat already covered parent journeys,
+but every child check covers the code that would enter `main`. Once the parent
+merges and the PR is retargeted, normal verified-ancestor selection resumes.
+The tiny synthetic Git integration test executes the resolver and real UI
+selector at the call site: the child changes only documentation while its
+parent changes Dictation Settings, and the parent journey must remain selected.
 
 ---
 

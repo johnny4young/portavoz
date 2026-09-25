@@ -128,6 +128,17 @@ self-contained over system frameworks and carries no module dependency.
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners including recording-scoped proactive-assist state, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
 | `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
 
+### Parakeet job preparation
+
+Inside `TranscriptionKit`, each Parakeet transcription job receives a fresh native
+manager from an internal preparation closure. Production closures share only
+verified immutable model weights, not decoder state. Failed preparation owns its
+cleanup; a prepared manager transfers to the job for streaming/batch execution
+and cleanup. No vendor type or preparation hook crosses the module's public
+boundary. Tests can enter the real engine methods without loading model assets
+and observe configuration requests and preparation failures. That evidence does
+not replace real-model quality, latency, or cancellation measurements.
+
 ### First-listen speech lifetime
 
 The onboarding First Listen resolves the optional macOS 26 SpeechAnalyzer asset
@@ -1093,7 +1104,8 @@ restores only captured pasteboard representations when its change count still
 owns the clipboard. Secure or uninspectable focus, unavailable clipboard or
 event delivery, and held modifiers become visible failures rather than false
 insertion success. Disposable native tests share the inserter but supply a named
-pasteboard and a process-addressed event target. This contains fixture input if
+pasteboard and a process-addressed event target whose secure-field inspection
+reads that application's focus. This contains fixture input if
 focus changes without altering production session routing; it is not evidence
 of a production destination fence.
 
@@ -5368,8 +5380,11 @@ successful first-attempt ancestor that published one exact-SHA, content-free
 verification artifact after complete selected functional evidence (or a
 verified no-UI selection). The resolver rejects retries, failed runs,
 duplicate or expired artifacts, and candidates outside the current base-to-head
-ancestry. Any API, artifact, or force-push uncertainty expands from the PR base
-instead of failing narrow. Manual integration runs remain explicit complete-
+ancestry. For a PR into the default branch, any API, artifact, or force-push
+uncertainty expands from the PR base instead of failing narrow. A stacked PR
+always selects from its head's merge base with the fetched default branch,
+including unmerged parent changes; criss-cross roots widen to their common
+ancestor, and an unavailable default-branch ref fails selection. Manual integration runs remain explicit complete-
 catalogue runs. Every feature scope names a checked-in
 production owner, and
 catalog validation rejects unscoped tests, empty or orphaned scopes, duplicate
@@ -5909,15 +5924,18 @@ or rewrite the host's persistent Apuntador opt-in.
 
 ## Reviewed speech-engine dependency
 
-The Swift package requires an exact FluidAudio release; the recorded decision in
-docs/DECISIONS.md owns the version and the review an upgrade requires, and
-docs/GAPS.md tracks the resulting distance from upstream. Vendor types enter
+The Swift package requires one exact, reviewed FluidAudio release at a pinned
+revision. The decision ledger owns the version, the review policy and each
+admitted upgrade;
+`docs/GAPS.md` tracks rejected or future upstream releases rather than silently
+widening the requirement. Vendor types enter
 production only through the existing transcription and diarization adapters:
 `ParakeetEngine`, `ParakeetSegmentMapper`,
 `NemotronLatin1120Engine`, `PyannoteDiarizer` and `DiarizationEvaluation`. Core,
 ApplicationKit and executable presentation consume Portavoz contracts instead. In
-the test tree the vendor import is confined to the two engine suites,
-`TranscriptionTests` and `NemotronLatin1120Tests`.
+the test tree the vendor import is confined to the engine-specific suites,
+`TranscriptionTests`, `ParakeetLanguageConfigurationTests` and
+`NemotronLatin1120Tests`.
 
 The checked-in resolver revision and the architectural import inventory are tested
 together, over `Sources` and `Tests`, against code with comments and string
@@ -6111,6 +6129,8 @@ reliability evidence retained from 9 Aug, is:
 - pull-request scope advances only from a first-attempt exact-SHA functional
   verification artifact inside current ancestry; retry, expiry, duplication,
   API uncertainty, or force-push divergence expands fail-safe from the PR base;
+  a stacked PR selects from its default-branch merge base and fails closed
+  rather than narrowing to its parent;
 - the first phased hosted classifier proved that separation fails closed: Spanish
   passed 101/101 with only runtime advisories, while one English structural-
   correction interaction remained non-passing and therefore blocked the job.

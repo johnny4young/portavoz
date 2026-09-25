@@ -23,6 +23,23 @@ final class DictationControllerTests: XCTestCase {
         }
     }
 
+    func testExitedProcessTargetFailsBeforeClipboardMutation() async throws {
+        let board = NSPasteboard(name: .init("app.portavoz.dictation-test." + UUID().uuidString))
+        defer { board.releaseGlobally() }
+        board.setString("original", forType: .string)
+        let originalCount = board.changeCount
+        let exited = Process()
+        exited.executableURL = URL(fileURLWithPath: "/usr/bin/true")
+        try exited.run()
+        exited.waitUntilExit()
+        let target = TextInserter.EventTarget.process(exited.processIdentifier)
+        XCTAssertFalse(target.isAvailable)
+        let result = await TextInserter.insert("Must never be delivered", pasteboard: board, eventTarget: target)
+        XCTAssertEqual(result, .eventUnavailable)
+        XCTAssertEqual(board.changeCount, originalCount)
+        XCTAssertEqual(board.string(forType: .string), "original")
+    }
+
     func testNativeFixtureRequiresTemporaryCompositionExplicitActionAndUUIDClipboard() async {
         let key = DictationNativeUITestFixture.environmentKey
         let name = DictationNativeUITestFixture.pasteboardPrefix + UUID().uuidString
@@ -87,6 +104,7 @@ final class DictationControllerTests: XCTestCase {
         XCTAssertTrue(reached4)
         XCTAssertEqual(harness.insertions, ["Café Swift $5\\path"])
         XCTAssertEqual(harness.hints?.language, "es")
+        XCTAssertEqual(harness.hints?.filtersLiveScript, true)
         XCTAssertEqual(harness.hints?.vocabulary, ["Kubernetes", "Café"])
         harness.controller.cancel()
         let reached5 = await awaitEventually { harness.finishes == 1 }

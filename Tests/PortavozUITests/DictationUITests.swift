@@ -38,14 +38,12 @@ final class DictationUITests: PortavozUITestCase {
     func testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart() throws {
         let app = try XCUIApplication.portavoz(showMenuBarContent: true)
         app.launchArguments += ["-seed-dictation", "-seed-dictation-streaming"]
-        let english = UITestLocale.environmentLocale != "es"
-        if english { app.launchArguments.append("-seed-dictation-english") }
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
         app.launchPortavoz()
         defer { app.terminate() }
         XCTAssertTrue(app.prepareForInteraction())
         let dictate = app.buttons["menu-bar-dictate"]
-        let expected = (english ? "Don't delete these notes." : "No borres estas notas.") + " Café C++. Final"
+        let expected = "No borres estas notas. Café C++. Final"
         for _ in 0..<2 {
             XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
             dictate.click()

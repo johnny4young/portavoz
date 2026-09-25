@@ -459,10 +459,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
 }
 
 ALL_TESTS = tuple(dict.fromkeys(test for tests in FEATURE_TESTS.values() for test in tests))
-# The real cross-process inserter requires a TCC Accessibility grant for the
-# disposable app itself. Hosted macOS runners cannot provide that user-owned
-# decision. Keep its selector discoverable and explicitly runnable; never
-# count its presence, a synthetic receiver, or a skipped invocation as a pass.
+# Needs a user-granted Accessibility decision; run only via test-ui-native-dictation.
 PERMISSION_GATED_TESTS = frozenset({
     test_id("DictationUITests", "testNativeInserterUsesDisposableReceiverAndClipboard"),
 })

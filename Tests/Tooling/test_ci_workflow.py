@@ -170,6 +170,17 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertNotIn("github.event.before", workflow)
         self.assertNotIn("PREVIOUS_HEAD_SHA", workflow)
 
+    def test_stacked_ui_scope_passes_both_branch_identities_to_resolver(self):
+        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("BASE_BRANCH: ${{ github.event.pull_request.base.ref }}", workflow)
+        self.assertIn("DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}", workflow)
+        self.assertIn('--base-branch "$BASE_BRANCH"', workflow)
+        self.assertIn('--default-branch "$DEFAULT_BRANCH"', workflow)
+        self.assertIn('--base "$VERIFIED_BASE_SHA" --head "$HEAD_SHA"', workflow)
+
 
 if __name__ == "__main__":
     unittest.main()
