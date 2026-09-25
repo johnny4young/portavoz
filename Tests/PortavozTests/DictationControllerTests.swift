@@ -60,7 +60,7 @@ final class DictationControllerTests: XCTestCase {
     }
 
     func testPermissionDenialDoesNotPrepareAudioOrModels() async {
-        let harness = Harness(text: "No borres estas notas.")
+        let harness = DictationControllerHarness(text: "No borres estas notas.")
         var dependencies = harness.dependencies
         dependencies.canInsert = { false }
         harness.controller.toggle(using: dependencies)
@@ -76,7 +76,7 @@ final class DictationControllerTests: XCTestCase {
 
     func testCancelAfterPartialNeverDeliversAndReleasesRuntime() async {
         for text in ["No borres estas notas.", "Don’t delete these notes."] {
-            let harness = Harness(text: text)
+            let harness = DictationControllerHarness(text: text)
             harness.controller.toggle(using: harness.dependencies)
             let reached1 = await awaitEventually { harness.controller.partialText == text }
             XCTAssertTrue(reached1)
@@ -89,7 +89,7 @@ final class DictationControllerTests: XCTestCase {
     }
 
     func testFinalTextRunsThroughRealRulesAndSuppliesHintsToEngine() async {
-        let harness = Harness(text: "eh Café C++")
+        let harness = DictationControllerHarness(text: "eh Café C++")
         harness.set("es", forKey: DictationController.languageKey)
         harness.set("Kubernetes, Café", forKey: "customVocabulary")
         harness.set(
@@ -104,6 +104,7 @@ final class DictationControllerTests: XCTestCase {
         XCTAssertTrue(reached4)
         XCTAssertEqual(harness.insertions, ["Café Swift $5\\path"])
         XCTAssertEqual(harness.hints?.language, "es")
+        XCTAssertEqual(harness.hints?.filtersLiveScript, true)
         XCTAssertEqual(harness.hints?.vocabulary, ["Kubernetes", "Café"])
         harness.controller.cancel()
         let reached5 = await awaitEventually { harness.finishes == 1 }
@@ -111,7 +112,7 @@ final class DictationControllerTests: XCTestCase {
     }
 
     func testPunctuationOnlyFinalDoesNotInvokeInsertion() async {
-        let harness = Harness(text: "… — !!!")
+        let harness = DictationControllerHarness(text: "… — !!!")
         harness.controller.toggle(using: harness.dependencies)
         let reached6 = await awaitEventually { harness.hints != nil }
         XCTAssertTrue(reached6)
@@ -124,7 +125,7 @@ final class DictationControllerTests: XCTestCase {
     }
 
     func testCancelDuringModelPreparationCannotStartMicrophoneLater() async {
-        let harness = Harness(text: "Late text must not appear")
+        let harness = DictationControllerHarness(text: "Late text must not appear")
         let gate = PreparationGate()
         var dependencies = harness.dependencies
         let load = dependencies.acquireRuntime
@@ -164,9 +165,9 @@ final class DictationControllerTests: XCTestCase {
 }
 
 @MainActor
-private final class Harness {
-    let controller = DictationController(presentsPanel: false)
-    let microphone = ControlledDictationMicrophone()
+final class DictationControllerHarness {
+    let controller: DictationController
+    fileprivate let microphone = ControlledDictationMicrophone()
     let defaults = UserDefaults(suiteName: "dictation-tests-\(UUID().uuidString)")!
     let text: String
     var now = Date(timeIntervalSince1970: 1_000)
@@ -175,7 +176,8 @@ private final class Harness {
     var hints: TranscriptionHints?
     var insertions: [String] = []
 
-    init(text: String) {
+    init(text: String, controller: DictationController = .init(presentsPanel: false)) {
+        self.controller = controller
         self.text = text
         defaults.setVolatileDomain([:], forName: UserDefaults.argumentDomain)
     }

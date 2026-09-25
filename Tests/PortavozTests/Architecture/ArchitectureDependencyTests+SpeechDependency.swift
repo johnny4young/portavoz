@@ -127,6 +127,7 @@ extension ArchitectureDependencyTests {
             under: "Tests", pattern: Self.fluidAudioImportPattern, codeOnly: true)
         XCTAssertEqual(imports, [
             "PortavozTests/NemotronLatin1120Tests.swift",
+            "PortavozTests/ParakeetLanguageConfigurationTests.swift",
             "PortavozTests/TranscriptionTests.swift",
         ])
     }
