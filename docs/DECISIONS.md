@@ -20250,3 +20250,32 @@ merges and the PR is retargeted, normal verified-ancestor selection resumes.
 The tiny synthetic Git integration test executes the resolver and real UI
 selector at the call site: the child changes only documentation while its
 parent changes Dictation Settings, and the parent journey must remain selected.
+
+---
+
+## D545 — Project dictation text from explicit caption invalidation
+
+**Context.** Rejoining every closed caption on every partial made projection
+work grow with prior dictation length. Characterization before optimization also
+disproved the documented frozen-prefix assumption: removing an open microphone
+echo can expose and extend the preceding remote row. A count-only cache would
+keep old text. Separately, cancellation could end the stream normally, so final
+assembly repopulated text after Cancel despite the guarded delivery path.
+
+**Decision.** Keep coalescer admission, overlap and row behavior unchanged, and
+return the earliest written row index from `apply`. App-local
+`DictationTranscriptProjection` skips closed-text publication on ordinary partials,
+appends newly closed rows, and rebuilds when the coalescer invalidates an earlier
+row. It retains the full admitted transcript for final delivery rather than
+copying private lookback constants or truncating user text. Final publication
+checks cancellation and session UUID before changing observable state. Cancel
+clears both projections synchronously before asynchronous teardown.
+
+**Validation contract.** Test the controller stream through final rules and
+cancel/restart with separate audio owners; include bilingual Unicode,
+punctuation, empty/noise input, length boundaries, delayed callbacks, same-count
+replacement and closed-row reopening. Compare intermediate text with full
+assembly and human-authored expected text. Synthetic burst timings and digests
+are projection evidence, not ASR or native latency. Meeting-consumer revision
+risks remain explicit in GAPS; decoder word loss/replay and window evaluations
+are not resolved by this change.

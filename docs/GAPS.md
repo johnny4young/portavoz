@@ -33,6 +33,20 @@ unattended EN/ES UI qualification excludes exactly that TCC-owned receiver case
 disposable app and retain its actual receipt before claiming cross-process
 delivery.
 
+### Closed-row revision after microphone echo replacement
+
+A synthetic controller call-site sequence reproduces a limitation in the shared
+coalescer: remote text, an overlapping microphone echo, then its direct system
+copy can remove the mic tail and extend the preceding remote row. The count
+shrinks even though that remote row had already been exposed as closed. D545
+reports the earliest invalidated row and makes dictation rebuild its affected
+projection without changing existing coalescer behavior. Meeting translation,
+summary and Companion cursor consumers require a separate end-to-end audit of
+this reopening before they can be claimed revision-safe; preserved identity and
+count alone are not sufficient. Do not infer corrected meeting evidence from
+the dictation projection tests. Physical source attribution is not evaluated by
+this synthetic cross-channel case.
+
 ### Accepted live input survives interrupted recordings
 
 **Implemented:** explicit notes and objective changes commit to canonical context

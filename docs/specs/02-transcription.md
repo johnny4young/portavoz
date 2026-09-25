@@ -529,14 +529,19 @@ results replace their range; the current caption coalescer assumes deltas.
 
 ## Caption coalescer — `CaptionCoalescer` (used by the app)
 
-The newest row grows while the channel keeps speaking: mid-sentence pauses ≤ 6 s stay in the row, continuation < 2 s after a closed sentence flows on the microphone, but on `system`/`room` the pause after a sentence splits earlier (0.6 s) so two consecutive remote participants appear as two `Ellos` rows even before refine. Hard split at 280 chars. Closing is delta-driven (silence alone never closes a row); the Apuntador's D138 endpointer compensates on the intelligence side by consuming the open remote row after 2.0 s of delta silence, without touching this coalescer. Deltas without lexical content are discarded except final punctuation that completes an existing row (an isolated `"."` does not create `Yo: .`). Stable row identity (id/startTime are preserved) → SwiftUI does not rebuild, and translation translates only closed rows (only the last global row can grow).
+The newest row grows while the channel keeps speaking: mid-sentence pauses ≤ 6 s stay in the row, continuation < 2 s after a closed sentence flows on the microphone, but on `system`/`room` the pause after a sentence splits earlier (0.6 s) so two consecutive remote participants appear as two `Ellos` rows even before refine. Hard split at 280 chars. Closing is delta-driven (silence alone never closes a row); the Apuntador's D138 endpointer compensates on the intelligence side by consuming the open remote row after 2.0 s of delta silence, without touching this coalescer. Deltas without lexical content are discarded except final punctuation that completes an existing row (an isolated `"."` does not create `Yo: .`). Stable row identity (id/startTime are preserved) → SwiftUI does not rebuild, and translation consumes closed rows. The direct-channel echo replacement exception below can reopen a preceding row; closed does not universally mean immutable.
 
 The merged live projection also applies a bounded twelve-row cross-channel
 admission rule (D131). Matching microphone spill is dropped when recent direct
 system or room speech already exists; a delayed direct row replaces a matching
-microphone copy only while that mic row is still newest and open. Older rows
-stay immutable after translation or rolling-summary consumers can observe
-them. One-word acknowledgements always survive. An exact two-word copy is
+microphone copy only while that mic row is still newest and open. Removing that
+tail may expose a preceding remote row which the incoming delta then extends;
+the list shrinks and a previously closed row changes. `apply` returns the earliest
+written row index, or `nil` when admission leaves the list unchanged (D545).
+Rows before the returned index are unchanged. Dictation uses this invalidation
+for its incremental text projection; existing meeting cursor consumers still
+need the focused revision audit recorded in GAPS. Older microphone rows are
+never removed by this rule. One-word acknowledgements always survive. An exact two-word copy is
 admitted as bleed only when the microphone and direct timelines truly overlap;
 three contiguous words at either rolling edge can reject a longer noisy copy.
 Sequential acknowledgements and distinct overlapping speech remain. Raw

@@ -1069,6 +1069,15 @@ later state mutation and delivery side effect. Audio sample reduction and feed
 delivery stay off the main actor; only the observable meter update crosses back.
 Failure-dismiss tasks are single-owner and cancelled on restart so an older
 error cannot dismiss a newer session.
+`DictationTranscriptProjection` retains a session-local confirmed prefix and
+reads the mutable tail from admitted captions. `CaptionCoalescer.apply` reports
+the earliest written row index: ordinary partials do not reconstruct the prefix,
+newly closed rows append, and an earlier invalidation rebuilds the affected
+projection. Removing an open microphone echo can expose and extend the previous
+remote row; row-count growth is not a revision signal. Final publication checks
+cancellation and session identity before touching observable text, including
+streams that end normally on cancellation. Cancel clears both text projections
+before its asynchronous teardown.
 System-wide input adapters remain at the app boundary: Carbon owns the keyboard
 hotkey and a session `CGEventTap` owns one explicitly configured middle or
 additional mouse button. `DictationShortcut` is the process-owned observable
