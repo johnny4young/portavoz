@@ -7884,9 +7884,15 @@ one modal containing the journey's fixed accessibility anchor. A background
 control cannot authorize typing into a new dialog. Admission re-observes for at
 most one second so a cached frontmost value or closing sheet can converge; it
 never activates or dismisses anything. Refused journey input uses the same
-nonreturning, owned-cleanup interruption guard and records a content-free
-`keyboard-owner` or `modal-context` reason; the interruption monitor records
-`interruption`. A guard that finds no live session reports `cleanup=absent`.
+nonreturning, owned-cleanup interruption guard and writes a content-free
+`keyboard-owner` or `modal-context` refusal to the runner's standard error;
+the interruption monitor writes `interruption`. A guard that finds no live
+session reports `cleanup=absent`. The guard exits only its worker after cleanup
+rather than recording an XCTest issue inside the callback: on Xcode 27, issue
+recording from an asynchronous test synchronously reenters actor-isolated
+teardown and can deadlock before the intended worker exit. Native controls
+require the exact one-test failed invocation and completed cleanup, so a
+zero-test restart cannot qualify the refusal.
 
 `handOffTextFieldEditing` observes keyboard focus first and sends no key when
 the field is not the active editor, because Tab would otherwise move an

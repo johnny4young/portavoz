@@ -20250,3 +20250,28 @@ merges and the PR is retargeted, normal verified-ancestor selection resumes.
 The tiny synthetic Git integration test executes the resolver and real UI
 selector at the call site: the child changes only documentation while its
 parent changes Dictation Settings, and the parent journey must remain selected.
+
+## D550 — Stop the interruption worker without reentering XCTest teardown
+
+**Context:** The permission-free native harness twice reached a controlled
+asynchronous interruption, completed owned cleanup and emitted the refusal, but
+its Xcode 27 test invocation then hung until the 180-second watchdog. A sample
+of the synthetic runner showed `record(XCTIssue)` synchronously entering
+`_performTearDownSequence` and waiting for an asynchronous teardown on the same
+main actor. The intended `exit` after `record` was therefore unreachable. The
+synchronous control passed, so a synchronous-only test hid the real call-site
+failure. This demonstrates a defect in D527's issue-recording choice, not in
+the product's interruption policy.
+
+**Decision:** the shared guard completes its identity-owned scratch/app cleanup,
+writes a content-free refusal with cleanup category to standard error, then
+exits only its test worker. It does not call XCTest issue recording or set
+`continueAfterFailure` inside the interruption callback. The separate native
+validator remains strict: exactly one failed test, no skipped/extra case,
+completed cleanup and overlay exit, no fallback or target effect; a restarted
+zero-test suite never qualifies. No interruption is answered or dismissed.
+
+**Consequences:** the sixteen native controls must pass on the exact source,
+including all asynchronous action, typing and modal paths. The product UI
+catalog and physical permission/Sequoia/Tahoe evidence remain separate gates.
+This changes test-host behavior only; there is no user-visible changelog entry.

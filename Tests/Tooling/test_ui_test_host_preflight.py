@@ -501,8 +501,13 @@ class UITestHostPreflightTests(unittest.TestCase):
         self.assertNotIn(".click()", source)
         self.assertNotIn("return true", source)
         self.assertNotIn("return false", source)
-        self.assertIn("record(XCTIssue(", source)
-        self.assertIn("exit(EXIT_FAILURE)", source)
+        guard = source.split("private func stopForUnexpectedInterruption", 1)[1]
+        # XCTest issue recording can synchronously reenter async tearDown on
+        # the main actor, never reaching the fail-closed worker exit.
+        self.assertNotIn("record(XCTIssue(", guard)
+        self.assertNotIn("continueAfterFailure", guard)
+        self.assertLess(guard.index("UITestStorage.end"), guard.index("exit(EXIT_FAILURE)"))
+        self.assertIn("FileHandle.standardError.write", guard)
         for path in UI_TEST_SUPPORT.parent.glob("*.swift"):
             if path.name == "PortavozUITestCase.swift":
                 continue
