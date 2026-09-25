@@ -2600,6 +2600,34 @@ creating an evidence package; it does not certify an unobserved real-world check
 
 ## Global dictation (Jul 2026)
 
+**Disposable controller coverage (D515).** The production controller accepts
+session-scoped audio/runtime/platform dependencies. Tests run its real stream
+consumer, coalescer, final text rules, minimum-duration decision and cancellation
+path without an installed model or microphone. Temporary-store composition
+never registers a global keyboard or mouse trigger. `-seed-dictation` is inert
+outside that composition; without an explicit fixture temporary dictation refuses
+admission. The menu-bar Dictate action and panel expose stable identifiers for
+restart/cancellation journeys. This is not a change to the production trigger,
+recognition, capture-loss or delivery-success policies documented below.
+
+`TextInserter.insert` accepts a pasteboard with `.general` as its production
+default. The native receiver journey executes in the temporary app process, not
+XCTest's sandboxed runner. It uses an explicitly armed fixture and a UUID-named board, while
+retaining modifier-release, real AX inspection, keyboard events and delayed
+ownership-checked restoration. Its event pair addresses the fixed receiver's
+process: a UUID clipboard alone cannot contain a global Paste shortcut after a
+focus change. A process target that does not name a running application fails
+before clipboard mutation, its secure-field inspection reads that application's
+focused element, and it never falls back to session routing. The receiver establishes its own first
+responder; the test asserts actual Unicode content rather than clicking through
+desktop overlays. Production session routing remains unchanged and is not
+qualified by this fixture. It does not read the user's clipboard. Actual
+Accessibility permission is required; tests do not grant it or dismiss prompts.
+A local certificate-backed UI build can use the explicit signer/team inputs in
+spec 08 so rebuilding does not necessarily change its designated requirement.
+The app remains a disposable test identity, not the installed release or Dev app.
+
+
 **Hold-to-talk (Jul 2026)**: `GlobalHotkey` listens to kEventHotKeyPressed AND kEventHotKeyReleased (`GetEventKind` in same handler). Gesture without setting: a TAP (release < 0.5 s) preserves toggle; HOLD combination while speaking and release delivers at release — walkie-talkie. Verified E2E: hold of 2.5 s opens panel on press and closes only on release.
 
 **Configurable hotkey**: `HotkeySetting` stores a key code, Carbon modifier mask
@@ -2631,7 +2659,7 @@ Capture timing starts when the microphone stream actually opens, not when model 
 
 **Mouse-button push-to-talk (Jul 2026)**: `MouseButtonPTT` owns one session `CGEventTap` over `otherMouseDown`/`otherMouseUp` that CONSUMES the configured button (the app under the cursor never sees the click) and passes every other button through; a tap disabled by timeout is always re-armed. CGEvent index 2+ is eligible — vendor-facing Button 3+ means middle click or an additional button — while indices 0/1 (left/right) can never become a trigger. Invalid persisted values normalize to Off. The tap needs the same Accessibility trust as the paste path: choosing a button prompts once, a denied/pending prompt leaves the keyboard trigger working, and returning from System Settings retries registration. Rebinding first cancels any mouse-owned capture so its consumed release cannot strand the session. `MousePTTGesture` (app input boundary, pure, 3 tests) is the decision table: press starts when idle and finishes a listening session whoever started it; release delivers only when the button itself started the session, so a stray release can never double-finish a hotkey session. There is no tap-vs-hold discriminator on the mouse — the capture minimum already cancels an accidental click. `MouseButtonRecorder` in Settings captures the next middle/additional-button click (`settings-dictation-mouse-recorder`; Esc cancels) with an explicit clear control; both mouse and keyboard recorders remove their local monitors when their Settings row disappears.
 
-**Two-tier dictionary and filler filter (Jul 2026)**: `DictationTextRules` (TranscriptionKit, pure, 10 tests) is the deterministic tier — one non-cascading pass of user-defined whole-word, case-insensitive replacements applied longest-trigger-first with punctuation-aware lookaround boundaries (regex-metacharacter triggers like "c++" match literally; replacement strings including `$` and `\` stay literal). Matching is computed against the original text, so a preferred spelling can never become input to a later rule. The codec trims triggers, drops empty rules, and keeps the newest case-insensitive duplicate before the Settings list or matcher consumes it. A conservative bilingual hesitation-filler pass (only tokens meaningless in BOTH languages: um/uh/er/hmm/eh/ehm…, on by default via `dictationFillerFilter`) runs first and repairs seams (collapsed spaces, no space stranded before closing punctuation). The other tier remains the existing vocabulary prompt (`customVocabulary`), which the dictation controller still passes as `hints.vocabulary` — but that prompt only reaches the batch engines: WhisperEngine turns it into `promptTokens` and SpeechAnalyzerEngine into `contextualStrings`, while the live Parakeet path that dictation actually runs never reads it (FluidAudio 0.15.6 offers `configureVocabularyBoosting` only with the extra `parakeet-ctc-110m` model, which is not in the pinned model catalog). In live dictation the deterministic tier is therefore the only dictionary that changes the typed text; the vocabulary prompt has no effect on it today. Rules persist as one JSON string (`dictationReplacements`, codec in the same type) edited by `DictationDictionaryEditor` in Settings (quick-add row `settings-dictation-dict-add`; re-adding a trigger updates it instead of stacking an unreachable duplicate). Both passes run in `deliver` on the final dictation text only — meeting transcripts stay verbatim records.
+**Two-tier dictionary and filler filter (Jul 2026)**: `DictationTextRules` (TranscriptionKit, pure, 10 tests) is the deterministic tier — one non-cascading pass of user-defined whole-word, case-insensitive replacements applied longest-trigger-first with punctuation-aware lookaround boundaries (regex-metacharacter triggers like "c++" match literally; replacement strings including `$` and `\` stay literal). Matching is computed against the original text, so a preferred spelling can never become input to a later rule. The codec trims triggers, drops empty rules, and keeps the newest case-insensitive duplicate before the Settings list or matcher consumes it. A conservative bilingual hesitation-filler pass (only tokens meaningless in BOTH languages: um/uh/er/hmm/eh/ehm…, on by default via `dictationFillerFilter`) runs first and repairs seams (collapsed spaces, no space stranded before closing punctuation). The other tier remains the existing vocabulary prompt (`customVocabulary`), which the dictation controller still passes as `hints.vocabulary` — but that prompt only reaches the batch engines: WhisperEngine turns it into `promptTokens` and SpeechAnalyzerEngine into `contextualStrings`, while the live Parakeet path that dictation actually runs never reads it (FluidAudio 0.15.8 offers `configureVocabularyBoosting` only with the extra `parakeet-ctc-110m` model, which is not in the pinned model catalog). In live dictation the deterministic tier is therefore the only dictionary that changes the typed text; the vocabulary prompt has no effect on it today. Rules persist as one JSON string (`dictationReplacements`, codec in the same type) edited by `DictationDictionaryEditor` in Settings (quick-add row `settings-dictation-dict-add`; re-adding a trigger updates it instead of stacking an unreachable duplicate). Both passes run in `deliver` on the final dictation text only — meeting transcripts stay verbatim records.
 
 **Dictation language preference:** `dictationLanguage` accepts {es, en}; other
 stored values mean automatic. The picker retains these preference values and

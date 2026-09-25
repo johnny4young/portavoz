@@ -430,6 +430,12 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id("SettingsUITests", "testIntelligencePaneCreatesACustomStructure"),
     ),
+    "dictation": (
+        test_id("DictationUITests", "testDictationPanelCancelsAndRestartsWithoutGlobalInput"),
+        test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
+        test_id("SettingsUITests", "testDictationRecoversShortcutConflictAndRefreshesHelp"),
+        test_id("SettingsUITests", "testDictationRepairsCorruptShortcutWithoutLeavingSettings"),
+    ),
     "settings-audio": (
         test_id("SettingsUITests", "testAudioPaneOffersCaptureSourceControls"),
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
@@ -452,6 +458,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
 }
 
 ALL_TESTS = tuple(dict.fromkeys(test for tests in FEATURE_TESTS.values() for test in tests))
+# Needs a user-granted Accessibility decision; run only via test-ui-native-dictation.
+PERMISSION_GATED_TESTS = frozenset({
+    test_id("DictationUITests", "testNativeInserterUsesDisposableReceiverAndClipboard"),
+})
 ALL_FEATURES = frozenset(FEATURE_TESTS)
 MEETING_FEATURES = frozenset(
     feature
@@ -591,6 +601,7 @@ FEATURE_SOURCE_SENTINELS: dict[str, str] = {
     "settings-transfer": "Sources/portavoz-app/SettingsTransferSection.swift",
     "production-sync": "Sources/portavoz-app/ProductionSyncQualificationRunner.swift",
     "settings-intelligence": "Sources/portavoz-app/SemanticSearchPreparationModel.swift",
+    "dictation": "Sources/portavoz-app/DictationController.swift",
     "settings-audio": "Sources/portavoz-app/AudioSection.swift",
     "settings-voice": "Sources/portavoz-app/SettingsVoiceSection.swift",
     "public-showcase": "Sources/portavoz-app/AppServices+Showcase.swift",
@@ -617,7 +628,6 @@ NO_UI_FILES = {
     "LICENSE",
     "README.md",
     "SECURITY.md",
-    "Package.resolved",
 }
 
 
@@ -717,7 +727,7 @@ def app_features(filename: str) -> set[str]:
     if lowered in {"appservices.swift", "portavozapp.swift"}:
         # Process composition/startup changes need one deterministic canary per
         # route, not every feature permutation behind those destinations.
-        return {"background-work", "launch-recovery", "main-shell", "menu-bar-brief"}
+        return {"background-work", "launch-recovery", "main-shell", "menu-bar-brief", "dictation"}
     if "commitmentreminder" in lowered:
         return {"commitment-radar", "meeting-commitments"}
     if any(token in lowered for token in (
@@ -730,14 +740,13 @@ def app_features(filename: str) -> set[str]:
         return set(ALL_FEATURES)
     if "showcase" in lowered:
         return {"public-showcase"}
-    # Before the generic "section"/"settings" buckets: dictation UI lives in
-    # the Audio pane, and its system-wide surface (triggers, paste) has no
-    # other XCUITest-reachable evidence.
+    # Dictation owns controller/panel and native delivery journeys, not just
+    # the Settings controls. Keep this ahead of generic presentation buckets.
     if any(
         token in lowered
         for token in ("dictation", "mousebutton", "mouseptt", "hotkey", "textinserter")
     ):
-        return {"settings-audio"}
+        return {"dictation"}
     if "semanticsearchpreparation" in lowered:
         return {"settings-intelligence"}
     if any(token in lowered for token in ("ask", "commandpalette")):
@@ -769,7 +778,7 @@ def app_features(filename: str) -> set[str]:
     if any(token in lowered for token in ("library", "trash", "voicemix")):
         return {"library"}
     if "menubar" in lowered:
-        return {"menu-bar-brief"}
+        return {"menu-bar-brief", "dictation"}
     if any(token in lowered for token in (
         "standingskill", "standingpremeetingbriefsupervisor"
     )):
@@ -1045,7 +1054,7 @@ def lower_layer_features(path: str) -> set[str]:
     if "stoprecording" in lowered or "startrecording" in lowered:
         return {"library", "recording-recovery"}
     if any(token in lowered for token in ("dictation", "mouseptt")):
-        return {"settings-audio"}
+        return {"dictation"}
     if "subtitle" in lowered:
         return {"meeting-export"}
     if "recap" in lowered:
@@ -1094,6 +1103,11 @@ def select_paths(paths: Iterable[str]) -> Selection:
         # Independent of whichever product selection branch handles the path.
         interruption_controls = interruption_controls or requires_interruption_controls(path)
 
+        if path == "Package.resolved":
+            selected.update(HARNESS_TESTS)
+            reasons.append(f"{path}: complete English dependency fallback")
+            continue
+
         if path == "Resources/Localization/Portavoz/Localizable.xcstrings":
             selected.update(HARNESS_TESTS)
             locales.add("es")
@@ -1139,6 +1153,11 @@ def select_paths(paths: Iterable[str]) -> Selection:
             reasons.append(
                 f"{path}: bilingual live-assistance evidence journey"
             )
+            continue
+
+        if path.startswith("Tests/PortavozDictationReceiver/"):
+            selected.update(feature_tests({"dictation"}))
+            reasons.append(f"{path}: native dictation receiver contract")
             continue
 
         if path == "Tests/PortavozUITests/FeatureUITestHandshakeSupport.swift":
@@ -1246,7 +1265,7 @@ def discovered_test_catalog(root: Path) -> set[str]:
 
 
 def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> None:
-    expected = set(ALL_TESTS)
+    expected = set(ALL_TESTS) | PERMISSION_GATED_TESTS
     discovered = discovered_test_catalog(root)
     missing = sorted(discovered - expected)
     stale = sorted(expected - discovered)
@@ -1259,6 +1278,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         feature for feature, tests in FEATURE_TESTS.items() if not tests
     )
     retired = sorted(discovered & RETIRED_DUPLICATE_TESTS)
+    permission_overlap = sorted(set(ALL_TESTS) & PERMISSION_GATED_TESTS)
     sentinel_mismatch = sorted(ALL_FEATURES ^ FEATURE_SOURCE_SENTINELS.keys())
     orphan_scopes: list[str] = []
     for feature, path in FEATURE_SOURCE_SENTINELS.items():
@@ -1298,12 +1318,34 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
                     f"runtime budget count {budget_count!r} != {len(ALL_TESTS)}"
                 )
 
+        native_budget_path = root / "docs/evidence/ui-test-native-dictation-runtime-budget.json"
+        if not native_budget_path.is_file():
+            runtime_budget_errors.append(
+                f"missing {native_budget_path.relative_to(root)}"
+            )
+        else:
+            native_budget = json.loads(native_budget_path.read_text(encoding="utf-8"))
+            native_ids = set(native_budget.get("testBudgetsSeconds", {}))
+            expected_native_ids = {
+                "/".join(selector.split("/")[1:]) + "()"
+                for selector in PERMISSION_GATED_TESTS
+            }
+            if native_ids != expected_native_ids:
+                runtime_budget_errors.append(
+                    "permission-gated runtime budgets do not match their catalog"
+                )
+            if native_budget.get("catalog", {}).get("expectedCaseCount") != len(PERMISSION_GATED_TESTS):
+                runtime_budget_errors.append(
+                    "permission-gated runtime budget count is stale"
+                )
+
     if (
         missing
         or stale
         or duplicates
         or empty_scopes
         or retired
+        or permission_overlap
         or sentinel_mismatch
         or orphan_scopes
         or runtime_budget_errors
@@ -1319,6 +1361,8 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
             details.append("empty feature scopes: " + ", ".join(empty_scopes))
         if retired:
             details.append("known duplicate tests returned: " + ", ".join(retired))
+        if permission_overlap:
+            details.append("permission-gated tests in hosted catalog: " + ", ".join(permission_overlap))
         if sentinel_mismatch:
             details.append("feature/source sentinel mismatch: " + ", ".join(sentinel_mismatch))
         if orphan_scopes:

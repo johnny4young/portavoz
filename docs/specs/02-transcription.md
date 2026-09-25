@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption), D231 (focused Meeting Detail text/speaker correction), D232 (explicit structural correction commands), D233 (correction-aware derived-artifact lineage and invalidation), D234 (correction-aware document projection and replica convergence), D320 (structured SpeechAnalyzer and First Listen lifetime), D355 (pinned non-serving Nemotron challenger), D433 (pinned non-serving compact MLX challengers and exact live-translation admission), D516 (reviewed exact speech-engine pin).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption), D231 (focused Meeting Detail text/speaker correction), D232 (explicit structural correction commands), D233 (correction-aware derived-artifact lineage and invalidation), D234 (correction-aware document projection and replica convergence), D320 (structured SpeechAnalyzer and First Listen lifetime), D355 (pinned non-serving Nemotron challenger), D433 (pinned non-serving compact MLX challengers and exact live-translation admission), D516 (reviewed exact speech-engine pin), D539 (evidence-backed FluidAudio 0.15.8 upgrade).
 
 Additional decision: D235 (correction recovery and scale gates).
 
@@ -148,11 +148,12 @@ this composer and corrected text remains intentionally unmaterialized.
 
 ## Engine dependency boundary
 
-FluidAudio is fixed to an exact version in the Swift package manifest, with the
-reviewed commit recorded in `Package.resolved`; **D516 is the canonical statement
-of that pin and of the review an upgrade requires**, and gap T35 tracks the
-resulting lag behind upstream. Resolving another dependency must not admit a later
-FluidAudio patch. Direct imports remain confined to `ParakeetEngine`,
+FluidAudio is fixed to exact 0.15.8 at revision
+`87a39dfe4068fef0f1c69bfe704b2b3ef4fbc5bc`; **D516 remains the review policy and
+D539 records the admitted upgrade**. Gap T35 records the completed comparison and
+the rejected stock 0.16.1 package rather than an unreviewed range. Resolving
+another dependency must not admit a later FluidAudio patch. Direct imports remain
+confined to `ParakeetEngine`,
 `ParakeetSegmentMapper`, `NemotronLatin1120Engine`, `PyannoteDiarizer` and
 `DiarizationEvaluation` inside the transcription/diarization kits. App composition
 consumes Portavoz contracts, not vendor types. This pin does not promote a
@@ -481,7 +482,7 @@ effort (D65).
 3. **Shared harness**: `LiveTranscriptionBench` (TranscriptionKit) paces the file in real time (1 s chunks) and measures finalization lag. Entry points: `portavoz-cli bench-live --engine parakeet` and, for speech, `Portavoz.app/Contents/MacOS/portavoz-app --bench-live <file> [--seconds] [--language]` (hidden launch argument: runs in-bundle, prints to stdout, exits).
 4. **Accuracy lane (MODEL-001, Jul 2026)**: `TranscriptionAccuracy` (TranscriptionKit, pure, 5 tests) computes WER and CER with rolling-buffer Levenshtein over normalization that keeps Spanish accents — they are phonemic ("papa" vs "papá" is a real error), while case, punctuation, and whitespace are not. The bench result now carries every final row (`Result.hypothesis`), and `bench-live` gains `--reference <txt>` (scores WER/CER against a plain-text transcript) and `--output <json>` (one evidence artifact per run, same convention as the scale benches), so an engine comparison leaves committed numbers instead of prose. The quality spec's rule stands: third-party accuracy tables are citations, never our measurements.
 5. **Nemotron challenger (MODEL-001/D355, Aug 2026)**: FluidAudio
-   0.15.6—the exact resolved dependency—contains
+   0.15.8—the exact resolved dependency—contains
    `StreamingNemotronMultilingualAsrManager` and tagged downloadable Nemotron
    3.5 ASR Streaming Multilingual 0.6B CoreML variants. The Latin-vocabulary
    ship serves English and Spanish, and the upstream benchmark documentation
@@ -634,4 +635,5 @@ order, whitespace and Unicode escaping must not create a preference change.
    operation, and Turbo remains the default.
 4. ~~FluidAudio pinned by revision `c367a18e`~~ — **RESOLVED**: `Package.swift`
    requires an exact reviewed release, not a revision and not a minor range
-   (D516); the open cost of that freeze is tracked as gap T35, not here.
+   (D516); D539 admits 0.15.8 after matched call-site, DER, latency and memory
+   evidence, while gap T35 records the rejected stock 0.16.1 package.

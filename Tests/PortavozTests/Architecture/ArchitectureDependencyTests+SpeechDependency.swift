@@ -2,12 +2,12 @@ import Foundation
 import XCTest
 
 extension ArchitectureDependencyTests {
-    /// D516: the manifest requirement is the single source of truth for the
+    /// D516/D539: the manifest requirement is the single source of truth for the
     /// reviewed engine version, so the version is read out of it rather than
     /// repeated here. An approved upgrade then edits the manifest, the resolved
     /// revision below, and the docs — never a version literal hidden in a regex.
-    func testFluidAudioRequirementAndResolutionStayAtReviewedVersion() throws {
-        let manifest = try Self.contents(of: "Package.swift")
+    static func requiredFluidAudioVersion() throws -> String {
+        let manifest = try contents(of: "Package.swift")
         let requirement = try NSRegularExpression(pattern:
             #"\.package\(\s*url:\s*"https://github\.com/FluidInference/FluidAudio\.git",\s*exact:\s*"([0-9]+\.[0-9]+\.[0-9]+)"\s*\)"#)
         let matches = requirement.matches(
@@ -15,7 +15,11 @@ extension ArchitectureDependencyTests {
         XCTAssertEqual(matches.count, 1,
             "The speech engine must require an explicitly reviewed exact release, not a patch range")
         let match = try XCTUnwrap(matches.first)
-        let requiredVersion = String(manifest[try XCTUnwrap(Range(match.range(at: 1), in: manifest))])
+        return String(manifest[try XCTUnwrap(Range(match.range(at: 1), in: manifest))])
+    }
+
+    func testFluidAudioRequirementAndResolutionStayAtReviewedVersion() throws {
+        let requiredVersion = try Self.requiredFluidAudioVersion()
 
         let resolved = try Self.jsonObject(at: "Package.resolved")
         let pins = try XCTUnwrap(resolved["pins"] as? [[String: Any]])
@@ -27,7 +31,7 @@ extension ArchitectureDependencyTests {
         let state = try XCTUnwrap(pin["state"] as? [String: Any])
         XCTAssertEqual(state["version"] as? String, requiredVersion,
             "Package.resolved must sit on the version the manifest requires")
-        XCTAssertEqual(state["revision"] as? String, "4dbf4f9f9a5ff3a53ade848d7ba4e3df13db859b",
+        XCTAssertEqual(state["revision"] as? String, "87a39dfe4068fef0f1c69bfe704b2b3ef4fbc5bc",
             "The reviewed commit is pinned as well, so a moved upstream tag cannot pass unnoticed")
     }
 
