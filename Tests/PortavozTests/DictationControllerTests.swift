@@ -16,7 +16,7 @@ final class DictationControllerTests: XCTestCase {
         let originalCount = board.changeCount
         for processID: pid_t in [0, -1, .min] {
             let result = await TextInserter.insert(
-                "Must never be delivered", pasteboard: board, eventTarget: .process(processID))
+                "Must never be delivered", into: .init(processID: processID, validate: { nil }), pasteboard: board)
             XCTAssertEqual(result, .eventUnavailable)
             XCTAssertEqual(board.changeCount, originalCount)
             XCTAssertEqual(board.string(forType: .string), "Do not replace — no reemplazar")
@@ -32,9 +32,8 @@ final class DictationControllerTests: XCTestCase {
         exited.executableURL = URL(fileURLWithPath: "/usr/bin/true")
         try exited.run()
         exited.waitUntilExit()
-        let target = TextInserter.EventTarget.process(exited.processIdentifier)
-        XCTAssertFalse(target.isAvailable)
-        let result = await TextInserter.insert("Must never be delivered", pasteboard: board, eventTarget: target)
+        let target = TextInserter.Target(processID: exited.processIdentifier, validate: { nil })
+        let result = await TextInserter.insert("Must never be delivered", into: target, pasteboard: board)
         XCTAssertEqual(result, .eventUnavailable)
         XCTAssertEqual(board.changeCount, originalCount)
         XCTAssertEqual(board.string(forType: .string), "original")
@@ -60,7 +59,7 @@ final class DictationControllerTests: XCTestCase {
     }
 
     func testPermissionDenialDoesNotPrepareAudioOrModels() async {
-        let harness = Harness(text: "No borres estas notas.")
+        let harness = DictationControllerHarness(text: "No borres estas notas.")
         var dependencies = harness.dependencies
         dependencies.canInsert = { false }
         harness.controller.toggle(using: dependencies)
@@ -76,7 +75,7 @@ final class DictationControllerTests: XCTestCase {
 
     func testCancelAfterPartialNeverDeliversAndReleasesRuntime() async {
         for text in ["No borres estas notas.", "Don’t delete these notes."] {
-            let harness = Harness(text: text)
+            let harness = DictationControllerHarness(text: text)
             harness.controller.toggle(using: harness.dependencies)
             let reached1 = await awaitEventually { harness.controller.partialText == text }
             XCTAssertTrue(reached1)
@@ -89,7 +88,7 @@ final class DictationControllerTests: XCTestCase {
     }
 
     func testFinalTextRunsThroughRealRulesAndSuppliesHintsToEngine() async {
-        let harness = Harness(text: "eh Café C++")
+        let harness = DictationControllerHarness(text: "eh Café C++")
         harness.set("es", forKey: DictationController.languageKey)
         harness.set("Kubernetes, Café", forKey: "customVocabulary")
         harness.set(
@@ -111,7 +110,7 @@ final class DictationControllerTests: XCTestCase {
     }
 
     func testPunctuationOnlyFinalDoesNotInvokeInsertion() async {
-        let harness = Harness(text: "… — !!!")
+        let harness = DictationControllerHarness(text: "… — !!!")
         harness.controller.toggle(using: harness.dependencies)
         let reached6 = await awaitEventually { harness.hints != nil }
         XCTAssertTrue(reached6)
@@ -124,7 +123,7 @@ final class DictationControllerTests: XCTestCase {
     }
 
     func testCancelDuringModelPreparationCannotStartMicrophoneLater() async {
-        let harness = Harness(text: "Late text must not appear")
+        let harness = DictationControllerHarness(text: "Late text must not appear")
         let gate = PreparationGate()
         var dependencies = harness.dependencies
         let load = dependencies.acquireRuntime
@@ -154,6 +153,35 @@ final class DictationControllerTests: XCTestCase {
         XCTAssertFalse(DictationUITestFixture.dependencies(fixture: nil).canInsert())
     }
 
+    func testRecoveryFixtureCannotCopyWithoutExplicitAdmissionAndNamedBoard() async {
+        let flags = ["-seed-dictation", "-seed-dictation-recovery"]
+        let key = DictationNativeUITestFixture.environmentKey
+        let board = NSPasteboard(name: .init(DictationNativeUITestFixture.pasteboardPrefix + UUID().uuidString))
+        defer { board.releaseGlobally() }
+        board.setString("Original", forType: .string)
+        for temporary in [false, true] {
+            for arguments in [[], ["-seed-dictation"], ["-seed-dictation-recovery"], flags] {
+                let fixture = DictationUITestFixture(arguments: arguments, usesTemporaryStore: temporary)
+                let dependencies = DictationUITestFixture.dependencies(
+                    fixture: fixture, environment: [key: board.name.rawValue])
+                let expectedCopy = temporary && arguments == flags
+                let destination = dependencies.captureDestination()
+                let delivery = await destination.insert("No native events")
+                XCTAssertEqual(delivery, expectedCopy ? .targetChanged : .focusUnavailable)
+                XCTAssertFalse(dependencies.copyText("Never copied on the first attempt"))
+                XCTAssertEqual(dependencies.copyText("Consented scratch copy"), expectedCopy)
+                board.setString("Original", forType: .string)
+            }
+        }
+        let fixture = DictationUITestFixture(arguments: flags, usesTemporaryStore: true)
+        for invalid in ["", "NSGeneralPboard", DictationNativeUITestFixture.pasteboardPrefix + "invalid"] {
+            let dependencies = DictationUITestFixture.dependencies(fixture: fixture, environment: [key: invalid])
+            XCTAssertFalse(dependencies.copyText("First"))
+            XCTAssertFalse(dependencies.copyText("Second"))
+        }
+        XCTAssertEqual(board.string(forType: .string), "Original")
+    }
+
     private func awaitEventually(_ condition: @MainActor () -> Bool) async -> Bool {
         let deadline = ContinuousClock.now.advanced(by: .seconds(3))
         while !condition(), ContinuousClock.now < deadline {
@@ -164,9 +192,9 @@ final class DictationControllerTests: XCTestCase {
 }
 
 @MainActor
-private final class Harness {
+final class DictationControllerHarness {
     let controller = DictationController(presentsPanel: false)
-    let microphone = ControlledDictationMicrophone()
+    fileprivate let microphone = ControlledDictationMicrophone()
     let defaults = UserDefaults(suiteName: "dictation-tests-\(UUID().uuidString)")!
     let text: String
     var now = Date(timeIntervalSince1970: 1_000)
@@ -197,11 +225,14 @@ private final class Harness {
                     self?.finishes += 1
                 }
             },
-            canInsert: { true }, targetName: { "Disposable receiver" },
-            insert: { [weak self] text in
-                self?.insertions.append(text)
-                return .inserted
+            canInsert: { true },
+            captureDestination: { [weak self] in
+                CapturedDictationDestination(name: "Disposable receiver", canRetry: true) { [weak self] text in
+                    self?.insertions.append(text)
+                    return .inserted
+                }
             },
+            copyText: { _ in false },
             defaults: defaults, now: { [weak self] in self?.now ?? .distantPast })
     }
 }

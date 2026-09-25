@@ -30,7 +30,8 @@ struct DictationCapturePolicy {
 
 /// System-wide dictation (the MacParakeet-validated surface): press the
 /// global hotkey anywhere, speak, press it again — the transcript lands in
-/// whatever app is frontmost. Reuses the meeting pipeline as-is: Parakeet
+/// the captured original field, or stays available for explicit recovery.
+/// Reuses the meeting pipeline as-is: Parakeet
 /// streaming on the ANE, the caption coalescer's echo/noise hygiene, and
 /// the user's custom vocabulary. Mic-only, nothing is stored: no meeting,
 /// no database row, no audio file.
@@ -61,6 +62,7 @@ final class DictationController {
         /// 4b: "inserted, no trace").
         case inserted(Int)
         case failed(String)
+        case recovery(TextInserter.InsertionResult)
     }
 
     private(set) var phase: Phase = .idle
@@ -73,6 +75,16 @@ final class DictationController {
     /// The app that was frontmost when dictation started — where the text
     /// will land. The strip shows it so you never dictate "blind" (4b).
     private(set) var targetApp: String?
+
+    enum CopyStatus: Equatable { case idle, copied, failed }
+    private(set) var recoveryText = ""
+    private(set) var copyStatus: CopyStatus = .idle
+    private(set) var isRetryingDelivery = false
+    var canRetryDelivery: Bool { destination?.canRetry == true }
+    private var destination: CapturedDictationDestination?
+    private var dependencies: DictationSessionDependencies?
+    private var deliveryID: UUID?
+    @ObservationIgnored private(set) var retryDeliveryTask: Task<Void, Never>?
 
     let shortcut = DictationShortcut()
     private var mousePTT: MouseButtonPTT?
@@ -217,6 +229,8 @@ final class DictationController {
             start(using: dependencies)
         case .listening:
             finishAndInsert()
+        case .recovery:
+            showPanel()
         }
     }
 
@@ -225,11 +239,19 @@ final class DictationController {
     }
 
     private func start(using dependencies: DictationSessionDependencies) {
+        // A new keyboard/mouse/menu trigger must not replace undelivered work.
+        if case .recovery = phase { showPanel(); return }
+        retryDeliveryTask?.cancel()
+        retryDeliveryTask = nil
+        deliveryID = nil
+        destination = nil
+        self.dependencies = dependencies
         failureDismissTask?.cancel()
         failureDismissTask = nil
         // The paste needs Accessibility; ask BEFORE recording so the user
         // never dictates into a void.
         guard dependencies.canInsert() else {
+            self.dependencies = nil
             phase = .failed(L10n.text(
                 // One-line UI copy.
                 // swiftlint:disable:next line_length
@@ -240,7 +262,9 @@ final class DictationController {
         }
         // Capture the destination BEFORE the non-activating panel appears —
         // the frontmost app is still the one the user will dictate into.
-        targetApp = dependencies.targetName()
+        let destination = dependencies.captureDestination()
+        self.destination = destination
+        targetApp = destination.name
         phase = .listening
         confirmedText = ""
         partialText = ""
@@ -387,6 +411,17 @@ final class DictationController {
 
     /// Esc in the panel: throw everything away.
     func cancel() {
+        retryDeliveryTask?.cancel()
+        retryDeliveryTask = nil
+        deliveryID = nil
+        destination = nil
+        dependencies = nil
+        recoveryText = ""
+        confirmedText = ""
+        partialText = ""
+        targetApp = nil
+        copyStatus = .idle
+        isRetryingDelivery = false
         activeSessionID = nil
         sessionClock = nil
         captureStartedAt = nil
@@ -407,7 +442,7 @@ final class DictationController {
     }
 
     private func deliver(sessionID: UUID, dependencies: DictationSessionDependencies) async {
-        guard activeSessionID == sessionID else { return }
+        guard activeSessionID == sessionID, let destination else { return }
         // The two-tier dictionary's deterministic tier plus the filler
         // filter run on the final text only — meeting transcripts stay
         // verbatim records and never pass through here.
@@ -424,46 +459,22 @@ final class DictationController {
         captureStartedAt = nil
         guard DictationAssembler.hasLexicalContent(text) else {
             completeSession(id: sessionID)
+            self.destination = nil
             phase = .idle
             panel.close()
             return
         }
-        let result = await dependencies.insert(text)
+        let result = await destination.insert(text)
         guard activeSessionID == sessionID else { return }
-        switch result {
-        case .inserted:
-            completeSession(id: sessionID)
-            let words = text.split(whereSeparator: \.isWhitespace).count
-            phase = .inserted(words)
-            do {
-                try await Task.sleep(for: .milliseconds(1600))
-            } catch {
-                return
-            }
-            guard case .inserted = phase else { return }
-            phase = .idle
-            panel.close()
-        case .secureField:
-            failSession(
-                id: sessionID,
-                message: L10n.text("Dictation never types into password fields."))
-        case .focusUnavailable:
-            failSession(
-                id: sessionID,
-                message: L10n.text(
-                    "Dictation couldn't verify the focused field, so it didn't type anything."))
-        case .modifiersStillPressed:
-            failSession(
-                id: sessionID,
-                message: L10n.text(
-                    "Release Command, Option, Control, and Shift, then try again."))
-        case .clipboardUnavailable, .eventUnavailable:
-            failSession(
-                id: sessionID,
-                message: L10n.text(
-                    "Dictation couldn't type into the focused app. Try again."))
-        case .cancelled:
-            return
+        completeSession(id: sessionID)
+        deliveryID = sessionID
+        if result == .inserted {
+            await showDispatchedText(text, id: sessionID)
+        } else {
+            recoveryText = text
+            copyStatus = .idle
+            phase = .recovery(result)
+            showPanel()
         }
     }
 
@@ -482,6 +493,8 @@ final class DictationController {
     private func failSession(id: UUID, message: String) {
         guard activeSessionID == id else { return }
         completeSession(id: id)
+        destination = nil
+        dependencies = nil
         phase = .failed(message)
         scheduleFailureDismiss()
     }
@@ -501,4 +514,44 @@ final class DictationController {
         }
     }
 
+}
+
+extension DictationController {
+    func copyUndeliveredText() {
+        guard case .recovery = phase, !isRetryingDelivery, let dependencies else { return }
+        copyStatus = dependencies.copyText(recoveryText) ? .copied : .failed
+    }
+
+    func retryUndeliveredText() {
+        guard case .recovery = phase, !isRetryingDelivery,
+              let id = deliveryID, let destination, destination.canRetry else { return }
+        let text = recoveryText
+        isRetryingDelivery = true
+        retryDeliveryTask = Task { [weak self] in
+            let result = await destination.insert(text)
+            guard let self, self.deliveryID == id, !Task.isCancelled else { return }
+            self.isRetryingDelivery = false
+            if result == .inserted {
+                await self.showDispatchedText(text, id: id)
+            } else {
+                self.phase = .recovery(result)
+            }
+            guard self.deliveryID == id || self.deliveryID == nil else { return }
+            self.retryDeliveryTask = nil
+        }
+    }
+
+    private func showDispatchedText(_ text: String, id: UUID) async {
+        recoveryText = ""
+        copyStatus = .idle
+        phase = .inserted(text.split(whereSeparator: \.isWhitespace).count)
+        showPanel()
+        do { try await Task.sleep(for: .milliseconds(1600)) } catch { return }
+        guard deliveryID == id else { return }
+        deliveryID = nil
+        destination = nil
+        dependencies = nil
+        phase = .idle
+        panel.close()
+    }
 }

@@ -4,6 +4,10 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## September 24, 2026
+
+- **🎯 Dictation that keeps your words** — if the original field changes or text cannot be sent, copy it, retry that field, or discard it explicitly instead of losing it or pasting into another app.
+
 ## 1.1.0 — September 17, 2026
 
 **Less noise, one place for everything.**

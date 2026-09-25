@@ -180,13 +180,14 @@ keyboard events address that receiver's process, never a global fallback: a
 named pasteboard alone cannot contain a global Paste shortcut if focus changes.
 The receiver establishes its own first responder instead of requiring a click
 through possible desktop overlays. Both app processes register with the existing
-journey owner before launch so interruption cleanup cannot orphan the receiver. Process IDs that do not name a running
-application fail in the actual inserter before borrowing even the scratch
-clipboard, and secure-field inspection reads the addressed process's focus. The
-fixture waits up to 20 s for the receiver, then 5 s for its focus to be ready. A passing native journey
-qualifies that inserter/receiver path, not production's session-wide event routing
-or destination identity fencing. The presence of this test is not evidence that
-the native gate passed. No general clipboard, real meeting, model download or microphone participates.
+journey owner before launch so interruption cleanup cannot orphan the receiver.
+Process IDs that do not name a running application fail in the actual inserter
+before borrowing even the scratch clipboard; liveness is checked again before
+dispatch. A passing native journey qualifies that inserter/receiver path, not
+every native destination change, application termination, external editor or
+post-event focus race. The presence of this test is not evidence that the native
+gate passed. No general clipboard, real meeting, model download or microphone
+participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
 `make test-ui-bilingual` and scoped hosted runs select the 123 unattended cases;
@@ -221,7 +222,47 @@ CI without those explicit inputs keeps the existing signing policy. The runner's
 command-boundary tests cover absent, exact, partial, oversized and injected
 values; the real signed build remains separate evidence.
 
-The two new journeys have individual 20-second budgets; existing per-test,
+`DictationDestinationRecoveryTests` changes the destination between controller
+preparation and delivery, exercises bilingual unpunctuated output, failed/full
+Copy, duplicate Retry and Discard during an uncooperative late callback. It
+awaits the actual retry task before asserting that state cannot revive.
+The controller's real Copy action also injects a failed pasteboard write after
+declaration: a rich original is restored, whereas a newer writer is left
+untouched, and the refused text remains available in both cases.
+Recovery freezes the final text-rule result: Copy and repeated Retry neither
+reapply replacements nor adopt preferences edited after the first refusal.
+`TextInsertionTargetTests` runs the production inserter against named rich
+clipboards with injectable modifier wait and event dispatch: refusal after a
+wait, changed/secure/missing final focus, cancellation inside either inspection,
+clipboard ownership changes during a successful final inspection, exact PID
+routing and observed restoration. A typed Core Foundation bridge test rejects
+a non-AX value before the real focus accessor can consume it. These doubles do not qualify native AX
+identity comparisons, native event routing or ASR quality.
+
+Two real-app recovery journeys use English/Spanish output matching the requested
+locale and cover retained text, explicit failed/successful
+Copy, Retry and a new trigger followed by Discard/restart. The temporary recovery
+fixture supplies deterministic destination refusal and retry dispatch, never a
+native event; only an explicitly admitted UUID clipboard can receive Copy.
+Neither fixture flags alone nor an arbitrary board name enables that effect.
+The visible control IDs and their nonempty labels/frames are asserted in UI
+coverage. The native panel is exposed as an AX Dialog rather than an ordinary
+Window. Long destination names must leave every action within its bounds, and
+re-showing recovery must preserve its frame. The discard journey uses a single
+click before restart: controller tests alone did not expose the deletion-role
+button consuming that click in the nonactivating panel. Native cancellation
+semantics match the pending operation without a double-click or focus override.
+The native receiver remains a separate permission-dependent journey.
+
+The disposable main-window menu host aligns the exact production menu content
+to the top, matching the real menu-bar surface rather than centering it behind
+the bottom-anchored recovery panel. The recovery-trigger journey checks that
+the panel and Dictate button do not overlap before clicking. Stable AX frames
+alone do not prove that a floating panel leaves a control reachable. An overlap
+fails as a layout assertion; unexpected-interruption handling is unchanged and
+never dismisses the recovery panel to make the trigger reachable.
+
+Each dictation journey has an individual 20-second budget; existing per-test,
 full-suite duration and p95 budgets are unchanged. Source/harness changes still
 expand conservatively. Lockfile changes select the complete English suite rather than bypassing UI
 evidence. The package manifest retains the shared-harness bilingual requirement,

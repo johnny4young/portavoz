@@ -2,7 +2,7 @@ import AppKit
 import ApplicationServices
 import Carbon.HIToolbox
 
-/// Inserts dictated text into whatever app is frontmost: paste-and-restore
+/// Inserts dictated text into a captured destination: paste-and-restore
 /// (the reliable industry pattern — synthetic per-character typing breaks
 /// with non-ASCII and secure fields). The synthetic ⌘V needs macOS's
 /// Accessibility permission; `canInsert` checks it and (optionally)
@@ -16,27 +16,11 @@ enum TextInserter {
         }
     }
 
-    /// Native fixtures route real keyboard events to their disposable receiver
-    /// so a focus race cannot send a paste shortcut to an unrelated application.
-    /// Production keeps session routing; this seam does not qualify that routing.
-    enum EventTarget {
-        case session
-        case process(pid_t)
-
-        /// A process target must still name a running application; anything else fails closed.
-        @MainActor
-        var isAvailable: Bool {
-            guard case .process(let processID) = self else { return true }
-            guard processID > 0, let application = NSRunningApplication(processIdentifier: processID)
-            else { return false }
-            return !application.isTerminated
-        }
-    }
-
     enum InsertionResult: Equatable {
         case inserted
         case secureField
         case focusUnavailable
+        case targetChanged
         case modifiersStillPressed
         case clipboardUnavailable
         case eventUnavailable
@@ -64,26 +48,37 @@ enum TextInserter {
     /// contents instead of the dictation.
     static let restoreDelay: Duration = .milliseconds(1500)
 
-    /// Security classification for the element that would receive the paste.
-    /// Any failed or malformed AX inspection is unavailable, not regular: a
-    /// privacy boundary must fail closed when macOS cannot prove the target.
-    /// A process target is inspected in that application, not wherever focus is.
+    /// Explicit recovery Copy is not a paste. If the write fails after
+    /// declaration, restore only while this operation still owns the board.
+    /// An unmaterializable existing representation must be left untouched.
     @MainActor
-    static func focusedFieldSecurity(in target: EventTarget = .session) -> FocusedFieldSecurity {
-        guard AXIsProcessTrusted() else { return .unavailable }
-        let root = switch target {
-        case .session: AXUIElementCreateSystemWide()
-        case .process(let processID): AXUIElementCreateApplication(processID)
+    static func copy(
+        _ text: String, to pasteboard: NSPasteboard = .general,
+        writeString: (NSPasteboard, String) -> Bool = { $0.setString($1, forType: .string) }
+    ) -> Bool {
+        guard !text.isEmpty else { return false }
+        let existingTypes = pasteboard.types ?? []
+        let snapshot = PasteboardSnapshot(of: pasteboard)
+        guard existingTypes.isEmpty || snapshot?.isComplete == true else { return false }
+        pasteboard.declareTypes([.string], owner: nil)
+        let ourChangeCount = pasteboard.changeCount
+        guard writeString(pasteboard, text) else {
+            restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
+            return false
         }
+        return true
+    }
+
+    @MainActor
+    static func focusedElement(in owner: AXUIElement) -> AXUIElement? {
         var focused: CFTypeRef?
-        let status = AXUIElementCopyAttributeValue(
-            root, kAXFocusedUIElementAttribute as CFString, &focused)
-        guard status == .success, let focused,
-            CFGetTypeID(focused) == AXUIElementGetTypeID()
-        else { return .unavailable }
-        // The cast through CFTypeRef is the sanctioned bridge for AX values.
-        // swiftlint:disable:next force_cast
-        let element = focused as! AXUIElement
+        let status = AXUIElementCopyAttributeValue(owner, kAXFocusedUIElementAttribute as CFString, &focused)
+        guard status == .success, let focused else { return nil }
+        return checkedCFValue(focused, as: .accessibilityElement)
+    }
+
+    @MainActor
+    static func fieldSecurity(of element: AXUIElement) -> FocusedFieldSecurity {
         var role: CFTypeRef?
         let roleStatus = AXUIElementCopyAttributeValue(
             element, kAXRoleAttribute as CFString, &role)
@@ -122,31 +117,27 @@ enum TextInserter {
         return role == secure || subrole == secure
     }
 
-    /// Pastes `text` into the frontmost app, then restores the previous
-    /// clipboard contents after the paste has landed. Waits for the physical
+    /// Dispatches `text` only to the captured process. Event dispatch is not
+    /// acknowledgement that an external editor applied the edit. Waits for the physical
     /// hotkey modifiers to be released first, so the synthesized ⌘V cannot
     /// combine with a still-held ⌥/⇧/⌃ into a different app shortcut.
     @MainActor
     static func insert(
-        _ text: String, pasteboard: NSPasteboard = .general, eventTarget: EventTarget = .session
+        _ text: String, into target: Target, pasteboard: NSPasteboard = .general,
+        effects: Effects = .live
     ) async -> InsertionResult {
-        guard eventTarget.isAvailable else { return .eventUnavailable }
-        guard await waitForModifierRelease() else {
+        guard target.processID > 0, effects.isProcessLive(target.processID) else { return .eventUnavailable }
+        guard await effects.waitForModifiers() else {
             return Task.isCancelled ? .cancelled : .modifiersStillPressed
         }
         guard !Task.isCancelled else { return .cancelled }
-        guard eventTarget.isAvailable else { return .eventUnavailable }
+        guard effects.isProcessLive(target.processID) else { return .eventUnavailable }
 
-        // This is intentionally the final check before clipboard mutation.
-        // Focus may change while the hotkey modifiers are being released.
-        switch focusedFieldSecurity(in: eventTarget) {
-        case .secure:
-            return .secureField
-        case .unavailable:
-            return .focusUnavailable
-        case .regular:
-            break
-        }
+        // Both the modifier wait and a rich clipboard snapshot can service
+        // another app. Validate on each side; never reinterpret a new target.
+        let initialFailure = target.validate()
+        guard !Task.isCancelled else { return .cancelled }
+        if let initialFailure { return initialFailure }
 
         let snapshot = PasteboardSnapshot(of: pasteboard)
         pasteboard.declareTypes([.string], owner: nil)
@@ -156,7 +147,20 @@ enum TextInserter {
         }
         let ourChangeCount = pasteboard.changeCount
 
-        guard postCommandV(to: eventTarget) else {
+        let targetFailure = target.validate()
+        let failure = Task.isCancelled ? InsertionResult.cancelled : targetFailure
+        if let failure {
+            restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
+            return failure
+        }
+        // AX IPC can let another clipboard owner publish during validation.
+        // Never send that owner's text as if it were this dictation.
+        guard pasteboard.changeCount == ourChangeCount else { return .clipboardUnavailable }
+        guard effects.isProcessLive(target.processID) else {
+            restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
+            return .eventUnavailable
+        }
+        guard effects.post(target.processID) else {
             restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
             return .eventUnavailable
         }
@@ -166,6 +170,25 @@ enum TextInserter {
             restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
         }
         return .inserted
+    }
+
+    @MainActor
+    struct Effects {
+        var waitForModifiers: () async -> Bool
+        var post: (pid_t) -> Bool
+        var isProcessLive: (pid_t) -> Bool = { _ in true }
+
+        static var live: Self {
+            Self(
+                waitForModifiers: TextInserter.waitForModifierRelease,
+                post: TextInserter.postCommandV,
+                isProcessLive: { processID in
+                    guard processID > 0,
+                          let application = NSRunningApplication(processIdentifier: processID)
+                    else { return false }
+                    return !application.isTerminated
+                })
+        }
     }
 
     /// Restore only when the pasteboard still holds our dictation: a changed
@@ -209,7 +232,7 @@ enum TextInserter {
         return false
     }
 
-    private static func postCommandV(to target: EventTarget) -> Bool {
+    private static func postCommandV(to processID: pid_t) -> Bool {
         let source = CGEventSource(stateID: .combinedSessionState)
         let keyCode = pasteKeyCode()
         guard
@@ -220,14 +243,8 @@ enum TextInserter {
         else { return false }
         keyDown.flags = .maskCommand
         keyUp.flags = .maskCommand
-        switch target {
-        case .session:
-            keyDown.post(tap: .cghidEventTap)
-            keyUp.post(tap: .cghidEventTap)
-        case .process(let processID):
-            keyDown.postToPid(processID)
-            keyUp.postToPid(processID)
-        }
+        keyDown.postToPid(processID)
+        keyUp.postToPid(processID)
         return true
     }
 
@@ -319,6 +336,12 @@ enum TextInserter {
     ) -> Property? {
         guard let pointer else { return nil }
         let value = Unmanaged<CFTypeRef>.fromOpaque(pointer).takeUnretainedValue()
+        return checkedCFValue(value, as: propertyType)
+    }
+
+    static func checkedCFValue<Property: AnyObject>(
+        _ value: CFTypeRef, as propertyType: BorrowedCFPropertyType<Property>
+    ) -> Property? {
         guard CFGetTypeID(value) == propertyType.typeID else { return nil }
         return value as? Property
     }
@@ -332,12 +355,17 @@ extension TextInserter.BorrowedCFPropertyType where Value == CFData {
     static var data: Self { Self(typeID: CFDataGetTypeID()) }
 }
 
+extension TextInserter.BorrowedCFPropertyType where Value == AXUIElement {
+    static var accessibilityElement: Self { Self(typeID: AXUIElementGetTypeID()) }
+}
+
 /// Full multi-type snapshot of the pasteboard. Saving only the plain string
 /// (the previous behavior) silently destroyed rich content — an image, file
 /// URLs, styled text — the moment a dictation landed.
 struct PasteboardSnapshot {
     private let types: [NSPasteboard.PasteboardType]
     private let values: [NSPasteboard.PasteboardType: Value]
+    let isComplete: Bool
 
     private enum Value {
         case data(Data)
@@ -364,6 +392,7 @@ struct PasteboardSnapshot {
         guard !values.isEmpty else { return nil }
         self.types = capturedTypes
         self.values = values
+        isComplete = capturedTypes.count == types.count
     }
 
     func restore(to pasteboard: NSPasteboard) {

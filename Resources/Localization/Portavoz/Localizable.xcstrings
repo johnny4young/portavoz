@@ -2977,6 +2977,16 @@
         }
       }
     },
+    "Copied. You can paste the text yourself.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiado. Puedes pegar el texto manualmente."
+          }
+        }
+      }
+    },
     "Copy": {
       "localizations": {
         "es": {
@@ -3547,6 +3557,16 @@
         }
       }
     },
+    "Couldn't copy. Your text is still here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo copiar. Tu texto sigue aquí."
+          }
+        }
+      }
+    },
     "Couldn’t complete": {
       "localizations": {
         "es": {
@@ -4069,6 +4089,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Eliminada %@"
+          }
+        }
+      }
+    },
+    "Delivery didn't complete. Reinsert into the original field, or copy your text.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El envío no se completó. Reinserta en el campo original o copia el texto."
           }
         }
       }
@@ -6425,6 +6455,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Se conservan 30 días y luego se eliminan definitivamente."
+          }
+        }
+      }
+    },
+    "Kept only in memory. Copy it before quitting Portavoz.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo se conserva en memoria. Cópialo antes de cerrar Portavoz."
           }
         }
       }
@@ -10709,6 +10749,16 @@
         }
       }
     },
+    "Reinsert": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reinsertar"
+          }
+        }
+      }
+    },
     "Reinstall Portavoz to restore its bundled offline question detector.": {
       "localizations": {
         "es": {
@@ -11381,6 +11431,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reintentar atajo"
+          }
+        }
+      }
+    },
+    "Return to %@ and the original field to reinsert, or copy your text.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelve a %@ y al campo original para reinsertar, o copia el texto."
           }
         }
       }
@@ -13561,6 +13621,16 @@
         }
       }
     },
+    "Text wasn't sent": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El texto no se envió"
+          }
+        }
+      }
+    },
     "Text-only meeting package": {
       "localizations": {
         "es": {
@@ -13841,6 +13911,16 @@
         }
       }
     },
+    "The destination changed. Copy your text to keep it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El destino cambió. Copia el texto para conservarlo."
+          }
+        }
+      }
+    },
     "The email draft could not be opened. Portavoz did not send it.": {
       "localizations": {
         "es": {
@@ -14027,6 +14107,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "La solicitud de memoria no es lo bastante específica para responder de forma segura."
+          }
+        }
+      }
+    },
+    "The original field can't be verified. Your text is still available to copy.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede verificar el campo original. Tu texto sigue disponible para copiar."
           }
         }
       }

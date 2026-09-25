@@ -1,3 +1,4 @@
+import AppKit
 import AudioCaptureKit
 import Foundation
 import PortavozCore
@@ -14,15 +15,26 @@ extension AppServices {
 
 struct DictationUITestFixture: Sendable {
     let text: String
+    let recoversDestination: Bool
 
     init?(arguments: [String], usesTemporaryStore: Bool) {
         guard usesTemporaryStore, arguments.contains("-seed-dictation") else { return nil }
-        text = "No borres estas notas."
+        recoversDestination = arguments.contains("-seed-dictation-recovery")
+        text = arguments.contains("-seed-dictation-english")
+            ? "Don't delete these notes."
+            : "No borres estas notas."
     }
 
     @MainActor
-    static func dependencies(fixture: Self?) -> DictationSessionDependencies {
-        DictationSessionDependencies(
+    static func dependencies(
+        fixture: Self?, environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> DictationSessionDependencies {
+        let boardName = DictationNativeUITestFixture.validPasteboardName(
+            environment[DictationNativeUITestFixture.environmentKey])
+        var deliveryAttempts = 0
+        var copyAttempts = 0
+        var clockTick = 0.0
+        return DictationSessionDependencies(
             makeMicrophone: {
                 .init(source: DictationFixtureMicrophone(), warmUp: {})
             },
@@ -32,11 +44,29 @@ struct DictationUITestFixture: Sendable {
                     engine: DictationFixtureEngine(text: fixture.text), completion: {})
             },
             canInsert: { fixture != nil },
-            targetName: { "Dictation test receiver" },
-            // This fixture qualifies the controller and panel, not native
-            // paste. The separate receiver journey calls TextInserter itself.
-            insert: { _ in .focusUnavailable },
-            defaults: .standard)
+            captureDestination: {
+                // No native events. The separate receiver journey owns those.
+                let name = fixture?.recoversDestination == true
+                    ? String(repeating: "Dictation receiver — / ", count: 12)
+                    : "Dictation test receiver"
+                return CapturedDictationDestination(name: name, canRetry: true) { _ in
+                    deliveryAttempts += 1
+                    guard fixture?.recoversDestination == true else { return .focusUnavailable }
+                    return deliveryAttempts == 1 ? .targetChanged : .inserted
+                }
+            },
+            copyText: { text in
+                copyAttempts += 1
+                // Deliberate first failure; later attempts use only a named board.
+                guard fixture?.recoversDestination == true, copyAttempts > 1, let boardName else { return false }
+                return TextInserter.copy(text, to: NSPasteboard(name: .init(boardName)))
+            },
+            defaults: .standard,
+            now: {
+                guard fixture?.recoversDestination == true else { return Date() }
+                defer { clockTick += 1 }
+                return Date(timeIntervalSince1970: clockTick)
+            })
     }
 }
 
