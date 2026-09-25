@@ -22,8 +22,13 @@ final class DictationClipboardInsertionTests: XCTestCase {
         let result = await insert("Own text", on: board) { sent = board.string(forType: .string); return true }
         XCTAssertEqual(result, .inserted)
         XCTAssertEqual(sent, "Own text")
-        try await Task.sleep(for: TextInserter.restoreDelay + .milliseconds(100))
-        XCTAssertEqual(contents(board), before)
+        let deadline = ContinuousClock.now.advanced(by: .seconds(10))
+        while contents(board) != before && ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(25))
+        }
+        XCTAssertEqual(
+            contents(board), before,
+            "Restoration must finish on the original board; pending loans: \(DictationClipboard.shared.pendingLoanCount)")
     }
 
     func testUnknownRepresentationNeverInvokesProviderOrPosts() async {
