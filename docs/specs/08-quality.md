@@ -161,6 +161,21 @@ hints at the engine invocation, punctuation-only output and late model
 preparation after cancellation. All preference changes use a volatile domain.
 Fixture selection is checked both with and without temporary composition.
 
+`DictationStreamingProjectionTests` drives the actual controller with an explicitly
+bounded delta stream: bilingual punctuation and final rules, noise/empty inputs,
+279/280/281-character boundaries, older callbacks, same-count replacement and a
+remote/microphone/direct sequence that reopens a closed row. It waits for a changing
+sentinel after ignored input rather than counting an unchanged screen as receipt.
+Cancellation tests await old runtime teardown and restart with a separate audio
+source; cancelled streams must not republish final text. Projection parity tests
+compare each intermediate state with full coalescer assembly and explicit golden
+cases. The opt-in `PORTAVOZ_DICTATION_PROJECTION_BENCHMARK=1` lane measures a bounded
+synthetic burst through that controller at three prefix sizes with output digests.
+It is not an ASR, native destination, real UI latency or memory qualification.
+The streaming real-app journey checks the complete multi-row EN/ES projection,
+cancellation and restart; its 20-second budget is an initial
+candidate limit, not an increased full-suite allowance.
+
 `DictationResourceOwnershipTests` uses real `AppServices` composition and the
 actual controller, with disposable bilingual speech effects. It checks
 maintenance admission and the search-reconciliation entry point while dictating,
