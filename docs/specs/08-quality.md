@@ -5188,12 +5188,20 @@ control-center cases also require the external Skill to be independently
 disableable without turning its Settings switch into consent. One real-app
 journey per locale opens the exact seeded-summary preview, verifies the
 no-recipient and possible-sync disclosures plus localized handoff action,
-requires the disposable adapter to leave both clipboard and foreground app
-ownership unchanged, then observes the content-free receipt and independent
+requires the disposable adapter to leave foreground app ownership unchanged,
+then observes the content-free receipt and independent
 offer retirement. `meeting-skills` selectors include that journey, and catalog
 validation reports 77 complete cases. The disposable adapter cannot prove the
 system email client opened; default-client composition on physical Sequoia and
 Tahoe remains field evidence.
+
+The email call-site architecture test checks the exact execution-plan effect,
+its delivery adapter, and the system opener for pasteboard use. The real-app
+journey remains the proof that visible confirmation reaches that effect. Its
+former general-pasteboard sentinel was removed: it destroyed the user's
+clipboard during test setup and could fail if an unrelated app wrote to that
+shared board. No temporary-board fixture is counted as proof about the user's
+general clipboard.
 
 **D328 review-first Secret Gist gate.** Package coverage pins the separate
 external definition, explicit meeting-read/remote-send capabilities, exact
