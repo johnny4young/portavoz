@@ -46,7 +46,6 @@ final class UITestMainWindowCaptureTests: XCTestCase {
         XCTAssertTrue(frames.isEmpty, "attachment precedes native frame restoration")
         capture.viewDidAppear()
         XCTAssertEqual(frames, [restored], "appearance must observe the restored frame")
-        capture.viewDidDisappear()
         let reopened = NSRect(x: -2_000, y: -200, width: 1_100, height: 700)
         window.setFrame(reopened, display: false)
         capture.viewDidAppear()

@@ -5737,7 +5737,8 @@ including external routes; no delay, repeated timer, or app-wide window lookup
 participates. The primary scene owns its capture outside successful content,
 so database recovery receives the same placement when no application services
 could be loaded. The
-separate weak reference remains current at attachment for receipt navigation.
+Settings bridge's separate weak reference remains current at attachment for
+receipt navigation.
 The harness asserts that the Settings navigation anchor has nonnegative global
 coordinates before any journey continues. Production launches never enter this boundary and retain
 SwiftUI's saved window placement. No forced compact-main-window mode or
