@@ -1,6 +1,7 @@
 import AppKit
 import AudioCaptureKit
 import Foundation
+import PortavozCore
 import TranscriptionKit
 
 /// Session-scoped side effects. The controller still owns the production
@@ -19,6 +20,17 @@ struct DictationSessionDependencies {
     var insert: (String) async -> TextInserter.InsertionResult
     var defaults: UserDefaults
     var now: () -> Date = Date.init
+    /// Nil in ordinary composition: no observation, file, timer or telemetry.
+    var measurementSink: DictationSessionMeasurementRecorder.Sink?
+    var measurementClock: DictationSessionMeasurementRecorder.Clock = { .now }
+
+    func transcriptionHints() -> TranscriptionHints {
+        let language = defaults.string(forKey: DictationController.languageKey)
+        return TranscriptionHints(
+            language: ["es", "en"].contains(language) ? language : nil,
+            vocabulary: VocabularyPrompt.parse(defaults.string(forKey: "customVocabulary") ?? ""),
+            meetingID: MeetingID())
+    }
 
     static func live(services: AppServices) -> Self {
         Self(

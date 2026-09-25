@@ -14,6 +14,7 @@ public enum LiveTranscriptionBench {
         case invalidDuration(Int)
         case invalidAudioFormat
         case engineEndedBeforeInput
+        case inputEndedBeforeTarget
 
         public var errorDescription: String? {
             switch self {
@@ -23,6 +24,8 @@ public enum LiveTranscriptionBench {
                 return "benchmark audio must have a finite positive sample rate and channels"
             case .engineEndedBeforeInput:
                 return "transcription engine ended before the benchmark input finished"
+            case .inputEndedBeforeTarget:
+                return "benchmark audio ended before its requested frame count"
             }
         }
     }
@@ -33,9 +36,13 @@ public enum LiveTranscriptionBench {
         public var characters = 0
         public var firstResultAt: Double?
         public var lags: [Double] = []
-        /// Every final row in emission order — the hypothesis an accuracy
-        /// pass (MODEL-001 WER/CER) scores against a reference transcript.
+        /// Every final row in emission order. This is useful for measuring
+        /// confirmation, but is not necessarily what Dictation would insert.
         public var finalTexts: [String] = []
+        /// The successful stream's recognized Dictation text before user text
+        /// rules, composed through the same caption admission path as the
+        /// controller. Short speech can have no final row at all.
+        public internal(set) var dictationRecognizedText = ""
 
         public var hypothesis: String {
             finalTexts.joined(separator: " ")
@@ -55,6 +62,26 @@ public enum LiveTranscriptionBench {
                 format: "finalization lag — p50 %.2fs · p95 %.2fs · max %.2fs",
                 percentile(0.5), percentile(0.95), lags.last ?? 0))
             return lines.joined(separator: "\n")
+        }
+
+        mutating func observe(
+            _ segment: TranscriptSegment,
+            elapsed: TimeInterval,
+            log: @Sendable (String) -> Void
+        ) {
+            if firstResultAt == nil { firstResultAt = elapsed }
+            if segment.isFinal {
+                finals += 1
+                characters += segment.text.count
+                finalTexts.append(segment.text)
+                lags.append(elapsed - segment.endTime)
+                log(String(
+                    format: "[%6.2fs] final lag %+5.2fs  %@",
+                    elapsed, elapsed - segment.endTime,
+                    String(segment.text.prefix(70))))
+            } else {
+                volatiles += 1
+            }
         }
     }
 
@@ -79,7 +106,7 @@ public enum LiveTranscriptionBench {
     private static func feedAudio(
         _ audioFile: AVAudioFile,
         rate: Double,
-        totalSeconds: Double,
+        targetFrames: AVAudioFramePosition,
         into feed: AsyncStream<AudioChunk>.Continuation,
         startedAt feedStart: Date
     ) async throws {
@@ -91,18 +118,22 @@ public enum LiveTranscriptionBench {
                 frameCapacity: chunkFrames)
         else { throw BenchError.invalidAudioFormat }
 
-        var fedSeconds = 0.0
-        while fedSeconds < totalSeconds {
+        var fedFrames: AVAudioFramePosition = 0
+        while fedFrames < targetFrames {
             try Task.checkCancellation()
-            try audioFile.read(into: buffer, frameCount: chunkFrames)
-            guard buffer.frameLength > 0 else { break }
+            let remaining = targetFrames - fedFrames
+            try audioFile.read(
+                into: buffer,
+                frameCount: AVAudioFrameCount(min(AVAudioFramePosition(chunkFrames), remaining)))
+            guard buffer.frameLength > 0 else { throw BenchError.inputEndedBeforeTarget }
             let samples = monoSamples(from: buffer)
             feed.yield(AudioChunk(
                 channel: .microphone,
                 samples: samples,
                 sampleRate: rate,
-                timestamp: fedSeconds))
-            fedSeconds += Double(buffer.frameLength) / rate
+                timestamp: Double(fedFrames) / rate))
+            fedFrames += AVAudioFramePosition(buffer.frameLength)
+            let fedSeconds = Double(fedFrames) / rate
             let wait = feedStart.addingTimeInterval(fedSeconds).timeIntervalSinceNow
             if wait > 0 {
                 try await Task.sleep(for: .seconds(wait))
@@ -125,14 +156,18 @@ public enum LiveTranscriptionBench {
         let rate = audioFile.processingFormat.sampleRate
         guard
             rate.isFinite,
-            rate > 0,
+            rate >= 1,
             rate <= Double(AVAudioFrameCount.max),
             audioFile.processingFormat.channelCount > 0,
             audioFile.length > 0
         else {
             throw BenchError.invalidAudioFormat
         }
-        let totalSeconds = min(Double(seconds), Double(audioFile.length) / rate)
+        let requestedFrames = Double(seconds) * rate
+        let targetFrames = requestedFrames >= Double(audioFile.length)
+            ? audioFile.length
+            : AVAudioFramePosition(requestedFrames.rounded(.down))
+        guard targetFrames > 0 else { throw BenchError.invalidAudioFormat }
 
         let (stream, feed) = AsyncStream.makeStream(of: AudioChunk.self)
         let segments = transcribe(stream)
@@ -143,28 +178,19 @@ public enum LiveTranscriptionBench {
             try await feedAudio(
                 audioFile,
                 rate: rate,
-                totalSeconds: totalSeconds,
+                targetFrames: targetFrames,
                 into: feed,
                 startedAt: feedStart)
         }
 
         var result = Result()
+        var captions: [TranscriptSegment] = []
+        let coalescer = CaptionCoalescer()
         do {
             for try await segment in segments {
+                coalescer.apply(segment, to: &captions)
                 let elapsed = Date().timeIntervalSince(feedStart)
-                if result.firstResultAt == nil { result.firstResultAt = elapsed }
-                if segment.isFinal {
-                    result.finals += 1
-                    result.characters += segment.text.count
-                    result.finalTexts.append(segment.text)
-                    result.lags.append(elapsed - segment.endTime)
-                    log(String(
-                        format: "[%6.2fs] final lag %+5.2fs  %@",
-                        elapsed, elapsed - segment.endTime,
-                        String(segment.text.prefix(70))))
-                } else {
-                    result.volatiles += 1
-                }
+                result.observe(segment, elapsed: elapsed, log: log)
             }
         } catch {
             log("stream error: \(error.localizedDescription)")
@@ -178,6 +204,8 @@ public enum LiveTranscriptionBench {
         } catch is CancellationError {
             throw BenchError.engineEndedBeforeInput
         }
+        result.dictationRecognizedText = DictationAssembler.text(
+            confirmed: captions.map(\.text).joined(separator: " "), partial: "")
         result.lags.sort()
         return result
     }

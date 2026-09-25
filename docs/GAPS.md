@@ -33,6 +33,98 @@ unattended EN/ES UI qualification excludes exactly that TCC-owned receiver case
 disposable app and retain its actual receipt before claiming cross-process
 delivery.
 
+The installed-model controller lane writes complete per-run receipts rather
+than per-caption progress. The sequential matrix launcher now preserves each
+bounded cohort's terminal files across later timeout or interruption, without
+raising the existing deadline or retrying failed cohorts. A failed cohort has
+no admitted partial cell count; a fresh process per cohort does not establish
+long single-process endurance or explain a backend stall. Complete matrix
+observation, quality acceptance, leak evidence and native delivery remain
+distinct requirements.
+
+### Live dictation can propose text without speech
+
+**Open, reproduced in the public controller corpus.** The first complete
+480-variant/two-pass observation produced lexical text in 16 of 64 non-speech
+attempts: both passes of eight silence/tone variants. The real controller reached
+its delivery boundary; the explicit rejecting double prevented native Paste.
+The September 21 repeat with freshly materialized public audio and the current
+controller independently reproduced 16 lexical outputs in 64 non-speech attempts;
+the complete observation still does not accept recognition quality or native delivery.
+Lexical-content admission alone is therefore not evidence of speech, and the
+former claim that live Parakeet always yields no silence segment is withdrawn.
+The same run retained substantial recognition error in both languages; see the
+quality spec for scoped counts and measurement limitations. Diagnose model,
+stream lifecycle and adapter behavior, then validate a speech-admission mechanism
+with the existing corpus. Do not silently add RMS thresholds, output vocabulary
+filters or another default engine to hide these counterexamples. This work does
+not alter the original meeting audio or claim native delivery qualification.
+
+A separate static timing concern needs call-site reproduction before a repair:
+`ParakeetSegmentMapper.segment` admits only token starts strictly greater than
+`fallbackTime`, while the live `ParakeetEngine` consumer initializes that edge
+to zero and advances it after provisional as well as confirmed updates. A token
+at the stream origin or exactly at the preceding end is excluded by that
+predicate, and revised provisional prefixes are not represented as revisions.
+Existing mapper tests use a positive first start and separated token intervals;
+they do not characterize these boundary shapes through the live consumer.
+Neither this suspicion nor the zero-valued silence inputs establish the cause
+of the observed WER. Reproduce complete update sequences through an injectable
+backend seam, including both languages and confirmed/provisional transitions,
+before replacing the deduplication mechanism or adopting another engine.
+
+### Dictation still needs a complete, phase-separated qualification
+
+The public corpus now specifies 480 variants over 60 text families, with exact
+source and local PCM admission checks. This is a test-data foundation, not a
+measured dictation-quality or latency result. An explicit installed-voice
+materializer now produces local PCM with code/voice-selection provenance,
+without treating synthetic output as ASR evidence. A separate installed-only
+Parakeet test lane now produces per-cell quality and live-work observations,
+not a competitive quality pass. Its same-process repetitions cannot establish
+cold-cache performance or distinguish every fixture/recognizer/composition cause
+of a mismatch. A separate explicit controller lane now joins the public input, real
+controller, installed adapter and whole-process footprint observation. It retains
+cancelled/failed attempts and rejects native insertion by design. Physical
+gesture/capture/dispatch acknowledgement and complete per-group qualification
+are not established by audio generation or a limited model/controller run.
+Natural accent/noise/device evidence is also distinct from synthetic variants.
+The controller lane also exposes a duration boundary hidden by model-only
+results: valid public minimal utterances can end before the existing minimum
+capture duration, so Stop cancels them without output. Keep those attempts in
+quality results; do not pad their audio or move the capture clock to model
+preparation to manufacture successful delivery. Any policy change needs separate
+gesture/capture characterization and preservation of tap/hold behavior.
+Do not adopt another engine or promote proposed numerical budgets on the
+strength of the corpus count. The source and audio-manifest contract lives in
+`Fixtures/DictationValidation/README.md` and the quality specification.
+
+### Live Parakeet still lacks reliable token-delivery ownership
+
+The adapter's `token.startTime > previousSegment.endTime` filter can discard
+valid words at zero, at the prior end, or sharing time with another subword.
+Native boundary fixtures reproduce that loss. Short installed-model attribution
+also reproduces production output while showing additional word error at this
+mapper, rather than at caption composition.
+
+**Removing the filter is not a repair.** Although the resolved provider calls a
+deduplication routine before emitting updates, a separate repeated public-speech
+experiment extending beyond its left context produced massive context replay in
+English, Spanish and mixed speech. Unfiltered production and the independent
+experiment agreed; both were wrong. The ordinary short-cell lane cannot certify
+this shape. The passthrough candidate was rejected before commit, not retained
+behind green consumer tests or reclassified as a harmless model-only error.
+
+A repair must establish which tokens belong to each delivered audio region,
+preserve same-time subwords and legitimate repetition, and survive long context,
+final drain and both meeting/dictation consumers. Neither a timestamp epsilon
+nor unconditional trust in the upstream deduplication claim is demonstrated.
+The existing filter remains imperfect but cannot be removed without replacing
+its replay protection. Separately, `CaptionCoalescer.trimOverlap` can collapse
+literal repetitions and relies on a short-word allowlist; retiring that policy
+requires an explicit producer/boundary contract across supported live engines.
+No successful harness exit closes these unresolved product-quality defects.
+
 ### Accepted live input survives interrupted recordings
 
 **Implemented:** explicit notes and objective changes commit to canonical context
@@ -753,3 +845,19 @@ Backend queue backpressure and exception-path cancellation draining remain
 unverified risks, not newly reproduced product defects. Preserve the failed
 receipt and unchanged stability thresholds; do not replace this gap with a
 retry-until-green candidate or a synthetic unit-test claim.
+
+
+## Dictation end-to-end measurement qualification
+
+The controller now exposes opt-in, content-free request-to-outcome phase
+observations. Deterministic call-site tests establish wiring and session
+ownership only. The separate public-PCM/controller lane binds source/model
+identity and samples whole-process memory but deliberately rejects insertion.
+It does not replace complete corpus review, independently repeatable host
+comparisons, AppServices cache ownership or native inserter readback evidence.
+Physical keyboard timing and rendered-frame latency
+are outside these controller timestamps. A dispatch-reported result is not a
+successful-delivery baseline. Native Accessibility admission and a verifiable
+receiver remain separate prerequisites; missing evidence is not an accepted
+performance result. Existing capture-loss, cancellation and destination-safety
+limitations are not closed by adding measurements.

@@ -2600,6 +2600,30 @@ creating an evidence package; it does not certify an unobserved real-world check
 
 ## Global dictation (Jul 2026)
 
+**Opt-in controller phase measurements.** A session dependency may supply a
+content-free measurement sink and monotonic clock. Ordinary composition supplies
+neither an observer nor a writer; it creates no recorder and never reads the
+measurement clock. The request begins at controller admission, not at the
+physical keyboard event. Fixed first-occurrence points cover runtime readiness,
+microphone stream opening, the first buffer handled by the existing main-actor
+meter bridge, first caption handling, Stop, input/ASR termination, final rules
+and entry/return of the inserter. Buffer handling is not a hardware timestamp;
+caption handling is not a rendered-frame timestamp.
+
+One session-owned accumulator emits at most one terminal value. Cancellation
+freezes the observation immediately, even if preparation or insertion returns
+later; a restarted session has a different recorder. A cancelled observation
+with `deliveryStarted` cannot promise to undo an event already posted. Terminal
+time is the outcome boundary, not proof that native resources finished draining.
+The legacy inserter's `inserted` result maps to `dispatchReported`, never verified
+receiver content. Empty text, permission denial, pipeline failure, cancellation
+and rejected delivery remain distinct. Schema 1 contains only fixed phase names,
+relative seconds and a closed outcome; no transcript, target identity, library
+identifier, wall-clock timestamp or error string. `verifiedDeliveryMeasured`
+remains false. This observer does not repair or certify capture conservation,
+model quality, platform permissions or the pending destination fence.
+
+
 **Disposable controller coverage (D515).** The production controller accepts
 session-scoped audio/runtime/platform dependencies. Tests run its real stream
 consumer, coalescer, final text rules, minimum-duration decision and cancellation
@@ -2655,7 +2679,7 @@ Surface validated by MacParakeet: global hotkey → speak → hotkey again → t
 
 `TextInserter` implements the fail-closed delivery boundary. It waits up to one second for all physical modifiers to lift and refuses delivery rather than posting a combined shortcut when they remain held or cancellation arrives. It then inspects the focused Accessibility element immediately before touching the clipboard: `AXSecureTextField`, lost trust, missing role, malformed values, and transient inspection errors all block insertion with localized feedback; an explicitly absent/unsupported subrole on an otherwise valid ordinary text control remains admissible. Only after that check does it snapshot every pasteboard representation it can actually capture, write the dictation, and post a complete layout-aware ⌘V pair. Borrowed Text Input Source properties are promoted while their owning source remains alive, must match their declared Core Foundation runtime type, and must contain a complete keyboard-layout header; a missing, wrong-typed, or truncated value falls back to the standard QWERTY shortcut instead of reaching typed Carbon translation. Clipboard-write or event-construction failure restores immediately. Successful delivery restores captured representations after 1.5 seconds only if `changeCount` still identifies Portavoz's write, preserving rich content without overwriting a clipboard manager.
 
-Capture timing starts when the microphone stream actually opens, not when model preparation or the panel starts. A finish before readiness or before 0.75 seconds of real audio cancels silently; one owned 250 ms tail task preserves the last phoneme and suppresses duplicate finish gestures. Session cancellation closes the transcription feed immediately, stops local resources, fences stale state, and prevents later insertion. Audio feeding and peak calculation run off the main actor; only the meter mutation crosses back. A single cancellable failure-dismiss task prevents an older error from closing a restarted session. `DictationAssembler` joins confirmed plus partial text and requires lexical content, so punctuation-only noise never pastes. A pre-transcription VAD is deliberately absent because live Parakeet silence yields no segment; the batch-Whisper hallucination class is handled elsewhere. The Settings toggle remains off by default. Verified E2E: the hotkey triggers with the app in the background, the panel transcribes live audio, and final insertion works in the field.
+Capture timing starts when the microphone stream actually opens, not when model preparation or the panel starts. A finish before readiness or before 0.75 seconds of real audio cancels silently; one owned 250 ms tail task preserves the last phoneme and suppresses duplicate finish gestures. Session cancellation closes the transcription feed immediately, stops local resources, fences stale state, and prevents later insertion. Audio feeding and peak calculation run off the main actor; only the meter mutation crosses back. A single cancellable failure-dismiss task prevents an older error from closing a restarted session. `DictationAssembler` joins confirmed plus partial text and requires lexical content, so punctuation-only noise never pastes. There is no pre-transcription VAD gate in live dictation. The complete public controller corpus contains silence/tone variants that produce lexical proposals, so lexical-content admission alone is not proof of speech; this remains an explicit GAPS limitation rather than an assumed protection. The Settings toggle remains off by default. Verified E2E: the hotkey triggers with the app in the background, the panel transcribes live audio, and final insertion works in the field.
 
 **Mouse-button push-to-talk (Jul 2026)**: `MouseButtonPTT` owns one session `CGEventTap` over `otherMouseDown`/`otherMouseUp` that CONSUMES the configured button (the app under the cursor never sees the click) and passes every other button through; a tap disabled by timeout is always re-armed. CGEvent index 2+ is eligible — vendor-facing Button 3+ means middle click or an additional button — while indices 0/1 (left/right) can never become a trigger. Invalid persisted values normalize to Off. The tap needs the same Accessibility trust as the paste path: choosing a button prompts once, a denied/pending prompt leaves the keyboard trigger working, and returning from System Settings retries registration. Rebinding first cancels any mouse-owned capture so its consumed release cannot strand the session. `MousePTTGesture` (app input boundary, pure, 3 tests) is the decision table: press starts when idle and finishes a listening session whoever started it; release delivers only when the button itself started the session, so a stray release can never double-finish a hotkey session. There is no tap-vs-hold discriminator on the mouse — the capture minimum already cancels an accidental click. `MouseButtonRecorder` in Settings captures the next middle/additional-button click (`settings-dictation-mouse-recorder`; Esc cancels) with an explicit clear control; both mouse and keyboard recorders remove their local monitors when their Settings row disappears.
 

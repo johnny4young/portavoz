@@ -57,6 +57,111 @@ insertion qualification. Global input hooks are absent from ordinary disposable
 launches. Per-journey budgets are declared before execution; adding these cases
 does not relax the full-suite or p95 limits.
 
+**Public dictation corpus admission.**
+
+`Fixtures/DictationValidation/public-synthetic-v1.json` defines 60 original
+MIT-licensed text families, 37 related phrase groups and eight acoustic/rate
+profiles: 480 cells, not 480 independent speakers. English, Spanish,
+language-switching and adversarial cells remain separate. Source admission
+pins the exact reviewed JSON digest, rejects malformed schema/types and
+cross-split phrase/reference leakage, and distinguishes unrendered recipes from
+measured audio. A local PCM manifest must enumerate every case, disjoint
+synthetic voice identities across tuning/holdout, exact hashes and bounded
+mono 16 kHz PCM16 metadata. The command reads real bytes to reject truncation,
+symlinks, format/hash mismatch, duplicate cases and changing files.
+
+`python3 -m unittest Tests.Tooling.test_dictation_corpus` exercises the actual CLI
+and temporary WAV files. Repository hygiene runs these tests and `verify-public`.
+Inventory output is text-free and always reports quality and verified delivery
+as unmeasured; data admission does not attest to synthesis fidelity, ASR accuracy,
+model availability or gesture-to-insertion latency. The corpus README defines
+the manifest contract. The explicit local materializer enumerates available
+macOS voices, caches exact
+voice/text/rate inputs, applies bounded deterministic PCM profiles and publishes
+an exact audio manifest last. Its owner-only recipe records code/OS/voice
+selection identities; failures retain an incomplete marker and remove the owned
+speech/text cache. Per-process deadlines and matrix work-boundary deadlines do
+not promise interruptible filesystem I/O. Producer tests use explicit speech
+doubles plus an actual bounded subprocess timeout; real synthesis is a separate
+lane and does not establish ASR or gesture-to-insertion performance.
+
+The opt-in installed-model lane runs only in a Release test bundle and verifies
+already installed Parakeet artifacts without downloading. Its test-only consumer
+feeds bounded 100 ms PCM with a monotonic clock, applies the existing caption,
+assembly and accuracy symbols, and keeps text in memory. Content-free per-cell
+scores and public live-work counts remain separate from controller, microphone,
+clipboard, verified delivery and memory evidence. Two same-process passes do not
+prove independent cold-start performance. The bounded native launcher uses a
+minimal environment and discards raw child output: even an XCTest argument
+failure can otherwise dump its inherited environment. It re-admits audio after
+the child exits, requires the requested cases/passes and matching manifest, and
+never treats a zero exit without a receipt as an observation. Admission uses a
+closed root/cell/score/work schema: complete typed finite metrics, exact source
+metadata, ordered phases and conserved frames/chunks are required, not merely
+`qualityMeasured: true`. Unknown content-bearing fields are rejected. Empty
+outputs may omit a first-update time; nonempty outputs may not. Large WER/CER
+values remain valid observations of bad quality, not reasons to censor a run.
+Executable bytes and file identity are checked before and after the child; a
+concurrent replacement cannot retain a prelaunch digest as admitted evidence.
+Binary identity remains separate from source/commit qualification. Commands and limitations
+live in the corpus README.
+
+The September 21 complete controller observation re-rendered the pinned public
+corpus using the declared installed tuning/holdout voices, then measured all 480
+variants twice in 31 sequential bounded processes. All 960 attempts have admitted
+receipts; 932 completed their pipeline and 28 were cancelled by the existing
+short-capture policy. Those cancelled attempts remain in the quality denominator.
+Speech-only arithmetic-mean WER per attempt was 0.384410 for the 320 English
+attempts, 0.395312 for the 320 Spanish attempts and 0.421957 for the 160 mixed
+attempts. These are synthetic-voice strata, not independent-speaker estimates or
+proof of errors in a particular fact. Sixteen of 64 non-speech attempts produced
+lexical proposed output, reproducing the open speech-admission gap.
+
+On the 932 attempts with both phases, Stop-to-prepared-text measured p50 0.361246
+seconds and p95 0.429853 seconds (nearest-rank); this excludes native dispatch,
+readback and failed/short attempts without that phase pair. The maximum sampled
+whole-XCTest-process footprint was 540,296,296 bytes, with nominal thermal state
+at each attempt's final sample. This is not all accelerator allocations or leak
+qualification. The installed model revision was
+`aed02740059203c4a87495924f685de3722ae9ce`; one shared engine per cohort and existing
+Core ML disk caches make these uncontrolled cold starts. No native paste was
+dispatched, no acceptance budget was promoted, and complete observation does not
+qualify a clean committed build or acceptable recognition quality.
+
+The standalone launcher also rechecks the exact published request and audio
+manifest digests after the child exits. Matching decoded JSON cannot preserve
+the identity of rewritten bytes. Its request reuses the digest from the bounded
+manifest admission read, not an unrelated second read. Launcher regressions
+alter the saved qualification flag or only manifest whitespace after otherwise
+valid bilingual observations and require a persisted invalid outcome.
+Matrix request-integrity checks also run when the shared launcher rejects a
+cohort, preserving corruption attribution instead of downgrading it to an
+ordinary incomplete run. Timeouts still retain their distinct outcome.
+
+An explicit live-attribution option adds a test-only run of the pinned vendor
+manager and actual mapper. Per-stage scores distinguish the vendor terminal
+text, the production adapter's naively joined deltas and the composed captions;
+only counts/scores and an in-memory product-text equality flag are exported.
+This experiment loads additional weights and does not share normal-baseline
+resource conditions. Its requested stage must be present and structurally valid
+for every requested cell/pass; a regular successful receipt is insufficient.
+Input frame counts still cannot expose private backend per-window failures.
+Selections whose known paced duration exceeds the owned two-hour deadline are
+refused before launch. Model observations have a separate 8 MB schema bound;
+source/audio-manifest admission remains 2 MB.
+
+The explicit `--repetitions 1...12` mode repeats each selected PCM cell and its
+accepted references together, without changing stored fixtures or product audio.
+Both launcher and native consumer enforce 120 seconds on the expanded sequence;
+known run duration also includes repetition and attribution before launch. The
+native live-work frame count must match expanded PCM. Schema-2 requests and
+observations bind the count at run/row level and reject mismatched consumed
+duration, stale binaries and boolean counts. Non-speech retains empty ground
+truth. Native tests cover actual PCM order, reference composition and the exact
+120-second boundary; launcher tests include real CLI refusal before a child or
+output exists. This supplies a reusable long-input lane, not independent voices
+or automatic acceptance of model quality.
+
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
 The unattended catalog contains 123 UI cases, including portable-settings,
@@ -229,6 +334,18 @@ as do simultaneous localization or shared-harness changes. This coverage does no
 real ASR quality, physical
 audio devices, all external editors, or the outstanding capture/delivery gaps.
 
+
+### Negative evidence from long live-token experiments
+
+The ordinary dictation cells do not establish long-window replay safety. A local
+experiment concatenated public cells into repeated English, Spanish and mixed
+speech beyond the left-context window and ran the actual installed engine plus
+a separate replay. It disproved unconditional mapper passthrough despite green
+adversarial consumer tests. That candidate is not product code. Its paired-cell temporary
+test overlay is distinct from the maintained single-cell repetition mode, and its successful process
+exit was an observation, not quality qualification. GAPS retains both boundary
+word loss and replay protection as a joint unresolved contract (D518).
+
 ## Test suite — `Tests/PortavozTests/`
 
 | File | Coverage |
@@ -303,7 +420,7 @@ audio devices, all external editors, or the outstanding capture/delivery gaps.
 | DictationTextRulesTests / MousePTTGestureTests / MouseButtonSettingTests | Conservative bilingual filler seams; one-pass case-insensitive whole-trigger replacement without cascading or regex-template interpretation; canonical corrupt/duplicate storage; mouse press/release ownership; and vendor-facing Button 3+/invalid-default normalization without admitting left/right |
 | UITestDefaultsTests | Disposable XCUITest launches overlay selected preferences in volatile `NSArgumentDomain`; the recording owner samples the injected authority only after installation; ordinary launches and malformed payloads are ignored |
 | TranscriptionTests / NemotronLatin1120Tests | Parakeet mapper/deltas, WhisperEngine helpers, anti-silence hygiene, **SpokenLanguageDetector** with automatic/fixed mixed-language policy, **VocabularyPrompt**, **AudioLevel.normalizePeak**, exact non-serving Nemotron artifact/revision/routing and filesystem-layout shape, rejection of unpinned optional bundles and missing artifacts, explicit EN/ES and no-vocabulary admission, index-based shared-timestamp deltas, cursor/non-finite/non-monotonic timing failure, bounded timing-free finalization, and no duplicate final emission |
-| LiveTranscriptionBenchTests | Invalid-duration rejection before file access, exact engine-error propagation without partial evidence, and early-engine feeder cancellation/drain instead of background real-time work |
+| LiveTranscriptionBenchTests | Invalid-duration rejection before file access, exact engine-error propagation without partial evidence, early-engine feeder cancellation/drain, and real WAV feeding through an exact EOF after a partial final chunk (no extra read from floating-point duration drift) |
 | CaptionCoalescerTests / LiveCaptionParagraphProjectorTests | 20 coalescer cases plus 6 presentation cases: merge, identity, channels, pauses, limits, punctuation, both bleed callback orders, overlapping exact-two-word and rolling-edge suppression, sequential/single-word preservation, closed-row immutability, distinct overlap, stable same-voice paragraphs, translation projection, the generic-`Them` no-merge fence, and a policy-owned 150-source-row tail |
 | DiarizationTests | Catalog, SpeakerAttributor (multi-turn), SanitizeTurns, **MergeMicroClusters** (6), DiarizationEvaluation (units), live streaming (gated) |
 | ProcessingOperationFingerprintTests / InitialTranscriptionOperationFingerprintTests | Length-framed SHA-256 identity; diarization segment-order stability and material/revision sensitivity; finalized audio/voiceprint/model evidence; summary provider/language/revision separation; Refine channel-order stability plus material/revision/language sensitivity and invalid-evidence rejection; and deterministic first-pass recovery identity across channel order, revision/audio changes, pending/missing/silent rejection, and canonical request policy |
@@ -3586,6 +3703,15 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
 
 ## Measurement harnesses
 
+- The live ASR benchmark reports both historical final-only accuracy and the
+  pre-rules Dictation recognition at the actual caption/coalescer call site.
+  A short clip can have volatile rows but no final rows; synthetic EN/ES tests
+  make that distinction explicit, including overlap, empty output, and
+  punctuation-only noise. The CLI keeps the old JSON keys and adds separate
+  `dictation_wer`/`dictation_cer` fields, without writing transcript content to
+  the JSON receipt. A gain candidate must use the Dictation score, not infer
+  failed recognition from the final-only count; real model and insertion gates
+  remain separate.
 - `make test-meeting-memory-graph-quality` runs seventeen deterministic tooling
   tests and canonical verification over D270's 36-case public-synthetic query
   corpus. The fixture is the exact cross-product of six longitudinal jobs and
@@ -7982,3 +8108,126 @@ preserve format-2 compatibility and reject unknown/private keys, wrong types,
 nonfinite or overflowing counters and duplicate ownership before publication.
 The existing redacted-support XCUITest also inspects host JSON and its disclosure;
 synthetic unit cases do not establish physical Sequoia/Tahoe or benchmark timing.
+
+
+### Dictation controller phase observation
+
+`DictationSessionMeasurementTests` exercises the real controller with isolated
+microphones, a controlled engine and explicit monotonic-clock advances. It
+separates model preparation from microphone readiness, covers English/Spanish
+and typographic punctuation, and admits only a closed content-free receipt.
+Permission denial, empty/punctuation-only finals, delivery rejection, a disabled
+observer, cancellation during delivery, late model preparation and a restart
+before task scheduling cannot become a verified-delivery observation. The
+synthetic four-second preparation and two-second warmup are deterministic
+call-site assertions, not measured model latency. Existing controller rule and
+panel journeys remain parity evidence. No receipt from these doubles qualifies
+physical gestures, real ASR, receiver readback, memory or resource teardown.
+
+
+### Public PCM through the dictation controller
+
+The explicit Release-only `--controller` lane joins the pinned public corpus,
+installed Parakeet adapter, production controller timing sink and a bounded
+whole-process footprint observer. Its microphone source reuses the model-only
+PCM feeder; public EOF drives a real controller Stop, not an invented natural
+termination. The insertion port rejects without touching platform input.
+Proposed output remains in memory for the existing accuracy evaluator.
+Volatile literal/automatic/no-vocabulary preferences are isolated per attempt.
+
+Controller-mode requests/outcomes have schema 3 and a distinct schema-1
+observation; the existing model-only schema-2 contract is unchanged. Every
+requested cell/pass remains present, including short-utterance cancellation and
+pipeline failure. Input completion/fed frames and any public live-work sample
+are independent of the typed controller outcome. `pipelineCompleted` is
+recomputed at admission, never accepted as a success flag. Scores describe
+proposed output including unsuccessful attempts, not ASR in isolation or native
+delivery. Footprint endpoints, observed peak, sample count and thermal endpoints
+cover the whole XCTest process; sampling failure rejects memory evidence.
+Cancelled lease release does not join the adapter's asynchronous cleanup. A
+missing work sample cannot certify backend quiescence or accelerator memory.
+
+`DictationControllerModelProbeTests` exercises the actual controller/Stop/source
+and lease release with bilingual/Unicode/empty output, short PCM, input failure,
+preparation failure, invalid PCM and failed sampling. Launcher-boundary tests
+reject wrong modes, unknown content, malformed phases, forged input/completion
+and missing rows while retaining valid unsuccessful attempts. These doubles
+validate wiring and receipt handling only. The corpus README owns explicit
+native commands, context-window repetition, scopes and measurement limitations.
+
+Both launchers resolve the test executable from a bounded XML or binary
+`Contents/Info.plist`, not a fixed SwiftPM output name. The actual launcher tests
+cover native SwiftPM and SwiftBuild bundle layouts, Unicode executable names,
+malformed/missing metadata, invalid paths and symlink escape. Metadata bytes and
+the declared binary identity are rechecked after execution and between cohorts;
+a rewritten bundle cannot retain an admitted observation. This remains narrower
+than an immutable archive of all loaded frameworks and resources.
+
+### Sequential controller corpus observations
+
+`run_dictation_controller_matrix.py` reuses the controller launcher, its closed
+receipt validator and the private create-only JSON publisher. It admits the
+whole pinned audio manifest before planning unique selected cells in stable
+order. Each cohort has at most 16 cells and 120 seconds of input per pass; the
+existing per-run deadline is unchanged. Cohorts run sequentially, each in a new
+process with two local passes. The matrix is not a single-process endurance
+observation, an independent cold-cache measurement or a new quality threshold.
+
+The immutable matrix request records every cohort before launch. Each cohort
+publishes its own existing request/model/outcome immediately on completion.
+The first failed cohort stops the matrix without retrying or starting later
+cohorts; earlier receipts remain inspectable. Process interruption may leave no
+matrix outcome, but cannot erase already published cohort evidence. No partial
+rows inside an interrupted cohort are invented or counted as observed.
+
+Completion rechecks the binary identity, full audio manifest/bytes, model
+revision and earlier receipt hashes. Rewriting a prior cohort, the plan or a
+child request invalidates the matrix rather than mixing observations. Empty,
+duplicate, unknown and over-bound selections fail before publication or launch.
+`observed` only means every requested observation was admitted; quality
+acceptance, native delivery and source-commit qualification stay false.
+
+Tooling tests enter the actual matrix-to-launcher chain with explicit process
+doubles: bilingual selection, all 480 cells and both passes, timeout after a
+completed cohort, interrupted execution, missing receipts, replaced binaries,
+changed model revisions and corrupted earlier evidence. These are schema and
+orchestration tests, not model measurements. Existing controller/native and UI
+journeys remain separate evidence.
+
+#### First complete controller corpus observation
+
+A local installed-model run completed all 480 pinned public variants in 31
+sequential processes, with two passes per cohort. All 960 `(caseID, pass)` pairs
+were present exactly once and passed the existing controller receipt validator.
+This is an admitted observation, not accepted model quality or source-commit
+qualification. The delivery effect was a rejecting double, not native Paste.
+
+The controller proposed nonempty text in 882 attempts, cancelled 28 subminimum
+speech attempts and returned empty in 50 attempts. Of the 64 non-speech attempts,
+16 proposed lexical text: both passes of eight variants, including six silence
+profiles and two tone profiles. This disproves the former assumption that live
+Parakeet always emits no segment on silence. It does not identify whether the
+root cause is model inference, stream lifecycle or another adapter mechanism.
+A subsequent read-only PCM audit rehashed all eight silence files against those
+receipts. The six silence variants with lexical proposals contain exactly zero
+nonzero samples; their frame counts equal the recorded delivered-frame counts.
+This excludes accidental speech in those files, not an inference/runtime cause.
+A no-speech admission mechanism needs independent adversarial proof; another
+hand-kept output-token list is not an established remedy.
+
+Among nonempty speech proposals, reference-word-weighted WER was 0.3635 in
+English (354 attempts), 0.4090 in Spanish (354), and 0.4148 in mixed English/Spanish
+(158). Cancelled and empty attempts are reported separately, not hidden as
+correct recognition or attributed to ASR quality. The scorer ignores case,
+punctuation and whitespace but preserves phonemic accents. These public/TTS
+conditions cannot support universal accuracy or best-in-market claims.
+
+Observed Stop-to-prepared-text p95 was 424.6 ms for English, 436.2 ms for Spanish
+and 413.0 ms for mixed speech. Maximum sampled whole-process footprint was
+530.3 MiB; it excludes independent services and is not a leak or total-RAM
+qualification. There were 31 first-engine acquisitions and 929 reused-engine
+attempts, with uncontrolled OS caches. Cohort execution summed to 4,435.5 s;
+707 final thermal samples were nominal and 253 fair. Brief compiler preflights
+also ran on the host, so neither idle-host performance nor cold-start independence
+was established. The earlier timed-out single-process condition remains
+unqualified rather than being overwritten by this differently bounded run.

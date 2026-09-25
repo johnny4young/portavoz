@@ -60,7 +60,7 @@ final class DictationControllerTests: XCTestCase {
     }
 
     func testPermissionDenialDoesNotPrepareAudioOrModels() async {
-        let harness = Harness(text: "No borres estas notas.")
+        let harness = DictationControllerHarness(text: "No borres estas notas.")
         var dependencies = harness.dependencies
         dependencies.canInsert = { false }
         harness.controller.toggle(using: dependencies)
@@ -76,7 +76,7 @@ final class DictationControllerTests: XCTestCase {
 
     func testCancelAfterPartialNeverDeliversAndReleasesRuntime() async {
         for text in ["No borres estas notas.", "Don’t delete these notes."] {
-            let harness = Harness(text: text)
+            let harness = DictationControllerHarness(text: text)
             harness.controller.toggle(using: harness.dependencies)
             let reached1 = await awaitEventually { harness.controller.partialText == text }
             XCTAssertTrue(reached1)
@@ -89,7 +89,7 @@ final class DictationControllerTests: XCTestCase {
     }
 
     func testFinalTextRunsThroughRealRulesAndSuppliesHintsToEngine() async {
-        let harness = Harness(text: "eh Café C++")
+        let harness = DictationControllerHarness(text: "eh Café C++")
         harness.set("es", forKey: DictationController.languageKey)
         harness.set("Kubernetes, Café", forKey: "customVocabulary")
         harness.set(
@@ -111,7 +111,7 @@ final class DictationControllerTests: XCTestCase {
     }
 
     func testPunctuationOnlyFinalDoesNotInvokeInsertion() async {
-        let harness = Harness(text: "… — !!!")
+        let harness = DictationControllerHarness(text: "… — !!!")
         harness.controller.toggle(using: harness.dependencies)
         let reached6 = await awaitEventually { harness.hints != nil }
         XCTAssertTrue(reached6)
@@ -124,7 +124,7 @@ final class DictationControllerTests: XCTestCase {
     }
 
     func testCancelDuringModelPreparationCannotStartMicrophoneLater() async {
-        let harness = Harness(text: "Late text must not appear")
+        let harness = DictationControllerHarness(text: "Late text must not appear")
         let gate = PreparationGate()
         var dependencies = harness.dependencies
         let load = dependencies.acquireRuntime
@@ -164,7 +164,7 @@ final class DictationControllerTests: XCTestCase {
 }
 
 @MainActor
-private final class Harness {
+final class DictationControllerHarness {
     let controller = DictationController(presentsPanel: false)
     let microphone = ControlledDictationMicrophone()
     let defaults = UserDefaults(suiteName: "dictation-tests-\(UUID().uuidString)")!
@@ -174,6 +174,7 @@ private final class Harness {
     var finishes = 0
     var hints: TranscriptionHints?
     var insertions: [String] = []
+    var measurements: [DictationSessionMeasurement] = []
 
     init(text: String) {
         self.text = text
@@ -202,11 +203,12 @@ private final class Harness {
                 self?.insertions.append(text)
                 return .inserted
             },
-            defaults: defaults, now: { [weak self] in self?.now ?? .distantPast })
+            defaults: defaults, now: { [weak self] in self?.now ?? .distantPast },
+            measurementSink: { [weak self] in self?.measurements.append($0) })
     }
 }
 
-private actor ControlledDictationMicrophone: AudioCaptureSource {
+actor ControlledDictationMicrophone: AudioCaptureSource {
     nonisolated let channel = AudioChannel.microphone
     private(set) var starts = 0
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?

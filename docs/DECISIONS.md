@@ -19540,6 +19540,97 @@ ASR quality. Tap/hold timing, insertion, dictionary and language behavior remain
 unchanged; registration availability is not a claim that every downstream
 permission or model is ready.
 
+## D518 — Keep corpus admission separate from dictation qualification
+
+**Date:** 2026-09-11
+
+**Context.** A large aggregate can hide a missing failing shape, and a matrix of
+acoustic variants can be mistaken for independent speakers. The existing live
+benchmark also prints transcript excerpts and can prepare missing model assets;
+it is not an installed-assets-only, content-free dictation baseline by default.
+
+**Decision.** Start with an original, digest-pinned bilingual text generation,
+explicit related-phrase groups, tuning/holdout partitions and finite acoustic
+profiles. Count families and variants separately. Non-speech retains empty
+ground truth; declared voice identities cannot cross the split. An audio
+manifest enumerates every canonical case, never arbitrary file paths, and is
+checked against bounded real PCM bytes rather than trusted headers alone.
+The actual command boundary rejects malformed types, Unicode and duplicate
+keys with fixed diagnostics instead of tracebacks carrying supplied content.
+
+**Boundary.** A valid corpus or PCM inventory is not an accepted ASR baseline.
+No unrendered recipe claims an audio hash, no model-only result claims delivery,
+and no synthetic variant claims independent human-speaker evidence. Receipts
+from corpus admission explicitly keep quality and verified delivery unmeasured.
+Producer fidelity, installed model execution, monotonic session phases and the
+native receiving application's acknowledgement need their own observations;
+they cannot be reconstructed from an inventory count or a successful build.
+
+
+The local synthesis owner materializes this generation only on explicit request.
+It uses available system voices, per-process timeouts, exact voice/text/rate
+caching, no-op-preserving PCM transforms and additional padding without a
+speech-end heuristic. A private new directory owns the run; code/OS/selection
+provenance and admitted audio precede atomic no-replace manifest publication.
+Partial failures cannot publish a success manifest, and the owned temporary
+text/speech cache is removed. Voice selection digests are not hashes of every
+vendor asset; comparisons must bind the actual rendered audio hashes. Synthesis
+is not ASR validation or a claim of real-time product performance.
+
+
+Stage attribution is an explicit test-only experiment. It compares the same
+pinned provider's terminal result, the product adapter's deltas and composed
+captions without exporting text, and records whether the experiment reproduces
+product output. A score improvement upstream of the mapper is evidence against
+blaming all loss on the model. It is not sufficient to remove overlap protection
+without long-window/repetition/final-drain parity. Those unresolved contracts
+remain in GAPS; neither corpus admission nor a zero-exit experiment closes them.
+
+
+A longer repeated-public-speech experiment rejected unconditional passthrough of
+provider updates. The resolved provider's deduplication call did not prevent
+large left-context replay; both the modified production path and its independent
+replay reproduced that error. The candidate is withdrawn rather than promoted
+from a green consumer suite. Keep the existing timestamp safeguard until a
+replacement proves both token conservation and replay rejection. This negative
+result belongs to the evidence boundary, not to a model-quality pass or a claim
+that the normal short-cell corpus now covers long streams.
+
+
+The maintained lane therefore exposes bounded, explicit repetition of admitted
+PCM and ground truth together. It keeps the source generation unchanged, rejects
+an expanded sequence above the existing audio bound, and binds repetition plus
+actual duration into a versioned observation. Native and command-boundary tests
+ensure that counting a request as long is not a substitute for actually feeding
+long audio. This is test-input construction, not a runtime audio transformation,
+new corpus speaker or automatic quality budget.
+
+
+Observation admission is closed-schema and separate from quality acceptance.
+A success flag cannot stand in for missing measurements, nor can an unexpected
+content-bearing field be silently retained. Validate the complete requested
+score/work payload at the launcher boundary, but accept high error rates as
+observed bad quality. An empty ASR output legitimately has no first-update
+time; nonempty output without that phase is incomplete evidence.
+
+
+The separate controller observation enters the production coordinator with
+public PCM, not a reconstructed policy-only consumer. It retains short and
+failed attempts, and evaluates proposed output without dispatching it. A
+completed input stream, completed controller workflow, observed memory sample
+and verified external edit are independent claims; the schema must not collapse
+them into one success flag. The process memory sampler reuses the existing
+resource probe, and the microphone fixture shares the paced PCM feeder with
+the model-only lane. Neither adds shipping telemetry, another text normalizer,
+a model downloader or a second application cache.
+
+The reviewed test import inventory admits exactly the three engine-attribution
+files (`DictationModelBaselineTests`, `DictationVendorProbe` and its tests) in
+addition to the existing engine suites. They need real vendor model/update types
+to distinguish vendor output from adapter output. All production import targets
+and files remain unchanged; controller and receipt tests cannot import the
+vendor. A directory-wide exception would lose that boundary and is not used.
+
 ## D520 — Export host facts on demand through existing support ownership
 
 The support report already projects redacted capture and durable-processing
@@ -20250,3 +20341,5 @@ merges and the PR is retargeted, normal verified-ancestor selection resumes.
 The tiny synthetic Git integration test executes the resolver and real UI
 selector at the call site: the child changes only documentation while its
 parent changes Dictation Settings, and the parent journey must remain selected.
+
+---

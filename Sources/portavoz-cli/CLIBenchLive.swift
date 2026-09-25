@@ -19,7 +19,7 @@ import TranscriptionKit
 enum BenchLiveCommand {
     // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
-    static func run(_ arguments: [String]) async {
+    static func run(_ arguments: [String]) async -> Bool {
         var file: String?
         var engineName = BenchLiveEngineChoice.parakeet.rawValue
         var seconds = 60
@@ -63,13 +63,13 @@ enum BenchLiveCommand {
                         arguments, index: &index, option: "--output")
                 default:
                     print("Unknown option: \(arguments[index])")
-                    return
+                    return false
                 }
                 index += 1
             }
         } catch {
             print("error: \(error.localizedDescription)")
-            return
+            return false
         }
 
         guard let file else {
@@ -78,21 +78,21 @@ enum BenchLiveCommand {
                 // swiftlint:disable:next line_length
                 "Usage: portavoz-cli bench-live --file <wav|caf> [--engine parakeet|speech|nemotron-latin-1120] [--seconds N] [--language es] [--vocab \"a,b\"] [--reference <txt>] [--output <json>]"
             )
-            return
+            return false
         }
 
         guard let engineChoice = BenchLiveEngineChoice(rawValue: engineName) else {
             print("error: unknown engine \(engineName) (\(BenchLiveEngineChoice.usage))")
-            return
+            return false
         }
         guard FileManager.default.isReadableFile(atPath: file) else {
             print("error: input audio is not readable: \(file)")
-            return
+            return false
         }
         if let referencePath,
             !FileManager.default.isReadableFile(atPath: referencePath) {
             print("error: reference transcript is not readable: \(referencePath)")
-            return
+            return false
         }
 
         do {
@@ -111,11 +111,11 @@ enum BenchLiveCommand {
             case .speech:
                 guard #available(macOS 26.0, *) else {
                     print("error: --engine speech requiere macOS 26")
-                    return
+                    return false
                 }
                 guard SpeechAnalyzerEngine.isAvailable else {
                     print("error: SpeechTranscriber is not available on this device")
-                    return
+                    return false
                 }
                 let locale = try await SpeechAnalyzerEngine.ensureAssets(
                     language: language) { print($0) }
@@ -141,16 +141,24 @@ enum BenchLiveCommand {
             print(result.report)
 
             var accuracy: TranscriptionAccuracy.Report?
+            var dictationAccuracy: TranscriptionAccuracy.Report?
             if let referencePath {
                 let reference = try String(
                     contentsOfFile: referencePath, encoding: .utf8)
                 let report = TranscriptionAccuracy.report(
                     reference: reference, hypothesis: result.hypothesis)
+                let dictationReport = TranscriptionAccuracy.report(
+                    reference: reference, hypothesis: result.dictationRecognizedText)
                 accuracy = report
+                dictationAccuracy = dictationReport
                 print(String(
-                    format: "WER %.1f%% · CER %.1f%% · ref %d words · hyp %d words",
+                    format: "Final-only WER %.1f%% · CER %.1f%% · ref %d words · hyp %d words",
                     report.wordErrorRate * 100, report.characterErrorRate * 100,
                     report.referenceWords, report.hypothesisWords))
+                print(String(
+                    format: "Dictation ASR WER %.1f%% · CER %.1f%% · ref %d words · hyp %d words",
+                    dictationReport.wordErrorRate * 100, dictationReport.characterErrorRate * 100,
+                    dictationReport.referenceWords, dictationReport.hypothesisWords))
             }
             if let outputPath {
                 try writeJSON(
@@ -159,11 +167,14 @@ enum BenchLiveCommand {
                         engine: engineName, file: file,
                         seconds: seconds, language: language),
                     result: result,
-                    accuracy: accuracy)
+                    accuracy: accuracy,
+                    dictationAccuracy: dictationAccuracy)
                 print("json: \(outputPath)")
             }
+            return true
         } catch {
             print("error: \(error.localizedDescription)")
+            return false
         }
     }
 
@@ -180,7 +191,8 @@ enum BenchLiveCommand {
         to path: String,
         run: RunContext,
         result: LiveTranscriptionBench.Result,
-        accuracy: TranscriptionAccuracy.Report?
+        accuracy: TranscriptionAccuracy.Report?,
+        dictationAccuracy: TranscriptionAccuracy.Report?
     ) throws {
         var payload: [String: Any] = [
             "bench": "bench-live",
@@ -199,10 +211,18 @@ enum BenchLiveCommand {
             payload["first_result_s"] = firstResultAt
         }
         if let accuracy {
+            payload["wer_source"] = "final-only"
             payload["wer"] = accuracy.wordErrorRate
             payload["cer"] = accuracy.characterErrorRate
             payload["reference_words"] = accuracy.referenceWords
             payload["hypothesis_words"] = accuracy.hypothesisWords
+        }
+        if let dictationAccuracy {
+            payload["dictation_wer_source"] = "caption-coalesced-pre-rules"
+            payload["dictation_wer"] = dictationAccuracy.wordErrorRate
+            payload["dictation_cer"] = dictationAccuracy.characterErrorRate
+            payload["dictation_reference_words"] = dictationAccuracy.referenceWords
+            payload["dictation_hypothesis_words"] = dictationAccuracy.hypothesisWords
         }
         let data = try JSONSerialization.data(
             withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])
