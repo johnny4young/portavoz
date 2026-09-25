@@ -71,8 +71,10 @@ private struct DictationStripView: View {
         Group {
             if case .recovery(let failure) = controller.phase {
                 DictationRecoveryView(controller: controller, failure: failure)
-            } else if case .inserted(let words) = controller.phase {
-                insertedView(words)
+            } else if case .verified(let words) = controller.phase {
+                deliveryView(words, verified: true)
+            } else if case .dispatched(let words) = controller.phase {
+                deliveryView(words, verified: false)
             } else {
                 dictatingView
             }
@@ -135,16 +137,19 @@ private struct DictationStripView: View {
 
     /// The brief confirmation after insertion: N words → the target app,
     /// and the honest reassurance that nothing was stored.
-    private func insertedView(_ words: Int) -> some View {
+    private func deliveryView(_ words: Int, verified: Bool) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: PVSymbol.success)
-                .foregroundStyle(.green)
+            Image(systemName: verified ? PVSymbol.success : "paperplane.circle")
+                .foregroundStyle(verified ? Color.green : Color.orange)
                 .font(.title3)
             VStack(alignment: .leading, spacing: 1) {
-                Text(insertedTitle(words))
+                Text(verified ? insertedTitle(words) : L10n.text("Sent — insertion not verified"))
                     .accessibilityIdentifier("dictation-panel-delivery-status")
                     .font(.callout.weight(.medium))
-                Text("Nothing was saved in Portavoz.")
+                Text(verified
+                     ? L10n.text("Nothing was saved in Portavoz.")
+                     : L10n.text("Check the destination before pasting again. Nothing was saved in Portavoz."))
+                    .accessibilityIdentifier("dictation-panel-delivery-detail")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -204,7 +209,7 @@ private struct DictationStripView: View {
             return L10n.text("Dictating")
         case .failed(let message):
             return message
-        case .idle, .inserted, .recovery:
+        case .idle, .verified, .dispatched, .recovery:
             return ""
         }
     }

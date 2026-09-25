@@ -57,12 +57,10 @@ final class DictationController {
     enum Phase: Equatable {
         case idle
         case listening
-        /// Words landed in the target app — a brief confirmation before the
-        /// strip fades, so the user sees the dictation took (design system
-        /// 4b: "inserted, no trace").
-        case inserted(Int)
+        case verified(Int)
+        case dispatched(Int)
         case failed(String)
-        case recovery(TextInserter.InsertionResult)
+        case recovery(DictationDeliveryOutcome.Refusal)
     }
 
     private(set) var phase: Phase = .idle
@@ -96,7 +94,7 @@ final class DictationController {
     private var feed: AsyncStream<AudioChunk>.Continuation?
     private var session: Task<Void, Never>?
     private var stopTask: Task<Void, Never>?
-    private var failureDismissTask: Task<Void, Never>?
+    @ObservationIgnored private(set) var dismissTask: Task<Void, Never>?
     private var activeSessionID: UUID?
     private let panel = DictationPanelController()
     private let presentsPanel: Bool
@@ -225,7 +223,7 @@ final class DictationController {
 
     func toggle(using dependencies: DictationSessionDependencies) {
         switch phase {
-        case .idle, .failed, .inserted:
+        case .idle, .failed, .verified, .dispatched:
             start(using: dependencies)
         case .listening:
             finishAndInsert()
@@ -246,8 +244,8 @@ final class DictationController {
         deliveryID = nil
         destination = nil
         self.dependencies = dependencies
-        failureDismissTask?.cancel()
-        failureDismissTask = nil
+        dismissTask?.cancel()
+        dismissTask = nil
         // The paste needs Accessibility; ask BEFORE recording so the user
         // never dictates into a void.
         guard dependencies.canInsert() else {
@@ -428,8 +426,8 @@ final class DictationController {
         mouseOwnsSession = false
         stopTask?.cancel()
         stopTask = nil
-        failureDismissTask?.cancel()
-        failureDismissTask = nil
+        dismissTask?.cancel()
+        dismissTask = nil
         session?.cancel()
         session = nil
         let microphone = self.microphone
@@ -468,14 +466,7 @@ final class DictationController {
         guard activeSessionID == sessionID else { return }
         completeSession(id: sessionID)
         deliveryID = sessionID
-        if result == .inserted {
-            await showDispatchedText(text, id: sessionID)
-        } else {
-            recoveryText = text
-            copyStatus = .idle
-            phase = .recovery(result)
-            showPanel()
-        }
+        presentDelivery(result, text: text, id: sessionID)
     }
 
     private func completeSession(id: UUID) {
@@ -500,15 +491,15 @@ final class DictationController {
     }
 
     private func scheduleFailureDismiss() {
-        failureDismissTask?.cancel()
-        failureDismissTask = Task { [weak self] in
+        dismissTask?.cancel()
+        dismissTask = Task { [weak self] in
             do {
                 try await Task.sleep(for: .seconds(6))
             } catch {
                 return
             }
             guard let self, case .failed = self.phase else { return }
-            self.failureDismissTask = nil
+            self.dismissTask = nil
             self.phase = .idle
             self.panel.close()
         }
@@ -531,27 +522,37 @@ extension DictationController {
             let result = await destination.insert(text)
             guard let self, self.deliveryID == id, !Task.isCancelled else { return }
             self.isRetryingDelivery = false
-            if result == .inserted {
-                await self.showDispatchedText(text, id: id)
-            } else {
-                self.phase = .recovery(result)
-            }
+            self.presentDelivery(result, text: text, id: id)
             guard self.deliveryID == id || self.deliveryID == nil else { return }
             self.retryDeliveryTask = nil
         }
     }
 
-    private func showDispatchedText(_ text: String, id: UUID) async {
+    private func presentDelivery(_ result: DictationDeliveryOutcome, text: String, id: UUID) {
+        if case .refused(let failure) = result {
+            recoveryText = text
+            copyStatus = .idle
+            phase = .recovery(failure)
+            showPanel()
+            return
+        }
         recoveryText = ""
         copyStatus = .idle
-        phase = .inserted(text.split(whereSeparator: \.isWhitespace).count)
+        let words = text.split(whereSeparator: \.isWhitespace).count
+        phase = result == .verified ? .verified(words) : .dispatched(words)
         showPanel()
-        do { try await Task.sleep(for: .milliseconds(1600)) } catch { return }
-        guard deliveryID == id else { return }
-        deliveryID = nil
-        destination = nil
-        dependencies = nil
-        phase = .idle
-        panel.close()
+        // Presentation outlives capture without retaining its runtime lease or
+        // the session task. Cancellation/new input owns this timer explicitly.
+        dismissTask?.cancel()
+        dismissTask = Task { [weak self] in
+            do { try await Task.sleep(for: result == .verified ? .milliseconds(1600) : .seconds(4)) } catch { return }
+            guard let self, self.deliveryID == id else { return }
+            self.dismissTask = nil
+            self.deliveryID = nil
+            self.destination = nil
+            self.dependencies = nil
+            self.phase = .idle
+            self.panel.close()
+        }
     }
 }

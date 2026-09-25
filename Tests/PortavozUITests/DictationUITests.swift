@@ -123,6 +123,42 @@ final class DictationUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testDeliveredDictationDistinguishesDispatchFromVerification() throws {
+        for verified in [false, true] {
+            let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+            app.launchArguments += ["-seed-dictation", "-seed-dictation-delivery"]
+            app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+            if verified { app.launchArguments.append("-seed-dictation-verified") }
+            app.launchPortavoz()
+            defer { app.terminate() }
+            XCTAssertTrue(app.prepareForInteraction())
+            let dictate = app.buttons["menu-bar-dictate"]
+            XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+            dictate.click()
+            XCTAssertTrue(app.staticTexts["dictation-panel-transcript"].waitForExistenceFast(timeout: 5))
+            XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+            dictate.click()
+            let status = app.staticTexts["dictation-panel-delivery-status"]
+            XCTAssertTrue(status.waitForExistenceFast(timeout: 5))
+            let title = renderedText(of: status)
+            if verified {
+                XCTAssertTrue(title.contains("inserted") || title.contains("insertadas"), title)
+            } else {
+                XCTAssertTrue(["Sent — insertion not verified", "Enviado — inserción sin verificar"].contains(title), title)
+            }
+            let detail = app.staticTexts["dictation-panel-delivery-detail"]
+            XCTAssertTrue(detail.exists)
+            if verified {
+                XCTAssertTrue(["Nothing was saved in Portavoz.", "No se guardó nada en Portavoz."].contains(renderedText(of: detail)))
+            }
+            XCTAssertFalse(app.buttons["dictation-recovery-reinsert"].exists,
+                           "An unacknowledged event is not an automatically retryable refusal")
+            XCTAssertTrue(waitForUITestCondition(timeout: 5) { !status.exists },
+                          "An unsupported editor must not strand a modal result")
+        }
+    }
+
+    @MainActor
     func testNativeInserterUsesDisposableReceiverAndClipboard() async throws {
         let products = Bundle.main.bundleURL.deletingLastPathComponent()
         let receiverURL = products.appendingPathComponent("PortavozDictationReceiver.app")
@@ -158,7 +194,7 @@ final class DictationUITests: PortavozUITestCase {
             XCTFail("Native delivery must leave its receiver-waiting state")
             return
         }
-        guard renderedText(of: status) == "inserted" else {
+        guard renderedText(of: status) == "verified" else {
             let failure = renderedText(of: status)
             let permissionHelp = failure == "accessibility-required-for-app"
                 ? " Grant Accessibility to the disposable app, not the runner." : ""

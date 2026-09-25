@@ -16,10 +16,13 @@ extension AppServices {
 struct DictationUITestFixture: Sendable {
     let text: String
     let recoversDestination: Bool
+    let deliveryOutcome: DictationDeliveryOutcome?
 
     init?(arguments: [String], usesTemporaryStore: Bool) {
         guard usesTemporaryStore, arguments.contains("-seed-dictation") else { return nil }
         recoversDestination = arguments.contains("-seed-dictation-recovery")
+        deliveryOutcome = arguments.contains("-seed-dictation-delivery")
+            ? (arguments.contains("-seed-dictation-verified") ? .verified : .dispatched) : nil
         text = arguments.contains("-seed-dictation-english")
             ? "Don't delete these notes."
             : "No borres estas notas."
@@ -51,8 +54,9 @@ struct DictationUITestFixture: Sendable {
                     : "Dictation test receiver"
                 return CapturedDictationDestination(name: name, canRetry: true) { _ in
                     deliveryAttempts += 1
-                    guard fixture?.recoversDestination == true else { return .focusUnavailable }
-                    return deliveryAttempts == 1 ? .targetChanged : .inserted
+                    if let outcome = fixture?.deliveryOutcome { return outcome }
+                    guard fixture?.recoversDestination == true else { return .refused(.focusUnavailable) }
+                    return deliveryAttempts == 1 ? .refused(.targetChanged) : .dispatched
                 }
             },
             copyText: { text in
@@ -63,7 +67,7 @@ struct DictationUITestFixture: Sendable {
             },
             defaults: .standard,
             now: {
-                guard fixture?.recoversDestination == true else { return Date() }
+                guard fixture?.recoversDestination == true || fixture?.deliveryOutcome != nil else { return Date() }
                 defer { clockTick += 1 }
                 return Date(timeIntervalSince1970: clockTick)
             })

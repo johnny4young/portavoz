@@ -1091,8 +1091,16 @@ inspection. It only posts to the captured positive process identifier; there
 is no session-wide fallback or application activation. Rich clipboard snapshots
 are restored after refusal or a delay only while their change count still owns
 the board. A clipboard owner change during final inspection prevents dispatch.
-Event dispatch is not an external editor acknowledgement or an atomic focus
-transaction.
+`DictationDeliveryOutcome` in Core separates verified observation, unverified
+dispatch and typed refusal without importing platform types. The app's narrow
+readback adapter observes only the expected inserted span and selection/count
+metadata, with per-object AX timeouts and a bounded polling window. Neither a
+whole external document nor an old selection enters the domain or storage.
+Unsupported or ambiguous readback remains dispatched and cannot authorize a
+retry. The controller presents distinct verified/unverified banners through a separately
+owned dismissal task, without retaining the capture runtime lease; SwiftUI
+does not inspect Accessibility. Event dispatch is not an external editor
+acknowledgement, and even matching readback is not an atomic focus transaction.
 
 The controller retains a refused output in memory, independently of microphone
 and model lifetime. New input triggers reveal this recovery state instead of

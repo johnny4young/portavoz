@@ -1,10 +1,11 @@
 import SwiftUI
+import PortavozCore
 
 /// Presentation only: the controller retains the complete output and owns
 /// every effect. The visible excerpt is never the source of a copied paste.
 struct DictationRecoveryView: View {
     let controller: DictationController
-    let failure: TextInserter.InsertionResult
+    let failure: DictationDeliveryOutcome.Refusal
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -62,7 +63,7 @@ struct DictationRecoveryView: View {
             return L10n.text("Release Command, Option, Control, and Shift, then try again.")
         case .focusUnavailable:
             return L10n.text("The original field can't be verified. Your text is still available to copy.")
-        case .clipboardUnavailable, .eventUnavailable, .cancelled, .inserted:
+        case .clipboardUnavailable, .eventUnavailable, .cancelled, .emptyText:
             return L10n.text("Delivery didn't complete. Reinsert into the original field, or copy your text.")
         }
     }

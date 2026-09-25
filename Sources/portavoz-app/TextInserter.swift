@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import Carbon.HIToolbox
+import PortavozCore
 
 /// Inserts dictated text into a captured destination: paste-and-restore
 /// (the reliable industry pattern — synthetic per-character typing breaks
@@ -14,17 +15,6 @@ enum TextInserter {
         fileprivate init(typeID: CFTypeID) {
             self.typeID = typeID
         }
-    }
-
-    enum InsertionResult: Equatable {
-        case inserted
-        case secureField
-        case focusUnavailable
-        case targetChanged
-        case modifiersStillPressed
-        case clipboardUnavailable
-        case eventUnavailable
-        case cancelled
     }
 
     enum FocusedFieldSecurity: Equatable {
@@ -74,7 +64,9 @@ enum TextInserter {
         var focused: CFTypeRef?
         let status = AXUIElementCopyAttributeValue(owner, kAXFocusedUIElementAttribute as CFString, &focused)
         guard status == .success, let focused else { return nil }
-        return checkedCFValue(focused, as: .accessibilityElement)
+        guard let element = checkedCFValue(focused, as: .accessibilityElement),
+              AXUIElementSetMessagingTimeout(element, 0.1) == .success else { return nil }
+        return element
     }
 
     @MainActor
@@ -125,51 +117,81 @@ enum TextInserter {
     static func insert(
         _ text: String, into target: Target, pasteboard: NSPasteboard = .general,
         effects: Effects = .live
-    ) async -> InsertionResult {
-        guard target.processID > 0, effects.isProcessLive(target.processID) else { return .eventUnavailable }
-        guard await effects.waitForModifiers() else {
-            return Task.isCancelled ? .cancelled : .modifiersStillPressed
+    ) async -> DictationDeliveryOutcome {
+        guard !text.isEmpty else { return .refused(.emptyText) }
+        guard target.processID > 0, effects.isProcessLive(target.processID) else {
+            return .refused(.eventUnavailable)
         }
-        guard !Task.isCancelled else { return .cancelled }
-        guard effects.isProcessLive(target.processID) else { return .eventUnavailable }
+        if let failure = await failureAfterModifiers(to: target, effects: effects) { return .refused(failure) }
 
-        // Both the modifier wait and a rich clipboard snapshot can service
-        // another app. Validate on each side; never reinterpret a new target.
-        let initialFailure = target.validate()
-        guard !Task.isCancelled else { return .cancelled }
-        if let initialFailure { return initialFailure }
-
+        let baseline = target.readback?.baseline(for: text)
+        guard !Task.isCancelled else { return .refused(.cancelled) }
+        // AX can service a new clipboard owner. Snapshot after that inspection,
+        // not before it, so refusing this attempt restores the latest owner.
         let snapshot = PasteboardSnapshot(of: pasteboard)
+        guard !Task.isCancelled else { return .refused(.cancelled) }
         pasteboard.declareTypes([.string], owner: nil)
         guard pasteboard.setString(text, forType: .string) else {
             restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: pasteboard.changeCount)
-            return .clipboardUnavailable
+            return .refused(.clipboardUnavailable)
         }
         let ourChangeCount = pasteboard.changeCount
 
-        let targetFailure = target.validate()
-        let failure = Task.isCancelled ? InsertionResult.cancelled : targetFailure
-        if let failure {
+        if let failure = failureBeforePosting(to: target, baseline: baseline) {
             restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
-            return failure
+            return .refused(failure)
         }
         // AX IPC can let another clipboard owner publish during validation.
         // Never send that owner's text as if it were this dictation.
-        guard pasteboard.changeCount == ourChangeCount else { return .clipboardUnavailable }
+        guard pasteboard.changeCount == ourChangeCount else { return .refused(.clipboardUnavailable) }
         guard effects.isProcessLive(target.processID) else {
             restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
-            return .eventUnavailable
+            return .refused(.eventUnavailable)
         }
         guard effects.post(target.processID) else {
             restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
-            return .eventUnavailable
+            return .refused(.eventUnavailable)
         }
 
         Task {
             try? await Task.sleep(for: restoreDelay)
             restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
         }
-        return .inserted
+        // Beyond post, no observation failure can make retry safe.
+        guard let baseline, let readback = target.readback else { return .dispatched }
+        return await readback.verify(text, from: baseline, target: target) ? .verified : .dispatched
+    }
+
+    @MainActor
+    private static func failureAfterModifiers(
+        to target: Target, effects: Effects
+    ) async -> DictationDeliveryOutcome.Refusal? {
+        guard await effects.waitForModifiers() else {
+            return Task.isCancelled ? .cancelled : .modifiersStillPressed
+        }
+        guard !Task.isCancelled else { return .cancelled }
+        guard effects.isProcessLive(target.processID) else { return .eventUnavailable }
+        let failure = target.validate()
+        return Task.isCancelled ? .cancelled : failure
+    }
+
+    @MainActor
+    private static func failureBeforePosting(
+        to target: Target, baseline: DictationTextReadback.Position?
+    ) -> DictationDeliveryOutcome.Refusal? {
+        let failure = target.validate()
+        guard !Task.isCancelled else { return .cancelled }
+        if let failure { return failure }
+        if let baseline {
+            let current = target.readback?.position()
+            guard !Task.isCancelled else { return .cancelled }
+            guard let current, current.isValid else { return .focusUnavailable }
+            guard current == baseline else { return .targetChanged }
+            // Readback is another AX call that can service a focus transition.
+            let finalFailure = target.validate()
+            return Task.isCancelled ? .cancelled : finalFailure
+        }
+        return nil
     }
 
     @MainActor
@@ -355,6 +377,13 @@ extension TextInserter.BorrowedCFPropertyType where Value == CFData {
     static var data: Self { Self(typeID: CFDataGetTypeID()) }
 }
 
+extension TextInserter.BorrowedCFPropertyType where Value == CFNumber {
+    static var number: Self { Self(typeID: CFNumberGetTypeID()) }
+}
+
+extension TextInserter.BorrowedCFPropertyType where Value == AXValue {
+    static var accessibilityValue: Self { Self(typeID: AXValueGetTypeID()) }
+}
 extension TextInserter.BorrowedCFPropertyType where Value == AXUIElement {
     static var accessibilityElement: Self { Self(typeID: AXUIElementGetTypeID()) }
 }

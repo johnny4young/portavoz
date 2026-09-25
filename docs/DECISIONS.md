@@ -20299,3 +20299,39 @@ match abandoning this pending operation, including its loss of progress. The
 single-click and geometry assertions remain in the journeys. No global focus or
 first-click override is introduced. Post-event focus races and durable recovery
 are not claimed solved by this change.
+
+## D545 — Observe dictation delivery without treating dispatch as success
+
+**Decision.** `DictationDeliveryOutcome` has distinct verified, dispatched and
+refused cases. After one process-addressed Paste, the optional native adapter
+may observe only the expected inserted span and selection/count metadata in
+the captured field. Exact UTF-16 bytes, expected count/caret and revalidated
+identity are required for a point-in-time verified result. There is no whole
+field read, surrounding-context capture, persistence or generative inference.
+
+**Why.** A successful `CGEvent.postToPid` supplies no editor acknowledgement.
+Converting that event into an inserted banner or a retryable failure is unsafe:
+unsupported editors can silently drop it, while slow editors can apply it after
+a timeout. Only failures before posting may enter the existing retry surface.
+An empty inserter input is refused before any clipboard or editor effect.
+
+**Bounds and compatibility.** macOS 14.4 remains supported. Optional observation
+uses existing public AX APIs, a 16,384-unit requested span, a 750 ms/30-poll
+window and 100 ms timeouts on individual AX objects. Longer text is still sent
+in full. Unsupported or malformed attributes, changed metadata, cancellation
+and expired observations remain dispatched, never automatically repeated.
+Timeouts are not hard real-time guarantees; AX responses and later external
+edits cannot be made atomic. No process-global AX timeout is changed. See
+Apple's [per-object messaging timeout contract](https://developer.apple.com/documentation/applicationservices/1459345-axuielementsetmessagingtimeout)
+and [parameterized range attribute](https://developer.apple.com/documentation/applicationservices/kaxstringforrangeparameterizedattribute).
+
+**Presentation and evidence.** A verified edit retains the brief green banner;
+an independently owned dismissal task releases the capture lease before either
+banner ends. Unverified dispatch uses an amber send status and asks the user to check the
+destination, without introducing a modal confirmation on every unsupported
+editor. The storage reassurance names only Portavoz, not an unprovable absence
+of traces in another editor or clipboard manager. Neither result automatically
+archives a successful delivery. Controller
+and inserter call-site tests are distinct from the permission-dependent native
+receiver, which must assert both verified status and actual Unicode content.
+The presence of those tests is not evidence that native qualification passed.
