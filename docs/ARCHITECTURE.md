@@ -5729,10 +5729,16 @@ must classify.
 Disposable UI-test windows do not inherit a user's multi-display placement.
 Only with `-use-temp-store`, one shared AppKit boundary places both the primary
 window and the real Settings scene on `NSScreen.screens.first`, AppKit's zero
-screen, and constrains Settings to its visible frame. Its narrow view-controller
-bridge positions Settings after presentation: SwiftUI's initial placement and AppKit's
-frame restoration can overwrite a correction made at view attachment. The
-separate weak reference remains current at attachment for receipt navigation.
+screen, and constrains Settings to its visible frame. Narrow view-controller
+bridges position each owning window after presentation: SwiftUI's initial
+placement and AppKit's frame restoration can overwrite a correction made at
+view attachment. Main-window geometry is re-established on every appearance,
+including external routes; no delay, repeated timer, or app-wide window lookup
+participates. The primary scene owns its capture outside successful content,
+so database recovery receives the same placement when no application services
+could be loaded. The
+Settings bridge's separate weak reference remains current at attachment for
+receipt navigation.
 The harness asserts that the Settings navigation anchor has nonnegative global
 coordinates before any journey continues. Production launches never enter this boundary and retain
 SwiftUI's saved window placement. No forced compact-main-window mode or
