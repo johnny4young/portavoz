@@ -5904,9 +5904,11 @@ or rewrite the host's persistent Apuntador opt-in.
 
 ## Reviewed speech-engine dependency
 
-The Swift package requires an exact FluidAudio release; the recorded decision in
-docs/DECISIONS.md owns the version and the review an upgrade requires, and
-docs/GAPS.md tracks the resulting distance from upstream. Vendor types enter
+The Swift package requires one exact, reviewed FluidAudio release at a pinned
+revision. The decision ledger owns the version, the review policy and each
+admitted upgrade;
+`docs/GAPS.md` tracks rejected or future upstream releases rather than silently
+widening the requirement. Vendor types enter
 production only through the existing transcription and diarization adapters:
 `ParakeetEngine`, `ParakeetSegmentMapper`,
 `NemotronLatin1120Engine`, `PyannoteDiarizer` and `DiarizationEvaluation`. Core,
