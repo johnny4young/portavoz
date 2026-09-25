@@ -2653,6 +2653,27 @@ projections before awaiting microphone teardown. This does not add ASR rescoring
 decoder windows, resolve timestamp/replay quality gaps or bound total transcript
 storage. SwiftUI still renders the existing two-line panel.
 
+**Capture failure authority (D547).** Dictation keeps its bounded 128-buffer relay, but
+an overflow is a failed capture, not permission to deliver the surviving suffix.
+Source iteration errors, including an upstream `CancellationError` when the
+owning task was not cancelled, use the same session-fenced failure path. Native
+`CaptureReportingSource` notifications revoke delivery before admitted packets
+finish draining. The controller cancels its session and pending Stop, retains
+the existing source-cleanup path, and presents a localized interruption message.
+A cancelled caption iterator may end normally; cancellation is checked before
+joining the detached pump, otherwise an open source could keep its runtime alive.
+Ordinary user cancellation remains silent and does not become capture failure.
+The final producer report is checked after draining and before delivery, even
+when a notification is absent or still queued. Capture notifications cease to
+own the outcome once delivery relinquishes the microphone; a late callback
+cannot report that an already-dispatched edit was prevented.
+Normal source EOF before the controller actually issues Stop also fails closed:
+an input device can disappear without reporting an error, including during the
+pending tail after the user presses Stop. EOF alone never authorizes automatic
+insertion of the surviving partial.
+This does not add durable dictation audio, retry a paste, increase the buffer or
+replace the recognition engine.
+
 `TextInserter.insert` accepts a pasteboard with `.general` as its production
 default. The native receiver journey executes in the temporary app process, not
 XCTest's sandboxed runner. It uses an explicitly armed fixture and a UUID-named board, while

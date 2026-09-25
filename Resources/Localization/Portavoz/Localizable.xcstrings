@@ -1571,6 +1571,16 @@
         }
       }
     },
+    "Audio capture was interrupted. Nothing was inserted. Try dictating again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se interrumpió la captura de audio. No se insertó nada. Vuelve a dictar."
+          }
+        }
+      }
+    },
     "Audio compressed — %@ freed.": {
       "localizations": {
         "es": {
