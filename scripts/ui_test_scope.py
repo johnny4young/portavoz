@@ -611,7 +611,6 @@ FEATURE_SOURCE_SENTINELS: dict[str, str] = {
 NO_UI_PREFIXES = (
     ".design-sync/",
     ".github/ISSUE_TEMPLATE/",
-    "Fixtures/DictationValidation/",
     "Tests/Tooling/",
     "Tests/PortavozTests/",
     "Sources/portavoz-cli/",
@@ -620,6 +619,8 @@ NO_UI_PREFIXES = (
     "packaging/",
 )
 NO_UI_FILES = {
+    "Fixtures/DictationValidation/README.md",
+    "Fixtures/DictationValidation/public-synthetic-v1.json",
     ".gitignore",
     ".swiftlint.yml",
     "AGENTS.md",

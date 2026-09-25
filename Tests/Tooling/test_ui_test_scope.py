@@ -91,6 +91,12 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(set(selection.tests), set(FEATURE_TESTS["dictation"]))
         self.assertEqual(selection.locales, ("en",))
 
+        unknown_fixture = select_paths([
+            "Fixtures/DictationValidation/future-app-resource.json",
+        ])
+        self.assertEqual(unknown_fixture.tests, ALL_TESTS)
+        self.assertEqual(unknown_fixture.locales, ("en",))
+
     def test_live_benchmark_keeps_dictation_ui_without_weakening_unknown_fallback(self):
         benchmark = select_paths(["Sources/TranscriptionKit/LiveTranscriptionBench.swift"])
         self.assertEqual(set(benchmark.tests), set(FEATURE_TESTS["dictation"]))
