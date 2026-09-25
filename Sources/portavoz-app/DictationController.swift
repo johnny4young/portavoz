@@ -39,7 +39,7 @@ struct DictationCapturePolicy {
 final class DictationController {
     static let defaultsKey = "globalDictationEnabled"
     /// "auto" (or absent) lets the multilingual engine detect; "es"/"en"
-    /// pin one dictation language without touching meeting settings.
+    /// request the backend's script-aware filter without touching meeting settings.
     static let languageKey = "dictationLanguage"
     /// Bilingual hesitation-filler removal; on by default — polished text
     /// is the point of dictation, and the filter only ever drops tokens
@@ -327,13 +327,14 @@ final class DictationController {
     private func transcriptionHints(defaults: UserDefaults) -> TranscriptionHints {
         let vocabulary = VocabularyPrompt.parse(
             defaults.string(forKey: "customVocabulary") ?? "")
-        // Language stays constrained to the two dictation languages: any
-        // stored value outside {es, en} means auto-detect.
+        // Accepted preference values remain {es,en}; any unexpected stored
+        // value falls back to automatic detection.
         let languageSetting = defaults.string(forKey: Self.languageKey)
         return TranscriptionHints(
             language: ["es", "en"].contains(languageSetting) ? languageSetting : nil,
             vocabulary: vocabulary,
-            meetingID: MeetingID())
+            meetingID: MeetingID(),
+            filtersLiveScript: true)
     }
 
     private func makeAudioPump(

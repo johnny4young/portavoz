@@ -128,6 +128,17 @@ self-contained over system frameworks and carries no module dependency.
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners including recording-scoped proactive-assist state, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
 | `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
 
+### Parakeet job preparation
+
+Inside `TranscriptionKit`, each Parakeet transcription job receives a fresh native
+manager from an internal preparation closure. Production closures share only
+verified immutable model weights, not decoder state. Failed preparation owns its
+cleanup; a prepared manager transfers to the job for streaming/batch execution
+and cleanup. No vendor type or preparation hook crosses the module's public
+boundary. Tests can enter the real engine methods without loading model assets
+and observe configuration requests and preparation failures. That evidence does
+not replace real-model quality, latency, or cancellation measurements.
+
 ### First-listen speech lifetime
 
 The onboarding First Listen resolves the optional macOS 26 SpeechAnalyzer asset
@@ -5913,8 +5924,9 @@ production only through the existing transcription and diarization adapters:
 `ParakeetEngine`, `ParakeetSegmentMapper`,
 `NemotronLatin1120Engine`, `PyannoteDiarizer` and `DiarizationEvaluation`. Core,
 ApplicationKit and executable presentation consume Portavoz contracts instead. In
-the test tree the vendor import is confined to the two engine suites,
-`TranscriptionTests` and `NemotronLatin1120Tests`.
+the test tree the vendor import is confined to the engine-specific suites,
+`TranscriptionTests`, `ParakeetLanguageConfigurationTests` and
+`NemotronLatin1120Tests`.
 
 The checked-in resolver revision and the architectural import inventory are tested
 together, over `Sources` and `Tests`, against code with comments and string
