@@ -62,8 +62,8 @@ class PortavozUITestCase: XCTestCase {
     }
 
     private func stopForUnexpectedInterruption(reason: String) -> Never {
-        // Clean up before stopping only this worker. Recording an XCTest issue
-        // here reenters async tearDown on the main actor and can deadlock.
+        // Own the cleanup before exiting; XCTest cannot safely resume this
+        // callback or its fallback handlers after an unexpected interruption.
         let cleanup: String
         do {
             // `absent` means this owner had no live session to clean; it is
@@ -75,9 +75,7 @@ class PortavozUITestCase: XCTestCase {
         }
         let message = "PORTAVOZ_UI_INTERRUPTION_BLOCKED cleanup=\(cleanup) reason=\(reason)"
         FileHandle.standardError.write(Data("\(message)\n".utf8))
-        // Returning either Bool would resume the interrupted event or the
-        // fallback stack. XCTest reports the worker's failed invocation; the
-        // separate native controls require its exact one-test failure receipt.
+        // Recording an XCTest issue here can reenter async teardown on the main actor.
         exit(EXIT_FAILURE)
     }
 }

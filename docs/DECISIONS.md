@@ -20280,29 +20280,39 @@ are projection evidence, not ASR or native latency. Meeting-consumer revision
 risks remain explicit in GAPS; decoder word loss/replay and window evaluations
 are not resolved by this change.
 
----
 
-## D550 — Stop the interruption worker without reentering XCTest teardown
+## D546 — Overlap independent UI prerequisites, not desktop interactions
 
-**Context:** The permission-free native harness twice reached a controlled
-asynchronous interruption, completed owned cleanup and emitted the refusal, but
-its Xcode 27 test invocation then hung until the 180-second watchdog. A sample
-of the synthetic runner showed `record(XCTIssue)` synchronously entering
-`_performTearDownSequence` and waiting for an asynchronous teardown on the same
-main actor. The intended `exit` after `record` was therefore unreachable. The
-synchronous control passed, so a synchronous-only test hid the real call-site
-failure. This demonstrates a defect in D527's issue-recording choice, not in
-the product's interruption policy.
+The native interruption fixture builds no product UI binary and the product
+builder drives no desktop interaction. They run as sibling jobs on distinct
+hosted Macs. Locale execution starts only after the product build and every
+selected native control succeed. An unselected native job is explicitly skipped;
+failed, cancelled, missing or unexpectedly executed prerequisites cannot become
+a verified UI ancestor, even if locale receipts are otherwise green.
 
-**Decision:** the shared guard completes its identity-owned scratch/app cleanup,
-writes a content-free refusal with cleanup category to standard error, then
-exits only its test worker. It does not call XCTest issue recording or set
-`continueAfterFailure` inside the interruption callback. The separate native
-validator remains strict: exactly one failed test, no skipped/extra case,
-completed cleanup and overlay exit, no fallback or target effect; a restarted
-zero-test suite never qualifies. No interruption is answered or dismissed.
+This changes the dependency graph, not coverage or acceptance. One product build
+still serves both locales; no test, selector, timeout or runtime budget is removed
+or widened. Local heavy gates remain sequential. CPU-only workflow state tests
+execute the actual final gate shell across success and contradictory states;
+they complement, not replace, native focus/keyboard/cleanup qualification.
 
-**Consequences:** the sixteen native controls must pass on the exact source,
-including all asynchronous action, typing and modal paths. The product UI
-catalog and physical permission/Sequoia/Tahoe evidence remain separate gates.
-This changes test-host behavior only; there is no user-visible changelog entry.
+Overlapping the two prerequisite durations can reduce the hosted critical path,
+not necessarily total billed compute or queue delay. Savings require measured
+completed runs and are not promised from the graph alone. Full bilingual
+integration and first-attempt exact-head anchors remain mandatory.
+
+
+## D553 — Exit interrupted test workers without reentering XCTest
+
+The asynchronous native interruption control reached complete owned cleanup and
+XCTest issue recording, then stalled in teardown until its unchanged deadline.
+Calling the framework's failure API from that main-actor callback is not a
+reliable prerequisite for terminating the worker.
+
+The guard writes the existing content-free refusal receipt and exits the worker
+directly after cleanup. This replaces only the issue-recording step of D527,
+not its consent policy, cleanup ownership, or failure classification. The native
+validator must still observe exactly one failed, non-skipped case, the exact
+refusal category, complete owned cleanup, and no action or fallback effect.
+Timeouts and empty restarted suites remain failures. Real synchronous and
+asynchronous controls, not source-text assertions, qualify this boundary.
