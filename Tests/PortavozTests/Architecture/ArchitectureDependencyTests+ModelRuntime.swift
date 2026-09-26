@@ -335,13 +335,15 @@ extension ArchitectureDependencyTests {
                 "Live-speech residency adapter is missing \(transition)")
         }
 
-        XCTAssertTrue(start.contains("services.acquireResidentLiveSpeechRuntime()"))
-        XCTAssertTrue(start.contains("services.acquireLiveSpeechRuntime()"))
-        XCTAssertTrue(start.contains("services.liveTranscriptionRuntime(runtime)"))
+        XCTAssertTrue(adapter.contains("func acquireLiveTranscriptionRuntime()"))
+        XCTAssertTrue(adapter.contains("func acquireResidentLiveTranscriptionRuntime()"))
+        XCTAssertTrue(start.contains("services.acquireResidentLiveTranscriptionRuntime()"))
+        XCTAssertTrue(start.contains("services.acquireLiveTranscriptionRuntime()"))
+        XCTAssertFalse(start.contains("services.acquireLiveSpeechRuntime()"))
         XCTAssertTrue(attacher.contains("await runtime?.finish()"))
         XCTAssertTrue(attacher.contains("await runtime.finish()"))
-        XCTAssertTrue(dictation.contains("services.acquireLiveSpeechRuntime()"))
-        XCTAssertTrue(dictation.contains("services.liveTranscriptionRuntime("))
+        XCTAssertTrue(dictation.contains("services.acquireLiveTranscriptionRuntime()"))
+        XCTAssertFalse(dictation.contains("services.acquireLiveSpeechRuntime()"))
         for borrower in [recovery, benchmark] {
             XCTAssertTrue(borrower.contains("services.acquireLiveSpeechRuntime("))
             XCTAssertTrue(borrower.contains("services.finishLiveSpeechRuntime("))

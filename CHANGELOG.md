@@ -21,6 +21,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 24, 2026
 
+- **🎙️ Cancelled starts stay quiet** — dictation that is already cancelled when preparation begins no longer starts a speech-model load.
+
 - **🌐 Clearer dictation language hints** — your dictation language now reaches the live decoder, with a plain note on why Spanish and English can still mix.
 
 ## September 22, 2026

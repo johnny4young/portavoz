@@ -28,7 +28,7 @@ struct DictationSessionDependencies {
             },
             acquireRuntime: { [weak services] in
                 guard let services else { throw CancellationError() }
-                return services.liveTranscriptionRuntime(try await services.acquireLiveSpeechRuntime())
+                return try await services.acquireLiveTranscriptionRuntime()
             },
             canInsert: { TextInserter.canInsert(promptIfNeeded: true) },
             targetName: { NSWorkspace.shared.frontmostApplication?.localizedName },

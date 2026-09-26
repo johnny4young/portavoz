@@ -29,6 +29,9 @@ extension AppServices {
     func acquireLiveSpeechRuntime(
         workloadClass: ResourceWorkloadClass = .liveInteractive
     ) async throws -> LiveSpeechRuntimeLease {
+        // A caller cancelled before admission must not begin a process-owned
+        // model load that can continue downloading after the session is gone.
+        try Task.checkCancellation()
         enginesIdleGeneration += 1
         if let runtime = try residentLiveSpeechRuntime() {
             return try checkedLiveSpeechRuntime(runtime)
@@ -92,6 +95,19 @@ extension AppServices {
             _ = self.finishLiveSpeechRuntime(runtime)
             self.scheduleRecordingEnginesRelease()
         }
+    }
+
+    /// Live consumers borrow a transcription engine and its release together.
+    /// Batch/maintenance clients keep the concrete Parakeet lease; neither
+    /// dictation nor recording needs to know which model owns a live engine.
+    func acquireLiveTranscriptionRuntime() async throws -> LiveTranscriptionRuntime {
+        liveTranscriptionRuntime(try await acquireLiveSpeechRuntime())
+    }
+
+    /// Capture must not await a model load before writing audio. A missing hot
+    /// engine is attached later through the same live lease boundary.
+    func acquireResidentLiveTranscriptionRuntime() throws -> LiveTranscriptionRuntime? {
+        try acquireResidentLiveSpeechRuntime().map(liveTranscriptionRuntime)
     }
 
     /// Drops only idle model weights; verified assets remain installed.
