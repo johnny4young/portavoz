@@ -203,5 +203,198 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertIn('--base "$VERIFIED_BASE_SHA" --head "$HEAD_SHA"', workflow)
 
 
+class UIPrerequisiteTests(unittest.TestCase):
+    """Exercise the workflow's real final shell, not a duplicate Python policy."""
+
+    @classmethod
+    def setUpClass(cls):
+        import re
+        import textwrap
+
+        cls.workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text()
+        cls.jobs = dict(re.findall(
+            r"^  ([a-z][a-z-]+):\n(.*?)(?=^  [a-z][a-z-]+:\n|\Z)",
+            cls.workflow, re.MULTILINE | re.DOTALL))
+        final_step = cls.jobs["ui-test-gate"].split(
+            "      - name: Require selected evidence and allow an honest no-UI skip\n", 1)[1]
+        cls.shell = textwrap.dedent(final_step.split("        run: |\n", 1)[1])
+
+    def run_gate(self, **overrides):
+        import os
+        import subprocess
+
+        environment = dict(os.environ, SCOPE_RESULT="success", UI_REQUIRED="true",
+                           BUILD_RESULT="success", CONTROLS_REQUIRED="true",
+                           CONTROLS_RESULT="success", UI_RESULT="success",
+                           UI_VERIFIED="true", UI_STATE="passed")
+        environment.update(overrides)
+        return subprocess.run(["bash", "-euo", "pipefail", "-c", self.shell],
+                              env=environment, text=True, capture_output=True, timeout=5)
+
+    def test_native_and_product_builds_are_independent_single_owners(self):
+        native = self.jobs["interruption-controls"]
+        build = self.jobs["build-ui-products"]
+        for job in (native, build):
+            self.assertIn("    needs: scope\n", job)
+            self.assertIn("runs-on: macos-26", job)
+        self.assertIn("if: needs.scope.outputs.interruption_controls == 'true'", native)
+        self.assertEqual(native.count("run: make test-ui-interruption-safety "), 1)
+        self.assertNotIn("test-ui-build", native)
+        self.assertNotIn("test-ui-interruption-safety", build)
+        self.assertEqual(build.count("run: make test-ui-build"), 1)
+        self.assertIn("if: always()", native)
+        self.assertIn("name: ui-interruption-safety-${{ github.run_id }}", native)
+
+    def test_locales_join_both_prerequisites_even_when_native_is_skipped(self):
+        lane = self.jobs["scoped-ui-tests"]
+        self.assertIn("needs: [scope, build-ui-products, interruption-controls]", lane)
+        self.assertIn("always() && !cancelled()", lane)
+        self.assertIn("needs.build-ui-products.result == 'success'", lane)
+        self.assertIn("needs.interruption-controls.result == 'success'", lane)
+        self.assertIn("needs.interruption-controls.result == 'skipped'", lane)
+        gate = self.jobs["ui-test-gate"]
+        self.assertIn("needs: [scope, build-ui-products, interruption-controls, scoped-ui-tests]", gate)
+        self.assertIn("CONTROLS_REQUIRED: ${{ needs.scope.outputs.interruption_controls }}", gate)
+        self.assertIn("CONTROLS_RESULT: ${{ needs.interruption-controls.result }}", gate)
+        self.assertIn("needs.ui-test-gate.result == 'success'", self.jobs["verification-anchor"])
+
+    def test_actual_gate_rejects_every_invalid_native_outcome_even_with_green_ui(self):
+        states = ("success", "failure", "cancelled", "skipped", "", "neutral")
+        for required in ("true", "false", "", "TRUE"):
+            for result in states:
+                with self.subTest(required=required, result=result):
+                    accepted = (required, result) in (("true", "success"), ("false", "skipped"))
+                    run = self.run_gate(CONTROLS_REQUIRED=required, CONTROLS_RESULT=result)
+                    self.assertEqual(run.returncode == 0, accepted, run.stdout + run.stderr)
+                    if not accepted:
+                        self.assertIn("Native interruption controls contradict selection", run.stderr)
+
+    def test_no_ui_change_requires_no_native_work(self):
+        run = self.run_gate(UI_REQUIRED="false", CONTROLS_REQUIRED="false",
+                            CONTROLS_RESULT="skipped", BUILD_RESULT="skipped",
+                            UI_RESULT="skipped", UI_VERIFIED="", UI_STATE="")
+        self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_no_ui_selection_rejects_unexpected_native_work(self):
+        run = self.run_gate(UI_REQUIRED="false")
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn("cannot require native controls", run.stderr)
+
+    def test_other_failures_cannot_hide_behind_successful_native_controls(self):
+        for key in ("SCOPE_RESULT", "BUILD_RESULT", "UI_RESULT"):
+            for result in ("failure", "cancelled", "skipped", ""):
+                with self.subTest(key=key, result=result):
+                    run = self.run_gate(**{key: result})
+                    self.assertNotEqual(run.returncode, 0, run.stdout)
+        run = self.run_gate(UI_STATE="passed", UI_VERIFIED="false")
+        self.assertNotEqual(run.returncode, 0, run.stdout)
+
+
+class UIArtifactTransportTests(unittest.TestCase):
+    def receipt_paths(self, locale):
+        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text()
+        marker = "      - name: Publish compact classifier receipts\n"
+        self.assertIn(marker, workflow, "the classifier must not download result bundles")
+        step = workflow.split(marker, 1)[1].split("\n      - name:", 1)[0]
+        self.assertIn("if: always()", step)
+        self.assertIn("name: scoped-ui-receipts-${{ matrix.locale }}-${{ github.run_id }}", step)
+        self.assertIn("if-no-files-found: error", step)
+        paths = step.split("          path: |\n", 1)[1].split(
+            "          if-no-files-found:", 1)[0]
+        paths = [line.strip().replace("${{ matrix.locale }}", locale)
+                 for line in paths.splitlines() if line.strip()]
+        self.assertEqual(set(paths), {
+            f"dist/ui-test-results/{locale}-runtime.json",
+            f"dist/ui-test-results/{locale}-execution.json",
+            f"dist/ui-test-results/{locale}-outcome.txt",
+        })
+        self.assertEqual(len(paths), 3)
+        return paths
+
+    def test_classifier_fetches_only_receipts_without_removing_raw_evidence(self):
+        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text()
+        gate = workflow.split("  ui-test-gate:\n", 1)[1].split(
+            "\n  verification-anchor:\n", 1)[0]
+        self.assertIn("pattern: scoped-ui-receipts-*-${{ github.run_id }}", gate)
+        self.assertNotIn("pattern: scoped-ui-*-${{ github.run_id }}", gate)
+        self.assertIn("merge-multiple: true", gate)
+        raw = workflow.split("      - name: Preserve ${{ matrix.locale }} UI evidence\n", 1)[1]
+        self.assertIn("name: scoped-ui-${{ matrix.locale }}-${{ github.run_id }}", raw)
+        self.assertIn("path: dist/ui-test-results", raw)
+        self.assertIn("retention-days: 7", raw)
+        for locale in ("en", "es"):
+            self.receipt_paths(locale)
+
+    def classify_transported_files(self, *, remove=None, replace=None):
+        import os
+        import shutil
+        import subprocess
+        import tempfile
+        import textwrap
+        from Tests.Tooling.test_ui_test_ci_gate import execution, receipt
+
+        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text()
+        step = workflow.split(
+            "      - name: Classify functional evidence and hosted runtime drift\n", 1)[1]
+        shell = textwrap.dedent(step.split("        run: |\n", 1)[1].split(
+            "\n      - name:", 1)[0])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            producer = root / "producer"
+            results = producer / "dist/ui-test-results"
+            results.mkdir(parents=True)
+            for locale in ("en", "es"):
+                (results / f"{locale}-runtime.json").write_text(json.dumps(receipt(locale)))
+                (results / f"{locale}-execution.json").write_text(json.dumps(execution(locale)))
+                (results / f"{locale}-outcome.txt").write_text("success\n")
+            (results / "en.xcresult").mkdir()
+            (results / "en.xcresult/large-result").write_bytes(b"unneeded by the classifier")
+            (results / "en.log").write_text("retained diagnostic log")
+            if remove:
+                (results / remove).unlink()
+            if replace:
+                name, contents = replace
+                (results / name).write_text(contents)
+
+            consumer = root / "consumer"
+            destination = consumer / "dist/ui-test-results"
+            destination.mkdir(parents=True)
+            for locale in ("en", "es"):
+                for relative in self.receipt_paths(locale):
+                    source = producer / relative
+                    if source.exists():
+                        shutil.copyfile(source, destination / source.name)
+            self.assertFalse((destination / "en.xcresult").exists())
+            self.assertFalse((destination / "en.log").exists())
+            self.assertTrue((results / "en.xcresult/large-result").is_file())
+            (consumer / "scripts").mkdir()
+            shutil.copyfile(ROOT / "scripts/ui_test_ci_gate.py",
+                            consumer / "scripts/ui_test_ci_gate.py")
+            output = root / "github-output"
+            environment = dict(os.environ, UI_TEST_LOCALES="en es", GITHUB_OUTPUT=str(output))
+            result = subprocess.run(["bash", "-euo", "pipefail", "-c", shell],
+                                    cwd=consumer, env=environment, capture_output=True,
+                                    text=True, timeout=5)
+            return result, output.read_text() if output.exists() else ""
+
+    def test_actual_classifier_accepts_both_transported_locales_without_result_bundles(self):
+        run, outputs = self.classify_transported_files()
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        self.assertIn("verified=true", outputs)
+
+    def test_transport_cannot_hide_missing_or_corrupt_required_evidence(self):
+        for locale in ("en", "es"):
+            for suffix in ("runtime.json", "execution.json", "outcome.txt"):
+                name = f"{locale}-{suffix}"
+                with self.subTest(missing=name):
+                    run, outputs = self.classify_transported_files(remove=name)
+                    self.assertNotEqual(run.returncode, 0, run.stdout)
+                    self.assertNotIn("verified=true", outputs)
+                with self.subTest(corrupt=name):
+                    run, outputs = self.classify_transported_files(replace=(name, "corrupt"))
+                    self.assertNotEqual(run.returncode, 0, run.stdout)
+                    self.assertNotIn("verified=true", outputs)
+
+
 if __name__ == "__main__":
     unittest.main()

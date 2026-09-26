@@ -83,6 +83,43 @@ jobs:
           echo "Locales: ${LOCALES:-none}"
           echo "Selectors: ${TESTS:-none}"
 
+  interruption-controls:
+    needs: scope
+    if: needs.scope.outputs.interruption_controls == 'true'
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify fixed Tahoe toolchain
+        run: scripts/verify-ci-toolchain.sh 26 26.6
+
+      - name: Install checksum-pinned XcodeGen 2.46.0
+        run: scripts/install-ci-xcodegen.sh "$RUNNER_TEMP/portavoz-xcodegen"
+
+      # Independent hosted Mac: no shared WindowServer or product build state.
+      - name: Verify interruption safety at the shared callback
+        run: make test-ui-interruption-safety UI_INTERRUPTION_RESULTS="$RUNNER_TEMP/ui-interruption-safety"
+
+      - name: Preserve interruption-control evidence
+        id: interruption_archive
+        if: always()
+        run: |
+          scripts/archive-ui-interruption-evidence.sh \
+            "$RUNNER_TEMP/ui-interruption-safety" \
+            "$RUNNER_TEMP/ui-interruption-safety.tar.gz"
+
+      - name: Upload interruption-control evidence
+        if: always() && steps.interruption_archive.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ui-interruption-safety-${{ github.run_id }}
+          path: ${{ runner.temp }}/ui-interruption-safety.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
   build-ui-products:
     needs: scope
     if: needs.scope.outputs.required == 'true'
@@ -98,29 +135,6 @@ jobs:
 
       - name: Install checksum-pinned XcodeGen 2.46.0
         run: scripts/install-ci-xcodegen.sh "$RUNNER_TEMP/portavoz-xcodegen"
-
-      # A separate tiny fixture target proves the shared interruption guard;
-      # product locale lanes still reuse one product build without XcodeGen.
-      - name: Verify interruption safety at the shared callback
-        if: needs.scope.outputs.interruption_controls == 'true'
-        run: make test-ui-interruption-safety UI_INTERRUPTION_RESULTS="$RUNNER_TEMP/ui-interruption-safety"
-
-      - name: Preserve interruption-control evidence
-        id: interruption_archive
-        if: always() && needs.scope.outputs.interruption_controls == 'true'
-        run: |
-          scripts/archive-ui-interruption-evidence.sh \
-            "$RUNNER_TEMP/ui-interruption-safety" \
-            "$RUNNER_TEMP/ui-interruption-safety.tar.gz"
-
-      - name: Upload interruption-control evidence
-        if: always() && steps.interruption_archive.outcome == 'success'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ui-interruption-safety-${{ github.run_id }}
-          path: ${{ runner.temp }}/ui-interruption-safety.tar.gz
-          if-no-files-found: error
-          retention-days: 7
 
       # One build feeds every locale lane. The exact products travel as one
       # xctestproducts bundle so no lane recompiles this head on its own.
@@ -145,8 +159,16 @@ jobs:
           retention-days: 1
 
   scoped-ui-tests:
-    needs: [scope, build-ui-products]
-    if: needs.scope.outputs.required == 'true'
+    needs: [scope, build-ui-products, interruption-controls]
+    if: >-
+      always() && !cancelled() &&
+      needs.scope.result == 'success' &&
+      needs.scope.outputs.required == 'true' &&
+      needs.build-ui-products.result == 'success' &&
+      ((needs.scope.outputs.interruption_controls == 'true' &&
+        needs.interruption-controls.result == 'success') ||
+       (needs.scope.outputs.interruption_controls == 'false' &&
+        needs.interruption-controls.result == 'skipped'))
     runs-on: macos-26
     # Each selected locale runs on its own hosted Mac against the same
     # products, so the wall clock is one build plus the slowest locale rather
@@ -201,6 +223,20 @@ jobs:
           mkdir -p dist/ui-test-results
           printf '%s\n' "$OUTCOME" > "dist/ui-test-results/$LOCALE-outcome.txt"
 
+      # The classifier reads these three files, not hundreds of MB of
+      # xcresult attachments. Preserve the full forensic artifact separately.
+      - name: Publish compact classifier receipts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: scoped-ui-receipts-${{ matrix.locale }}-${{ github.run_id }}
+          path: |
+            dist/ui-test-results/${{ matrix.locale }}-runtime.json
+            dist/ui-test-results/${{ matrix.locale }}-execution.json
+            dist/ui-test-results/${{ matrix.locale }}-outcome.txt
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Preserve ${{ matrix.locale }} UI evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -211,7 +247,7 @@ jobs:
           retention-days: 7
 
   ui-test-gate:
-    needs: [scope, build-ui-products, scoped-ui-tests]
+    needs: [scope, build-ui-products, interruption-controls, scoped-ui-tests]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -235,7 +271,7 @@ jobs:
         if: needs.scope.outputs.required == 'true'
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
-          pattern: scoped-ui-*-${{ github.run_id }}
+          pattern: scoped-ui-receipts-*-${{ github.run_id }}
           path: dist/ui-test-results
           merge-multiple: true
 
@@ -260,6 +296,8 @@ jobs:
         env:
           SCOPE_RESULT: ${{ needs.scope.result }}
           UI_REQUIRED: ${{ needs.scope.outputs.required }}
+          CONTROLS_REQUIRED: ${{ needs.scope.outputs.interruption_controls }}
+          CONTROLS_RESULT: ${{ needs.interruption-controls.result }}
           BUILD_RESULT: ${{ needs.build-ui-products.result }}
           UI_RESULT: ${{ needs.scoped-ui-tests.result }}
           UI_VERIFIED: ${{ steps.classify.outputs.verified }}
@@ -269,6 +307,17 @@ jobs:
             echo "UI scope selection failed: $SCOPE_RESULT" >&2
             exit 1
           fi
+          if [[ "$UI_REQUIRED" != "true" && "$CONTROLS_REQUIRED" != "false" ]]; then
+            echo "A no-UI selection cannot require native controls." >&2
+            exit 1
+          fi
+          case "$CONTROLS_REQUIRED:$CONTROLS_RESULT" in
+            true:success|false:skipped) ;;
+            *)
+              echo "Native interruption controls contradict selection: $CONTROLS_REQUIRED/$CONTROLS_RESULT" >&2
+              exit 1
+              ;;
+          esac
           if [[ "$UI_REQUIRED" == "true" && "$BUILD_RESULT" != "success" ]]; then
             echo "The shared UI products did not build: $BUILD_RESULT" >&2
             exit 1
