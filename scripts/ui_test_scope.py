@@ -617,6 +617,8 @@ NO_UI_PREFIXES = (
     "packaging/",
 )
 NO_UI_FILES = {
+    "Fixtures/DictationValidation/README.md",
+    "Fixtures/DictationValidation/public-synthetic-v1.json",
     ".gitignore",
     ".swiftlint.yml",
     "AGENTS.md",
@@ -909,6 +911,10 @@ def app_features(filename: str) -> set[str]:
 
 
 def lower_layer_features(path: str) -> set[str]:
+    if path == "Sources/TranscriptionKit/LiveTranscriptionBench.swift":
+        # App BenchMode and the CLI share this benchmark, but only dictation's
+        # visible voice path needs a UI canary; call-site behavior has unit tests.
+        return {"dictation"}
     if path in {
         "Sources/ApplicationKit/PortableSettings.swift",
         "Sources/ApplicationKit/PortableSettingsTransfer.swift",
@@ -1192,15 +1198,18 @@ def select_paths(paths: Iterable[str]) -> Selection:
             reasons.append(f"{path}: {', '.join(sorted(features))}")
             continue
 
+        # CLI and reviewed test-only corpus paths cannot alter the app UI.
+        # Check them before generic Sources/*.swift: the latter otherwise
+        # swallows CLI.swift into the unknown-production full fallback.
+        if path.startswith(NO_UI_PREFIXES) or path in NO_UI_FILES or path.startswith(".github/") or path.startswith("scripts/"):
+            continue
+
         if path.startswith("Sources/") and path.endswith(".swift"):
             features = lower_layer_features(path)
             if not features:
                 continue
             selected.update(feature_tests(features))
             reasons.append(f"{path}: {', '.join(sorted(features))}")
-            continue
-
-        if path.startswith(NO_UI_PREFIXES) or path in NO_UI_FILES or path.startswith(".github/") or path.startswith("scripts/"):
             continue
 
         # Unknown build/configuration changes may alter the executable even if

@@ -2493,7 +2493,12 @@ class; localization and shared-harness changes select the complete bilingual
 catalogue; the
 macOS 14 transcript-scroll bridge selects only recording-recovery evidence; and
 an unknown production Swift path selects the complete English suite. Docs,
-governance, site, CLI, and package-test-only diffs select no UI runner. Catalog
+governance, site, CLI, the two reviewed dictation-validation corpus files, and
+package-test-only diffs select no UI runner. CLI paths are excluded before the
+generic production-Swift fallback; the shared live benchmark selects dictation
+journeys because the app's explicit benchmark mode also uses it. Unknown
+TranscriptionKit files and new corpus siblings still expand to the complete
+English catalogue. Catalog
 validation fails for an added or renamed unscoped test, empty or duplicate
 scope, missing production owner, retired known-overlap journey, or missing/stale
 runtime budget. The selector never truncates tests or locales. Only its
