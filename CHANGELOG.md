@@ -4,6 +4,10 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## September 24, 2026
+
+- **📋 Safer dictation paste** — preserves rich clipboard items, protects newer copies, and explains when it cannot safely borrow the clipboard.
+
 ## 1.1.0 — September 17, 2026
 
 **Less noise, one place for everything.**

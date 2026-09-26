@@ -32,26 +32,23 @@ final class PasteboardSnapshotTests: XCTestCase {
         XCTAssertEqual(pasteboard.string(forType: .string), "informe Q3")
     }
 
-    func testEmptyPasteboardProducesNoSnapshot() {
+    func testEmptyPasteboardProducesRestorableEmptySnapshot() {
         let pasteboard = scratchPasteboard()
         defer { pasteboard.releaseGlobally() }
         pasteboard.clearContents()
-        XCTAssertNil(PasteboardSnapshot(of: pasteboard))
+        XCTAssertNotNil(PasteboardSnapshot(of: pasteboard))
     }
 
-    func testRestoreDoesNotAdvertiseTypesThatWereNotCaptured() {
+    func testUncapturableTypeRefusesSnapshotWithoutDroppingTheType() {
         let pasteboard = scratchPasteboard()
         defer { pasteboard.releaseGlobally() }
         let uncaptured = NSPasteboard.PasteboardType("app.portavoz.tests.uncaptured")
         pasteboard.declareTypes([.string, uncaptured], owner: nil)
         pasteboard.setString("original", forType: .string)
-
-        let snapshot = PasteboardSnapshot(of: pasteboard)
-        pasteboard.clearContents()
-        snapshot?.restore(to: pasteboard)
-
-        XCTAssertEqual(pasteboard.string(forType: .string), "original")
-        XCTAssertFalse(pasteboard.types?.contains(uncaptured) == true)
+        let generation = pasteboard.changeCount
+        XCTAssertNil(PasteboardSnapshot(of: pasteboard))
+        XCTAssertEqual(pasteboard.changeCount, generation)
+        XCTAssertTrue(pasteboard.types?.contains(uncaptured) == true)
     }
 
     func testChangeCountAdvancesWhenAnotherWriterTakesOver() {

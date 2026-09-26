@@ -59,6 +59,45 @@ final class DictationControllerTests: XCTestCase {
         }
     }
 
+    func testClipboardRefusalReachesControllerFailureWithoutDispatching() async {
+        for text in ["Don't delete these notes.", "No borres estas notas."] {
+            let harness = DictationControllerHarness(text: text)
+            let board = NSPasteboard(name: .init("app.portavoz.clipboard-controller." + UUID().uuidString))
+            defer { harness.controller.cancel(); board.releaseGlobally() }
+            let item = NSPasteboardItem()
+            item.setString("Private original", forType: .string)
+            item.setData(Data(), forType: DictationClipboard.concealed)
+            board.writeObjects([item])
+            let generation = board.changeCount
+            var posts = 0
+            var dependencies = harness.dependencies
+            dependencies.insert = { output in
+                await TextInserter.insert(
+                    output, pasteboard: board,
+                    eventTarget: .process(ProcessInfo.processInfo.processIdentifier),
+                    effects: .init(isTargetAvailable: { _ in true }, waitForModifiers: { true },
+                                   focusedSecurity: { _ in .regular }, post: { _ in
+                        posts += 1
+                        return false
+                    }))
+            }
+            harness.controller.toggle(using: dependencies)
+            let listening = await awaitEventually { harness.controller.partialText == text }
+            XCTAssertTrue(listening)
+            harness.now = harness.now.addingTimeInterval(1)
+            harness.controller.toggle(using: dependencies)
+            let finished = await awaitEventually { harness.finishes == 1 }
+            XCTAssertTrue(finished)
+            guard case .failed(let reason) = harness.controller.phase else {
+                return XCTFail("Real clipboard refusal must not claim insertion")
+            }
+            XCTAssertEqual(reason, L10n.text("Dictation left your clipboard unchanged. Copy something else and try again."))
+            XCTAssertEqual(posts, 0)
+            XCTAssertEqual(board.changeCount, generation)
+            XCTAssertEqual(board.string(forType: .string), "Private original")
+        }
+    }
+
     func testPermissionDenialDoesNotPrepareAudioOrModels() async {
         let harness = DictationControllerHarness(text: "No borres estas notas.")
         var dependencies = harness.dependencies

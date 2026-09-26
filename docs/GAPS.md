@@ -47,6 +47,19 @@ count alone are not sufficient. Do not infer corrected meeting evidence from
 the dictation projection tests. Physical source attribution is not evaluated by
 this synthetic cross-channel case.
 
+### Clipboard preservation boundaries
+
+Ordered bounded snapshots and exclusive paste loans now protect rich-item identity
+and prevent overlapping dictations from borrowing an earlier temporary paste (D551).
+Unknown/private formats fail closed rather than triggering arbitrary lazy reads.
+AppKit does not expose a size-limited or timeout-bounded data-provider read, so the
+retained-byte limits do not certify peak allocation or a hung known-type provider.
+There is no cross-process compare-and-swap: a foreign app can still write between
+native calls. Restoration is in memory, best-effort after app/server loss, and
+cannot recover across a crash. Cooperative privacy markers do not bind external
+readers. Destination fencing, readback and refused-text recovery remain separate
+from this clipboard mechanism; native receiver evidence is still required.
+
 ### Accepted live input survives interrupted recordings
 
 **Implemented:** explicit notes and objective changes commit to canonical context

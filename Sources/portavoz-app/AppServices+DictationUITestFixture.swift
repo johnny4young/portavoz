@@ -1,3 +1,4 @@
+import AppKit
 import AudioCaptureKit
 import Foundation
 import PortavozCore
@@ -14,16 +15,22 @@ extension AppServices {
 
 struct DictationUITestFixture: Sendable {
     let text: String
+    let exerciseClipboard: Bool
     let streamsDeltas: Bool
 
     init?(arguments: [String], usesTemporaryStore: Bool) {
         guard usesTemporaryStore, arguments.contains("-seed-dictation") else { return nil }
+        exerciseClipboard = arguments.contains("-seed-dictation-clipboard")
         streamsDeltas = arguments.contains("-seed-dictation-streaming")
-        text = "No borres estas notas."
+        text = arguments.contains("-seed-dictation-english")
+            ? "Don't delete these notes."
+            : "No borres estas notas."
     }
 
     @MainActor
-    static func dependencies(fixture: Self?) -> DictationSessionDependencies {
+    static func dependencies(
+        fixture: Self?, environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> DictationSessionDependencies {
         DictationSessionDependencies(
             makeMicrophone: {
                 .init(source: DictationFixtureMicrophone(), warmUp: {})
@@ -38,9 +45,29 @@ struct DictationUITestFixture: Sendable {
             targetName: { "Dictation test receiver" },
             // This fixture qualifies the controller and panel, not native
             // paste. The separate receiver journey calls TextInserter itself.
-            insert: { _ in .focusUnavailable },
+            insert: { text in
+                guard fixture?.exerciseClipboard == true else { return .focusUnavailable }
+                return await clipboardInsertion(text, environment: environment)
+            },
             defaults: .standard)
     }
+
+    /// Real clipboard admission, inert native effects. Names must stay inside
+    /// the same explicit UUID namespace as the separate native receiver test.
+    @MainActor
+    private static func clipboardInsertion(
+        _ text: String, environment: [String: String]
+    ) async -> TextInserter.InsertionResult {
+        let prefix = DictationNativeUITestFixture.pasteboardPrefix
+        guard let name = environment[DictationNativeUITestFixture.environmentKey], name.hasPrefix(prefix),
+              UUID(uuidString: String(name.dropFirst(prefix.count))) != nil else { return .clipboardUnavailable }
+        return await TextInserter.insert(
+            text, pasteboard: NSPasteboard(name: .init(name)),
+            eventTarget: .process(ProcessInfo.processInfo.processIdentifier),
+            effects: .init(isTargetAvailable: { _ in true }, waitForModifiers: { true },
+                           focusedSecurity: { _ in .regular }, post: { _ in false }))
+    }
+
 }
 
 private actor DictationFixtureMicrophone: AudioCaptureSource {

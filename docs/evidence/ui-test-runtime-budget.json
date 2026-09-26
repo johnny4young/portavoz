@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 124
+    "expectedCaseCount": 125
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -147,6 +147,7 @@
     "UITestStorageUITests/testSharedScratchProtectsOwnershipAndRoundTripsAppFixtures()": 15.0,
     "SettingsTransferUITests/testPortablePreferencesReviewCancelApplyAndLiveLanguage()": 35.0,
     "SettingsTransferUITests/testUnsupportedPreferencesRemainRecoverableWithoutMutation()": 25.0,
+    "DictationUITests/testClipboardRefusalKeepsRichContentAndExplainsRecovery()": 20.0,
     "DictationUITests/testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart()": 20.0
   }
 }

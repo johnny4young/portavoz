@@ -784,6 +784,8 @@ class UITestScopeTests(unittest.TestCase):
             "Sources/portavoz-app/DictationSessionDependencies.swift",
             "Sources/portavoz-app/AppServices+DictationUITestFixture.swift",
             "Sources/portavoz-app/TextInserter.swift",
+            "Sources/portavoz-app/DictationClipboard.swift",
+            "Sources/portavoz-app/PasteboardSnapshot.swift",
             "Sources/TranscriptionKit/DictationTextRules.swift",
         ]:
             selection = select_paths([path])

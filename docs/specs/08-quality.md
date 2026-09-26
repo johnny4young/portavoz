@@ -59,7 +59,7 @@ does not relax the full-suite or p95 limits.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 123 UI cases, including portable-settings,
+The unattended catalog contains 125 UI cases, including portable-settings,
 shortcut-recovery, and the real dictation-panel journey. The one native
 dictation-receiver test is discovered and kept outside this catalog because
 its app process needs a user-granted Accessibility TCC decision. Its explicit
@@ -152,6 +152,27 @@ correction, job, Skills-storage, and search owner splits rather than blanket
 suppressions. Existing inherent exceptions remain suppressed inline with their
 local justification.
 
+## Clipboard preservation at the insertion boundary
+
+`DictationClipboardInsertionTests` enters `TextInserter.insert` with real named
+pasteboards and inert platform effects. It covers ordered rich items, missing and
+unknown lazy representations, deferred readers across overlapping pastes, same-text
+foreign owners, provider-triggered cancellation/security transitions, and foreign
+writes at final validation. `DictationClipboardBoundaryTests` checks inclusive
+item/representation/byte limits and rejects unsafe fixture namespaces. The
+controller regression reaches the same inserter and verifies refusal, no post and
+resource completion rather than only exercising the snapshot helper.
+
+The explicit `-seed-dictation-clipboard` journey also requires `-seed-dictation`,
+temporary composition and the native fixture's UUID pasteboard namespace. The
+production Dictate action reaches clipboard refusal, localized recovery guidance
+and Cancel while rich/private content remains unchanged. Its platform security
+and event effects are inert; this qualifies the controller/clipboard/UI path, not
+AX permission or native editor delivery. The native receiver journey remains
+mandatory and distinct. Existing runtime budgets are unchanged; the new journey
+has a 20-second budget. AppKit providers remain synchronous, so tests prove
+retained-byte admission, not an allocation/latency ceiling on a foreign provider.
+
 ## Dictation controller and native delivery coverage
 
 `DictationControllerTests` enters the real controller with disposable effects:
@@ -204,7 +225,7 @@ or destination identity fencing. The presence of this test is not evidence that
 the native gate passed. No general clipboard, real meeting, model download or microphone participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 123 unattended cases;
+`make test-ui-bilingual` and scoped hosted runs select the 125 unattended cases;
 `make test-ui-native-dictation` selects the one real receiver case in EN and ES.
 The catalog policy requires that case to remain discoverable but disjoint from
 unattended selectors. The runner excludes it only when no explicit selectors
