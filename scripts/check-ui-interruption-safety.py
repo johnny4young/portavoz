@@ -73,6 +73,13 @@ STOP_REASONS = {
     "testSynchronousAppModalDialogInterruption": "modal-context",
     "testAsynchronousAppModalDialogInterruption": "modal-context",
 }
+KEYBOARD_REFUSAL_PREFIX = b"PORTAVOZ_UI_KEYBOARD_REFUSAL"
+# A missing/ambiguous fixture receiver is not evidence that the foreign overlay
+# took ownership. Only these two observations establish the intended control.
+FOREIGN_KEYBOARD_REFUSAL = re.compile(
+    rb"^PORTAVOZ_UI_KEYBOARD_REFUSAL cause=(?:target-not-foreground|frontmost-mismatch)$",
+    re.MULTILINE,
+)
 OWNED_EXIT_SECONDS = 10
 OWNED_STOP_GRACE_SECONDS = 5
 
@@ -113,12 +120,22 @@ def validate_case(name: str, code: int, log: bytes, summary: dict, effects: set[
         # Built from the classifier's own signature, so a drift between the
         # guard's line and product classification fails this control.
         stop = INTERRUPTION_SIGNATURE + b"complete reason=" + STOP_REASONS[name].encode()
-        require(re.search(re.escape(stop) + rb"$", log, re.MULTILINE) is not None,
+        stopped = re.search(rb"^" + re.escape(stop) + rb"$", log, re.MULTILINE)
+        require(stopped is not None,
                 f"{name}: the real guard did not stop through its expected path with owned cleanup")
+        if STOP_REASONS[name] == "keyboard-owner":
+            witness = FOREIGN_KEYBOARD_REFUSAL.search(log)
+            require(log.count(KEYBOARD_REFUSAL_PREFIX) == 1 and witness is not None
+                    and witness.end() < stopped.start(),
+                    f"{name}: missing, duplicate or unexpected keyboard ownership observation")
+        else:
+            require(KEYBOARD_REFUSAL_PREFIX not in log,
+                    f"{name}: unexpected keyboard ownership observation on a different stop path")
     else:
         require(code == 0 and summary.get("passedTests") == 1 and summary.get("failedTests") == 0,
                 f"{name}: positive control did not pass")
         require(b"PORTAVOZ_UI_INTERRUPTION_BLOCKED" not in log, f"{name}: positive control was interrupted")
+        require(KEYBOARD_REFUSAL_PREFIX not in log, f"{name}: positive control refused keyboard ownership")
     for forbidden in (b"FIXTURE_FALLBACK_REACHED", b"FIXTURE_TARGET_CONTINUED", b"cleanup=failed", b"cleanup=absent"):
         require(forbidden not in log, f"{name}: fallback, continuation or incomplete cleanup observed")
     scratch = re.findall(rb"^FIXTURE_SCRATCH=(.+)$", log, re.MULTILINE)

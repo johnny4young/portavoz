@@ -83,12 +83,14 @@ def classify(
     # Neither that summary nor a later exit 0 qualifies an interrupted journey.
     if INTERRUPTION_SIGNATURE in log:
         return "evidence-failure", None
+    has_executed_cases = runtime_cases is not None and runtime_cases > 0
     if exit_status == 0:
-        if result_bundle_present and runtime_receipt_present and runtime_cases is not None:
+        if result_bundle_present and runtime_receipt_present and has_executed_cases:
             return "completed", None
         return "evidence-failure", None
-    if runtime_cases is not None and runtime_cases > 0:
-        return "test-failure", None
+    if runtime_receipt_present:
+        # A surviving but unusable receipt is not proof of a pre-case failure.
+        return ("test-failure" if has_executed_cases else "evidence-failure"), None
     matching = [
         code
         for code, signature in HOST_INFRASTRUCTURE_SIGNATURES.items()

@@ -501,7 +501,15 @@ class UITestHostPreflightTests(unittest.TestCase):
         self.assertNotIn(".click()", source)
         self.assertNotIn("return true", source)
         self.assertNotIn("return false", source)
-        self.assertIn("record(XCTIssue(", source)
+        # Framework issue recording can reenter async teardown from this
+        # callback. The native fixture verifies the failed aggregate result;
+        # this ratchet only protects the nonreturning receipt/cleanup shape.
+        guard = source.split("private func stopForUnexpectedInterruption", 1)[1]
+        self.assertNotIn("record(XCTIssue(", guard)
+        self.assertLess(guard.index("UITestStorage.end(ownerID:"),
+                        guard.index("FileHandle.standardError.write"))
+        self.assertLess(guard.index("FileHandle.standardError.write"),
+                        guard.index("exit(EXIT_FAILURE)"))
         self.assertIn("exit(EXIT_FAILURE)", source)
         for path in UI_TEST_SUPPORT.parent.glob("*.swift"):
             if path.name == "PortavozUITestCase.swift":
