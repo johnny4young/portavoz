@@ -56,7 +56,28 @@ final class ModelCatalogTests: XCTestCase {
         XCTAssertEqual(ModelCatalog.recommended(for: .liveTranscription)?.id, "parakeet-tdt-0.6b-v3-coreml")
         // D7: the final pass routes to Whisper, never one global model.
         XCTAssertEqual(ModelCatalog.recommended(for: .finalTranscription)?.id, "whisper-large-v3-turbo")
+        XCTAssertEqual(ModelCatalog.recommended(for: .voiceActivity)?.id, ModelCatalog.sileroVAD.id)
         XCTAssertNil(ModelCatalog.recommended(for: .summarization))
+    }
+
+    func testSileroDescriptorPinsOnlyTheUnifiedStreamingModel() {
+        let model = ModelCatalog.sileroVAD
+        XCTAssertEqual(model.license, "MIT")
+        XCTAssertEqual(model.artifacts.count, 5)
+        XCTAssertTrue(model.tasks.contains(.voiceActivity))
+        XCTAssertTrue(model.resolveBase.absoluteString.contains(model.revision))
+        XCTAssertFalse(model.resolveBase.absoluteString.contains("/main"))
+        XCTAssertEqual(
+            Set(model.artifacts.map(\.path)),
+            Set([
+                "silero-vad-unified-256ms-v6.2.1.mlmodelc/analytics/coremldata.bin",
+                "silero-vad-unified-256ms-v6.2.1.mlmodelc/coremldata.bin",
+                "silero-vad-unified-256ms-v6.2.1.mlmodelc/metadata.json",
+                "silero-vad-unified-256ms-v6.2.1.mlmodelc/model.mil",
+                "silero-vad-unified-256ms-v6.2.1.mlmodelc/weights/weight.bin",
+            ]))
+        XCTAssertLessThan(model.totalSizeBytes, 1_100_000)
+        XCTAssertTrue(model.artifacts.allSatisfy { $0.sha256.count == 64 })
     }
 
     func testMLXLiveSummaryChallengersArePinnedAndNonServing() {

@@ -8,6 +8,7 @@ public enum ModelTask: String, Codable, Sendable, CaseIterable {
     case liveTranscription
     case finalTranscription
     case diarization
+    case voiceActivity
     case summarization
     case embedding
 }
@@ -102,6 +103,8 @@ public enum ModelCatalog {
             return whisperLargeV3Turbo
         case .diarization:
             return speakerDiarization
+        case .voiceActivity:
+            return sileroVAD
         case .summarization, .embedding:
             return nil
         }

@@ -285,9 +285,10 @@ final class IntelligenceTypesTests: XCTestCase {
 
 final class ModelRegistryTests: XCTestCase {
     func testEveryModelTaskIsRoutable() {
-        XCTAssertEqual(ModelTask.allCases.count, 5)
+        XCTAssertEqual(ModelTask.allCases.count, 6)
         XCTAssertTrue(ModelTask.allCases.contains(.liveTranscription))
         XCTAssertTrue(ModelTask.allCases.contains(.finalTranscription))
+        XCTAssertTrue(ModelTask.allCases.contains(.voiceActivity))
     }
 }
 
