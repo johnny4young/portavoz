@@ -36,7 +36,7 @@ class InterruptionSafetyTests(unittest.TestCase):
         for mutation in ("exit-zero", "missing-ready", "missing-guard", "fallback", "continued",
                          "cleanup-failed", "cleanup-absent", "wrong-reason", "missing-reason", "choice",
                          "target", "typed", "empty-restart", "skipped", "extra-case", "helper-crashed",
-                         "overlay-never-ready"):
+                         "overlay-never-ready", "embedded-stop", "unexpected-keyboard-refusal"):
             with self.subTest(mutation=mutation):
                 data = self.evidence()
                 if mutation == "exit-zero":
@@ -55,6 +55,10 @@ class InterruptionSafetyTests(unittest.TestCase):
                     data["log"] = data["log"].replace(b"reason=interruption", b"reason=keyboard-owner")
                 elif mutation == "missing-reason":
                     data["log"] = data["log"].replace(b" reason=interruption", b"")
+                elif mutation == "embedded-stop":
+                    data["log"] = data["log"].replace(b"PORTAVOZ_UI_INTERRUPTION_BLOCKED", b"prefix PORTAVOZ_UI_INTERRUPTION_BLOCKED")
+                elif mutation == "unexpected-keyboard-refusal":
+                    data["log"] += b"PORTAVOZ_UI_KEYBOARD_REFUSAL cause=frontmost-mismatch\n"
                 elif mutation in ("choice", "target", "typed"):
                     data["effects"].add(mutation)
                 elif mutation == "helper-crashed":
@@ -78,6 +82,9 @@ class InterruptionSafetyTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "expected path"):
                 safety.validate_case(**data)  # A monitor stop is not a keyboard-owner refusal.
             data["log"] = data["log"].replace(b"reason=interruption", b"reason=keyboard-owner")
+            data["log"] = data["log"].replace(
+                b"PORTAVOZ_UI_INTERRUPTION_BLOCKED",
+                b"PORTAVOZ_UI_KEYBOARD_REFUSAL cause=frontmost-mismatch\nPORTAVOZ_UI_INTERRUPTION_BLOCKED")
             safety.validate_case(**data)
             data["effects"].add("typed")
             with self.assertRaises(RuntimeError):
@@ -102,6 +109,36 @@ class InterruptionSafetyTests(unittest.TestCase):
                 wrong_path = data["log"].replace(b"reason=modal-context", b"reason=keyboard-owner")
                 with self.assertRaises(RuntimeError):
                     safety.validate_case(**dict(data, log=wrong_path))
+                unrelated_refusal = b"PORTAVOZ_UI_KEYBOARD_REFUSAL cause=frontmost-mismatch\n" + data["log"]
+                with self.assertRaisesRegex(RuntimeError, "unexpected keyboard ownership observation"):
+                    safety.validate_case(**dict(data, log=unrelated_refusal))
+
+    def test_foreign_keyboard_controls_require_the_observed_ownership_failure(self):
+        for name in ("testSynchronousTextInterruption", "testAsynchronousTextInterruption",
+                     "testSynchronousTraversalInterruption", "testAsynchronousTraversalInterruption"):
+            for failure in ("target-not-foreground", "frontmost-mismatch"):
+                with self.subTest(name=name, failure=failure):
+                    data = self.evidence()
+                    data["name"] = name
+                    data["log"] = data["log"].replace(b"reason=interruption", b"reason=keyboard-owner")
+                    receipt = f"PORTAVOZ_UI_KEYBOARD_REFUSAL cause={failure}\n".encode()
+                    guard = b"PORTAVOZ_UI_INTERRUPTION_BLOCKED"
+                    qualified = data["log"].replace(guard, receipt + guard)
+                    safety.validate_case(**dict(data, log=qualified))
+                    mutations = {
+                        "missing": data["log"],
+                        "duplicate": qualified.replace(receipt, receipt + receipt),
+                        "wrong-boundary": qualified.replace(receipt, receipt.replace(b"cause=", b"cause=receiver-")),
+                        "missing-receiver": qualified.replace(receipt, b"PORTAVOZ_UI_KEYBOARD_REFUSAL cause=receiver-missing\n"),
+                        "ambiguous-receiver": qualified.replace(receipt, b"PORTAVOZ_UI_KEYBOARD_REFUSAL cause=receiver-ambiguous\n"),
+                        "unavailable-frontmost": qualified.replace(receipt, b"PORTAVOZ_UI_KEYBOARD_REFUSAL cause=frontmost-unavailable\n"),
+                        "late": data["log"] + receipt,
+                        "embedded": qualified.replace(receipt, b"prefix " + receipt),
+                        "content": qualified.replace(receipt, receipt.rstrip() + b" title=private\n"),
+                    }
+                    for mutation, log in mutations.items():
+                        with self.subTest(mutation=mutation), self.assertRaisesRegex(RuntimeError, "ownership observation"):
+                            safety.validate_case(**dict(data, log=log))
 
     def test_every_negative_control_declares_one_stop_path(self):
         negative = {name for name, effects in safety.CASES.items() if not effects}
@@ -135,6 +172,9 @@ class InterruptionSafetyTests(unittest.TestCase):
             data["log"] = data["log"].split(b"FIXTURE_INTERRUPTION_READY")[0]
             data["summary"].update(failedTests=0, passedTests=1)
             safety.validate_case(**data)
+            for refusal in (b"cause=frontmost-mismatch", b"cause=receiver-missing", b"invalid"):
+                with self.subTest(name=name, refusal=refusal), self.assertRaisesRegex(RuntimeError, "refused keyboard"):
+                    safety.validate_case(**dict(data, log=data["log"] + b"PORTAVOZ_UI_KEYBOARD_REFUSAL " + refusal))
             data["effects"].clear()
             with self.assertRaises(RuntimeError):
                 safety.validate_case(**data)

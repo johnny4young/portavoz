@@ -5703,9 +5703,10 @@ An accepted run reports both content-free Notification Center window counts.
 When both are zero it instead states that the override relaxed no present
 blocker, so a clear-host run cannot be misrepresented as live-overlay proof.
 The shared UI-test base installs a content-blind interruption monitor. It ends
-only its registered apps and identity-owned scratch before recording a failure;
-if XCTest returns from that assertion it exits only the worker, rather than
-resuming the interrupted event or default handler stack. It neither inspects
+only its registered apps and identity-owned scratch, writes a content-free
+failure receipt, then exits only the worker. It does not reenter XCTest issue
+handling from the interruption callback, which can stall asynchronous teardown.
+Neither the interrupted event nor the default handler stack resumes. It neither inspects
 nor answers the interrupting element. The execution classifier retains this as
 `evidence-failure` even after a zero-test worker restart or an exit-zero summary.
 A separate permission-free fixture target compiles the same base and cleanup
@@ -5725,6 +5726,11 @@ before sending Tab so traversal can never move focus into the field.
 These observations prove only that the host was quiet at those samples;
 automation started afterward remains an external race that the result bundle
 must classify.
+
+Hosted UI interruption qualification and the single product build are independent
+prerequisites on separate Macs. Locale execution joins both; the final gate
+revalidates selection/result consistency before publishing any verified ancestor.
+This is scheduling only, not a weaker UI or permission boundary.
 
 Disposable UI-test windows do not inherit a user's multi-display placement.
 Only with `-use-temp-store`, one shared AppKit boundary places both the primary

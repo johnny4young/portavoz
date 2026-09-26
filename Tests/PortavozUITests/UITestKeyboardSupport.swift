@@ -19,6 +19,16 @@ enum UITestKeyboardAdmission: Equatable, Sendable {
     }
 }
 
+/// The first failed check in the same observation that refused dispatch.
+/// Never include process identities, window names, key values or field text.
+private enum UITestKeyboardOwnershipFailure: String {
+    case targetNotForeground = "target-not-foreground"
+    case receiverMissing = "receiver-missing"
+    case receiverAmbiguous = "receiver-ambiguous"
+    case frontmostUnavailable = "frontmost-unavailable"
+    case frontmostMismatch = "frontmost-mismatch"
+}
+
 /// The observable result of ending one text field's native editor.
 enum UITestTextFieldEditingHandoff: Equatable, Sendable {
     /// The field owned the editor and released the native completion surface.
@@ -103,10 +113,17 @@ extension XCUIApplication {
         timeout: TimeInterval = 1
     ) -> UITestKeyboardAdmission {
         var admission = UITestKeyboardAdmission.keyboardNotOwned
+        var ownershipFailure: UITestKeyboardOwnershipFailure?
         _ = waitForUITestCondition(timeout: timeout) {
             admission = observedKeyboardAdmission(
-                bundleIdentifier: bundleIdentifier, modalAnchor: modalAnchor)
+                bundleIdentifier: bundleIdentifier,
+                modalAnchor: modalAnchor,
+                ownershipFailure: &ownershipFailure)
             return admission == .admitted
+        }
+        if admission == .keyboardNotOwned, let ownershipFailure {
+            let receipt = "PORTAVOZ_UI_KEYBOARD_REFUSAL cause=\(ownershipFailure.rawValue)\n"
+            FileHandle.standardError.write(Data(receipt.utf8))
         }
         return admission
     }
@@ -114,10 +131,13 @@ extension XCUIApplication {
     @MainActor
     private func observedKeyboardAdmission(
         bundleIdentifier: String,
-        modalAnchor: String?
+        modalAnchor: String?,
+        ownershipFailure: inout UITestKeyboardOwnershipFailure?
     ) -> UITestKeyboardAdmission {
+        ownershipFailure = nil
         guard ownsModalContext(anchor: modalAnchor) else { return .modalContextMismatch }
-        guard ownsKeyboardFocus(bundleIdentifier: bundleIdentifier) else { return .keyboardNotOwned }
+        ownershipFailure = keyboardOwnershipFailure(bundleIdentifier: bundleIdentifier)
+        guard ownershipFailure == nil else { return .keyboardNotOwned }
         return .admitted
     }
 
@@ -149,9 +169,12 @@ extension XCUIApplication {
     }
 
     @MainActor
-    private func ownsKeyboardFocus(bundleIdentifier: String) -> Bool {
+    private func keyboardOwnershipFailure(bundleIdentifier: String) -> UITestKeyboardOwnershipFailure? {
         let candidates = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier)
-        guard state == .runningForeground, candidates.count == 1 else { return false }
-        return NSWorkspace.shared.frontmostApplication?.processIdentifier == candidates[0].processIdentifier
+        guard state == .runningForeground else { return .targetNotForeground }
+        guard !candidates.isEmpty else { return .receiverMissing }
+        guard candidates.count == 1 else { return .receiverAmbiguous }
+        guard let frontmost = NSWorkspace.shared.frontmostApplication else { return .frontmostUnavailable }
+        return frontmost.processIdentifier == candidates[0].processIdentifier ? nil : .frontmostMismatch
     }
 }
