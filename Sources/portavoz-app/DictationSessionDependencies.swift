@@ -29,7 +29,8 @@ struct DictationSessionDependencies {
         return TranscriptionHints(
             language: ["es", "en"].contains(language) ? language : nil,
             vocabulary: VocabularyPrompt.parse(defaults.string(forKey: "customVocabulary") ?? ""),
-            meetingID: MeetingID())
+            meetingID: MeetingID(),
+            filtersLiveScript: true)
     }
 
     static func live(services: AppServices) -> Self {

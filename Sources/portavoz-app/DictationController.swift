@@ -39,7 +39,7 @@ struct DictationCapturePolicy {
 final class DictationController {
     static let defaultsKey = "globalDictationEnabled"
     /// "auto" (or absent) lets the multilingual engine detect; "es"/"en"
-    /// pin one dictation language without touching meeting settings.
+    /// request the backend's script-aware filter without touching meeting settings.
     static let languageKey = "dictationLanguage"
     /// Bilingual hesitation-filler removal; on by default — polished text
     /// is the point of dictation, and the filter only ever drops tokens
@@ -327,25 +327,6 @@ final class DictationController {
         }
     }
 
-    private func consumeCaptions(
-        from stream: AsyncThrowingStream<TranscriptSegment, Error>,
-        sessionID: UUID, measurement: DictationSessionMeasurementRecorder?
-    ) async throws {
-        var captions: [TranscriptSegment] = []
-        let coalescer = CaptionCoalescer()
-        for try await segment in stream {
-            try Task.checkCancellation()
-            guard activeSessionID == sessionID else { throw CancellationError() }
-            measurement?.record(.firstCaptionHandled)
-            coalescer.apply(segment, to: &captions)
-            confirmedText = captions.dropLast().map(\.text).joined(separator: " ")
-            partialText = captions.last?.text ?? ""
-        }
-        measurement?.record(.transcriptionEnded)
-        confirmedText = captions.map(\.text).joined(separator: " ")
-        partialText = ""
-    }
-
     private func makeAudioPump(
         stream: AsyncThrowingStream<AudioChunk, Error>,
         feed: AsyncStream<AudioChunk>.Continuation,
@@ -405,6 +386,9 @@ final class DictationController {
         measurement = nil
         activeSessionID = nil
         sessionClock = nil
+        confirmedText = ""
+        partialText = ""
+        micLevel = 0
         captureStartedAt = nil
         mouseOwnsSession = false
         stopTask?.cancel()
@@ -522,4 +506,30 @@ final class DictationController {
         }
     }
 
+}
+
+private extension DictationController {
+    func consumeCaptions(
+        from stream: AsyncThrowingStream<TranscriptSegment, Error>,
+        sessionID: UUID, measurement: DictationSessionMeasurementRecorder?
+    ) async throws {
+        var transcript = DictationTranscriptProjection()
+        for try await segment in stream {
+            try Task.checkCancellation()
+            guard activeSessionID == sessionID else { throw CancellationError() }
+            measurement?.record(.firstCaptionHandled)
+            if transcript.apply(segment) {
+                confirmedText = transcript.confirmedText
+            }
+            if partialText != transcript.partialText {
+                partialText = transcript.partialText
+            }
+        }
+        // A cancelled AsyncStream can finish normally, without throwing.
+        try Task.checkCancellation()
+        guard activeSessionID == sessionID else { throw CancellationError() }
+        measurement?.record(.transcriptionEnded)
+        confirmedText = transcript.finalText
+        partialText = ""
+    }
 }

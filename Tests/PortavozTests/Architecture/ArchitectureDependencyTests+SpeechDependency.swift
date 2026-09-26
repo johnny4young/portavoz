@@ -130,6 +130,7 @@ extension ArchitectureDependencyTests {
             "PortavozTests/DictationVendorProbe.swift",
             "PortavozTests/DictationVendorProbeTests.swift",
             "PortavozTests/NemotronLatin1120Tests.swift",
+            "PortavozTests/ParakeetLanguageConfigurationTests.swift",
             "PortavozTests/TranscriptionTests.swift",
         ])
     }
