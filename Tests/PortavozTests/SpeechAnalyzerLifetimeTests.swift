@@ -1,9 +1,53 @@
 import XCTest
+import PortavozCore
 
 @testable import TranscriptionKit
 
 #if canImport(Speech)
 final class SpeechAnalyzerLifetimeTests: XCTestCase {
+    func testAudioFeederRejectsInvalidMiddleChunkInsteadOfFinalizingAShorterTranscript() async {
+        let evidence = SpeechAnalyzerFeedEvidence()
+        let audio = AsyncStream<AudioChunk> { continuation in
+            for sample in [1, 2, 3] {
+                continuation.yield(AudioChunk(channel: .microphone,
+                                              samples: [Float(sample)], sampleRate: 16_000,
+                                              timestamp: Double(sample)))
+            }
+            continuation.finish()
+        }
+        let outcome = await SpeechAnalyzerAudioFeed.run(
+            audio,
+            convert: { chunk in
+                chunk.samples.first == 2 ? nil : Int(chunk.samples[0])
+            },
+            yield: { evidence.yield($0) },
+            finalize: { evidence.finalize() },
+            abort: { evidence.abort() })
+
+        XCTAssertEqual(outcome, .invalidInput)
+        XCTAssertEqual(evidence.snapshot, .init(yielded: [1], finalized: false, aborted: true))
+    }
+
+    func testAudioFeederAcceptsEmptyControlChunkAndFinalizesCompleteInput() async {
+        let evidence = SpeechAnalyzerFeedEvidence()
+        let audio = AsyncStream<AudioChunk> { continuation in
+            continuation.yield(AudioChunk(channel: .microphone,
+                                          samples: [], sampleRate: 16_000, timestamp: 0))
+            continuation.yield(AudioChunk(channel: .microphone,
+                                          samples: [1], sampleRate: 16_000, timestamp: 1))
+            continuation.finish()
+        }
+        let outcome = await SpeechAnalyzerAudioFeed.run(
+            audio,
+            convert: { Int($0.samples[0]) },
+            yield: { evidence.yield($0) },
+            finalize: { evidence.finalize() },
+            abort: { evidence.abort() })
+
+        XCTAssertEqual(outcome, .completed)
+        XCTAssertEqual(evidence.snapshot, .init(yielded: [1], finalized: true, aborted: false))
+    }
+
     func testConcurrentCancellationCallersAwaitOneCompletedOperation() async {
         let operation = ControlledSpeechAnalyzerCancellation()
         let gate = SpeechAnalyzerCancellationGate {
@@ -99,6 +143,22 @@ final class SpeechAnalyzerLifetimeTests: XCTestCase {
             wasCancelled,
             "the cancelled parent must not leave an unstructured feeder behind")
     }
+}
+
+private final class SpeechAnalyzerFeedEvidence: @unchecked Sendable {
+    struct Snapshot: Equatable {
+        var yielded: [Int] = []
+        var finalized = false
+        var aborted = false
+    }
+
+    private let lock = NSLock()
+    private var value = Snapshot()
+
+    var snapshot: Snapshot { lock.withLock { value } }
+    func yield(_ value: Int) { lock.withLock { self.value.yielded.append(value) } }
+    func finalize() { lock.withLock { value.finalized = true } }
+    func abort() { lock.withLock { value.aborted = true } }
 }
 
 private enum SpeechAnalyzerFeedTestError: Error, Equatable {

@@ -1,5 +1,23 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
+Optional Apple Speech live routing (D554) has three distinct evidence layers.
+Pure readiness tests distinguish fixed en/es, unsupported, equivalent installed
+locales, absent assets and invalid ranges. Actual controller/attacher tests feed
+EN/ES volatile revisions through the call sites: only a corrected final can
+become inserted text or a canonical meeting caption; a provisional-only end
+fails without paste, an older final leaves a later preview visible, overlap
+forces durable recovery, and a system-audio feed cannot be relabeled as the
+user's microphone. A feeder call-site test ensures a bad middle audio chunk
+aborts rather than finalizing the surrounding chunks as a shortened success.
+A disposable real-app Settings journey selects the two independent routes,
+prepares English explicitly, confirms Spanish still needs its own action,
+checks localized status, and
+offers Retry after a failed asset inspection without assuming a download is
+needed. Neither synthetic journey makes an OS asset request. The synthetic client
+does not qualify native ASR, TCC, audio hardware, bilingual WER/CER, latency,
+RAM or physical Sequoia/Tahoe. Those remain separate measured gates before
+any default-engine or comparative product claim.
+
 `PortableSettingsTests` exercises the real defaults adapter using private suites,
 including its persistent-write branch and startup-override precedence. Coverage
 includes exclusion of secrets/consents/host bindings, non-destructive vocabulary

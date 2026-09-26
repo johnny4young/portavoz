@@ -1,7 +1,7 @@
 import CryptoKit
 import Foundation
 import PortavozCore
-import TranscriptionKit
+@testable import TranscriptionKit
 import XCTest
 
 @testable import portavoz_app
@@ -118,6 +118,80 @@ final class DictationStreamingProjectionTests: XCTestCase {
         XCTAssertTrue(harness.insertions.isEmpty)
     }
 
+    func testAppleRangeRevisionsNeverBecomeInsertedDuplicateDeltas() async throws {
+        guard #available(macOS 26.0, *) else { return }
+        for (locale, volatile, corrected, closing) in [
+            ("en_US", "I have two", "I had two", "questions"),
+            ("es_ES", "Tengo dos", "Tenía dos", "preguntas")
+        ] {
+            let fixture = StreamingDictationFixture()
+            defer { fixture.cancel() }
+            fixture.start(speechLocale: locale)
+            try await fixture.waitForEngine()
+            fixture.emit(volatile, at: 0, isFinal: false)
+            try await fixture.expect(confirmed: "", partial: volatile)
+            fixture.emit(corrected, at: 0, isFinal: true)
+            try await fixture.expect(confirmed: "", partial: corrected)
+            fixture.emit(closing, at: 2, isFinal: true)
+            try await fixture.expect(confirmed: "", partial: corrected + " " + closing)
+            try await fixture.finish()
+            XCTAssertEqual(fixture.harness.insertions, [corrected + " " + closing])
+        }
+    }
+
+    func testAppleUnconfirmedTailFailsWithoutInsertingText() async throws {
+        guard #available(macOS 26.0, *) else { return }
+        let fixture = StreamingDictationFixture()
+        defer { fixture.cancel() }
+        fixture.start(speechLocale: "es_ES")
+        try await fixture.waitForEngine()
+        fixture.emit("No guardar todavía", at: 0, isFinal: false)
+        try await fixture.expect(confirmed: "", partial: "No guardar todavía")
+        fixture.continuation.finish()
+        try await fixture.waitUntil { fixture.harness.finishes == 1 }
+        guard case .failed = fixture.harness.controller.phase else {
+            return XCTFail("Unconfirmed tail must not become an insertion")
+        }
+        XCTAssertTrue(fixture.harness.insertions.isEmpty)
+    }
+
+    func testOlderAppleFinalDoesNotEraseALaterVolatilePreview() async throws {
+        guard #available(macOS 26.0, *) else { return }
+        for (locale, first, later) in [
+            ("en_US", "Keep this", "and the later phrase"),
+            ("es_ES", "Conserva esto", "y la frase posterior")
+        ] {
+            let fixture = StreamingDictationFixture()
+            defer { fixture.cancel() }
+            fixture.start(speechLocale: locale)
+            try await fixture.waitForEngine()
+            fixture.emit(first, at: 0, isFinal: false)
+            fixture.emit(later, at: 1, isFinal: false)
+            try await fixture.expect(confirmed: "", partial: later)
+            fixture.emit(first, at: 0, isFinal: true)
+            try await fixture.expect(confirmed: "", partial: first + " " + later)
+            fixture.emit(later, at: 1, isFinal: true)
+            try await fixture.finish()
+            XCTAssertEqual(fixture.harness.insertions, [first + " " + later])
+        }
+    }
+
+    func testAppleOverlappingFinalRangesFailBeforeInsertion() async throws {
+        guard #available(macOS 26.0, *) else { return }
+        let fixture = StreamingDictationFixture()
+        defer { fixture.cancel() }
+        fixture.start(speechLocale: "en_US")
+        try await fixture.waitForEngine()
+        fixture.emit("Do not send", at: 0, isFinal: true)
+        try await fixture.expect(confirmed: "", partial: "Do not send")
+        fixture.emit("Send", at: 0.2, isFinal: true)
+        try await fixture.waitUntil { fixture.harness.finishes == 1 }
+        guard case .failed = fixture.harness.controller.phase else {
+            return XCTFail("Overlapping finals must fail closed")
+        }
+        XCTAssertTrue(fixture.harness.insertions.isEmpty)
+    }
+
     func testSyntheticControllerBurstMeasurement() async throws {
         guard ProcessInfo.processInfo.environment["PORTAVOZ_DICTATION_PROJECTION_BENCHMARK"] == "1" else {
             throw XCTSkip("Opt-in synthetic controller benchmark; not an ASR or native latency measurement")
@@ -155,7 +229,7 @@ final class DictationStreamingProjectionTests: XCTestCase {
 private final class StreamingDictationFixture {
     let harness: DictationControllerHarness
     private let stream: AsyncThrowingStream<TranscriptSegment, Error>
-    private let continuation: AsyncThrowingStream<TranscriptSegment, Error>.Continuation
+    let continuation: AsyncThrowingStream<TranscriptSegment, Error>.Continuation
     private let meetingID = MeetingID()
     private var ready = false
 
@@ -165,22 +239,38 @@ private final class StreamingDictationFixture {
             of: TranscriptSegment.self, bufferingPolicy: .bufferingOldest(capacity))
     }
 
-    func start() {
+    func start(speechLocale: String? = nil) {
         var dependencies = harness.dependencies
         dependencies.acquireRuntime = { [weak self] in
             guard let self else { throw CancellationError() }
             harness.loads += 1
-            return LiveTranscriptionRuntime(engine: StreamingDictationEngine(
-                stream: stream, onStart: { [weak self] in self?.ready = true })) { [weak self] in
+            let engine: any TranscriptionEngine
+            if let speechLocale, #available(macOS 26.0, *) {
+                let stream = self.stream
+                engine = SpeechAnalyzerLiveEngine(locale: Locale(identifier: speechLocale)) { _, _ in
+                    stream
+                }
+                ready = true
+            } else {
+                engine = StreamingDictationEngine(
+                    stream: stream, onStart: { [weak self] in self?.ready = true })
+            }
+            return LiveTranscriptionRuntime(engine: engine) { [weak self] in
                 self?.harness.finishes += 1
             }
         }
         harness.controller.toggle(using: dependencies)
     }
 
-    func emit(_ text: String, at time: TimeInterval, channel: AudioChannel = .microphone) {
+    func emit(
+        _ text: String,
+        at time: TimeInterval,
+        channel: AudioChannel = .microphone,
+        isFinal: Bool = false
+    ) {
         let result = continuation.yield(TranscriptSegment(
-            meetingID: meetingID, channel: channel, text: text, startTime: time, endTime: time + 0.4))
+            meetingID: meetingID, channel: channel, text: text, startTime: time,
+            endTime: time + 0.4, isFinal: isFinal))
         guard case .enqueued = result else {
             return XCTFail("Every synthetic delta must reach the actual controller")
         }

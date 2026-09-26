@@ -5,6 +5,59 @@ import XCTest
 /// app-only language override updates SwiftUI text live.
 final class SettingsUITests: PortavozUITestCase {
     @MainActor
+    func testAppleSpeechInspectionFailureOffersExplicitRetry() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
+        app.launchArguments.append("-seed-apple-speech-retry-settings")
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationLanguage":"en","dictationLiveSpeechEngine":"appleSpeech"}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+        openCategory("settings-category-audio",
+                     revealing: "settings-dictation-live-engine", in: app)
+        let retry = app.buttons["settings-dictation-live-apple-retry"]
+        XCTAssertTrue(retry.waitForExistenceFast(timeout: 5))
+        XCTAssertFalse(app.buttons["settings-dictation-live-apple-prepare"].exists,
+                       "a failed read must not assume that an asset download is needed")
+        retry.click()
+        XCTAssertTrue(app.buttons["settings-dictation-live-apple-prepare"]
+            .waitForExistenceFast(timeout: 5))
+        XCTAssertFalse(retry.exists)
+    }
+
+    @MainActor
+    func testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
+        app.launchArguments.append("-seed-apple-speech-settings")
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationLanguage":"en","dictationLiveSpeechEngine":"appleSpeech","transcriptionLanguage":"es","meetingLiveSpeechEngine":"appleSpeech"}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        openCategory("settings-category-audio",
+                     revealing: "settings-dictation-live-engine", in: app)
+        XCTAssertTrue(app.staticTexts["settings-dictation-live-apple-status"]
+            .waitForExistenceFast(timeout: 5))
+        let dictationPrepare = app.buttons["settings-dictation-live-apple-prepare"]
+        XCTAssertTrue(dictationPrepare.waitForExistenceFast(timeout: 5))
+        dictationPrepare.click()
+        XCTAssertTrue(dictationPrepare.waitForDisappearance(timeout: 5))
+        let readyText = UITestLocale.environmentLocale == "es"
+            ? "Apple Speech está listo para este idioma en este Mac."
+            : "Apple Speech is ready for this language on this Mac."
+        let dictationStatus = app.staticTexts["settings-dictation-live-apple-status"]
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            renderedText(of: dictationStatus) == readyText
+        }, "the real Settings row must announce the localized ready status")
+
+        openCategory("settings-category-intelligence",
+                     revealing: "settings-meeting-live-engine", in: app)
+        let meetingPrepare = app.buttons["settings-meeting-live-apple-prepare"]
+        XCTAssertTrue(meetingPrepare.waitForExistenceFast(timeout: 5),
+                      "preparing English must not silently install Spanish")
+        XCTAssertTrue(app.staticTexts["settings-meeting-live-apple-status"].exists)
+    }
+
+    @MainActor
     func testIntelligencePaneExplicitlyPreparesSemanticSearch() throws {
         let app = try XCUIApplication.portavoz(
             simulateSemanticAssetsMissing: true,

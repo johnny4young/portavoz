@@ -64,6 +64,42 @@ actor SpeechAnalyzerCancellationGate {
     }
 }
 
+enum SpeechAnalyzerAudioFeedOutcome: Equatable, Sendable {
+    case completed
+    case cancelled
+    case invalidInput
+    case finalizationFailed
+}
+
+/// The feeder owns every nonempty chunk. Conversion failure must terminate
+/// analysis, not make a shorter transcript look complete.
+enum SpeechAnalyzerAudioFeed {
+    static func run<Converted>(
+        _ audio: AsyncStream<AudioChunk>,
+        convert: (AudioChunk) -> Converted?,
+        yield: (Converted) -> Void,
+        finalize: () async throws -> Void,
+        abort: () async -> Void
+    ) async -> SpeechAnalyzerAudioFeedOutcome {
+        for await chunk in audio {
+            guard !Task.isCancelled else { return .cancelled }
+            if chunk.samples.isEmpty { continue }
+            guard let converted = convert(chunk) else {
+                await abort()
+                return .invalidInput
+            }
+            yield(converted)
+        }
+        guard !Task.isCancelled else { return .cancelled }
+        do {
+            try await finalize()
+            return .completed
+        } catch {
+            return .finalizationFailed
+        }
+    }
+}
+
 /// Bridges AVFoundation's non-Sendable audio buffer into the converter's
 /// `@Sendable` input callback. The buffer is fully initialized before entering
 /// this box and is never mutated afterward; the lock serializes the callback's
@@ -104,7 +140,8 @@ private final class AudioConverterInputBox: @unchecked Sendable {
 /// append-only DELTAS; SpeechTranscriber emits results that cover a time
 /// range — volatile ones get replaced, finalized ones are stable. This
 /// engine forwards them as `TranscriptSegment`s with `isFinal` mapped, and
-/// leaves the append-vs-replace UI question to the M12 integration.
+/// leaves append-versus-replace admission to `SpeechAnalyzerLiveEngine` when
+/// serving live captions; the raw spike remains useful for batch/benchmark work.
 @available(macOS 26.0, iOS 26.0, *)
 public struct SpeechAnalyzerEngine: Sendable {
     public init() {}
@@ -186,16 +223,17 @@ public struct SpeechAnalyzerEngine: Sendable {
                     // finalizes the analysis — sequencing the finalize
                     // after the loop deadlocked the first bench run
                     // (results parked forever once the audio ran out).
-                    let inputFinished: Bool
+                    let feedOutcome: SpeechAnalyzerAudioFeedOutcome
                     do {
-                        inputFinished = try await withTaskCancellationHandler {
+                        feedOutcome = try await withTaskCancellationHandler {
                             try await SpeechAnalyzerFeedScope.run(
                                 feeder: {
                                     await Self.feed(
                                         audio,
                                         to: analyzer,
                                         format: analyzerFormat,
-                                        continuation: inputContinuation)
+                                        continuation: inputContinuation,
+                                        cancellationGate: cancellationGate)
                                 },
                                 consuming: {
                                     try await Self.consume(
@@ -205,7 +243,7 @@ public struct SpeechAnalyzerEngine: Sendable {
                                             ?? locale.language.languageCode?.identifier,
                                         continuation: continuation,
                                         cancellationGate: cancellationGate)
-                                }) ?? false
+                                }) ?? .cancelled
                         } onCancel: {
                             Task { await cancellationGate.cancel() }
                         }
@@ -213,9 +251,21 @@ public struct SpeechAnalyzerEngine: Sendable {
                         await cancellationGate.cancel()
                         throw error
                     }
-                    guard inputFinished, !Task.isCancelled else {
+                    guard !Task.isCancelled else {
                         await cancellationGate.cancel()
                         throw CancellationError()
+                    }
+                    switch feedOutcome {
+                    case .completed:
+                        break
+                    case .cancelled:
+                        throw CancellationError()
+                    case .invalidInput:
+                        throw TranscriptionError.engineUnavailable(
+                            "Apple Speech could not convert the live audio")
+                    case .finalizationFailed:
+                        throw TranscriptionError.engineUnavailable(
+                            "Apple Speech could not finish the live audio")
                     }
                     continuation.finish()
                 } catch {
@@ -230,30 +280,22 @@ public struct SpeechAnalyzerEngine: Sendable {
         _ audio: AsyncStream<AudioChunk>,
         to analyzer: SpeechAnalyzer,
         format: AVAudioFormat,
-        continuation: AsyncStream<AnalyzerInput>.Continuation
-    ) async -> Bool {
+        continuation: AsyncStream<AnalyzerInput>.Continuation,
+        cancellationGate: SpeechAnalyzerCancellationGate
+    ) async -> SpeechAnalyzerAudioFeedOutcome {
         var converter: AVAudioConverter?
         defer { continuation.finish() }
-        for await chunk in audio {
-            guard !Task.isCancelled else { return false }
-            guard
-                let buffer = pcmBuffer(
-                    from: chunk,
-                    to: format,
-                    converter: &converter)
-            else { continue }
-            continuation.yield(AnalyzerInput(buffer: buffer))
-        }
-        guard !Task.isCancelled else { return false }
-        do {
-            try await analyzer.finalizeAndFinishThroughEndOfInput()
-            // The results stream and this finalize resume from the same
-            // analyzer finish; the consumer may cancel the group before this
-            // task is read. Input that reached end-of-input is complete.
-            return true
-        } catch {
-            return false
-        }
+        return await SpeechAnalyzerAudioFeed.run(
+            audio,
+            convert: { chunk in
+                pcmBuffer(from: chunk, to: format, converter: &converter)
+            },
+            yield: { buffer in continuation.yield(AnalyzerInput(buffer: buffer)) },
+            finalize: {
+                // The result stream resumes from this same analyzer finish.
+                try await analyzer.finalizeAndFinishThroughEndOfInput()
+            },
+            abort: { await cancellationGate.cancel() })
     }
 
     private static func consume(

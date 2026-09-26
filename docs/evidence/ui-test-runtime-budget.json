@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 123
+    "expectedCaseCount": 125
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -107,6 +107,8 @@
     "RecordingInputUITests/testFailedWriteRetainsInputAndStopWaitsForAnExplicitRetry()": 30.0,
     "RecordingInputUITests/testStopDrainsAnAdmittedWriteBeforeFinalizingTheRecording()": 25.0,
     "SettingsUITests/testAudioPaneOffersCaptureSourceControls()": 20.0,
+    "SettingsUITests/testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow()": 20.0,
+    "SettingsUITests/testAppleSpeechInspectionFailureOffersExplicitRetry()": 20.0,
     "SettingsUITests/testCategoryNavigationRevealsEachPane()": 24.352,
     "SettingsUITests/testDataPaneExportsAReadableWholeLibraryMarkdownBackup()": 20.0,
     "SettingsUITests/testDataPaneExportsARedactedLocalSupportFile()": 20.0,

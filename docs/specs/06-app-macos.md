@@ -809,10 +809,15 @@ drop Parakeet while any production borrower is active.
 The live-facing acquisition methods return `LiveTranscriptionRuntime` to both
 recording and Dictation. That handle pairs `any TranscriptionEngine` with the
 composition-owned completion; its resident-only variant cannot start a model
-load before audio capture. The current adapter still borrows the verified
-Parakeet residency token and applies the benchmark observer at that boundary.
+load before audio capture. The default route borrows the verified Parakeet
+residency token and applies the benchmark observer at that boundary. Separate
+explicit meeting and dictation preferences may instead choose Apple Speech on
+macOS 26 with a fixed en/es language and an installed equivalent OS asset.
+The Apple route is asynchronous and therefore never claims a resident handle
+before meeting capture; it hot-attaches and leaves earlier audio for durable
+Parakeet recovery. Dictation resolves the engine before opening the microphone.
 Post-capture and batch callers keep the concrete Parakeet lease. Type erasure
-is a call-site boundary, not a new engine choice or SpeechAnalyzer adoption.
+does not move Apple platform types into ApplicationKit or Core.
 An already-cancelled borrower is rejected before the shared model-load task or
 residency admission begins; cancellation after an admitted load keeps the
 existing process-owned preparation semantics for later sessions.
@@ -2675,7 +2680,7 @@ permission. There is no automatic retry loop. Ordinary temporary-store launches
 register neither Carbon hotkeys nor the mouse event tap; the explicit shortcut
 fixture exercises failed registration and recovery with an inert registrar.
 
-Surface validated by MacParakeet: global hotkey → speak → hotkey again → text written where cursor is. `GlobalHotkey` uses Carbon `RegisterEventHotKey` — the only API consuming the keystroke without Accessibility permission — and is registered from app initialization so it survives without a window. `DictationController` owns one process-scoped, UUID-fenced session: mic → Parakeet streaming with custom vocabulary → the shared `CaptionCoalescer`; no meeting, database row, or audio file is created. The non-activating `DictationPanel` shows live text and offers explicit cancellation.
+Surface validated by MacParakeet: global hotkey → speak → hotkey again → text written where cursor is. `GlobalHotkey` uses Carbon `RegisterEventHotKey` — the only API consuming the keystroke without Accessibility permission — and is registered from app initialization so it survives without a window. `DictationController` owns one process-scoped, UUID-fenced session: mic → the selected live engine (Parakeet by default) → the shared `CaptionCoalescer`; no meeting, database row, or audio file is created. The non-activating `DictationPanel` shows live text and offers explicit cancellation.
 
 `TextInserter` implements the fail-closed delivery boundary. It waits up to one second for all physical modifiers to lift and refuses delivery rather than posting a combined shortcut when they remain held or cancellation arrives. It then inspects the focused Accessibility element immediately before touching the clipboard: `AXSecureTextField`, lost trust, missing role, malformed values, and transient inspection errors all block insertion with localized feedback; an explicitly absent/unsupported subrole on an otherwise valid ordinary text control remains admissible. Only after that check does it snapshot every pasteboard representation it can actually capture, write the dictation, and post a complete layout-aware ⌘V pair. Borrowed Text Input Source properties are promoted while their owning source remains alive, must match their declared Core Foundation runtime type, and must contain a complete keyboard-layout header; a missing, wrong-typed, or truncated value falls back to the standard QWERTY shortcut instead of reaching typed Carbon translation. Clipboard-write or event-construction failure restores immediately. Successful delivery restores captured representations after 1.5 seconds only if `changeCount` still identifies Portavoz's write, preserving rich content without overwriting a clipboard manager.
 
@@ -2683,7 +2688,7 @@ Capture timing starts when the microphone stream actually opens, not when model 
 
 **Mouse-button push-to-talk (Jul 2026)**: `MouseButtonPTT` owns one session `CGEventTap` over `otherMouseDown`/`otherMouseUp` that CONSUMES the configured button (the app under the cursor never sees the click) and passes every other button through; a tap disabled by timeout is always re-armed. CGEvent index 2+ is eligible — vendor-facing Button 3+ means middle click or an additional button — while indices 0/1 (left/right) can never become a trigger. Invalid persisted values normalize to Off. The tap needs the same Accessibility trust as the paste path: choosing a button prompts once, a denied/pending prompt leaves the keyboard trigger working, and returning from System Settings retries registration. Rebinding first cancels any mouse-owned capture so its consumed release cannot strand the session. `MousePTTGesture` (app input boundary, pure, 3 tests) is the decision table: press starts when idle and finishes a listening session whoever started it; release delivers only when the button itself started the session, so a stray release can never double-finish a hotkey session. There is no tap-vs-hold discriminator on the mouse — the capture minimum already cancels an accidental click. `MouseButtonRecorder` in Settings captures the next middle/additional-button click (`settings-dictation-mouse-recorder`; Esc cancels) with an explicit clear control; both mouse and keyboard recorders remove their local monitors when their Settings row disappears.
 
-**Two-tier dictionary and filler filter (Jul 2026)**: `DictationTextRules` (TranscriptionKit, pure, 10 tests) is the deterministic tier — one non-cascading pass of user-defined whole-word, case-insensitive replacements applied longest-trigger-first with punctuation-aware lookaround boundaries (regex-metacharacter triggers like "c++" match literally; replacement strings including `$` and `\` stay literal). Matching is computed against the original text, so a preferred spelling can never become input to a later rule. The codec trims triggers, drops empty rules, and keeps the newest case-insensitive duplicate before the Settings list or matcher consumes it. A conservative bilingual hesitation-filler pass (only tokens meaningless in BOTH languages: um/uh/er/hmm/eh/ehm…, on by default via `dictationFillerFilter`) runs first and repairs seams (collapsed spaces, no space stranded before closing punctuation). The other tier remains the existing vocabulary prompt (`customVocabulary`), which the dictation controller still passes as `hints.vocabulary` — but that prompt only reaches the batch engines: WhisperEngine turns it into `promptTokens` and SpeechAnalyzerEngine into `contextualStrings`, while the live Parakeet path that dictation actually runs never reads it (FluidAudio 0.15.8 offers `configureVocabularyBoosting` only with the extra `parakeet-ctc-110m` model, which is not in the pinned model catalog). In live dictation the deterministic tier is therefore the only dictionary that changes the typed text; the vocabulary prompt has no effect on it today. Rules persist as one JSON string (`dictationReplacements`, codec in the same type) edited by `DictationDictionaryEditor` in Settings (quick-add row `settings-dictation-dict-add`; re-adding a trigger updates it instead of stacking an unreachable duplicate). Both passes run in `deliver` on the final dictation text only — meeting transcripts stay verbatim records.
+**Two-tier dictionary and filler filter (Jul 2026)**: `DictationTextRules` (TranscriptionKit, pure, 10 tests) is the deterministic tier — one non-cascading pass of user-defined whole-word, case-insensitive replacements applied longest-trigger-first with punctuation-aware lookaround boundaries (regex-metacharacter triggers like "c++" match literally; replacement strings including `$` and `\` stay literal). Matching is computed against the original text, so a preferred spelling can never become input to a later rule. The codec trims triggers, drops empty rules, and keeps the newest case-insensitive duplicate before the Settings list or matcher consumes it. A conservative bilingual hesitation-filler pass (only tokens meaningless in BOTH languages: um/uh/er/hmm/eh/ehm…, on by default via `dictationFillerFilter`) runs first and repairs seams (collapsed spaces, no space stranded before closing punctuation). The other tier is the existing vocabulary prompt (`customVocabulary`), which the dictation controller forwards as `hints.vocabulary`: WhisperEngine turns it into `promptTokens` and the optional live Apple Speech engine into `contextualStrings`; default live Parakeet still does not read it (FluidAudio 0.15.8 offers `configureVocabularyBoosting` only with the extra `parakeet-ctc-110m` model, which is not in the pinned model catalog). Deterministic replacement remains the only dictionary tier that changes default Parakeet dictation; no unmeasured quality claim is made for the optional Apple route. Rules persist as one JSON string (`dictationReplacements`, codec in the same type) edited by `DictationDictionaryEditor` in Settings (quick-add row `settings-dictation-dict-add`; re-adding a trigger updates it instead of stacking an unreachable duplicate). Both passes run in `deliver` on the final dictation text only — meeting transcripts stay verbatim records.
 
 **Dictation language preference:** `dictationLanguage` accepts {es, en}; other
 stored values mean automatic. The picker retains these preference values and
@@ -2696,7 +2701,39 @@ translates text. Settings states this limit in plain words next to the picker (S
 still mix; the setting mainly keeps out other writing systems) through
 `settings-dictation-language-support`, with an EN/ES XCUITest assertion.
 `TranscriptSegment.language` remains the requested hint, not a measured language
-classification. The default stays automatic and no meeting preference changes.
+classification. The language default stays automatic, and this dictation-language setting does not change the meeting-language preference.
+
+**Optional Apple live speech (D554):** `meetingLiveSpeechEngine` and
+`dictationLiveSpeechEngine` are independent app preferences and both default
+to Parakeet; unknown stored values also resolve to Parakeet. The Settings
+picker enables Apple Speech only on macOS 26+, explains that it needs a fixed
+English or Spanish language, and inspects installed OS assets without
+requesting an asset download. The separate Prepare button may download through
+Apple's asset owner only after an explicit click and refuses admission if
+meeting capture is already active. Only one language prepares at a time; the
+other route shows progress instead of offering a button whose action would be
+ignored. A temporary-store-only client supplies deterministic EN/ES preparation
+receipts for XCUITest; it does not serve the actual recognizer. Live acquisition
+re-checks readiness, so a missing or removed asset is never silently treated
+as a working session. Dictation fails before opening the microphone with an
+actionable Settings message. Meeting capture remains audio-first and starts a
+bounded hot attachment; early or failed live coverage forces durable recovery.
+Neither route changes batch transcription, Sequoia behavior, or the default
+multilingual path.
+The versioned portable-settings allowlist does not export either live-engine
+selection: importing settings on another Mac must not silently select an OS
+asset that may be absent or trigger an unreviewed preparation action.
+
+Apple `SpeechTranscriber` emits replaceable ranges rather than Parakeet deltas.
+Only finalized monotonic ranges enter `CaptionCoalescer`, insertion, assistance,
+translation, summary, or saved meeting facts. The latest volatile range per
+channel is a stable-ID display preview; it is cleared on its confirmation,
+failure, reset, and Stop, but an earlier final does not erase a later pending
+preview. An unconfirmed tail at stream end fails closed (no dictation
+paste; recording retains audio for durable recovery). The recording attacher
+enforces the captured hardware channel on every result, because the OS adapter
+currently labels both microphone and remote system results as microphone.
+The transient range marker is excluded from `TranscriptSegment` coding.
 
 
 ## Today (home) — the default destination (D495, Sep 2026)

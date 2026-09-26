@@ -100,14 +100,28 @@ extension AppServices {
     /// Live consumers borrow a transcription engine and its release together.
     /// Batch/maintenance clients keep the concrete Parakeet lease; neither
     /// dictation nor recording needs to know which model owns a live engine.
-    func acquireLiveTranscriptionRuntime() async throws -> LiveTranscriptionRuntime {
-        liveTranscriptionRuntime(try await acquireLiveSpeechRuntime())
+    func acquireLiveTranscriptionRuntime(
+        for purpose: LiveSpeechPurpose = .meeting
+    ) async throws -> LiveTranscriptionRuntime {
+        if purpose.selectedEngine(in: defaults) == .appleSpeech {
+            guard #available(macOS 26.0, *) else {
+                throw TranscriptionError.engineUnavailable(
+                    "Apple Speech requires macOS Tahoe or later")
+            }
+            let engine = try await SpeechAnalyzerLiveEngine.acquireInstalled(
+                language: purpose.language(in: defaults))
+            return LiveTranscriptionRuntime(engine: engine) {}
+        }
+        return liveTranscriptionRuntime(try await acquireLiveSpeechRuntime())
     }
 
     /// Capture must not await a model load before writing audio. A missing hot
     /// engine is attached later through the same live lease boundary.
     func acquireResidentLiveTranscriptionRuntime() throws -> LiveTranscriptionRuntime? {
-        try acquireResidentLiveSpeechRuntime().map(liveTranscriptionRuntime)
+        // Apple readiness is asynchronous. Capture starts audio-first and the
+        // verified loader hot-attaches; early audio gets durable recovery.
+        if LiveSpeechPurpose.meeting.selectedEngine(in: defaults) == .appleSpeech { return nil }
+        return try acquireResidentLiveSpeechRuntime().map(liveTranscriptionRuntime)
     }
 
     /// Drops only idle model weights; verified assets remain installed.
