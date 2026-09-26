@@ -7878,6 +7878,12 @@ select this once, as do explicit full bilingual local runs and full-suite
 dispatches; localization-only and other unrelated full-bilingual fallbacks do not. CI executes the controls in
 the product-builder job before publishing one reusable product build. Synthetic
 fixtures request no microphone, authentication or accessibility permission.
+The hosted builder archives qualification JSON, case logs, exit statuses and
+raw `.xcresult` bundles as one artifact before the product build. It excludes
+only the disposable fixture's generated project and DerivedData; an empty
+archive or failed upload blocks downstream qualification instead of creating
+a product receipt. This avoids transporting thousands of tiny build files
+through the artifact API while preserving failure forensics.
 
 
 ### Bounded scroll evidence is separate from interruption controls
