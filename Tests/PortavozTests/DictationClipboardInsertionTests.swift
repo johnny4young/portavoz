@@ -82,8 +82,7 @@ final class DictationClipboardInsertionTests: XCTestCase {
         XCTAssertEqual(second, .inserted)
         let observed = await reader?.value
         XCTAssertEqual(observed, "First — primero", "Restoring later does not repair a paste that read the wrong dictation")
-        try await Task.sleep(for: TextInserter.restoreDelay + .milliseconds(100))
-        XCTAssertEqual(board.string(forType: .string), "Original")
+        try await waitForString("Original", on: board)
     }
 
     func testForeignSameTextWriteSurvivesDelayedRestoration() async throws {
@@ -242,8 +241,7 @@ final class DictationClipboardInsertionTests: XCTestCase {
         XCTAssertEqual(result, .clipboardUnavailable)
         XCTAssertEqual(posts, 1)
         XCTAssertEqual(board.string(forType: .string), "First posted")
-        try await Task.sleep(for: TextInserter.restoreDelay + .milliseconds(100))
-        XCTAssertEqual(board.string(forType: .string), "Original")
+        try await waitForString("Original", on: board)
     }
 
     private func insert(
@@ -262,6 +260,15 @@ final class DictationClipboardInsertionTests: XCTestCase {
         let board = NSPasteboard(name: .init("app.portavoz.clipboard-test.\(UUID().uuidString)"))
         board.clearContents()
         return board
+    }
+
+    private func waitForString(_ expected: String, on board: NSPasteboard) async throws {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(10))
+        while board.string(forType: .string) != expected && ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(25))
+        }
+        XCTAssertEqual(board.string(forType: .string), expected,
+                       "Delayed restoration did not settle; pending loans: \(DictationClipboard.shared.pendingLoanCount)")
     }
 
     private func contents(_ board: NSPasteboard) -> [[String: Data]] {
