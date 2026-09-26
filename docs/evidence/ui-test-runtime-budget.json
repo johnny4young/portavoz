@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 125
+    "expectedCaseCount": 126
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -148,6 +148,7 @@
     "SettingsTransferUITests/testPortablePreferencesReviewCancelApplyAndLiveLanguage()": 35.0,
     "SettingsTransferUITests/testUnsupportedPreferencesRemainRecoverableWithoutMutation()": 25.0,
     "DictationUITests/testUndeliveredTextCanBeCopiedAndExplicitlyRetried()": 20.0,
-    "DictationUITests/testUndeliveredTextSurvivesAnotherTriggerUntilDiscarded()": 20.0
+    "DictationUITests/testUndeliveredTextSurvivesAnotherTriggerUntilDiscarded()": 20.0,
+    "DictationUITests/testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart()": 20.0
   }
 }

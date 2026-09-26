@@ -103,6 +103,7 @@ final class DictationControllerTests: XCTestCase {
         XCTAssertTrue(reached4)
         XCTAssertEqual(harness.insertions, ["Café Swift $5\\path"])
         XCTAssertEqual(harness.hints?.language, "es")
+        XCTAssertEqual(harness.hints?.filtersLiveScript, true)
         XCTAssertEqual(harness.hints?.vocabulary, ["Kubernetes", "Café"])
         harness.controller.cancel()
         let reached5 = await awaitEventually { harness.finishes == 1 }
@@ -193,7 +194,7 @@ final class DictationControllerTests: XCTestCase {
 
 @MainActor
 final class DictationControllerHarness {
-    let controller = DictationController(presentsPanel: false)
+    let controller: DictationController
     fileprivate let microphone = ControlledDictationMicrophone()
     let defaults = UserDefaults(suiteName: "dictation-tests-\(UUID().uuidString)")!
     let text: String
@@ -203,7 +204,8 @@ final class DictationControllerHarness {
     var hints: TranscriptionHints?
     var insertions: [String] = []
 
-    init(text: String) {
+    init(text: String, controller: DictationController = .init(presentsPanel: false)) {
+        self.controller = controller
         self.text = text
         defaults.setVolatileDomain([:], forName: UserDefaults.argumentDomain)
     }

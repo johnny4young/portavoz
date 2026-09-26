@@ -30,7 +30,12 @@ posting are not an atomic editor transaction: `.inserted` still denotes
 dispatched events rather than a verified external edit. These remaining failures
 and evidence boundaries prevent broad reliability claims. Recovery is RAM-only;
 quitting does not preserve the output. Clipboard snapshot size/materialization
-remains an independent limitation. Model quality, Bluetooth transitions and the external-editor
+remains an independent limitation. A local real-app recovery journey has also
+intermittently observed a synthesized first click on Discard or Cancel without
+the panel closing. The action-routing cause has not been isolated; a green
+rerun does not qualify one-click recovery, and neither a cancel role nor a
+root first-mouse hosting override was retained as a speculative fix. Model
+quality, Bluetooth transitions and the external-editor
 matrix require separate evidence; a synthetic caption fixture cannot establish
 those results. Missing Accessibility permission makes the separately selected
 native delivery gate unqualified, not proof that insertion works. Hosted
@@ -38,6 +43,20 @@ unattended EN/ES UI qualification excludes exactly that TCC-owned receiver case
 (D540); run `make test-ui-native-dictation` on an explicitly authorized
 disposable app and retain its actual receipt before claiming cross-process
 delivery.
+
+### Closed-row revision after microphone echo replacement
+
+A synthetic controller call-site sequence reproduces a limitation in the shared
+coalescer: remote text, an overlapping microphone echo, then its direct system
+copy can remove the mic tail and extend the preceding remote row. The count
+shrinks even though that remote row had already been exposed as closed. D545
+reports the earliest invalidated row and makes dictation rebuild its affected
+projection without changing existing coalescer behavior. Meeting translation,
+summary and Companion cursor consumers require a separate end-to-end audit of
+this reopening before they can be claimed revision-safe; preserved identity and
+count alone are not sufficient. Do not infer corrected meeting evidence from
+the dictation projection tests. Physical source attribution is not evaluated by
+this synthetic cross-channel case.
 
 ### Accepted live input survives interrupted recordings
 
@@ -341,7 +360,7 @@ Physical/model latency and cancellation field evidence remain open.
 | T31 | ~~Strict lint is configured but the current local branch is red~~ | **RESOLVED (Aug 9, 2026):** cohesive owner splits removed all 20 audited first-party violations without blanket suppressions; strict SwiftLint is clean across 636 production Swift files. | ✅ |
 | T32 | ~~Database-open failure still terminates the app at launch~~ | **RESOLVED in code (D319):** `AppServices` now throws and opens the authority before constructing any other process owner. A root launch state keeps normal UI and background work absent on failure, offers retry, exports content-free mode-`0600` diagnostics, and creates a `quick_check`-verified read-only SQLite recovery copy through hidden mode-`0700` staging without overwriting, mutating, migrating, deleting, or silently recreating the source. Deterministic tests cover corrupt/missing sources, privacy, permissions, non-overwrite, retry, and source parity; bilingual XCUITest exercises the real disposable recovery journey. Automatic repair or restore-over-authority remains deliberately excluded. | ✅ |
 | T33 | ~~Unreadable or concurrently mutated encrypted voice identity can be hidden, overwritten, or split from its key~~ | **RESOLVED in code (D357–D358):** existing ciphertext forbids replacement-key creation; missing/corrupt keys and unreadable/authentication/decoding failures propagate before every save, remember, or remove; AES-GCM serialization is guarded; Settings keeps Retry plus explicit destructive reset visible; and one no-follow mode-`0600` BSD sidecar lease now serializes each complete ciphertext/Keychain transaction across store values and cooperating D358-capable stable/Dev/CLI processes. Deterministic contention tests preserve both concurrent gallery additions and prevent save/delete from stranding ciphertext. A temporary-store-only unavailable fixture and real-app XCUITest cover both stores without touching host biometric state. The advisory lock cannot constrain a still-running pre-D358 binary; a real Keychain-reset journey, abrupt multi-process termination, mixed-version exclusion, and physical VoiceOver remain field evidence, not data-recovery promises. | ✅ |
-| T34 | Global dictation's language and vocabulary settings do not reach the live Parakeet decoder | **OPEN (Sep 2026).** Dictation always runs `ParakeetEngine`'s live sliding-window path, which builds its manager without the FluidAudio `language` hint and never reads `hints.vocabulary`; `dictationLanguage` only labels segments and `customVocabulary` only biases the batch Whisper/SpeechAnalyzer engines. The only engine-level language hint in FluidAudio 0.15.8 is an alphabet-based token filter, which cannot separate Spanish from English, and streaming vocabulary boosting needs the unpinned `parakeet-ctc-110m` CTC model. Users therefore get their preferred spellings only through the deterministic `DictationTextRules` tier (spec 06). | Decide whether to pin the CTC model and wire `configureVocabularyBoosting`, or make Settings copy state that the language picker and vocabulary are post-processing/metadata for dictation. |
+| T34 | Live dictation vocabulary and same-alphabet language restriction remain limited | **PARTIAL (Sep 2026).** Dictation now forwards its supported language hint to the live Parakeet manager (meeting captions do not opt in), and Settings explains that Spanish and English can still mix because the filter works on writing systems. Segments still carry the requested hint rather than a detected-language classification. Live Parakeet still never reads `hints.vocabulary`: `customVocabulary` biases only the batch Whisper/SpeechAnalyzer engines. Streaming vocabulary boosting needs the unpinned `parakeet-ctc-110m` CTC model; preferred spellings therefore still come only from the deterministic `DictationTextRules` tier (spec 06). | Evaluate a verified, consented CTC model and wire `configureVocabularyBoosting` only with call-site quality and resource evidence. Do not claim the existing language hint separates same-alphabet languages or improves recognition quality. |
 | T35 | ~~The reviewed speech-engine pin freezes Portavoz behind published upstream fixes~~ | **RESOLVED for published behavior through D539 (Sep 2026).** `Package.swift` now requires exact FluidAudio 0.15.8. A matched 0.15.6/0.15.7/0.15.8 public-synthetic call-site matrix found 0.15.7 production-identical and admitted 0.15.8 only after every speech cell improved, long-run latency stayed flat, three process observations preserved the memory ceiling, and AMI DER remained 7.6%. Silence hallucination did not improve and remains separate evidence. Stock 0.16.1 was rejected before tests because NemoTextProcessing 0.3.1 advertises `Headers` while packaging its module map under `Headers/CNemoTextProcessing`; its speech sources are byte-identical to 0.15.8. Keep the D516 exact-review rule. Reopen for a later release only with matched recognition, diarization, latency and memory evidence; never vendor-patch a malformed binary target merely to make an evaluation pass. | ✅ |
 | T36 | FluidAudio's macOS 14 diarizer advisory is unqualified on the deployment floor | **OPEN (Sep 2026).** Upstream documents a BNNS diarizer crash on macOS 14 (#878/#885), and Portavoz still deploys to macOS 14.4. The 0.15.8 comparison ran only on the current macOS host, so it neither confirms nor rules out that crash for batch or live diarization on the floor. | Run batch and live two-speaker diarization on a physical macOS 14.4 Mac before claiming the floor is diarization-safe, or raise the deployment floor. |
 

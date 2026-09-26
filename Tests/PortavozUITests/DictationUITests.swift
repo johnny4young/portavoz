@@ -35,6 +35,28 @@ final class DictationUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart() throws {
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-streaming"]
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+        XCTAssertTrue(app.prepareForInteraction())
+        let dictate = app.buttons["menu-bar-dictate"]
+        let expected = "No borres estas notas. Café C++. Final"
+        for _ in 0..<2 {
+            XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+            dictate.click()
+            let transcript = app.staticTexts["dictation-panel-transcript"]
+            XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: transcript) == expected })
+            let cancel = app.buttons["dictation-panel-cancel"]
+            XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
+            cancel.click()
+            XCTAssertTrue(waitForUITestCondition(timeout: 5) { !transcript.exists })
+        }
+    }
+
+    @MainActor
     func testUndeliveredTextCanBeCopiedAndExplicitlyRetried() throws {
         let name = "app.portavoz.dictation-test." + UUID().uuidString
         let board = NSPasteboard(name: .init(name))
