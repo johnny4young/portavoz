@@ -3572,6 +3572,15 @@ saved frame and level. Controller tests exercise restoration between attachment
 and appearance, repeated presentation, detachment/reparenting, and the production
 no-op. The Audio Settings XCUITest closes and reopens the real scene through
 Command-comma and retains the shared nonnegative-coordinate assertion.
+The disposable main-window bridge uses the same post-presentation lifecycle,
+not an attachment-time correction. Its controller tests cover late restoration,
+reappearance, detachment/reparenting, and production frame/level preservation.
+The real entity and recording-URL journeys assert the exact main window's
+nonnegative geometry before retaining their normal screenshots; a geometry
+failure throws rather than entering XCTest's screenshot-failure teardown path.
+The primary scene mounts this capture outside the ready-content branch, so the
+native database-recovery journey also asserts placement without loading services.
+Screenshots, native actions, selectors and runtime budgets remain unchanged.
 
 Cross-process fixtures use `UITestScratch`, a test-only Foundation/Darwin
 allocator compiled into both existing test targets. `mkdtemp` creates private

@@ -90,6 +90,7 @@ final class LibraryUITests: PortavozUITestCase {
             title.waitForExistenceFast(timeout: 15),
             "a repeated failure must return to the bounded recovery state")
         XCTAssertFalse(app.buttons["library-new-recording-button"].exists)
+        try app.requireDisposableMainWindowOnZeroScreen()
         attachScreenshot(of: app, named: "database-launch-recovery")
     }
 
