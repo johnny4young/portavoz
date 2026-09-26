@@ -15,8 +15,8 @@ struct DictationSessionDependencies {
     var makeMicrophone: () -> Microphone
     var acquireRuntime: () async throws -> LiveTranscriptionRuntime
     var canInsert: () -> Bool
-    var targetName: () -> String?
-    var insert: (String) async -> TextInserter.InsertionResult
+    var captureDestination: () -> CapturedDictationDestination
+    var copyText: (String) -> Bool
     var defaults: UserDefaults
     var now: () -> Date = Date.init
 
@@ -31,8 +31,8 @@ struct DictationSessionDependencies {
                 return services.liveTranscriptionRuntime(try await services.acquireLiveSpeechRuntime())
             },
             canInsert: { TextInserter.canInsert(promptIfNeeded: true) },
-            targetName: { NSWorkspace.shared.frontmostApplication?.localizedName },
-            insert: { await TextInserter.insert($0) },
+            captureDestination: { TextInserter.captureDestination() },
+            copyText: { TextInserter.copy($0) },
             defaults: .standard)
     }
 }

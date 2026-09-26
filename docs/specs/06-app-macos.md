@@ -2451,7 +2451,7 @@ Font: `docs/design/ds/` (authored in Claude Design, pine project). (1) `PVDesign
 
 **Next question + talk balance (D134/D174, Jul 2026)**: `RecordingNextQuestionModel` is the exact catch-up sibling (`recording-next-question` button, `recording-next-question-panel` card): pull-based, `.interactive`, capability-honest, stale-fenced on every exit, dismissed synchronously at Stop; its prompt carries the still-open objectives so a suggestion can steer back to them, and `PromptFactory.nextQuestionInstructions` pins one-or-two grounded questions, no filler. The talk-balance cue (`recording-talk-balance`, next to the mic meter) is `LiveTalkTimePolicy` — pure channel math over closed rows in a five-minute window, no model call, so it does NOT ride the Apuntador opt-in; it evaluates at most 1,024 closed candidates before the time filter, renders only once closed captions exist, and shifts to amber emphasis only past 60 seconds of attributed speech and a two-thirds share, with the exact percentage in accessibility value and help.
 
-**Dictation 4b (pull DS 4 — Jul 11)**: the dictation strip gains the three traits of exploration 4b. (1) **Visible target chip**: `DictationController.targetApp` = `NSWorkspace.frontmostApplication.localizedName` captured in `start()` BEFORE showing non-activating panel (frontmost still is destination app); strip shows `✎ <app>` — never dictate «a ciegas». (2) **Partial in gray**: `confirmedText` in `.primary` + `partialText` in `.tertiary` concatenated (previously joined into one string) — volatility shown in gray and affirmed on confirmation. (3) **Inserted state**: new `Phase.inserted(Int)` — after `TextInserter.insert`, strip shows «N palabras insertadas en <app> — nada se guardó» for 1.6 s before closing (previously closed abruptly). Privacy ledger does NOT adopt the mock DS tile «0 B a la red»: would be an unmeasurable metric (no network log); real LedgerSection says what CAN go out (gists, external model, update check) — more honest («Measured, not promised»).
+**Dictation 4b (pull DS 4 — Jul 11)**: the dictation strip gains the three traits of exploration 4b. (1) **Visible target chip**: `DictationController.targetApp` comes from the captured destination in `start()` BEFORE showing the non-activating panel (frontmost still is destination app); strip shows `✎ <app>` — never dictate «a ciegas». (2) **Partial in gray**: `confirmedText` in `.primary` + `partialText` in `.tertiary` concatenated (previously joined into one string) — volatility shown in gray and affirmed on confirmation. (3) **Inserted state**: new `Phase.inserted(Int)` — after `TextInserter.insert`, strip shows «N palabras insertadas en <app> — nada se guardó» for 1.6 s before closing (previously closed abruptly). Privacy ledger does NOT adopt the mock DS tile «0 B a la red»: would be an unmeasurable metric (no network log); real LedgerSection says what CAN go out (gists, external model, update check) — more honest («Measured, not promised»).
 
 **Real DS features (Jul 12 — «construyelas»): chapters + only-my-voice + summary tabs + menu-bar pending.** (1) **Summary tabs** (MeetingDetailView): SummarySections (ApplicationKit, pure, 3 tests) splits markdown by headers `## ` (language-agnostic) → intro + sections with bullet count; tab bar Summary/«Heading·N»/«To-dos·done/total» (active tab indigo filters). (2) **✦ Chapters** (chaptersSection): ChapterExtractor (ApplicationKit, pure, 6 tests) derives chapters LOCAL from transcript — boundary by pause ≥10s (with minimum spacing of 120s to avoid over-segmenting spaced seeds) or length ≥300s; label = first real sentence of chapter, with fallback search limited to that same chapter; ≤1 chapter → hidden rail. Rendered after MeetingHealth, click seeks+plays (disabled without audio). (3) **Only my voice** (MeetingPlayer + MeetingPlayerBar): `onlyMyVoice` + `nonVoiceRanges` — time-observer skips non-voice ranges like skipSilence; PlaybackRanges.complement (ApplicationKit, pure, 6 tests) computes complement of .microphone channel ranges within [0,duration] (merge with padding 0.25s); amber-tinted toggle in player bar. (4) **Pending menu bar**: recent shows «✦ N» = openActionItems grouped by meetingID. **2-column layout of detail (Jul 12)**: DONE. loadedBody: header + speakers + refineStatus full-width, then HStack(alignment:.top) — left VStack (summaryOrGenerate + transcriptSection with player, maxWidth infinity) + `detailRail` right (width 260: MeetingHealthView + chaptersSection + Apuntador persisted). Rail has own scroll and is HIDDEN entirely if no content (doesn't leave 260pt gap). maxWidth of content bumped to 1060. Matches MeetingDetail.jsx from DS.
 
@@ -2608,7 +2608,13 @@ never registers a global keyboard or mouse trigger. `-seed-dictation` is inert
 outside that composition; without an explicit fixture temporary dictation refuses
 admission. The menu-bar Dictate action and panel expose stable identifiers for
 restart/cancellation journeys. This is not a change to the production trigger,
-recognition, capture-loss or delivery-success policies documented below.
+recognition or capture-loss policies. Destination recovery is specified below.
+The disposable main-window menu fixture is top-aligned and at most 560 points
+high, as the real menu is compact. Its trigger and window remain separate from
+the bottom-anchored recovery panel after XCTest activates the app on the tested
+display. The frame policy is bounded to available height on shorter screens;
+actual compact-display window constraints remain a separate UI validation.
+Production menu and panel placement are unchanged.
 
 **Incremental transcript projection (D545).** The actual stream consumer retains
 closed text instead of mapping and joining the entire caption history for each
@@ -2633,8 +2639,9 @@ focus change. A process target that does not name a running application fails
 before clipboard mutation, its secure-field inspection reads that application's
 focused element, and it never falls back to session routing. The receiver establishes its own first
 responder; the test asserts actual Unicode content rather than clicking through
-desktop overlays. Production session routing remains unchanged and is not
-qualified by this fixture. It does not read the user's clipboard. Actual
+desktop overlays. Both production and fixture delivery use a captured process and focused-element
+capability; there is no session-wide fallback. This one receiver does not
+qualify the complete external-editor matrix. It does not read the user's clipboard. Actual
 Accessibility permission is required; tests do not grant it or dismiss prompts.
 A local certificate-backed UI build can use the explicit signer/team inputs in
 spec 08 so rebuilding does not necessarily change its designated requirement.
@@ -2666,7 +2673,52 @@ fixture exercises failed registration and recovery with an inert registrar.
 
 Surface validated by MacParakeet: global hotkey → speak → hotkey again → text written where cursor is. `GlobalHotkey` uses Carbon `RegisterEventHotKey` — the only API consuming the keystroke without Accessibility permission — and is registered from app initialization so it survives without a window. `DictationController` owns one process-scoped, UUID-fenced session: mic → Parakeet streaming with custom vocabulary → the shared `CaptionCoalescer`; no meeting, database row, or audio file is created. The non-activating `DictationPanel` shows live text and offers explicit cancellation.
 
-`TextInserter` implements the fail-closed delivery boundary. It waits up to one second for all physical modifiers to lift and refuses delivery rather than posting a combined shortcut when they remain held or cancellation arrives. It then inspects the focused Accessibility element immediately before touching the clipboard: `AXSecureTextField`, lost trust, missing role, malformed values, and transient inspection errors all block insertion with localized feedback; an explicitly absent/unsupported subrole on an otherwise valid ordinary text control remains admissible. Only after that check does it snapshot every pasteboard representation it can actually capture, write the dictation, and post a complete layout-aware ⌘V pair. Borrowed Text Input Source properties are promoted while their owning source remains alive, must match their declared Core Foundation runtime type, and must contain a complete keyboard-layout header; a missing, wrong-typed, or truncated value falls back to the standard QWERTY shortcut instead of reaching typed Carbon translation. Clipboard-write or event-construction failure restores immediately. Successful delivery restores captured representations after 1.5 seconds only if `changeCount` still identifies Portavoz's write, preserving rich content without overwriting a clipboard manager.
+**Captured destination and explicit recovery (D544).** Before presenting the
+panel or acquiring a model, the controller captures the original application
+and focused AX element as one insertion capability. The chip is its display
+name, not a bundle/name-based authorization. `NSRunningApplication.isEqual`
+protects process identity; the original application must not be terminated,
+and `CFEqual` must match the current focused element. `launchDate` is not a
+requirement because macOS does not supply it for every application.
+
+`TextInserter` waits up to one second for physical modifiers to lift. Cancellation,
+held modifiers, missing trust, secure/uninspectable focus and a changed original
+target all refuse delivery. It validates before borrowing the clipboard and
+again after writing, immediately before constructing/posting the event pair;
+cancellation is checked after each synchronous inspection. It then posts only
+to the captured positive PID, never to the session stream, and never activates
+or refocuses an application. If final inspection serviced a new clipboard owner,
+no event is posted and that owner's content is not restored over.
+
+The existing layout-aware shortcut and captured rich clipboard representations
+remain shared. Borrowed Text Input Source properties are promoted while their
+owner remains alive, checked for runtime type and a complete layout header;
+invalid values fall back to the QWERTY shortcut. Clipboard-write or event
+construction failure restores immediately while still owned. Dispatched events
+schedule restoration after 1.5 seconds, only while the same change count owns
+the board. `.inserted` still means dispatched, not verified external delivery;
+no automatic repeat is safe after that boundary.
+
+A refused insertion releases capture resources and leaves the complete processed
+output in controller-owned RAM. The persistent recovery panel displays an
+excerpt and three individually identified actions: Copy, Reinsert and Discard.
+Copy writes the complete output, reports failure without erasing it, and does
+not close recovery. Before explicit Copy mutates the board, it requires a
+complete materializable snapshot of any existing representations. A failed
+write restores that snapshot only if the dictation operation still owns the
+board; a newer clipboard writer is never overwritten. Reinsert requires the
+original capture and revalidates it
+without acquiring audio/model resources; users must first return to that app
+and field. An unavailable initial capture disables Reinsert and explains the
+Copy fallback. No title, URL, surrounding text or target is stored on disk.
+A new keyboard, mouse or menu trigger reveals existing recovery rather than
+replacing it. Discard cancels pending delivery and clears the retained output
+and presentation copies. Late callbacks cannot revive it; quitting loses this
+memory-only recovery. Cancel after posting cannot undo an external edit.
+The AppKit panel and hosted content use the same bounded height, preventing
+repeated reveals from moving a self-sizing panel. Discard is a native cancel
+operation, consistent with discarding an unapplied Refine draft; it requires
+one explicit click and does not delete a saved library item.
 
 Capture timing starts when the microphone stream actually opens, not when model preparation or the panel starts. A finish before readiness or before 0.75 seconds of real audio cancels silently; one owned 250 ms tail task preserves the last phoneme and suppresses duplicate finish gestures. Session cancellation closes the transcription feed immediately, stops local resources, fences stale state, and prevents later insertion. Audio feeding and peak calculation run off the main actor; only the meter mutation crosses back. A single cancellable failure-dismiss task prevents an older error from closing a restarted session. `DictationAssembler` joins confirmed plus partial text and requires lexical content, so punctuation-only noise never pastes. A pre-transcription VAD is deliberately absent because live Parakeet silence yields no segment; the batch-Whisper hallucination class is handled elsewhere. The Settings toggle remains off by default. Verified E2E: the hotkey triggers with the app in the background, the panel transcribes live audio, and final insertion works in the field.
 

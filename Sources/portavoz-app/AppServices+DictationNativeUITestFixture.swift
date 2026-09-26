@@ -15,10 +15,15 @@ final class DictationNativeUITestFixture {
 
     init?(arguments: [String], environment: [String: String], usesTemporaryStore: Bool) {
         guard usesTemporaryStore, arguments.contains("-seed-dictation-native"),
-              let name = environment[Self.environmentKey], name.hasPrefix(Self.pasteboardPrefix),
-              UUID(uuidString: String(name.dropFirst(Self.pasteboardPrefix.count))) != nil
+              let name = Self.validPasteboardName(environment[Self.environmentKey])
         else { return nil }
         pasteboardName = name
+    }
+
+    static func validPasteboardName(_ name: String?) -> String? {
+        guard let name, name.hasPrefix(pasteboardPrefix),
+              UUID(uuidString: String(name.dropFirst(pasteboardPrefix.count))) != nil else { return nil }
+        return name
     }
 
     func start() {
@@ -44,12 +49,10 @@ final class DictationNativeUITestFixture {
                 }
                 // Launch can precede first-responder installation. Read-only
                 // readiness may repeat; the insertion itself never does.
-                let target = TextInserter.EventTarget.process(receiver.processIdentifier)
-                if TextInserter.focusedFieldSecurity(in: target) == .regular {
-                    let board = NSPasteboard(name: .init(pasteboardName))
-                    let result = await TextInserter.insert(
-                        "Don't delete — no borres: café, C++, 1.250,50 €.", pasteboard: board,
-                        eventTarget: target)
+                let board = NSPasteboard(name: .init(pasteboardName))
+                let destination = TextInserter.captureDestination(pasteboard: board, matching: receiver)
+                if destination.canRetry {
+                    let result = await destination.insert("Don't delete — no borres: café, C++, 1.250,50 €.")
                     status = String(describing: result)
                     return
                 }

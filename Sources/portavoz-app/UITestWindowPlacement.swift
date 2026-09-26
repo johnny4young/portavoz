@@ -63,13 +63,34 @@ enum UITestWindowPlacement {
         let leftClearance = min(
             400,
             max(0, visibleFrame.width - minimumWidth))
-        let frame = NSRect(
-            x: visibleFrame.minX + leftClearance,
-            y: visibleFrame.minY,
-            width: visibleFrame.width - leftClearance,
-            height: visibleFrame.height)
+        let menuBarFixture = ProcessInfo.processInfo.arguments.contains("-show-menu-bar-content")
+        let frame = mainWindowFrame(
+            visibleFrame: visibleFrame,
+            leftClearance: leftClearance,
+            menuBarFixture: menuBarFixture)
         applyAcceptedNotificationCenterIsolation(to: window)
         window.setFrame(frame, display: true, animate: false)
+    }
+
+    static func mainWindowFrame(
+        visibleFrame: NSRect, leftClearance: CGFloat, menuBarFixture: Bool
+    ) -> NSRect {
+        guard menuBarFixture else {
+            return NSRect(
+                x: visibleFrame.minX + leftClearance,
+                y: visibleFrame.minY,
+                width: visibleFrame.width - leftClearance,
+                height: visibleFrame.height)
+        }
+        // The real MenuBarExtra is compact. Its disposable full-height window
+        // otherwise overlaps the bottom-anchored dictation panel; XCTest's
+        // implicit app activation then raises the test window over its actions.
+        let height = min(560, visibleFrame.height)
+        return NSRect(
+            x: visibleFrame.minX + leftClearance,
+            y: visibleFrame.maxY - height,
+            width: visibleFrame.width - leftClearance,
+            height: height)
     }
 
     static func positionSettingsWindow(_ window: NSWindow) {

@@ -57,6 +57,99 @@ final class DictationUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testUndeliveredTextCanBeCopiedAndExplicitlyRetried() throws {
+        let name = "app.portavoz.dictation-test." + UUID().uuidString
+        let board = NSPasteboard(name: .init(name))
+        defer { board.releaseGlobally() }
+        board.setString("Original recovery clipboard", forType: .string)
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-recovery"]
+        if UITestLocale.environmentLocale == "en" { app.launchArguments.append("-seed-dictation-english") }
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DICTATION_PASTEBOARD"] = name
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+        enterDestinationRecovery(app)
+        let text = app.staticTexts["dictation-recovery-text"]
+        XCTAssertTrue(renderedText(of: text).contains(recoveryFixtureText))
+        let status = app.staticTexts["dictation-recovery-copy-status"]
+        let initial = renderedText(of: status)
+        for identifier in ["dictation-recovery-copy", "dictation-recovery-reinsert", "dictation-recovery-discard"] {
+            let button = app.buttons[identifier]
+            XCTAssertTrue(button.waitForStableFrame(timeout: 5))
+            XCTAssertFalse(button.label.isEmpty)
+            XCTAssertEqual(app.buttons.matching(identifier: identifier).count, 1)
+            XCTAssertTrue(app.dialogs["dictation-panel"].frame.contains(button.frame),
+                          "Long destination names must not push recovery actions outside the panel")
+        }
+        app.buttons["dictation-recovery-copy"].click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: status) != initial })
+        XCTAssertEqual(board.string(forType: .string), "Original recovery clipboard")
+        XCTAssertTrue(text.exists, "A failed copy must retain the output")
+        app.buttons["dictation-recovery-copy"].click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { board.string(forType: .string) == recoveryFixtureText })
+        XCTAssertTrue(text.exists, "Copy does not discard the user's recovery option")
+        app.buttons["dictation-recovery-reinsert"].click()
+        XCTAssertTrue(app.staticTexts["dictation-panel-delivery-status"].waitForExistenceFast(timeout: 5))
+        XCTAssertFalse(text.exists)
+    }
+
+    @MainActor
+    func testUndeliveredTextSurvivesAnotherTriggerUntilDiscarded() throws {
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-recovery"]
+        if UITestLocale.environmentLocale == "en" { app.launchArguments.append("-seed-dictation-english") }
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+        enterDestinationRecovery(app)
+        let text = app.staticTexts["dictation-recovery-text"]
+        let original = renderedText(of: text)
+        let originalFrame = app.dialogs["dictation-panel"].frame
+        let dictate = app.buttons["menu-bar-dictate"]
+        XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+        guard !originalFrame.intersects(dictate.frame) else {
+            return XCTFail("The menu fixture must not place Dictate beneath the recovery panel")
+        }
+        dictate.click()
+        XCTAssertTrue(app.buttons["dictation-recovery-discard"].waitForStableFrame(timeout: 5))
+        XCTAssertEqual(renderedText(of: text), original)
+        XCTAssertEqual(app.dialogs["dictation-panel"].frame, originalFrame,
+                       "Revealing retained text must not move a self-sizing panel")
+        app.activate()
+        let discard = app.buttons["dictation-recovery-discard"]
+        guard discard.isHittable else {
+            return XCTFail("Activating the disposable menu window must not occlude recovery")
+        }
+        discard.click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { !app.dialogs["dictation-panel"].exists },
+                      "Discard must close the whole panel before another global trigger")
+        XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+        dictate.click()
+        XCTAssertTrue(app.staticTexts["dictation-panel-transcript"].waitForExistenceFast(timeout: 5))
+        let cancel = app.buttons["dictation-panel-cancel"]
+        XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
+        cancel.click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { !cancel.exists })
+    }
+
+    private var recoveryFixtureText: String {
+        UITestLocale.environmentLocale == "en" ? "Don't delete these notes." : "No borres estas notas."
+    }
+
+    @MainActor
+    private func enterDestinationRecovery(_ app: XCUIApplication) {
+        XCTAssertTrue(app.prepareForInteraction())
+        let dictate = app.buttons["menu-bar-dictate"]
+        XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+        dictate.click()
+        XCTAssertTrue(app.staticTexts["dictation-panel-transcript"].waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+        dictate.click()
+        XCTAssertTrue(app.staticTexts["dictation-recovery-title"].waitForExistenceFast(timeout: 5))
+    }
+
+    @MainActor
     func testNativeInserterUsesDisposableReceiverAndClipboard() async throws {
         let products = Bundle.main.bundleURL.deletingLastPathComponent()
         let receiverURL = products.appendingPathComponent("PortavozDictationReceiver.app")

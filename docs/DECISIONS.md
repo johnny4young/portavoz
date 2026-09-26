@@ -20253,6 +20253,66 @@ parent changes Dictation Settings, and the parent journey must remain selected.
 
 ---
 
+## D544 — Bind dictation to its captured destination and retain refused output
+
+**Decision.** Capture the original application and focused AX element before
+presenting the panel or preparing a model. Carry the display name and insertion
+closure together. Compare retained `NSRunningApplication` objects with `isEqual`
+and focused elements with `CFEqual`, not a name, bundle ID or raw PID alone.
+Revalidate before clipboard mutation and immediately before process-addressed
+posting, checking cancellation after synchronous AX calls and clipboard
+ownership after the final call. Do not activate, refocus, retarget or post a
+global fallback. This supersedes D515's unchanged production session routing,
+not its disposable receiver, consent or evidence boundaries.
+
+**Why.** The previous display chip named one app while the delayed session-wide
+Paste could reach another. Losing the partial result after refusing a paste is
+also unacceptable. Capture and insertion are separate operations: completion
+of transcription does not authorize the current foreground app or a retry.
+Apple explicitly recommends application equality over PID comparison, while
+`launchDate` is supplied only for LaunchServices-launched applications. Requiring
+that date would silently remove compatibility rather than strengthen identity.
+See Apple's [process identity documentation](https://developer.apple.com/documentation/appkit/nsrunningapplication/processidentifier),
+[launch date contract](https://developer.apple.com/documentation/appkit/nsrunningapplication/launchdate),
+and [AX Core Foundation equality](https://developer.apple.com/documentation/applicationservices/axuielement_h).
+
+**Recovery.** Keep the final refused output in the existing controller's RAM,
+not a new history, file or meeting. Copy retains it, Reinsert requires the same
+captured destination, and Discard retires pending effects. A new trigger cannot
+silently replace it. Capture/model resources are not reacquired for retry.
+Missing initial focus offers Copy, not a guessed destination. A failed Copy
+restores the previous captured clipboard only while it still owns the board;
+the live composition must provide the effect explicitly. Presentation owns
+no pasteboard or pipeline work. Successful event dispatch still is not verified
+delivery, and cancellation after posting does not undo an edit.
+
+**Evidence boundary.** Adversarial call-site tests exercise destination changes
+across preparation, each insertion validation, new clipboard ownership,
+late cancellation, failed copy and discarded retries. Bilingual real-app
+recovery journeys use declared platform doubles and named clipboards. They do
+not prove native AX identity, arbitrary editor delivery or model quality; the
+permission-dependent receiver remains distinct. Real-app testing also exposed
+conflicting AppKit/SwiftUI heights and a Discard control that consumed the first
+click with deletion semantics. One height authority preserves the panel's frame;
+the existing Refine-discard pattern and Apple's [cancel role contract](https://developer.apple.com/documentation/swiftui/buttonrole/cancel)
+match abandoning this pending operation, including its loss of progress. The
+single-click and geometry assertions remain in the journeys. Main-branch
+integration exposed an intermittent first-click miss in local XCUITest. The
+failing screenshot and AX tree showed that the panel still existed, but
+XCTest's implicit app activation had raised the full-height disposable menu
+window across its bottom-anchored actions. Keep both test windows at the
+accepted status-bar level and bound only that temporary menu fixture to at
+most 560 points at the top of the visible screen. Raising the panel instead
+made XCTest treat it as a modal interruption. The existing cancel role conveys
+the intended abandonment semantics but did not fix this overlap; a first-mouse
+hosting-view override was tested and not retained.
+A real-app journey now activates the app before requiring Discard to be
+hittable and close the panel with one click. Production menu and panel placement,
+interruption handling, and global focus policy are unchanged. Post-event
+focus races and durable recovery are not claimed solved.
+
+---
+
 ## D545 — Project dictation text from explicit caption invalidation
 
 **Context.** Rejoining every closed caption on every partial made projection

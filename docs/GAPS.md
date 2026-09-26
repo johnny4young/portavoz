@@ -21,10 +21,20 @@ production sync reliability, universal hardware support or real-world quality.
 The controller and native-receiver test seams (D515) improve reachability, not
 all dictation behavior. The microphone pump still finishes its transcription
 feed after a source error and does not promote dropped-yield evidence into a
-terminal failure. The displayed application name is not yet a pinned delivery
-target; `.inserted` still denotes dispatched events rather than a verified
-external edit. These require call-site regressions and fixes before broad
-reliability claims. Model quality, Bluetooth transitions and the external-editor
+terminal failure. The destination is now pinned before preparation to a process
+and focused AX element, with refused output retained for explicit Copy or retry
+(D544). Deterministic tests exercise the controller and actual inserter, but
+native focus switches, process termination/relaunch and secure-field transitions
+still need receiver/device evidence. Accessibility validation and keyboard-event
+posting are not an atomic editor transaction: `.inserted` still denotes
+dispatched events rather than a verified external edit. These remaining failures
+and evidence boundaries prevent broad reliability claims. Recovery is RAM-only;
+quitting does not preserve the output. Clipboard snapshot size/materialization
+remains an independent limitation. The local real-app recovery first-click
+miss was traced to the disposable menu fixture covering the panel after app
+activation and is covered by an explicit activation-and-hit-target journey;
+that harness fix does not qualify native delivery. Model
+quality, Bluetooth transitions and the external-editor
 matrix require separate evidence; a synthetic caption fixture cannot establish
 those results. Missing Accessibility permission makes the separately selected
 native delivery gate unqualified, not proof that insertion works. Hosted

@@ -185,7 +185,7 @@ data into a field qualification.
 `DictationController` owns the same session, coalescing, final text rules and
 cancellation path for production and disposable tests. Its session dependencies
 provide audio preparation, the existing `LiveTranscriptionRuntime` lease,
-permission/destination/insertion effects, preferences and the capture clock.
+permission, captured-destination and explicit-copy effects, preferences and the capture clock.
 Explicit combined speech/diarization readiness stays in the live-speech
 composition extension. Production composition still acquires and finishes the shared live-speech lease;
 this seam neither selects a different engine nor moves platform types into Core.
@@ -201,9 +201,10 @@ A separate Xcode-only receiver builds no shipping product. An explicitly armed
 temporary app, not XCTest's sandboxed runner. It requires a UUID-named clipboard
 and the fixed receiver bundle; the receiver's native Paste action reads that
 board. The real event pair is directed to the receiver process so a focus change
-cannot route fixture Paste into another application. Production callers retain
-the general pasteboard and session-event defaults with unchanged change-count
-ownership protection; their global routing is not qualified by this fixture. The native journey requires real app
+cannot route fixture Paste into another application. Production and fixture
+insertion both require an explicit captured process target; only production
+uses the general pasteboard. Change-count ownership protection remains shared.
+The native journey requires real app
 Accessibility permission and must not bypass or silently grant it. Synthetic
 controller coverage and an event-dispatched result are not ASR or native-delivery
 qualification; the receiver's actual value is the oracle.
@@ -1096,18 +1097,36 @@ removal followed by one non-cascading, longest-trigger-first replacement pass.
 The policy reads one canonicalized rule snapshot at delivery, never mutates a
 meeting transcript, and treats the first match against the original dictation
 as the user's authoritative spelling.
+The app-local `CapturedDictationDestination` binds the display name and insertion
+capability once, before model preparation or panel presentation. The platform
+adapter retains the original `NSRunningApplication` and focused AX element:
+application equality, termination state and `CFEqual` on the focused element
+must still match. Names and bundle identifiers are never authority. Core and
+capability targets receive no AppKit or Accessibility dependency.
+
 The last-mile `TextInserter` returns a typed result. It waits for physical
-modifiers without swallowing cancellation, refuses a timed-out chord, performs
-a fail-closed Accessibility inspection immediately before clipboard mutation,
-posts a complete synthetic paste pair or restores synchronously, and later
-restores only captured pasteboard representations when its change count still
-owns the clipboard. Secure or uninspectable focus, unavailable clipboard or
-event delivery, and held modifiers become visible failures rather than false
-insertion success. Disposable native tests share the inserter but supply a named
-pasteboard and a process-addressed event target whose secure-field inspection
-reads that application's focus. This contains fixture input if
-focus changes without altering production session routing; it is not evidence
-of a production destination fence.
+modifiers, revalidates the captured destination before borrowing the clipboard
+and immediately before posting, and checks cancellation after synchronous AX
+inspection. It only posts to the captured positive process identifier; there
+is no session-wide fallback or application activation. Rich clipboard snapshots
+are restored after refusal or a delay only while their change count still owns
+the board. A clipboard owner change during final inspection prevents dispatch.
+Event dispatch is not an external editor acknowledgement or an atomic focus
+transaction.
+
+The controller retains a refused output in memory, independently of microphone
+and model lifetime. New input triggers reveal this recovery state instead of
+replacing it. Explicit Copy keeps the output available, Reinsert retries only
+the original captured destination without opening audio, and Discard retires
+the delivery identity and clears presentation copies. A destination that could
+not be captured permits Copy but not implicit retargeting. Retry tasks are
+cancellable and identity-fenced so a late result cannot revive discarded text
+or dismiss a later session. The SwiftUI recovery view owns no platform effect
+or storage write; quitting is not durable recovery. AppKit and hosted SwiftUI
+content share one bounded height authority so revealing retained work does not
+move the panel through conflicting intrinsic-size constraints. Discard uses
+native cancellation semantics for uncommitted work, not a deletion role or an
+application-wide first-click override.
 
 Live Apuntador keeps endpoint and semantic admission split across layers. The
 pure `TurnEndpointPolicy` in `IntelligenceKit` owns the remote-channel, noise,

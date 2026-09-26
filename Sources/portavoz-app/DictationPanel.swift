@@ -10,9 +10,19 @@ final class DictationPanelController {
     private var panel: NSPanel?
 
     func show(controller: DictationController) {
-        guard panel == nil else { return }
+        let height = DictationPanelLayout.height(for: controller.phase)
+        if let panel {
+            let origin = panel.frame.origin
+            panel.setContentSize(NSSize(width: 520, height: height))
+            if let visible = panel.screen?.visibleFrame {
+                panel.setFrameOrigin(NSPoint(
+                    x: origin.x, y: max(visible.minY, min(origin.y, visible.maxY - panel.frame.height))))
+            }
+            panel.orderFrontRegardless()
+            return
+        }
         let panel = DictationPanelWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 96),
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: height),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false)
@@ -41,6 +51,15 @@ final class DictationPanelController {
     }
 }
 
+/// One height authority for AppKit and SwiftUI: a conflicting intrinsic size
+/// otherwise moves the panel again after every explicit re-show.
+private enum DictationPanelLayout {
+    static func height(for phase: DictationController.Phase) -> CGFloat {
+        if case .recovery = phase { return 288 }
+        return 96
+    }
+}
+
 private final class DictationPanelWindow: NSPanel {
     override var canBecomeKey: Bool { true }
 }
@@ -50,14 +69,16 @@ private struct DictationStripView: View {
 
     var body: some View {
         Group {
-            if case .inserted(let words) = controller.phase {
+            if case .recovery(let failure) = controller.phase {
+                DictationRecoveryView(controller: controller, failure: failure)
+            } else if case .inserted(let words) = controller.phase {
                 insertedView(words)
             } else {
                 dictatingView
             }
         }
         .padding(12)
-        .frame(width: 520)
+        .frame(width: 520, height: DictationPanelLayout.height(for: controller.phase))
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
     }
 
@@ -121,6 +142,7 @@ private struct DictationStripView: View {
                 .font(.title3)
             VStack(alignment: .leading, spacing: 1) {
                 Text(insertedTitle(words))
+                    .accessibilityIdentifier("dictation-panel-delivery-status")
                     .font(.callout.weight(.medium))
                 Text("Nothing was saved in Portavoz.")
                     .font(.caption)
@@ -182,7 +204,7 @@ private struct DictationStripView: View {
             return L10n.text("Dictating")
         case .failed(let message):
             return message
-        case .idle, .inserted:
+        case .idle, .inserted, .recovery:
             return ""
         }
     }
