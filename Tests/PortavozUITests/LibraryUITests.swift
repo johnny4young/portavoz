@@ -191,6 +191,10 @@ final class LibraryUITests: PortavozUITestCase {
                 app.control(withIdentifier: "settings-ledger-audio").waitForExistenceFast(timeout: 10),
                 "See activity must land on Your data, where the activity log lives")
             XCTAssertTrue(app.buttons["settings-category-data"].isSelected)
+            XCTAssertTrue(
+                app.finishTextFieldEditing(identifier: "settings-search-field", timeout: 5),
+                "the deep link must release native search editing before sidebar navigation")
+            XCTAssertEqual(app.textFields["settings-search-field"].value as? String, "")
         }
 
         // A fresh Settings window.

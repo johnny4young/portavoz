@@ -7827,7 +7827,10 @@ The shared XCUITest setup ends the active native search edit with app-scoped
 Tab traversal, then checks that the identified field value is unchanged. It
 does not click or address a key event to a field that its own popup may cover.
 Both existing and newly opened Settings windows use that boundary before
-category navigation.
+category navigation. The Library privacy chip's direct route to Your data
+also applies it before switching panes: that route bypasses the shared
+`openSettingsWindow` helper, and an auto-focused native search completion
+surface otherwise covers the General category despite a correct destination.
 Seeded Library setup applies the handoff before its already-hittable row fast
 path. A real-app adversary focuses an empty search with a visible row, calls the
 actual helper, then sends a normal key and verifies that search remains empty.
