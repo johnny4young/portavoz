@@ -20339,3 +20339,40 @@ assembly and human-authored expected text. Synthetic burst timings and digests
 are projection evidence, not ASR or native latency. Meeting-consumer revision
 risks remain explicit in GAPS; decoder word loss/replay and window evaluations
 are not resolved by this change.
+
+
+## D546 — Overlap independent UI prerequisites, not desktop interactions
+
+The native interruption fixture builds no product UI binary and the product
+builder drives no desktop interaction. They run as sibling jobs on distinct
+hosted Macs. Locale execution starts only after the product build and every
+selected native control succeed. An unselected native job is explicitly skipped;
+failed, cancelled, missing or unexpectedly executed prerequisites cannot become
+a verified UI ancestor, even if locale receipts are otherwise green.
+
+This changes the dependency graph, not coverage or acceptance. One product build
+still serves both locales; no test, selector, timeout or runtime budget is removed
+or widened. Local heavy gates remain sequential. CPU-only workflow state tests
+execute the actual final gate shell across success and contradictory states;
+they complement, not replace, native focus/keyboard/cleanup qualification.
+
+Overlapping the two prerequisite durations can reduce the hosted critical path,
+not necessarily total billed compute or queue delay. Savings require measured
+completed runs and are not promised from the graph alone. Full bilingual
+integration and first-attempt exact-head anchors remain mandatory.
+
+
+## D553 — Exit interrupted test workers without reentering XCTest
+
+The asynchronous native interruption control reached complete owned cleanup and
+XCTest issue recording, then stalled in teardown until its unchanged deadline.
+Calling the framework's failure API from that main-actor callback is not a
+reliable prerequisite for terminating the worker.
+
+The guard writes the existing content-free refusal receipt and exits the worker
+directly after cleanup. This replaces only the issue-recording step of D527,
+not its consent policy, cleanup ownership, or failure classification. The native
+validator must still observe exactly one failed, non-skipped case, the exact
+refusal category, complete owned cleanup, and no action or fallback effect.
+Timeouts and empty restarted suites remain failures. Real synchronous and
+asynchronous controls, not source-text assertions, qualify this boundary.
