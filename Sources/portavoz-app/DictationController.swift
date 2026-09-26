@@ -39,7 +39,7 @@ struct DictationCapturePolicy {
 final class DictationController {
     static let defaultsKey = "globalDictationEnabled"
     /// "auto" (or absent) lets the multilingual engine detect; "es"/"en"
-    /// pin one dictation language without touching meeting settings.
+    /// request the backend's script-aware filter without touching meeting settings.
     static let languageKey = "dictationLanguage"
     /// Bilingual hesitation-filler removal; on by default — polished text
     /// is the point of dictation, and the filter only ever drops tokens
@@ -49,8 +49,8 @@ final class DictationController {
     /// (`DictationTextRules` codec).
     static let replacementsKey = "dictationReplacements"
 
-    static var fillerFilterEnabled: Bool {
-        (UserDefaults.standard.object(forKey: fillerFilterKey) as? Bool) ?? true
+    static func fillerFilterEnabled(in defaults: UserDefaults) -> Bool {
+        (defaults.object(forKey: fillerFilterKey) as? Bool) ?? true
     }
 
     enum Phase: Equatable {
@@ -80,13 +80,23 @@ final class DictationController {
     /// True while the active session was started by the mouse button, so
     /// only that button's release may deliver (`MousePTTGesture`).
     private var mouseOwnsSession = false
-    private var microphone: MicrophoneSource?
+    private var microphone: (any AudioCaptureSource)?
     private var feed: AsyncStream<AudioChunk>.Continuation?
     private var session: Task<Void, Never>?
     private var stopTask: Task<Void, Never>?
     private var failureDismissTask: Task<Void, Never>?
     private var activeSessionID: UUID?
     private let panel = DictationPanelController()
+    private let presentsPanel: Bool
+    private var sessionClock: (() -> Date)?
+
+    init(presentsPanel: Bool = true) {
+        self.presentsPanel = presentsPanel
+    }
+
+    private func showPanel() {
+        if presentsPanel { panel.show(controller: self) }
+    }
 
     /// Registers/unregisters the configured hotkey (⌥⌘D by default) to
     /// match the Settings toggle AND the recorded combination. Called at
@@ -198,31 +208,39 @@ final class DictationController {
 
     /// Hotkey press: start listening, or finish-and-insert if already on.
     func toggle(services: AppServices) {
+        toggle(using: services.makeDictationSessionDependencies())
+    }
+
+    func toggle(using dependencies: DictationSessionDependencies) {
         switch phase {
         case .idle, .failed, .inserted:
-            start(services: services)
+            start(using: dependencies)
         case .listening:
             finishAndInsert()
         }
     }
 
     private func start(services: AppServices) {
+        start(using: services.makeDictationSessionDependencies())
+    }
+
+    private func start(using dependencies: DictationSessionDependencies) {
         failureDismissTask?.cancel()
         failureDismissTask = nil
         // The paste needs Accessibility; ask BEFORE recording so the user
         // never dictates into a void.
-        guard TextInserter.canInsert(promptIfNeeded: true) else {
+        guard dependencies.canInsert() else {
             phase = .failed(L10n.text(
                 // One-line UI copy.
                 // swiftlint:disable:next line_length
                 "Dictation needs the Accessibility permission to type into other apps — grant it in System Settings and try again."))
-            panel.show(controller: self)
+            showPanel()
             scheduleFailureDismiss()
             return
         }
         // Capture the destination BEFORE the non-activating panel appears —
         // the frontmost app is still the one the user will dictate into.
-        targetApp = NSWorkspace.shared.frontmostApplication?.localizedName
+        targetApp = dependencies.targetName()
         phase = .listening
         confirmedText = ""
         partialText = ""
@@ -232,29 +250,27 @@ final class DictationController {
         stopTask = nil
         let sessionID = UUID()
         activeSessionID = sessionID
-        panel.show(controller: self)
+        sessionClock = dependencies.now
+        showPanel()
 
-        session = Task { [weak self, weak services] in
-            guard let self, let services else { return }
-            await self.runSession(id: sessionID, services: services)
+        session = Task { [weak self] in
+            await self?.runSession(id: sessionID, dependencies: dependencies)
         }
     }
 
-    private func runSession(id: UUID, services: AppServices) async {
-        let microphone = MicrophoneSource()
+    private func runSession(id: UUID, dependencies: DictationSessionDependencies) async {
+        let input = dependencies.makeMicrophone()
+        let microphone = input.source
         var localFeed: AsyncStream<AudioChunk>.Continuation?
         var pump: Task<Void, Never>?
         do {
-            let runtime = try await services.acquireLiveSpeechRuntime()
-            defer {
-                _ = services.finishLiveSpeechRuntime(runtime)
-                services.scheduleRecordingEnginesRelease()
-            }
+            let runtime = try await dependencies.acquireRuntime()
+            defer { runtime.finish() }
             try Task.checkCancellation()
             guard activeSessionID == id else { return }
             self.microphone = microphone
 
-            await microphone.warmUp()
+            await input.warmUp()
             try Task.checkCancellation()
             let micStream = try await microphone.start()
             try Task.checkCancellation()
@@ -262,7 +278,7 @@ final class DictationController {
                 await microphone.stop()
                 return
             }
-            captureStartedAt = Date()
+            captureStartedAt = dependencies.now()
 
             // Bounded like every other live audio handoff (the recording lane
             // uses the same 128-buffer window). The pump never suspends on the
@@ -276,23 +292,29 @@ final class DictationController {
             self.feed = feed
             pump = makeAudioPump(stream: micStream, feed: feed, sessionID: id)
 
-            let hints = transcriptionHints()
-            var captions: [TranscriptSegment] = []
-            let coalescer = CaptionCoalescer()
+            let hints = transcriptionHints(defaults: dependencies.defaults)
+            var transcript = DictationTranscriptProjection()
             for try await segment in runtime.engine.transcribe(audio, hints: hints) {
                 try Task.checkCancellation()
                 guard activeSessionID == id else { throw CancellationError() }
-                coalescer.apply(segment, to: &captions)
-                let closed = captions.dropLast().map(\.text)
-                confirmedText = closed.joined(separator: " ")
-                partialText = captions.last?.text ?? ""
+                if transcript.apply(segment) {
+                    confirmedText = transcript.confirmedText
+                }
+                // Observation reports equal writes; rejected noise stays silent.
+                if partialText != transcript.partialText {
+                    partialText = transcript.partialText
+                }
             }
-            confirmedText = captions.map(\.text).joined(separator: " ")
+            // Cancellation may end an AsyncStream normally, without throwing.
+            // Fence final publication too, before an old tail can repopulate UI.
+            try Task.checkCancellation()
+            guard activeSessionID == id else { throw CancellationError() }
+            confirmedText = transcript.finalText
             partialText = ""
             await pump?.value
             try Task.checkCancellation()
             guard activeSessionID == id else { return }
-            await deliver(sessionID: id)
+            await deliver(sessionID: id, dependencies: dependencies)
         } catch is CancellationError {
             localFeed?.finish()
             pump?.cancel()
@@ -308,16 +330,17 @@ final class DictationController {
         }
     }
 
-    private func transcriptionHints() -> TranscriptionHints {
+    private func transcriptionHints(defaults: UserDefaults) -> TranscriptionHints {
         let vocabulary = VocabularyPrompt.parse(
-            UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
-        // Language stays constrained to the two dictation languages: any
-        // stored value outside {es, en} means auto-detect.
-        let languageSetting = UserDefaults.standard.string(forKey: Self.languageKey)
+            defaults.string(forKey: "customVocabulary") ?? "")
+        // Accepted preference values remain {es,en}; any unexpected stored
+        // value falls back to automatic detection.
+        let languageSetting = defaults.string(forKey: Self.languageKey)
         return TranscriptionHints(
             language: ["es", "en"].contains(languageSetting) ? languageSetting : nil,
             vocabulary: vocabulary,
-            meetingID: MeetingID())
+            meetingID: MeetingID(),
+            filtersLiveScript: true)
     }
 
     private func makeAudioPump(
@@ -348,7 +371,7 @@ final class DictationController {
         guard phase == .listening else { return }
         guard stopTask == nil else { return }
         guard DictationCapturePolicy.finishDecision(
-            captureStartedAt: captureStartedAt, now: Date()) == .stopAfterTail
+            captureStartedAt: captureStartedAt, now: sessionClock?() ?? Date()) == .stopAfterTail
         else {
             cancel()
             return
@@ -372,6 +395,10 @@ final class DictationController {
     /// Esc in the panel: throw everything away.
     func cancel() {
         activeSessionID = nil
+        sessionClock = nil
+        confirmedText = ""
+        partialText = ""
+        micLevel = 0
         captureStartedAt = nil
         mouseOwnsSession = false
         stopTask?.cancel()
@@ -389,7 +416,7 @@ final class DictationController {
         panel.close()
     }
 
-    private func deliver(sessionID: UUID) async {
+    private func deliver(sessionID: UUID, dependencies: DictationSessionDependencies) async {
         guard activeSessionID == sessionID else { return }
         // The two-tier dictionary's deterministic tier plus the filler
         // filter run on the final text only — meeting transcripts stay
@@ -398,9 +425,9 @@ final class DictationController {
             DictationAssembler.text(
                 confirmed: confirmedText, partial: partialText),
             replacements: DictationTextRules.decode(
-                replacements: UserDefaults.standard.string(
+                replacements: dependencies.defaults.string(
                     forKey: Self.replacementsKey) ?? ""),
-            removeFillers: Self.fillerFilterEnabled)
+            removeFillers: Self.fillerFilterEnabled(in: dependencies.defaults))
         microphone = nil
         feed = nil
         stopTask = nil
@@ -411,7 +438,7 @@ final class DictationController {
             panel.close()
             return
         }
-        let result = await TextInserter.insert(text)
+        let result = await dependencies.insert(text)
         guard activeSessionID == sessionID else { return }
         switch result {
         case .inserted:
@@ -453,6 +480,7 @@ final class DictationController {
     private func completeSession(id: UUID) {
         guard activeSessionID == id else { return }
         activeSessionID = nil
+        sessionClock = nil
         session = nil
         microphone = nil
         feed = nil

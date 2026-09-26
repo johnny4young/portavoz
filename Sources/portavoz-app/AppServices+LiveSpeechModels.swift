@@ -3,6 +3,15 @@ import PortavozCore
 import TranscriptionKit
 
 extension AppServices {
+    /// Explicit readiness for workflows that truly need both models.
+    func loadEnginesIfNeeded() async throws {
+        let liveSpeech = try await acquireLiveSpeechRuntime()
+        defer { _ = finishLiveSpeechRuntime(liveSpeech) }
+        let diarization = try await acquireDiarizationRuntime()
+        defer { _ = finishDiarizationRuntime(diarization) }
+        modelsState = .ready
+    }
+
     struct LiveSpeechRuntimeLoad {
         let generation: UUID
         let ticket: ResourceModelLoadTicket

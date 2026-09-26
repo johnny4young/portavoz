@@ -313,7 +313,7 @@ extension ArchitectureDependencyTests {
         let attacher = try Self.contents(
             of: "Sources/portavoz-app/LiveTranscriptionAttacher.swift")
         let dictation = try Self.contents(
-            of: "Sources/portavoz-app/DictationController.swift")
+            of: "Sources/portavoz-app/DictationSessionDependencies.swift")
         let recovery = try Self.contents(
             of: "Sources/portavoz-app/AppPostCaptureProcessingCapabilities.swift")
         let benchmark = try Self.contents(
@@ -341,7 +341,9 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(start.contains("services.liveTranscriptionRuntime(runtime)"))
         XCTAssertTrue(attacher.contains("await runtime?.finish()"))
         XCTAssertTrue(attacher.contains("await runtime.finish()"))
-        for borrower in [dictation, recovery, benchmark] {
+        XCTAssertTrue(dictation.contains("services.acquireLiveSpeechRuntime()"))
+        XCTAssertTrue(dictation.contains("services.liveTranscriptionRuntime("))
+        for borrower in [recovery, benchmark] {
             XCTAssertTrue(borrower.contains("services.acquireLiveSpeechRuntime("))
             XCTAssertTrue(borrower.contains("services.finishLiveSpeechRuntime("))
         }
