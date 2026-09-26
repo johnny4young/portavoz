@@ -14,9 +14,11 @@ extension AppServices {
 
 struct DictationUITestFixture: Sendable {
     let text: String
+    let streamsDeltas: Bool
 
     init?(arguments: [String], usesTemporaryStore: Bool) {
         guard usesTemporaryStore, arguments.contains("-seed-dictation") else { return nil }
+        streamsDeltas = arguments.contains("-seed-dictation-streaming")
         text = "No borres estas notas."
     }
 
@@ -29,7 +31,8 @@ struct DictationUITestFixture: Sendable {
             acquireRuntime: {
                 guard let fixture else { throw CancellationError() }
                 return LiveTranscriptionRuntime(
-                    engine: DictationFixtureEngine(text: fixture.text), completion: {})
+                    engine: DictationFixtureEngine(text: fixture.text, streamsDeltas: fixture.streamsDeltas),
+                    completion: {})
             },
             canInsert: { fixture != nil },
             targetName: { "Dictation test receiver" },
@@ -60,6 +63,7 @@ private actor DictationFixtureMicrophone: AudioCaptureSource {
 
 private struct DictationFixtureEngine: TranscriptionEngine {
     let text: String
+    let streamsDeltas: Bool
     let descriptor = EngineDescriptor(
         id: "dictation-ui-fixture", displayName: "Dictation fixture",
         realTimeFactor: 0, runsOnDevice: true, approximateMemoryMB: 0)
@@ -67,7 +71,8 @@ private struct DictationFixtureEngine: TranscriptionEngine {
     func transcribe(
         _ audio: AsyncStream<AudioChunk>, hints: TranscriptionHints
     ) -> AsyncThrowingStream<TranscriptSegment, Error> {
-        let (stream, continuation) = AsyncThrowingStream.makeStream(of: TranscriptSegment.self)
+        let (stream, continuation) = AsyncThrowingStream.makeStream(
+            of: TranscriptSegment.self, bufferingPolicy: .bufferingOldest(16))
         let task = Task {
             var emitted = false
             for await _ in audio {
@@ -77,6 +82,13 @@ private struct DictationFixtureEngine: TranscriptionEngine {
                     continuation.yield(TranscriptSegment(
                         meetingID: hints.meetingID ?? MeetingID(),
                         channel: .microphone, text: text, startTime: 0, endTime: 1))
+                    if streamsDeltas {
+                        for (delta, time) in [("Café", 8.0), ("C++", 8.2), (".", 8.4), ("Final", 16.0)] {
+                            continuation.yield(TranscriptSegment(
+                                meetingID: hints.meetingID ?? MeetingID(), channel: .microphone,
+                                text: delta, startTime: time, endTime: time + 0.1))
+                        }
+                    }
                 }
             }
             continuation.finish()

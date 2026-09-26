@@ -161,6 +161,21 @@ hints at the engine invocation, punctuation-only output and late model
 preparation after cancellation. All preference changes use a volatile domain.
 Fixture selection is checked both with and without temporary composition.
 
+`DictationStreamingProjectionTests` drives the actual controller with an explicitly
+bounded delta stream: bilingual punctuation and final rules, noise/empty inputs,
+279/280/281-character boundaries, older callbacks, same-count replacement and a
+remote/microphone/direct sequence that reopens a closed row. It waits for a changing
+sentinel after ignored input rather than counting an unchanged screen as receipt.
+Cancellation tests await old runtime teardown and restart with a separate audio
+source; cancelled streams must not republish final text. Projection parity tests
+compare each intermediate state with full coalescer assembly and explicit golden
+cases. The opt-in `PORTAVOZ_DICTATION_PROJECTION_BENCHMARK=1` lane measures a bounded
+synthetic burst through that controller at three prefix sizes with output digests.
+It is not an ASR, native destination, real UI latency or memory qualification.
+The streaming real-app journey checks the complete multi-row EN/ES projection,
+cancellation and restart; its 20-second budget is an initial
+candidate limit, not an increased full-suite allowance.
+
 `DictationUITests` owns a dedicated unattended `dictation` selector alongside
 the existing Settings assertions. Its panel journey uses the production menu-bar action in
 the disposable main-window host and cancels/restarts the actual controller.
@@ -3549,6 +3564,15 @@ saved frame and level. Controller tests exercise restoration between attachment
 and appearance, repeated presentation, detachment/reparenting, and the production
 no-op. The Audio Settings XCUITest closes and reopens the real scene through
 Command-comma and retains the shared nonnegative-coordinate assertion.
+The disposable main-window bridge uses the same post-presentation lifecycle,
+not an attachment-time correction. Its controller tests cover late restoration,
+reappearance, detachment/reparenting, and production frame/level preservation.
+The real entity and recording-URL journeys assert the exact main window's
+nonnegative geometry before retaining their normal screenshots; a geometry
+failure throws rather than entering XCTest's screenshot-failure teardown path.
+The primary scene mounts this capture outside the ready-content branch, so the
+native database-recovery journey also asserts placement without loading services.
+Screenshots, native actions, selectors and runtime budgets remain unchanged.
 
 Cross-process fixtures use `UITestScratch`, a test-only Foundation/Darwin
 allocator compiled into both existing test targets. `mkdtemp` creates private
