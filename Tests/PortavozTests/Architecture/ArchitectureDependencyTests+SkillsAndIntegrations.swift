@@ -954,6 +954,8 @@ extension ArchitectureDependencyTests {
             of: "Sources/portavoz-app/MeetingDetailActivityLine.swift")
         let receiptPresentation = try Self.contents(
             of: "Sources/portavoz-app/SkillReceiptPresentation.swift")
+        let uiTests = try Self.contents(
+            of: "Tests/PortavozUITests/MeetingDetailUITests.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(external.contains("enum ExternalSkills"))
@@ -982,6 +984,65 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(appAdapter.contains("AppDisposableEmailDraftOpener"))
         XCTAssertFalse(systemOpener.contains("URLSession"))
         XCTAssertFalse(systemOpener.contains("NSAppleScript"))
+
+        // The UI journey reaches this execution path. Keep the no-clipboard
+        // guarantee at its call site instead of changing the user's general
+        // pasteboard in XCTest and mistaking another app's write for ours.
+        let dispatchStart = try XCTUnwrap(appAdapter.range(
+            of: "private func meetingSkillExecutionPlan("))
+        let recapPlanStart = try XCTUnwrap(appAdapter.range(
+            of: "private func recapSkillExecutionPlan(",
+            range: dispatchStart.upperBound..<appAdapter.endIndex))
+        let dispatch = appAdapter[dispatchStart.lowerBound..<recapPlanStart.lowerBound]
+        XCTAssertTrue(dispatch.contains(
+            "case .emailRecapDraft:\n            try await emailRecapSkillExecutionPlan("))
+
+        let emailPlanStart = try XCTUnwrap(appAdapter.range(
+            of: "private func emailRecapSkillExecutionPlan("))
+        let nextPlanStart = try XCTUnwrap(appAdapter.range(
+            of: "private func packageSkillExecutionPlan(",
+            range: emailPlanStart.upperBound..<appAdapter.endIndex))
+        let emailPlan = appAdapter[emailPlanStart.lowerBound..<nextPlanStart.lowerBound]
+        XCTAssertTrue(emailPlan.contains("EmailRecapDraftSkill.id: EmailRecapDraftEffect("))
+        XCTAssertTrue(emailPlan.contains("delivery: emailRecapDraftDelivery"))
+        XCTAssertFalse(emailPlan.contains("recapSkillDelivery"))
+        XCTAssertFalse(emailPlan.contains("NSPasteboard"))
+
+        let emailDeliveryStart = try XCTUnwrap(appAdapter.range(
+            of: "struct AppEmailRecapDraftDelivery:"))
+        let nextAdapterStart = try XCTUnwrap(appAdapter.range(
+            of: "struct AppMeetingPackageWriter:",
+            range: emailDeliveryStart.upperBound..<appAdapter.endIndex))
+        let emailDelivery = appAdapter[emailDeliveryStart.lowerBound..<nextAdapterStart.lowerBound]
+        XCTAssertTrue(emailDelivery.contains("opener.openDraft("))
+        XCTAssertFalse(emailDelivery.contains("NSPasteboard"))
+        XCTAssertFalse(emailDelivery.contains("RecapPasteboardWriting"))
+        XCTAssertFalse(systemOpener.contains("NSPasteboard"))
+        let disposableOpener = appAdapter[
+            disposableOpenerStart.lowerBound..<emailDeliveryStart.lowerBound]
+        XCTAssertFalse(disposableOpener.contains("NSPasteboard"))
+
+        let compositionStart = try XCTUnwrap(appAdapter.range(
+            of: "static func makeEmailRecapDraftDelivery("))
+        let nextComposition = try XCTUnwrap(appAdapter.range(
+            of: "struct AppRecapMaterialReader:",
+            range: compositionStart.upperBound..<appAdapter.endIndex))
+        let composition = appAdapter[
+            compositionStart.lowerBound..<nextComposition.lowerBound]
+        XCTAssertTrue(composition.contains("usesTemporaryStore"))
+        XCTAssertTrue(composition.contains("AppDisposableEmailDraftOpener()"))
+        XCTAssertTrue(composition.contains("AppSystemEmailDraftOpener()"))
+        XCTAssertTrue(composition.contains("AppEmailRecapDraftDelivery(opener: opener)"))
+        XCTAssertFalse(composition.contains("NSPasteboard"))
+
+        let journeyStart = try XCTUnwrap(uiTests.range(
+            of: "func testEmailRecapSkillPreviewsAndHandsOffWithoutSending()"))
+        let nextJourney = try XCTUnwrap(uiTests.range(
+            of: "func testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument()",
+            range: journeyStart.upperBound..<uiTests.endIndex))
+        let journey = uiTests[journeyStart.lowerBound..<nextJourney.lowerBound]
+        XCTAssertFalse(journey.contains("NSPasteboard.general"))
+        XCTAssertFalse(journey.contains("pasteboard.clearContents()"))
 
         XCTAssertTrue(sheet.contains(
             "skill-confirm-email-recipient-policy"))

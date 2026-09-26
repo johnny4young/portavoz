@@ -1134,9 +1134,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     /// the production proposal/effect path without launching the host client.
     @MainActor
     func testEmailRecapSkillPreviewsAndHandsOffWithoutSending() throws {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString("email-skill-sentinel", forType: .string)
         let app = try launchOnSeededMeeting()
         defer { app.terminate() }
 
@@ -1207,10 +1204,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             receipt.label.localizedCaseInsensitiveContains(expectedReceipt),
             "the receipt must say handoff, never sent or delivered")
-        XCTAssertEqual(
-            NSPasteboard.general.string(forType: .string),
-            "email-skill-sentinel",
-            "email permission cannot be downgraded into clipboard permission")
         XCTAssertEqual(
             app.state,
             .runningForeground,
