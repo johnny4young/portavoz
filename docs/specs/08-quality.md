@@ -7930,6 +7930,12 @@ product build. Locale jobs wait for both prerequisites; an unselected controls
 job must be skipped, while a selected job must succeed. The final classifier
 checks both states again before the exact-head verification anchor can publish. Synthetic
 fixtures request no microphone, authentication or accessibility permission.
+The controls job archives qualification JSON, case logs, exit statuses and
+raw `.xcresult` bundles as one artifact once the controls have run. It excludes
+only the disposable fixture's generated project and DerivedData; an empty
+archive or failed upload fails that job, so locale lanes and the final gate
+cannot qualify. This avoids transporting thousands of tiny build files
+through the artifact API while preserving failure forensics.
 
 
 ### Bounded scroll evidence is separate from interruption controls
