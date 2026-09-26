@@ -152,7 +152,7 @@ failed owned cleanup, or later worker restart still invalidates the invocation;
 physical OS coverage and unexplained earlier failures remain separate.
 On Xcode 27, the original attempt to record an XCTest issue from the callback
 can synchronously reenter actor-isolated asynchronous teardown and deadlock.
-D550 removes that recording call, not the fail-closed outcome: the owned worker
+D553 removes that recording call, not the fail-closed outcome: the owned worker
 exits after a content-free stderr receipt, and the native validator still
 requires the exact failed test, cleanup and absence of continuation. Controlled
 local passing controls do not certify an unseen permission prompt or every

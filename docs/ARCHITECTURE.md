@@ -5531,12 +5531,6 @@ through the owned-cleanup interruption guard; shared application helpers return
 failure. Native negative controls exercise the real wrappers, while a tooling
 policy prevents raw keyboard dispatch elsewhere. These observations are not an
 atomic OS guarantee. Startup activation remains an explicit, separate operation.
-The guard does not call XCTest issue recording from its main-actor callback:
-that call can synchronously reenter asynchronous teardown and strand the worker
-before its nonreturning exit. It writes only a content-free refusal and cleanup
-receipt, then exits that worker. Native controls require one failed test,
-completed owned cleanup and no continued action; a restarted zero-test suite
-does not count.
 After startup activation, the main shell uses one bounded hittability proof;
 the window is not itself clicked, while every interactive control keeps its
 own stable or contained readiness boundary. Settings owns one stable General
