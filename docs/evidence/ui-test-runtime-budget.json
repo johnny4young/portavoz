@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 124
+    "expectedCaseCount": 125
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -65,6 +65,7 @@
     "MeetingDetailUITests/testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix()": 20.0,
     "MeetingDetailUITests/testAbandonedAutomaticSummarySaysSoBesideGeneration()": 20.0,
     "MeetingDetailUITests/testClipMarkingRevealsExport()": 20.0,
+    "MeetingDetailUITests/testCompactTranscriptCorrectionCanReachItsOwnAction()": 30.0,
     "MeetingDetailUITests/testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation()": 26.784,
     "MeetingDetailUITests/testCorrectedTranscriptMarksDerivedArtifactsStale()": 20.0,
     "MeetingDetailUITests/testDecisionCanBeConfirmedAboutATopic()": 20.0,

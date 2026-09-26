@@ -538,8 +538,9 @@ already prepared session and cannot resolve audio or storage. Architecture
 tests keep the root at 500 lines or fewer and reject model effects or broad
 composition dependencies in presentation children.
 
-The composed primary column lets generated material take the height its
-content needs, capped at half of the column (never below 180 points):
+Where both reading surfaces fit, the composed primary column lets generated
+material take the height its content needs, capped at half of the column
+(never below 180 points):
 `MeetingDetailArtifactsSection` measures its material (`onGeometryChange`)
 and takes exactly that height up to the cap, scrolling inside its own area
 only beyond it, so a short summary leaves the transcript most of the window
@@ -552,6 +553,20 @@ notes, or commitment review can therefore scroll without collapsing their own
 controls, covering transcript corrections, or allowing the player to intercept
 transcript input.
 
+`MeetingDetailPrimaryColumn` measures the docked player's actual height. When
+180 points of generated material, 160 points of transcript, the player, and
+their spacing cannot fit together, it exposes distinct Summary and Transcript
+buttons instead of squeezing the transcript viewport to zero. Both panes
+render the existing material and commands, and the player remains docked.
+The root's existing evidence and playback navigation also owns the selected
+pane: a citation from Summary, an incoming scene seek, or a chapter seek
+reveals Transcript before focusing its row. No storage or route service owns
+this presentation-only choice.
+The regular taller layout is unchanged. Disposable XCUITest launches request
+620-point and minimum-content-height windows; AppKit may clamp the latter's
+outer frame above 560 points to accommodate the titlebar. The test asserts
+the actual frame and reaches the correction editor in both layouts.
+
 D231 adds the first correction adopter without reopening that composition
 boundary. Meeting Detail observes correction history and asks an ApplicationKit
 projection for the current-revision composed snapshot, falling back to accepted
@@ -561,9 +576,9 @@ persists independent lanes. Original evidence and append-only history remain
 available, durable Undo restores each active lane, structural rows fail closed
 with guidance, and every control has keyboard and accessibility reachability.
 At that decision boundary, search, summaries, exports, and generated evidence
-remained accepted-only. The
-reviewed boundary now covers 371 signals across twelve owners and 27 UI
-journeys. D232 keeps structural policy in ApplicationKit: the focused surface
+remained accepted-only. The reviewed boundary at that stage covered 371
+signals across twelve owners and 27 UI journeys. D232 keeps structural policy
+in ApplicationKit: the focused surface
 offers only validated explicit merge neighbors, split inputs and timing, and
 recoverable hide-as-noise. Hidden accepted evidence remains reachable after the
 composed row disappears, and restore appends history rather than deleting it.
@@ -3137,11 +3152,11 @@ and delayed summary revision 2, then retains the
 the scoped summary stream remains functional at scale; it does not substitute
 for the unavailable SwiftUI update-cause lane.
 
-The characterization baseline freezes the complete surface before decomposition. The generated
-`meeting-detail-interaction-contract.json` snapshots 262 state/control/
-presentation/keyboard/identifier/navigation signals across twenty reviewed
-detail files and assigns all 23 `MeetingDetailUITests` journeys to exactly one
-of ten feature owners. Screenshot names are derived from their test bodies;
+The characterization baseline freezes the reviewed interaction surface. The
+current generated `meeting-detail-interaction-contract.json` snapshots 486
+state/control/presentation/keyboard/identifier/navigation signals across forty
+reviewed detail files and assigns all 31 `MeetingDetailUITests` journeys to
+exactly one of sixteen feature owners. Screenshot names derive from test bodies;
 changing a control, route, owner, screenshot, or reviewed evidence digest
 requires an explicit snapshot update.
 

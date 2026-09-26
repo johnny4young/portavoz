@@ -21,6 +21,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 24, 2026
 
+- **📖 Meeting details fit compact windows** — switch between the full transcript and meeting notes without losing the playback controls or transcript corrections.
+
 - **🌐 Clearer dictation language hints** — your dictation language now reaches the live decoder, with a plain note on why Spanish and English can still mix.
 
 ## September 22, 2026

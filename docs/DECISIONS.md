@@ -20279,3 +20279,33 @@ assembly and human-authored expected text. Synthetic burst timings and digests
 are projection evidence, not ASR or native latency. Meeting-consumer revision
 risks remain explicit in GAPS; decoder word loss/replay and window evaluations
 are not resolved by this change.
+
+## D549 — Compact Meeting Detail preserves two usable reading surfaces
+
+**Context:** a real-app 620-point disposable window had 180 points of generated
+material above a 166-point player. The transcript section received 27 points,
+of which its scroll viewport had one point. Its correction action was absent
+from the accessibility tree; changing wheel deltas could not reach it. An
+earlier attachment-time compact fixture had also been overwritten by native
+window restoration, so source-only layout tests were insufficient.
+
+**Decision:** `MeetingDetailPrimaryColumn` measures the player dock and keeps
+the existing simultaneous layout only when the column can reserve 180 points
+for generated material and 160 for transcript reading, plus player and spacing.
+Below that boundary, Summary and Transcript become explicit, identified panes;
+the player remains docked and both panes reuse the existing content/actions.
+The Meeting Detail root owns pane selection beside its existing playback
+navigation: evidence citations, pending scene seeks, and chapter seeks select
+Transcript before targeting a row. This keeps a citation in Summary from
+seeking into an unmounted transcript. UI journeys explicitly select Summary
+when their host window uses the compact layout instead of assuming both
+regions always render together.
+The normal window keeps its content-measured artifact section. Disposable
+620-point and minimum-size fixtures use the post-restoration window owner and
+assert the actual AppKit frame rather than the requested height.
+
+**Consequences:** the real correction action and summary remain reachable in
+small windows without a scroll multiplier or a second data projection. The
+minimum 560-point content frame may produce a 612-point outer NSWindow because
+of native chrome. Native policy tests and the bilingual real-app journey guard
+that distinction; ordinary-window and full-catalog evidence remain separate.

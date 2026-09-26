@@ -59,14 +59,18 @@ does not relax the full-suite or p95 limits.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 123 UI cases, including portable-settings,
-shortcut-recovery, and the real dictation-panel journey. The one native
-dictation-receiver test is discovered and kept outside this catalog because
-its app process needs a user-granted Accessibility TCC decision. Its explicit
+The unattended catalog contains 125 UI cases, including portable-settings,
+shortcut-recovery, the real dictation-panel journey, and the compact Meeting
+Detail correction journey. The compact journey checks the actual post-restoration
+AppKit frame at two short heights, opens both reading panes, retains the player,
+and reaches the existing correction editor. Its per-case budget is 30 seconds;
+the existing per-case, p95, and full-suite budgets remain unchanged. A citation
+journey proves that an action returns from Summary to Transcript. The one native
+dictation-receiver test is discovered and kept outside this catalog because its
+app process needs a user-granted Accessibility TCC decision. Its explicit
 `make test-ui-native-dictation` lane still runs the real XCUITest and fails
 closed without that grant. The unattended suite neither skips a failure into
-success nor qualifies cross-process insertion; its existing time budgets remain
-unchanged.
+success nor qualifies cross-process insertion.
 Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -7892,10 +7896,11 @@ The shared `UITestSupport.swift` owns the existing geometry-based bounded scroll
 helper; no measured response or pending-input accumulator is active. The
 structural-correction journey uses ordinary disposable window placement, retains
 all split/merge/hide/restore effects and stops before activation if reveal fails.
-The forced compact-window argument and calibration fixture were unqualified
-experiments, not released behavior. Their withdrawal does not establish compact
-reachability: the retained compact failure and combined dropped/amplified native
-counterexample remain open in GAPS. Native interruption controls and the
+The earlier attachment-time forced compact-window argument and wheel-calibration
+fixture were unqualified experiments and withdrawn. The accepted fixture instead
+sets its frame after native restoration and asserts the actual AppKit result;
+its focused correction journey reaches the real editor in both locales. The
+combined dropped/amplified native counterexample remains open in GAPS. Native interruption controls and the
 full real-app catalog remain separate mandatory gates, with unchanged runtime
 budgets and no retries that relabel failures. See D533.
 

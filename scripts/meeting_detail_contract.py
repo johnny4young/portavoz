@@ -39,6 +39,7 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
     "Sources/portavoz-app/MeetingDetailNotesSection.swift",
     "Sources/portavoz-app/MeetingDetailPlaybackNavigation.swift",
+    "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift",
     "Sources/portavoz-app/MeetingDetailPlayerSection.swift",
     "Sources/portavoz-app/MeetingDetailRailSection.swift",
     "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift",
@@ -119,6 +120,22 @@ EVIDENCE_KEYS = {"path", "sha256"}
 
 
 DEFAULT_FEATURE_OWNERSHIP = (
+    {
+        "feature": "compact-detail",
+        "tests": [
+            "testCompactTranscriptCorrectionCanReachItsOwnAction",
+        ],
+        "sourceAnchors": [
+            {
+                "path": "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift",
+                "anchor": '"detail-compact-transcript"',
+            },
+            {
+                "path": "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift",
+                "anchor": '"detail-compact-summary"',
+            },
+        ],
+    },
     {
         "feature": "commitment-confirmation",
         "tests": [

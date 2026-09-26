@@ -291,6 +291,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "meeting-correction": (
         test_id(
             "MeetingDetailUITests",
+            "testCompactTranscriptCorrectionCanReachItsOwnAction",
+        ),
+        test_id(
+            "MeetingDetailUITests",
             "testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo",
         ),
         test_id(
@@ -756,6 +760,8 @@ def app_features(filename: str) -> set[str]:
         "transcriptcorrection", "transcriptstructuralcorrection"
     )):
         return {"meeting-correction"}
+    if lowered == "meetingdetailprimarycolumn.swift":
+        return {"meeting-audio", "meeting-correction", "meeting-summary"}
     if any(token in lowered for token in ("insight",)):
         return {"insights"}
     if any(token in lowered for token in ("onboarding", "firstrun", "firstlisten")):

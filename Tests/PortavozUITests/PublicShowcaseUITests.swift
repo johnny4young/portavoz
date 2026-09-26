@@ -26,6 +26,7 @@ final class PublicShowcaseUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.buttons["detail-title-suggestion-dismiss"]
                 .waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
         XCTAssertTrue(
             app.buttons["detail-recipe-suggestion-dismiss"]
                 .waitForExistenceFast(timeout: 10))

@@ -3180,6 +3180,16 @@ storage, model, or provider capabilities. Architecture tests cap the root at
 500 lines and reject model effects or broad composition dependencies in these
 presentation children.
 
+`MeetingDetailPrimaryColumn` owns only vertical presentation allocation. It
+observes the actual player-dock height and keeps the established simultaneous
+summary/transcript layout where both retain useful reading space. In a shorter
+window it offers explicit Summary and Transcript panes while retaining the
+same docked player and the existing content/actions. This avoids placing
+window-size policy in the route model or a transcript scroll helper. The
+Meeting Detail root owns only the selected reading pane so its existing
+evidence/seek navigation can reveal a transcript target from Summary. The
+primary column still owns the measured layout, not the navigation effect.
+
 Transcript correction follows the same modal boundary. The flow captures the
 editor context, structural context, accepted reading, and revision as one
 immutable target before activating its typed route. The host never reconstructs
@@ -5736,16 +5746,16 @@ view attachment. Main-window geometry is re-established on every appearance,
 including external routes; no delay, repeated timer, or app-wide window lookup
 participates. The primary scene owns its capture outside successful content,
 so database recovery receives the same placement when no application services
-could be loaded. The
-Settings bridge's separate weak reference remains current at attachment for
-receipt navigation.
+could be loaded. The Settings bridge's separate weak reference remains current
+at attachment for receipt navigation.
 The harness asserts that the Settings navigation anchor has nonnegative global
 coordinates before any journey continues. Production launches never enter this boundary and retain
-SwiftUI's saved window placement. No forced compact-main-window mode or
-measured wheel-response calibration is active. The ordinary bounded UI-test
-scroll helper remains separate from interruption containment; compact-window
-reachability is an unresolved quality limitation, not qualification implied by
-the normal-window catalog.
+SwiftUI's saved window placement. Explicit disposable-only fixtures force two
+compact main-window heights after native restoration; no measured
+wheel-response calibration is active. The ordinary bounded UI-test scroll
+helper remains separate from interruption containment. The compact correction
+journey qualifies its tested layouts, not combined dropped/amplified wheel
+delivery or physical macOS configurations.
 
 The UI runner owns atomically allocated, mode-0700 scratch under one dedicated
 system-temporary base, rather than handing its protected app-container paths

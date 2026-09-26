@@ -224,4 +224,7 @@ final class AutomationUITests: PortavozUITestCase {
             "the disposable entity catalog must exist before route assertions")
         return app
     }
+
+
+
 }
