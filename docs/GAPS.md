@@ -30,11 +30,10 @@ posting are not an atomic editor transaction: `.inserted` still denotes
 dispatched events rather than a verified external edit. These remaining failures
 and evidence boundaries prevent broad reliability claims. Recovery is RAM-only;
 quitting does not preserve the output. Clipboard snapshot size/materialization
-remains an independent limitation. A local real-app recovery journey has also
-intermittently observed a synthesized first click on Discard or Cancel without
-the panel closing. The action-routing cause has not been isolated; a green
-rerun does not qualify one-click recovery, and neither a cancel role nor a
-root first-mouse hosting override was retained as a speculative fix. Model
+remains an independent limitation. The local real-app recovery first-click
+miss was traced to the disposable menu fixture covering the panel after app
+activation and is covered by an explicit activation-and-hit-target journey;
+that harness fix does not qualify native delivery. Model
 quality, Bluetooth transitions and the external-editor
 matrix require separate evidence; a synthetic caption fixture cannot establish
 those results. Missing Accessibility permission makes the separately selected

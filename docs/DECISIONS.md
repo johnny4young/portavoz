@@ -20297,11 +20297,19 @@ click with deletion semantics. One height authority preserves the panel's frame;
 the existing Refine-discard pattern and Apple's [cancel role contract](https://developer.apple.com/documentation/swiftui/buttonrole/cancel)
 match abandoning this pending operation, including its loss of progress. The
 single-click and geometry assertions remain in the journeys. Main-branch
-integration exposed an intermittent first-click miss in local XCUITest despite
-the earlier pass; a cancel role or root hosting-view first-mouse override did
-not establish a repeatable fix and neither is retained as a claimed remedy.
-No global focus or first-click override is introduced. Post-event focus races
-and durable recovery are not claimed solved by this change.
+integration exposed an intermittent first-click miss in local XCUITest. The
+failing screenshot and AX tree showed that the panel still existed, but
+XCTest's implicit app activation had raised the full-height disposable menu
+window across its bottom-anchored actions. Keep both test windows at the
+accepted status-bar level and bound only that temporary menu fixture to at
+most 560 points at the top of the visible screen. Raising the panel instead
+made XCTest treat it as a modal interruption. The existing cancel role conveys
+the intended abandonment semantics but did not fix this overlap; a first-mouse
+hosting-view override was tested and not retained.
+A real-app journey now activates the app before requiring Discard to be
+hittable and close the panel with one click. Production menu and panel placement,
+interruption handling, and global focus policy are unchanged. Post-event
+focus races and durable recovery are not claimed solved.
 
 ---
 

@@ -116,7 +116,12 @@ final class DictationUITests: PortavozUITestCase {
         XCTAssertEqual(renderedText(of: text), original)
         XCTAssertEqual(app.dialogs["dictation-panel"].frame, originalFrame,
                        "Revealing retained text must not move a self-sizing panel")
-        app.buttons["dictation-recovery-discard"].click()
+        app.activate()
+        let discard = app.buttons["dictation-recovery-discard"]
+        guard discard.isHittable else {
+            return XCTFail("Activating the disposable menu window must not occlude recovery")
+        }
+        discard.click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { !app.dialogs["dictation-panel"].exists },
                       "Discard must close the whole panel before another global trigger")
         XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))

@@ -270,12 +270,17 @@ semantics match the pending operation without a double-click or focus override.
 The native receiver remains a separate permission-dependent journey.
 
 The disposable main-window menu host aligns the exact production menu content
-to the top, matching the real menu-bar surface rather than centering it behind
-the bottom-anchored recovery panel. The recovery-trigger journey checks that
-the panel and Dictate button do not overlap before clicking. Stable AX frames
-alone do not prove that a floating panel leaves a control reachable. An overlap
-fails as a layout assertion; unexpected-interruption handling is unchanged and
-never dismisses the recovery panel to make the trigger reachable.
+to the top and bounds its window to at most 560 points of the visible screen.
+The earlier full-height fixture could cover the bottom-anchored recovery panel
+after XCTest activated the app: the panel remained in AX, but its action's
+screen point belonged to the main window. The recovery-trigger journey checks
+that the panel and Dictate button do not overlap, explicitly activates the app,
+then requires Discard to be hittable and to close the whole panel on one click.
+Native frame-policy tests cover normal full-height windows and short/offset
+screens. Unexpected-interruption handling is unchanged and never dismisses the
+recovery panel to make the trigger reachable. The four dictation journeys passed
+4/4 EN and 4/4 ES locally from one build with zero harness adjustments; this
+does not qualify the separate TCC-owned native receiver or the full UI catalog.
 
 Each dictation journey has an individual 20-second budget; existing per-test,
 full-suite duration and p95 budgets are unchanged. Source/harness changes still

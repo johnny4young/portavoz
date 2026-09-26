@@ -2609,9 +2609,12 @@ outside that composition; without an explicit fixture temporary dictation refuse
 admission. The menu-bar Dictate action and panel expose stable identifiers for
 restart/cancellation journeys. This is not a change to the production trigger,
 recognition or capture-loss policies. Destination recovery is specified below.
-The disposable main-window menu fixture is top-aligned, as the real menu is,
-so its trigger remains separate from the bottom-anchored recovery panel even
-on a compact display. The production menu and panel placement are unchanged.
+The disposable main-window menu fixture is top-aligned and at most 560 points
+high, as the real menu is compact. Its trigger and window remain separate from
+the bottom-anchored recovery panel after XCTest activates the app on the tested
+display. The frame policy is bounded to available height on shorter screens;
+actual compact-display window constraints remain a separate UI validation.
+Production menu and panel placement are unchanged.
 
 **Incremental transcript projection (D545).** The actual stream consumer retains
 closed text instead of mapping and joining the entire caption history for each
