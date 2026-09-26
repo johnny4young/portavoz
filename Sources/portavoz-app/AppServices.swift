@@ -165,7 +165,8 @@ final class AppServices {
     @ObservationIgnored var liveSpeechRuntimeLoad: LiveSpeechRuntimeLoad?
     var diarizationRuntime: PyannoteDiarizationRuntime?
     @ObservationIgnored var diarizationRuntimeLoad: DiarizationRuntimeLoad?
-    var enginesIdleGeneration = 0
+    @ObservationIgnored let modelMemoryPreferences: AppModelMemoryPreferences
+    @ObservationIgnored let modelIdleReleaseScheduler: AppModelIdleReleaseScheduler
     var whisper: WhisperEngine?
     var whisperVariantID: String?
     @ObservationIgnored var whisperRuntimeLoad: WhisperRuntimeLoad?
@@ -174,14 +175,12 @@ final class AppServices {
     @ObservationIgnored var whisperPreparation: WhisperPreparation?
     @ObservationIgnored var whisperBackgroundPreparation: Task<Void, Never>?
     @ObservationIgnored var whisperProgressObservers: [UUID: WhisperPreparationObserver] = [:]
-    var whisperIdleGeneration = 0
     private(set) var mlxDownloaded = false
     /// IntelligenceKit owns container mechanics; composition owns the one
     /// process runtime and every residency transition around it.
     @ObservationIgnored let mlxSummaryRuntime = MLXSummaryRuntime()
     @ObservationIgnored var mlxRuntimeLoad: MLXRuntimeLoad?
     var mlxRuntimeDirectoryKey: String?
-    var mlxIdleGeneration = 0
 
     /// Process-scoped, coalescing reconciliation for the protected local
     /// Spotlight index. It is deliberately not owned by a SwiftUI window.
@@ -261,13 +260,17 @@ final class AppServices {
         arguments: [String] = ProcessInfo.processInfo.arguments,
         environment: [String: String] = ProcessInfo.processInfo.environment,
         storagePolicy: AppStorageIsolationPolicy? = nil,
-        defaults: UserDefaults = .standard
+        defaults: UserDefaults = .standard,
+        modelMemoryPreferences: AppModelMemoryPreferences? = nil,
+        modelIdleReleaseScheduler: AppModelIdleReleaseScheduler = .init()
     ) throws {
         let storagePolicy = Self.prepareStoragePolicy(
             arguments: arguments,
             environment: environment,
             override: storagePolicy,
             defaults: defaults)
+        self.modelMemoryPreferences = modelMemoryPreferences ?? AppModelMemoryPreferences(defaults: defaults)
+        self.modelIdleReleaseScheduler = modelIdleReleaseScheduler
         recording = RecordingController(defaults: defaults)
         let usesTemporaryStore = storagePolicy.usesTemporaryMeetingStore
         usesTemporaryMeetingStore = usesTemporaryStore
@@ -475,34 +478,6 @@ final class AppServices {
             return
         }
         memoryGraphProjectionSupervisor.kick()
-    }
-
-    /// Drops idle speech-model weights. In-flight preparation owns its result
-    /// until the workflow schedules a later release.
-    func releaseRecordingEngines() {
-        _ = releaseLiveSpeechRuntime()
-        _ = releaseDiarizationRuntime()
-        modelsState = .unknown
-    }
-
-    /// Keeps speech models hot for back-to-back work, then frees their memory.
-    func scheduleRecordingEnginesRelease() {
-        enginesIdleGeneration += 1
-        let generation = enginesIdleGeneration
-        Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(600))
-            guard let self, generation == self.enginesIdleGeneration else { return }
-            guard !self.refines.isRunning else { return }
-            self.releaseRecordingEngines()
-        }
-    }
-
-    func settleModelsState() {
-        if transcriber != nil, diarizationRuntime != nil {
-            modelsState = .ready
-        } else if liveSpeechRuntimeLoad == nil, diarizationRuntimeLoad == nil {
-            modelsState = .unknown
-        }
     }
 
     // MARK: - Summary engine (D25/M12)

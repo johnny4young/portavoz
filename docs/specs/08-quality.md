@@ -8006,3 +8006,31 @@ preserve format-2 compatibility and reject unknown/private keys, wrong types,
 nonfinite or overflowing counters and duplicate ownership before publication.
 The existing redacted-support XCUITest also inspects host JSON and its disclosure;
 synthetic unit cases do not establish physical Sequoia/Tahoe or benchmark timing.
+
+### Model-memory profile evidence boundaries (D526)
+
+`ModelIdleReleaseTests` exercises actual AppServices scheduling with controllable
+clocks: default durations, 500-completion bursts, replaced/canceled callbacks,
+clock failure, preference rescheduling, released service lifetime, and refused
+release during preparation. `ModelMemoryGuidanceTests` enters the actual local
+provider probe through application discovery and includes unknown/8-GiB
+boundaries, maximum unsigned bytes, corrupt preferences, and temporary-store
+isolation. A reconstruction test calls the actual AppServices profile action for
+both choices from valid and corrupt defaults, then constructs an independent
+service/defaults reader and verifies persistence and untouched engine choices.
+The Settings category journey verifies the real toggle in both directions and
+its localized explanation, restoring the previous choice. It does not repeat
+preference permutations or extra pane transitions already covered below the UI;
+the normal category navigation and real control assertions remain.
+
+`PORTAVOZ_MODEL_RESIDENCY_TESTS=1` admits a separate installed-Parakeet test.
+It verifies pinned files, loads without download or audio, claims two real
+resident leases through AppServices, proves release is refused with either
+owner active, then checks final unload and unchanged verified files. Default
+runs explicitly skip this lane. No transcript, model-quality result, RAM budget,
+or low-memory hardware qualification is inferred from this lifetime test.
+
+Model-memory scheduling and released-service tests call the AppServices methods
+regardless of their composition-file split; this split does not change deadlines
+or lease ownership.
+A failed profile-control reveal ends its UI journey before any further input.

@@ -3260,8 +3260,8 @@ application-owned idle-release hook. They never re-read mutable
 `AppServices.whisper` after an asynchronous boundary, so changing the selected
 variant cannot replace an in-flight engine and an actively leased variant
 cannot be deleted or released. Verified files remain a separate asset
-lifecycle, and the existing 120-second idle fence remains unchanged until
-accepted residency evidence defines a replacement.
+lifecycle. The balanced profile retains the 120-second idle deadline; explicit
+lightweight mode uses the same lease-protected release without that delay.
 
 MLX is the second fully integrated residency family. Every manual, imported,
 and durable MLX provider receives an injected runtime client instead of
@@ -3272,7 +3272,7 @@ token in one MainActor continuation, and holds the token across
 single-flight inference; residency does not introduce another queue.
 
 On every success, failure, or cancellation the client ends the exact use token
-before arming the unchanged 120-second idle fence. Release drops the concrete
+before arming the profile-controlled deadline (balanced: 120 seconds). Release drops the concrete
 container before confirming the matching ledger generation. Settings cannot
 remove verified MLX assets while a load or generation is active. The isolated
 `--mlx-smoke` runner constructs its own runtime explicitly and keeps
@@ -3290,9 +3290,11 @@ captions to the closed session.
 
 Dictation, durable post-capture transcription, onboarding readiness, and the
 recording resource benchmark also hold explicit leases for their complete
-operations. Runtime release remains behind the existing 600-second generation
-fence, but the ledger now rejects that release while any live or batch consumer
-is active. Verified assets remain independent, and no model wait or residency
+operations. The balanced profile retains the 600-second idle deadline; explicit
+lightweight mode releases idle weights promptly. The app-owned
+`AppServices+ModelMemory.swift` extension coordinates these idle-release requests;
+runtime adapters retain lease authority. The ledger rejects either
+release while any live or batch consumer is active. Verified assets remain independent, and no model wait or residency
 transition enters the audio writer callback.
 
 Diarization is the fourth fully integrated residency family. AppServices
@@ -3304,8 +3306,19 @@ stateful speaker database cannot cross an operation boundary. The current
 encrypted voiceprint is sampled into that fresh session rather than cached in
 the weights; durable post-capture work carries its fingerprinted sample through
 execution instead of re-reading mutable identity. Cancellation after shared
-loading releases the newly claimed token, and the existing 600-second fence can
-detach the model pair only when all sessions have ended.
+loading releases the newly claimed token. The profile-controlled deadline
+(balanced: 600 seconds) can detach the model pair only when all sessions have ended.
+
+`AppModelIdleReleaseScheduler` coalesces one cancellable task for each existing
+recording, quality-speech, and language-model release group. Acquisition cancels
+the matching deadline; cancellation and identity are checked before sleeping and
+before release, and a superseded task cannot remove its successor. The scheduler
+is not a model owner: existing adapters and ledger leases still arbitrate release.
+Failed release does not erase in-flight speech preparation status. Settings sends
+explicit profile changes to AppServices, which persists and reschedules all three
+groups. RAM guidance is a shared app-local binary-capacity value, not a governor
+tier or measured footprint. No model selection, download, or admission policy
+changes implicitly.
 
 Semantic embedding is the fifth fully integrated residency family.
 `AppSemanticEmbeddingRuntime` is one process-owned actor shared by Library,

@@ -645,3 +645,12 @@ order, whitespace and Unicode escaping must not create a preference change.
    requires an exact reviewed release, not a revision and not a minor range
    (D516); D539 admits 0.15.8 after matched call-site, DER, latency and memory
    evidence, while gap T35 records the rejected stock 0.16.1 package.
+
+### Idle retention is separate from engine identity (D526)
+
+The explicit app memory profile only schedules existing runtime releases. It
+cannot change a pinned Refine/Import descriptor, revoke a live-speech lease,
+remove verified model assets, or change ASR windows. The actual Whisper resolver
+accepts an injected defaults store for characterization; absent and malformed
+legacy compact preferences preserve their previous resolution without writes.
+Catalog RAM numbers are advisory host guidance, not measured engine footprints.

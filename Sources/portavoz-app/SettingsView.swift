@@ -107,6 +107,7 @@ struct SettingsView: View {
                     DictationSection()
                 case .intelligence:
                     summaryEngineSection
+                    ModelMemorySettingsSection(services: services)
                     transcriptionLanguageSection
                     summaryLanguageSection
                     companionSection
@@ -722,6 +723,7 @@ extension SettingsView {
                 WhisperModelRow(
                     variant: variant,
                     active: variant.compact == whisperCompact,
+                    belowCatalogRAM: services.modelMemoryPreferences.capacity.isBelowCatalogRAM(variant.minimumRAMGB),
                     preparationState: services.whisperPreparationState,
                     select: { whisperCompact = variant.compact },
                     download: { services.prepareWhisperVariant(variant.id) },

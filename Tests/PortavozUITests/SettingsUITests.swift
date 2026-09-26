@@ -89,6 +89,30 @@ final class SettingsUITests: PortavozUITestCase {
             "settings-category-intelligence",
             revealing: "settings-summary-engine-picker",
             in: app)
+        let lightweight = app.control(withIdentifier: "settings-model-memory-lightweight")
+        XCTAssertTrue(lightweight.waitForExistenceFast(timeout: 5))
+        let memoryWindow = app.windows.containing(.any, identifier: "settings-model-memory-lightweight").firstMatch
+        let memoryForm = memoryWindow.scrollViews.element(boundBy: 1)
+        guard lightweight.revealVertically(in: memoryForm, maximumStep: 240) else {
+            XCTFail("The memory-profile control must be reachable before continuing")
+            return
+        }
+        let wasLightweight = Self.isOn(lightweight)
+        lightweight.click()
+        XCTAssertEqual(Self.isOn(lightweight), !wasLightweight)
+        let memoryHelp = app.staticTexts["settings-model-memory-help"]
+        XCTAssertTrue(memoryHelp.exists)
+        let memoryCopy = (memoryHelp.value as? String) ?? memoryHelp.label
+        XCTAssertTrue(memoryCopy.contains(UITestLocale.environmentLocale == "es"
+            ? "Los modelos en uso" : "Models in use"))
+        XCTAssertTrue(app.staticTexts["settings-model-memory-recommendation"].exists)
+        lightweight.click()
+        XCTAssertEqual(Self.isOn(lightweight), wasLightweight)
+        guard memoryHelp.revealVertically(in: memoryForm, maximumStep: 240) else {
+            XCTFail("The memory-profile control must be reachable before continuing")
+            return
+        }
+        attachScreenshot(of: app, named: "model-memory-profile")
         XCTAssertTrue(app.textFields["settings-search-field"].exists)
         XCTAssertTrue(app.buttons["settings-category-intelligence"].isSelected)
         XCTAssertFalse(app.buttons["settings-category-general"].isSelected)

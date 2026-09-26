@@ -29,7 +29,7 @@ extension AppServices {
     func acquireLiveSpeechRuntime(
         workloadClass: ResourceWorkloadClass = .liveInteractive
     ) async throws -> LiveSpeechRuntimeLease {
-        enginesIdleGeneration += 1
+        modelIdleReleaseScheduler.cancel(.recording)
         if let runtime = try residentLiveSpeechRuntime() {
             return try checkedLiveSpeechRuntime(runtime)
         }
@@ -73,7 +73,7 @@ extension AppServices {
     /// Claims a hot runtime without starting model preparation. Recording
     /// preparation uses this synchronous path so capture can remain audio-first.
     func acquireResidentLiveSpeechRuntime() throws -> LiveSpeechRuntimeLease? {
-        enginesIdleGeneration += 1
+        modelIdleReleaseScheduler.cancel(.recording)
         guard let runtime = try residentLiveSpeechRuntime() else { return nil }
         return try checkedLiveSpeechRuntime(runtime)
     }

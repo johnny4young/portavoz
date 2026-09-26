@@ -752,8 +752,8 @@ AppServices detaches the concrete reference, and the exact ticket confirms the
 unloaded state. A rejected confirmation restores the retained engine and
 cancels the release transition. Model files are never deleted by runtime
 release, and no download, verification sweep, timer, or wait enters an audio
-callback. The 120-second delay is deliberately unchanged pending accepted
-per-family evidence.
+callback. The balanced profile retains the 120-second delay; explicit lightweight mode
+uses the same lease-protected release without waiting (D526).
 
 ### MLX residency adapter (D161)
 
@@ -776,8 +776,8 @@ Release begins only for an idle resident family, drops the concrete container,
 then confirms the exact ledger ticket. Settings refuses verified model removal
 during load or active generation. Runtime release never removes verified files,
 and asset preparation remains outside generation and every audio callback. The
-120-second delay and unknown measured footprint remain unchanged until accepted
-per-family evidence defines replacements.
+balanced 120-second delay and unknown measured footprint remain unchanged.
+Explicit lightweight mode changes idle retention, not measured footprint (D526).
 
 ### Live-speech residency adapter (D162)
 
@@ -803,8 +803,8 @@ preloads through a short lease outside its metric window, then acquires a fresh
 lease for measured batch work. Onboarding intentionally borrows both live
 families and ends the Parakeet token after readiness resolves. Concrete release
 is two-phase and restores the runtime if ledger confirmation fails. The
-existing 600-second generation fence remains unchanged, but it can no longer
-drop Parakeet while any production borrower is active.
+balanced 600-second deadline remains; explicit lightweight mode releases idle
+weights sooner but cannot drop Parakeet while any production borrower is active (D526).
 
 ### Diarization residency adapter (D164)
 
@@ -831,8 +831,8 @@ AppServices detaches the reusable model pair, confirms the exact ledger
 generation, and restores the retained value if confirmation fails. Verified
 assets remain installed, degradable diarization still produces honest
 unattributed transcript, live hints remain optional, and no model operation
-enters an audio callback. The shared 600-second fence is deliberately
-unchanged pending accepted per-family evidence.
+enters an audio callback. The balanced profile retains the shared 600-second
+deadline; explicit lightweight mode still waits for every active lease (D526).
 
 ### Semantic embedding residency adapter (D165)
 
@@ -3988,3 +3988,30 @@ releases generation, then verifies the final answer and persisted citation.
 This changes only temporary-store fixture composition, not production latency.
 The handshake uses the launch-owned temporary directory and retains cancellation,
 cleanup and the original deadlines. No assertion or runtime budget is removed.
+
+### Explicit model-memory profile (D526)
+
+Intelligence Settings offers an identified Lightweight model memory toggle
+immediately after model selection, before language and assist settings.
+Balanced remains the default for both new and existing installations; missing or
+invalid values resolve without rewriting model choices. A change persists
+`modelMemoryProfile` and reschedules the recording (Parakeet/diarization), quality
+(Whisper), and language (built-in MLX) groups. Lightweight removes idle retention,
+not active-use protection. It neither deletes downloads nor switches engines,
+summary providers, compact/Turbo selection, or governor admission tiers. Semantic
+embedding, external providers, and OS-managed models keep their own lifecycles.
+
+Balanced keeps speech for ten minutes and Whisper/MLX for two minutes. There is
+one cancellable pending deadline per group; replacement cancels the old task,
+including before it registers a clock wait. Active preparation retains its
+readiness status when release is refused. The next use after release may pay
+model-loading latency, so the UI does not promise a RAM ceiling or universal
+speed improvement.
+
+`AppModelMemoryCapacity` converts physical bytes to whole binary GiB for provider
+discovery and compares exact bytes for the at-most-8-GiB lightweight suggestion.
+Zero means unknown. Catalog RAM guidance is displayed for Whisper variants;
+below-guidance Macs receive advice, not an admission ban. Both variant choices
+remain available. Compact is still a disk-saving option: there is no measured
+RAM advantage that would justify silently choosing it for an existing or new
+installation. A profile choice never starts a model download.
