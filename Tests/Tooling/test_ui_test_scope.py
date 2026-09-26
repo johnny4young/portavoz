@@ -31,7 +31,6 @@ class UITestScopeTests(unittest.TestCase):
             "Sources/ApplicationKit/PortableSettings.swift",
             "Sources/ApplicationKit/PortableSettingsTransfer.swift",
             "Sources/portavoz-app/AppPortableSettingsStore.swift",
-            "Sources/portavoz-app/AppServices+SettingsTransfer.swift",
             "Sources/portavoz-app/PortableSettingsFile.swift",
             "Sources/portavoz-app/SettingsTransferModel.swift",
             "Sources/portavoz-app/SettingsTransferSection.swift",
@@ -793,6 +792,16 @@ class UITestScopeTests(unittest.TestCase):
             expected = tuple(test for test in ALL_TESTS if test in FEATURE_TESTS["dictation"])
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
+
+    def test_shared_microphone_preference_reaches_dictation_recording_and_settings(self):
+        selection = select_paths(["Sources/portavoz-app/MicrophoneInputSelection.swift"])
+        expected = set().union(*(FEATURE_TESTS[feature] for feature in (
+            "dictation", "recording-recovery", "settings-audio")))
+        self.assertEqual(set(selection.tests), expected)
+
+    def test_settings_application_keeps_preparing_dictation_in_scope(self):
+        selection = select_paths(["Sources/portavoz-app/AppServices+SettingsTransfer.swift"])
+        self.assertEqual(set(selection.tests), set(FEATURE_TESTS["settings-transfer"] + FEATURE_TESTS["dictation"]))
 
     def test_dictation_receiver_changes_keep_the_panel_journey_in_scope(self):
         selection = select_paths(["Tests/PortavozDictationReceiver/DictationReceiver.swift"])

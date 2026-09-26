@@ -18,7 +18,7 @@ extension AppServices: SettingsTransferClient {
         case .idle, .done, .failed: false
         }
         return try portableSettingsStore.apply(
-            review, captureActive: recordingBusy || dictation.phase == .listening)
+            review, captureActive: recordingBusy || dictation.isActive)
     }
 
     func selectSettingsFile(_ operation: SettingsTransferFileOperation) -> URL? {

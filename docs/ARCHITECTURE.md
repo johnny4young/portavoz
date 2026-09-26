@@ -110,6 +110,15 @@ dependencies are limited to three declared edges: `TranscriptionKit` and
 IntelligenceKit values for issue-export formatting. `AudioPlaybackKit` is
 self-contained over system frameworks and carries no module dependency.
 
+The app composition shares microphone permission and preferred-input selection
+between meeting capture and global dictation. Dictation's session-scoped
+`DictationMicrophoneReadiness` owns first-frame admission and the bounded input
+startup wait, not model residency or native teardown. The controller retains
+the runtime lease through cleanup and fences late callbacks by session identity;
+SwiftUI only renders preparation, fallback and failure states. Composition
+accepts the process-scoped controller as an initializer dependency so tests can
+exercise actual settings-write admission without opening a host window.
+
 ## Module responsibilities
 
 | Module | Implemented responsibility |

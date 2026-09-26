@@ -73,7 +73,7 @@ private struct DictationStripView: View {
                     .accessibilityIdentifier("dictation-panel-state")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                if let target = controller.targetApp, controller.phase == .listening {
+                if let target = controller.targetApp, controller.isActive {
                     targetChip(target)
                 }
                 Spacer()
@@ -91,8 +91,14 @@ private struct DictationStripView: View {
                 .accessibilityLabel(L10n.text("Cancel dictation"))
                 .accessibilityIdentifier("dictation-panel-cancel")
             }
+            if let notice = controller.microphoneNotice {
+                Text(notice)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("dictation-panel-microphone-notice")
+            }
             if controller.confirmedText.isEmpty && controller.partialText.isEmpty {
-                Text("Listening…")
+                Text(emptyCaptionHint)
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -176,8 +182,15 @@ private struct DictationStripView: View {
         return false
     }
 
+    private var emptyCaptionHint: String {
+        if isFailed { return "" }
+        return controller.phase == .preparing ? L10n.text("Preparing microphone…") : L10n.text("Listening…")
+    }
+
     private var title: String {
         switch controller.phase {
+        case .preparing:
+            return L10n.text("Preparing dictation…")
         case .listening:
             return L10n.text("Dictating")
         case .failed(let message):
