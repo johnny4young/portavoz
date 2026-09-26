@@ -27,6 +27,7 @@ class UIInterruptionEvidenceArchiveTests(unittest.TestCase):
             build.mkdir(parents=True)
             (build / "Disposable.app").write_text("not evidence")
             (evidence / "InterruptionProof.xcodeproj").mkdir()
+            (evidence / "control.ips").write_text("unexpected but retained")
             archive = root / "receipt.tar.gz"
 
             subprocess.run([str(ARCHIVER), str(evidence), str(archive)], check=True)
@@ -34,7 +35,7 @@ class UIInterruptionEvidenceArchiveTests(unittest.TestCase):
                 names = set(bundle.getnames())
                 self.assertEqual(
                     names,
-                    {"qualification.json", "control.log", "control.exit",
+                    {"qualification.json", "control.log", "control.exit", "control.ips",
                      "control.xcresult", "control.xcresult/Info.plist"},
                 )
                 self.assertEqual(

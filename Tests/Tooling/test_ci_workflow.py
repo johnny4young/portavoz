@@ -146,27 +146,6 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertIn("merge-multiple: true", gate_job)
         self.assertIn("needs.ui-test-gate.outputs.verified == 'true'", workflow)
 
-    def test_interruption_evidence_is_archived_without_fixture_build_products(self):
-        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
-            encoding="utf-8"
-        )
-        build_job = workflow.split("  build-ui-products:\n", 1)[1].split(
-            "\n  scoped-ui-tests:\n", 1
-        )[0]
-        upload = build_job.split(
-            "      - name: Upload interruption-control evidence\n", 1
-        )[1].split("\n      # One build feeds", 1)[0]
-
-        self.assertEqual(
-            build_job.count("scripts/archive-ui-interruption-evidence.sh"), 1
-        )
-        self.assertIn("$RUNNER_TEMP/ui-interruption-safety.tar.gz", build_job)
-        self.assertIn("path: ${{ runner.temp }}/ui-interruption-safety.tar.gz", upload)
-        self.assertNotIn("path: ${{ runner.temp }}/ui-interruption-safety\n", upload)
-        self.assertIn("if-no-files-found: error", upload)
-        self.assertIn("steps.interruption_archive.outcome == 'success'", upload)
-        self.assertNotIn("continue-on-error: true", upload)
-
     def test_repository_contracts_have_one_linux_owner_before_macos(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
@@ -244,6 +223,18 @@ class UIPrerequisiteTests(unittest.TestCase):
         self.assertEqual(build.count("run: make test-ui-build"), 1)
         self.assertIn("if: always()", native)
         self.assertIn("name: ui-interruption-safety-${{ github.run_id }}", native)
+
+    def test_interruption_evidence_is_archived_by_its_owning_job(self):
+        native = self.jobs["interruption-controls"]
+        self.assertNotIn("archive-ui-interruption-evidence", self.jobs["build-ui-products"])
+        self.assertEqual(native.count("scripts/archive-ui-interruption-evidence.sh"), 1)
+        self.assertIn("steps.interruption_controls.outcome != 'skipped'", native)
+        upload = native.split("      - name: Upload interruption-control evidence\n", 1)[1]
+        self.assertIn("path: ${{ runner.temp }}/ui-interruption-safety.tar.gz", upload)
+        self.assertNotIn("path: ${{ runner.temp }}/ui-interruption-safety\n", upload)
+        self.assertIn("if-no-files-found: error", upload)
+        self.assertIn("steps.interruption_archive.outcome == 'success'", upload)
+        self.assertNotIn("continue-on-error: true", upload)
 
     def test_locales_join_both_prerequisites_even_when_native_is_skipped(self):
         lane = self.jobs["scoped-ui-tests"]

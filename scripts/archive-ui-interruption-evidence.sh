@@ -11,15 +11,17 @@ source_directory="$(cd "$1" && pwd -P)"
 archive="$2"
 cd "$source_directory"
 shopt -s nullglob
-evidence=( *.log *.exit *.json *.xcresult )
+evidence=()
+for entry in *; do
+  [[ "$entry" == build || "$entry" == *.xcodeproj ]] || evidence+=( "$entry" )
+done
 if (( ${#evidence[@]} == 0 )); then
   echo "No interruption-control evidence to archive." >&2
   exit 2
 fi
 
-# Retain every case log, result bundle and qualification receipt, but not the
-# disposable fixture's DerivedData or generated project. Upload one archive
-# instead of tens of thousands of tiny build files.
+# Upload one archive of all evidence except the disposable fixture's DerivedData
+# and generated project, instead of tens of thousands of tiny build files.
 partial="${archive}.partial-$$"
 trap 'rm -f "$partial"' EXIT
 COPYFILE_DISABLE=1 tar -czf "$partial" -- "${evidence[@]}"

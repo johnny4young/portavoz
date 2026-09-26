@@ -101,11 +101,12 @@ jobs:
 
       # Independent hosted Mac: no shared WindowServer or product build state.
       - name: Verify interruption safety at the shared callback
+        id: interruption_controls
         run: make test-ui-interruption-safety UI_INTERRUPTION_RESULTS="$RUNNER_TEMP/ui-interruption-safety"
 
       - name: Preserve interruption-control evidence
         id: interruption_archive
-        if: always()
+        if: always() && steps.interruption_controls.outcome != 'skipped'
         run: |
           scripts/archive-ui-interruption-evidence.sh \
             "$RUNNER_TEMP/ui-interruption-safety" \

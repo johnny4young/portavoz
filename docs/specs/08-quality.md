@@ -7930,11 +7930,11 @@ product build. Locale jobs wait for both prerequisites; an unselected controls
 job must be skipped, while a selected job must succeed. The final classifier
 checks both states again before the exact-head verification anchor can publish. Synthetic
 fixtures request no microphone, authentication or accessibility permission.
-The hosted builder archives qualification JSON, case logs, exit statuses and
-raw `.xcresult` bundles as one artifact before the product build. It excludes
+The controls job archives qualification JSON, case logs, exit statuses and
+raw `.xcresult` bundles as one artifact once the controls have run. It excludes
 only the disposable fixture's generated project and DerivedData; an empty
-archive or failed upload blocks downstream qualification instead of creating
-a product receipt. This avoids transporting thousands of tiny build files
+archive or failed upload fails that job, so locale lanes and the final gate
+cannot qualify. This avoids transporting thousands of tiny build files
 through the artifact API while preserving failure forensics.
 
 
