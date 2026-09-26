@@ -20316,3 +20316,38 @@ validator must still observe exactly one failed, non-skipped case, the exact
 refusal category, complete owned cleanup, and no action or fallback effect.
 Timeouts and empty restarted suites remain failures. Real synchronous and
 asynchronous controls, not source-text assertions, qualify this boundary.
+
+---
+
+## D554 — Select Apple live speech without promoting provisional ranges
+
+**Context.** The macOS 26 SpeechAnalyzer spike accepts contextual vocabulary
+and emits low-latency volatile range replacements, but the serving caption
+coalescer accepts append-only deltas. Passing those replacements through it
+duplicates or falsifies meeting facts and dictation text. The OS adapter also
+labels system-audio results as microphone. On-device assets may be absent and
+the historical one-file English benchmark cannot justify a default switch.
+
+**Decision.** Keep Parakeet as the independent meeting and dictation default
+and the durable first-pass engine. Expose an explicit Apple option only for a
+fixed English/Spanish live route on macOS 26+. Settings checks installed
+equivalent locales without preparing them; a separate user action owns any
+Apple-hosted asset download and refuses admission when meeting capture is
+already active.
+Dictation resolves readiness before opening its microphone. Meeting capture
+stays audio-first, hot-attaches asynchronously, and retains durable recovery
+for uncovered or failed live audio. The app's range adapter forwards volatile
+results as transient previews but admits only monotonic finals to canonical
+captions, assistance, translation, storage, and paste. Unconfirmed stream end
+and overlapping final ranges fail closed. The recording attacher sets each
+result's channel from its captured feed rather than trusting an engine label.
+The analyzer feeder aborts on a nonempty chunk it cannot convert; skipping that
+chunk would make incomplete speech appear successfully transcribed.
+The transport marker is omitted from `TranscriptSegment` coding.
+
+**Validation boundary.** Bilingual synthetic controller and attacher tests,
+readiness/encoding tests, and disposable real-app Settings XCUITest qualify
+the routing and no-download contract. They do not qualify real Apple model
+accuracy, latency, memory, native permissions, hardware routes, or a default
+engine change. Those require a separately measured, installed-model corpus
+and physical-host evidence.

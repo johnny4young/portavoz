@@ -29,6 +29,9 @@ final class RecordingController {
     @ObservationIgnored private let processActivity = RecordingProcessActivity()
     private(set) var failureContext: RecordingFailureContext?
     private(set) var captions: [TranscriptSegment] = []
+    /// Apple Speech revisions are presentation only until finalized. They
+    /// cannot feed summaries, translation, assistance, or Stop persistence.
+    private(set) var speechVolatileByChannel: [AudioChannel: TranscriptSegment] = [:]
     private(set) var startedAt = Date()
     /// Rolling on-device summary, refreshed from evidence at a ≥40 s cadence.
     private(set) var liveSummary: String?
@@ -321,6 +324,7 @@ final class RecordingController {
         recordingShell = nil
         reservedAssets = []
         captions = []
+        speechVolatileByChannel = [:]
         translations = [:]
         translatedSourceTexts = [:]
         unsupportedTranslationRowIDs = []
@@ -360,15 +364,25 @@ final class RecordingController {
         failureContext = nil
     }
 
-    private func receiveLiveCaption(_ segment: TranscriptSegment) {
+    func receiveLiveCaption(_ segment: TranscriptSegment) {
         meetingID = segment.meetingID
         // Digital silence on a system tap can make a model invent speech.
-        if segment.channel == .system, systemAudioMissing { return }
+        if segment.channel == .system, systemAudioMissing {
+            speechVolatileByChannel.removeValue(forKey: .system)
+            return
+        }
         // Barely used/far-field mic channels produce stray low-confidence text.
         if segment.channel == .microphone,
             TranscriptNoiseFilter.isLikelyNoise(
                 text: segment.text,
-                confidence: segment.confidence) { return }
+                confidence: segment.confidence) {
+            speechVolatileByChannel.removeValue(forKey: .microphone)
+            return
+        }
+        if segment.liveUpdateMode == .rangeRevision,
+           !RecordingSpeechPreview.admit(segment, into: &speechVolatileByChannel) {
+            return
+        }
         coalescer.apply(segment, to: &captions)
         interviewAssist.observe(captions: captions)
         services?.liveAssistUITestFixture?.receiveCaption(in: self)
@@ -562,6 +576,7 @@ extension RecordingController {
     /// boundary. This controller only maps typed results into presentation.
     func stop(services: AppServices) async {
         guard phase == .recording, let session else { return }
+        speechVolatileByChannel = [:]
         levelRelay?.cancel()
         levelRelay = nil
         catchUp.dismiss()
@@ -759,6 +774,9 @@ private extension RecordingController {
         hasSystemLevelSamples = snapshot.hasSystemSamples
         if systemAudioMissing != snapshot.systemAudioIsMissing {
             systemAudioMissing = snapshot.systemAudioIsMissing
+            if systemAudioMissing {
+                speechVolatileByChannel.removeValue(forKey: .system)
+            }
         }
         if systemAudioClipping != snapshot.systemAudioIsClipping {
             systemAudioClipping = snapshot.systemAudioIsClipping
@@ -781,6 +799,7 @@ private extension RecordingController {
             startLiveDiarizationIfReady()
         case .failed:
             liveTranscriptState = .failed
+            speechVolatileByChannel = [:]
             if translationTarget != nil { translationState = .waitingForTranscript }
             liveDiarizerFeed?.finish()
         }

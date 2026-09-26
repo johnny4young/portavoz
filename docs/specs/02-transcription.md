@@ -528,9 +528,21 @@ locale and invokes `AssetInventory.assetInstallationRequest` /
 `downloadAndInstall` when its Apple-hosted model is missing. Availability depends
 on the OS, hardware, locale, and installed assets. Apple's
 [SpeechAnalyzer introduction](https://developer.apple.com/videos/play/wwdc2025/277/)
-describes that asset lifecycle. A future serving change still needs the exact
-bilingual comparison and append-versus-replace integration: Speech volatile
-results replace their range; the current caption coalescer assumes deltas.
+describes that asset lifecycle. D554 now supplies an **optional**, explicitly
+selected serving adapter without changing the default Parakeet engine. It
+requires macOS 26, a fixed en/es language, and an already-installed equivalent
+Apple locale; the read-only probe never calls `AssetInventory`. A separate
+Settings action owns any download. The adapter marks range revisions, shows
+volatile text only in a bounded ephemeral preview, and passes only monotonic
+finals to the append-only caption coalescer. Invalid/overlapping final ranges
+or an unconfirmed tail fail the stream, so dictation cannot paste a provisional
+phrase and meeting capture requests durable recovery. The analyzer feeder
+rejects a nonempty chunk it cannot convert, instead of silently skipping that
+sound. The meeting attacher maps results to the captured feed's hardware
+channel, not the OS engine's microphone-only label. Synthetic EN/ES call-site
+tests cover these contracts;
+the historical one-file M12 timing is **not** a current bilingual quality,
+memory, or thermal qualification for adopting Apple Speech as default.
 
 ## Caption coalescer — `CaptionCoalescer` (used by the app)
 

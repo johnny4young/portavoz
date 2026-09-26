@@ -238,7 +238,8 @@ private struct LiveRecordingCaptionsView: View {
         let projection = LiveCaptionParagraphProjector.project(
             captions: controller.captions,
             liveSpeakerLabels: controller.liveSpeakerLabels,
-            translations: controller.translations)
+            translations: controller.translations,
+            volatilePreviews: Array(controller.speechVolatileByChannel.values))
         GeometryReader { geo in
             FocusedTranscriptView(
                 segments: projection.segments,
@@ -275,6 +276,9 @@ private struct LiveRecordingCaptionsView: View {
                 Text(segment.text)
                     .font(active ? .title3.weight(.medium) : .body)
                     .foregroundStyle(segment.isFinal ? .primary : .secondary)
+                    .accessibilityIdentifier(segment.liveUpdateMode == .rangeRevision
+                        ? "recording-live-preview-\(segment.channel.rawValue)"
+                        : "recording-live-caption-\(segment.id.uuidString)")
                 if let translated = translation {
                     translatedCaption(translated, segmentID: segment.id)
                 }

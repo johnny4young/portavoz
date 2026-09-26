@@ -119,7 +119,7 @@ self-contained over system frameworks and carries no module dependency.
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, and regular persistent file bookmarks while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, checked PCM geometry and native buffer views, single-owner failed-source retirement, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
-| `TranscriptionKit` | Live Parakeet, quality Whisper, macOS 26 SpeechAnalyzer, and a CLI-only non-serving Nemotron live challenger; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
+| `TranscriptionKit` | Live Parakeet, quality Whisper, and an optional macOS 26 SpeechAnalyzer live adapter for fixed installed locales; a CLI-only non-serving Nemotron challenger; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, session-clock-anchored live windowing, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador plus pure bounded proactive meeting-assist admission; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history with atomic multi-lane appends and sparse correction-search lineage, explicit topic and decision continuity with immutable evidence and append-only relationship history, explicitly confirmed decision-topic authority, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and correction-fenced Spotlight projections. |
@@ -190,14 +190,18 @@ Explicit combined speech/diarization readiness stays in the live-speech
 composition extension. Production composition acquires the shared live-speech
 token through a type-erased live-engine handle that ends it on completion.
 Recording and dictation share that boundary; batch callers retain the concrete
-Parakeet lease. It neither selects a different engine nor moves platform types
-into Core.
+Parakeet lease. App composition selects Parakeet by default or an explicitly
+chosen, installed Apple Speech locale on macOS 26. Core contains only the
+transient range-revision marker, not AppKit or Apple Speech types.
 
 Temporary meeting-store composition never registers Carbon hotkeys or mouse
 event taps. The explicit dictation fixture supplies synthetic PCM and a bounded
 caption producer; without that fixture it refuses dictation without requesting
 permissions, downloading models or opening a microphone. Fixture selection lives
 in `AppServices+DictationUITestFixture.swift`, not in the controller's pipeline.
+The Settings-only Apple asset fixture is likewise restricted to a disposable
+temporary-store launch; it exercises the real view/model without installing an
+OS asset or claiming recognition quality.
 
 A separate Xcode-only receiver builds no shipping product. An explicitly armed
 `DictationNativeUITestFixture` calls the production `TextInserter` inside the
@@ -1081,6 +1085,11 @@ remote row; row-count growth is not a revision signal. Final publication checks
 cancellation and session identity before touching observable text, including
 streams that end normally on cancellation. Cancel clears both text projections
 before its asynchronous teardown.
+Apple Speech's range-based volatile replacements update only the ephemeral
+visible tail. They never enter the append-only coalescer or final text for
+paste; a stream ending with an unconfirmed range fails rather than inserting
+it. Meeting preview rows have the same isolation from canonical captions,
+translation, assistance, summaries and persistence.
 System-wide input adapters remain at the app boundary: Carbon owns the keyboard
 hotkey and a session `CGEventTap` owns one explicitly configured middle or
 additional mouse button. `DictationShortcut` is the process-owned observable
@@ -1409,7 +1418,7 @@ filesystem links before FluidAudio can choose a decode path. The adapter
 requires an explicit English or Spanish hint, rejects unsupported vocabulary
 and malformed audio/model output, and is reachable only through the explicit
 `bench-live --engine nemotron-latin-1120` CLI path. It is absent from the app
-composition and `ModelCatalog.recommended`; Parakeet remains the live authority.
+composition and `ModelCatalog.recommended`; Parakeet remains the default live authority.
 The descriptor and adapter are executable benchmark plumbing, not accepted
 quality, memory, thermal, license-distribution, Sequoia, or Tahoe evidence.
 
@@ -1931,9 +1940,9 @@ flowchart LR
     HEALTH --> NOTICE[Recording health UI]
     STAGED --> FINAL[validated final CAF]
     SESSION -. nonblocking newest-only frames .-> BUFFER[Bounded live feeds]
-    RESIDENT[Resident or asynchronously verified Parakeet] --> ATTACH[Live attacher]
+    RESIDENT[Resident Parakeet or optional installed Apple Speech] --> ATTACH[Live attacher]
     ATTACH --> BUFFER
-    BUFFER --> LIVE[Parakeet live transcription]
+    BUFFER --> LIVE[Selected live transcription]
     FINAL --> DURABLE[Parakeet durable first pass]
     FINAL --> REFINE[Whisper quality refinement]
     SYSTEM --> DIARIZE[Pyannote diarization]
@@ -1951,6 +1960,12 @@ consuming only the newest buffered context when it completes. Capture never
 awaits that load and the cold-start session retains its durable transcription
 recovery bit because earlier audio was not live-transcribed. Preparing,
 available, and failed states cross ApplicationKit without raw model errors.
+The optional Apple route never starts an asset download during capture: it
+checks an explicit fixed language and an already-installed equivalent locale
+asynchronously, then hot-attaches. Missing assets or a failed live stream keep
+audio-first recording and require durable Parakeet recovery. The attacher
+assigns each result the hardware channel of its captured feed, overriding an
+OS engine's microphone-only label for remote system audio.
 
 Intelligence inference also preserves capability ownership. One process-owned
 single-flight `IntelligenceScheduler` lane governs Apple Foundation Models on

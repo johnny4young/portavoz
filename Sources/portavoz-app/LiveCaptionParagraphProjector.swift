@@ -23,6 +23,7 @@ enum LiveCaptionParagraphProjector {
         captions: [TranscriptSegment],
         liveSpeakerLabels: [UUID: String],
         translations: [UUID: String],
+        volatilePreviews: [TranscriptSegment] = [],
         maxGapSeconds: TimeInterval = 4,
         maxCharacters: Int = 420
     ) -> Projection {
@@ -30,11 +31,15 @@ enum LiveCaptionParagraphProjector {
         var sourceIDsByParagraph: [[UUID]] = []
         var voiceKeys: [String?] = []
 
-        for caption in captions.suffix(Self.maximumSourceRows) {
+        let visibleRows = Array(captions.suffix(Self.maximumSourceRows))
+            + volatilePreviews.sorted { $0.channel.rawValue < $1.channel.rawValue }
+        for caption in visibleRows {
             let voiceKey = voiceKey(for: caption, labels: liveSpeakerLabels)
             if let index = projected.indices.last,
                 let voiceKey,
                 voiceKeys[index] == voiceKey,
+                caption.liveUpdateMode == nil,
+                projected[index].liveUpdateMode == nil,
                 caption.startTime - projected[index].endTime <= maxGapSeconds,
                 projected[index].text.count + caption.text.count + 1 <= maxCharacters {
                 let previous = projected[index]

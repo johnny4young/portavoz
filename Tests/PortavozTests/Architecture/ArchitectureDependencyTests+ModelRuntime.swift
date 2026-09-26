@@ -335,14 +335,14 @@ extension ArchitectureDependencyTests {
                 "Live-speech residency adapter is missing \(transition)")
         }
 
-        XCTAssertTrue(adapter.contains("func acquireLiveTranscriptionRuntime()"))
+        XCTAssertTrue(adapter.contains("func acquireLiveTranscriptionRuntime("))
         XCTAssertTrue(adapter.contains("func acquireResidentLiveTranscriptionRuntime()"))
         XCTAssertTrue(start.contains("services.acquireResidentLiveTranscriptionRuntime()"))
         XCTAssertTrue(start.contains("services.acquireLiveTranscriptionRuntime()"))
         XCTAssertFalse(start.contains("services.acquireLiveSpeechRuntime()"))
         XCTAssertTrue(attacher.contains("await runtime?.finish()"))
         XCTAssertTrue(attacher.contains("await runtime.finish()"))
-        XCTAssertTrue(dictation.contains("services.acquireLiveTranscriptionRuntime()"))
+        XCTAssertTrue(dictation.contains("services.acquireLiveTranscriptionRuntime(for: .dictation)"))
         XCTAssertFalse(dictation.contains("services.acquireLiveSpeechRuntime()"))
         for borrower in [recovery, benchmark] {
             XCTAssertTrue(borrower.contains("services.acquireLiveSpeechRuntime("))

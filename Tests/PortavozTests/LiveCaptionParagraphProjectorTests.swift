@@ -116,4 +116,18 @@ final class LiveCaptionParagraphProjectorTests: XCTestCase {
         XCTAssertNil(result.translations[rows[0].id])
         XCTAssertEqual(result.translations[firstRetained.id], "Retained.")
     }
+
+    func testVolatilePreviewCannotMergeWithCanonicalParagraphOrInheritTranslation() {
+        let final = row("I had two questions.", channel: .microphone, start: 0, end: 1)
+        var preview = row("Another...", channel: .microphone, start: 1, end: 2)
+        preview.isFinal = false
+        preview.liveUpdateMode = .rangeRevision
+        let result = LiveCaptionParagraphProjector.project(
+            captions: [final], liveSpeakerLabels: [:],
+            translations: [final.id: "Tenía dos preguntas."],
+            volatilePreviews: [preview])
+        XCTAssertEqual(result.segments.map(\.text), [final.text, preview.text])
+        XCTAssertEqual(result.translations.count, 1)
+        XCTAssertNil(result.translations[preview.id])
+    }
 }

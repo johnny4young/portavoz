@@ -325,8 +325,7 @@ final class DictationController {
             pump?.cancel()
             await microphone.stop()
             await pump?.value
-            failSession(id: id, message: L10n.format(
-                "Dictation failed: %@", error.localizedDescription))
+            failSession(id: id, message: LiveSpeechFailureMessage.dictation(error))
         }
     }
 

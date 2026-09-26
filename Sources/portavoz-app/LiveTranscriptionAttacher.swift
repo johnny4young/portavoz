@@ -146,7 +146,17 @@ actor LiveTranscriptionAttacher {
                             telemetry.finish(span, outcome: .cancelled)
                             return
                         }
-                        await self.callbacks.caption(segment)
+                        // The captured feed owns channel identity. Some OS
+                        // recognizers label every result as microphone even
+                        // when this consumer reads the system-audio feed.
+                        let admitted = segment.channel == channel ? segment : TranscriptSegment(
+                            id: segment.id, meetingID: segment.meetingID,
+                            speakerID: segment.speakerID, channel: channel,
+                            text: segment.text, language: segment.language,
+                            startTime: segment.startTime, endTime: segment.endTime,
+                            confidence: segment.confidence, isFinal: segment.isFinal,
+                            liveUpdateMode: segment.liveUpdateMode)
+                        await self.callbacks.caption(admitted)
                     }
                     telemetry.finish(span, outcome: .completed)
                 } catch is CancellationError {

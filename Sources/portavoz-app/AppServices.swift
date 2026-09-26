@@ -35,6 +35,7 @@ private struct AppSimulatedDatabaseOpenFailure: Error {}
 @MainActor
 @Observable
 final class AppServices {
+    @ObservationIgnored let defaults: UserDefaults
     enum ModelsState: Equatable {
         case unknown
         case downloading(String)
@@ -105,6 +106,9 @@ final class AppServices {
     @ObservationIgnored lazy var semanticSearchPreparation =
         SemanticSearchPreparationModel(
             client: AppSemanticSearchPreparationClient(services: self))
+    @ObservationIgnored lazy var appleSpeechPreparation =
+        AppleSpeechPreparationModel(client: appleSpeechPreparationClient)
+    @ObservationIgnored let appleSpeechPreparationClient: any AppleSpeechPreparationClient
     /// Background maintenance owns product corpus writes and coalesces them
     /// through one semantic-index flight.
     @ObservationIgnored let semanticIndexingCoordinator:
@@ -263,6 +267,7 @@ final class AppServices {
         storagePolicy: AppStorageIsolationPolicy? = nil,
         defaults: UserDefaults = .standard
     ) throws {
+        self.defaults = defaults
         let storagePolicy = Self.prepareStoragePolicy(
             arguments: arguments,
             environment: environment,
@@ -282,6 +287,9 @@ final class AppServices {
             arguments: arguments, usesTemporaryStore: usesTemporaryStore)
         let resourceCaptureState = AppResourceCaptureState()
         self.resourceCaptureState = resourceCaptureState
+        appleSpeechPreparationClient = AppleSpeechUITestFixture.make(
+            arguments: arguments, usesTemporaryStore: usesTemporaryStore)
+            ?? AppAppleSpeechPreparationClient(captureState: resourceCaptureState)
         // Open the authority before constructing process runtimes or installing
         // global telemetry. A failed retry therefore leaves no half-composed
         // service graph, model task, sensitive store, or background owner.
@@ -398,21 +406,6 @@ final class AppServices {
                     usesTemporaryStore: usesTemporaryStore,
                     voiceGallery: voiceGallery,
                     voiceprintStore: voiceprintStore))))
-    }
-
-    private static func makeModelStore(usesTemporaryStore: Bool) -> ModelStore {
-        guard usesTemporaryStore else { return ModelStore() }
-        let rootDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "portavoz-uitest-models-\(UUID().uuidString)",
-            isDirectory: true)
-        return ModelStore(rootDirectory: rootDirectory)
-    }
-
-    private static func makeModelServices(
-        usesTemporaryStore: Bool
-    ) -> (ModelStore, VerifiedModelLifecycle) {
-        let store = makeModelStore(usesTemporaryStore: usesTemporaryStore)
-        return (store, VerifiedModelLifecycle(store: store))
     }
 
     private static func makeSensitiveStorage(
@@ -585,5 +578,22 @@ final class AppServices {
         }
         try await modelLifecycle.remove(ModelCatalog.mlxQwen35)
         mlxDownloaded = false
+    }
+}
+
+private extension AppServices {
+    static func makeModelStore(usesTemporaryStore: Bool) -> ModelStore {
+        guard usesTemporaryStore else { return ModelStore() }
+        let rootDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "portavoz-uitest-models-\(UUID().uuidString)",
+            isDirectory: true)
+        return ModelStore(rootDirectory: rootDirectory)
+    }
+
+    static func makeModelServices(
+        usesTemporaryStore: Bool
+    ) -> (ModelStore, VerifiedModelLifecycle) {
+        let store = makeModelStore(usesTemporaryStore: usesTemporaryStore)
+        return (store, VerifiedModelLifecycle(store: store))
     }
 }
