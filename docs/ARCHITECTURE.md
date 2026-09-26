@@ -110,6 +110,13 @@ dependencies are limited to three declared edges: `TranscriptionKit` and
 IntelligenceKit values for issue-export formatting. `AudioPlaybackKit` is
 self-contained over system frameworks and carries no module dependency.
 
+The macOS dictation controller supports an explicitly injected, content-free
+session observation sink. Its bounded recorder lives in the app beside the
+platform/controller seam, not in a capability module or global telemetry bus.
+Normal composition installs no observer or writer. Relative timing observations
+stop at the outcome boundary; event dispatch is never represented as verified
+text delivery, and no captured content or destination identity enters a receipt.
+
 ## Module responsibilities
 
 | Module | Implemented responsibility |
@@ -5939,9 +5946,14 @@ production only through the existing transcription and diarization adapters:
 `ParakeetEngine`, `ParakeetSegmentMapper`,
 `NemotronLatin1120Engine`, `PyannoteDiarizer` and `DiarizationEvaluation`. Core,
 ApplicationKit and executable presentation consume Portavoz contracts instead. In
-the test tree the vendor import is confined to the engine-specific suites,
-`TranscriptionTests`, `ParakeetLanguageConfigurationTests` and
-`NemotronLatin1120Tests`.
+the test tree the vendor import is confined to engine-specific suites
+`TranscriptionTests`, `ParakeetLanguageConfigurationTests`,
+`NemotronLatin1120Tests` and three engine-attribution files:
+`DictationModelBaselineTests`, `DictationVendorProbe` and
+`DictationVendorProbeTests`. Those three load the pinned vendor for the explicit
+comparison and exercise actual vendor updates through the mapper; controller,
+corpus, scoring and receipt tests still consume Portavoz contracts. This is a
+test-only attribution seam, not a new production adapter or dependency edge.
 
 The checked-in resolver revision and the architectural import inventory are tested
 together, over `Sources` and `Tests`, against code with comments and string

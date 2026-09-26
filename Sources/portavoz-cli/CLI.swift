@@ -50,7 +50,9 @@ struct PortavozCLI {
         case "models":
             await ModelsCommand.run(arguments, platform: platform)
         case "bench-live":
-            await BenchLiveCommand.run(arguments)
+            if !(await BenchLiveCommand.run(arguments)) {
+                Foundation.exit(1)
+            }
         case "bench-m2":
             await BenchCommand.run(arguments)
         case "bench-fts":
