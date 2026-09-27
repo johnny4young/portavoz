@@ -7760,11 +7760,13 @@ The shared XCUITest setup ends the active native search edit with app-scoped
 Tab traversal, then checks that the identified field value is unchanged. It
 does not click or address a key event to a field that its own popup may cover.
 `openSettingsWindow` applies that boundary to both existing and newly opened
-Settings windows; `openSettingsCategory` does not apply it itself. Direct
-product routes that bypass `openSettingsWindow`, such as the summary recovery
-link and the Library privacy chip's route to Your data, apply it at the call
-site before switching panes, because an auto-focused native search completion
-surface otherwise covers the General category despite a correct destination.
+Settings windows, and `openSettingsCategory` applies it before every sidebar
+click. Routes that bypass `openSettingsWindow`, such as a launch that opens
+Settings or the Library privacy chip's route to Your data, are therefore covered
+without a call-site handoff; an auto-focused native search completion surface
+otherwise covers the category sidebar despite a correct destination. The
+summary recovery journey still ends the edit explicitly because it reads the
+destination pane without navigating.
 Seeded Library setup applies the handoff before its already-hittable row fast
 path. A real-app adversary focuses an empty search with a visible row, calls the
 actual helper, then sends a normal key and verifies that search remains empty.
