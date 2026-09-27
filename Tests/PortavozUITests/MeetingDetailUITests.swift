@@ -680,7 +680,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "sequoia-summary-actionable-settings")
 
         XCTAssertTrue(
-            app.finishTextFieldEditing(identifier: "settings-search-field", timeout: 5),
+            app.finishSettingsSearchEditing(timeout: 5),
             "the recovery deep link must finish search editing without changing its destination")
         XCTAssertEqual(app.textFields["settings-search-field"].value as? String, "")
 
