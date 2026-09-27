@@ -86,6 +86,7 @@ final class DictationController {
     private var stopTask: Task<Void, Never>?
     private var failureDismissTask: Task<Void, Never>?
     private var activeSessionID: UUID?
+    private var measurement: DictationSessionMeasurementRecorder?
     private let panel = DictationPanelController()
     private let presentsPanel: Bool
     private var sessionClock: (() -> Date)?
@@ -225,11 +226,15 @@ final class DictationController {
     }
 
     private func start(using dependencies: DictationSessionDependencies) {
+        measurement = dependencies.measurementSink.map {
+            DictationSessionMeasurementRecorder(now: dependencies.measurementClock, sink: $0)
+        }
         failureDismissTask?.cancel()
         failureDismissTask = nil
         // The paste needs Accessibility; ask BEFORE recording so the user
         // never dictates into a void.
         guard dependencies.canInsert() else {
+            measurement?.finish(.permissionDenied)
             phase = .failed(L10n.text(
                 // One-line UI copy.
                 // swiftlint:disable:next line_length
@@ -253,18 +258,23 @@ final class DictationController {
         sessionClock = dependencies.now
         showPanel()
 
+        let measurement = self.measurement
         session = Task { [weak self] in
-            await self?.runSession(id: sessionID, dependencies: dependencies)
+            await self?.runSession(id: sessionID, dependencies: dependencies, measurement: measurement)
         }
     }
 
-    private func runSession(id: UUID, dependencies: DictationSessionDependencies) async {
+    private func runSession(
+        id: UUID, dependencies: DictationSessionDependencies,
+        measurement: DictationSessionMeasurementRecorder?
+    ) async {
         let input = dependencies.makeMicrophone()
         let microphone = input.source
         var localFeed: AsyncStream<AudioChunk>.Continuation?
         var pump: Task<Void, Never>?
         do {
             let runtime = try await dependencies.acquireRuntime()
+            measurement?.record(.runtimeReady)
             defer { runtime.finish() }
             try Task.checkCancellation()
             guard activeSessionID == id else { return }
@@ -279,6 +289,7 @@ final class DictationController {
                 return
             }
             captureStartedAt = dependencies.now()
+            measurement?.record(.microphoneReady)
 
             // Bounded like every other live audio handoff (the recording lane
             // uses the same 128-buffer window). The pump never suspends on the
@@ -290,37 +301,23 @@ final class DictationController {
                 bufferingPolicy: .bufferingNewest(128))
             localFeed = feed
             self.feed = feed
-            pump = makeAudioPump(stream: micStream, feed: feed, sessionID: id)
+            pump = makeAudioPump(stream: micStream, feed: feed, sessionID: id, measurement: measurement)
 
-            let hints = transcriptionHints(defaults: dependencies.defaults)
-            var transcript = DictationTranscriptProjection()
-            for try await segment in runtime.engine.transcribe(audio, hints: hints) {
-                try Task.checkCancellation()
-                guard activeSessionID == id else { throw CancellationError() }
-                if transcript.apply(segment) {
-                    confirmedText = transcript.confirmedText
-                }
-                // Observation reports equal writes; rejected noise stays silent.
-                if partialText != transcript.partialText {
-                    partialText = transcript.partialText
-                }
-            }
-            // Cancellation may end an AsyncStream normally, without throwing.
-            // Fence final publication too, before an old tail can repopulate UI.
-            try Task.checkCancellation()
-            guard activeSessionID == id else { throw CancellationError() }
-            confirmedText = transcript.finalText
-            partialText = ""
+            try await consumeCaptions(
+                from: runtime.engine.transcribe(audio, hints: dependencies.transcriptionHints()),
+                sessionID: id, measurement: measurement)
             await pump?.value
             try Task.checkCancellation()
             guard activeSessionID == id else { return }
             await deliver(sessionID: id, dependencies: dependencies)
         } catch is CancellationError {
+            measurement?.finish(.cancelled)
             localFeed?.finish()
             pump?.cancel()
             await microphone.stop()
             await pump?.value
         } catch {
+            measurement?.finish(.pipelineFailed)
             localFeed?.finish()
             pump?.cancel()
             await microphone.stop()
@@ -330,26 +327,15 @@ final class DictationController {
         }
     }
 
-    private func transcriptionHints(defaults: UserDefaults) -> TranscriptionHints {
-        let vocabulary = VocabularyPrompt.parse(
-            defaults.string(forKey: "customVocabulary") ?? "")
-        // Accepted preference values remain {es,en}; any unexpected stored
-        // value falls back to automatic detection.
-        let languageSetting = defaults.string(forKey: Self.languageKey)
-        return TranscriptionHints(
-            language: ["es", "en"].contains(languageSetting) ? languageSetting : nil,
-            vocabulary: vocabulary,
-            meetingID: MeetingID(),
-            filtersLiveScript: true)
-    }
-
     private func makeAudioPump(
         stream: AsyncThrowingStream<AudioChunk, Error>,
         feed: AsyncStream<AudioChunk>.Continuation,
-        sessionID: UUID
+        sessionID: UUID,
+        measurement: DictationSessionMeasurementRecorder?
     ) -> Task<Void, Never> {
         let updateMeter: @MainActor @Sendable (Float) -> Void = { [weak self] peak in
             if let self, self.activeSessionID == sessionID {
+                measurement?.record(.firstBufferHandled)
                 self.micLevel = max(peak, self.micLevel * 0.8)
             }
         }
@@ -362,6 +348,7 @@ final class DictationController {
                     await updateMeter(peak)
                 }
             } catch {}
+            if let measurement { await measurement.record(.inputEnded) }
             feed.finish()
         }
     }
@@ -370,6 +357,7 @@ final class DictationController {
     private func finishAndInsert() {
         guard phase == .listening else { return }
         guard stopTask == nil else { return }
+        measurement?.record(.stopRequested)
         guard DictationCapturePolicy.finishDecision(
             captureStartedAt: captureStartedAt, now: sessionClock?() ?? Date()) == .stopAfterTail
         else {
@@ -394,6 +382,8 @@ final class DictationController {
 
     /// Esc in the panel: throw everything away.
     func cancel() {
+        measurement?.finish(.cancelled)
+        measurement = nil
         activeSessionID = nil
         sessionClock = nil
         confirmedText = ""
@@ -421,6 +411,7 @@ final class DictationController {
         // The two-tier dictionary's deterministic tier plus the filler
         // filter run on the final text only — meeting transcripts stay
         // verbatim records and never pass through here.
+        let measurement = self.measurement
         let text = DictationTextRules.apply(
             DictationAssembler.text(
                 confirmed: confirmedText, partial: partialText),
@@ -428,17 +419,21 @@ final class DictationController {
                 replacements: dependencies.defaults.string(
                     forKey: Self.replacementsKey) ?? ""),
             removeFillers: Self.fillerFilterEnabled(in: dependencies.defaults))
+        measurement?.record(.textPrepared)
         microphone = nil
         feed = nil
         stopTask = nil
         captureStartedAt = nil
         guard DictationAssembler.hasLexicalContent(text) else {
+            measurement?.finish(.empty)
             completeSession(id: sessionID)
             phase = .idle
             panel.close()
             return
         }
+        measurement?.record(.deliveryStarted)
         let result = await dependencies.insert(text)
+        measurement?.finishDelivery(result)
         guard activeSessionID == sessionID else { return }
         switch result {
         case .inserted:
@@ -511,4 +506,30 @@ final class DictationController {
         }
     }
 
+}
+
+private extension DictationController {
+    func consumeCaptions(
+        from stream: AsyncThrowingStream<TranscriptSegment, Error>,
+        sessionID: UUID, measurement: DictationSessionMeasurementRecorder?
+    ) async throws {
+        var transcript = DictationTranscriptProjection()
+        for try await segment in stream {
+            try Task.checkCancellation()
+            guard activeSessionID == sessionID else { throw CancellationError() }
+            measurement?.record(.firstCaptionHandled)
+            if transcript.apply(segment) {
+                confirmedText = transcript.confirmedText
+            }
+            if partialText != transcript.partialText {
+                partialText = transcript.partialText
+            }
+        }
+        // A cancelled AsyncStream can finish normally, without throwing.
+        try Task.checkCancellation()
+        guard activeSessionID == sessionID else { throw CancellationError() }
+        measurement?.record(.transcriptionEnded)
+        confirmedText = transcript.finalText
+        partialText = ""
+    }
 }

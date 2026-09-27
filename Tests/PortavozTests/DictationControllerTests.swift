@@ -175,6 +175,7 @@ final class DictationControllerHarness {
     var finishes = 0
     var hints: TranscriptionHints?
     var insertions: [String] = []
+    var measurements: [DictationSessionMeasurement] = []
 
     init(text: String, controller: DictationController = .init(presentsPanel: false)) {
         self.controller = controller
@@ -204,11 +205,12 @@ final class DictationControllerHarness {
                 self?.insertions.append(text)
                 return .inserted
             },
-            defaults: defaults, now: { [weak self] in self?.now ?? .distantPast })
+            defaults: defaults, now: { [weak self] in self?.now ?? .distantPast },
+            measurementSink: { [weak self] in self?.measurements.append($0) })
     }
 }
 
-private actor ControlledDictationMicrophone: AudioCaptureSource {
+actor ControlledDictationMicrophone: AudioCaptureSource {
     nonisolated let channel = AudioChannel.microphone
     private(set) var starts = 0
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?

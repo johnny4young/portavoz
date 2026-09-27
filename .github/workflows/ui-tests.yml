@@ -101,14 +101,24 @@ jobs:
 
       # Independent hosted Mac: no shared WindowServer or product build state.
       - name: Verify interruption safety at the shared callback
+        id: interruption_controls
         run: make test-ui-interruption-safety UI_INTERRUPTION_RESULTS="$RUNNER_TEMP/ui-interruption-safety"
 
       - name: Preserve interruption-control evidence
-        if: always()
+        id: interruption_archive
+        if: always() && steps.interruption_controls.outcome != 'skipped'
+        run: |
+          scripts/archive-ui-interruption-evidence.sh \
+            "$RUNNER_TEMP/ui-interruption-safety" \
+            "$RUNNER_TEMP/ui-interruption-safety.tar.gz"
+
+      - name: Upload interruption-control evidence
+        if: always() && steps.interruption_archive.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ui-interruption-safety-${{ github.run_id }}
-          path: ${{ runner.temp }}/ui-interruption-safety
+          path: ${{ runner.temp }}/ui-interruption-safety.tar.gz
+          if-no-files-found: error
           retention-days: 7
 
   build-ui-products:

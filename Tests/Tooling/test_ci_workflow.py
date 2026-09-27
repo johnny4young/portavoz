@@ -224,6 +224,18 @@ class UIPrerequisiteTests(unittest.TestCase):
         self.assertIn("if: always()", native)
         self.assertIn("name: ui-interruption-safety-${{ github.run_id }}", native)
 
+    def test_interruption_evidence_is_archived_by_its_owning_job(self):
+        native = self.jobs["interruption-controls"]
+        self.assertNotIn("archive-ui-interruption-evidence", self.jobs["build-ui-products"])
+        self.assertEqual(native.count("scripts/archive-ui-interruption-evidence.sh"), 1)
+        self.assertIn("steps.interruption_controls.outcome != 'skipped'", native)
+        upload = native.split("      - name: Upload interruption-control evidence\n", 1)[1]
+        self.assertIn("path: ${{ runner.temp }}/ui-interruption-safety.tar.gz", upload)
+        self.assertNotIn("path: ${{ runner.temp }}/ui-interruption-safety\n", upload)
+        self.assertIn("if-no-files-found: error", upload)
+        self.assertIn("steps.interruption_archive.outcome == 'success'", upload)
+        self.assertNotIn("continue-on-error: true", upload)
+
     def test_locales_join_both_prerequisites_even_when_native_is_skipped(self):
         lane = self.jobs["scoped-ui-tests"]
         self.assertIn("needs: [scope, build-ui-products, interruption-controls]", lane)
