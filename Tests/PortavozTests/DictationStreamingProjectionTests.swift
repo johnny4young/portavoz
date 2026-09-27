@@ -67,6 +67,11 @@ final class DictationStreamingProjectionTests: XCTestCase {
             try await fixture.expect(confirmed: remote + " " + echo, partial: "Final marker")
             try await fixture.finish()
             XCTAssertEqual(fixture.harness.insertions, [remote + " " + echo + " Final marker"])
+            let measurement = try XCTUnwrap(fixture.harness.measurements.first)
+            XCTAssertEqual(measurement.outcome, .dispatchReported)
+            XCTAssertNotNil(measurement.elapsedSeconds["firstCaptionHandled"])
+            XCTAssertNotNil(measurement.elapsedSeconds["transcriptionEnded"])
+            XCTAssertFalse(measurement.verifiedDeliveryMeasured)
         }
     }
 
