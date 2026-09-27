@@ -5230,12 +5230,13 @@ system email client opened; default-client composition on physical Sequoia and
 Tahoe remains field evidence.
 
 The email call-site architecture test checks the exact execution-plan effect,
-its delivery adapter, and the system opener for pasteboard use. The real-app
-journey remains the proof that visible confirmation reaches that effect. Its
-former general-pasteboard sentinel was removed: it destroyed the user's
-clipboard during test setup and could fail if an unrelated app wrote to that
-shared board. No temporary-board fixture is counted as proof about the user's
-general clipboard.
+its delivery adapter, both openers, and composition for any pasteboard type or
+write. A unit test pins that only disposable composition selects the inert
+opener. The real-app journey remains the proof that visible confirmation
+reaches that effect. Its former general-pasteboard sentinel was removed: it
+destroyed the user's clipboard during test setup and could fail if an unrelated
+app wrote to that shared board. No temporary-board fixture is counted as proof
+about the user's general clipboard.
 
 **D328 review-first Secret Gist gate.** Package coverage pins the separate
 external definition, explicit meeting-read/remote-send capabilities, exact

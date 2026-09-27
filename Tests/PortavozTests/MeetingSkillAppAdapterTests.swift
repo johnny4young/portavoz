@@ -186,6 +186,17 @@ final class MeetingSkillAppAdapterTests: XCTestCase {
     }
 
     @MainActor
+    func testOnlyDisposableCompositionSelectsTheInertEmailOpener() async throws {
+        let production = try XCTUnwrap(AppServices.makeEmailRecapDraftDelivery(
+            usesTemporaryStore: false) as? AppEmailRecapDraftDelivery)
+        let disposable = try XCTUnwrap(AppServices.makeEmailRecapDraftDelivery(
+            usesTemporaryStore: true) as? AppEmailRecapDraftDelivery)
+
+        XCTAssertTrue(production.opener is AppSystemEmailDraftOpener)
+        XCTAssertFalse(disposable.opener is AppSystemEmailDraftOpener)
+    }
+
+    @MainActor
     func testSecretGistUsesExactPreviewAndOneDurableEgressFence() async throws {
         let services = try AppServices(arguments: [
             "portavoz-app", "-use-temp-store"

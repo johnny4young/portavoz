@@ -994,8 +994,9 @@ extension ArchitectureDependencyTests {
             of: "private func recapSkillExecutionPlan(",
             range: dispatchStart.upperBound..<appAdapter.endIndex))
         let dispatch = appAdapter[dispatchStart.lowerBound..<recapPlanStart.lowerBound]
+            .split(whereSeparator: \.isWhitespace).joined(separator: " ")
         XCTAssertTrue(dispatch.contains(
-            "case .emailRecapDraft:\n            try await emailRecapSkillExecutionPlan("))
+            "case .emailRecapDraft: try await emailRecapSkillExecutionPlan("))
 
         let emailPlanStart = try XCTUnwrap(appAdapter.range(
             of: "private func emailRecapSkillExecutionPlan("))
@@ -1006,21 +1007,17 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(emailPlan.contains("EmailRecapDraftSkill.id: EmailRecapDraftEffect("))
         XCTAssertTrue(emailPlan.contains("delivery: emailRecapDraftDelivery"))
         XCTAssertFalse(emailPlan.contains("recapSkillDelivery"))
-        XCTAssertFalse(emailPlan.contains("NSPasteboard"))
 
         let emailDeliveryStart = try XCTUnwrap(appAdapter.range(
-            of: "struct AppEmailRecapDraftDelivery:"))
+            of: "struct AppEmailRecapDraftDelivery:",
+            range: disposableOpenerStart.upperBound..<appAdapter.endIndex))
         let nextAdapterStart = try XCTUnwrap(appAdapter.range(
             of: "struct AppMeetingPackageWriter:",
             range: emailDeliveryStart.upperBound..<appAdapter.endIndex))
         let emailDelivery = appAdapter[emailDeliveryStart.lowerBound..<nextAdapterStart.lowerBound]
         XCTAssertTrue(emailDelivery.contains("opener.openDraft("))
-        XCTAssertFalse(emailDelivery.contains("NSPasteboard"))
-        XCTAssertFalse(emailDelivery.contains("RecapPasteboardWriting"))
-        XCTAssertFalse(systemOpener.contains("NSPasteboard"))
         let disposableOpener = appAdapter[
             disposableOpenerStart.lowerBound..<emailDeliveryStart.lowerBound]
-        XCTAssertFalse(disposableOpener.contains("NSPasteboard"))
 
         let compositionStart = try XCTUnwrap(appAdapter.range(
             of: "static func makeEmailRecapDraftDelivery("))
@@ -1033,7 +1030,15 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(composition.contains("AppDisposableEmailDraftOpener()"))
         XCTAssertTrue(composition.contains("AppSystemEmailDraftOpener()"))
         XCTAssertTrue(composition.contains("AppEmailRecapDraftDelivery(opener: opener)"))
-        XCTAssertFalse(composition.contains("NSPasteboard"))
+        // Any recap-pasteboard type or helper counts, not only NSPasteboard.
+        for (name, slice) in [
+            ("plan", emailPlan), ("delivery", emailDelivery),
+            ("system opener", systemOpener), ("disposable opener", disposableOpener),
+            ("composition", composition),
+        ] {
+            XCTAssertFalse(slice.localizedCaseInsensitiveContains("pasteboard"), name)
+            XCTAssertFalse(slice.contains("replaceString("), name)
+        }
 
         let journeyStart = try XCTUnwrap(uiTests.range(
             of: "func testEmailRecapSkillPreviewsAndHandsOffWithoutSending()"))
