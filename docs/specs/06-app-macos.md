@@ -3335,9 +3335,10 @@ open**.
 Disposable XCUITest composition selects an inert opener that accepts non-empty
 approved material but cannot launch the host email client. The bilingual
 journey proves exact seeded-summary content, recipient and sync disclosures,
-the localized submit boundary, unchanged clipboard, foreground app ownership,
-receipt, and per-offer retirement. Physical default-client presentation and
-handoff behavior on Sequoia and Tahoe remain field evidence.
+the localized submit boundary, foreground app ownership, receipt, and per-offer
+retirement. An architecture test, not the journey, keeps pasteboard access out
+of the email plan, delivery, openers, and composition. Physical default-client
+presentation and handoff behavior on Sequoia and Tahoe remain field evidence.
 
 ## Review-first secret Gist publication (D328, Aug 2026)
 
