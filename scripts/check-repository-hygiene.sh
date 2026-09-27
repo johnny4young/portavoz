@@ -130,6 +130,7 @@ python3 -m unittest Tests.Tooling.test_ci_workflow
 python3 -m unittest Tests.Tooling.test_ios_portability
 python3 -m unittest Tests.Tooling.test_ui_test_ci_gate
 python3 -m unittest Tests.Tooling.test_ui_test_execution
+python3 -m unittest Tests.Tooling.test_ui_interruption_evidence_archive
 python3 -m unittest Tests.Tooling.test_ui_interruption_safety
 python3 -m unittest Tests.Tooling.test_app_payload_permissions
 python3 -m unittest Tests.Tooling.test_ui_copy_policy

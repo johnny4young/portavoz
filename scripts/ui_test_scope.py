@@ -133,11 +133,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testAskConversationAnswersAndSeeksToExactCitation"),
         test_id(
             "LibraryUITests",
-            "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence",
-        ),
-        test_id(
-            "LibraryUITests",
-            "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence",
+            "testAskConfirmedMemoryLoadsPersonCommitmentsBlockersAndBothCitations",
         ),
         test_id(
             "LibraryUITests",
@@ -550,6 +546,8 @@ APUNTADOR_LEAK_UI_FEATURES = frozenset({
 })
 
 RETIRED_DUPLICATE_TESTS = frozenset({
+    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence"),
+    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence"),
     test_id("SkillsSettingsUITests", "testSkillActivityRefreshPreservesTheExpandedCurrentScope"),
     test_id("SkillsSettingsUITests", "testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest"),
     test_id("InsightsUITests", "testInsightsRendersHeatmap"),

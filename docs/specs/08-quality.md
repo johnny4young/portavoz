@@ -162,16 +162,27 @@ truth. Native tests cover actual PCM order, reference composition and the exact
 output exists. This supplies a reusable long-input lane, not independent voices
 or automatic acceptance of model quality.
 
+The confirmed-person commitments and blocker UI assertions share one bounded
+journey instead of repeating the identical seeded app launch and person load.
+It retains the exact selected identity, localized title, both screenshots,
+blocker action and source labels, plus real playback navigation to 0:03 and 0:04
+and exact destination titles in each Meeting Detail header.
+After the first citation it returns through the actual Ask sidebar action and
+checks the selected identity again. Policy tests reject both retired entry
+points even if someone restores valid scopes for them. The combined journey's
+20-second budget is declared before measurement; the full-suite and p95 limits
+are unchanged. Functional and timing qualification still require actual runs.
+
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 123 UI cases, including portable-settings,
-shortcut-recovery, and the real dictation-panel journey. The one native
-dictation-receiver test is discovered and kept outside this catalog because
-its app process needs a user-granted Accessibility TCC decision. Its explicit
-`make test-ui-native-dictation` lane still runs the real XCUITest and fails
-closed without that grant. The unattended suite neither skips a failure into
-success nor qualifies cross-process insertion; its existing time budgets remain
-unchanged.
+The unattended catalog contains 123 UI cases after consolidating one pair of
+confirmed-person journeys, including portable-settings, shortcut-recovery and
+the real dictation-panel journeys. The native dictation-receiver test remains
+outside this catalog because its app process needs a user-granted Accessibility
+TCC decision. Its explicit `make test-ui-native-dictation` lane runs the real
+XCUITest and fails closed without that grant. The unattended suite neither
+skips a failure into success nor qualifies cross-process insertion; its
+existing time budgets remain unchanged.
 Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -205,7 +216,21 @@ fails any test file over 2 400 lines: SwiftLint covers only `Sources`, so a
 test file has no size ceiling of its own, which is how the architecture
 ratchets reached a single 13 519-line file before D503 split them by family.
 This is a per-file readability limit, not a bound on the combined class or proof
-of behavioral coverage. One architecture test compares the documented schema
+of behavioral coverage.
+
+Each locale publishes a compact classifier artifact containing only its
+runtime receipt, execution receipt and recorded step outcome. The Linux gate
+downloads only these artifacts, merged under their locale-qualified filenames;
+it does not download the result bundles or logs it never reads. Full raw UI
+artifacts retain their separate names and seven-day retention for audit. Missing,
+malformed or contradictory receipts still fail the same classifier; splitting
+transport never turns an incomplete lane into verified evidence. Tooling tests
+project the workflow's actual declared paths and run its real classifier shell
+with both locales, absent/corrupt files and retained-but-untransported raw data.
+The artifact root follows the upload action's documented
+[common-ancestor path rule](https://github.com/actions/upload-artifact#upload-using-multiple-paths-and-exclusions).
+
+One architecture test compares the documented schema
 version with `StorageSchema.version`; domain tests must not pin a stale literal
 version or historical test totals independently. Populated file-backed `SkillDisablementUpgradeTests`
 exercise actual library-open migration and new-write constraints, while
@@ -5323,12 +5348,21 @@ control-center cases also require the external Skill to be independently
 disableable without turning its Settings switch into consent. One real-app
 journey per locale opens the exact seeded-summary preview, verifies the
 no-recipient and possible-sync disclosures plus localized handoff action,
-requires the disposable adapter to leave both clipboard and foreground app
-ownership unchanged, then observes the content-free receipt and independent
+requires the disposable adapter to leave foreground app ownership unchanged,
+then observes the content-free receipt and independent
 offer retirement. `meeting-skills` selectors include that journey, and catalog
 validation reports 77 complete cases. The disposable adapter cannot prove the
 system email client opened; default-client composition on physical Sequoia and
 Tahoe remains field evidence.
+
+The email call-site architecture test checks the exact execution-plan effect,
+its delivery adapter, both openers, and composition for any pasteboard type or
+write. A unit test pins that only disposable composition selects the inert
+opener. The real-app journey remains the proof that visible confirmation
+reaches that effect. Its former general-pasteboard sentinel was removed: it
+destroyed the user's clipboard during test setup and could fail if an unrelated
+app wrote to that shared board. No temporary-board fixture is counted as proof
+about the user's general clipboard.
 
 **D328 review-first Secret Gist gate.** Package coverage pins the separate
 external definition, explicit meeting-read/remote-send capabilities, exact
@@ -7158,6 +7192,31 @@ every functional case passed. The same unchanged budget file remains enforced
 by default for local/stable-Mac integration and release runs; only the hosted
 workflow opts out of hard wall-clock enforcement.
 
+An execution receipt marked `evidence-failure` is well-formed refusal evidence,
+not an assertion that output files are absent. A stopped XCTest worker can
+leave a result bundle and runtime receipt, then restart with exit zero; a
+runtime file can also exist without valid contents. The final classifier
+therefore accepts that producer state independently of file-presence flags or
+exit code, but always fails it as unusable execution evidence with
+`verified=false`. Even a reported successful step or all-passing runtime rows
+cannot promote it to functional authority or a hosted-infrastructure advisory.
+Completion requires at least one executed case. An empty or malformed runtime
+file is unusable evidence even when the log includes the known automation-mode
+timeout: only an absent runtime receipt can enter the pre-case advisory lane.
+Execution schema versions must be integers, not booleans or integral floats;
+classifications and optional signatures must have their declared string types.
+Malformed metadata produces a classified refusal rather than an uncaught
+collection-membership exception.
+
+CPU-only contract tests invoke the real execution-writer CLI and pass its exact
+file to the real final-gate CLI. They cover both locales, interrupted worker
+restarts, both exit statuses, missing/empty/malformed/present artifacts, failed and
+absent cleanup, contradictory step outcomes, and unchanged success, functional
+failure and pre-case advisory behavior. These reachable cases replace the package
+test's source-spelling assertion for the executed-case predicate; the package
+test retains its workflow wiring and dependency checks. They do not replace the native
+interruption controls, answer prompts, or make unsafe runs qualify.
+
 Incremental scope is proof-carrying rather than based on the previous push.
 Only a successful first-attempt run with one non-expired exact-SHA verification
 artifact can become the next base; the candidate must be inside the current PR
@@ -7826,10 +7885,11 @@ necessary; passing these tests is not closure of the observed resource variance.
 The shared XCUITest setup ends the active native search edit with app-scoped
 Tab traversal, then checks that the identified field value is unchanged. It
 does not click or address a key event to a field that its own popup may cover.
-Both existing and newly opened Settings windows use that boundary before
-category navigation. The Library privacy chip's direct route to Your data
-also applies it before switching panes: that route bypasses the shared
-`openSettingsWindow` helper, and an auto-focused native search completion
+`openSettingsWindow` applies that boundary to both existing and newly opened
+Settings windows; `openSettingsCategory` does not apply it itself. Direct
+product routes that bypass `openSettingsWindow`, such as the summary recovery
+link and the Library privacy chip's route to Your data, apply it at the call
+site before switching panes, because an auto-focused native search completion
 surface otherwise covers the General category despite a correct destination.
 Seeded Library setup applies the handoff before its already-hittable row fast
 path. A real-app adversary focuses an empty search with a visible row, calls the
@@ -8004,9 +8064,17 @@ late action, dialog choice, cleanup failure, skipped/empty/extra cases and an
 exit-zero restart. Changes to the guard, keyboard, storage, wait or scratch
 sources, the fixture target, the execution classifier or their CI/Make owners
 select this once, as do explicit full bilingual local runs and full-suite
-dispatches; localization-only and other unrelated full-bilingual fallbacks do not. CI executes the controls in
-the product-builder job before publishing one reusable product build. Synthetic
+dispatches; localization-only and other unrelated full-bilingual fallbacks do not. CI executes the controls on a separate hosted Mac concurrently with the single
+product build. Locale jobs wait for both prerequisites; an unselected controls
+job must be skipped, while a selected job must succeed. The final classifier
+checks both states again before the exact-head verification anchor can publish. Synthetic
 fixtures request no microphone, authentication or accessibility permission.
+The controls job archives qualification JSON, case logs, exit statuses and
+raw `.xcresult` bundles as one artifact once the controls have run. It excludes
+only the disposable fixture's generated project and DerivedData; an empty
+archive or failed upload fails that job, so locale lanes and the final gate
+cannot qualify. This avoids transporting thousands of tiny build files
+through the artifact API while preserving failure forensics.
 
 
 ### Bounded scroll evidence is separate from interruption controls
@@ -8037,9 +8105,20 @@ one modal containing the journey's fixed accessibility anchor. A background
 control cannot authorize typing into a new dialog. Admission re-observes for at
 most one second so a cached frontmost value or closing sheet can converge; it
 never activates or dismisses anything. Refused journey input uses the same
-nonreturning, owned-cleanup interruption guard and records a content-free
-`keyboard-owner` or `modal-context` reason; the interruption monitor records
-`interruption`. A guard that finds no live session reports `cleanup=absent`.
+nonreturning, owned-cleanup interruption guard and writes a content-free
+`keyboard-owner` or `modal-context` refusal to the runner's standard error;
+the interruption monitor writes `interruption`. A guard that finds no live
+session reports `cleanup=absent`.
+
+A refused ownership admission emits one content-free
+`PORTAVOZ_UI_KEYBOARD_REFUSAL cause=...` line before that guard. The cause names
+the first failed ownership check in the final bounded-wait observation:
+`target-not-foreground`, `receiver-missing`, `receiver-ambiguous`,
+`frontmost-unavailable`, or `frontmost-mismatch`. It does not take a second
+snapshot to diagnose a possibly different state. Transient failures that
+converge to admission and modal-context refusals emit no ownership line. No
+process identity, window name, key value or field text is recorded, and neither
+the admission conditions nor the timeout changes.
 
 `handOffTextFieldEditing` observes keyboard focus first and sends no key when
 the field is not the active editor, because Tab would otherwise move an
@@ -8076,6 +8155,13 @@ control stops only fixture processes built under its own products directory. The
 scoped to the identified sheet rather than its duplicate Touch Bar button.
 Negative controls require no writing or choice effects and complete owned
 cleanup, plus the foreign owner's exit callback where an overlay was launched.
+The four foreign-keyboard controls additionally require exactly one ownership
+line before their guard, naming `target-not-foreground` or `frontmost-mismatch`.
+A missing or ambiguous fixture receiver, an unavailable frontmost application,
+or a late, duplicated or malformed line cannot qualify that control. Positive,
+pointer and modal controls reject any ownership-refusal line. The tooling tests
+exercise this validator with malformed evidence; they do not replace the native
+controls that exercise the dispatch boundary itself.
 Bare application typing and foreground-only typing each have a retained native
 counterexample. All controls and full bilingual product journeys are required
 for this shared-harness change. These public-API observations are point-in-time,
@@ -8261,3 +8347,37 @@ attempts, with uncontrolled OS caches. Cohort execution summed to 4,435.5 s;
 also ran on the host, so neither idle-host performance nor cold-start independence
 was established. The earlier timed-out single-process condition remains
 unqualified rather than being overwritten by this differently bounded run.
+
+### Publication state and render coverage without duplicate navigation
+
+The combined real-app journey keeps both reviewed/confirmed GitHub mutations,
+exact canonical document/URLs, localized consent boundaries, and both independently
+rendered Meeting Detail and Settings receipts. One final activity snapshot proves
+both Skill receipts and the exact localized operation/host multiset: the seeded
+summary event, one Gist, and one issue. Missing, overwritten, duplicate, or extra
+events fail. Settings waits for both identifiers and reads one window snapshot.
+Neither render site is replaced by a unit test.
+
+Intermediate publication state belongs to the actual adapter tests: immediately
+after each first publication, before replay or another action, they query real
+SQLite egress and the same `AppServices.loadSkillControlCenter` path Settings uses.
+They require the exact proposal, successful state, operation, destination and one
+receipt. Existing replay and changed-preview counterexamples remain. This removes
+a duplicated open/close of Activity, not a publication, receipt assertion, locale,
+screenshot, or runtime budget. Snapshot failures propagate instead of becoming
+empty or stale observations. Sheet readiness uses its actionable child rather
+than a separate ancestor-existence poll; content is still read from its required
+owning sheet snapshot. The asynchronously loaded offer menu retains an existence
+poll before its stable-hittability check: resolving it too early invokes XCTest's
+slower implicit lookup retry.
+
+### Nonreentrant interruption termination
+
+After owned cleanup, the interruption boundary writes its existing content-free
+receipt and exits the worker directly. Calling XCTest issue recording inside
+the callback can reenter asynchronous teardown before the callback returns;
+this was reproduced by the real asynchronous native control. The fixture
+validator still requires exactly one failed, non-skipped case, complete cleanup,
+the expected refusal reason, and no fallback/action effect. A timeout, empty
+worker restart, missing receipt or unexpected effect is not an accepted negative
+control. Positive controls still require normal successful action and teardown.
