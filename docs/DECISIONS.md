@@ -11556,8 +11556,11 @@ launching the host email client. Unit coverage pins the external registry,
 capabilities, one-meeting projection, exact composer reuse, egress refusal
 before claim, preview separation, delivery failure, and receipt retirement.
 Bilingual XCUITest pins the full preview, no-recipient/sync disclosures,
-localized action, unchanged clipboard, foreground app, receipt, and independent
-offer retirement.
+localized action, foreground app, receipt, and independent offer retirement.
+An architecture test pins the email execution plan and delivery adapter to the
+email opener rather than the recap pasteboard. XCUITest does not overwrite the
+user's general clipboard with a sentinel: another app could replace it during
+the journey, making that assertion both destructive and nondeterministic.
 
 **Consequences:** Portavoz gains one useful external Skill while remaining a
 drafting assistant rather than an email sender. There is no schema, credential,
