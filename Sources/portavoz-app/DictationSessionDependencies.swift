@@ -2,6 +2,7 @@ import AppKit
 import AudioCaptureKit
 import Foundation
 import PlatformKit
+import PortavozCore
 import TranscriptionKit
 
 /// Session-scoped side effects. The controller still owns the production
@@ -47,6 +48,19 @@ struct DictationSessionDependencies {
         return microphone
     }
 
+    /// Nil in ordinary composition: no observation, file, timer or telemetry.
+    var measurementSink: DictationSessionMeasurementRecorder.Sink?
+    var measurementClock: DictationSessionMeasurementRecorder.Clock = { .now }
+
+    func transcriptionHints() -> TranscriptionHints {
+        let language = defaults.string(forKey: DictationController.languageKey)
+        return TranscriptionHints(
+            language: ["es", "en"].contains(language) ? language : nil,
+            vocabulary: VocabularyPrompt.parse(defaults.string(forKey: "customVocabulary") ?? ""),
+            meetingID: MeetingID(),
+            filtersLiveScript: true)
+    }
+
     static func live(services: AppServices) -> Self {
         Self(
             authorizeMicrophone: { [weak services] in
@@ -56,11 +70,11 @@ struct DictationSessionDependencies {
             makeMicrophone: { liveMicrophone(defaults: .standard) },
             acquireRuntime: { [weak services] in
                 guard let services else { throw CancellationError() }
-                return services.liveTranscriptionRuntime(try await services.acquireLiveSpeechRuntime())
+                return try await services.acquireLiveTranscriptionRuntime(for: .dictation)
             },
             canInsert: { TextInserter.canInsert(promptIfNeeded: true) },
             targetName: { NSWorkspace.shared.frontmostApplication?.localizedName },
             insert: { await TextInserter.insert($0) },
-            defaults: .standard)
+            defaults: services.defaults)
     }
 }

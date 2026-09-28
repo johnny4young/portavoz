@@ -408,8 +408,7 @@ extension XCUIApplication {
             guard prepareForInteraction(timeout: timeout) else { return false }
             return general.waitForStableFrame(
                 timeout: timeout,
-                stableFor: 0.1) && finishTextFieldEditing(
-                    identifier: "settings-search-field", timeout: timeout)
+                stableFor: 0.1) && finishSettingsSearchEditing(timeout: timeout)
         }
 
         for attempt in 0..<2 {
@@ -422,11 +421,17 @@ extension XCUIApplication {
                 timeout: attempt == 0 ? 2 : timeout,
                 stableFor: 0.1
             ) {
-                return finishTextFieldEditing(
-                    identifier: "settings-search-field", timeout: timeout)
+                return finishSettingsSearchEditing(timeout: timeout)
             }
         }
         return false
+    }
+
+    /// Settings focuses its search field on every route in, and that field's
+    /// completion surface can cover the category sidebar.
+    @MainActor
+    func finishSettingsSearchEditing(timeout: TimeInterval) -> Bool {
+        finishTextFieldEditing(identifier: "settings-search-field", timeout: timeout)
     }
 
     /// End one field's native editor and prove its value survived.
@@ -483,7 +488,9 @@ extension XCUIApplication {
         let categoryList = control(withIdentifier: "settings-category-list")
         let expectedControl = control(withIdentifier: expectedControlIdentifier)
         for attempt in 0..<2 {
-            guard prepareForInteraction(timeout: timeout) else { continue }
+            guard prepareForInteraction(timeout: timeout),
+                  finishSettingsSearchEditing(timeout: timeout)
+            else { continue }
             bringSettingsCategoryIntoView(category, inside: categoryList)
             guard category.waitForHittable(timeout: timeout) else { continue }
             category.click()

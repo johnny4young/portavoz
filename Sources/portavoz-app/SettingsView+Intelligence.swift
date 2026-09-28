@@ -57,6 +57,9 @@ extension SettingsView {
             }
             .pickerStyle(.radioGroup)
             .accessibilityIdentifier("settings-transcription-language")
+            AppleSpeechChoiceControls(
+                selection: $meetingLiveEngine, language: transcriptionLanguage,
+                identifierPrefix: "settings-meeting-live")
             Text(
                 // One-line UI help.
                 // swiftlint:disable:next line_length

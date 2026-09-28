@@ -97,7 +97,9 @@ private struct DictationStripView: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("dictation-panel-microphone-notice")
             }
-            if controller.confirmedText.isEmpty && controller.partialText.isEmpty {
+            if isFailed {
+                EmptyView()
+            } else if controller.confirmedText.isEmpty && controller.partialText.isEmpty {
                 Text(emptyCaptionHint)
                     .font(.body)
                     .foregroundStyle(.secondary)
