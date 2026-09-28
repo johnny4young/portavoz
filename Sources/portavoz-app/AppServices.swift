@@ -210,7 +210,7 @@ final class AppServices {
     let postCaptureProcessing: PostCaptureProcessingSupervisor
     /// System-wide dictation (⌥⌘D): lives here so the hotkey and its
     /// session survive any window coming and going.
-    let dictation = DictationController()
+    let dictation: DictationController
     @ObservationIgnored let dictationUITestFixture: DictationUITestFixture?
     let dictationNativeUITestFixture: DictationNativeUITestFixture?
     /// THE recording session (one at a time by design): shared so the
@@ -265,8 +265,10 @@ final class AppServices {
         arguments: [String] = ProcessInfo.processInfo.arguments,
         environment: [String: String] = ProcessInfo.processInfo.environment,
         storagePolicy: AppStorageIsolationPolicy? = nil,
-        defaults: UserDefaults = .standard
+        defaults: UserDefaults = .standard,
+        dictation: DictationController = DictationController()
     ) throws {
+        self.dictation = dictation
         self.defaults = defaults
         let storagePolicy = Self.prepareStoragePolicy(
             arguments: arguments,

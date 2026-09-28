@@ -8,7 +8,7 @@ import SwiftUI
 import TranscriptionKit
 
 /// Pure capture-edge policy. The minimum is measured from the moment the
-/// microphone stream actually starts, never from model preparation or panel
+/// first nonempty microphone buffer arrives, never from model preparation or panel
 /// presentation, so a slow cold start cannot turn a tap into a valid capture.
 struct DictationCapturePolicy {
     static let minimumCapture: TimeInterval = 0.75
@@ -55,6 +55,7 @@ final class DictationController {
 
     enum Phase: Equatable {
         case idle
+        case preparing
         case listening
         /// Words landed in the target app — a brief confirmation before the
         /// strip fades, so the user sees the dictation took (design system
@@ -70,6 +71,9 @@ final class DictationController {
     private(set) var partialText = ""
     /// Mic peak with fast attack / slow decay (same VU feel as the HUD).
     private(set) var micLevel: Float = 0
+    private(set) var microphoneNotice: String?
+
+    var isActive: Bool { phase == .preparing || phase == .listening }
     /// The app that was frontmost when dictation started — where the text
     /// will land. The strip shows it so you never dictate "blind" (4b).
     private(set) var targetApp: String?
@@ -104,7 +108,7 @@ final class DictationController {
     /// launch and whenever either changes — always re-registers so a new
     /// combo takes effect immediately.
     func syncHotkey(services: AppServices) {
-        if !UserDefaults.standard.bool(forKey: Self.defaultsKey), phase == .listening {
+        if !UserDefaults.standard.bool(forKey: Self.defaultsKey), isActive {
             cancel()
         }
         shortcut.sync(
@@ -120,7 +124,7 @@ final class DictationController {
                 // behavior untouched; holding the combo while speaking and
                 // letting go delivers — the walkie-talkie gesture. The
                 // threshold splits the two without any setting.
-                guard self.phase == .listening,
+                guard self.isActive,
                     let pressedAt = self.pressedAt,
                     Date().timeIntervalSince(pressedAt) > Self.holdThreshold
                 else { return }
@@ -145,7 +149,7 @@ final class DictationController {
 
         // Rebinding or disabling while the mouse owns capture would otherwise
         // discard the matching release event and strand a listening session.
-        if mouseOwnsSession, phase == .listening {
+        if mouseOwnsSession, isActive {
             cancel()
         }
         mousePTT?.invalidate()
@@ -180,14 +184,14 @@ final class DictationController {
     ) {
         switch MousePTTGesture.action(
             for: event,
-            isListening: phase == .listening,
+            isListening: isActive,
             mouseOwnsSession: mouseOwnsSession) {
         case .start:
             mouseOwnsSession = true
             start(services: services)
             // A refused start (missing Accessibility trust) must not leave
             // the button claiming a session that never began.
-            if phase != .listening { mouseOwnsSession = false }
+            if !isActive { mouseOwnsSession = false }
         case .finish:
             mouseOwnsSession = false
             finishAndInsert()
@@ -205,7 +209,7 @@ final class DictationController {
     /// tail of the last word survives — stopping on the release clips it
     /// mid-phoneme.
     private static let stopTail: Duration = .milliseconds(250)
-    private var captureStartedAt: Date?
+    private var microphoneReadiness: DictationMicrophoneReadiness?
 
     /// Hotkey press: start listening, or finish-and-insert if already on.
     func toggle(services: AppServices) {
@@ -216,6 +220,8 @@ final class DictationController {
         switch phase {
         case .idle, .failed, .inserted:
             start(using: dependencies)
+        case .preparing:
+            cancel()
         case .listening:
             finishAndInsert()
         }
@@ -246,11 +252,12 @@ final class DictationController {
         // Capture the destination BEFORE the non-activating panel appears —
         // the frontmost app is still the one the user will dictate into.
         targetApp = dependencies.targetName()
-        phase = .listening
+        phase = .preparing
         confirmedText = ""
         partialText = ""
         micLevel = 0
-        captureStartedAt = nil
+        microphoneNotice = nil
+        retireMicrophoneReadiness()
         stopTask?.cancel()
         stopTask = nil
         let sessionID = UUID()
@@ -268,27 +275,39 @@ final class DictationController {
         id: UUID, dependencies: DictationSessionDependencies,
         measurement: DictationSessionMeasurementRecorder?
     ) async {
-        let input = dependencies.makeMicrophone()
-        let microphone = input.source
+        var microphone: (any AudioCaptureSource)?
         var localFeed: AsyncStream<AudioChunk>.Continuation?
         var pump: Task<Void, Never>?
+        var ownedRuntime: LiveTranscriptionRuntime?
+        // Keep the lease through catch-path native cleanup too. A defer inside
+        // do runs before catch, while microphone.stop() may still be pending.
+        defer { ownedRuntime?.finish() }
         do {
+            let input = try await dependencies.authorizedMicrophone()
+            guard activeSessionID == id else { return }
+            microphone = input.source
+            microphoneNotice = input.usesSystemFallback ? L10n.text(
+                "Your preferred microphone is unavailable. Using the system default for this dictation.") : nil
             let runtime = try await dependencies.acquireRuntime()
             measurement?.record(.runtimeReady)
-            defer { runtime.finish() }
+            ownedRuntime = runtime
             try Task.checkCancellation()
             guard activeSessionID == id else { return }
-            self.microphone = microphone
-
+            self.microphone = input.source
+            let readiness = makeMicrophoneReadiness(
+                id: id, dependencies: dependencies, measurement: measurement)
+            defer { readiness.finish() }
+            readiness.beginDeadline(wait: dependencies.waitForFirstBufferDeadline)
             await input.warmUp()
             try Task.checkCancellation()
-            let micStream = try await microphone.start()
+            let micStream = try await input.source.start()
             try Task.checkCancellation()
             guard activeSessionID == id else {
-                await microphone.stop()
+                await microphone?.stop()
                 return
             }
-            captureStartedAt = dependencies.now()
+            // Stream construction can precede its first hardware callback.
+            // Only an admitted nonempty buffer starts the capture clock.
             measurement?.record(.microphoneReady)
 
             // Bounded like every other live audio handoff (the recording lane
@@ -301,7 +320,8 @@ final class DictationController {
                 bufferingPolicy: .bufferingNewest(128))
             localFeed = feed
             self.feed = feed
-            pump = makeAudioPump(stream: micStream, feed: feed, sessionID: id, measurement: measurement)
+            pump = startPump(
+                readiness: readiness, stream: micStream, feed: feed, sessionID: id, measurement: measurement)
 
             try await consumeCaptions(
                 from: runtime.engine.transcribe(audio, hints: dependencies.transcriptionHints()),
@@ -312,53 +332,27 @@ final class DictationController {
             await deliver(sessionID: id, dependencies: dependencies)
         } catch is CancellationError {
             measurement?.finish(.cancelled)
-            localFeed?.finish()
-            pump?.cancel()
-            await microphone.stop()
-            await pump?.value
+            await stopCapture(feed: localFeed, pump: pump, microphone: microphone)
         } catch {
-            measurement?.finish(.pipelineFailed)
-            localFeed?.finish()
-            pump?.cancel()
-            await microphone.stop()
-            await pump?.value
-            failSession(id: id, message: LiveSpeechFailureMessage.dictation(error))
-        }
-    }
-
-    private func makeAudioPump(
-        stream: AsyncThrowingStream<AudioChunk, Error>,
-        feed: AsyncStream<AudioChunk>.Continuation,
-        sessionID: UUID,
-        measurement: DictationSessionMeasurementRecorder?
-    ) -> Task<Void, Never> {
-        let updateMeter: @MainActor @Sendable (Float) -> Void = { [weak self] peak in
-            if let self, self.activeSessionID == sessionID {
-                measurement?.record(.firstBufferHandled)
-                self.micLevel = max(peak, self.micLevel * 0.8)
+            let permissionDenied = (error as? DictationMicrophoneReadiness.Failure) == .permissionRequired
+            measurement?.finish(permissionDenied ? .permissionDenied : .pipelineFailed)
+            await stopCapture(feed: localFeed, pump: pump, microphone: microphone)
+            if let message = DictationMicrophoneReadiness.preparationMessage(for: error) {
+                failSession(id: id, message: message, autoDismiss: false)
+            } else {
+                failSession(id: id, message: LiveSpeechFailureMessage.dictation(error))
             }
-        }
-        return Task.detached {
-            do {
-                for try await chunk in stream {
-                    guard !Task.isCancelled else { break }
-                    let peak = chunk.samples.reduce(Float(0)) { max($0, abs($1)) }
-                    feed.yield(chunk)
-                    await updateMeter(peak)
-                }
-            } catch {}
-            if let measurement { await measurement.record(.inputEnded) }
-            feed.finish()
         }
     }
 
     /// Second hotkey press: stop the mic; the drained stream delivers.
     private func finishAndInsert() {
-        guard phase == .listening else { return }
+        guard isActive else { return }
         guard stopTask == nil else { return }
         measurement?.record(.stopRequested)
         guard DictationCapturePolicy.finishDecision(
-            captureStartedAt: captureStartedAt, now: sessionClock?() ?? Date()) == .stopAfterTail
+            captureStartedAt: microphoneReadiness?.firstFrameAt,
+            now: sessionClock?() ?? Date()) == .stopAfterTail
         else {
             cancel()
             return
@@ -388,7 +382,7 @@ final class DictationController {
         confirmedText = ""
         partialText = ""
         micLevel = 0
-        captureStartedAt = nil
+        retireMicrophoneReadiness()
         mouseOwnsSession = false
         stopTask?.cancel()
         stopTask = nil
@@ -422,7 +416,7 @@ final class DictationController {
         microphone = nil
         feed = nil
         stopTask = nil
-        captureStartedAt = nil
+        retireMicrophoneReadiness()
         guard DictationAssembler.hasLexicalContent(text) else {
             measurement?.finish(.empty)
             completeSession(id: sessionID)
@@ -479,15 +473,15 @@ final class DictationController {
         microphone = nil
         feed = nil
         stopTask = nil
-        captureStartedAt = nil
+        retireMicrophoneReadiness()
         mouseOwnsSession = false
     }
 
-    private func failSession(id: UUID, message: String) {
+    private func failSession(id: UUID, message: String, autoDismiss: Bool = true) {
         guard activeSessionID == id else { return }
         completeSession(id: id)
         phase = .failed(message)
-        scheduleFailureDismiss()
+        if autoDismiss { scheduleFailureDismiss() }
     }
 
     private func scheduleFailureDismiss() {
@@ -508,6 +502,58 @@ final class DictationController {
 }
 
 private extension DictationController {
+    func makeMicrophoneReadiness(
+        id: UUID, dependencies: DictationSessionDependencies,
+        measurement: DictationSessionMeasurementRecorder?
+    ) -> DictationMicrophoneReadiness {
+        let readiness = DictationMicrophoneReadiness(now: dependencies.now, onReady: { [weak self] in
+            guard let self, activeSessionID == id else { return }
+            phase = .listening
+        }, onFailure: { [weak self] failure in
+            guard let self, activeSessionID == id else { return }
+            // The session task then unwinds as cancelled; keep the real outcome.
+            measurement?.finish(.pipelineFailed)
+            session?.cancel()
+            feed?.finish()
+            let source = microphone
+            Task { await source?.stop() }
+            failSession(id: id, message: failure.message, autoDismiss: false)
+        })
+        microphoneReadiness = readiness
+        return readiness
+    }
+
+    func retireMicrophoneReadiness() {
+        microphoneReadiness?.finish()
+        microphoneReadiness = nil
+    }
+
+    /// Native stop runs before the pump drains, on every failed or cancelled start.
+    func stopCapture(
+        feed: AsyncStream<AudioChunk>.Continuation?, pump: Task<Void, Never>?,
+        microphone: (any AudioCaptureSource)?
+    ) async {
+        feed?.finish()
+        pump?.cancel()
+        await microphone?.stop()
+        await pump?.value
+    }
+
+    func startPump(
+        readiness: DictationMicrophoneReadiness, stream: AsyncThrowingStream<AudioChunk, Error>,
+        feed: AsyncStream<AudioChunk>.Continuation, sessionID: UUID,
+        measurement: DictationSessionMeasurementRecorder?
+    ) -> Task<Void, Never> {
+        readiness.pump(
+            stream: stream, feed: feed,
+            onInputEnded: { if let measurement { await measurement.record(.inputEnded) } },
+            updateMeter: { [weak self] peak in
+                guard let self, activeSessionID == sessionID else { return }
+                measurement?.record(.firstBufferHandled)
+                micLevel = max(peak, micLevel * 0.8)
+            })
+    }
+
     func consumeCaptions(
         from stream: AsyncThrowingStream<TranscriptSegment, Error>,
         sessionID: UUID, measurement: DictationSessionMeasurementRecorder?
