@@ -109,6 +109,38 @@ final class DictationResourceOwnershipTests: XCTestCase {
         XCTAssertTrue(allRetired)
     }
 
+    func testFinishedSessionKeepsItsOwnerUntilNativeStopReturns() async throws {
+        let services = try AppServices(
+            arguments: ["-use-temp-store", "-seed-dictation"], environment: [:])
+        let controller = DictationController(presentsPanel: false)
+        let microphone = OwnershipHeldMicrophone()
+        defer { controller.cancel(); Task { await microphone.releaseStop() } }
+        var now = Date(timeIntervalSince1970: 0)
+        var retired = false
+        var dependencies = services.makeDictationSessionDependencies()
+        dependencies.now = { now }
+        dependencies.makeMicrophone = { .init(source: microphone, warmUp: {}) }
+        let begin = dependencies.beginCapture
+        dependencies.beginCapture = {
+            let finish = begin()
+            return { finish(); retired = true }
+        }
+        controller.toggle(using: dependencies)
+        let listening = await eventually { !controller.partialText.isEmpty }
+        XCTAssertTrue(listening)
+        now = now.addingTimeInterval(1)
+        controller.toggle(using: dependencies)
+        let delivered = await eventually { !controller.isActive }
+        XCTAssertTrue(delivered, "End of stream reaches delivery while the native stop is still held")
+        let heldAfterDelivery = await eventually(within: .milliseconds(300)) { retired }
+        XCTAssertFalse(heldAfterDelivery)
+        XCTAssertEqual(services.resourceCaptureState.current, .active)
+        await microphone.releaseStop()
+        let released = await eventually { retired }
+        XCTAssertTrue(released)
+        XCTAssertEqual(services.resourceCaptureState.current, .inactive)
+    }
+
     func testCaptureAdmissionCoversCancelledColdPreparationUntilItActuallyReturns() async throws {
         let services = try AppServices(
             arguments: ["-use-temp-store", "-seed-dictation"], environment: [:])
@@ -169,8 +201,8 @@ final class DictationResourceOwnershipTests: XCTestCase {
         XCTAssertEqual(services.resourceCaptureState.current, .inactive)
     }
 
-    private func eventually(_ predicate: () -> Bool) async -> Bool {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
+    private func eventually(within timeout: Duration = .seconds(3), _ predicate: () -> Bool) async -> Bool {
+        let deadline = ContinuousClock.now.advanced(by: timeout)
         while !predicate(), ContinuousClock.now < deadline {
             try? await Task.sleep(for: .milliseconds(5))
         }

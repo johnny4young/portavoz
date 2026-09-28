@@ -358,8 +358,8 @@ candidate limit, not an increased full-suite allowance.
 actual controller, with disposable speech effects. It checks
 maintenance admission and the search-reconciliation entry point while dictating,
 both orders of meeting/dictation completion, held cold preparation, native
-teardown overlapping a replacement, denied starts, failures and duplicate
-completion. Explicit gates hold asynchronous work; no model availability or
+teardown after end of stream and overlapping a replacement, denied starts,
+failures and duplicate completion. Explicit gates hold asynchronous work; no model availability or
 physical-device behavior is inferred from these tests.
 The existing background-work XCUITest checks the shared waiting-for-capture
 status in both locales through its stable row identifiers.
