@@ -58,6 +58,8 @@ struct SettingsView: View {
     // Internal (not private) so the intelligence-pane extension in
     // SettingsView+Intelligence.swift can reach them.
     @AppStorage(MeetingLanguagePreferences.transcriptKey) var transcriptionLanguage = "auto"
+    @AppStorage(LiveSpeechSelection.meetingKey) var meetingLiveEngine =
+        LiveSpeechSelection.parakeet.rawValue
     @AppStorage(MeetingLanguagePreferences.summaryKey) var summaryLanguage = "spoken"
     @State var customStructures: [Recipe] = CustomRecipeStore.custom()
     @State var editingStructure: Recipe?

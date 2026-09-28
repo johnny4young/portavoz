@@ -17,6 +17,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 27, 2026
 
+- **🎙️ Your choice of live speech engine** — keep multilingual Parakeet or explicitly prepare Apple Speech for English or Spanish on Tahoe, with provisional words kept out of saved meeting facts and pasted dictation.
+
 - **🎙️ Cancelled starts stay quiet** — dictation that is already cancelled when preparation begins no longer starts a speech-model load.
 
 ## September 25, 2026

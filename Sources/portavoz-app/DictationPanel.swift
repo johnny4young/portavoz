@@ -91,7 +91,9 @@ private struct DictationStripView: View {
                 .accessibilityLabel(L10n.text("Cancel dictation"))
                 .accessibilityIdentifier("dictation-panel-cancel")
             }
-            if controller.confirmedText.isEmpty && controller.partialText.isEmpty {
+            if isFailed {
+                EmptyView()
+            } else if controller.confirmedText.isEmpty && controller.partialText.isEmpty {
                 Text("Listening…")
                     .font(.body)
                     .foregroundStyle(.secondary)
