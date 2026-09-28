@@ -57,6 +57,52 @@ final class AppleSpeechPreparationModelTests: XCTestCase {
         await first.value
         XCTAssertFalse(model.isPreparingAnotherLanguage("es"))
     }
+
+    func testCancelledInspectionKeepsThePreviousReceipt() async {
+        let client = CancellableInspectionClient()
+        let model = AppleSpeechPreparationModel(client: client)
+        await model.refresh(language: "es")
+        XCTAssertEqual(model.phase(for: "es"), .needsDownload)
+        client.suspendNextInspection = true
+        let departing = Task { await model.refresh(language: "es") }
+        await client.waitUntilInspecting()
+        departing.cancel()
+        client.finishInspection()
+        await departing.value
+        XCTAssertEqual(model.phase(for: "es"), .needsDownload)
+    }
+}
+
+@MainActor
+private final class CancellableInspectionClient: AppleSpeechPreparationClient {
+    var suspendNextInspection = false
+    private var waiter: CheckedContinuation<Void, Never>?
+    private var startedWaiter: CheckedContinuation<Void, Never>?
+
+    func current(language: String?) async throws -> SpeechAnalyzerLiveReadiness {
+        if suspendNextInspection {
+            suspendNextInspection = false
+            await withCheckedContinuation {
+                waiter = $0
+                startedWaiter?.resume()
+                startedWaiter = nil
+            }
+            throw CancellationError()
+        }
+        return .needsDownload("es_ES")
+    }
+
+    func prepare(language: String) async throws {}
+
+    func waitUntilInspecting() async {
+        if waiter != nil { return }
+        await withCheckedContinuation { startedWaiter = $0 }
+    }
+
+    func finishInspection() {
+        waiter?.resume()
+        waiter = nil
+    }
 }
 
 @MainActor

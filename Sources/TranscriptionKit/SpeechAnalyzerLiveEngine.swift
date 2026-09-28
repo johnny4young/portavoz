@@ -13,15 +13,19 @@ public enum SpeechAnalyzerLiveReadiness: Equatable, Error, Sendable {
     case needsDownload(String)
     case ready(String)
 
+    /// Apple's live lane serves only these fixed languages; Auto is refused.
+    static func admittedLanguage(_ language: String?) -> String? {
+        guard let language, language == "en" || language == "es" else { return nil }
+        return language
+    }
+
     static func resolve(
         requested: String?,
         available: Bool,
         supported: String?,
         installed: [String]
     ) -> Self {
-        guard let requested, requested == "en" || requested == "es" else {
-            return .languageRequired
-        }
+        guard let requested = admittedLanguage(requested) else { return .languageRequired }
         guard available else { return .unavailable }
         guard let supported,
               Locale(identifier: supported).language.languageCode?.identifier == requested
@@ -51,7 +55,7 @@ public struct SpeechAnalyzerLiveEngine: TranscriptionEngine {
     /// Read-only capability probe. It never calls AssetInventory or starts a
     /// download; the app runs it in a bundle with Speech authorization.
     public static func readiness(language: String?) async throws -> SpeechAnalyzerLiveReadiness {
-        guard let language, language == "en" || language == "es" else {
+        guard let language = SpeechAnalyzerLiveReadiness.admittedLanguage(language) else {
             return .languageRequired
         }
         guard SpeechTranscriber.isAvailable else { return .unavailable }

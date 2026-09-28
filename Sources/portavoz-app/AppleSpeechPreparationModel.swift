@@ -50,13 +50,15 @@ final class AppleSpeechPreparationModel {
               preparingLanguage != language else { return }
         let next = (generation[language] ?? 0) &+ 1
         generation[language] = next
+        let previous = phases[language]
         phases[language] = .checking
         do {
             let readiness = try await client.current(language: language)
-            guard !Task.isCancelled, generation[language] == next else { return }
-            phases[language] = Self.phase(for: readiness)
+            guard generation[language] == next else { return }
+            phases[language] = Task.isCancelled ? previous : Self.phase(for: readiness)
         } catch is CancellationError {
             // A departing Settings task never overwrites the previous receipt.
+            if generation[language] == next { phases[language] = previous }
         } catch {
             guard generation[language] == next else { return }
             phases[language] = .failed
