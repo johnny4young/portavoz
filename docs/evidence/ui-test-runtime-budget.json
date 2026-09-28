@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 124
+    "expectedCaseCount": 125
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -39,8 +39,7 @@
     "InsightsUITests/testInsightsShowsCompleteLocalDashboard()": 20.0,
     "InterviewAssistUITests/testInterviewAssistGroundsTheCurrentQuestionInExactEvidence()": 25.0,
     "LibraryUITests/testActiveRecordingRemainsReachableAfterBrowsingTheLibrary()": 20.0,
-    "LibraryUITests/testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence()": 20.0,
-    "LibraryUITests/testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence()": 20.0,
+    "LibraryUITests/testAskConfirmedMemoryLoadsPersonCommitmentsBlockersAndBothCitations()": 20.0,
     "LibraryUITests/testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence()": 20.0,
     "LibraryUITests/testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence()": 20.0,
     "LibraryUITests/testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence()": 20.0,
@@ -108,6 +107,8 @@
     "RecordingInputUITests/testFailedWriteRetainsInputAndStopWaitsForAnExplicitRetry()": 30.0,
     "RecordingInputUITests/testStopDrainsAnAdmittedWriteBeforeFinalizingTheRecording()": 25.0,
     "SettingsUITests/testAudioPaneOffersCaptureSourceControls()": 20.0,
+    "SettingsUITests/testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow()": 20.0,
+    "SettingsUITests/testAppleSpeechInspectionFailureOffersExplicitRetry()": 20.0,
     "SettingsUITests/testCategoryNavigationRevealsEachPane()": 24.352,
     "SettingsUITests/testDataPaneExportsAReadableWholeLibraryMarkdownBackup()": 20.0,
     "SettingsUITests/testDataPaneExportsARedactedLocalSupportFile()": 20.0,

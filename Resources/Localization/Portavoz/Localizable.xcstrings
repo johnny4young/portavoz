@@ -1101,6 +1101,96 @@
         }
       }
     },
+    "Apple Speech (fixed language)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Speech (idioma fijo)"
+          }
+        }
+      }
+    },
+    "Apple Speech could not be checked or prepared. Choose Parakeet or try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo comprobar ni preparar Apple Speech. Elige Parakeet o inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Apple Speech could not start. Try Parakeet in Dictation settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Speech no pudo iniciarse. Prueba Parakeet en los ajustes de Dictado."
+          }
+        }
+      }
+    },
+    "Apple Speech does not support this language on this Mac. Choose Parakeet to continue.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Speech no admite este idioma en este Mac. Elige Parakeet para continuar."
+          }
+        }
+      }
+    },
+    "Apple Speech does not support this language. Choose Parakeet in Dictation settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Speech no admite este idioma. Elige Parakeet en los ajustes de Dictado."
+          }
+        }
+      }
+    },
+    "Apple Speech is ready for this language on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Speech está listo para este idioma en este Mac."
+          }
+        }
+      }
+    },
+    "Apple Speech is unavailable on this Mac. Choose Parakeet to continue.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Speech no está disponible en este Mac. Elige Parakeet para continuar."
+          }
+        }
+      }
+    },
+    "Apple Speech is unavailable. Choose Parakeet in Dictation settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Speech no está disponible. Elige Parakeet en los ajustes de Dictado."
+          }
+        }
+      }
+    },
+    "Apple Speech requires macOS Tahoe or later. Parakeet remains available here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Speech requiere macOS Tahoe o posterior. Parakeet sigue disponible aquí."
+          }
+        }
+      }
+    },
     "Apple Translation does not support this language pair on this Mac.": {
       "localizations": {
         "es": {
@@ -2221,6 +2311,16 @@
         }
       }
     },
+    "Check Apple Speech again": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a comprobar Apple Speech"
+          }
+        }
+      }
+    },
     "Check again": {
       "localizations": {
         "es": {
@@ -2257,6 +2357,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Marcado por el Apuntador"
+          }
+        }
+      }
+    },
+    "Checking Apple Speech availability…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando disponibilidad de Apple Speech…"
           }
         }
       }
@@ -2347,6 +2457,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Elegir"
+          }
+        }
+      }
+    },
+    "Choose English or Spanish above. Apple Speech cannot auto-detect a mixed-language session.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige inglés o español arriba. Apple Speech no puede detectar automáticamente una sesión con varios idiomas."
+          }
+        }
+      }
+    },
+    "Choose English or Spanish for Apple Speech in Dictation settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige inglés o español para Apple Speech en los ajustes de Dictado."
           }
         }
       }
@@ -5409,6 +5539,16 @@
         }
       }
     },
+    "Finish the current recording before preparing Apple Speech.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Termina la grabación actual antes de preparar Apple Speech."
+          }
+        }
+      }
+    },
     "Finish the recording before starting another large on-device AI task.": {
       "localizations": {
         "es": {
@@ -6695,6 +6835,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Resumen en vivo"
+          }
+        }
+      }
+    },
+    "Live transcription engine": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motor de transcripción en vivo"
           }
         }
       }
@@ -9009,6 +9159,16 @@
         }
       }
     },
+    "Parakeet (multilingual)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parakeet (multilingüe)"
+          }
+        }
+      }
+    },
     "Past 24 hours": {
       "localizations": {
         "es": {
@@ -9579,6 +9739,16 @@
         }
       }
     },
+    "Prepare Apple Speech": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparar Apple Speech"
+          }
+        }
+      }
+    },
     "Prepare brief": {
       "localizations": {
         "es": {
@@ -9605,6 +9775,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preparar búsqueda semántica"
+          }
+        }
+      }
+    },
+    "Prepare the Apple Speech language asset in Dictation settings first.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Primero prepara el recurso de idioma de Apple Speech en los ajustes de Dictado."
           }
         }
       }
@@ -9695,6 +9875,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preparando archivo de soporte…"
+          }
+        }
+      }
+    },
+    "Preparing the Apple Speech language asset…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando el recurso de idioma de Apple Speech…"
           }
         }
       }
@@ -14621,6 +14811,16 @@
         }
       }
     },
+    "This language needs an Apple-hosted download. Prepare it explicitly before recording.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este idioma requiere una descarga de Apple. Prepáralo explícitamente antes de grabar."
+          }
+        }
+      }
+    },
     "This line has a correction.": {
       "localizations": {
         "es": {
@@ -15107,6 +15307,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reintentar"
+          }
+        }
+      }
+    },
+    "Try preparing Apple Speech again": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a preparar Apple Speech"
           }
         }
       }

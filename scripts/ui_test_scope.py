@@ -133,11 +133,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testAskConversationAnswersAndSeeksToExactCitation"),
         test_id(
             "LibraryUITests",
-            "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence",
-        ),
-        test_id(
-            "LibraryUITests",
-            "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence",
+            "testAskConfirmedMemoryLoadsPersonCommitmentsBlockersAndBothCitations",
         ),
         test_id(
             "LibraryUITests",
@@ -428,9 +424,13 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "SettingsUITests",
             "testIntelligencePaneExplicitlyPreparesSemanticSearch",
         ),
+        test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
+        test_id("SettingsUITests", "testAppleSpeechInspectionFailureOffersExplicitRetry"),
         test_id("SettingsUITests", "testIntelligencePaneCreatesACustomStructure"),
     ),
     "dictation": (
+        test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
+        test_id("SettingsUITests", "testAppleSpeechInspectionFailureOffersExplicitRetry"),
         test_id("DictationUITests", "testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart"),
         test_id("DictationUITests", "testDictationPanelCancelsAndRestartsWithoutGlobalInput"),
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
@@ -438,6 +438,8 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testDictationRepairsCorruptShortcutWithoutLeavingSettings"),
     ),
     "settings-audio": (
+        test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
+        test_id("SettingsUITests", "testAppleSpeechInspectionFailureOffersExplicitRetry"),
         test_id("SettingsUITests", "testAudioPaneOffersCaptureSourceControls"),
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
         test_id("SettingsUITests", "testDictationRecoversShortcutConflictAndRefreshesHelp"),
@@ -550,6 +552,8 @@ APUNTADOR_LEAK_UI_FEATURES = frozenset({
 })
 
 RETIRED_DUPLICATE_TESTS = frozenset({
+    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence"),
+    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence"),
     test_id("SkillsSettingsUITests", "testSkillActivityRefreshPreservesTheExpandedCurrentScope"),
     test_id("SkillsSettingsUITests", "testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest"),
     test_id("InsightsUITests", "testInsightsRendersHeatmap"),
@@ -739,6 +743,10 @@ def app_features(filename: str) -> set[str]:
         return {"commitment-radar"}
     if any(token in lowered for token in ("l10n", "applanguage")):
         return set(ALL_FEATURES)
+    if any(token in lowered for token in ("applespeech", "livespeechselection")):
+        return {"dictation", "settings-intelligence", "recording-recovery"}
+    if "livetranscriptionattacher" in lowered:
+        return {"recording-recovery"}
     if "showcase" in lowered:
         return {"public-showcase"}
     # Dictation owns controller/panel and native delivery journeys, not just

@@ -119,6 +119,13 @@ dependencies are limited to three declared edges: `TranscriptionKit` and
 IntelligenceKit values for issue-export formatting. `AudioPlaybackKit` is
 self-contained over system frameworks and carries no module dependency.
 
+The macOS dictation controller supports an explicitly injected, content-free
+session observation sink. Its bounded recorder lives in the app beside the
+platform/controller seam, not in a capability module or global telemetry bus.
+Normal composition installs no observer or writer. Relative timing observations
+stop at the outcome boundary; event dispatch is never represented as verified
+text delivery, and no captured content or destination identity enters a receipt.
+
 ## Module responsibilities
 
 | Module | Implemented responsibility |
@@ -128,7 +135,7 @@ self-contained over system frameworks and carries no module dependency.
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, and regular persistent file bookmarks while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, checked PCM geometry and native buffer views, single-owner failed-source retirement, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
-| `TranscriptionKit` | Live Parakeet, quality Whisper, macOS 26 SpeechAnalyzer, and a CLI-only non-serving Nemotron live challenger; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
+| `TranscriptionKit` | Live Parakeet, quality Whisper, and an optional macOS 26 SpeechAnalyzer live adapter for fixed installed locales; a CLI-only non-serving Nemotron challenger; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, session-clock-anchored live windowing, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador plus pure bounded proactive meeting-assist admission; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history with atomic multi-lane appends and sparse correction-search lineage, explicit topic and decision continuity with immutable evidence and append-only relationship history, explicitly confirmed decision-topic authority, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and correction-fenced Spotlight projections. |
@@ -196,14 +203,21 @@ cancellation path for production and disposable tests. Its session dependencies
 provide audio preparation, the existing `LiveTranscriptionRuntime` lease,
 permission/destination/insertion effects, preferences and the capture clock.
 Explicit combined speech/diarization readiness stays in the live-speech
-composition extension. Production composition still acquires and finishes the shared live-speech lease;
-this seam neither selects a different engine nor moves platform types into Core.
+composition extension. Production composition acquires the shared live-speech
+token through a type-erased live-engine handle that ends it on completion.
+Recording and dictation share that boundary; batch callers retain the concrete
+Parakeet lease. App composition selects Parakeet by default or an explicitly
+chosen, installed Apple Speech locale on macOS 26. Core contains only the
+transient range-revision marker, not AppKit or Apple Speech types.
 
 Temporary meeting-store composition never registers Carbon hotkeys or mouse
 event taps. The explicit dictation fixture supplies synthetic PCM and a bounded
 caption producer; without that fixture it refuses dictation without requesting
 permissions, downloading models or opening a microphone. Fixture selection lives
 in `AppServices+DictationUITestFixture.swift`, not in the controller's pipeline.
+The Settings-only Apple asset fixture is likewise restricted to a disposable
+temporary-store launch; it exercises the real view/model without installing an
+OS asset or claiming recognition quality.
 
 A separate Xcode-only receiver builds no shipping product. An explicitly armed
 `DictationNativeUITestFixture` calls the production `TextInserter` inside the
@@ -1087,6 +1101,11 @@ remote row; row-count growth is not a revision signal. Final publication checks
 cancellation and session identity before touching observable text, including
 streams that end normally on cancellation. Cancel clears both text projections
 before its asynchronous teardown.
+Apple Speech's range-based volatile replacements update only the ephemeral
+visible tail. They never enter the append-only coalescer or final text for
+paste; a stream ending with an unconfirmed range fails rather than inserting
+it. Meeting preview rows have the same isolation from canonical captions,
+translation, assistance, summaries and persistence.
 System-wide input adapters remain at the app boundary: Carbon owns the keyboard
 hotkey and a session `CGEventTap` owns one explicitly configured middle or
 additional mouse button. `DictationShortcut` is the process-owned observable
@@ -1415,7 +1434,7 @@ filesystem links before FluidAudio can choose a decode path. The adapter
 requires an explicit English or Spanish hint, rejects unsupported vocabulary
 and malformed audio/model output, and is reachable only through the explicit
 `bench-live --engine nemotron-latin-1120` CLI path. It is absent from the app
-composition and `ModelCatalog.recommended`; Parakeet remains the live authority.
+composition and `ModelCatalog.recommended`; Parakeet remains the default live authority.
 The descriptor and adapter are executable benchmark plumbing, not accepted
 quality, memory, thermal, license-distribution, Sequoia, or Tahoe evidence.
 
@@ -1937,9 +1956,9 @@ flowchart LR
     HEALTH --> NOTICE[Recording health UI]
     STAGED --> FINAL[validated final CAF]
     SESSION -. nonblocking newest-only frames .-> BUFFER[Bounded live feeds]
-    RESIDENT[Resident or asynchronously verified Parakeet] --> ATTACH[Live attacher]
+    RESIDENT[Resident Parakeet or optional installed Apple Speech] --> ATTACH[Live attacher]
     ATTACH --> BUFFER
-    BUFFER --> LIVE[Parakeet live transcription]
+    BUFFER --> LIVE[Selected live transcription]
     FINAL --> DURABLE[Parakeet durable first pass]
     FINAL --> REFINE[Whisper quality refinement]
     SYSTEM --> DIARIZE[Pyannote diarization]
@@ -1957,6 +1976,12 @@ consuming only the newest buffered context when it completes. Capture never
 awaits that load and the cold-start session retains its durable transcription
 recovery bit because earlier audio was not live-transcribed. Preparing,
 available, and failed states cross ApplicationKit without raw model errors.
+The optional Apple route never starts an asset download during capture: it
+checks an explicit fixed language and an already-installed equivalent locale
+asynchronously, then hot-attaches. Missing assets or a failed live stream keep
+audio-first recording and require durable Parakeet recovery. The attacher
+assigns each result the hardware channel of its captured feed, overriding an
+OS engine's microphone-only label for remote system audio.
 
 Intelligence inference also preserves capability ownership. One process-owned
 single-flight `IntelligenceScheduler` lane governs Apple Foundation Models on
@@ -3297,9 +3322,10 @@ ends it after their streams drain. A load that completes after Stop sees the
 inactive attachment and ends its lease without delaying Stop or attaching
 captions to the closed session.
 
-Dictation, durable post-capture transcription, onboarding readiness, and the
-recording resource benchmark also hold explicit leases for their complete
-operations. Runtime release remains behind the existing 600-second generation
+Dictation borrows the same type-erased live-engine handle as recording;
+durable post-capture transcription, onboarding readiness, and the recording
+resource benchmark retain concrete leases for their complete operations.
+Runtime release remains behind the existing 600-second generation
 fence, but the ledger now rejects that release while any live or batch consumer
 is active. Verified assets remain independent, and no model wait or residency
 transition enters the audio writer callback.
@@ -5712,9 +5738,10 @@ An accepted run reports both content-free Notification Center window counts.
 When both are zero it instead states that the override relaxed no present
 blocker, so a clear-host run cannot be misrepresented as live-overlay proof.
 The shared UI-test base installs a content-blind interruption monitor. It ends
-only its registered apps and identity-owned scratch before recording a failure;
-if XCTest returns from that assertion it exits only the worker, rather than
-resuming the interrupted event or default handler stack. It neither inspects
+only its registered apps and identity-owned scratch, writes a content-free
+failure receipt, then exits only the worker. It does not reenter XCTest issue
+handling from the interruption callback, which can stall asynchronous teardown.
+Neither the interrupted event nor the default handler stack resumes. It neither inspects
 nor answers the interrupting element. The execution classifier retains this as
 `evidence-failure` even after a zero-test worker restart or an exit-zero summary.
 A separate permission-free fixture target compiles the same base and cleanup
@@ -5735,13 +5762,24 @@ These observations prove only that the host was quiet at those samples;
 automation started afterward remains an external race that the result bundle
 must classify.
 
+Hosted UI interruption qualification and the single product build are independent
+prerequisites on separate Macs. Locale execution joins both; the final gate
+revalidates selection/result consistency before publishing any verified ancestor.
+This is scheduling only, not a weaker UI or permission boundary.
+
 Disposable UI-test windows do not inherit a user's multi-display placement.
 Only with `-use-temp-store`, one shared AppKit boundary places both the primary
 window and the real Settings scene on `NSScreen.screens.first`, AppKit's zero
-screen, and constrains Settings to its visible frame. Its narrow view-controller
-bridge positions Settings after presentation: SwiftUI's initial placement and AppKit's
-frame restoration can overwrite a correction made at view attachment. The
-separate weak reference remains current at attachment for receipt navigation.
+screen, and constrains Settings to its visible frame. Narrow view-controller
+bridges position each owning window after presentation: SwiftUI's initial
+placement and AppKit's frame restoration can overwrite a correction made at
+view attachment. Main-window geometry is re-established on every appearance,
+including external routes; no delay, repeated timer, or app-wide window lookup
+participates. The primary scene owns its capture outside successful content,
+so database recovery receives the same placement when no application services
+could be loaded. The
+Settings bridge's separate weak reference remains current at attachment for
+receipt navigation.
 The harness asserts that the Settings navigation anchor has nonnegative global
 coordinates before any journey continues. Production launches never enter this boundary and retain
 SwiftUI's saved window placement. No forced compact-main-window mode or
@@ -5942,9 +5980,14 @@ production only through the existing transcription and diarization adapters:
 `ParakeetEngine`, `ParakeetSegmentMapper`,
 `NemotronLatin1120Engine`, `PyannoteDiarizer` and `DiarizationEvaluation`. Core,
 ApplicationKit and executable presentation consume Portavoz contracts instead. In
-the test tree the vendor import is confined to the engine-specific suites,
-`TranscriptionTests`, `ParakeetLanguageConfigurationTests` and
-`NemotronLatin1120Tests`.
+the test tree the vendor import is confined to engine-specific suites
+`TranscriptionTests`, `ParakeetLanguageConfigurationTests`,
+`NemotronLatin1120Tests` and three engine-attribution files:
+`DictationModelBaselineTests`, `DictationVendorProbe` and
+`DictationVendorProbeTests`. Those three load the pinned vendor for the explicit
+comparison and exercise actual vendor updates through the mapper; controller,
+corpus, scoring and receipt tests still consume Portavoz contracts. This is a
+test-only attribution seam, not a new production adapter or dependency edge.
 
 The checked-in resolver revision and the architectural import inventory are tested
 together, over `Sources` and `Tests`, against code with comments and string
