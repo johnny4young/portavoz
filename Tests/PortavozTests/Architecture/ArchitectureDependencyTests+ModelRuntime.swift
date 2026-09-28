@@ -317,6 +317,8 @@ extension ArchitectureDependencyTests {
             of: "Sources/portavoz-app/AppPostCaptureProcessingCapabilities.swift")
         let benchmark = try Self.contents(
             of: "Sources/portavoz-app/BenchMode+ResourceBatch.swift")
+        let syntheticStart = try Self.contents(
+            of: "Sources/portavoz-app/BenchSyntheticRecordingRuntime.swift")
 
         for transition in [
             "modelResidencyLedger.beginLoad(.liveSpeech)",
@@ -335,13 +337,17 @@ extension ArchitectureDependencyTests {
                 "Live-speech residency adapter is missing \(transition)")
         }
 
-        XCTAssertTrue(start.contains("services.acquireResidentLiveSpeechRuntime()"))
-        XCTAssertTrue(start.contains("services.acquireLiveSpeechRuntime()"))
-        XCTAssertTrue(start.contains("services.liveTranscriptionRuntime(runtime)"))
+        XCTAssertTrue(adapter.contains("func acquireLiveTranscriptionRuntime()"))
+        XCTAssertTrue(adapter.contains("func acquireResidentLiveTranscriptionRuntime()"))
+        for recorder in [start, syntheticStart] {
+            XCTAssertTrue(recorder.contains("services.acquireResidentLiveTranscriptionRuntime()"))
+            XCTAssertTrue(recorder.contains("services.acquireLiveTranscriptionRuntime()"))
+            XCTAssertFalse(recorder.contains("services.acquireLiveSpeechRuntime()"))
+        }
         XCTAssertTrue(attacher.contains("await runtime?.finish()"))
         XCTAssertTrue(attacher.contains("await runtime.finish()"))
-        XCTAssertTrue(dictation.contains("services.acquireLiveSpeechRuntime()"))
-        XCTAssertTrue(dictation.contains("services.liveTranscriptionRuntime("))
+        XCTAssertTrue(dictation.contains("services.acquireLiveTranscriptionRuntime()"))
+        XCTAssertFalse(dictation.contains("services.acquireLiveSpeechRuntime()"))
         for borrower in [recovery, benchmark] {
             XCTAssertTrue(borrower.contains("services.acquireLiveSpeechRuntime("))
             XCTAssertTrue(borrower.contains("services.finishLiveSpeechRuntime("))
