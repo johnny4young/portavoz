@@ -506,6 +506,7 @@ class UITestHostPreflightTests(unittest.TestCase):
         # this ratchet only protects the nonreturning receipt/cleanup shape.
         guard = source.split("private func stopForUnexpectedInterruption", 1)[1]
         self.assertNotIn("record(XCTIssue(", guard)
+        self.assertNotIn("continueAfterFailure", guard)
         self.assertLess(guard.index("UITestStorage.end(ownerID:"),
                         guard.index("FileHandle.standardError.write"))
         self.assertLess(guard.index("FileHandle.standardError.write"),

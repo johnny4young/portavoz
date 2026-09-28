@@ -6,8 +6,8 @@ import XCTest
 
 @testable import portavoz_app
 
-/// Opt-in real-weight coverage of the composition call sites. Ordinary CI
-/// exercises the injected dictation/recording failures without downloading.
+/// Composition call sites of the live lease. The cancellation case runs in
+/// ordinary CI without weights; the shared-engine case is opt-in.
 @MainActor
 final class LiveEngineLeaseIntegrationTests: XCTestCase {
     func testCancelledDictationCallSiteNeverStartsSharedModelPreparation() async throws {
@@ -15,13 +15,16 @@ final class LiveEngineLeaseIntegrationTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let services = try AppServices(arguments: ["portavoz-app", "-use-temp-store"], defaults: defaults)
-        let (stream, gate) = AsyncStream.makeStream(of: Void.self)
         let task = Task { @MainActor in
-            for await _ in stream { break }
-            return try await DictationSessionDependencies.live(services: services).acquireRuntime()
+            try await DictationSessionDependencies.live(services: services).acquireRuntime()
         }
         task.cancel()
-        gate.finish()
+        await Task.yield()
+        // A regressed admission must fail here instead of downloading in CI.
+        if let load = services.liveSpeechRuntimeLoad {
+            load.task.cancel()
+            XCTFail("a cancelled caller admitted a shared model load")
+        }
         do {
             _ = try await task.value
             XCTFail("pre-cancelled dictation must not acquire a live model")

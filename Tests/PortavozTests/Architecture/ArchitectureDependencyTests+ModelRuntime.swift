@@ -317,6 +317,8 @@ extension ArchitectureDependencyTests {
             of: "Sources/portavoz-app/AppPostCaptureProcessingCapabilities.swift")
         let benchmark = try Self.contents(
             of: "Sources/portavoz-app/BenchMode+ResourceBatch.swift")
+        let syntheticStart = try Self.contents(
+            of: "Sources/portavoz-app/BenchSyntheticRecordingRuntime.swift")
 
         for transition in [
             "modelResidencyLedger.beginLoad(.liveSpeech)",
@@ -337,9 +339,11 @@ extension ArchitectureDependencyTests {
 
         XCTAssertTrue(adapter.contains("func acquireLiveTranscriptionRuntime("))
         XCTAssertTrue(adapter.contains("func acquireResidentLiveTranscriptionRuntime()"))
-        XCTAssertTrue(start.contains("services.acquireResidentLiveTranscriptionRuntime()"))
-        XCTAssertTrue(start.contains("services.acquireLiveTranscriptionRuntime()"))
-        XCTAssertFalse(start.contains("services.acquireLiveSpeechRuntime()"))
+        for recorder in [start, syntheticStart] {
+            XCTAssertTrue(recorder.contains("services.acquireResidentLiveTranscriptionRuntime()"))
+            XCTAssertTrue(recorder.contains("services.acquireLiveTranscriptionRuntime()"))
+            XCTAssertFalse(recorder.contains("services.acquireLiveSpeechRuntime()"))
+        }
         XCTAssertTrue(attacher.contains("await runtime?.finish()"))
         XCTAssertTrue(attacher.contains("await runtime.finish()"))
         XCTAssertTrue(dictation.contains("services.acquireLiveTranscriptionRuntime(for: .dictation)"))
