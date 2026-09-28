@@ -355,12 +355,12 @@ cancellation and restart; its 20-second budget is an initial
 candidate limit, not an increased full-suite allowance.
 
 `DictationResourceOwnershipTests` uses real `AppServices` composition and the
-actual controller, with disposable speech effects. It checks
-maintenance admission and the search-reconciliation entry point while dictating,
-both orders of meeting/dictation completion, held cold preparation, native
-teardown after end of stream and overlapping a replacement, denied starts,
-failures and duplicate completion. Explicit gates hold asynchronous work; no model availability or
-physical-device behavior is inferred from these tests.
+actual controller, with disposable speech effects. It checks maintenance
+admission and the search-reconciliation entry point while dictating, both orders
+of meeting/dictation completion, held cold preparation, native teardown after
+end of stream and overlapping a replacement, denied starts, failures and
+duplicate completion. Explicit gates hold asynchronous work; no model
+availability or physical-device behavior is inferred from these tests.
 The existing background-work XCUITest checks the shared waiting-for-capture
 status in both locales through its stable row identifiers.
 
