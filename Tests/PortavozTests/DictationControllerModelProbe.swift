@@ -60,7 +60,12 @@ enum DictationControllerModelProbe {
         let stopDriver = Task {
             for await complete in microphone.completion {
                 inputCompleted = complete
-                guard complete, !Task.isCancelled, controller.phase == .listening else { break }
+                guard complete else { break }
+                // EOF can precede the controller's asynchronous first-buffer admission.
+                while controller.phase == .preparing, !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(1))
+                }
+                guard !Task.isCancelled, controller.phase == .listening else { break }
                 controller.toggle(using: dependencies)
             }
         }

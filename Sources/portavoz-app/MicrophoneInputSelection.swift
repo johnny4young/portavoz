@@ -7,9 +7,12 @@ struct MicrophoneInputSelection: Equatable {
     let deviceIdentifier: String?
     let usesSystemFallback: Bool
 
+    static let preferenceKey = "preferredInputUID"
+    static let systemDefault = "default"
+
     static func preferredIdentifier(defaults: UserDefaults) -> String? {
-        guard let value = defaults.object(forKey: "preferredInputUID") as? String,
-              !value.isEmpty, value != "default" else { return nil }
+        guard let value = defaults.object(forKey: preferenceKey) as? String,
+              !value.isEmpty, value != systemDefault else { return nil }
         return value
     }
 

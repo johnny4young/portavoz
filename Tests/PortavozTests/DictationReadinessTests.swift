@@ -354,6 +354,18 @@ final class DictationReadinessTests: XCTestCase {
         }
     }
 
+    func testLiveCompositionReadsTheInjectedAudioPreference() async throws {
+        let suite = "microphone-composition-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set("portavoz-missing-input-\(UUID().uuidString)", forKey: MicrophoneInputSelection.preferenceKey)
+        let services = try AppServices(
+            arguments: ["-use-temp-store"], environment: [:], defaults: defaults,
+            dictation: DictationController(presentsPanel: false))
+        let input = DictationSessionDependencies.live(services: services).makeMicrophone()
+        XCTAssertTrue(input.usesSystemFallback, "dictation must resolve the composition's own Audio preference")
+    }
+
     private func eventually(_ condition: @MainActor () -> Bool) async -> Bool {
         let deadline = ContinuousClock.now.advanced(by: .seconds(3))
         while !condition(), ContinuousClock.now < deadline {

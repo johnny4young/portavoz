@@ -1,4 +1,6 @@
+import AudioCaptureKit
 import Foundation
+import PortavozCore
 import XCTest
 
 @testable import portavoz_app
@@ -95,6 +97,28 @@ final class DictationSessionMeasurementTests: XCTestCase {
         XCTAssertEqual(harness.measurements.count, 2)
         XCTAssertEqual(harness.measurements[0], first)
         XCTAssertNotNil(harness.measurements[1].elapsedSeconds["firstCaptionHandled"])
+    }
+
+    func testMicrophonePreparationFailuresKeepTheirOwnOutcome() async throws {
+        let denied = DictationControllerHarness(text: "Never heard")
+        var deniedDependencies = denied.dependencies
+        deniedDependencies.authorizeMicrophone = { false }
+        denied.controller.toggle(using: deniedDependencies)
+        await eventually { denied.measurements.count == 1 }
+        XCTAssertEqual(denied.measurements.first?.outcome, .permissionDenied)
+        XCTAssertEqual(denied.loads, 0)
+        denied.controller.cancel()
+
+        let silent = DictationControllerHarness(text: "Never heard")
+        var silentDependencies = silent.dependencies
+        silentDependencies.makeMicrophone = { .init(source: EndedDictationMicrophone(), warmUp: {}) }
+        silent.controller.toggle(using: silentDependencies)
+        await eventually { silent.measurements.count == 1 }
+        let receipt = try XCTUnwrap(silent.measurements.first)
+        XCTAssertEqual(receipt.outcome, .pipelineFailed, "no first audio is a failure, not a user cancel")
+        XCTAssertNil(receipt.elapsedSeconds["firstBufferHandled"])
+        XCTAssertTrue(silent.insertions.isEmpty)
+        silent.controller.cancel()
     }
 
     func testCancelAndRestartBeforeTaskSchedulingKeepSeparateMeasurements() async throws {
@@ -203,4 +227,16 @@ final class DictationSessionMeasurementTests: XCTestCase {
         }
         func release() { continuation?.resume(); continuation = nil }
     }
+}
+
+private actor EndedDictationMicrophone: AudioCaptureSource {
+    nonisolated let channel = AudioChannel.microphone
+
+    func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
+        let (stream, continuation) = AsyncThrowingStream.makeStream(of: AudioChunk.self)
+        continuation.finish()
+        return stream
+    }
+
+    func stop() async {}
 }

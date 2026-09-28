@@ -257,8 +257,7 @@ final class DictationController {
         partialText = ""
         micLevel = 0
         microphoneNotice = nil
-        microphoneReadiness?.finish()
-        microphoneReadiness = nil
+        retireMicrophoneReadiness()
         stopTask?.cancel()
         stopTask = nil
         let sessionID = UUID()
@@ -321,13 +320,8 @@ final class DictationController {
                 bufferingPolicy: .bufferingNewest(128))
             localFeed = feed
             self.feed = feed
-            pump = readiness.pump(stream: micStream, feed: feed, onInputEnded: {
-                if let measurement { await measurement.record(.inputEnded) }
-            }) { [weak self] peak in
-                guard let self, activeSessionID == id else { return }
-                measurement?.record(.firstBufferHandled)
-                micLevel = max(peak, micLevel * 0.8)
-            }
+            pump = startPump(
+                readiness: readiness, stream: micStream, feed: feed, sessionID: id, measurement: measurement)
 
             try await consumeCaptions(
                 from: runtime.engine.transcribe(audio, hints: dependencies.transcriptionHints()),
@@ -338,44 +332,17 @@ final class DictationController {
             await deliver(sessionID: id, dependencies: dependencies)
         } catch is CancellationError {
             measurement?.finish(.cancelled)
-            localFeed?.finish()
-            pump?.cancel()
-            await microphone?.stop()
-            await pump?.value
+            await stopCapture(feed: localFeed, pump: pump, microphone: microphone)
         } catch {
             let permissionDenied = (error as? DictationMicrophoneReadiness.Failure) == .permissionRequired
             measurement?.finish(permissionDenied ? .permissionDenied : .pipelineFailed)
-            localFeed?.finish()
-            pump?.cancel()
-            await microphone?.stop()
-            await pump?.value
+            await stopCapture(feed: localFeed, pump: pump, microphone: microphone)
             if let message = DictationMicrophoneReadiness.preparationMessage(for: error) {
                 failSession(id: id, message: message, autoDismiss: false)
             } else {
                 failSession(id: id, message: LiveSpeechFailureMessage.dictation(error))
             }
         }
-    }
-
-    private func makeMicrophoneReadiness(
-        id: UUID, dependencies: DictationSessionDependencies,
-        measurement: DictationSessionMeasurementRecorder?
-    ) -> DictationMicrophoneReadiness {
-        let readiness = DictationMicrophoneReadiness(now: dependencies.now, onReady: { [weak self] in
-            guard let self, activeSessionID == id else { return }
-            phase = .listening
-        }, onFailure: { [weak self] failure in
-            guard let self, activeSessionID == id else { return }
-            // The session task then unwinds as cancelled; keep the real outcome.
-            measurement?.finish(.pipelineFailed)
-            session?.cancel()
-            feed?.finish()
-            let source = microphone
-            Task { await source?.stop() }
-            failSession(id: id, message: failure.message, autoDismiss: false)
-        })
-        microphoneReadiness = readiness
-        return readiness
     }
 
     /// Second hotkey press: stop the mic; the drained stream delivers.
@@ -415,8 +382,7 @@ final class DictationController {
         confirmedText = ""
         partialText = ""
         micLevel = 0
-        microphoneReadiness?.finish()
-        microphoneReadiness = nil
+        retireMicrophoneReadiness()
         mouseOwnsSession = false
         stopTask?.cancel()
         stopTask = nil
@@ -450,8 +416,7 @@ final class DictationController {
         microphone = nil
         feed = nil
         stopTask = nil
-        microphoneReadiness?.finish()
-        microphoneReadiness = nil
+        retireMicrophoneReadiness()
         guard DictationAssembler.hasLexicalContent(text) else {
             measurement?.finish(.empty)
             completeSession(id: sessionID)
@@ -508,8 +473,7 @@ final class DictationController {
         microphone = nil
         feed = nil
         stopTask = nil
-        microphoneReadiness?.finish()
-        microphoneReadiness = nil
+        retireMicrophoneReadiness()
         mouseOwnsSession = false
     }
 
@@ -538,6 +502,58 @@ final class DictationController {
 }
 
 private extension DictationController {
+    func makeMicrophoneReadiness(
+        id: UUID, dependencies: DictationSessionDependencies,
+        measurement: DictationSessionMeasurementRecorder?
+    ) -> DictationMicrophoneReadiness {
+        let readiness = DictationMicrophoneReadiness(now: dependencies.now, onReady: { [weak self] in
+            guard let self, activeSessionID == id else { return }
+            phase = .listening
+        }, onFailure: { [weak self] failure in
+            guard let self, activeSessionID == id else { return }
+            // The session task then unwinds as cancelled; keep the real outcome.
+            measurement?.finish(.pipelineFailed)
+            session?.cancel()
+            feed?.finish()
+            let source = microphone
+            Task { await source?.stop() }
+            failSession(id: id, message: failure.message, autoDismiss: false)
+        })
+        microphoneReadiness = readiness
+        return readiness
+    }
+
+    func retireMicrophoneReadiness() {
+        microphoneReadiness?.finish()
+        microphoneReadiness = nil
+    }
+
+    /// Native stop runs before the pump drains, on every failed or cancelled start.
+    func stopCapture(
+        feed: AsyncStream<AudioChunk>.Continuation?, pump: Task<Void, Never>?,
+        microphone: (any AudioCaptureSource)?
+    ) async {
+        feed?.finish()
+        pump?.cancel()
+        await microphone?.stop()
+        await pump?.value
+    }
+
+    func startPump(
+        readiness: DictationMicrophoneReadiness, stream: AsyncThrowingStream<AudioChunk, Error>,
+        feed: AsyncStream<AudioChunk>.Continuation, sessionID: UUID,
+        measurement: DictationSessionMeasurementRecorder?
+    ) -> Task<Void, Never> {
+        readiness.pump(
+            stream: stream, feed: feed,
+            onInputEnded: { if let measurement { await measurement.record(.inputEnded) } },
+            updateMeter: { [weak self] peak in
+                guard let self, activeSessionID == sessionID else { return }
+                measurement?.record(.firstBufferHandled)
+                micLevel = max(peak, micLevel * 0.8)
+            })
+    }
+
     func consumeCaptions(
         from stream: AsyncThrowingStream<TranscriptSegment, Error>,
         sessionID: UUID, measurement: DictationSessionMeasurementRecorder?

@@ -185,8 +185,7 @@ private struct DictationStripView: View {
     }
 
     private var emptyCaptionHint: String {
-        if isFailed { return "" }
-        return controller.phase == .preparing ? L10n.text("Preparing microphone…") : L10n.text("Listening…")
+        controller.phase == .preparing ? L10n.text("Preparing microphone…") : L10n.text("Listening…")
     }
 
     private var title: String {

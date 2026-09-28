@@ -67,7 +67,7 @@ struct DictationSessionDependencies {
                 guard let services else { return false }
                 return await services.microphonePermissions.authorizeIfNeeded()
             },
-            makeMicrophone: { liveMicrophone(defaults: .standard) },
+            makeMicrophone: { [defaults = services.defaults] in liveMicrophone(defaults: defaults) },
             acquireRuntime: { [weak services] in
                 guard let services else { throw CancellationError() }
                 return try await services.acquireLiveTranscriptionRuntime(for: .dictation)
