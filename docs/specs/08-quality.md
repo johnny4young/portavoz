@@ -75,6 +75,27 @@ insertion qualification. Global input hooks are absent from ordinary disposable
 launches. Per-journey budgets are declared before execution; adding these cases
 does not relax the full-suite or p95 limits.
 
+`DictationReadinessTests` exercises the actual controller with delayed permission,
+empty and nonempty PCM, a held native warm-up/Stop, startup deadline, invalid
+frames before/after partial text, and the 0.75-second boundary in English and
+Spanish. The fixture's pull acknowledgment proves an empty frame was consumed
+before advancing manual time; it does not assume that producer yield means
+consumer admission. The live microphone adapter's injected source factory
+observes the actual resolved UID and preservation of stored preferences. The
+AppServices settings-write adapter is called while dictation awaits permission
+and after cancellation, proving that Preparing also blocks preference import.
+
+Disposable UI journeys cover permission-denial recovery, absent first audio
+with explicit preferred-device fallback, and cancellation while preparing.
+Recovery is also exercised with freshly constructed dependencies per menu
+invocation; failure-once state belongs to the app-owned fixture, not a dependency
+value that would reset on retry. All use temporary-store composition plus the
+explicit dictation seed; permission
+and audio are simulated, while the production controller and panel remain real.
+No system permission is granted by a test, and these scenarios do not qualify
+physical microphones, ASR or native insertion. Each new journey has a declared
+budget before its first execution; no existing per-case/full/p95 limit changes.
+
 **Public dictation corpus admission.**
 
 `Fixtures/DictationValidation/public-synthetic-v1.json` defines 60 original
@@ -193,9 +214,10 @@ are unchanged. Functional and timing qualification still require actual runs.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 123 UI cases after consolidating one pair of
-confirmed-person journeys, including portable-settings, shortcut-recovery and
-the real dictation-panel journeys. The native dictation-receiver test remains
+The unattended catalog contains 128 UI cases after consolidating one pair of
+confirmed-person journeys, including portable-settings, shortcut-recovery, the
+real dictation-panel, three microphone-preparation/recovery and two Apple Speech
+Settings journeys. The native dictation-receiver test remains
 outside this catalog because its app process needs a user-granted Accessibility
 TCC decision. Its explicit `make test-ui-native-dictation` lane runs the real
 XCUITest and fails closed without that grant. The unattended suite neither
@@ -371,7 +393,7 @@ or destination identity fencing. The presence of this test is not evidence that
 the native gate passed. No general clipboard, real meeting, model download or microphone participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 123 unattended cases;
+`make test-ui-bilingual` and scoped hosted runs select the 126 unattended cases;
 `make test-ui-native-dictation` selects the one real receiver case in EN and ES.
 The catalog policy requires that case to remain discoverable but disjoint from
 unattended selectors. The runner excludes it only when no explicit selectors

@@ -18,6 +18,17 @@ production sync reliability, universal hardware support or real-world quality.
 
 ### Global dictation capture and delivery qualification
 
+Microphone preparation now checks authorization before graph/model work, shares
+preferred-input resolution, distinguishes first-buffer readiness from an open
+stream and preserves native cleanup ownership (D543). Its deterministic
+controller and UI seams do not certify Bluetooth routing, physical permission
+prompts or interruption of a stuck native operation. Cancellation fences effects
+but cannot promise that an unreturned hardware call has already released its
+resources. Model-load deadlines and lost physical key-up events remain separate
+lifecycle limitations. First-buffer readiness is not a continuous input-health
+watchdog or a sample-count duration guarantee; an input that stalls after its
+first callback needs separate capture-health evidence.
+
 The controller and native-receiver test seams (D515) improve reachability, not
 all dictation behavior. The microphone pump still finishes its transcription
 feed after a source error and does not promote dropped-yield evidence into a

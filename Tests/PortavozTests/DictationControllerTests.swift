@@ -192,6 +192,7 @@ final class DictationControllerHarness {
 
     var dependencies: DictationSessionDependencies {
         DictationSessionDependencies(
+            authorizeMicrophone: { true },
             makeMicrophone: { [microphone] in .init(source: microphone, warmUp: {}) },
             acquireRuntime: { [weak self] in
                 guard let self else { throw CancellationError() }
