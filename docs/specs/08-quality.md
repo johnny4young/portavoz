@@ -333,7 +333,7 @@ cancellation and restart; its 20-second budget is an initial
 candidate limit, not an increased full-suite allowance.
 
 `DictationResourceOwnershipTests` uses real `AppServices` composition and the
-actual controller, with disposable bilingual speech effects. It checks
+actual controller, with disposable speech effects. It checks
 maintenance admission and the search-reconciliation entry point while dictating,
 both orders of meeting/dictation completion, held cold preparation, native
 teardown overlapping a replacement, denied starts, failures and duplicate

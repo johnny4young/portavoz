@@ -5,11 +5,11 @@ import TranscriptionKit
 
 extension AppServices {
     func makeDictationSessionDependencies() -> DictationSessionDependencies {
-        // Temporary composition must never open real audio or prompt for
-        // Accessibility just because a test clicked the production menu item.
         let beginCapture: () -> () -> Void = { [weak self] in
             self?.beginDictationCapture() ?? {}
         }
+        // Temporary composition must never open real audio or prompt for
+        // Accessibility just because a test clicked the production menu item.
         return usesTemporaryMeetingStore
             ? DictationUITestFixture.dependencies(
                 fixture: dictationUITestFixture, beginCapture: beginCapture)

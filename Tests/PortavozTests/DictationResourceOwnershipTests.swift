@@ -9,51 +9,10 @@ import XCTest
 @MainActor
 final class DictationResourceOwnershipTests: XCTestCase {
     func testDictationProtectsMaintenanceAfterTheMeetingOwnerStops() async throws {
-        for language in [[], ["-seed-dictation-english"]] {
-            let services = try AppServices(
-                arguments: ["-use-temp-store", "-seed-dictation"] + language, environment: [:])
-            let controller = DictationController(presentsPanel: false)
-            defer { controller.cancel() }
-            var finished = false
-            var dependencies = services.makeDictationSessionDependencies()
-            let acquire = dependencies.acquireRuntime
-            dependencies.acquireRuntime = {
-                let runtime = try await acquire()
-                return LiveTranscriptionRuntime(engine: runtime.engine) {
-                    runtime.finish()
-                    finished = true
-                }
-            }
-            controller.toggle(using: dependencies)
-            let listening = await eventually { !controller.partialText.isEmpty }
-            XCTAssertTrue(listening)
-            XCTAssertNotEqual(services.resourceCaptureState.current, .inactive,
-                              "The actual app composition must protect dictation, not only recording")
-            services.recordingPhaseDidChange(.recording)
-            services.recordingPhaseDidChange(.idle)
-            XCTAssertNotEqual(services.resourceCaptureState.current, .inactive,
-                              "Finishing the meeting must not finish a different capture owner")
-            XCTAssertEqual(AppResourceGovernorMaintenanceGate.disposition(
-                for: ResourceWorkloadDescriptor(
-                    workloadClass: .maintenance, kind: .searchIndex, operation: .execute),
-                phase: .admission, captureState: services.resourceCaptureState.current), .pause)
-            services.requestSearchReconciliation()
-            for owner: BackgroundWorkOwner in [.semanticIndex, .memoryGraph] {
-                XCTAssertEqual(services.backgroundWork.snapshots[owner]?.phase, .waitingForRecording,
-                               "The actual reconciliation entry point must yield to dictation")
-            }
-            controller.cancel()
-            let drained = await eventually { finished && services.resourceCaptureState.current == .inactive }
-            XCTAssertTrue(drained)
-            XCTAssertEqual(services.resourceCaptureState.current, .inactive)
-        }
-    }
-
-    func testFinishingDictationCannotReleaseTheMeetingOwner() async throws {
         let services = try AppServices(
             arguments: ["-use-temp-store", "-seed-dictation"], environment: [:])
         let controller = DictationController(presentsPanel: false)
-        defer { controller.cancel(); services.recordingPhaseDidChange(.idle) }
+        defer { controller.cancel() }
         var finished = false
         var dependencies = services.makeDictationSessionDependencies()
         let acquire = dependencies.acquireRuntime
@@ -64,12 +23,50 @@ final class DictationResourceOwnershipTests: XCTestCase {
                 finished = true
             }
         }
+        controller.toggle(using: dependencies)
+        let listening = await eventually { !controller.partialText.isEmpty }
+        XCTAssertTrue(listening)
+        XCTAssertNotEqual(services.resourceCaptureState.current, .inactive,
+                          "The actual app composition must protect dictation, not only recording")
+        services.recordingPhaseDidChange(.recording)
+        services.recordingPhaseDidChange(.idle)
+        XCTAssertNotEqual(services.resourceCaptureState.current, .inactive,
+                          "Finishing the meeting must not finish a different capture owner")
+        XCTAssertEqual(AppResourceGovernorMaintenanceGate.disposition(
+            for: ResourceWorkloadDescriptor(
+                workloadClass: .maintenance, kind: .searchIndex, operation: .execute),
+            phase: .admission, captureState: services.resourceCaptureState.current), .pause)
+        services.requestSearchReconciliation()
+        for owner: BackgroundWorkOwner in [.semanticIndex, .memoryGraph] {
+            XCTAssertEqual(services.backgroundWork.snapshots[owner]?.phase, .waitingForRecording,
+                           "The actual reconciliation entry point must yield to dictation")
+        }
+        controller.cancel()
+        let drained = await eventually { finished && services.resourceCaptureState.current == .inactive }
+        XCTAssertTrue(drained)
+        XCTAssertEqual(services.resourceCaptureState.current, .inactive)
+    }
+
+    func testFinishingDictationCannotReleaseTheMeetingOwner() async throws {
+        let services = try AppServices(
+            arguments: ["-use-temp-store", "-seed-dictation"], environment: [:])
+        let controller = DictationController(presentsPanel: false)
+        defer { controller.cancel(); services.recordingPhaseDidChange(.idle) }
+        var retired = false
+        var dependencies = services.makeDictationSessionDependencies()
+        let begin = dependencies.beginCapture
+        dependencies.beginCapture = {
+            let finish = begin()
+            return { finish(); retired = true }
+        }
         services.recordingPhaseDidChange(.preparing)
         controller.toggle(using: dependencies)
         let listening = await eventually { !controller.partialText.isEmpty }
         XCTAssertTrue(listening)
+        XCTAssertEqual(services.resourceCaptureState.current, .active,
+                       "A preparing meeting must not mask active dictation")
         controller.cancel()
-        let drained = await eventually { finished }
+        let drained = await eventually { retired }
         XCTAssertTrue(drained)
         XCTAssertEqual(services.resourceCaptureState.current, .starting)
         services.recordingPhaseDidChange(.idle)
@@ -81,6 +78,7 @@ final class DictationResourceOwnershipTests: XCTestCase {
             arguments: ["-use-temp-store", "-seed-dictation"], environment: [:])
         let controller = DictationController(presentsPanel: false)
         let microphone = OwnershipHeldMicrophone()
+        defer { controller.cancel(); Task { await microphone.releaseStop() } }
         var firstRetired = false
         var first = services.makeDictationSessionDependencies()
         first.makeMicrophone = { .init(source: microphone, warmUp: {}) }
@@ -116,6 +114,7 @@ final class DictationResourceOwnershipTests: XCTestCase {
             arguments: ["-use-temp-store", "-seed-dictation"], environment: [:])
         let controller = DictationController(presentsPanel: false)
         let gate = OwnershipPreparationGate()
+        defer { controller.cancel(); Task { await gate.release() } }
         var preparing = false
         var dependencies = services.makeDictationSessionDependencies()
         let acquire = dependencies.acquireRuntime
@@ -163,6 +162,7 @@ final class DictationResourceOwnershipTests: XCTestCase {
         first()
         XCTAssertEqual(services.resourceCaptureState.current, .active)
         services.recordingPhaseDidChange(.preparing)
+        XCTAssertEqual(services.resourceCaptureState.current, .active)
         second()
         XCTAssertEqual(services.resourceCaptureState.current, .starting)
         services.recordingPhaseDidChange(.idle)

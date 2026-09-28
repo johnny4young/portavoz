@@ -388,7 +388,7 @@ counts, attempt number, localized retry time, and closed failure reason remain
 visible after settlement. Owner-specific actions call only the existing owner:
 Library route for recovery, processing kick, Spotlight reindex, semantic wake,
 or graph wake. A non-idle/attention toolbar button deep-links to the same pane.
-Semantic and graph requests publish **Waiting for recording to end** while
+Semantic and graph requests publish **Waiting for capture to end** while
 capture is protected and resume through the existing capture-stop
 reconciliation. None of this depends on Foundation Models, so the surface is
 available on both Sequoia and Tahoe.
@@ -691,7 +691,8 @@ token; duplicate or stale completion cannot retire the replacement or the
 meeting. The shared composition installs this boundary for both production
 and disposable dictation dependencies, outside SwiftUI and audio callbacks.
 Both dependency constructors require the capture-admission callback; only
-standalone controller unit fixtures pass an explicit inert callback.
+standalone controller and runtime-lease unit fixtures pass an explicit inert
+callback.
 
 Recording and dictation transitions reconcile the aggregate capture state.
 Semantic and memory-graph maintenance, standing briefs, sync, backup and model

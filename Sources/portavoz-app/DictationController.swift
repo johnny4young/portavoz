@@ -271,7 +271,7 @@ final class DictationController {
         measurement: DictationSessionMeasurementRecorder?
     ) async {
         let input = dependencies.makeMicrophone()
-        await runCapture(id: id, dependencies: dependencies, input: input)
+        await runCapture(id: id, dependencies: dependencies, input: input, measurement: measurement)
         // EOF can precede native teardown, and a cancelled session can overlap
         // its replacement. Retire only this source before releasing its owner.
         await input.source.stop()
@@ -279,7 +279,8 @@ final class DictationController {
 
     private func runCapture(
         id: UUID, dependencies: DictationSessionDependencies,
-        input: DictationSessionDependencies.Microphone
+        input: DictationSessionDependencies.Microphone,
+        measurement: DictationSessionMeasurementRecorder?
     ) async {
         let microphone = input.source
         var localFeed: AsyncStream<AudioChunk>.Continuation?

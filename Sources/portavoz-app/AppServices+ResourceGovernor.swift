@@ -22,7 +22,8 @@ final class AppResourceCaptureState: @unchecked Sendable {
     var current: ResourceCaptureState {
         lock.lock()
         defer { lock.unlock() }
-        return recordingState == .inactive && !dictationOwners.isEmpty ? .active : recordingState
+        // A transitional meeting phase must not mask live dictation capture.
+        return dictationOwners.isEmpty ? recordingState : .active
     }
 
     /// Recording phases never own or clear independent dictation sessions.
