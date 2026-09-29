@@ -40,6 +40,29 @@ enum AutomationEntityUITestRoute: String {
 }
 
 extension XCUIApplication {
+    /// Normal windows show both reading regions; compact windows require an
+    /// explicit pane choice before asserting controls in the other region.
+    @MainActor
+    func openMeetingDetailReadingPane(
+        _ pane: String,
+        timeout: TimeInterval = 10
+    ) -> Bool {
+        guard ["summary", "transcript"].contains(pane) else { return false }
+        let button = buttons["detail-compact-\(pane)"]
+        let content = control(withIdentifier: pane == "summary"
+            ? "detail-artifacts-section" : "detail-transcript-section")
+        guard waitForUITestCondition(timeout: timeout, {
+            button.exists || content.exists
+        }) else { return false }
+        guard button.exists else { return content.exists }
+        if !button.isSelected {
+            guard button.waitForHittable(timeout: timeout) else { return false }
+            button.click()
+        }
+        return button.waitForSelection(timeout: 5)
+            && content.waitForExistenceFast(timeout: 5)
+    }
+
     @MainActor
     static func portavoz(
         seedDemo: Bool = false,
@@ -408,8 +431,7 @@ extension XCUIApplication {
             guard prepareForInteraction(timeout: timeout) else { return false }
             return general.waitForStableFrame(
                 timeout: timeout,
-                stableFor: 0.1) && finishTextFieldEditing(
-                    identifier: "settings-search-field", timeout: timeout)
+                stableFor: 0.1) && finishSettingsSearchEditing(timeout: timeout)
         }
 
         for attempt in 0..<2 {
@@ -422,11 +444,17 @@ extension XCUIApplication {
                 timeout: attempt == 0 ? 2 : timeout,
                 stableFor: 0.1
             ) {
-                return finishTextFieldEditing(
-                    identifier: "settings-search-field", timeout: timeout)
+                return finishSettingsSearchEditing(timeout: timeout)
             }
         }
         return false
+    }
+
+    /// Settings focuses its search field on every route in, and that field's
+    /// completion surface can cover the category sidebar.
+    @MainActor
+    func finishSettingsSearchEditing(timeout: TimeInterval) -> Bool {
+        finishTextFieldEditing(identifier: "settings-search-field", timeout: timeout)
     }
 
     /// End one field's native editor and prove its value survived.
@@ -483,7 +511,9 @@ extension XCUIApplication {
         let categoryList = control(withIdentifier: "settings-category-list")
         let expectedControl = control(withIdentifier: expectedControlIdentifier)
         for attempt in 0..<2 {
-            guard prepareForInteraction(timeout: timeout) else { continue }
+            guard prepareForInteraction(timeout: timeout),
+                  finishSettingsSearchEditing(timeout: timeout)
+            else { continue }
             bringSettingsCategoryIntoView(category, inside: categoryList)
             guard category.waitForHittable(timeout: timeout) else { continue }
             category.click()

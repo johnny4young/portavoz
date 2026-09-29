@@ -134,4 +134,18 @@ final class CLIArgumentValueTests: XCTestCase {
             meetings: Int.max,
             segmentsPerMeeting: 2))
     }
+
+    func testLiveBenchmarkCommandDoesNotReportInvalidInputAsSuccess() async {
+        let cases = [
+            ["--file", "/no/such/benchmark.wav"],
+            ["--file", "/no/such/benchmark.wav", "--seconds", "0"],
+            ["--file", "/no/such/benchmark.wav", "--engine", "missing"],
+            ["--file"],
+            ["--unknown"],
+        ]
+        for arguments in cases {
+            let succeeded = await BenchLiveCommand.run(arguments)
+            XCTAssertFalse(succeeded, "invalid invocation must fail: \(arguments)")
+        }
+    }
 }

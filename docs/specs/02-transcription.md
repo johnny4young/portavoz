@@ -298,6 +298,11 @@ when it completes. The attacher retains that exact engine/use token until every
 live stream drains. Stop cancels only its waiter and returns immediately; if the
 process load later completes, the inactive attacher ends the new lease without
 publishing captions.
+Recording and Dictation acquire the same type-erased live-engine handle from
+AppServices; its completion retains and ends the underlying Parakeet use token.
+The resident-only acquisition remains synchronous and cannot trigger a model
+load. This changes the borrower boundary, not the default engine or batch
+recovery model.
 Only recent context and future frames enter the late live consumers, so a long
 download cannot accumulate an unbounded inference backlog. Typed preparing,
 available, and failed state keeps the recording UI honest.
@@ -482,8 +487,9 @@ effort (D65).
 
 1. **SpeechAnalyzer DOES accept custom vocabulary** — `AnalysisContext.contextualStrings[.general]` exists in SDK 26.5 and the engine wires it from `hints.vocabulary`. This CORRECTS round 2 research ("lost contextualStrings") — it arrived in a beta after the reviews.
 2. **⚠️ Hangs in CLI processes without a bundle**: `SpeechTranscriber.supportedLocale(equivalentTo:)` (first await) suspends FOREVER in `portavoz-cli` — sample shows the cooperative pool empty and the run loop parked (the Speech daemon never responds to a process without bundle/TCC context). **The live-role benchmark must run INSIDE the app** — `NSSpeechRecognitionUsageDescription` has already been added to Info.plist.
-3. **Shared harness**: `LiveTranscriptionBench` (TranscriptionKit) paces the file in real time (1 s chunks) and measures finalization lag. Entry points: `portavoz-cli bench-live --engine parakeet` and, for speech, `Portavoz.app/Contents/MacOS/portavoz-app --bench-live <file> [--seconds] [--language]` (hidden launch argument: runs in-bundle, prints to stdout, exits).
-4. **Accuracy lane (MODEL-001, Jul 2026)**: `TranscriptionAccuracy` (TranscriptionKit, pure, 5 tests) computes WER and CER with rolling-buffer Levenshtein over normalization that keeps Spanish accents — they are phonemic ("papa" vs "papá" is a real error), while case, punctuation, and whitespace are not. The bench result now carries every final row (`Result.hypothesis`), and `bench-live` gains `--reference <txt>` (scores WER/CER against a plain-text transcript) and `--output <json>` (one evidence artifact per run, same convention as the scale benches), so an engine comparison leaves committed numbers instead of prose. The quality spec's rule stands: third-party accuracy tables are citations, never our measurements.
+3. **Shared harness**: `LiveTranscriptionBench` (TranscriptionKit) paces the file in real time (1 s chunks) and measures finalization lag. It bounds feeding by integer source frames, including the final partial chunk: independently rounded duration sums must not issue an extra `AVAudioFile.read` at exact EOF, which throws instead of yielding zero frames on supported WAV input. Entry points: `portavoz-cli bench-live --engine parakeet` and, for speech, `Portavoz.app/Contents/MacOS/portavoz-app --bench-live <file> [--seconds] [--language]` (hidden launch argument: runs in-bundle, prints to stdout, exits).
+   The development CLI returns a failing process status for invalid input or benchmark failure; automation also requires the JSON receipt for a completed score.
+4. **Accuracy lane (MODEL-001, Jul 2026)**: `TranscriptionAccuracy` (TranscriptionKit, pure, 5 tests) computes WER and CER with rolling-buffer Levenshtein over normalization that keeps Spanish accents — they are phonemic ("papa" vs "papá" is a real error), while case, punctuation, and whitespace are not. `bench-live --reference <txt> --output <json>` retains its historical final-only WER/CER and also reports `dictation_wer`/`dictation_cer` over the recognized text that the successful stream passes through `CaptionCoalescer` and `DictationAssembler`, before user text rules. Short utterances may emit only volatile updates; final-only WER can be 100% while Dictation has text. Both scores remain explicit rather than silently redefining the old fields. Neither score certifies a paste, user replacements, or model quality without a representative corpus. Third-party accuracy tables are citations, never our measurements.
 5. **Nemotron challenger (MODEL-001/D355, Aug 2026)**: FluidAudio
    0.15.8—the exact resolved dependency—contains
    `StreamingNemotronMultilingualAsrManager` and tagged downloadable Nemotron
@@ -523,9 +529,21 @@ locale and invokes `AssetInventory.assetInstallationRequest` /
 `downloadAndInstall` when its Apple-hosted model is missing. Availability depends
 on the OS, hardware, locale, and installed assets. Apple's
 [SpeechAnalyzer introduction](https://developer.apple.com/videos/play/wwdc2025/277/)
-describes that asset lifecycle. A future serving change still needs the exact
-bilingual comparison and append-versus-replace integration: Speech volatile
-results replace their range; the current caption coalescer assumes deltas.
+describes that asset lifecycle. D554 now supplies an **optional**, explicitly
+selected serving adapter without changing the default Parakeet engine. It
+requires macOS 26, a fixed en/es language, and an already-installed equivalent
+Apple locale; the read-only probe never calls `AssetInventory`. A separate
+Settings action owns any download. The adapter marks range revisions, shows
+volatile text only in a bounded ephemeral preview, and passes only monotonic
+finals to the append-only caption coalescer. Invalid/overlapping final ranges
+or an unconfirmed tail fail the stream, so dictation cannot paste a provisional
+phrase and meeting capture requests durable recovery. The analyzer feeder
+rejects a nonempty chunk it cannot convert, instead of silently skipping that
+sound. The meeting attacher maps results to the captured feed's hardware
+channel, not the OS engine's microphone-only label. Synthetic EN/ES call-site
+tests cover these contracts;
+the historical one-file M12 timing is **not** a current bilingual quality,
+memory, or thermal qualification for adopting Apple Speech as default.
 
 ## Caption coalescer — `CaptionCoalescer` (used by the app)
 

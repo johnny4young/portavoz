@@ -58,18 +58,34 @@ enum UITestWindowPlacement {
 
     static func positionMainWindow(_ window: NSWindow) {
         guard let visibleFrame = zeroScreenVisibleFrame else { return }
+        let arguments = ProcessInfo.processInfo.arguments
+        let preferredHeight: CGFloat?
+        if arguments.contains("-seed-minimum-transcript-window") {
+            preferredHeight = 560
+        } else if arguments.contains("-seed-compact-transcript-window") {
+            preferredHeight = 620
+        } else {
+            preferredHeight = nil
+        }
+        let frame = mainWindowFrame(in: visibleFrame, preferredHeight: preferredHeight)
+        applyAcceptedNotificationCenterIsolation(to: window)
+        window.setFrame(frame, display: true, animate: false)
+    }
 
+    static func mainWindowFrame(
+        in visibleFrame: NSRect,
+        preferredHeight: CGFloat?
+    ) -> NSRect {
         let minimumWidth: CGFloat = 900
         let leftClearance = min(
             400,
             max(0, visibleFrame.width - minimumWidth))
-        let frame = NSRect(
+        let height = min(visibleFrame.height, preferredHeight ?? visibleFrame.height)
+        return NSRect(
             x: visibleFrame.minX + leftClearance,
-            y: visibleFrame.minY,
+            y: visibleFrame.maxY - height,
             width: visibleFrame.width - leftClearance,
-            height: visibleFrame.height)
-        applyAcceptedNotificationCenterIsolation(to: window)
-        window.setFrame(frame, display: true, animate: false)
+            height: height)
     }
 
     static func positionSettingsWindow(_ window: NSWindow) {

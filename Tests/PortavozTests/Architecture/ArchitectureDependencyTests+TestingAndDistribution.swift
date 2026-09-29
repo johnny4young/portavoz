@@ -220,7 +220,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(execution.contains(
             "Timed out while enabling automation mode"))
         XCTAssertTrue(execution.contains(
-            "if runtime_cases is not None and runtime_cases > 0"))
+            "has_executed_cases = runtime_cases is not None and runtime_cases > 0"))
         XCTAssertTrue(verifiedBase.contains("raw_run.get(\"run_attempt\") != 1"))
         XCTAssertTrue(verifiedBase.contains(
             "history.is_ancestor(candidate, head)"))
@@ -367,7 +367,9 @@ extension ArchitectureDependencyTests {
             "general.waitForStableFrame("))
         XCTAssertTrue(settingsWindowBody.contains("stableFor: 0.1"))
         XCTAssertEqual(settingsWindowBody.components(separatedBy:
-            "identifier: \"settings-search-field\", timeout: timeout)").count - 1, 2)
+            "finishSettingsSearchEditing(timeout: timeout)").count - 1, 2)
+        XCTAssertTrue(settingsWindowBody.contains(
+            "finishTextFieldEditing(identifier: \"settings-search-field\", timeout: timeout)"))
         let searchEditingStart = try XCTUnwrap(settingsWindowBody.range(
             of: "func handOffTextFieldEditing("))
         let searchEditingBody = settingsWindowBody[searchEditingStart.lowerBound...]
@@ -406,6 +408,11 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(categoryBody.contains(
             "category.waitForHittable(timeout: timeout)"))
         XCTAssertFalse(categoryBody.contains("category.waitForStableFrame"))
+        // Every route into Settings can leave search editing over the sidebar.
+        let categoryHandoff = try XCTUnwrap(categoryBody.range(
+            of: "finishSettingsSearchEditing(timeout: timeout)"))
+        let categoryClick = try XCTUnwrap(categoryBody.range(of: "category.click()"))
+        XCTAssertLessThan(categoryHandoff.lowerBound, categoryClick.lowerBound)
         let seededSettleBody = support[
             seededSettleStart.lowerBound..<seededReadyStart.lowerBound]
         // Settling still means hittable, never merely present. D500 adds the

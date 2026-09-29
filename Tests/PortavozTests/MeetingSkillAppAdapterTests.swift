@@ -186,6 +186,17 @@ final class MeetingSkillAppAdapterTests: XCTestCase {
     }
 
     @MainActor
+    func testOnlyDisposableCompositionSelectsTheInertEmailOpener() async throws {
+        let production = try XCTUnwrap(AppServices.makeEmailRecapDraftDelivery(
+            usesTemporaryStore: false) as? AppEmailRecapDraftDelivery)
+        let disposable = try XCTUnwrap(AppServices.makeEmailRecapDraftDelivery(
+            usesTemporaryStore: true) as? AppEmailRecapDraftDelivery)
+
+        XCTAssertTrue(production.opener is AppSystemEmailDraftOpener)
+        XCTAssertFalse(disposable.opener is AppSystemEmailDraftOpener)
+    }
+
+    @MainActor
     func testSecretGistUsesExactPreviewAndOneDurableEgressFence() async throws {
         let services = try AppServices(arguments: [
             "portavoz-app", "-use-temp-store"
@@ -244,6 +255,10 @@ final class MeetingSkillAppAdapterTests: XCTestCase {
             first,
             .succeeded(outputURL: URL(
                 string: "https://gist.github.com/portavoz/skill-preview")))
+
+        try await assertFirstPublicationReceipt(
+            in: services, meetingID: meeting.id, proposalID: proposalID,
+            skillID: SecretGistPublishSkill.id, operation: .publishGitHubGist)
 
         // A repeated UI action finds the settled Skill and does not ask the
         // disposable gateway to record or transport a second publication.
@@ -366,6 +381,10 @@ final class MeetingSkillAppAdapterTests: XCTestCase {
             .succeeded(outputURL: URL(
                 string: "https://github.com/portavoz/demo/issues/42")))
 
+        try await assertFirstPublicationReceipt(
+            in: services, meetingID: fixture.meeting.id, proposalID: proposalID,
+            skillID: GitHubIssueCreateSkill.id, operation: .createGitHubIssue)
+
         let replay = try await services.performMeetingDetailGitHubIssue(
             draft,
             proposalID: UUID(),
@@ -380,6 +399,29 @@ final class MeetingSkillAppAdapterTests: XCTestCase {
             idempotencyKeyPrefix: "\(GitHubIssueCreateSkill.id):")
         XCTAssertEqual(records.count, 1)
         XCTAssertEqual(records.first?.state, .succeeded)
+    }
+
+    @MainActor
+    private func assertFirstPublicationReceipt(
+        in services: AppServices,
+        meetingID: MeetingID,
+        proposalID: UUID,
+        skillID: String,
+        operation: DataEgressOperation
+    ) async throws {
+        // Observe the actual Settings loader before a replay or another action
+        // could accidentally manufacture the first publication's receipt.
+        let settings = try await services.loadSkillControlCenter(receiptSkillID: skillID)
+        XCTAssertEqual(settings.receiptLoadState, .verified)
+        XCTAssertEqual(settings.receipts.count, 1)
+        let receipt = try XCTUnwrap(settings.receipts.first)
+        XCTAssertEqual(receipt.proposalID, proposalID)
+        XCTAssertEqual(receipt.skillID, skillID)
+        XCTAssertEqual(receipt.state, .succeeded)
+        let egress = try await services.store.dataEgressEvents(for: meetingID)
+        XCTAssertEqual(egress.map(\.operation), [operation])
+        XCTAssertEqual(egress.first?.id.rawValue, proposalID)
+        XCTAssertEqual(egress.first?.destinationHost, "api.github.com")
     }
 
     @MainActor

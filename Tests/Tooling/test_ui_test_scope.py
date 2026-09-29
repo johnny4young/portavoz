@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -25,12 +26,22 @@ from ui_test_scope import (  # noqa: E402
 
 
 class UITestScopeTests(unittest.TestCase):
+    def test_compact_detail_column_scopes_playback_correction_and_summary(self):
+        path = "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift"
+        selection = select_paths([path])
+        expected = set(
+            FEATURE_TESTS["meeting-audio"]
+            + FEATURE_TESTS["meeting-correction"]
+            + FEATURE_TESTS["meeting-summary"]
+        )
+        self.assertEqual(set(selection.tests), expected)
+        self.assertEqual(selection.locales, ("en",))
+
     def test_portable_settings_files_reach_both_actual_transfer_journeys(self):
         paths = (
             "Sources/ApplicationKit/PortableSettings.swift",
             "Sources/ApplicationKit/PortableSettingsTransfer.swift",
             "Sources/portavoz-app/AppPortableSettingsStore.swift",
-            "Sources/portavoz-app/AppServices+SettingsTransfer.swift",
             "Sources/portavoz-app/PortableSettingsFile.swift",
             "Sources/portavoz-app/SettingsTransferModel.swift",
             "Sources/portavoz-app/SettingsTransferSection.swift",
@@ -74,6 +85,48 @@ class UITestScopeTests(unittest.TestCase):
 
     def test_empty_change_set_requires_no_ui_runner(self):
         self.assertFalse(select_paths([]).required)
+
+    def test_cli_and_public_dictation_corpus_do_not_run_unrelated_ui(self):
+        for path in (
+            "Sources/portavoz-cli/CLI.swift",
+            "Sources/portavoz-cli/CLIBenchLive.swift",
+            "Fixtures/DictationValidation/public-synthetic-v1.json",
+            "Fixtures/DictationValidation/README.md",
+        ):
+            self.assertFalse(select_paths([path]).required, path)
+        selection = select_paths([
+            "Sources/portavoz-cli/CLI.swift",
+            "Fixtures/DictationValidation/public-synthetic-v1.json",
+            "Sources/portavoz-app/DictationController.swift",
+        ])
+        self.assertEqual(set(selection.tests), set(FEATURE_TESTS["dictation"]))
+        self.assertEqual(selection.locales, ("en",))
+
+        unknown_fixture = select_paths([
+            "Fixtures/DictationValidation/future-app-resource.json",
+        ])
+        self.assertEqual(unknown_fixture.tests, ALL_TESTS)
+        self.assertEqual(unknown_fixture.locales, ("en",))
+
+    def test_headless_live_benchmark_runs_no_ui_without_weakening_unknown_fallback(self):
+        benchmark = "Sources/TranscriptionKit/LiveTranscriptionBench.swift"
+        self.assertFalse(select_paths([benchmark]).required)
+        # The exemption holds only while headless bench mode and the CLI are its callers.
+        headless = {
+            "Sources/TranscriptionKit/LiveTranscriptionBench.swift",
+            "Sources/portavoz-app/BenchMode.swift",
+        }
+        for tree in ("Sources", "Tests/PortavozUITests"):
+            for source in (ROOT / tree).rglob("*.swift"):
+                path = source.relative_to(ROOT).as_posix()
+                if path in headless or path.startswith("Sources/portavoz-cli/"):
+                    continue
+                self.assertNotIn(
+                    "LiveTranscriptionBench.", source.read_text(encoding="utf-8"), path
+                )
+        unknown = select_paths(["Sources/TranscriptionKit/UnknownLiveOwner.swift"])
+        self.assertEqual(unknown.tests, ALL_TESTS)
+        self.assertEqual(unknown.locales, ("en",))
 
     def test_github_summary_is_bounded_without_weakening_selected_evidence(self):
         reasons = tuple(
@@ -353,7 +406,9 @@ class UITestScopeTests(unittest.TestCase):
         self.assertIn('--spanish-outcome "$(outcome es)"', workflow)
         self.assertIn("runs-on: macos-26", workflow)
         self.assertIn("Xcode_26.6.app/Contents/Developer", workflow)
-        self.assertEqual(workflow.count("scripts/install-ci-xcodegen.sh"), 1)
+        for job in ("interruption-controls", "build-ui-products"):
+            body = re.search(rf"(?ms)^  {job}:\n(.*?)(?=^  [a-z][a-z-]+:\n|\Z)", workflow).group(1)
+            self.assertEqual(body.count("scripts/install-ci-xcodegen.sh"), 1, job)
         self.assertNotIn("brew install xcodegen", workflow)
         artifact = workflow.index("Preserve ${{ matrix.locale }} UI evidence")
         gate = workflow.index("Classify functional evidence and hosted runtime drift")
@@ -791,6 +846,16 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
 
+    def test_shared_microphone_preference_reaches_dictation_recording_and_settings(self):
+        selection = select_paths(["Sources/portavoz-app/MicrophoneInputSelection.swift"])
+        expected = set().union(*(FEATURE_TESTS[feature] for feature in (
+            "dictation", "recording-recovery", "settings-audio")))
+        self.assertEqual(set(selection.tests), expected)
+
+    def test_settings_application_keeps_preparing_dictation_in_scope(self):
+        selection = select_paths(["Sources/portavoz-app/AppServices+SettingsTransfer.swift"])
+        self.assertEqual(set(selection.tests), set(FEATURE_TESTS["settings-transfer"] + FEATURE_TESTS["dictation"]))
+
     def test_dictation_receiver_changes_keep_the_panel_journey_in_scope(self):
         selection = select_paths(["Tests/PortavozDictationReceiver/DictationReceiver.swift"])
         self.assertEqual(set(selection.tests), set(FEATURE_TESTS["dictation"]))
@@ -894,7 +959,7 @@ class UITestScopeTests(unittest.TestCase):
         # Includes five distinct assist journeys: layout, identity/reentry,
         # manual requests, coalesced arrivals and unsubmitted drafts, plus four
         # durable-input journeys: recovery, retry, removal and held-write Stop.
-        self.assertEqual(len(expected), 21)
+        self.assertEqual(len(expected), 20)
         self.assertTrue(ui_scope.APUNTADOR_LEAK_EVIDENCE_FILES.isdisjoint(
             ui_scope.FULL_BILINGUAL_HARNESS_FILES
         ))
@@ -1117,6 +1182,34 @@ class UITestScopeTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "orphan feature scopes"):
                 ui_scope.validate_catalog(root, runtime_budget_required=False)
 
+    def test_catalog_policy_rejects_a_no_ui_fixture_loaded_by_the_app(self):
+        scoped = ui_scope.test_id("InsightsUITests", "testScoped")
+        temporary, root = self.minimal_catalog_root("testScoped")
+        loader = root / "Sources" / "portavoz-app" / "DictationFixtureLoader.swift"
+        loader.write_text(
+            'let corpus = "Fixtures/DictationValidation/public-synthetic-v1.json"\n',
+            encoding="utf-8",
+        )
+        cli = root / "Sources" / "portavoz-cli" / "CLIDictationCorpus.swift"
+        cli.parent.mkdir(parents=True)
+        cli.write_text(loader.read_text(encoding="utf-8"), encoding="utf-8")
+        with temporary, mock.patch.multiple(
+            ui_scope,
+            FEATURE_TESTS={"insights": (scoped,)},
+            ALL_TESTS=(scoped,),
+            ALL_FEATURES=frozenset({"insights"}),
+            FEATURE_SOURCE_SENTINELS={
+                "insights": "Sources/portavoz-app/InsightsView.swift"
+            },
+            RETIRED_DUPLICATE_TESTS=frozenset(),
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                r"no-UI fixtures reachable from UI sources: Fixtures/DictationValidation "
+                r"\(Sources/portavoz-app/DictationFixtureLoader.swift\)(;|$)",
+            ):
+                ui_scope.validate_catalog(root, runtime_budget_required=False)
+
     def test_catalog_policy_rejects_a_known_duplicate_journey(self):
         retired = ui_scope.test_id("InsightsUITests", "testRetiredDuplicate")
         temporary, root = self.minimal_catalog_root("testRetiredDuplicate")
@@ -1133,19 +1226,21 @@ class UITestScopeTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "known duplicate tests returned"):
                 ui_scope.validate_catalog(root, runtime_budget_required=False)
 
-    def test_consolidated_receipt_duplicates_cannot_return_even_with_valid_scopes(self):
-        for method in (
-            "testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest",
-            "testSkillActivityRefreshPreservesTheExpandedCurrentScope",
+    def test_consolidated_journey_duplicates_cannot_return_even_with_valid_scopes(self):
+        for test_class, method in (
+            ("SkillsSettingsUITests", "testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest"),
+            ("SkillsSettingsUITests", "testSkillActivityRefreshPreservesTheExpandedCurrentScope"),
+            ("LibraryUITests", "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence"),
+            ("LibraryUITests", "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence"),
         ):
             with self.subTest(method=method):
-                selector = ui_scope.test_id("SkillsSettingsUITests", method)
+                selector = ui_scope.test_id(test_class, method)
                 temporary, root = self.minimal_catalog_root(method)
                 with temporary:
                     source = root / "Tests/PortavozUITests/InsightsUITests.swift"
                     source.write_text(source.read_text().replace(
-                        "class InsightsUITests", "class SkillsSettingsUITests"))
-                    source.rename(source.with_name("SkillsSettingsUITests.swift"))
+                        "class InsightsUITests", f"class {test_class}"))
+                    source.rename(source.with_name(f"{test_class}.swift"))
                     with mock.patch.multiple(
                         ui_scope,
                         FEATURE_TESTS={"insights": (selector,)},

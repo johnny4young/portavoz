@@ -15,6 +15,13 @@ Two SEPARATE streams, never mixed before diarization:
 
 ## MicrophoneSource — `Sources/AudioCaptureKit/MicrophoneSource.swift`
 
+The app's meeting and dictation composition share preferred-input resolution;
+an unavailable saved UID is not erased by the per-session fallback. Dictation
+checks microphone permission before graph construction, owns a first-buffer
+startup deadline before warm-up/start, and retains its runtime lease through
+native Stop. These are application-level ownership rules (D543), not changes
+to the raw capture source, route-recovery policy or audio callback scheduling.
+
 - **Raw by default and for every production meeting (D125)**:
   `MicrophoneSource` defaults `voiceProcessing` to `false`, and the macOS
   recording composition passes `false` explicitly. The app has no AEC
