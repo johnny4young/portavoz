@@ -928,10 +928,6 @@ def app_features(filename: str) -> set[str]:
 
 
 def lower_layer_features(path: str) -> set[str]:
-    if path == "Sources/TranscriptionKit/LiveTranscriptionBench.swift":
-        # App BenchMode and the CLI share this benchmark, but only dictation's
-        # visible voice path needs a UI canary; call-site behavior has unit tests.
-        return {"dictation"}
     if path in {
         "Sources/ApplicationKit/PortableSettings.swift",
         "Sources/ApplicationKit/PortableSettingsTransfer.swift",
@@ -964,6 +960,9 @@ def lower_layer_features(path: str) -> set[str]:
         "sources/integrationskit/cloudkitmeetingsyncplatform.swift": {
             "production-sync"
         },
+        # Only the headless --bench-live mode and the CLI call it; dictation
+        # journeys are a live-engine canary, not a caller.
+        "sources/transcriptionkit/livetranscriptionbench.swift": {"dictation"},
     }
     if owners := exact_owners.get(lowered):
         return set(owners)
@@ -1315,6 +1314,20 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         if feature not in mapped or mapped == set(ALL_FEATURES):
             orphan_scopes.append(f"{feature} ({path})")
 
+    # A no-UI fixture must stay unreachable from the app and its UI tests.
+    no_ui_fixture_dirs = sorted({
+        path.rsplit("/", 1)[0] for path in NO_UI_FILES if path.startswith("Fixtures/")
+    })
+    reachable_fixtures: list[str] = []
+    for tree in ("Sources", "Tests/PortavozUITests"):
+        for source in sorted((root / tree).rglob("*.swift")):
+            if source.relative_to(root).as_posix().startswith(NO_UI_PREFIXES):
+                continue
+            text = source.read_text(encoding="utf-8")
+            for directory in no_ui_fixture_dirs:
+                if directory.split("/", 1)[1] in text:
+                    reachable_fixtures.append(f"{directory} ({source.relative_to(root)})")
+
     runtime_budget_errors: list[str] = []
     if runtime_budget_required:
         budget_path = root / "docs/evidence/ui-test-runtime-budget.json"
@@ -1373,6 +1386,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         or permission_overlap
         or sentinel_mismatch
         or orphan_scopes
+        or reachable_fixtures
         or runtime_budget_errors
     ):
         details = []
@@ -1392,6 +1406,8 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
             details.append("feature/source sentinel mismatch: " + ", ".join(sentinel_mismatch))
         if orphan_scopes:
             details.append("orphan feature scopes: " + ", ".join(orphan_scopes))
+        if reachable_fixtures:
+            details.append("no-UI fixtures reachable from UI sources: " + ", ".join(reachable_fixtures))
         details.extend(runtime_budget_errors)
         raise RuntimeError("UI-test scope catalog is stale; " + "; ".join(details))
 

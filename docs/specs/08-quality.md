@@ -2676,8 +2676,9 @@ journeys because the app's explicit benchmark mode also uses it. Unknown
 TranscriptionKit files and new corpus siblings still expand to the complete
 English catalogue. Catalog
 validation fails for an added or renamed unscoped test, empty or duplicate
-scope, missing production owner, retired known-overlap journey, or missing/stale
-runtime budget. The selector never truncates tests or locales. Only its
+scope, missing production owner, retired known-overlap journey, no-UI fixture
+directory named by app or UI-test Swift, or missing/stale runtime budget. The
+selector never truncates tests or locales. Only its
 diagnostic reason summary is bounded to 16 KiB at complete-entry boundaries;
 an omitted count and SHA-256 preserve deterministic identity without passing a
 historical integration diff as one oversized Linux environment string.

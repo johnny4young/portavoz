@@ -1159,6 +1159,34 @@ class UITestScopeTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "orphan feature scopes"):
                 ui_scope.validate_catalog(root, runtime_budget_required=False)
 
+    def test_catalog_policy_rejects_a_no_ui_fixture_loaded_by_the_app(self):
+        scoped = ui_scope.test_id("InsightsUITests", "testScoped")
+        temporary, root = self.minimal_catalog_root("testScoped")
+        loader = root / "Sources" / "portavoz-app" / "DictationFixtureLoader.swift"
+        loader.write_text(
+            'let corpus = "Fixtures/DictationValidation/public-synthetic-v1.json"\n',
+            encoding="utf-8",
+        )
+        cli = root / "Sources" / "portavoz-cli" / "CLIDictationCorpus.swift"
+        cli.parent.mkdir(parents=True)
+        cli.write_text(loader.read_text(encoding="utf-8"), encoding="utf-8")
+        with temporary, mock.patch.multiple(
+            ui_scope,
+            FEATURE_TESTS={"insights": (scoped,)},
+            ALL_TESTS=(scoped,),
+            ALL_FEATURES=frozenset({"insights"}),
+            FEATURE_SOURCE_SENTINELS={
+                "insights": "Sources/portavoz-app/InsightsView.swift"
+            },
+            RETIRED_DUPLICATE_TESTS=frozenset(),
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                r"no-UI fixtures reachable from UI sources: Fixtures/DictationValidation "
+                r"\(Sources/portavoz-app/DictationFixtureLoader.swift\)(;|$)",
+            ):
+                ui_scope.validate_catalog(root, runtime_budget_required=False)
+
     def test_catalog_policy_rejects_a_known_duplicate_journey(self):
         retired = ui_scope.test_id("InsightsUITests", "testRetiredDuplicate")
         temporary, root = self.minimal_catalog_root("testRetiredDuplicate")
