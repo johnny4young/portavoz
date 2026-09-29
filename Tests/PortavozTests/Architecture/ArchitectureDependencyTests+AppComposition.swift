@@ -1965,6 +1965,8 @@ extension ArchitectureDependencyTests {
         let view = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
         let artifacts = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailArtifactsSection.swift")
+        let primaryColumn = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift")
         let flowHost = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailFlowHost.swift")
         let playbackNavigation = try Self.contents(
@@ -1980,13 +1982,23 @@ extension ArchitectureDependencyTests {
 
         XCTAssertTrue(view.contains("MeetingDetailFlowHost("))
         XCTAssertTrue(view.contains("MeetingDetailPlaybackNavigation()"))
-        XCTAssertTrue(view.contains("MeetingDetailArtifactsSection"))
+        XCTAssertTrue(view.contains("MeetingDetailPrimaryColumn("))
         XCTAssertTrue(artifacts.contains(".onGeometryChange(for: CGFloat.self)"))
         XCTAssertTrue(artifacts.contains(".frame(height: resolvedHeight)"))
         XCTAssertFalse(artifacts.contains("maxHeight: 240"), "content decides the height (D536)")
         XCTAssertTrue(view.contains("GeometryReader { column in"))
-        XCTAssertTrue(view.contains("MeetingDetailArtifactsSection(columnHeight: column.size.height)"))
-        XCTAssertTrue(view.contains(".layoutPriority(1)"))
+        XCTAssertTrue(view.contains("selectedPane: $readingPane"))
+        for route in [
+            "func focusEvidence(", "func deliverPendingMeetingSeekIfPossible(", "func seekAndPlay(",
+        ] {
+            let body = try XCTUnwrap(view.components(separatedBy: route).dropFirst().first)
+                .components(separatedBy: "\n    }\n").first ?? ""
+            XCTAssertTrue(
+                body.contains("readingPane = .transcript"),
+                "\(route) must reveal Transcript before targeting a row (D549)")
+        }
+        XCTAssertTrue(primaryColumn.contains("MeetingDetailArtifactsSection(columnHeight: columnHeight)"))
+        XCTAssertTrue(primaryColumn.contains(".layoutPriority(1)"))
         XCTAssertTrue(flowHost.contains("MeetingDetailRefineReviewSheet("))
         XCTAssertTrue(flowHost.contains("TranscriptCorrectionEditor("))
         XCTAssertTrue(flowHost.contains("TranscriptStructuralCorrectionEditor("))

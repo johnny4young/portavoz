@@ -25,6 +25,7 @@
     "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
     "Sources/portavoz-app/MeetingDetailNotesSection.swift",
     "Sources/portavoz-app/MeetingDetailPlaybackNavigation.swift",
+    "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift",
     "Sources/portavoz-app/MeetingDetailPlayerSection.swift",
     "Sources/portavoz-app/MeetingDetailRailSection.swift",
     "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift",
@@ -1398,6 +1399,42 @@
       "occurrences": 1
     },
     {
+      "path": "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift",
+      "category": "control",
+      "source": "Button(\"Summary\") { selectedPane = .summary }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift",
+      "category": "control",
+      "source": "Button(\"Transcript\") { selectedPane = .transcript }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-artifacts-section\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-compact-summary\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-compact-transcript\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift",
+      "category": "state",
+      "source": "@State private var playerHeight: CGFloat = 0",
+      "occurrences": 1
+    },
+    {
       "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
       "category": "control",
       "source": "Button {",
@@ -1641,6 +1678,12 @@
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "state",
       "source": "@State private var railTab = MeetingDetailRailTab.people",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "state",
+      "source": "@State private var readingPane = MeetingDetailReadingPane.transcript",
       "occurrences": 1
     },
     {
@@ -2941,6 +2984,27 @@
       "screenshots": [
         "meeting-detail-commitment-inbox",
         "meeting-detail-commitment-self-assignment"
+      ]
+    },
+    {
+      "feature": "compact-detail",
+      "tests": [
+        "testCompactTranscriptCorrectionCanReachItsOwnAction"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift",
+          "anchor": "\"detail-compact-summary\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift",
+          "anchor": "\"detail-compact-transcript\""
+        }
+      ],
+      "screenshots": [
+        "compact-pane-selector-absent",
+        "compact-transcript-reveal-failure",
+        "compact-transcript-target-absent"
       ]
     },
     {
