@@ -5,18 +5,19 @@ import SwiftUI
 /// what to capture for the other side, and the call-safe capture invariant.
 struct AudioSection: View {
     @Environment(AppServices.self) private var services
-    @AppStorage("preferredInputUID") private var preferredInputUID = "default"
+    @AppStorage(MicrophoneInputSelection.preferenceKey) private var preferredInputUID =
+        MicrophoneInputSelection.systemDefault
     @AppStorage("captureMode") private var captureMode = "auto"
     @State private var inputs: [AudioInputOption] = []
 
     var body: some View {
         Section("Audio") {
             Picker("Microphone", selection: $preferredInputUID) {
-                Text("System default").tag("default")
+                Text("System default").tag(MicrophoneInputSelection.systemDefault)
                 ForEach(inputs) { device in
                     Text(device.name).tag(device.uid)
                 }
-                if preferredInputUID != "default",
+                if preferredInputUID != MicrophoneInputSelection.systemDefault,
                     !inputs.contains(where: { $0.uid == preferredInputUID }) {
                     Text("Unavailable — using system default").tag(preferredInputUID)
                 }

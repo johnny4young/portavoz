@@ -283,8 +283,9 @@ extension ArchitectureDependencyTests {
             adapter.contains("try await services.loadEnginesIfNeeded()"),
             "Recording start must never wait for model preparation")
         XCTAssertTrue(adapter.contains("LiveTranscriptionAttacher("))
-        XCTAssertTrue(adapter.contains("services.acquireResidentLiveSpeechRuntime()"))
-        XCTAssertTrue(adapter.contains("services.acquireLiveSpeechRuntime()"))
+        XCTAssertTrue(adapter.contains("services.acquireResidentLiveTranscriptionRuntime()"))
+        XCTAssertTrue(adapter.contains("services.acquireLiveTranscriptionRuntime()"))
+        XCTAssertFalse(adapter.contains("services.acquireLiveSpeechRuntime()"))
         XCTAssertTrue(adapter.contains("voiceProcessing: false"))
         XCTAssertFalse(adapter.contains("aecEnabled"))
         XCTAssertTrue(controller.contains("receiveLiveTranscription("))

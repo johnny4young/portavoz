@@ -7,13 +7,27 @@ struct DictationTranscriptProjection {
     private let coalescer = CaptionCoalescer()
     private var captions: [TranscriptSegment] = []
     private var closedCount = 0
+    private var volatilePreview: TranscriptSegment?
     private(set) var confirmedText = ""
-    var partialText: String { captions.last?.text ?? "" }
-    var finalText: String { DictationAssembler.text(confirmed: confirmedText, partial: partialText) }
+    var partialText: String {
+        DictationAssembler.text(confirmed: captions.last?.text ?? "", partial: volatilePreview?.text ?? "")
+    }
+    var finalText: String {
+        DictationAssembler.text(confirmed: confirmedText, partial: captions.last?.text ?? "")
+    }
 
     /// Whether the caller needs to publish a new confirmed prefix. The tail is
     /// always read from the admitted rows, including same-count replacements.
     mutating func apply(_ segment: TranscriptSegment) -> Bool {
+        if segment.liveUpdateMode == .rangeRevision {
+            if !segment.isFinal {
+                volatilePreview = segment
+                return false
+            }
+            if let preview = volatilePreview, segment.endTime > preview.startTime {
+                volatilePreview = nil
+            }
+        }
         guard let invalidated = coalescer.apply(segment, to: &captions) else { return false }
         let nextClosedCount = max(0, captions.count - 1)
         if invalidated < closedCount || nextClosedCount < closedCount {
