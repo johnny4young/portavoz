@@ -90,6 +90,7 @@ final class LibraryUITests: PortavozUITestCase {
             title.waitForExistenceFast(timeout: 15),
             "a repeated failure must return to the bounded recovery state")
         XCTAssertFalse(app.buttons["library-new-recording-button"].exists)
+        try app.requireDisposableMainWindowOnZeroScreen()
         attachScreenshot(of: app, named: "database-launch-recovery")
     }
 
@@ -986,7 +987,7 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence() throws {
+    func testAskConfirmedMemoryLoadsPersonCommitmentsBlockersAndBothCitations() throws {
         let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedAskMemory: true)
@@ -1036,29 +1037,16 @@ final class LibraryUITests: PortavozUITestCase {
         let currentTime = app.staticTexts["player-current-time"]
         XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
-    }
+        let header = app.descendants(matching: .any)["detail-header-section"]
+        XCTAssertTrue(header.staticTexts["Test meeting"].waitForExistenceFast(timeout: 5))
 
-    @MainActor
-    func testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence() throws {
-        let app = try XCUIApplication.portavoz(
-            seedDemo: true,
-            seedAskMemory: true)
-        app.launchPortavoz()
-        defer { app.terminate() }
-
-        XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        app.buttons["library-ask-button"].click()
-        let memorySurface = app.descendants(matching: .any)[
-            "ask-surface-person-commitments"]
-        XCTAssertTrue(memorySurface.waitForExistenceFast(timeout: 10))
-        memorySurface.click()
-
-        let person = app.buttons.matching(
-            NSPredicate(format: "identifier BEGINSWITH 'ask-memory-person-'"))
-            .firstMatch
-        XCTAssertTrue(person.waitForExistenceFast(timeout: 10))
-        person.click()
-        app.buttons["ask-memory-load"].click()
+        // Keep both exact citation routes in one launch. Re-enter Ask through
+        // the real sidebar; do not assume a citation leaves this surface open.
+        let ask = app.buttons["library-ask-button"]
+        XCTAssertTrue(ask.waitForStableFrame(timeout: 5))
+        ask.click()
+        XCTAssertTrue(selected.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(renderedText(of: selected).contains("Ana"))
 
         let loadBlockers = app.buttons[
             "ask-memory-blockers-load-B5D10000-0000-4000-8000-000000000005"]
@@ -1088,9 +1076,9 @@ final class LibraryUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "ask-confirmed-commitment-blockers")
 
         primaryEvidence.click()
-        let currentTime = app.staticTexts["player-current-time"]
         XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(currentTime.waitForValue("0:04", timeout: 10))
+        XCTAssertTrue(header.staticTexts["Security review"].waitForExistenceFast(timeout: 5))
     }
 
     @MainActor

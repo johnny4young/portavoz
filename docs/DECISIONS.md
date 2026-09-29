@@ -11556,8 +11556,11 @@ launching the host email client. Unit coverage pins the external registry,
 capabilities, one-meeting projection, exact composer reuse, egress refusal
 before claim, preview separation, delivery failure, and receipt retirement.
 Bilingual XCUITest pins the full preview, no-recipient/sync disclosures,
-localized action, unchanged clipboard, foreground app, receipt, and independent
-offer retirement.
+localized action, foreground app, receipt, and independent offer retirement.
+An architecture test pins the email execution plan and delivery adapter to the
+email opener rather than the recap pasteboard. XCUITest does not overwrite the
+user's general clipboard with a sentinel: another app could replace it during
+the journey, making that assertion both destructive and nondeterministic.
 
 **Consequences:** Portavoz gains one useful external Skill while remaining a
 drafting assistant rather than an email sender. There is no schema, credential,
@@ -19540,6 +19543,97 @@ ASR quality. Tap/hold timing, insertion, dictionary and language behavior remain
 unchanged; registration availability is not a claim that every downstream
 permission or model is ready.
 
+## D518 — Keep corpus admission separate from dictation qualification
+
+**Date:** 2026-09-11
+
+**Context.** A large aggregate can hide a missing failing shape, and a matrix of
+acoustic variants can be mistaken for independent speakers. The existing live
+benchmark also prints transcript excerpts and can prepare missing model assets;
+it is not an installed-assets-only, content-free dictation baseline by default.
+
+**Decision.** Start with an original, digest-pinned bilingual text generation,
+explicit related-phrase groups, tuning/holdout partitions and finite acoustic
+profiles. Count families and variants separately. Non-speech retains empty
+ground truth; declared voice identities cannot cross the split. An audio
+manifest enumerates every canonical case, never arbitrary file paths, and is
+checked against bounded real PCM bytes rather than trusted headers alone.
+The actual command boundary rejects malformed types, Unicode and duplicate
+keys with fixed diagnostics instead of tracebacks carrying supplied content.
+
+**Boundary.** A valid corpus or PCM inventory is not an accepted ASR baseline.
+No unrendered recipe claims an audio hash, no model-only result claims delivery,
+and no synthetic variant claims independent human-speaker evidence. Receipts
+from corpus admission explicitly keep quality and verified delivery unmeasured.
+Producer fidelity, installed model execution, monotonic session phases and the
+native receiving application's acknowledgement need their own observations;
+they cannot be reconstructed from an inventory count or a successful build.
+
+
+The local synthesis owner materializes this generation only on explicit request.
+It uses available system voices, per-process timeouts, exact voice/text/rate
+caching, no-op-preserving PCM transforms and additional padding without a
+speech-end heuristic. A private new directory owns the run; code/OS/selection
+provenance and admitted audio precede atomic no-replace manifest publication.
+Partial failures cannot publish a success manifest, and the owned temporary
+text/speech cache is removed. Voice selection digests are not hashes of every
+vendor asset; comparisons must bind the actual rendered audio hashes. Synthesis
+is not ASR validation or a claim of real-time product performance.
+
+
+Stage attribution is an explicit test-only experiment. It compares the same
+pinned provider's terminal result, the product adapter's deltas and composed
+captions without exporting text, and records whether the experiment reproduces
+product output. A score improvement upstream of the mapper is evidence against
+blaming all loss on the model. It is not sufficient to remove overlap protection
+without long-window/repetition/final-drain parity. Those unresolved contracts
+remain in GAPS; neither corpus admission nor a zero-exit experiment closes them.
+
+
+A longer repeated-public-speech experiment rejected unconditional passthrough of
+provider updates. The resolved provider's deduplication call did not prevent
+large left-context replay; both the modified production path and its independent
+replay reproduced that error. The candidate is withdrawn rather than promoted
+from a green consumer suite. Keep the existing timestamp safeguard until a
+replacement proves both token conservation and replay rejection. This negative
+result belongs to the evidence boundary, not to a model-quality pass or a claim
+that the normal short-cell corpus now covers long streams.
+
+
+The maintained lane therefore exposes bounded, explicit repetition of admitted
+PCM and ground truth together. It keeps the source generation unchanged, rejects
+an expanded sequence above the existing audio bound, and binds repetition plus
+actual duration into a versioned observation. Native and command-boundary tests
+ensure that counting a request as long is not a substitute for actually feeding
+long audio. This is test-input construction, not a runtime audio transformation,
+new corpus speaker or automatic quality budget.
+
+
+Observation admission is closed-schema and separate from quality acceptance.
+A success flag cannot stand in for missing measurements, nor can an unexpected
+content-bearing field be silently retained. Validate the complete requested
+score/work payload at the launcher boundary, but accept high error rates as
+observed bad quality. An empty ASR output legitimately has no first-update
+time; nonempty output without that phase is incomplete evidence.
+
+
+The separate controller observation enters the production coordinator with
+public PCM, not a reconstructed policy-only consumer. It retains short and
+failed attempts, and evaluates proposed output without dispatching it. A
+completed input stream, completed controller workflow, observed memory sample
+and verified external edit are independent claims; the schema must not collapse
+them into one success flag. The process memory sampler reuses the existing
+resource probe, and the microphone fixture shares the paced PCM feeder with
+the model-only lane. Neither adds shipping telemetry, another text normalizer,
+a model downloader or a second application cache.
+
+The reviewed test import inventory admits exactly the three engine-attribution
+files (`DictationModelBaselineTests`, `DictationVendorProbe` and its tests) in
+addition to the existing engine suites. They need real vendor model/update types
+to distinguish vendor output from adapter output. All production import targets
+and files remain unchanged; controller and receipt tests cannot import the
+vendor. A directory-wide exception would lose that boundary and is not used.
+
 ## D520 — Export host facts on demand through existing support ownership
 
 The support report already projects redacted capture and durable-processing
@@ -20253,6 +20347,33 @@ parent changes Dictation Settings, and the parent journey must remain selected.
 
 ---
 
+## D543 — Dictation begins with authorized, observed microphone input
+
+**Context:** the controller advertised listening before microphone permission
+or a first buffer, ignored the preferred Audio input, and timed capture from
+stream opening. Actual controller regressions with delayed/empty PCM admitted
+a short dictation after startup waiting. A held native Stop also showed the
+model lease ending before cleanup because its defer lived inside do/catch.
+
+**Decision:** reuse PlatformKit microphone authorization and one app-level
+preferred-input resolver across meeting/dictation composition. Permission
+precedes source/model construction. The panel remains Preparing until finite,
+nonempty microphone PCM arrives; silent PCM is valid, empty input is not
+readiness. One session-owned deadline starts before warm-up/stream opening.
+Failure retires input authority and remains actionable; fallback is visible and
+never replaces the user's saved preference. Native teardown stays owned by the
+controller and the runtime defer spans its catch cleanup.
+
+**Consequences:** the gesture and first-audio clocks remain separate, the
+existing minimum/tail durations do not change, and preparation is also an
+active capture state for portable-settings admission. Tests reach the real
+controller/adapter and real-app surface with deliberately delayed/invalid input.
+They do not claim physical microphone behavior, ASR quality, forced cancellation
+of a native call or verified external insertion. No new model, capability-module
+edge, microphone framework or network default is introduced.
+
+---
+
 ## D545 — Project dictation text from explicit caption invalidation
 
 **Context.** Rejoining every closed caption on every partial made projection
@@ -20280,29 +20401,102 @@ are projection evidence, not ASR or native latency. Meeting-consumer revision
 risks remain explicit in GAPS; decoder word loss/replay and window evaluations
 are not resolved by this change.
 
+
+## D546 — Overlap independent UI prerequisites, not desktop interactions
+
+The native interruption fixture builds no product UI binary and the product
+builder drives no desktop interaction. They run as sibling jobs on distinct
+hosted Macs. Locale execution starts only after the product build and every
+selected native control succeed. An unselected native job is explicitly skipped;
+failed, cancelled, missing or unexpectedly executed prerequisites cannot become
+a verified UI ancestor, even if locale receipts are otherwise green.
+
+This changes the dependency graph, not coverage or acceptance. One product build
+still serves both locales; no test, selector, timeout or runtime budget is removed
+or widened. Local heavy gates remain sequential. CPU-only workflow state tests
+execute the actual final gate shell across success and contradictory states;
+they complement, not replace, native focus/keyboard/cleanup qualification.
+
+Overlapping the two prerequisite durations can reduce the hosted critical path,
+not necessarily total billed compute or queue delay. Savings require measured
+completed runs and are not promised from the graph alone. Full bilingual
+integration and first-attempt exact-head anchors remain mandatory.
+
 ---
 
-## D550 — Stop the interruption worker without reentering XCTest teardown
+## D552 — Combine capture admission by owner, not by last controller event
 
-**Context:** The permission-free native harness twice reached a controlled
-asynchronous interruption, completed owned cleanup and emitted the refusal, but
-its Xcode 27 test invocation then hung until the 180-second watchdog. A sample
-of the synthetic runner showed `record(XCTIssue)` synchronously entering
-`_performTearDownSequence` and waiting for an asynchronous teardown on the same
-main actor. The intended `exit` after `record` was therefore unreachable. The
-synchronous control passed, so a synchronous-only test hid the real call-site
-failure. This demonstrates a defect in D527's issue-recording choice, not in
-the product's interruption policy.
+**Date:** 2026-09-24
 
-**Decision:** the shared guard completes its identity-owned scratch/app cleanup,
-writes a content-free refusal with cleanup category to standard error, then
-exits only its test worker. It does not call XCTest issue recording or set
-`continueAfterFailure` inside the interruption callback. The separate native
-validator remains strict: exactly one failed test, no skipped/extra case,
-completed cleanup and overlay exit, no fallback or target effect; a restarted
-zero-test suite never qualifies. No interruption is answered or dismissed.
+**Context.** Meeting recording and global dictation share maintenance and model
+admission, but a single last-written recording phase cannot represent both
+captures. Ending a meeting could announce idle while dictation still owned the
+microphone; cancelling one dictation could do the same to its replacement while
+the predecessor's native source was still stopping.
 
-**Consequences:** the sixteen native controls must pass on the exact source,
-including all asynchronous action, typing and modal paths. The product UI
-catalog and physical permission/Sequoia/Tahoe evidence remain separate gates.
-This changes test-host behavior only; there is no user-visible changelog entry.
+**Decision.** Keep the recording phase and exact dictation-owner UUIDs separate
+inside the existing synchronized capture mirror. Admit dictation synchronously
+after insertion eligibility and before any asynchronous preparation. Its owner
+is retired only after that session's native source Stop has returned, including
+on cancellation and error. Duplicate or stale retirement cannot remove another
+owner. Meeting transitions update only the recording phase; existing background
+consumers read the aggregate state. Both live and disposable dictation
+composition require the capture-admission callback explicitly, so a future
+caller cannot silently omit it. Model-use leases remain independent.
+
+**Consequences.** Search reconciliation, standing briefs, sync, backup and model
+admission defer while either capture owner remains active. The boundary adds no
+database, new scheduler, network request or lock in an audio callback. Tests
+must enter real `AppServices` composition and the controller, cover both
+completion orders and held native teardown, and not treat synthetic audio as
+physical-device qualification.
+
+## D553 — Exit interrupted test workers without reentering XCTest
+
+The asynchronous native interruption control reached complete owned cleanup and
+XCTest issue recording, then stalled in teardown until its unchanged deadline.
+Calling the framework's failure API from that main-actor callback is not a
+reliable prerequisite for terminating the worker.
+
+The guard writes the existing content-free refusal receipt and exits the worker
+directly after cleanup. This replaces only the issue-recording step of D527,
+not its consent policy, cleanup ownership, or failure classification. The native
+validator must still observe exactly one failed, non-skipped case, the exact
+refusal category, complete owned cleanup, and no action or fallback effect.
+Timeouts and empty restarted suites remain failures. Real synchronous and
+asynchronous controls, not source-text assertions, qualify this boundary.
+
+---
+
+## D554 — Select Apple live speech without promoting provisional ranges
+
+**Context.** The macOS 26 SpeechAnalyzer spike accepts contextual vocabulary
+and emits low-latency volatile range replacements, but the serving caption
+coalescer accepts append-only deltas. Passing those replacements through it
+duplicates or falsifies meeting facts and dictation text. The OS adapter also
+labels system-audio results as microphone. On-device assets may be absent and
+the historical one-file English benchmark cannot justify a default switch.
+
+**Decision.** Keep Parakeet as the independent meeting and dictation default
+and the durable first-pass engine. Expose an explicit Apple option only for a
+fixed English/Spanish live route on macOS 26+. Settings checks installed
+equivalent locales without preparing them; a separate user action owns any
+Apple-hosted asset download and refuses admission when meeting capture is
+already active.
+Dictation resolves readiness before opening its microphone. Meeting capture
+stays audio-first, hot-attaches asynchronously, and retains durable recovery
+for uncovered or failed live audio. The app's range adapter forwards volatile
+results as transient previews but admits only monotonic finals to canonical
+captions, assistance, translation, storage, and paste. Unconfirmed stream end
+and overlapping final ranges fail closed. The recording attacher sets each
+result's channel from its captured feed rather than trusting an engine label.
+The analyzer feeder aborts on a nonempty chunk it cannot convert; skipping that
+chunk would make incomplete speech appear successfully transcribed.
+The transport marker is omitted from `TranscriptSegment` coding.
+
+**Validation boundary.** Bilingual synthetic controller and attacher tests,
+readiness/encoding tests, and disposable real-app Settings XCUITest qualify
+the routing and no-download contract. They do not qualify real Apple model
+accuracy, latency, memory, native permissions, hardware routes, or a default
+engine change. Those require a separately measured, installed-model corpus
+and physical-host evidence.

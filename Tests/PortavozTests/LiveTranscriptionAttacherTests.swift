@@ -1,7 +1,7 @@
 import ApplicationKit
 import Foundation
 import PortavozCore
-import TranscriptionKit
+@testable import TranscriptionKit
 import XCTest
 
 @testable import portavoz_app
@@ -113,6 +113,109 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
         let requiresRecovery = await attacher.finish()
         XCTAssertTrue(requiresRecovery)
         XCTAssertEqual(probe.runtimeFinishCount, 0)
+    }
+
+    func testAppleRangeRevisionsCarryPreviewMarkerBeforeCorrectedFinal() async throws {
+        guard #available(macOS 26.0, *) else { return }
+        for (localeID, volatile, corrected) in [
+            ("en_US", "We have two items", "We had two items"),
+            ("es_ES", "Tenemos dos puntos", "Teníamos dos puntos")
+        ] {
+            let probe = LiveTranscriptionProbe()
+            let (segments, continuation) = AsyncThrowingStream.makeStream(
+                of: TranscriptSegment.self)
+            let engine = SpeechAnalyzerLiveEngine(locale: Locale(identifier: localeID)) { _, _ in
+                segments
+            }
+            let meetingID = MeetingID()
+            let attacher = LiveTranscriptionAttacher(
+                channels: [.microphone],
+                hints: TranscriptionHints(meetingID: meetingID),
+                callbacks: StartRecordingLiveCallbacks(
+                    caption: { probe.record(caption: $0) },
+                    liveTranscription: { probe.record(event: $0) }),
+                initialRuntime: LiveTranscriptionRuntime(
+                    engine: engine,
+                    completion: { probe.recordRuntimeFinish() }))
+            await attacher.recordingDidStart(
+                loader: { throw LiveTranscriptionTestFailure.unexpectedLoad })
+            continuation.yield(TranscriptSegment(
+                meetingID: meetingID, channel: .microphone, text: volatile,
+                startTime: 0, endTime: 1, isFinal: false))
+            continuation.yield(TranscriptSegment(
+                meetingID: meetingID, channel: .microphone, text: corrected,
+                startTime: 0, endTime: 1, isFinal: true))
+            try await waitUntil { probe.captionTexts == [volatile, corrected] }
+            XCTAssertEqual(probe.captionModes, [.rangeRevision, .rangeRevision])
+            continuation.finish()
+            let needsRecovery = await attacher.finish()
+            XCTAssertFalse(needsRecovery)
+            XCTAssertEqual(probe.runtimeFinishCount, 1)
+        }
+    }
+
+    func testAppleSystemFeedCannotBeMisattributedToMicrophone() async throws {
+        guard #available(macOS 26.0, *) else { return }
+        let probe = LiveTranscriptionProbe()
+        let (segments, continuation) = AsyncThrowingStream.makeStream(
+            of: TranscriptSegment.self)
+        let engine = SpeechAnalyzerLiveEngine(locale: Locale(identifier: "es_ES")) { _, _ in
+            segments
+        }
+        let meetingID = MeetingID()
+        let attacher = LiveTranscriptionAttacher(
+            channels: [.system], hints: TranscriptionHints(meetingID: meetingID),
+            callbacks: StartRecordingLiveCallbacks(
+                caption: { probe.record(caption: $0) },
+                liveTranscription: { probe.record(event: $0) }),
+            initialRuntime: LiveTranscriptionRuntime(engine: engine, completion: {}))
+        await attacher.recordingDidStart(
+            loader: { throw LiveTranscriptionTestFailure.unexpectedLoad })
+        continuation.yield(TranscriptSegment(
+            meetingID: meetingID, channel: .microphone,
+            text: "La otra persona habló", startTime: 0, endTime: 1,
+            isFinal: true))
+        try await waitUntil { probe.captionTexts == ["La otra persona habló"] }
+        continuation.finish()
+        let needsRecovery = await attacher.finish()
+        XCTAssertFalse(needsRecovery)
+        XCTAssertEqual(probe.captionChannels, [.system])
+        XCTAssertEqual(probe.captionModes, [.rangeRevision])
+    }
+
+    func testAppleOverlappingMeetingFinalsForceDurableRecovery() async throws {
+        guard #available(macOS 26.0, *) else { return }
+        let probe = LiveTranscriptionProbe()
+        let (segments, continuation) = AsyncThrowingStream.makeStream(
+            of: TranscriptSegment.self)
+        let engine = SpeechAnalyzerLiveEngine(locale: Locale(identifier: "en_US")) { _, _ in
+            segments
+        }
+        let meetingID = MeetingID()
+        let attacher = LiveTranscriptionAttacher(
+            channels: [.microphone],
+            hints: TranscriptionHints(meetingID: meetingID),
+            callbacks: StartRecordingLiveCallbacks(
+                caption: { probe.record(caption: $0) },
+                liveTranscription: { probe.record(event: $0) }),
+            initialRuntime: LiveTranscriptionRuntime(
+                engine: engine,
+                completion: { probe.recordRuntimeFinish() }))
+        await attacher.recordingDidStart(
+            loader: { throw LiveTranscriptionTestFailure.unexpectedLoad })
+        continuation.yield(TranscriptSegment(
+            meetingID: meetingID, channel: .microphone, text: "Do not send",
+            startTime: 0, endTime: 1, isFinal: true))
+        try await waitUntil { probe.captionTexts == ["Do not send"] }
+        continuation.yield(TranscriptSegment(
+            meetingID: meetingID, channel: .microphone, text: "Send",
+            startTime: 0.5, endTime: 1.5, isFinal: true))
+        try await waitUntil { probe.events.contains(.failed) }
+        continuation.finish()
+        let needsRecovery = await attacher.finish()
+        XCTAssertTrue(needsRecovery)
+        XCTAssertEqual(probe.captionTexts, ["Do not send"])
+        XCTAssertEqual(probe.runtimeFinishCount, 1)
     }
 
     func testRuntimeCompletingAfterStopIsRelinquishedWithoutAttaching() async throws {
@@ -910,6 +1013,9 @@ private final class LiveTranscriptionProbe: @unchecked Sendable {
     private let lock = NSLock()
     private var storedEvents: [StartRecordingLiveTranscriptionEvent] = []
     private var storedCaptionTimes: [TimeInterval] = []
+    private var storedCaptionTexts: [String] = []
+    private var storedCaptionModes: [LiveTranscriptUpdateMode?] = []
+    private var storedCaptionChannels: [AudioChannel] = []
     private var storedRuntimeFinishCount = 0
 
     var events: [StartRecordingLiveTranscriptionEvent] {
@@ -918,6 +1024,18 @@ private final class LiveTranscriptionProbe: @unchecked Sendable {
 
     var captionTimes: [TimeInterval] {
         lock.withLock { storedCaptionTimes.sorted() }
+    }
+
+    var captionTexts: [String] {
+        lock.withLock { storedCaptionTexts }
+    }
+
+    var captionModes: [LiveTranscriptUpdateMode?] {
+        lock.withLock { storedCaptionModes }
+    }
+
+    var captionChannels: [AudioChannel] {
+        lock.withLock { storedCaptionChannels }
     }
 
     var runtimeFinishCount: Int {
@@ -929,7 +1047,12 @@ private final class LiveTranscriptionProbe: @unchecked Sendable {
     }
 
     func record(caption: TranscriptSegment) {
-        lock.withLock { storedCaptionTimes.append(caption.startTime) }
+        lock.withLock {
+            storedCaptionTimes.append(caption.startTime)
+            storedCaptionTexts.append(caption.text)
+            storedCaptionModes.append(caption.liveUpdateMode)
+            storedCaptionChannels.append(caption.channel)
+        }
     }
 
     func recordRuntimeFinish() {

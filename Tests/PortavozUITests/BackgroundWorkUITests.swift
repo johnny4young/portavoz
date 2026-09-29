@@ -112,8 +112,8 @@ final class BackgroundWorkUITests: PortavozUITestCase {
         indicator.click()
 
         let waiting = UITestLocale.environmentLocale == "es"
-            ? "Esperando a que termine la grabación"
-            : "Waiting for recording to end"
+            ? "Esperando a que termine la captura"
+            : "Waiting for capture to end"
         for owner in ["semantic-index", "memory-graph"] {
             XCTAssertTrue(
                 app.staticTexts["background-work-status-\(owner)"]
