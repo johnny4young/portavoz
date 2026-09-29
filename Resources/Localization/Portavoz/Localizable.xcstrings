@@ -17047,12 +17047,12 @@
         }
       }
     },
-    "summary engine apple ollama mlx whisper refine vocabulary": {
+    "summary engine apple ollama mlx whisper refine vocabulary model memory ram lightweight": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "resumen motor apple ollama mlx whisper refine vocabulario"
+            "value": "resumen motor apple ollama mlx whisper refine vocabulario memoria modelo ram ligero"
           }
         }
       }

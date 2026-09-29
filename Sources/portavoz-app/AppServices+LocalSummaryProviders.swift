@@ -6,24 +6,24 @@ extension AppServices {
     /// Presentation requests one application-owned discovery result; concrete
     /// Foundation Models, Ollama, process, and filesystem probes stay here.
     func discoverLocalSummaryProviders() async -> LocalSummaryProviderDiscovery {
-        await DiscoverLocalSummaryProviders(
-            probe: AppLocalSummaryProviderProbe(
-                appleOnDeviceAvailable: foundationModelsCapability.isAvailable,
-                usesTemporaryStore: ProcessInfo.processInfo.arguments
-                    .contains("-use-temp-store"))
-        ).execute(())
+        await DiscoverLocalSummaryProviders(probe: localSummaryProviderProbe()).execute(())
     }
 
     /// Clean-install configuration runs after recovery and durable worker
     /// resume. Existing user selection always wins.
     func configureInitialSummaryProviderIfNeeded() async {
         _ = await ConfigureInitialSummaryProvider(
-            probe: AppLocalSummaryProviderProbe(
-                appleOnDeviceAvailable: foundationModelsCapability.isAvailable,
-                usesTemporaryStore: ProcessInfo.processInfo.arguments
-                    .contains("-use-temp-store")),
+            probe: localSummaryProviderProbe(),
             selections: AppSummaryProviderSelectionStore()
         ).execute(())
+    }
+
+    /// Provider guidance and the memory profile read one RAM observation.
+    func localSummaryProviderProbe() -> AppLocalSummaryProviderProbe {
+        AppLocalSummaryProviderProbe(
+            appleOnDeviceAvailable: foundationModelsCapability.isAvailable,
+            usesTemporaryStore: ProcessInfo.processInfo.arguments.contains("-use-temp-store"),
+            capacity: modelMemoryPreferences.capacity)
     }
 }
 

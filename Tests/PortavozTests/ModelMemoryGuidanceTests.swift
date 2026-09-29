@@ -56,6 +56,19 @@ final class ModelMemoryGuidanceTests: XCTestCase {
         XCTAssertEqual(AppModelMemoryPreferences(defaults: defaults).profile, .lightweight)
     }
 
+    @MainActor
+    func testServiceProviderProbeSharesTheProfileMemoryObservation() async throws {
+        let suite = "model-memory-guidance-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let bytes = 8 * AppModelMemoryCapacity.gibibyte
+        let services = try AppServices(
+            arguments: ["portavoz-app", "-use-temp-store"],
+            defaults: defaults,
+            modelMemoryPreferences: AppModelMemoryPreferences(defaults: defaults, physicalMemoryBytes: bytes))
+        XCTAssertEqual(services.localSummaryProviderProbe().capacity.bytes, bytes)
+    }
+
     func testCatalogBoundaryRejectsNeitherUnknownMemoryNorInvalidMinimum() {
         let gib = AppModelMemoryCapacity.gibibyte
         for minimum in [-1, 0, Int.max] {

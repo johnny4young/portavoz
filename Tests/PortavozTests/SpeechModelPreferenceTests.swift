@@ -6,6 +6,14 @@ import XCTest
 
 @MainActor
 final class SpeechModelPreferenceTests: XCTestCase {
+    // Every instance shares the process argument domain, including `.standard`.
+    override func setUp() async throws {
+        let original = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+        addTeardownBlock { @MainActor in
+            UserDefaults.standard.setVolatileDomain(original, forName: UserDefaults.argumentDomain)
+        }
+    }
+
     func testExplicitRefineModelChoiceReachesTheProductionDescriptorResolver() async {
         let defaults = UserDefaults(suiteName: "speech-model-preferences-\(UUID().uuidString)")!
         for compact in [false, true, false] {
