@@ -265,8 +265,10 @@ final class DictationController {
         sessionClock = dependencies.now
         showPanel()
 
+        let finishCapture = dependencies.beginCapture()
         let measurement = self.measurement
         session = Task { [weak self] in
+            defer { finishCapture() }
             await self?.runSession(id: sessionID, dependencies: dependencies, measurement: measurement)
         }
     }
@@ -276,6 +278,17 @@ final class DictationController {
         measurement: DictationSessionMeasurementRecorder?
     ) async {
         var microphone: (any AudioCaptureSource)?
+        await runCapture(id: id, dependencies: dependencies, measurement: measurement, microphone: &microphone)
+        // EOF can precede native teardown, and a cancelled session can overlap
+        // its replacement. Retire only this source before releasing its owner.
+        await microphone?.stop()
+    }
+
+    private func runCapture(
+        id: UUID, dependencies: DictationSessionDependencies,
+        measurement: DictationSessionMeasurementRecorder?,
+        microphone: inout (any AudioCaptureSource)?
+    ) async {
         var localFeed: AsyncStream<AudioChunk>.Continuation?
         var pump: Task<Void, Never>?
         var ownedRuntime: LiveTranscriptionRuntime?

@@ -17,6 +17,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 28, 2026
 
+- **🎙️ Dictation gets breathing room** — background maintenance waits while dictation prepares, captures and finishes, even when a meeting ends at the same time.
 - **🎙️ Dictation that waits for your microphone** — clear preparation and recovery messages, your preferred input, and no accidental delivery while audio is still getting ready.
 
 ## September 27, 2026

@@ -16,7 +16,7 @@ final class LiveEngineLeaseIntegrationTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
         let services = try AppServices(arguments: ["portavoz-app", "-use-temp-store"], defaults: defaults)
         let task = Task { @MainActor in
-            try await DictationSessionDependencies.live(services: services).acquireRuntime()
+            try await DictationSessionDependencies.live(services: services, beginCapture: { {} }).acquireRuntime()
         }
         task.cancel()
         await Task.yield()
@@ -58,7 +58,8 @@ final class LiveEngineLeaseIntegrationTests: XCTestCase {
         services.transcriber = engine
 
         let recording = try XCTUnwrap(services.acquireResidentLiveTranscriptionRuntime())
-        let dictation = try await DictationSessionDependencies.live(services: services).acquireRuntime()
+        let dictation = try await DictationSessionDependencies.live(
+            services: services, beginCapture: { {} }).acquireRuntime()
         XCTAssertEqual(recording.engine.descriptor.id, engine.descriptor.id)
         XCTAssertEqual(dictation.engine.descriptor.id, engine.descriptor.id)
         XCTAssertEqual(services.modelResidencyLedger.record(for: .liveSpeech).activeUseCount, 2)

@@ -55,6 +55,7 @@ enum DictationControllerModelProbe {
                 return .focusUnavailable
             },
             defaults: defaults,
+            beginCapture: { {} },
             measurementSink: { measured.yield($0); measured.finish() })
         controller.toggle(using: dependencies)
         let stopDriver = Task {

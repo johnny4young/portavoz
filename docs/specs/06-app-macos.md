@@ -388,7 +388,7 @@ counts, attempt number, localized retry time, and closed failure reason remain
 visible after settlement. Owner-specific actions call only the existing owner:
 Library route for recovery, processing kick, Spotlight reindex, semantic wake,
 or graph wake. A non-idle/attention toolbar button deep-links to the same pane.
-Semantic and graph requests publish **Waiting for recording to end** while
+Semantic and graph requests publish **Waiting for capture to end** while
 capture is protected and resume through the existing capture-stop
 reconciliation. None of this depends on Foundation Models, so the surface is
 available on both Sequoia and Tahoe.
@@ -678,6 +678,30 @@ scheduler, and reduced-concurrency outputs remain inactive. Optional footprint
 bytes and categorical memory tier are not compared against invented limits;
 accepted GOV-0 evidence must define numeric budgets before broader adapters
 can enforce them.
+
+### Capture-admission ownership
+
+The app's capture-admission mirror is independent of model residency. It
+combines the recording phase with an exact UUID for each dictation session.
+Dictation acquires its owner synchronously after insertion eligibility and
+before asynchronous preparation. Cancellation does not declare the app idle:
+the session ends its owner only after its own task and native microphone stop
+return. A cancelled predecessor can drain while a replacement owns another
+token; duplicate or stale completion cannot retire the replacement or the
+meeting. The shared composition installs this boundary for both production
+and disposable dictation dependencies, outside SwiftUI and audio callbacks.
+Both dependency constructors require the capture-admission callback; only
+standalone controller and runtime-lease unit fixtures pass an explicit inert
+callback.
+
+Recording and dictation transitions reconcile the aggregate capture state.
+Semantic and memory-graph maintenance, standing briefs, sync, backup and model
+admission continue reading the existing mirror; ending a meeting cannot resume
+them while dictation is protected. Existing model-generation/use leases and
+idle-release delays are unchanged. Capture ownership does not itself guarantee
+transcription completeness, destination identity or native delivery.
+The background-work waiting status names capture rather than only a meeting
+recording, so it remains accurate while dictating with no meeting open.
 
 ### Pure model-residency lifecycle (D158)
 
