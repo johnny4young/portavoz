@@ -628,6 +628,8 @@ NO_UI_PREFIXES = (
 NO_UI_FILES = {
     "Fixtures/DictationValidation/README.md",
     "Fixtures/DictationValidation/public-synthetic-v1.json",
+    # Only the headless --bench-live mode and the CLI call it; unit tests own it.
+    "Sources/TranscriptionKit/LiveTranscriptionBench.swift",
     ".gitignore",
     ".swiftlint.yml",
     "AGENTS.md",
@@ -960,9 +962,6 @@ def lower_layer_features(path: str) -> set[str]:
         "sources/integrationskit/cloudkitmeetingsyncplatform.swift": {
             "production-sync"
         },
-        # Only the headless --bench-live mode and the CLI call it; dictation
-        # journeys are a live-engine canary, not a caller.
-        "sources/transcriptionkit/livetranscriptionbench.swift": {"dictation"},
     }
     if owners := exact_owners.get(lowered):
         return set(owners)

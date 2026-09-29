@@ -97,10 +97,22 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(unknown_fixture.tests, ALL_TESTS)
         self.assertEqual(unknown_fixture.locales, ("en",))
 
-    def test_live_benchmark_keeps_dictation_ui_without_weakening_unknown_fallback(self):
-        benchmark = select_paths(["Sources/TranscriptionKit/LiveTranscriptionBench.swift"])
-        self.assertEqual(set(benchmark.tests), set(FEATURE_TESTS["dictation"]))
-        self.assertEqual(benchmark.locales, ("en",))
+    def test_headless_live_benchmark_runs_no_ui_without_weakening_unknown_fallback(self):
+        benchmark = "Sources/TranscriptionKit/LiveTranscriptionBench.swift"
+        self.assertFalse(select_paths([benchmark]).required)
+        # The exemption holds only while headless bench mode and the CLI are its callers.
+        headless = {
+            "Sources/TranscriptionKit/LiveTranscriptionBench.swift",
+            "Sources/portavoz-app/BenchMode.swift",
+        }
+        for tree in ("Sources", "Tests/PortavozUITests"):
+            for source in (ROOT / tree).rglob("*.swift"):
+                path = source.relative_to(ROOT).as_posix()
+                if path in headless or path.startswith("Sources/portavoz-cli/"):
+                    continue
+                self.assertNotIn(
+                    "LiveTranscriptionBench.", source.read_text(encoding="utf-8"), path
+                )
         unknown = select_paths(["Sources/TranscriptionKit/UnknownLiveOwner.swift"])
         self.assertEqual(unknown.tests, ALL_TESTS)
         self.assertEqual(unknown.locales, ("en",))
