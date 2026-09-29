@@ -308,9 +308,11 @@ passed in both locales, but summary/notes/commitment controls were absent
 until Summary was selected; twelve Meeting Detail journeys failed in each
 locale and the Spanish public showcase also failed. The follow-up candidate
 routes evidence seeks back to Transcript and makes those journeys choose the
-responsive pane explicitly. It still needs fresh exact-head bilingual proof;
-the prior hosted failure remains evidence, not a passing gate. Hosted full
-runtime was also over budget (EN 1847.868 s, ES 1596.299 s).
+responsive pane explicitly. A later exact-head hosted run of that candidate
+passed all 125 functional cases in each locale, including the compact journey.
+Its full-suite runtime still exceeded the unchanged budget (EN 1,922.448 s with
+16 per-case breaches, ES 1,755.936 s), as did the first run (EN 1847.868 s,
+ES 1596.299 s). Functional evidence is not runtime qualification.
 
 ### 1.1 layout items deliberately kept as they were
 

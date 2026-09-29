@@ -67,7 +67,6 @@ struct MeetingDetailPrimaryColumn<Material: View, Transcript: View, Player: View
         .buttonStyle(.bordered)
         .controlSize(.small)
     }
-
 }
 
 enum MeetingDetailReadingPane {

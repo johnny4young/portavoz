@@ -1988,6 +1988,15 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(artifacts.contains("maxHeight: 240"), "content decides the height (D536)")
         XCTAssertTrue(view.contains("GeometryReader { column in"))
         XCTAssertTrue(view.contains("selectedPane: $readingPane"))
+        for route in [
+            "func focusEvidence(", "func deliverPendingMeetingSeekIfPossible(", "func seekAndPlay(",
+        ] {
+            let body = try XCTUnwrap(view.components(separatedBy: route).dropFirst().first)
+                .components(separatedBy: "\n    }\n").first ?? ""
+            XCTAssertTrue(
+                body.contains("readingPane = .transcript"),
+                "\(route) must reveal Transcript before targeting a row (D549)")
+        }
         XCTAssertTrue(primaryColumn.contains("MeetingDetailArtifactsSection(columnHeight: columnHeight)"))
         XCTAssertTrue(primaryColumn.contains(".layoutPriority(1)"))
         XCTAssertTrue(flowHost.contains("MeetingDetailRefineReviewSheet("))
