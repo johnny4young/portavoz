@@ -91,6 +91,7 @@ private extension MeetingDetailView {
                 GeometryReader { column in
                     MeetingDetailPrimaryColumn(
                         columnHeight: column.size.height,
+                        expectsPlayer: detail.meeting.audioDirectory?.isEmpty == false,
                         selectedPane: $readingPane
                     ) {
                         summaryOrGenerate(detail)
