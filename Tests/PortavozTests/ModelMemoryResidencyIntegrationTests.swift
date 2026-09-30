@@ -24,7 +24,9 @@ final class ModelMemoryResidencyIntegrationTests: XCTestCase {
         let suite = "model-memory-real-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
-        let services = try AppServices(arguments: ["portavoz-app", "-use-temp-store"], defaults: defaults)
+        let services = try AppServices(
+            arguments: ["portavoz-app", "-use-temp-store"], defaults: defaults,
+            modelIdleReleaseScheduler: AppModelIdleReleaseScheduler(sleep: { _ in }))
         let ticket = try XCTUnwrap(services.modelResidencyLedger.beginLoad(.liveSpeech))
         XCTAssertTrue(services.modelResidencyLedger.finishLoad(ticket, measuredFootprintBytes: nil))
         services.transcriber = engine

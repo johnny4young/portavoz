@@ -5,6 +5,8 @@ import TranscriptionKit
 extension AppServices {
     /// Explicit readiness for workflows that truly need both models.
     func loadEnginesIfNeeded() async throws {
+        // Warm-up is idle work too; without a deadline it stays resident forever.
+        defer { scheduleRecordingEnginesRelease() }
         let liveSpeech = try await acquireLiveSpeechRuntime()
         defer { _ = finishLiveSpeechRuntime(liveSpeech) }
         let diarization = try await acquireDiarizationRuntime()

@@ -3314,7 +3314,7 @@ application-owned idle-release hook. They never re-read mutable
 variant cannot replace an in-flight engine and an actively leased variant
 cannot be deleted or released. Verified files remain a separate asset
 lifecycle. The balanced profile retains the 120-second idle deadline; explicit
-lightweight mode uses the same lease-protected release without that delay.
+lightweight mode uses the same lease-protected release after a 30-second grace.
 
 MLX is the second fully integrated residency family. Every manual, imported,
 and durable MLX provider receives an injected runtime client instead of
@@ -3345,7 +3345,8 @@ Dictation borrows the same type-erased live-engine handle as recording;
 durable post-capture transcription, onboarding readiness, and the recording
 resource benchmark retain concrete leases for their complete operations. The
 balanced profile retains the 600-second idle deadline; explicit lightweight mode
-releases idle weights promptly. The app-owned `AppServices+ModelMemory.swift`
+releases idle weights after a 60-second grace, and model warm-up arms the same
+deadline. The app-owned `AppServices+ModelMemory.swift`
 extension coordinates these idle-release requests; runtime adapters retain lease
 authority. The ledger rejects either release while any live or batch consumer
 is active. Verified assets remain independent, and no model wait or residency

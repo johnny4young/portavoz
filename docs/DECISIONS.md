@@ -19816,8 +19816,14 @@ before release. It delegates to the existing lease-protected runtime adapters;
 it is neither a second residency ledger nor an inference scheduler.
 
 Balanced remains the default, preserving the established 600-second speech and
-120-second Whisper/MLX windows. An explicit Lightweight preference requests
-prompt idle release and warns of the next-start latency trade-off. Neither
+120-second Whisper/MLX windows. An explicit Lightweight preference shortens
+them to 60 seconds for speech and 30 seconds for Whisper/MLX and warns of the
+next-start latency trade-off. An immediate release was rejected: every
+push-to-talk would reload Parakeet, Stop would unload the weights its own
+post-capture job reloads seconds later, and follow-up questions would reload
+MLX. The grace keeps those bursts hot, cancels on the next acquisition, and
+still returns memory within a minute. Model warm-up, including onboarding,
+arms the recording deadline on every outcome instead of staying resident. Neither
 profile can evict an active lease or delete verified files. Rejected speech
 release settles from real runtime/load state rather than unconditionally
 replacing active preparation with unknown readiness.

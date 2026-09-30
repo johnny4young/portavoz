@@ -792,7 +792,7 @@ unloaded state. A rejected confirmation restores the retained engine and
 cancels the release transition. Model files are never deleted by runtime
 release, and no download, verification sweep, timer, or wait enters an audio
 callback. The balanced profile retains the 120-second delay; explicit lightweight mode
-uses the same lease-protected release without waiting (D526).
+uses the same lease-protected release after a 30-second grace (D526).
 
 ### MLX residency adapter (D161)
 
@@ -843,7 +843,10 @@ lease for measured batch work. Onboarding intentionally borrows both live
 families and ends the Parakeet token after readiness resolves. Concrete release
 is two-phase and restores the runtime if ledger confirmation fails. The
 balanced 600-second deadline remains; explicit lightweight mode releases idle
-weights sooner but cannot drop Parakeet while any production borrower is active (D526).
+weights after a 60-second grace, so dictation bursts and the Stop-to-post-capture
+handoff reuse hot weights, and it cannot drop Parakeet while any production
+borrower is active. `loadEnginesIfNeeded` (onboarding and benchmark warm-up) arms
+the same deadline on every outcome (D526).
 
 The live-facing acquisition methods return `LiveTranscriptionRuntime` to both
 recording and Dictation. That handle pairs `any TranscriptionEngine` with the
@@ -4140,8 +4143,9 @@ immediately after model selection, before language and assist settings.
 Balanced remains the default for both new and existing installations; missing or
 invalid values resolve without rewriting model choices. A change persists
 `modelMemoryProfile` and reschedules the recording (Parakeet/diarization), quality
-(Whisper), and language (built-in MLX) groups. Lightweight removes idle retention,
-not active-use protection. It neither deletes downloads nor switches engines,
+(Whisper), and language (built-in MLX) groups. Lightweight shortens idle retention
+to 60 seconds for speech and 30 seconds for Whisper/MLX; it never removes
+active-use protection. It neither deletes downloads nor switches engines,
 summary providers, compact/Turbo selection, or governor admission tiers. Semantic
 embedding, external providers, and OS-managed models keep their own lifecycles.
 

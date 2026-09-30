@@ -5719,6 +5719,16 @@
         }
       }
     },
+    "Frees idle models after about a minute. Models in use stay loaded; the next start may be slower.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Libera los modelos inactivos tras un minuto aproximadamente. Los modelos en uso siguen cargados; el siguiente inicio puede ser más lento."
+          }
+        }
+      }
+    },
     "Fresh source": {
       "localizations": {
         "es": {
@@ -11025,16 +11035,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Suelta Comando, Opción, Control y Mayúsculas e inténtalo de nuevo."
-          }
-        }
-      }
-    },
-    "Release idle models sooner. Models in use stay available; the next start may be slower.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Libera antes los modelos inactivos. Los modelos en uso siguen disponibles; el próximo inicio puede ser más lento."
           }
         }
       }

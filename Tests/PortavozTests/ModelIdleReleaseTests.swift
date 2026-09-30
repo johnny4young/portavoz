@@ -47,15 +47,43 @@ final class ModelIdleReleaseTests: XCTestCase {
         XCTAssertEqual(releases, 1)
     }
 
-    func testClockFailureCannotReleaseAndLightweightDoesNotWait() async throws {
+    func testClockFailureCannotReleaseInEitherProfile() async throws {
         let scheduler = AppModelIdleReleaseScheduler(sleep: { _ in throw ClockFailure.failed })
         var releases = 0
-        scheduler.schedule(.recording, profile: .balanced) { releases += 1 }
-        try await eventually { scheduler.pendingCount == 0 }
+        for profile in AppModelMemoryPreferences.Profile.allCases {
+            scheduler.schedule(.recording, profile: profile) { releases += 1 }
+            try await eventually { scheduler.pendingCount == 0 }
+        }
         XCTAssertEqual(releases, 0)
-        scheduler.schedule(.recording, profile: .lightweight) { releases += 1 }
+    }
+
+    func testLightweightKeepsAShortGraceBeforeEachRelease() async throws {
+        let clock = ControlledModelIdleClock()
+        let scheduler = AppModelIdleReleaseScheduler(sleep: { try await clock.sleep($0) })
+        var released: [AppModelIdleReleaseScheduler.Slot] = []
+        for slot in AppModelIdleReleaseScheduler.Slot.allCases {
+            scheduler.schedule(slot, profile: .lightweight) { released.append(slot) }
+        }
+        try await eventually { await clock.delays.count == 3 }
+        let delays = await clock.delays
+        XCTAssertEqual(delays.sorted(), [.seconds(30), .seconds(30), .seconds(60)])
+        XCTAssertTrue(released.isEmpty, "a burst inside the grace must reuse hot weights")
+        await clock.resumeAll()
         try await eventually { scheduler.pendingCount == 0 }
-        XCTAssertEqual(releases, 1)
+        XCTAssertEqual(Set(released), Set(AppModelIdleReleaseScheduler.Slot.allCases))
+    }
+
+    func testModelWarmUpArmsTheIdleReleaseEvenWhenItStops() async throws {
+        let clock = ControlledModelIdleClock()
+        let scheduler = AppModelIdleReleaseScheduler(sleep: { try await clock.sleep($0) })
+        let services = try services(scheduler: scheduler)
+        let warmUp = Task { try await services.loadEnginesIfNeeded() }
+        warmUp.cancel()
+        _ = try? await warmUp.value
+        XCTAssertEqual(scheduler.pendingCount, 1)
+        try await eventually { await clock.delays == [.seconds(600)] }
+        await clock.resumeAll()
+        try await eventually { scheduler.pendingCount == 0 }
     }
 
     func testProfileChangeRearmsExistingServiceDeadlinesWithoutChangingModelChoice() async throws {
@@ -71,6 +99,10 @@ final class ModelIdleReleaseTests: XCTestCase {
         try await eventually { await clock.delays.count == 3 }
         services.modelsState = .failed("synthetic readiness marker")
         services.setModelMemoryProfile(.lightweight)
+        try await eventually { await clock.delays.count == 6 }
+        let allDelays = await clock.delays
+        XCTAssertEqual(allDelays.suffix(3).sorted(), [.seconds(30), .seconds(30), .seconds(60)])
+        await clock.resumeAll()
         try await eventually { scheduler.pendingCount == 0 }
         guard case .unknown = services.modelsState else {
             return XCTFail("the real service release must settle unloaded models")
@@ -107,7 +139,7 @@ final class ModelIdleReleaseTests: XCTestCase {
     }
 
     func testLightweightReleaseDoesNotEraseInFlightPreparationState() async throws {
-        let scheduler = AppModelIdleReleaseScheduler()
+        let scheduler = AppModelIdleReleaseScheduler(sleep: { _ in })
         let services = try services(scheduler: scheduler)
         let ticket = try XCTUnwrap(services.modelResidencyLedger.beginLoad(.liveSpeech))
         let generation = UUID()

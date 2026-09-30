@@ -7,8 +7,7 @@ extension AppServices {
         settleModelsState()
     }
 
-    /// The balanced profile keeps the measured reuse window; lightweight
-    /// releases promptly, but the existing adapters still refuse active leases.
+    /// Each profile sets the idle window; the adapters still refuse active leases.
     func scheduleRecordingEnginesRelease() {
         modelIdleReleaseScheduler.schedule(.recording, profile: modelMemoryPreferences.profile) { [weak self] in
             guard let self, !self.refines.isRunning else { return }

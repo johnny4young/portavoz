@@ -7,8 +7,15 @@ final class AppModelIdleReleaseScheduler {
     enum Slot: CaseIterable, Sendable {
         case recording, quality, language
 
-        var balancedDelay: Duration {
-            self == .recording ? .seconds(600) : .seconds(120)
+        /// Lightweight keeps a short grace so dictation bursts, the Stop to
+        /// post-capture handoff and follow-up questions reuse hot weights.
+        func idleDelay(for profile: AppModelMemoryPreferences.Profile) -> Duration {
+            switch (profile, self) {
+            case (.balanced, .recording): .seconds(600)
+            case (.balanced, _): .seconds(120)
+            case (.lightweight, .recording): .seconds(60)
+            case (.lightweight, _): .seconds(30)
+            }
         }
     }
 
@@ -49,7 +56,7 @@ final class AppModelIdleReleaseScheduler {
             do {
                 try Task.checkCancellation()
                 guard self?.jobs[slot]?.id == id else { return }
-                if profile == .balanced { try await sleep(slot.balancedDelay) }
+                try await sleep(slot.idleDelay(for: profile))
                 try Task.checkCancellation()
                 guard self?.jobs[slot]?.id == id else { return }
                 await release()

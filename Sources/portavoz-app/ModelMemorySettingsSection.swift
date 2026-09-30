@@ -11,7 +11,7 @@ struct ModelMemorySettingsSection: View {
                 get: { profileRaw == AppModelMemoryPreferences.Profile.lightweight.rawValue },
                 set: { services.setModelMemoryProfile($0 ? .lightweight : .balanced) }))
                 .accessibilityIdentifier("settings-model-memory-lightweight")
-            Text("Release idle models sooner. Models in use stay available; the next start may be slower.")
+            Text("Frees idle models after about a minute. Models in use stay loaded; the next start may be slower.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("settings-model-memory-help")

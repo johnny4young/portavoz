@@ -911,7 +911,10 @@ supported macOS versions still need measured evidence. Compact Whisper remains
 an explicit disk-saving choice, not an automatically selected low-RAM engine;
 its runtime advantage over Turbo is not established by download size or the
 shared catalog RAM guidance. OS/external-provider model lifetimes are outside
-this profile. These limits do not relax automated lifetime or privacy tests.
+this profile. Lightweight's 60-second speech and 30-second Whisper/MLX grace
+windows are chosen to cover dictation bursts, the Stop-to-post-capture handoff
+and follow-up questions; they are not yet tuned from field idle-gap data.
+These limits do not relax automated lifetime or privacy tests.
 
 Earlier broad local UI runs exposed the former runner-container storage
 boundary and an unexpected native interruption. Those failed invocations remain
