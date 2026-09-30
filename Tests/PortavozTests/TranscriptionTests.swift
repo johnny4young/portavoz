@@ -78,6 +78,9 @@ final class ModelCatalogTests: XCTestCase {
                 "silero-vad-unified-256ms-v6.2.1.mlmodelc/model.mil",
                 "silero-vad-unified-256ms-v6.2.1.mlmodelc/weights/weight.bin",
             ]))
+        XCTAssertTrue(
+            model.artifacts.allSatisfy { $0.path.hasPrefix(ModelCatalog.sileroVADBundleDirectory + "/") },
+            "the loader opens the same bundle directory the catalog verifies")
         XCTAssertLessThan(model.totalSizeBytes, 1_100_000)
         XCTAssertTrue(model.artifacts.allSatisfy { $0.sha256.count == 64 })
     }

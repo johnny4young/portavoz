@@ -71,7 +71,7 @@ public actor SileroVoiceActivityDetector {
         }
         try Task.checkCancellation()
         let url = installed.directory.appendingPathComponent(
-            "silero-vad-unified-256ms-v6.2.1.mlmodelc", isDirectory: true)
+            ModelCatalog.sileroVADBundleDirectory, isDirectory: true)
         let configuration = MLModelConfiguration()
         configuration.computeUnits = computeUnits
         let model = try await MLModel.load(contentsOf: url, configuration: configuration)
