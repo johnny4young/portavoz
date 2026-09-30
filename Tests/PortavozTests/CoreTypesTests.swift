@@ -26,6 +26,17 @@ final class CoreTypesTests: XCTestCase {
         XCTAssertTrue(decoded.isFinal)
     }
 
+    func testLiveRangeRevisionMarkerNeverEntersPersistedTranscript() throws {
+        var segment = TranscriptSegment(
+            meetingID: MeetingID(), channel: .microphone, text: "Unconfirmed",
+            startTime: 0, endTime: 1, isFinal: false)
+        segment.liveUpdateMode = .rangeRevision
+        let encoded = try JSONEncoder().encode(segment)
+        XCTAssertFalse(String(decoding: encoded, as: UTF8.self).contains("liveUpdateMode"))
+        let decoded = try JSONDecoder().decode(TranscriptSegment.self, from: encoded)
+        XCTAssertNil(decoded.liveUpdateMode)
+    }
+
     func testAudioChunkComputesDurationFromSamplesAndRate() {
         let chunk = AudioChunk(
             channel: .system,

@@ -102,10 +102,7 @@ final class BenchSyntheticStartRecordingRuntime: StartRecordingRuntime {
         guard let services, let expectedFrames else {
             throw StartRecordingRuntimeError.preparationUnavailable
         }
-        let liveSpeech = try services.acquireResidentLiveSpeechRuntime()
-        let liveTranscriptionRuntime = liveSpeech.map {
-            services.liveTranscriptionRuntime($0)
-        }
+        let liveTranscriptionRuntime = try services.acquireResidentLiveTranscriptionRuntime()
         guard
             let microphone = BenchSyntheticAudioCaptureSource(
                 channel: .microphone,
@@ -142,8 +139,7 @@ final class BenchSyntheticStartRecordingRuntime: StartRecordingRuntime {
                 guard let services else {
                     throw StartRecordingRuntimeError.preparationUnavailable
                 }
-                let runtime = try await services.acquireLiveSpeechRuntime()
-                return services.liveTranscriptionRuntime(runtime)
+                return try await services.acquireLiveTranscriptionRuntime()
             },
             telemetry: services.workloadTelemetry)
         do {
