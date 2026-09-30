@@ -791,8 +791,8 @@ AppServices detaches the concrete reference, and the exact ticket confirms the
 unloaded state. A rejected confirmation restores the retained engine and
 cancels the release transition. Model files are never deleted by runtime
 release, and no download, verification sweep, timer, or wait enters an audio
-callback. The 120-second delay is deliberately unchanged pending accepted
-per-family evidence.
+callback. The balanced profile retains the 120-second delay; explicit lightweight mode
+uses the same lease-protected release after a 30-second grace (D526).
 
 ### MLX residency adapter (D161)
 
@@ -815,8 +815,8 @@ Release begins only for an idle resident family, drops the concrete container,
 then confirms the exact ledger ticket. Settings refuses verified model removal
 during load or active generation. Runtime release never removes verified files,
 and asset preparation remains outside generation and every audio callback. The
-120-second delay and unknown measured footprint remain unchanged until accepted
-per-family evidence defines replacements.
+balanced 120-second delay and unknown measured footprint remain unchanged.
+Explicit lightweight mode changes idle retention, not measured footprint (D526).
 
 ### Live-speech residency adapter (D162)
 
@@ -842,8 +842,11 @@ preloads through a short lease outside its metric window, then acquires a fresh
 lease for measured batch work. Onboarding intentionally borrows both live
 families and ends the Parakeet token after readiness resolves. Concrete release
 is two-phase and restores the runtime if ledger confirmation fails. The
-existing 600-second generation fence remains unchanged, but it can no longer
-drop Parakeet while any production borrower is active.
+balanced 600-second deadline remains; explicit lightweight mode releases idle
+weights after a 60-second grace, so dictation bursts and the Stop-to-post-capture
+handoff reuse hot weights, and it cannot drop Parakeet while any production
+borrower is active. `loadEnginesIfNeeded` (onboarding and benchmark warm-up) arms
+the same deadline on every outcome (D526).
 
 The live-facing acquisition methods return `LiveTranscriptionRuntime` to both
 recording and Dictation. That handle pairs `any TranscriptionEngine` with the
@@ -886,8 +889,8 @@ AppServices detaches the reusable model pair, confirms the exact ledger
 generation, and restores the retained value if confirmation fails. Verified
 assets remain installed, degradable diarization still produces honest
 unattributed transcript, live hints remain optional, and no model operation
-enters an audio callback. The shared 600-second fence is deliberately
-unchanged pending accepted per-family evidence.
+enters an audio callback. The balanced profile retains the shared 600-second
+deadline; explicit lightweight mode still waits for every active lease (D526).
 
 ### Semantic embedding residency adapter (D165)
 
@@ -2404,7 +2407,7 @@ physically unavailable evidence remains explicit instead of navigating to a
 nearby guess. Stable card/role/index accessibility identifiers make both paths
 deterministic under XCUITest (D91).
 
-**Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running or a speech-model load is in flight). `ApplicationKit.RefineMeeting` schedules both policies on every success, failure, or cancellation after model ownership begins; its processor and Import end their pinned Whisper use leases before arming the timer. `ApplicationKit.StartRecording` schedules the recording-engine policy after every failed mic/channel/reservation/source-start attempt, while a successful audio-first start either transfers a resident live-speech lease to the attacher or starts one shared cold load after capture is active; `ApplicationKit.StopRecording` schedules the policy after every accepted Stop request outcome without waiting for that load, and the recovery worker refreshes it after publishing. `AppServices+MLXModels` does the same with the AppServices-owned Qwen3.5 runtime (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: durable first-pass recovery, dictation, onboarding, and benchmark work hold the exact live-speech lease they acquired; Refine and Import hold their exact Whisper lease; durable attribution and Import still request the degradable diarizer through its current owner. A cold live-speech load that completes after Stop cannot attach to the inactive session and immediately finishes its lease. Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
+**Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running or a speech-model load is in flight). `ApplicationKit.RefineMeeting` schedules both policies on every success, failure, or cancellation after model ownership begins; its processor and Import end their pinned Whisper use leases before arming the timer. `ApplicationKit.StartRecording` schedules the recording-engine policy after every failed mic/channel/reservation/source-start attempt, while a successful audio-first start either transfers a resident live-speech lease to the attacher or starts one shared cold load after capture is active; `ApplicationKit.StopRecording` schedules the policy after every accepted Stop request outcome without waiting for that load, and the recovery worker refreshes it after publishing. `AppServices+MLXModels` does the same with the AppServices-owned Qwen3.5 runtime (2.4 GB resident measured) at 120 s. An MLX acquisition that arrives while an accepted release is still in flight waits for that release and then loads cold, instead of failing on the releasing ledger state; a caller cancelled during that wait starts no load. Consumers NEVER trust a shared reference after a long await: durable first-pass recovery, dictation, onboarding, and benchmark work hold the exact live-speech lease they acquired; Refine and Import hold their exact Whisper lease; durable attribution and Import still request the degradable diarizer through its current owner. A cold live-speech load that completes after Stop cannot attach to the inactive session and immediately finishes its lease. Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
 
 ## UI language policy (Sep 2026, D536)
 
@@ -4132,3 +4135,31 @@ releases generation, then verifies the final answer and persisted citation.
 This changes only temporary-store fixture composition, not production latency.
 The handshake uses the launch-owned temporary directory and retains cancellation,
 cleanup and the original deadlines. No assertion or runtime budget is removed.
+
+### Explicit model-memory profile (D526)
+
+Intelligence Settings offers an identified Lightweight model memory toggle
+immediately after model selection, before language and assist settings.
+Balanced remains the default for both new and existing installations; missing or
+invalid values resolve without rewriting model choices. A change persists
+`modelMemoryProfile` and reschedules the recording (Parakeet/diarization), quality
+(Whisper), and language (built-in MLX) groups. Lightweight shortens idle retention
+to 60 seconds for speech and 30 seconds for Whisper/MLX; it never removes
+active-use protection. It neither deletes downloads nor switches engines,
+summary providers, compact/Turbo selection, or governor admission tiers. Semantic
+embedding, external providers, and OS-managed models keep their own lifecycles.
+
+Balanced keeps speech for ten minutes and Whisper/MLX for two minutes. There is
+one cancellable pending deadline per group; replacement cancels the old task,
+including before it registers a clock wait. Active preparation retains its
+readiness status when release is refused. The next use after release may pay
+model-loading latency, so the UI does not promise a RAM ceiling or universal
+speed improvement.
+
+`AppModelMemoryCapacity` converts physical bytes to whole binary GiB for provider
+discovery and compares exact bytes for the at-most-8-GiB lightweight suggestion.
+Zero means unknown. Catalog RAM guidance is displayed for Whisper variants;
+below-guidance Macs receive advice, not an admission ban. Both variant choices
+remain available. Compact is still a disk-saving option: there is no measured
+RAM advantage that would justify silently choosing it for an existing or new
+installation. A profile choice never starts a model download.

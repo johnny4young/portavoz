@@ -26,6 +26,7 @@ extension AppServices {
         let downloaded: Bool
         /// On-disk bytes if complete, otherwise the expected model size.
         let bytes: Int64
+        let minimumRAMGB: Int
 
         var accessibilitySuffix: String { compact ? "compact" : "turbo" }
     }
@@ -61,7 +62,7 @@ extension AppServices {
         preparationProgress: WhisperPreparationObserver? = nil
     ) async throws -> WhisperRuntimeLease {
         let descriptor = requestedDescriptor ?? Self.preferredWhisperDescriptor()
-        whisperIdleGeneration += 1
+        modelIdleReleaseScheduler.cancel(.quality)
         if let runtime = try residentWhisperRuntime(descriptorID: descriptor.id) {
             return runtime
         }
@@ -133,8 +134,8 @@ extension AppServices {
         }
     }
 
-    static func preferredWhisperDescriptor() -> ModelDescriptor {
-        UserDefaults.standard.bool(forKey: "whisperCompact")
+    static func preferredWhisperDescriptor(defaults: UserDefaults = .standard) -> ModelDescriptor {
+        defaults.bool(forKey: "whisperCompact")
             ? ModelCatalog.whisperLargeV3_626MB
             : ModelCatalog.whisperLargeV3Turbo
     }
@@ -223,12 +224,8 @@ extension AppServices {
     }
 
     func scheduleWhisperRelease() {
-        whisperIdleGeneration += 1
-        let generation = whisperIdleGeneration
-        Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(120))
-            guard let self, generation == self.whisperIdleGeneration else { return }
-            self.releaseWhisper()
+        modelIdleReleaseScheduler.schedule(.quality, profile: modelMemoryPreferences.profile) { [weak self] in
+            _ = self?.releaseWhisper()
         }
     }
 
@@ -447,7 +444,8 @@ extension AppServices {
             id: descriptor.id,
             compact: compact,
             downloaded: downloaded,
-            bytes: Int64(descriptor.totalSizeBytes))
+            bytes: Int64(descriptor.totalSizeBytes),
+            minimumRAMGB: descriptor.minimumRAMGB)
     }
 }
 
