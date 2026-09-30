@@ -17,6 +17,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## September 30, 2026
 
+- **📐 A steady meeting page in small windows** — the page picks its layout as soon as it opens, instead of jumping to the transcript when the audio finishes loading.
+
 - **🪶 Lighter model memory** — release idle models sooner without interrupting work or changing your model choices, with clearer RAM guidance.
 
 ## September 29, 2026

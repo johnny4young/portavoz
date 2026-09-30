@@ -3224,7 +3224,8 @@ storage, model, or provider capabilities. Architecture tests cap the root at
 presentation children.
 
 `MeetingDetailPrimaryColumn` owns only vertical presentation allocation. It
-observes the actual player-dock height and keeps the established simultaneous
+observes the actual player-dock height, reserving the measured dock for a
+meeting with audio until playback renders, and keeps the established simultaneous
 summary/transcript layout where both retain useful reading space. In a shorter
 window it offers explicit Summary and Transcript panes while retaining the
 same docked player and the existing content/actions. This avoids placing
