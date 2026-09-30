@@ -26,16 +26,16 @@ from ui_test_scope import (  # noqa: E402
 
 
 class UITestScopeTests(unittest.TestCase):
-    def test_compact_detail_column_scopes_playback_correction_and_summary(self):
+    def test_compact_detail_column_selects_every_journey_that_opens_a_meeting(self):
         path = "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift"
         selection = select_paths([path])
-        expected = set(
-            FEATURE_TESTS["meeting-audio"]
-            + FEATURE_TESTS["meeting-correction"]
-            + FEATURE_TESTS["meeting-summary"]
-        )
-        self.assertEqual(set(selection.tests), expected)
+        self.assertEqual(set(selection.tests), set(HARNESS_TESTS))
         self.assertEqual(selection.locales, ("en",))
+        for journey in (
+            "RecordingInputUITests/testAcceptedNotesAndObjectivesSurviveTerminationAndRecovery",
+            "SkillsSettingsUITests/testSkillsPaneControlsOffersAndShowsTheConfirmedReceipt",
+        ):
+            self.assertIn(f"PortavozUITests/{journey}", selection.tests)
 
     def test_portable_settings_files_reach_both_actual_transfer_journeys(self):
         paths = (

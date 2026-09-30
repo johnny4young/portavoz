@@ -45,6 +45,7 @@ final class RecordingInputUITests: PortavozUITestCase {
         XCTAssertEqual(try fixture.query("SELECT lifecycleState FROM meeting WHERE id = '\(meetingID)'"), "needsAttention")
         XCTAssertEqual(try fixture.query("SELECT id FROM contextItem WHERE kind = 'objective' AND deletedAt IS NULL"), objectiveID)
         XCTAssertEqual(try fixture.query("SELECT count(*) FROM contextItem WHERE deletedAt IS NULL"), "2")
+        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
         XCTAssertTrue(app.control(withIdentifier: "detail-notes-section").waitForExistenceFast(timeout: 8))
         XCTAssertTrue(app.staticTexts[note].exists)
     }

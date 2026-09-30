@@ -2672,7 +2672,10 @@ select only the scopes they can affect; a changed UI-test file selects its own
 class; localization and shared-harness changes select the complete bilingual
 catalogue; the
 macOS 14 transcript-scroll bridge selects only recording-recovery evidence; and
-an unknown production Swift path selects the complete English suite. Docs,
+an unknown production Swift path selects the complete English suite. The
+Meeting Detail primary column also selects the complete English suite: its
+pane layout decides which detail content exists for every journey that opens a
+meeting, including recording-recovery and Skills journeys (D549). Docs,
 governance, site, CLI, the two reviewed dictation-validation corpus files, and
 package-test-only diffs select no UI runner. CLI paths are excluded before the
 generic production-Swift fallback. The live benchmark also selects no UI runner:
