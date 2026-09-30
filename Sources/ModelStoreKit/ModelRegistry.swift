@@ -103,9 +103,7 @@ public enum ModelCatalog {
             return whisperLargeV3Turbo
         case .diarization:
             return speakerDiarization
-        case .voiceActivity:
-            return sileroVAD
-        case .summarization, .embedding:
+        case .voiceActivity, .summarization, .embedding:
             return nil
         }
     }

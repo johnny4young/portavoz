@@ -49,6 +49,16 @@ final class SileroVoiceActivityDetectorTests: XCTestCase {
         XCTAssertEqual(frameCount, 3)
     }
 
+    func testLongNarrowbandChunkUpsamplesWithinTheInputBound() async throws {
+        let spy = VoiceActivityFrameSpy()
+        let detector = makeDetector(spy: spy)
+        let result = try await detector.process(AudioChunk(
+            channel: .microphone, samples: [Float](repeating: 0.1, count: 150_000),
+            sampleRate: 8_000, timestamp: 0))
+        XCTAssertEqual(result.observations.count, 300_000 / 4_096)
+        XCTAssertFalse(result.didResetForDiscontinuity)
+    }
+
     func testOneMissingSmallPacketResetsBeforeASilenceCountdownCouldAdvance() async throws {
         let detector = makeDetector(spy: VoiceActivityFrameSpy())
         let packet = [Float](repeating: 0.2, count: 512)

@@ -56,7 +56,9 @@ final class ModelCatalogTests: XCTestCase {
         XCTAssertEqual(ModelCatalog.recommended(for: .liveTranscription)?.id, "parakeet-tdt-0.6b-v3-coreml")
         // D7: the final pass routes to Whisper, never one global model.
         XCTAssertEqual(ModelCatalog.recommended(for: .finalTranscription)?.id, "whisper-large-v3-turbo")
-        XCTAssertEqual(ModelCatalog.recommended(for: .voiceActivity)?.id, ModelCatalog.sileroVAD.id)
+        XCTAssertNil(
+            ModelCatalog.recommended(for: .voiceActivity),
+            "non-serving Silero is loaded explicitly, never selected by recommendation")
         XCTAssertNil(ModelCatalog.recommended(for: .summarization))
     }
 

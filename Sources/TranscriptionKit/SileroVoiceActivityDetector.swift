@@ -42,7 +42,8 @@ public actor SileroVoiceActivityDetector {
     private static let sampleRate = Double(VadManager.sampleRate)
     private static let frameSize = VadManager.chunkSize
     private static let maximumInputSamples = 262_144
-    private static let maximumOutputSamples = 262_144
+    // Twice the input cap, plus the streaming carry, admits 8 kHz upsampling.
+    private static let maximumOutputSamples = 2 * maximumInputSamples + 1
     // Host timestamps mark the source frame, not callback arrival. A missing
     // 512-sample packet at 16 kHz is 32 ms; it must not look continuous to an
     // eventual silence-stop consumer.
@@ -111,11 +112,16 @@ public actor SileroVoiceActivityDetector {
         var nextPending = discontinuity ? [] : pending
         let nextBase = discontinuity ? chunk.timestamp : (baseTimestamp ?? chunk.timestamp)
 
+        let outputBound = (Double(chunk.samples.count) * Self.sampleRate / chunk.sampleRate)
+            .rounded(.down) + 1
+        guard outputBound <= Double(Self.maximumOutputSamples) else {
+            throw VoiceActivityDetectionError.invalidAudio
+        }
         let converted: [Float]
         do {
             converted = try nextResampler.resample(
                 chunk.samples, from: chunk.sampleRate, to: Self.sampleRate,
-                maximumOutputSamples: Self.maximumOutputSamples)
+                maximumOutputSamples: Int(outputBound))
         } catch {
             throw VoiceActivityDetectionError.invalidAudio
         }
