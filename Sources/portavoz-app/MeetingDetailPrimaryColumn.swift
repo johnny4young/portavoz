@@ -4,6 +4,7 @@ import SwiftUI
 /// their combined minimum heights cannot fit above the docked player.
 struct MeetingDetailPrimaryColumn<Material: View, Transcript: View, Player: View>: View {
     let columnHeight: CGFloat
+    let expectsPlayer: Bool
     @Binding var selectedPane: MeetingDetailReadingPane
     @ViewBuilder let material: () -> Material
     @ViewBuilder let transcript: () -> Transcript
@@ -15,7 +16,8 @@ struct MeetingDetailPrimaryColumn<Material: View, Transcript: View, Player: View
         VStack(alignment: .leading, spacing: 10) {
             if MeetingDetailPrimaryColumnLayout.usesFocusedPane(
                 columnHeight: columnHeight,
-                playerHeight: playerHeight
+                playerHeight: playerHeight,
+                expectsPlayer: expectsPlayer
             ) {
                 compactPaneSelector
                 Group {
@@ -79,8 +81,17 @@ enum MeetingDetailPrimaryColumnLayout {
     private static let minimumTranscriptHeight: CGFloat = 160
     private static let sectionSpacing: CGFloat = 10
 
-    static func usesFocusedPane(columnHeight: CGFloat, playerHeight: CGFloat) -> Bool {
-        columnHeight < minimumMaterialHeight + minimumTranscriptHeight
-            + playerHeight + (sectionSpacing * 2)
+    /// Measured docked player height, reserved until the asynchronous player
+    /// renders so the layout does not switch panes when playback arrives.
+    static let expectedPlayerHeight: CGFloat = 166
+
+    static func usesFocusedPane(
+        columnHeight: CGFloat,
+        playerHeight: CGFloat,
+        expectsPlayer: Bool = false
+    ) -> Bool {
+        let player = expectsPlayer ? max(playerHeight, expectedPlayerHeight) : playerHeight
+        return columnHeight < minimumMaterialHeight + minimumTranscriptHeight
+            + player + (sectionSpacing * 2)
     }
 }

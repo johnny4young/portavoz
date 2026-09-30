@@ -558,6 +558,11 @@ transcript input.
 their spacing cannot fit together, it exposes distinct Summary and Transcript
 buttons instead of squeezing the transcript viewport to zero. Both panes
 render the existing material and commands, and the player remains docked.
+Playback loads asynchronously, so a meeting with an audio directory reserves
+the measured 166-point dock until the player renders; a larger measured dock
+still wins. The first frame therefore already uses the final layout instead
+of showing both regions and then switching to Transcript. If that audio later
+proves unreadable, the reservation keeps the chosen layout stable.
 The root's existing evidence and playback navigation also owns the selected
 pane: a citation from Summary, an incoming scene seek, or a chapter seek
 reveals Transcript before focusing its row. No storage or route service owns

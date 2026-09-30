@@ -20453,6 +20453,13 @@ small windows without a scroll multiplier or a second data projection. The
 minimum 560-point content frame may produce a 612-point outer NSWindow because
 of native chrome. Native policy tests and the bilingual real-app journey guard
 that distinction; ordinary-window and full-catalog evidence remain separate.
+Because playback loads after the detail, a measured-only decision first showed
+both regions and then switched to Transcript once the player appeared, and a
+UI selector could accept that transient frame. A meeting with an audio
+directory therefore reserves the measured 166-point dock from the first frame;
+the measured height replaces it only when larger. The accepted cost is that
+unreadable audio keeps the compact layout at heights where both regions would
+otherwise fit; it never flips during reading.
 
 ---
 
