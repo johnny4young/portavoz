@@ -5,6 +5,8 @@ import TranscriptionKit
 extension AppServices {
     /// Explicit readiness for workflows that truly need both models.
     func loadEnginesIfNeeded() async throws {
+        // Warm-up is idle work too; without a deadline it stays resident forever.
+        defer { scheduleRecordingEnginesRelease() }
         let liveSpeech = try await acquireLiveSpeechRuntime()
         defer { _ = finishLiveSpeechRuntime(liveSpeech) }
         let diarization = try await acquireDiarizationRuntime()
@@ -32,7 +34,7 @@ extension AppServices {
         // A caller cancelled before admission must not begin a process-owned
         // model load that can continue downloading after the session is gone.
         try Task.checkCancellation()
-        enginesIdleGeneration += 1
+        modelIdleReleaseScheduler.cancel(.recording)
         if let runtime = try residentLiveSpeechRuntime() {
             return try checkedLiveSpeechRuntime(runtime)
         }
@@ -76,7 +78,7 @@ extension AppServices {
     /// Claims a hot runtime without starting model preparation. Recording
     /// preparation uses this synchronous path so capture can remain audio-first.
     func acquireResidentLiveSpeechRuntime() throws -> LiveSpeechRuntimeLease? {
-        enginesIdleGeneration += 1
+        modelIdleReleaseScheduler.cancel(.recording)
         guard let runtime = try residentLiveSpeechRuntime() else { return nil }
         return try checkedLiveSpeechRuntime(runtime)
     }

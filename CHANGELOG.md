@@ -19,6 +19,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 - **📐 A steady meeting page in small windows** — the page picks its layout as soon as it opens, instead of jumping to the transcript when the audio finishes loading.
 
+- **🪶 Lighter model memory** — release idle models sooner without interrupting work or changing your model choices, with clearer RAM guidance.
+
 ## September 29, 2026
 
 - **📖 Meeting details fit compact windows** — switch between the full transcript and meeting notes without losing the playback controls or transcript corrections.

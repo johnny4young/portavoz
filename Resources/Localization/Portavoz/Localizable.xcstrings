@@ -1871,6 +1871,16 @@
         }
       }
     },
+    "Balanced memory keeps models ready for back-to-back work.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La memoria equilibrada mantiene los modelos listos para tareas consecutivas."
+          }
+        }
+      }
+    },
     "Blocked by the Pre-meeting brief action setting": {
       "localizations": {
         "es": {
@@ -2197,6 +2207,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Las tarjetas dirigidas a “%@” se marcan como preguntas para ti."
+          }
+        }
+      }
+    },
+    "Catalog RAM guidance: %d GB or more.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RAM orientativa del catálogo: %d GB o más."
           }
         }
       }
@@ -5699,6 +5719,16 @@
         }
       }
     },
+    "Frees idle models after about a minute. Models in use stay loaded; the next start may be slower.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Libera los modelos inactivos tras un minuto aproximadamente. Los modelos en uso siguen cargados; el siguiente inicio puede ser más lento."
+          }
+        }
+      }
+    },
     "Fresh source": {
       "localizations": {
         "es": {
@@ -6719,6 +6749,16 @@
         }
       }
     },
+    "Lightweight model memory": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memoria ligera para modelos"
+          }
+        }
+      }
+    },
     "Line structure": {
       "localizations": {
         "es": {
@@ -7445,6 +7485,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Actividad de modelos: %d · Transferencias locales: %d"
+          }
+        }
+      }
+    },
+    "Model choices and downloaded files are unchanged. This is not a RAM usage limit.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los modelos seleccionados y archivos descargados no cambian. Esto no limita el uso de RAM."
+          }
+        }
+      }
+    },
+    "Model memory": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memoria de modelos"
           }
         }
       }
@@ -13461,6 +13521,16 @@
         }
       }
     },
+    "Suggested for this Mac: lightweight memory.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugerencia para esta Mac: memoria ligera."
+          }
+        }
+      }
+    },
     "Suggested from your meetings — click to review before adding": {
       "localizations": {
         "es": {
@@ -14677,6 +14747,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Este Mac"
+          }
+        }
+      }
+    },
+    "This Mac is below the catalog guidance; performance may be limited.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta Mac no alcanza la RAM orientativa del catálogo; el rendimiento puede ser limitado."
           }
         }
       }
@@ -16967,12 +17047,12 @@
         }
       }
     },
-    "summary engine apple ollama mlx whisper refine vocabulary": {
+    "summary engine apple ollama mlx whisper refine vocabulary model memory ram lightweight": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "resumen motor apple ollama mlx whisper refine vocabulario"
+            "value": "resumen motor apple ollama mlx whisper refine vocabulario memoria modelo ram ligero"
           }
         }
       }
