@@ -184,6 +184,7 @@ final class AppServices {
     /// process runtime and every residency transition around it.
     @ObservationIgnored let mlxSummaryRuntime = MLXSummaryRuntime()
     @ObservationIgnored var mlxRuntimeLoad: MLXRuntimeLoad?
+    @ObservationIgnored var mlxRuntimeRelease: Task<Bool, Never>?
     var mlxRuntimeDirectoryKey: String?
 
     /// Process-scoped, coalescing reconciliation for the protected local

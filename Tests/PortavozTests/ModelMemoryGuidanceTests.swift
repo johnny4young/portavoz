@@ -67,6 +67,9 @@ final class ModelMemoryGuidanceTests: XCTestCase {
             defaults: defaults,
             modelMemoryPreferences: AppModelMemoryPreferences(defaults: defaults, physicalMemoryBytes: bytes))
         XCTAssertEqual(services.localSummaryProviderProbe().capacity.bytes, bytes)
+        XCTAssertTrue(
+            services.localSummaryProviderProbe().usesTemporaryStore,
+            "the injected storage policy, not the test process arguments, isolates the probe")
     }
 
     func testCatalogBoundaryRejectsNeitherUnknownMemoryNorInvalidMinimum() {

@@ -124,6 +124,33 @@ final class ModelIdleReleaseTests: XCTestCase {
         XCTAssertTrue(services.modelResidencyLedger.failLoad(ticket))
     }
 
+    func testMLXAcquisitionWaitsForAnAcceptedReleaseInsteadOfFailing() async throws {
+        let services = try services(scheduler: AppModelIdleReleaseScheduler())
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mlx-release-\(UUID().uuidString)")
+        let ticket = try XCTUnwrap(services.modelResidencyLedger.beginLoad(.languageIntelligence))
+        XCTAssertTrue(services.modelResidencyLedger.finishLoad(ticket, measuredFootprintBytes: nil))
+        services.mlxRuntimeDirectoryKey = directory.standardizedFileURL.resolvingSymlinksInPath().path
+
+        // Main-actor FIFO: the acquire runs while the release awaits the runtime.
+        let release = Task { await services.releaseMLXRuntime() }
+        let acquire = Task {
+            try await services.acquireMLXRuntime(directory: directory, workloadClass: .userInitiated)
+        }
+        acquire.cancel()
+        do {
+            _ = try await acquire.value
+            XCTFail("a cancelled caller must not load")
+        } catch is CancellationError {
+        } catch {
+            XCTFail("acquisition during an accepted release must wait, not fail: \(error)")
+        }
+        let released = await release.value
+        XCTAssertTrue(released)
+        XCTAssertNil(services.mlxRuntimeDirectoryKey)
+        XCTAssertEqual(services.modelResidencyLedger.record(for: .languageIntelligence).status, .unloaded)
+    }
+
     func testPendingDeadlineDoesNotRetainScheduler() async throws {
         let clock = ControlledModelIdleClock()
         var scheduler: AppModelIdleReleaseScheduler? = .init(sleep: { try await clock.sleep($0) })

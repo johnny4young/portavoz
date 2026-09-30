@@ -552,14 +552,16 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(workflow.contains("enum LocalSummaryRecommendationReason"))
         XCTAssertTrue(workflow.contains("func saveInitialSummaryProviderSelection"))
         for concrete in [
-            "OllamaService", "UserDefaults", "ProcessInfo", "NSHomeDirectory",
+            "OllamaService", "UserDefaults", "NSHomeDirectory",
         ] {
             XCTAssertFalse(workflow.contains(concrete), concrete)
             XCTAssertTrue((adapter + probe).contains(concrete), concrete)
         }
+        XCTAssertFalse(workflow.contains("ProcessInfo"))
         XCTAssertFalse(workflow.contains("FoundationModelsCapability"))
         XCTAssertTrue(adapter.contains("foundationModelsCapability.isAvailable"))
-        XCTAssertTrue(adapter.contains("contains(\"-use-temp-store\")"))
+        XCTAssertTrue(adapter.contains("usesTemporaryStore: usesTemporaryMeetingStore"))
+        XCTAssertFalse(adapter.contains("-use-temp-store"), "the storage policy owns temporary-store isolation")
         XCTAssertTrue(probe.contains("ollama: .unavailable"))
         XCTAssertTrue(adapter.contains("@MainActor"))
         XCTAssertTrue(adapter.contains("struct AppSummaryProviderSelectionStore"))

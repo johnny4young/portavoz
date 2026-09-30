@@ -22,7 +22,7 @@ extension AppServices {
     func localSummaryProviderProbe() -> AppLocalSummaryProviderProbe {
         AppLocalSummaryProviderProbe(
             appleOnDeviceAvailable: foundationModelsCapability.isAvailable,
-            usesTemporaryStore: ProcessInfo.processInfo.arguments.contains("-use-temp-store"),
+            usesTemporaryStore: usesTemporaryMeetingStore,
             capacity: modelMemoryPreferences.capacity)
     }
 }

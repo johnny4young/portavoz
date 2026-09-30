@@ -98,6 +98,11 @@ extension AppServices {
         workloadClass: ResourceWorkloadClass
     ) async throws -> MLXRuntimeLease {
         modelIdleReleaseScheduler.cancel(.language)
+        // An accepted release cannot be revoked; wait for it and load cold.
+        if let release = mlxRuntimeRelease {
+            _ = await release.value
+            try Task.checkCancellation()
+        }
         let directoryKey = Self.mlxDirectoryKey(directory)
         if let runtime = try residentMLXRuntime(directoryKey: directoryKey) {
             return runtime
@@ -150,6 +155,7 @@ extension AppServices {
     /// accepted lifecycle transition.
     @discardableResult
     func releaseMLXRuntime() async -> Bool {
+        if let release = mlxRuntimeRelease { return await release.value }
         guard mlxRuntimeLoad == nil else { return false }
         guard mlxRuntimeDirectoryKey != nil else {
             return modelResidencyLedger.record(
@@ -163,13 +169,17 @@ extension AppServices {
             workloadClass: .maintenance,
             kind: .languageInference,
             operation: .release))
-        await mlxSummaryRuntime.release()
-        mlxRuntimeDirectoryKey = nil
-        workloadTelemetry.finish(span, outcome: .completed)
-
-        let finished = modelResidencyLedger.finishRelease(ticket)
-        assert(finished, "accepted MLX release ticket must remain current")
-        return finished
+        let release = Task { @MainActor in
+            await mlxSummaryRuntime.release()
+            mlxRuntimeDirectoryKey = nil
+            workloadTelemetry.finish(span, outcome: .completed)
+            let finished = modelResidencyLedger.finishRelease(ticket)
+            assert(finished, "accepted MLX release ticket must remain current")
+            mlxRuntimeRelease = nil
+            return finished
+        }
+        mlxRuntimeRelease = release
+        return await release.value
     }
 
     func scheduleMLXRelease() {

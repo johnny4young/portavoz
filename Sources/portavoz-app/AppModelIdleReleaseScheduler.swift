@@ -53,10 +53,8 @@ final class AppModelIdleReleaseScheduler {
                 try Task.checkCancellation()
                 guard self?.jobs[slot]?.id == id else { return }
                 await release()
-            } catch is CancellationError {
-                return
             } catch {
-                // A failed clock cannot authorize an early model release.
+                // Cancellation or a failed clock cannot authorize a release.
                 return
             }
         }
