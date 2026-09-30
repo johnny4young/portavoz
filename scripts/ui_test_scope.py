@@ -779,8 +779,6 @@ def app_features(filename: str) -> set[str]:
         "transcriptcorrection", "transcriptstructuralcorrection"
     )):
         return {"meeting-correction"}
-    if lowered == "meetingdetailprimarycolumn.swift":
-        return {"meeting-audio", "meeting-correction", "meeting-summary"}
     if any(token in lowered for token in ("insight",)):
         return {"insights"}
     if any(token in lowered for token in ("onboarding", "firstrun", "firstlisten")):
@@ -1144,6 +1142,13 @@ def select_paths(paths: Iterable[str]) -> Selection:
             selected.update(HARNESS_TESTS)
             locales.add("es")
             reasons.append(f"{path}: complete bilingual shared-harness fallback")
+            continue
+
+        if path == "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift":
+            # The layout decides which Meeting Detail content exists for every
+            # journey that opens a meeting, not only the Meeting Detail suite.
+            selected.update(HARNESS_TESTS)
+            reasons.append(f"{path}: complete English Meeting Detail layout fallback")
             continue
 
         if path in APUNTADOR_LEAK_EVIDENCE_FILES:
