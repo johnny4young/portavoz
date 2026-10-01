@@ -5441,7 +5441,7 @@ Third-party GitHub Actions are pinned to immutable full commit SHAs with their
 human-readable versions in comments; repository hygiene rejects mutable tags.
 
 The two complete Swift test lanes may restore a compatible SwiftPM `.build`
-graph on pull requests (D555). Cache identity binds the lane, absolute workspace,
+graph on pull requests. Cache identity binds the lane, absolute workspace,
 architecture, macOS build, runner image, Xcode/Swift/macOS SDK and build-policy
 inputs, including the dependency lock. There is no cross-identity restore prefix,
 source timestamp rewriting, cached test verdict or conditional test execution.
