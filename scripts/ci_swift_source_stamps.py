@@ -17,6 +17,7 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 RECEIPT = Path('.build/ci-source-stamps.json')
 FIELDS = {'sha256', 'size', 'mode', 'mtime_ns'}
+MAX_RECEIPT_BYTES = 4 * 1024 * 1024
 
 
 def inputs(root: Path) -> dict[str, Path]:
@@ -58,6 +59,12 @@ def snapshot(root: Path) -> int:
     receipt = root / RECEIPT
     receipt.parent.mkdir(parents=True, exist_ok=True)
     receipt.write_text(json.dumps({'schema': 1, 'files': files}, sort_keys=True) + '\n')
+    # Seeds are immutable: never leave a receipt that restore would reject.
+    try:
+        read_receipt(receipt)
+    except ValueError:
+        receipt.unlink()
+        raise
     return len(files)
 
 
@@ -70,7 +77,7 @@ def read_receipt(path: Path) -> dict:
             result[key] = value
         return result
 
-    if path.stat().st_size > 4 * 1024 * 1024:
+    if path.stat().st_size > MAX_RECEIPT_BYTES:
         raise ValueError('Oversized source receipt')
     payload = json.loads(path.read_text(), object_pairs_hook=unique_object)
     if (not isinstance(payload, dict) or set(payload) != {'schema', 'files'}

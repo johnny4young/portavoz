@@ -261,7 +261,7 @@ test invocation, so compilation and tests use the same flags instead of a
 build/test pair that can compile twice. The iOS portability lane owns only its
 sequential destination compiles and cannot claim runtime/device behavior.
 
-### Compatible Swift build reuse, not test-result reuse (D555)
+### Compatible Swift build reuse, not test-result reuse (D557)
 
 The current-SDK and Sequoia jobs restore only `.build` with commit-pinned
 `actions/cache` restore/save actions. `scripts/ci_swift_cache_key.py` binds each
@@ -283,7 +283,9 @@ resurrected; symlinks and resolved paths outside the checkout are never touched.
 No timestamp is inferred from Git commit dates. SwiftPM still owns build-graph
 invalidation, compilation and test discovery. The bounded, closed-schema receipt
 rejects duplicate keys, invalid hashes/numbers and missing/corrupt metadata
-before timestamp writes. A changed-during-read source cannot be fingerprinted.
+before timestamp writes. Snapshot rereads its own receipt with the same
+validator, so a receipt restore would reject fails the cold run and is never
+saved into an immutable seed. A changed-during-read source cannot be fingerprinted.
 
 Both complete test invocations are unconditional, including current-SDK
 warnings-as-errors. No `--skip-build`, test filtering, retries, smaller test

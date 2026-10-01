@@ -120,6 +120,20 @@ class SourceStampTests(unittest.TestCase):
         self.assertNotIn('let value', self.receipt.read_text())
         self.assertEqual(stamps.fingerprint(self.source), self.original)
 
+    def test_snapshot_of_many_inputs_round_trips_through_restore(self):
+        for index in range(500):
+            (self.root / f'Sources/Generated{index}.swift').write_text(f'let value{index} = {index}\n')
+        self.git_add('Sources')
+        self.assertEqual(stamps.snapshot(self.root), 501)
+        self.assertEqual(stamps.restore(self.root), (501, 0))
+
+    def test_snapshot_refuses_a_receipt_that_restore_would_reject(self):
+        self.receipt.unlink()
+        with patch.object(stamps, 'MAX_RECEIPT_BYTES', 64):
+            with self.assertRaises(ValueError):
+                stamps.snapshot(self.root)
+        self.assertFalse(self.receipt.exists())
+
     def test_changed_during_fingerprint_is_rejected(self):
         real = os.stat(self.source)
         from types import SimpleNamespace
