@@ -2,6 +2,7 @@ import AppKit
 import AudioCaptureKit
 import Foundation
 import PlatformKit
+import PortavozCore
 import TranscriptionKit
 
 /// Session-scoped side effects. The controller still owns the production
@@ -22,6 +23,9 @@ struct DictationSessionDependencies {
     var insert: (String) async -> TextInserter.InsertionResult
     var defaults: UserDefaults
     var now: () -> Date = Date.init
+    /// Capture admission is independent of the model's active-use lease.
+    /// Its completion belongs to this session, never the controller's next one.
+    var beginCapture: () -> () -> Void
     var waitForFirstBufferDeadline: @Sendable () async throws -> Void = {
         try await Task.sleep(for: .seconds(5))
     }
@@ -47,20 +51,36 @@ struct DictationSessionDependencies {
         return microphone
     }
 
-    static func live(services: AppServices) -> Self {
+    /// Nil in ordinary composition: no observation, file, timer or telemetry.
+    var measurementSink: DictationSessionMeasurementRecorder.Sink?
+    var measurementClock: DictationSessionMeasurementRecorder.Clock = { .now }
+
+    func transcriptionHints() -> TranscriptionHints {
+        let language = defaults.string(forKey: DictationController.languageKey)
+        return TranscriptionHints(
+            language: ["es", "en"].contains(language) ? language : nil,
+            vocabulary: VocabularyPrompt.parse(defaults.string(forKey: "customVocabulary") ?? ""),
+            meetingID: MeetingID(),
+            filtersLiveScript: true)
+    }
+
+    static func live(
+        services: AppServices, beginCapture: @escaping () -> () -> Void
+    ) -> Self {
         Self(
             authorizeMicrophone: { [weak services] in
                 guard let services else { return false }
                 return await services.microphonePermissions.authorizeIfNeeded()
             },
-            makeMicrophone: { liveMicrophone(defaults: .standard) },
+            makeMicrophone: { [defaults = services.defaults] in liveMicrophone(defaults: defaults) },
             acquireRuntime: { [weak services] in
                 guard let services else { throw CancellationError() }
-                return services.liveTranscriptionRuntime(try await services.acquireLiveSpeechRuntime())
+                return try await services.acquireLiveTranscriptionRuntime(for: .dictation)
             },
             canInsert: { TextInserter.canInsert(promptIfNeeded: true) },
             targetName: { NSWorkspace.shared.frontmostApplication?.localizedName },
             insert: { await TextInserter.insert($0) },
-            defaults: .standard)
+            defaults: services.defaults,
+            beginCapture: beginCapture)
     }
 }

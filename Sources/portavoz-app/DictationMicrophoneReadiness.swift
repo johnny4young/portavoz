@@ -90,6 +90,7 @@ final class DictationMicrophoneReadiness {
     func pump(
         stream: AsyncThrowingStream<AudioChunk, Error>,
         feed: AsyncStream<AudioChunk>.Continuation,
+        onInputEnded: @escaping @Sendable () async -> Void = {},
         updateMeter: @escaping @MainActor @Sendable (Float) -> Void
     ) -> Task<Void, Never> {
         Task.detached { [self] in
@@ -126,6 +127,7 @@ final class DictationMicrophoneReadiness {
             // Finishing the feed alone would make the controller complete an
             // apparently successful, empty dictation without recovery guidance.
             await rejectIfNoFirstFrame()
+            await onInputEnded()
             feed.finish()
         }
     }

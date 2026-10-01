@@ -451,10 +451,7 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
         }
         let microphoneID = MicrophoneInputSelection.resolve(
             preferences.preferredInputDeviceID).deviceIdentifier
-        let liveSpeech = try services.acquireResidentLiveSpeechRuntime()
-        let liveTranscriptionRuntime = liveSpeech.map {
-            services.liveTranscriptionRuntime($0)
-        }
+        let liveTranscriptionRuntime = try services.acquireResidentLiveTranscriptionRuntime()
         let microphone = MicrophoneSource(
             deviceIdentifier: microphoneID,
             // A meeting recorder must be observational. Enabling AVAudioEngine
@@ -501,8 +498,7 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
                 guard let services else {
                     throw StartRecordingRuntimeError.preparationUnavailable
                 }
-                let runtime = try await services.acquireLiveSpeechRuntime()
-                return services.liveTranscriptionRuntime(runtime)
+                return try await services.acquireLiveTranscriptionRuntime()
             },
             telemetry: services.workloadTelemetry,
             voiceprintTask: Task.detached(priority: .utility) {

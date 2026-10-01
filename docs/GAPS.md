@@ -46,6 +46,98 @@ unattended EN/ES UI qualification excludes exactly that TCC-owned receiver case
 disposable app and retain its actual receipt before claiming cross-process
 delivery.
 
+The installed-model controller lane writes complete per-run receipts rather
+than per-caption progress. The sequential matrix launcher now preserves each
+bounded cohort's terminal files across later timeout or interruption, without
+raising the existing deadline or retrying failed cohorts. A failed cohort has
+no admitted partial cell count; a fresh process per cohort does not establish
+long single-process endurance or explain a backend stall. Complete matrix
+observation, quality acceptance, leak evidence and native delivery remain
+distinct requirements.
+
+### Live dictation can propose text without speech
+
+**Open, reproduced in the public controller corpus.** The first complete
+480-variant/two-pass observation produced lexical text in 16 of 64 non-speech
+attempts: both passes of eight silence/tone variants. The real controller reached
+its delivery boundary; the explicit rejecting double prevented native Paste.
+The September 21 repeat with freshly materialized public audio and the current
+controller independently reproduced 16 lexical outputs in 64 non-speech attempts;
+the complete observation still does not accept recognition quality or native delivery.
+Lexical-content admission alone is therefore not evidence of speech, and the
+former claim that live Parakeet always yields no silence segment is withdrawn.
+The same run retained substantial recognition error in both languages; see the
+quality spec for scoped counts and measurement limitations. Diagnose model,
+stream lifecycle and adapter behavior, then validate a speech-admission mechanism
+with the existing corpus. Do not silently add RMS thresholds, output vocabulary
+filters or another default engine to hide these counterexamples. This work does
+not alter the original meeting audio or claim native delivery qualification.
+
+A separate static timing concern needs call-site reproduction before a repair:
+`ParakeetSegmentMapper.segment` admits only token starts strictly greater than
+`fallbackTime`, while the live `ParakeetEngine` consumer initializes that edge
+to zero and advances it after provisional as well as confirmed updates. A token
+at the stream origin or exactly at the preceding end is excluded by that
+predicate, and revised provisional prefixes are not represented as revisions.
+Existing mapper tests use a positive first start and separated token intervals;
+they do not characterize these boundary shapes through the live consumer.
+Neither this suspicion nor the zero-valued silence inputs establish the cause
+of the observed WER. Reproduce complete update sequences through an injectable
+backend seam, including both languages and confirmed/provisional transitions,
+before replacing the deduplication mechanism or adopting another engine.
+
+### Dictation still needs a complete, phase-separated qualification
+
+The public corpus now specifies 480 variants over 60 text families, with exact
+source and local PCM admission checks. This is a test-data foundation, not a
+measured dictation-quality or latency result. An explicit installed-voice
+materializer now produces local PCM with code/voice-selection provenance,
+without treating synthetic output as ASR evidence. A separate installed-only
+Parakeet test lane now produces per-cell quality and live-work observations,
+not a competitive quality pass. Its same-process repetitions cannot establish
+cold-cache performance or distinguish every fixture/recognizer/composition cause
+of a mismatch. A separate explicit controller lane now joins the public input, real
+controller, installed adapter and whole-process footprint observation. It retains
+cancelled/failed attempts and rejects native insertion by design. Physical
+gesture/capture/dispatch acknowledgement and complete per-group qualification
+are not established by audio generation or a limited model/controller run.
+Natural accent/noise/device evidence is also distinct from synthetic variants.
+The controller lane also exposes a duration boundary hidden by model-only
+results: valid public minimal utterances can end before the existing minimum
+capture duration, so Stop cancels them without output. Keep those attempts in
+quality results; do not pad their audio or move the capture clock to model
+preparation to manufacture successful delivery. Any policy change needs separate
+gesture/capture characterization and preservation of tap/hold behavior.
+Do not adopt another engine or promote proposed numerical budgets on the
+strength of the corpus count. The source and audio-manifest contract lives in
+`Fixtures/DictationValidation/README.md` and the quality specification.
+
+### Live Parakeet still lacks reliable token-delivery ownership
+
+The adapter's `token.startTime > previousSegment.endTime` filter can discard
+valid words at zero, at the prior end, or sharing time with another subword.
+Native boundary fixtures reproduce that loss. Short installed-model attribution
+also reproduces production output while showing additional word error at this
+mapper, rather than at caption composition.
+
+**Removing the filter is not a repair.** Although the resolved provider calls a
+deduplication routine before emitting updates, a separate repeated public-speech
+experiment extending beyond its left context produced massive context replay in
+English, Spanish and mixed speech. Unfiltered production and the independent
+experiment agreed; both were wrong. The ordinary short-cell lane cannot certify
+this shape. The passthrough candidate was rejected before commit, not retained
+behind green consumer tests or reclassified as a harmless model-only error.
+
+A repair must establish which tokens belong to each delivered audio region,
+preserve same-time subwords and legitimate repetition, and survive long context,
+final drain and both meeting/dictation consumers. Neither a timestamp epsilon
+nor unconditional trust in the upstream deduplication claim is demonstrated.
+The existing filter remains imperfect but cannot be removed without replacing
+its replay protection. Separately, `CaptionCoalescer.trimOverlap` can collapse
+literal repetitions and relies on a short-word allowlist; retiring that policy
+requires an explicit producer/boundary contract across supported live engines.
+No successful harness exit closes these unresolved product-quality defects.
+
 ### Closed-row revision after microphone echo replacement
 
 A synthetic controller call-site sequence reproduces a limitation in the shared
@@ -163,19 +255,30 @@ qualification on every supported macOS version. No test should request or answer
 a system privacy decision to manufacture that evidence. An unexpected prompt,
 failed owned cleanup, or later worker restart still invalidates the invocation;
 physical OS coverage and unexplained earlier failures remain separate.
+On Xcode 27, the original attempt to record an XCTest issue from the callback
+can synchronously reenter actor-isolated asynchronous teardown and deadlock.
+D553 removes that recording call, not the fail-closed outcome: the owned worker
+exits after a content-free stderr receipt, and the native validator still
+requires the exact failed test, cleanup and absence of continuation. Controlled
+local passing controls do not certify an unseen permission prompt or every
+supported macOS version.
 Earlier synthetic control receipts proved process absence but did not detect an
 overlay crash at its actor-isolated exit callback. They are not sufficient
 cleanup evidence. The corrected main-queue callback must also acknowledge its
 execution; fresh controlled and hosted qualification is required. Notification
 Center metadata alone still cannot attribute a hosted alert to that crash.
 
-### Compact-window scroll reachability remains unqualified
+### Compact-window correction reachability has focused evidence only
 
 The 1.1 layout removed the fixed 240-point artifacts box (the area now
 measures its material and caps at half the column) and moved the rail's
-sections behind lenses, which reduces the scrolling the compact geometry
-needed; the harness still does not force that geometry, so the limitation
-below stands as written.
+sections behind lenses, but an actual 620-point window still left a one-point
+transcript viewport below material and the player. The correction action was
+absent from accessibility before any scroll attempt. D549's focused reading
+panes preserve the player and make the real correction action reachable in
+620-point and native-minimum windows; its bilingual real-app journey reached
+the editor in both geometries. This is focused evidence, not a passing full
+catalog or proof of all window sizes and assistive modes.
 
 The ordinary bounded `revealVertically` helper can fail to reveal a correction
 control in a short transcript viewport. Wheel-response calibration and
@@ -184,15 +287,34 @@ a native counterexample combining dropped input with amplified delivery. The
 individual native delivery shapes passed; the combined shape did not. Neither
 an aggregate pass count nor a restored ordinary window closes this limitation.
 
-The interruption-safety harness retains the original real-app catalog and all
-correction effects but does not force the experimental compact geometry. Its
-four native controls qualify interruption containment and owned cleanup only,
-not scrolling. The rejected experiment and failed evidence remain separate;
-a future repair must reproduce compact geometry safely, reach the actual helper,
-include composed delivery shapes and retain the existing finite interaction
-budgets. Do not infer that the underlying transcript write path is defective
-from a harness failure before activation, or claim physical macOS coverage from
-the ordinary-window catalog. See D533 for the separation boundary.
+The new fixture forces compact geometry after native window restoration and
+asserts the actual AppKit frame, rather than trusting a requested size. Its
+focused journey reaches the existing bounded helper and correction editor;
+it does not change the wheel algorithm or qualify composed dropped/amplified
+delivery outside those layouts. The first cumulative gate stopped in the
+asynchronous interruption control before product tests. A later single-build
+product catalog passed the compact journey in both locales and all 123 Spanish
+cases; English passed 121 of 123. One English journey saw its synthesized
+Objectives click leave Summary selected, and another was correctly stopped by
+a foreign foreground window. Both locales exceeded the unchanged full-suite
+runtime budget. These are failed qualification receipts, not a green bilingual
+gate or evidence that the compact correction itself failed. Native safety,
+host stability, full bilingual product/runtime qualification, and physical
+macOS coverage remain separate pending gates. See D533 for the separation
+boundary.
+
+The first exact-head hosted run exposed a separate integration gap: its
+ordinary window also entered compact mode, while older Meeting Detail journeys
+expected Summary and Transcript simultaneously. The new correction journey
+passed in both locales, but summary/notes/commitment controls were absent
+until Summary was selected; twelve Meeting Detail journeys failed in each
+locale and the Spanish public showcase also failed. The follow-up candidate
+routes evidence seeks back to Transcript and makes those journeys choose the
+responsive pane explicitly. A later exact-head hosted run of that candidate
+passed all 125 functional cases in each locale, including the compact journey.
+Its full-suite runtime still exceeded the unchanged budget (EN 1,922.448 s with
+16 per-case breaches, ES 1,755.936 s), as did the first run (EN 1847.868 s,
+ES 1596.299 s). Functional evidence is not runtime qualification.
 
 ### 1.1 layout items deliberately kept as they were
 
@@ -362,9 +484,10 @@ Physical/model latency and cancellation field evidence remain open.
 | T31 | ~~Strict lint is configured but the current local branch is red~~ | **RESOLVED (Aug 9, 2026):** cohesive owner splits removed all 20 audited first-party violations without blanket suppressions; strict SwiftLint is clean across 636 production Swift files. | ✅ |
 | T32 | ~~Database-open failure still terminates the app at launch~~ | **RESOLVED in code (D319):** `AppServices` now throws and opens the authority before constructing any other process owner. A root launch state keeps normal UI and background work absent on failure, offers retry, exports content-free mode-`0600` diagnostics, and creates a `quick_check`-verified read-only SQLite recovery copy through hidden mode-`0700` staging without overwriting, mutating, migrating, deleting, or silently recreating the source. Deterministic tests cover corrupt/missing sources, privacy, permissions, non-overwrite, retry, and source parity; bilingual XCUITest exercises the real disposable recovery journey. Automatic repair or restore-over-authority remains deliberately excluded. | ✅ |
 | T33 | ~~Unreadable or concurrently mutated encrypted voice identity can be hidden, overwritten, or split from its key~~ | **RESOLVED in code (D357–D358):** existing ciphertext forbids replacement-key creation; missing/corrupt keys and unreadable/authentication/decoding failures propagate before every save, remember, or remove; AES-GCM serialization is guarded; Settings keeps Retry plus explicit destructive reset visible; and one no-follow mode-`0600` BSD sidecar lease now serializes each complete ciphertext/Keychain transaction across store values and cooperating D358-capable stable/Dev/CLI processes. Deterministic contention tests preserve both concurrent gallery additions and prevent save/delete from stranding ciphertext. A temporary-store-only unavailable fixture and real-app XCUITest cover both stores without touching host biometric state. The advisory lock cannot constrain a still-running pre-D358 binary; a real Keychain-reset journey, abrupt multi-process termination, mixed-version exclusion, and physical VoiceOver remain field evidence, not data-recovery promises. | ✅ |
-| T34 | Live dictation vocabulary and same-alphabet language restriction remain limited | **PARTIAL (Sep 2026).** Dictation now forwards its supported language hint to the live Parakeet manager (meeting captions do not opt in), and Settings explains that Spanish and English can still mix because the filter works on writing systems. Segments still carry the requested hint rather than a detected-language classification. Live Parakeet still never reads `hints.vocabulary`: `customVocabulary` biases only the batch Whisper/SpeechAnalyzer engines. Streaming vocabulary boosting needs the unpinned `parakeet-ctc-110m` CTC model; preferred spellings therefore still come only from the deterministic `DictationTextRules` tier (spec 06). | Evaluate a verified, consented CTC model and wire `configureVocabularyBoosting` only with call-site quality and resource evidence. Do not claim the existing language hint separates same-alphabet languages or improves recognition quality. |
+| T34 | Live dictation vocabulary and same-alphabet language restriction remain limited | **PARTIAL (Sep 2026).** Dictation now forwards its supported language hint to the live Parakeet manager (meeting captions do not opt in), and Settings explains that Spanish and English can still mix because the filter works on writing systems. Segments still carry the requested hint rather than a detected-language classification. Default live Parakeet still never reads `hints.vocabulary`: `customVocabulary` biases batch Whisper and the optional fixed-locale Apple Speech live engine, without a measured recognition-quality claim. Streaming vocabulary boosting needs the unpinned `parakeet-ctc-110m` CTC model; on the default route, preferred spellings therefore still come only from the deterministic `DictationTextRules` tier (spec 06). | Evaluate a verified, consented CTC model and wire `configureVocabularyBoosting` only with call-site quality and resource evidence. Do not claim the existing language hint separates same-alphabet languages or improves recognition quality. |
 | T35 | ~~The reviewed speech-engine pin freezes Portavoz behind published upstream fixes~~ | **RESOLVED for published behavior through D539 (Sep 2026).** `Package.swift` now requires exact FluidAudio 0.15.8. A matched 0.15.6/0.15.7/0.15.8 public-synthetic call-site matrix found 0.15.7 production-identical and admitted 0.15.8 only after every speech cell improved, long-run latency stayed flat, three process observations preserved the memory ceiling, and AMI DER remained 7.6%. Silence hallucination did not improve and remains separate evidence. Stock 0.16.1 was rejected before tests because NemoTextProcessing 0.3.1 advertises `Headers` while packaging its module map under `Headers/CNemoTextProcessing`; its speech sources are byte-identical to 0.15.8. Keep the D516 exact-review rule. Reopen for a later release only with matched recognition, diarization, latency and memory evidence; never vendor-patch a malformed binary target merely to make an evaluation pass. | ✅ |
 | T36 | FluidAudio's macOS 14 diarizer advisory is unqualified on the deployment floor | **OPEN (Sep 2026).** Upstream documents a BNNS diarizer crash on macOS 14 (#878/#885), and Portavoz still deploys to macOS 14.4. The 0.15.8 comparison ran only on the current macOS host, so it neither confirms nor rules out that crash for batch or live diarization on the floor. | Run batch and live two-speaker diarization on a physical macOS 14.4 Mac before claiming the floor is diarization-safe, or raise the deployment floor. |
+| T37 | Silero voice activity is verified but not serving capture | **PARTIAL (D548):** a small MIT Core ML bundle is pinned by exact artifact hashes and a session-scoped TranscriptionKit adapter reaches FluidAudio's real 4,096-sample VAD inference after a verified local load. Missing model, PCM discontinuity, cancellation and concurrent producers fail closed. No app recording or dictation path constructs this adapter yet; no meeting talk-time, transcript gate or silence-based Stop is changed. | Add explicit consented model preparation and resource admission, then connect only off-callback bounded audio feeds. Qualify EN/ES speech and silence, small packets, device changes, drop/timeout/cancel, RAM/CPU/ANE contention, and full real-app journeys before any opt-in countdown or meeting metric replaces existing behavior. |
 
 - **RESOLVED (D314, Aug 7 2026) — graph rebuild-from-zero was superlinear.**
   The per-scope rebuild used to load every live topic row to resolve family
@@ -780,3 +903,58 @@ Backend queue backpressure and exception-path cancellation draining remain
 unverified risks, not newly reproduced product defects. Preserve the failed
 receipt and unchanged stability thresholds; do not replace this gap with a
 retry-until-green candidate or a synthetic unit-test claim.
+
+## Lightweight model memory: remaining measurements (D526)
+
+The explicit memory profile bounds idle scheduler tasks and delegates runtime
+release to existing active-use leases. It does not certify an application-wide
+RSS ceiling or lower peak memory. Cold-start latency, allocator/ANE/Metal cache
+behavior, mixed recording/refine/summary workloads, and physical 8-GiB hosts on
+supported macOS versions still need measured evidence. Compact Whisper remains
+an explicit disk-saving choice, not an automatically selected low-RAM engine;
+its runtime advantage over Turbo is not established by download size or the
+shared catalog RAM guidance. OS/external-provider model lifetimes are outside
+this profile. Lightweight's 60-second speech and 30-second Whisper/MLX grace
+windows are chosen to cover dictation bursts, the Stop-to-post-capture handoff
+and follow-up questions; they are not yet tuned from field idle-gap data.
+These limits do not relax automated lifetime or privacy tests.
+
+Earlier broad local UI runs exposed the former runner-container storage
+boundary and an unexpected native interruption. Those failed invocations remain
+unqualified; adopting the explicit shared-scratch owner and content-blind
+interruption guard does not relabel them. The current memory-profile sources
+still require a fresh full bilingual gate and exact-head hosted evidence.
+Focused Settings or installed-model lifetime observations cannot substitute for
+that qualification or close the separate compact-reachability gap.
+
+## Optional Apple Speech serving qualification
+
+D554 makes the existing macOS 26 SpeechAnalyzer adapter selectable for fixed
+English or Spanish live meeting captions and dictation. Default Parakeet,
+macOS 14.4 support, audio-first meeting capture, and durable Parakeet recovery
+remain unchanged. Read-only installed-asset checks, explicit download control,
+range-safe provisional previews, channel-authoritative meeting callbacks and
+fail-closed dictation are covered by synthetic call-site and disposable app
+tests. **Open:** no current matched bilingual Apple-vs-Parakeet corpus run,
+real installed-asset cancellation/timeout receipt, native memory/thermal
+profile, or physical Sequoia/Tahoe/assistive-technology qualification. The
+current admission check does not cancel an OS asset download already in flight
+when capture subsequently begins; that overlap needs a native lifecycle
+receipt and any coordination mechanism proven from it. The historical
+one-file M12 result is not that evidence. Do not change the default
+engine or claim a general speed/accuracy improvement until those gates pass.
+
+## Dictation end-to-end measurement qualification
+
+The controller now exposes opt-in, content-free request-to-outcome phase
+observations. Deterministic call-site tests establish wiring and session
+ownership only. The separate public-PCM/controller lane binds source/model
+identity and samples whole-process memory but deliberately rejects insertion.
+It does not replace complete corpus review, independently repeatable host
+comparisons, AppServices cache ownership or native inserter readback evidence.
+Physical keyboard timing and rendered-frame latency
+are outside these controller timestamps. A dispatch-reported result is not a
+successful-delivery baseline. Native Accessibility admission and a verifiable
+receiver remain separate prerequisites; missing evidence is not an accepted
+performance result. Existing capture-loss, cancellation and destination-safety
+limitations are not closed by adding measurements.

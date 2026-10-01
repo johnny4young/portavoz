@@ -3,32 +3,33 @@ import SwiftUI
 
 /// Resolve the window containing this exact disposable view, not whichever
 /// main-capable window happens to come first after an external URL opens one.
-struct UITestMainWindowCapture: NSViewRepresentable {
-    func makeNSView(context: Context) -> UITestMainWindowCaptureView {
-        UITestMainWindowCaptureView()
+struct UITestMainWindowCapture: NSViewControllerRepresentable {
+    func makeNSViewController(context: Context) -> UITestMainWindowCaptureController {
+        UITestMainWindowCaptureController()
     }
 
-    func updateNSView(_ nsView: UITestMainWindowCaptureView, context: Context) {}
+    func updateNSViewController(_ controller: UITestMainWindowCaptureController, context: Context) {}
 }
 
 @MainActor
-final class UITestMainWindowCaptureView: NSView {
+final class UITestMainWindowCaptureController: NSViewController {
     private let position: @MainActor (NSWindow) -> Void
-    private weak var positionedWindow: NSWindow?
 
     init(position: @escaping @MainActor (NSWindow) -> Void = UITestWindowPlacement.positionMainWindow) {
         self.position = position
-        super.init(frame: .zero)
+        super.init(nibName: nil, bundle: nil)
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { nil }
 
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        guard window !== positionedWindow else { return }
-        positionedWindow = window
-        if let window { position(window) }
+    override func loadView() { view = NSView(frame: .zero) }
+
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        // Match Settings: attachment precedes native frame restoration, which
+        // can otherwise undo placement before an external route takes a snapshot.
+        if let window = view.window { position(window) }
     }
 }
 
@@ -57,18 +58,34 @@ enum UITestWindowPlacement {
 
     static func positionMainWindow(_ window: NSWindow) {
         guard let visibleFrame = zeroScreenVisibleFrame else { return }
+        let arguments = ProcessInfo.processInfo.arguments
+        let preferredHeight: CGFloat?
+        if arguments.contains("-seed-minimum-transcript-window") {
+            preferredHeight = 560
+        } else if arguments.contains("-seed-compact-transcript-window") {
+            preferredHeight = 620
+        } else {
+            preferredHeight = nil
+        }
+        let frame = mainWindowFrame(in: visibleFrame, preferredHeight: preferredHeight)
+        applyAcceptedNotificationCenterIsolation(to: window)
+        window.setFrame(frame, display: true, animate: false)
+    }
 
+    static func mainWindowFrame(
+        in visibleFrame: NSRect,
+        preferredHeight: CGFloat?
+    ) -> NSRect {
         let minimumWidth: CGFloat = 900
         let leftClearance = min(
             400,
             max(0, visibleFrame.width - minimumWidth))
-        let frame = NSRect(
+        let height = min(visibleFrame.height, preferredHeight ?? visibleFrame.height)
+        return NSRect(
             x: visibleFrame.minX + leftClearance,
-            y: visibleFrame.minY,
+            y: visibleFrame.maxY - height,
             width: visibleFrame.width - leftClearance,
-            height: visibleFrame.height)
-        applyAcceptedNotificationCenterIsolation(to: window)
-        window.setFrame(frame, display: true, animate: false)
+            height: height)
     }
 
     static func positionSettingsWindow(_ window: NSWindow) {

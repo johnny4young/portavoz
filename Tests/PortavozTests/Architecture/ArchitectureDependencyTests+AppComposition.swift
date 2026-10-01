@@ -283,8 +283,9 @@ extension ArchitectureDependencyTests {
             adapter.contains("try await services.loadEnginesIfNeeded()"),
             "Recording start must never wait for model preparation")
         XCTAssertTrue(adapter.contains("LiveTranscriptionAttacher("))
-        XCTAssertTrue(adapter.contains("services.acquireResidentLiveSpeechRuntime()"))
-        XCTAssertTrue(adapter.contains("services.acquireLiveSpeechRuntime()"))
+        XCTAssertTrue(adapter.contains("services.acquireResidentLiveTranscriptionRuntime()"))
+        XCTAssertTrue(adapter.contains("services.acquireLiveTranscriptionRuntime()"))
+        XCTAssertFalse(adapter.contains("services.acquireLiveSpeechRuntime()"))
         XCTAssertTrue(adapter.contains("voiceProcessing: false"))
         XCTAssertFalse(adapter.contains("aecEnabled"))
         XCTAssertTrue(controller.contains("receiveLiveTranscription("))
@@ -541,6 +542,7 @@ extension ArchitectureDependencyTests {
             of: "Sources/ApplicationKit/LocalSummaryProviders.swift")
         let adapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+LocalSummaryProviders.swift")
+        let probe = try Self.contents(of: "Sources/portavoz-app/AppLocalSummaryProviderProbe.swift")
         let settings = try Self.contents(of: "Sources/portavoz-app/SettingsView.swift")
         let onboarding = try Self.contents(of: "Sources/portavoz-app/OnboardingView.swift")
 
@@ -550,15 +552,17 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(workflow.contains("enum LocalSummaryRecommendationReason"))
         XCTAssertTrue(workflow.contains("func saveInitialSummaryProviderSelection"))
         for concrete in [
-            "OllamaService", "UserDefaults", "ProcessInfo", "NSHomeDirectory",
+            "OllamaService", "UserDefaults", "NSHomeDirectory",
         ] {
             XCTAssertFalse(workflow.contains(concrete), concrete)
-            XCTAssertTrue(adapter.contains(concrete), concrete)
+            XCTAssertTrue((adapter + probe).contains(concrete), concrete)
         }
+        XCTAssertFalse(workflow.contains("ProcessInfo"))
         XCTAssertFalse(workflow.contains("FoundationModelsCapability"))
         XCTAssertTrue(adapter.contains("foundationModelsCapability.isAvailable"))
-        XCTAssertTrue(adapter.contains("contains(\"-use-temp-store\")"))
-        XCTAssertTrue(adapter.contains("ollama: .unavailable"))
+        XCTAssertTrue(adapter.contains("usesTemporaryStore: usesTemporaryMeetingStore"))
+        XCTAssertFalse(adapter.contains("-use-temp-store"), "the storage policy owns temporary-store isolation")
+        XCTAssertTrue(probe.contains("ollama: .unavailable"))
         XCTAssertTrue(adapter.contains("@MainActor"))
         XCTAssertTrue(adapter.contains("struct AppSummaryProviderSelectionStore"))
         for presentation in [settings, onboarding] {
@@ -1964,6 +1968,8 @@ extension ArchitectureDependencyTests {
         let view = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
         let artifacts = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailArtifactsSection.swift")
+        let primaryColumn = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift")
         let flowHost = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailFlowHost.swift")
         let playbackNavigation = try Self.contents(
@@ -1979,13 +1985,23 @@ extension ArchitectureDependencyTests {
 
         XCTAssertTrue(view.contains("MeetingDetailFlowHost("))
         XCTAssertTrue(view.contains("MeetingDetailPlaybackNavigation()"))
-        XCTAssertTrue(view.contains("MeetingDetailArtifactsSection"))
+        XCTAssertTrue(view.contains("MeetingDetailPrimaryColumn("))
         XCTAssertTrue(artifacts.contains(".onGeometryChange(for: CGFloat.self)"))
         XCTAssertTrue(artifacts.contains(".frame(height: resolvedHeight)"))
         XCTAssertFalse(artifacts.contains("maxHeight: 240"), "content decides the height (D536)")
         XCTAssertTrue(view.contains("GeometryReader { column in"))
-        XCTAssertTrue(view.contains("MeetingDetailArtifactsSection(columnHeight: column.size.height)"))
-        XCTAssertTrue(view.contains(".layoutPriority(1)"))
+        XCTAssertTrue(view.contains("selectedPane: $readingPane"))
+        for route in [
+            "func focusEvidence(", "func deliverPendingMeetingSeekIfPossible(", "func seekAndPlay(",
+        ] {
+            let body = try XCTUnwrap(view.components(separatedBy: route).dropFirst().first)
+                .components(separatedBy: "\n    }\n").first ?? ""
+            XCTAssertTrue(
+                body.contains("readingPane = .transcript"),
+                "\(route) must reveal Transcript before targeting a row (D549)")
+        }
+        XCTAssertTrue(primaryColumn.contains("MeetingDetailArtifactsSection(columnHeight: columnHeight)"))
+        XCTAssertTrue(primaryColumn.contains(".layoutPriority(1)"))
         XCTAssertTrue(flowHost.contains("MeetingDetailRefineReviewSheet("))
         XCTAssertTrue(flowHost.contains("TranscriptCorrectionEditor("))
         XCTAssertTrue(flowHost.contains("TranscriptStructuralCorrectionEditor("))

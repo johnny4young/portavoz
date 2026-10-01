@@ -152,6 +152,28 @@ final class DictationControllerTests: XCTestCase {
         }
     }
 
+    func testObsoleteProducerFailureCannotRetireReplacementCapture() async {
+        let controller = DictationController(presentsPanel: false)
+        let first = DictationControllerHarness(text: "No borres estas notas", controller: controller)
+        let replacement = DictationControllerHarness(text: "Don’t delete these notes", controller: controller)
+        defer { controller.cancel() }
+        controller.toggle(using: first.dependencies)
+        let firstReady = await awaitEventually { controller.partialText == first.text }
+        XCTAssertTrue(firstReady)
+        controller.cancel()
+        let retired = await awaitEventually { first.finishes == 1 }
+        XCTAssertTrue(retired)
+        controller.toggle(using: replacement.dependencies)
+        let replacementReady = await awaitEventually { controller.partialText == replacement.text }
+        XCTAssertTrue(replacementReady)
+        await first.microphone.signalFailure(.sourceFailed)
+        replacement.now = replacement.now.addingTimeInterval(1)
+        controller.toggle(using: replacement.dependencies)
+        let delivered = await awaitEventually { replacement.insertions == [replacement.text] }
+        XCTAssertTrue(delivered, "A late producer callback belongs only to its old capture")
+        XCTAssertTrue(first.insertions.isEmpty)
+    }
+
     func testProducerFailureSignalRetiresCaptureWithoutWaitingForBufferedEOF() async {
         for text in ["No borres estas notas", "Don’t delete these notes"] {
             for failure in [PortavozCore.CaptureFailure.overloaded, .sourceFailed] {
@@ -336,7 +358,7 @@ final class DictationControllerTests: XCTestCase {
         XCTAssertNil(DictationUITestFixture(arguments: [], usesTemporaryStore: true))
         XCTAssertNotNil(DictationUITestFixture(
             arguments: ["-seed-dictation"], usesTemporaryStore: true))
-        XCTAssertFalse(DictationUITestFixture.dependencies(fixture: nil).canInsert())
+        XCTAssertFalse(DictationUITestFixture.dependencies(fixture: nil, beginCapture: { {} }).canInsert())
         let failureArguments = ["-seed-dictation", "-seed-dictation-capture-failure"]
         XCTAssertNil(DictationUITestFixture(arguments: failureArguments, usesTemporaryStore: false))
         XCTAssertNil(DictationUITestFixture(
@@ -367,6 +389,7 @@ final class DictationControllerHarness {
     var finishes = 0
     var hints: TranscriptionHints?
     var insertions: [String] = []
+    var measurements: [DictationSessionMeasurement] = []
     let consumerGate: PreparationGate?
 
     init(
@@ -404,11 +427,13 @@ final class DictationControllerHarness {
                 self?.insertions.append(text)
                 return .inserted
             },
-            defaults: defaults, now: { [weak self] in self?.now ?? .distantPast })
+            defaults: defaults, now: { [weak self] in self?.now ?? .distantPast },
+            beginCapture: { {} },
+            measurementSink: { [weak self] in self?.measurements.append($0) })
     }
 }
 
-private actor ControlledDictationMicrophone: CaptureReportingSource {
+actor ControlledDictationMicrophone: CaptureReportingSource {
     private struct Health: Sendable {
         var failure: PortavozCore.CaptureFailure?
         var handler: (@Sendable () -> Void)?

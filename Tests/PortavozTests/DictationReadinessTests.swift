@@ -145,7 +145,7 @@ final class DictationReadinessTests: XCTestCase {
         let review = try PortableSettingsTransfer.review(
             PortableSettingsTransfer.export([:]), current: before)
         let permission = ReadinessSignal()
-        var dependencies = DictationUITestFixture.dependencies(fixture: nil)
+        var dependencies = DictationUITestFixture.dependencies(fixture: nil, beginCapture: { {} })
         dependencies.canInsert = { true }
         dependencies.authorizeMicrophone = { await permission.wait(); return true }
         services.dictation.toggle(using: dependencies)
@@ -354,6 +354,19 @@ final class DictationReadinessTests: XCTestCase {
         }
     }
 
+    func testLiveCompositionReadsTheInjectedAudioPreference() async throws {
+        let suite = "microphone-composition-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set("portavoz-missing-input-\(UUID().uuidString)", forKey: MicrophoneInputSelection.preferenceKey)
+        let services = try AppServices(
+            arguments: ["-use-temp-store"], environment: [:], defaults: defaults,
+            dictation: DictationController(presentsPanel: false))
+        let input = DictationSessionDependencies.live(
+            services: services, beginCapture: { {} }).makeMicrophone()
+        XCTAssertTrue(input.usesSystemFallback, "dictation must resolve the composition's own Audio preference")
+    }
+
     private func eventually(_ condition: @MainActor () -> Bool) async -> Bool {
         let deadline = ContinuousClock.now.advanced(by: .seconds(3))
         while !condition(), ContinuousClock.now < deadline {
@@ -416,7 +429,8 @@ private final class ReadinessHarness {
             },
             defaults: defaults, now: { [weak self] in
                 Date(timeIntervalSince1970: self?.now ?? 0)
-            })
+            },
+            beginCapture: { {} })
     }
 }
 

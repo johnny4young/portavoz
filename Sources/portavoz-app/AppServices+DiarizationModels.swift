@@ -20,7 +20,7 @@ extension AppServices {
     func acquireDiarizationRuntime(
         workloadClass: ResourceWorkloadClass = .userInitiated
     ) async throws -> DiarizationRuntimeLease {
-        enginesIdleGeneration += 1
+        modelIdleReleaseScheduler.cancel(.recording)
         if let runtime = try residentDiarizationRuntime() {
             return try checkedDiarizationRuntime(runtime)
         }
