@@ -11,7 +11,7 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 # There are two Developer ID certs with the same name on this machine; this
 # SHA-1 disambiguates the Portavoz one. Override with the env var.
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
-PORTAVOZ_LSREGISTER ?= /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+PORTAVOZ_LSREGISTER := /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 
 .PHONY: build test test-ask-quality test-apuntador-validation \
 	test-live-assist-validation live-assist-baseline live-assist-bundled-question \
@@ -1082,8 +1082,8 @@ install:
 		sed -i '' \
 			-e 's/^"CFBundleDisplayName" = ".*";$$/"CFBundleDisplayName" = "Portavoz Dev";/' \
 			-e 's/^"CFBundleName" = ".*";$$/"CFBundleName" = "Portavoz Dev";/' \
-			"$$plist"; \
-		plutil -lint "$$plist"; \
+			"$$plist" || exit 1; \
+		plutil -lint "$$plist" || exit 1; \
 	done
 	# Editing Info.plist invalidates the signature; re-sign or TCC grants
 	# (mic, screen recording) will not stick to the dev app.

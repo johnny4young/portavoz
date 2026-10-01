@@ -329,7 +329,9 @@ disposable validation, launch explicitly with
 `open -na "/Applications/Portavoz Dev.app" --args -use-temp-store`. An ordinary
 manual Dev launch shares the normal default SQLite URL with release; a different
 bundle identity does not isolate that library. Do not use a normal launch to
-qualify an installation or run automated tests against real data.
+qualify an installation or run automated tests against real data. The
+temp-store launch also starts with an empty model root and reports managed
+Whisper models as missing, so it validates UI and storage, not transcription.
 
 `make install` changes the bundle identifier to `app.portavoz.mac.dev`, so it
 now rejects `PORTAVOZ_PROVISIONING_PROFILE`: a profile for the production App ID

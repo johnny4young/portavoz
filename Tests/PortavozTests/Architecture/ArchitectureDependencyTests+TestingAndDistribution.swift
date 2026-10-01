@@ -1146,7 +1146,15 @@ extension ArchitectureDependencyTests {
         XCTAssertNotNil(makefile.range(
             of: "automatic launch intentionally disabled",
             range: register.upperBound..<makefile.endIndex))
-        XCTAssertFalse(makefile.contains("\topen \"/Applications/Portavoz Dev.app\""))
+        let recipeStart = try XCTUnwrap(makefile.range(of: "\ninstall:\n"))
+        let recipeEnd = makefile.range(
+            of: "\n\n", range: recipeStart.upperBound..<makefile.endIndex)?.lowerBound
+            ?? makefile.endIndex
+        let launches = makefile[recipeStart.upperBound..<recipeEnd]
+            .split(separator: "\n")
+            .map { $0.drop { "\t @-".contains($0) } }
+            .filter { $0.hasPrefix("open ") }
+        XCTAssertEqual(launches, [])
     }
 
     func testProductionSyncQualificationPreservesExactProvisionedIdentity() throws {

@@ -5949,7 +5949,7 @@ modified by development commands. `make install` builds, signs, verifies, and
 installs `/Applications/Portavoz Dev.app`, rewrites both base and localized
 names, gives it the distinct `app.portavoz.mac.dev` identity, and force-registers
 that exact bundle after signature verification. Registration ends installation;
-no app is automatically launched (D556). Disposable validation starts separately
+no app is automatically launched. Disposable validation starts separately
 with `-use-temp-store`. A normal manual Dev launch still selects the release
 composition's default SQLite URL: bundle identity is not library isolation.
 The XcodeGen host uses

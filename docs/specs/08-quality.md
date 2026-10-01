@@ -4,11 +4,14 @@
 space-containing scratch directory with inert external-command adapters. It
 checks re-sign → distribution verification → Dev-only copy → installed verification
 → registration, rejects a production profile before effects, and injects failures
-at both verification boundaries. An accidental `open` fails the fixture rather
-than starting an app. This validates command ownership and absence of automatic
+at the localized-name rewrite and both verification boundaries. The localized
+Dev name must actually be rewritten; a Linux shim adapts BSD `sed -i ''` for GNU
+sed so the hygiene runner cannot pass on a failed rewrite. An accidental `open`
+fails the fixture rather than starting an app. This validates command ownership and absence of automatic
 launch, not real signing, LaunchServices registration or live-library unchangedness.
-The native tool path defaults to Apple's `lsregister`; its Make override supplies
-the inert registration boundary. Real-app XCUITest remains a separate gate.
+The native tool path defaults to Apple's `lsregister`; only a Make command-line
+override supplies the inert registration boundary, and an inherited environment
+variable cannot replace it. Real-app XCUITest remains a separate gate.
 
 Optional Apple Speech live routing (D554) has three distinct evidence layers.
 Pure readiness tests distinguish fixed en/es, unsupported, equivalent installed
