@@ -191,7 +191,8 @@ final class DictationControllerTests: XCTestCase {
         XCTAssertNil(DictationUITestFixture(arguments: [], usesTemporaryStore: true))
         XCTAssertNotNil(DictationUITestFixture(
             arguments: ["-seed-dictation"], usesTemporaryStore: true))
-        XCTAssertFalse(DictationUITestFixture.dependencies(fixture: nil).canInsert())
+        XCTAssertFalse(DictationUITestFixture.dependencies(
+            fixture: nil, beginCapture: { {} }).canInsert())
     }
 
     private func awaitEventually(_ condition: @MainActor () -> Bool) async -> Bool {
@@ -214,6 +215,7 @@ final class DictationControllerHarness {
     var finishes = 0
     var hints: TranscriptionHints?
     var insertions: [String] = []
+    var measurements: [DictationSessionMeasurement] = []
 
     init(text: String, controller: DictationController = .init(presentsPanel: false)) {
         self.controller = controller
@@ -229,6 +231,7 @@ final class DictationControllerHarness {
 
     var dependencies: DictationSessionDependencies {
         DictationSessionDependencies(
+            authorizeMicrophone: { true },
             makeMicrophone: { [microphone] in .init(source: microphone, warmUp: {}) },
             acquireRuntime: { [weak self] in
                 guard let self else { throw CancellationError() }
@@ -243,11 +246,13 @@ final class DictationControllerHarness {
                 self?.insertions.append(text)
                 return .inserted
             },
-            defaults: defaults, now: { [weak self] in self?.now ?? .distantPast })
+            defaults: defaults, now: { [weak self] in self?.now ?? .distantPast },
+            beginCapture: { {} },
+            measurementSink: { [weak self] in self?.measurements.append($0) })
     }
 }
 
-private actor ControlledDictationMicrophone: AudioCaptureSource {
+actor ControlledDictationMicrophone: AudioCaptureSource {
     nonisolated let channel = AudioChannel.microphone
     private(set) var starts = 0
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?

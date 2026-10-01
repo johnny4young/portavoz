@@ -5,6 +5,8 @@ import TranscriptionKit
 extension AppServices {
     /// Explicit readiness for workflows that truly need both models.
     func loadEnginesIfNeeded() async throws {
+        // Warm-up is idle work too; without a deadline it stays resident forever.
+        defer { scheduleRecordingEnginesRelease() }
         let liveSpeech = try await acquireLiveSpeechRuntime()
         defer { _ = finishLiveSpeechRuntime(liveSpeech) }
         let diarization = try await acquireDiarizationRuntime()
@@ -29,7 +31,10 @@ extension AppServices {
     func acquireLiveSpeechRuntime(
         workloadClass: ResourceWorkloadClass = .liveInteractive
     ) async throws -> LiveSpeechRuntimeLease {
-        enginesIdleGeneration += 1
+        // A caller cancelled before admission must not begin a process-owned
+        // model load that can continue downloading after the session is gone.
+        try Task.checkCancellation()
+        modelIdleReleaseScheduler.cancel(.recording)
         if let runtime = try residentLiveSpeechRuntime() {
             return try checkedLiveSpeechRuntime(runtime)
         }
@@ -73,7 +78,7 @@ extension AppServices {
     /// Claims a hot runtime without starting model preparation. Recording
     /// preparation uses this synchronous path so capture can remain audio-first.
     func acquireResidentLiveSpeechRuntime() throws -> LiveSpeechRuntimeLease? {
-        enginesIdleGeneration += 1
+        modelIdleReleaseScheduler.cancel(.recording)
         guard let runtime = try residentLiveSpeechRuntime() else { return nil }
         return try checkedLiveSpeechRuntime(runtime)
     }
@@ -92,6 +97,33 @@ extension AppServices {
             _ = self.finishLiveSpeechRuntime(runtime)
             self.scheduleRecordingEnginesRelease()
         }
+    }
+
+    /// Live consumers borrow a transcription engine and its release together.
+    /// Batch/maintenance clients keep the concrete Parakeet lease; neither
+    /// dictation nor recording needs to know which model owns a live engine.
+    func acquireLiveTranscriptionRuntime(
+        for purpose: LiveSpeechPurpose = .meeting
+    ) async throws -> LiveTranscriptionRuntime {
+        if purpose.selectedEngine(in: defaults) == .appleSpeech {
+            guard #available(macOS 26.0, *) else {
+                throw TranscriptionError.engineUnavailable(
+                    "Apple Speech requires macOS Tahoe or later")
+            }
+            let engine = try await SpeechAnalyzerLiveEngine.acquireInstalled(
+                language: purpose.language(in: defaults))
+            return LiveTranscriptionRuntime(engine: engine) {}
+        }
+        return liveTranscriptionRuntime(try await acquireLiveSpeechRuntime())
+    }
+
+    /// Capture must not await a model load before writing audio. A missing hot
+    /// engine is attached later through the same live lease boundary.
+    func acquireResidentLiveTranscriptionRuntime() throws -> LiveTranscriptionRuntime? {
+        // Apple readiness is asynchronous. Capture starts audio-first and the
+        // verified loader hot-attaches; early audio gets durable recovery.
+        if LiveSpeechPurpose.meeting.selectedEngine(in: defaults) == .appleSpeech { return nil }
+        return try acquireResidentLiveSpeechRuntime().map(liveTranscriptionRuntime)
     }
 
     /// Drops only idle model weights; verified assets remain installed.

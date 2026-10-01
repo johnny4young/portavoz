@@ -220,7 +220,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(execution.contains(
             "Timed out while enabling automation mode"))
         XCTAssertTrue(execution.contains(
-            "if runtime_cases is not None and runtime_cases > 0"))
+            "has_executed_cases = runtime_cases is not None and runtime_cases > 0"))
         XCTAssertTrue(verifiedBase.contains("raw_run.get(\"run_attempt\") != 1"))
         XCTAssertTrue(verifiedBase.contains(
             "history.is_ancestor(candidate, head)"))
@@ -367,7 +367,9 @@ extension ArchitectureDependencyTests {
             "general.waitForStableFrame("))
         XCTAssertTrue(settingsWindowBody.contains("stableFor: 0.1"))
         XCTAssertEqual(settingsWindowBody.components(separatedBy:
-            "identifier: \"settings-search-field\", timeout: timeout)").count - 1, 2)
+            "finishSettingsSearchEditing(timeout: timeout)").count - 1, 2)
+        XCTAssertTrue(settingsWindowBody.contains(
+            "finishTextFieldEditing(identifier: \"settings-search-field\", timeout: timeout)"))
         let searchEditingStart = try XCTUnwrap(settingsWindowBody.range(
             of: "func handOffTextFieldEditing("))
         let searchEditingBody = settingsWindowBody[searchEditingStart.lowerBound...]
@@ -406,6 +408,11 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(categoryBody.contains(
             "category.waitForHittable(timeout: timeout)"))
         XCTAssertFalse(categoryBody.contains("category.waitForStableFrame"))
+        // Every route into Settings can leave search editing over the sidebar.
+        let categoryHandoff = try XCTUnwrap(categoryBody.range(
+            of: "finishSettingsSearchEditing(timeout: timeout)"))
+        let categoryClick = try XCTUnwrap(categoryBody.range(of: "category.click()"))
+        XCTAssertLessThan(categoryHandoff.lowerBound, categoryClick.lowerBound)
         let seededSettleBody = support[
             seededSettleStart.lowerBound..<seededReadyStart.lowerBound]
         // Settling still means hittable, never merely present. D500 adds the
@@ -1476,6 +1483,7 @@ extension ArchitectureDependencyTests {
         let placement = try Self.contents(
             of: "Sources/portavoz-app/UITestWindowPlacement.swift")
         let content = try Self.contents(of: "Sources/portavoz-app/ContentView.swift")
+        let app = try Self.contents(of: "Sources/portavoz-app/PortavozApp.swift")
         let settingsCapture = try Self.contents(
             of: "Sources/portavoz-app/SettingsSkillReceiptNavigation.swift")
         let uiTestSupport = try Self.contents(
@@ -1491,11 +1499,16 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(placement.contains("NSScreen.main"))
         XCTAssertFalse(placement.contains("window.screen"))
         XCTAssertTrue(placement.contains("window.constrainFrameRect(frame, to: screen)"))
-        XCTAssertTrue(content.contains("UITestMainWindowCapture()"))
+        XCTAssertTrue(app.contains("UITestMainWindowCapture()"))
+        XCTAssertFalse(content.contains("UITestMainWindowCapture()"),
+                       "window ownership must include database recovery, not only loaded content")
+        XCTAssertFalse(app.contains("NSApp.windows.first"))
         XCTAssertFalse(content.contains("NSApp.windows.first"))
-        XCTAssertTrue(placement.contains("override func viewDidMoveToWindow()"))
-        XCTAssertTrue(placement.contains("private weak var positionedWindow: NSWindow?"))
-        XCTAssertTrue(placement.contains("if let window { position(window) }"))
+        XCTAssertTrue(placement.contains("UITestMainWindowCapture: NSViewControllerRepresentable"))
+        XCTAssertTrue(placement.contains("override func viewDidAppear()"))
+        XCTAssertFalse(placement.contains("viewDidMoveToWindow"),
+                       "attachment precedes native frame restoration")
+        XCTAssertFalse(placement.contains("NSApp.windows"))
         for file in ["CommandPalette.swift", "RecordingHUD.swift",
                      "DictationPanel.swift", "MeetingReminder.swift"] {
             let panel = try Self.contents(of: "Sources/portavoz-app/\(file)")

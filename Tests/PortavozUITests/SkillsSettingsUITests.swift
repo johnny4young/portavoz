@@ -989,6 +989,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
         closeSettings(in: app)
         openSeededMeeting(in: app)
+        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
         XCTAssertTrue(
             app.control(withIdentifier: "summary-tab-0")
                 .waitForExistenceFast(timeout: 10))

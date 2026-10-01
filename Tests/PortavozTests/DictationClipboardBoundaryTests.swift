@@ -100,7 +100,7 @@ final class DictationClipboardBoundaryTests: XCTestCase {
                 let fixture = DictationUITestFixture(arguments: flags, usesTemporaryStore: temporary)
                 XCTAssertEqual(fixture?.exerciseClipboard == true, temporary && flags.count == 2)
                 for name in ["", "NSGeneralPboard", "app.portavoz.dictation-test.invalid"] {
-                    let dependencies = DictationUITestFixture.dependencies(fixture: fixture, environment: [
+                    let dependencies = DictationUITestFixture.dependencies(fixture: fixture, beginCapture: { {} }, environment: [
                         DictationNativeUITestFixture.environmentKey: name
                     ])
                     let outcome = await dependencies.insert("Must not touch real data")
