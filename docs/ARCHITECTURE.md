@@ -5444,7 +5444,10 @@ The two complete Swift test lanes may restore a compatible SwiftPM `.build`
 graph on pull requests. Cache identity binds the lane, absolute workspace,
 architecture, macOS build, runner image, Xcode/Swift/macOS SDK and build-policy
 inputs, including the dependency lock. There is no cross-identity restore prefix,
-source timestamp rewriting, cached test verdict or conditional test execution.
+cached test verdict or conditional test execution. A successful build records
+tracked source fingerprints. Only matching bytes, size and permissions recover
+their prior timestamps; changed or new inputs remain fresh. Restoration never
+chooses paths outside the current Git inventory or follows source symlinks.
 Every push to `main` keeps a cold graph; successful bounded graphs can seed later
 PRs. UI products, iOS portability, release/performance evidence and private model
 or library state are outside this cache. The quality spec owns measurement and

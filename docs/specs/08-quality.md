@@ -255,12 +255,22 @@ The current-SDK and Sequoia jobs restore only `.build` with commit-pinned
 immutable seed to its lane, absolute workspace and developer paths, CPU
 architecture, macOS version/build, runner image/version, Xcode and Swift build,
 macOS SDK path/build, `Package.swift`, `Package.resolved`, the CI workflow, test
-launcher, toolchain verifier and cache-key implementation. Unknown lanes,
+launcher, toolchain verifier, cache-key and source-freshness implementations. Unknown lanes,
 missing inputs, failed/empty tool reads and timeouts fail key generation; no
 broad key substitutes for an unknown identity. There are no restore prefixes
 and no per-commit cache copies. A dependency or build-policy change starts cold.
-Ordinary source changes retain the seed and rely on SwiftPM's normal build graph
-invalidation, with fresh checkout timestamps left intact, not reset to Git dates.
+Ordinary source changes retain the seed. After a successful suite,
+`scripts/ci_swift_source_stamps.py snapshot` records SHA-256, size, permissions and
+nanosecond mtime for tracked `Sources/`, `Tests/`, and package manifest/lock inputs
+inside `.build`. On an exact PR cache hit, `restore` intersects that receipt
+with the current Git inventory and restores mtime only for byte-identical,
+same-mode inputs. Changed/new inputs receive fresh timestamps even when their
+size and incoming mtime happen to match the old file. Deleted files are not
+resurrected; symlinks and resolved paths outside the checkout are never touched.
+No timestamp is inferred from Git commit dates. SwiftPM still owns build-graph
+invalidation, compilation and test discovery. The bounded, closed-schema receipt
+rejects duplicate keys, invalid hashes/numbers and missing/corrupt metadata
+before timestamp writes. A changed-during-read source cannot be fingerprinted.
 
 Both complete test invocations are unconditional, including current-SDK
 warnings-as-errors. No `--skip-build`, test filtering, retries, smaller test
@@ -282,15 +292,20 @@ an artifact suitable for release.
 separation, malformed or unavailable tool identity, exact CLI output, missing
 lockfiles, unconditional test ownership, cold-main policy, and the actual shell
 size gate at/beyond its boundary and on measurement failure. Repository hygiene
-owns these tests before either macOS test lane starts. These tooling tests do
-not replace a real compiler invalidation check.
+owns these tests before either macOS test lane starts. Source-freshness tests
+also cover altered bytes with identical size/mtime, added/deleted/renamed files,
+mode changes, symlinks, untracked paths, missing/duplicate/oversized metadata and
+concurrent modification. These tooling tests do not replace a real compiler
+invalidation check.
 
 For a matched local check, use a disposable checkout: run the strict launcher
-from a missing `.build`; preserve its graph with timestamps; refresh tracked
-source timestamps as a new checkout would; restore the graph at the identical
-absolute path; rerun the **same complete command**. Then introduce a temporary
+from a missing `.build`; snapshot source fingerprints and archive its graph;
+refresh tracked source timestamps as a new checkout would; restore the graph at
+the identical absolute path; run hash-verified freshness restoration; rerun the
+**same complete command**. Then introduce a temporary
 compile error and a failing test separately against restored state, require
-nonzero exits, restore the source bytes and run the strict suite cleanly again.
+nonzero exits after freshness restoration, restore the source bytes and run the
+strict suite cleanly again.
 Never use the release app or its library. Record the graph/archive size, archive
 restore cost, `Build complete` duration, full test totals/skips and wall time;
 an ordinary second incremental build is not a simulated hosted cache restore.

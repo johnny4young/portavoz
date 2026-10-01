@@ -20624,8 +20624,11 @@ than remove redundant compilation.
 **Decision:** Cache the complete unprivileged SwiftPM build graph for the
 current-SDK and Sequoia test jobs under an exact build-environment/dependency
 identity. Reuse one immutable seed per identity, without a source-SHA suffix or
-cross-toolchain fallback. Preserve fresh checkout timestamps and SwiftPM's
-normal invalidation. Always execute the same complete test command; never use
+cross-toolchain fallback. A successful build records tracked source hashes,
+sizes, permissions and mtimes. Recover old mtimes only when bytes and mode match;
+force changed/new files fresh, and never restore deleted, symlinked or
+out-of-checkout paths. SwiftPM still owns normal invalidation. Always execute
+the same complete test command; never use
 a cache hit as a result, skip-build signal or permission to retry a failure.
 `main` always builds cold and may seed compatible PR state after success.
 Limit save to a successful graph of at most 6 GiB; retain the existing cache

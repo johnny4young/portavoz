@@ -50,6 +50,9 @@ jobs:
           lookup-only: ${{ github.event_name != 'pull_request' }}
         env:
           SEGMENT_DOWNLOAD_TIMEOUT_MINS: "2"
+      - name: Verify cached source freshness
+        if: github.event_name == 'pull_request' && steps.swift_cache.outputs.cache-hit == 'true'
+        run: python3 scripts/ci_swift_source_stamps.py restore
       # One invocation owns compilation and tests with identical flags. The
       # former build-then-test pair changed compiler arguments and could pay a
       # second package build while producing two different diagnostic modes.
@@ -57,6 +60,9 @@ jobs:
         run: scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors
       # Bound storage and save only after the complete suite succeeds. Oversize
       # graphs stay cold; do not increase the repository's paid cache allowance.
+      - name: Record successful source fingerprints
+        if: steps.swift_cache.outputs.cache-hit != 'true'
+        run: python3 scripts/ci_swift_source_stamps.py snapshot
       - name: Check Swift cache size
         id: swift_cache_size
         if: steps.swift_cache.outputs.cache-hit != 'true'
@@ -99,10 +105,16 @@ jobs:
           lookup-only: ${{ github.event_name != 'pull_request' }}
         env:
           SEGMENT_DOWNLOAD_TIMEOUT_MINS: "2"
+      - name: Verify cached source freshness
+        if: github.event_name == 'pull_request' && steps.swift_cache.outputs.cache-hit == 'true'
+        run: python3 scripts/ci_swift_source_stamps.py restore
       - name: Build and test on Sequoia
         run: scripts/run-swift-tests.sh
       # Bound storage and save only after the complete suite succeeds. Oversize
       # graphs stay cold; do not increase the repository's paid cache allowance.
+      - name: Record successful source fingerprints
+        if: steps.swift_cache.outputs.cache-hit != 'true'
+        run: python3 scripts/ci_swift_source_stamps.py snapshot
       - name: Check Swift cache size
         id: swift_cache_size
         if: steps.swift_cache.outputs.cache-hit != 'true'

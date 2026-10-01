@@ -177,7 +177,13 @@ class SwiftCacheWorkflowTests(unittest.TestCase):
                 self.assertLess(job.index("run: scripts/run-swift-tests.sh"), job.index("id: swift_cache_size"))
                 self.assertLess(job.index("id: swift_cache_size"), job.index("actions/cache/save@"))
                 self.assertIn(f"--lane {lane}", job)
-                self.assertNotIn("touch ", job)
+                freshness = next(step for step in steps if 'ci_swift_source_stamps.py restore' in step)
+                self.assertIn("if: github.event_name == 'pull_request' && steps.swift_cache.outputs.cache-hit == 'true'", freshness)
+                self.assertLess(job.index('ci_swift_source_stamps.py restore'), job.index('run: scripts/run-swift-tests.sh'))
+                snapshot = next(step for step in steps if 'ci_swift_source_stamps.py snapshot' in step)
+                self.assertIn("if: steps.swift_cache.outputs.cache-hit != 'true'", snapshot)
+                self.assertLess(job.index('run: scripts/run-swift-tests.sh'), job.index('ci_swift_source_stamps.py snapshot'))
+                self.assertLess(job.index('ci_swift_source_stamps.py snapshot'), job.index('actions/cache/save@'))
 
     def test_actual_size_gate_does_not_save_oversize_or_failed_measurements(self):
         for lane in cache.LANES:

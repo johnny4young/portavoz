@@ -22,6 +22,7 @@ INPUTS = (
     "scripts/run-swift-tests.sh",
     "scripts/verify-ci-toolchain.sh",
     "scripts/ci_swift_cache_key.py",
+    "scripts/ci_swift_source_stamps.py",
 )
 COMMANDS = (
     ("sw_vers", "-productVersion"),
@@ -63,8 +64,8 @@ def cache_key(root: Path, lane: str) -> str:
     }
     digest = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
     # No broad restore prefix and no SHA suffix: one immutable seed per
-    # compatible graph instead of one multi-GB cache per push. Fresh checkout
-    # timestamps stay untouched; SwiftPM recompiles changed first-party input.
+    # compatible graph instead of one multi-GB cache per push. Source freshness
+    # is restored separately, only after checking bytes and mode.
     return f"swift-build-v1-{lane}-{digest}"
 
 
