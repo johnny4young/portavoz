@@ -152,7 +152,8 @@ final class DictationControllerTests: XCTestCase {
         XCTAssertNil(DictationUITestFixture(arguments: [], usesTemporaryStore: true))
         XCTAssertNotNil(DictationUITestFixture(
             arguments: ["-seed-dictation"], usesTemporaryStore: true))
-        XCTAssertFalse(DictationUITestFixture.dependencies(fixture: nil).canInsert())
+        XCTAssertFalse(DictationUITestFixture.dependencies(
+            fixture: nil, beginCapture: { {} }).canInsert())
     }
 
     private func awaitEventually(_ condition: @MainActor () -> Bool) async -> Bool {
@@ -191,6 +192,7 @@ final class DictationControllerHarness {
 
     var dependencies: DictationSessionDependencies {
         DictationSessionDependencies(
+            authorizeMicrophone: { true },
             makeMicrophone: { [microphone] in .init(source: microphone, warmUp: {}) },
             acquireRuntime: { [weak self] in
                 guard let self else { throw CancellationError() }
@@ -206,6 +208,7 @@ final class DictationControllerHarness {
                 return .inserted
             },
             defaults: defaults, now: { [weak self] in self?.now ?? .distantPast },
+            beginCapture: { {} },
             measurementSink: { [weak self] in self?.measurements.append($0) })
     }
 }

@@ -86,6 +86,28 @@ final class UITestMainWindowCaptureTests: XCTestCase {
         }
     }
 
+    func testCompactFixtureFrameStaysInsideTheVisibleScreen() async {
+        for visible in [
+            NSRect(x: 0, y: 25, width: 1_512, height: 886),
+            NSRect(x: 0, y: 25, width: 1_024, height: 768),
+            NSRect(x: 0, y: 25, width: 900, height: 560)
+        ] {
+            let normal = UITestWindowPlacement.mainWindowFrame(
+                in: visible, preferredHeight: nil)
+            let compact = UITestWindowPlacement.mainWindowFrame(
+                in: visible, preferredHeight: 620)
+            let minimum = UITestWindowPlacement.mainWindowFrame(
+                in: visible, preferredHeight: 560)
+            XCTAssertEqual(normal.height, visible.height)
+            XCTAssertEqual(compact.height, min(visible.height, 620))
+            XCTAssertEqual(minimum.height, min(visible.height, 560))
+            XCTAssertTrue(visible.contains(normal))
+            XCTAssertTrue(visible.contains(compact))
+            XCTAssertTrue(visible.contains(minimum))
+            XCTAssertGreaterThanOrEqual(compact.width, 900)
+        }
+    }
+
     private func makeHiddenWindow() -> NSWindow {
         NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 100, height: 100),

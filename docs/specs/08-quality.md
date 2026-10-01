@@ -1,5 +1,23 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
+Optional Apple Speech live routing (D554) has three distinct evidence layers.
+Pure readiness tests distinguish fixed en/es, unsupported, equivalent installed
+locales, absent assets and invalid ranges. Actual controller/attacher tests feed
+EN/ES volatile revisions through the call sites: only a corrected final can
+become inserted text or a canonical meeting caption; a provisional-only end
+fails without paste, an older final leaves a later preview visible, overlap
+forces durable recovery, and a system-audio feed cannot be relabeled as the
+user's microphone. A feeder call-site test ensures a bad middle audio chunk
+aborts rather than finalizing the surrounding chunks as a shortened success.
+A disposable real-app Settings journey selects the two independent routes,
+prepares English explicitly, confirms Spanish still needs its own action,
+checks localized status, and
+offers Retry after a failed asset inspection without assuming a download is
+needed. Neither synthetic journey makes an OS asset request. The synthetic client
+does not qualify native ASR, TCC, audio hardware, bilingual WER/CER, latency,
+RAM or physical Sequoia/Tahoe. Those remain separate measured gates before
+any default-engine or comparative product claim.
+
 `PortableSettingsTests` exercises the real defaults adapter using private suites,
 including its persistent-write branch and startup-override precedence. Coverage
 includes exclusion of secrets/consents/host bindings, non-destructive vocabulary
@@ -56,6 +74,27 @@ the pane. They do not claim native Carbon conflict, microphone, ASR or cross-app
 insertion qualification. Global input hooks are absent from ordinary disposable
 launches. Per-journey budgets are declared before execution; adding these cases
 does not relax the full-suite or p95 limits.
+
+`DictationReadinessTests` exercises the actual controller with delayed permission,
+empty and nonempty PCM, a held native warm-up/Stop, startup deadline, invalid
+frames before/after partial text, and the 0.75-second boundary in English and
+Spanish. The fixture's pull acknowledgment proves an empty frame was consumed
+before advancing manual time; it does not assume that producer yield means
+consumer admission. The live microphone adapter's injected source factory
+observes the actual resolved UID and preservation of stored preferences. The
+AppServices settings-write adapter is called while dictation awaits permission
+and after cancellation, proving that Preparing also blocks preference import.
+
+Disposable UI journeys cover permission-denial recovery, absent first audio
+with explicit preferred-device fallback, and cancellation while preparing.
+Recovery is also exercised with freshly constructed dependencies per menu
+invocation; failure-once state belongs to the app-owned fixture, not a dependency
+value that would reset on retry. All use temporary-store composition plus the
+explicit dictation seed; permission
+and audio are simulated, while the production controller and panel remain real.
+No system permission is granted by a test, and these scenarios do not qualify
+physical microphones, ASR or native insertion. Each new journey has a declared
+budget before its first execution; no existing per-case/full/p95 limit changes.
 
 **Public dictation corpus admission.**
 
@@ -175,14 +214,27 @@ are unchanged. Functional and timing qualification still require actual runs.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 123 UI cases after consolidating one pair of
-confirmed-person journeys, including portable-settings, shortcut-recovery and
-the real dictation-panel journeys. The native dictation-receiver test remains
-outside this catalog because its app process needs a user-granted Accessibility
+The unattended catalog contains 129 UI cases after consolidating one pair of
+confirmed-person journeys, including portable-settings, shortcut-recovery, the
+real dictation-panel, three microphone-preparation/recovery, two Apple Speech
+Settings, and the compact Meeting Detail correction journeys. The compact
+journey checks the actual post-restoration AppKit frame at two short heights,
+opens both reading panes, retains the player, and reaches the existing
+correction editor. Its per-case budget is 30 seconds. A citation journey proves
+that an action returns from Summary to Transcript. The native dictation-receiver
+test remains outside this catalog because its app process needs a user-granted Accessibility
 TCC decision. Its explicit `make test-ui-native-dictation` lane runs the real
 XCUITest and fails closed without that grant. The unattended suite neither
 skips a failure into success nor qualifies cross-process insertion; its
 existing time budgets remain unchanged.
+`LiveEngineLeaseIntegrationTests` enters the real dictation dependency factory
+with a pre-cancelled task and requires zero model-load or residency side effects.
+Its opt-in installed-model case (`PORTAVOZ_LIVE_LEASE_TESTS=1`) verifies that
+recording's resident-only call site and dictation's live call site borrow the
+same verified Parakeet runtime independently; releasing one token cannot drop
+the other. Missing assets are an explicit skip, never a simulated ASR-quality
+result. The injected controller and recording-attacher tests retain their
+late-result, failure and cancellation coverage.
 Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -306,9 +358,20 @@ The streaming real-app journey checks the complete multi-row EN/ES projection,
 cancellation and restart; its 20-second budget is an initial
 candidate limit, not an increased full-suite allowance.
 
+`DictationResourceOwnershipTests` uses real `AppServices` composition and the
+actual controller, with disposable speech effects. It checks maintenance
+admission and the search-reconciliation entry point while dictating, both orders
+of meeting/dictation completion, held cold preparation, native teardown after
+end of stream and overlapping a replacement, denied starts, failures and
+duplicate completion. Explicit gates hold asynchronous work; no model
+availability or physical-device behavior is inferred from these tests.
+The existing background-work XCUITest checks the shared waiting-for-capture
+status in both locales through its stable row identifiers.
+
 `DictationUITests` owns a dedicated unattended `dictation` selector alongside
-the existing Settings assertions. Its panel journey uses the production menu-bar action in
-the disposable main-window host and cancels/restarts the actual controller.
+the existing Settings assertions. Its panel journey uses the production
+menu-bar action in the disposable main-window host and cancels/restarts the
+actual controller.
 It requires distinct identifiers for the rendered transcript, state, target,
 meter and cancel button. The structural SwiftUI `Group` does not assign an
 inherited identifier that would replace those child identifiers in the AX tree.
@@ -334,7 +397,7 @@ or destination identity fencing. The presence of this test is not evidence that
 the native gate passed. No general clipboard, real meeting, model download or microphone participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 123 unattended cases;
+`make test-ui-bilingual` and scoped hosted runs select the 129 unattended cases;
 `make test-ui-native-dictation` selects the one real receiver case in EN and ES.
 The catalog policy requires that case to remain discoverable but disjoint from
 unattended selectors. The runner excludes it only when no explicit selectors
@@ -2609,11 +2672,21 @@ select only the scopes they can affect; a changed UI-test file selects its own
 class; localization and shared-harness changes select the complete bilingual
 catalogue; the
 macOS 14 transcript-scroll bridge selects only recording-recovery evidence; and
-an unknown production Swift path selects the complete English suite. Docs,
-governance, site, CLI, and package-test-only diffs select no UI runner. Catalog
+an unknown production Swift path selects the complete English suite. The
+Meeting Detail primary column also selects the complete English suite: its
+pane layout decides which detail content exists for every journey that opens a
+meeting, including recording-recovery and Skills journeys (D549). Docs,
+governance, site, CLI, the two reviewed dictation-validation corpus files, and
+package-test-only diffs select no UI runner. CLI paths are excluded before the
+generic production-Swift fallback. The live benchmark also selects no UI runner:
+only the headless `--bench-live` mode and the CLI call it, and a policy test fails
+if any other app or UI-test file starts to. Unknown
+TranscriptionKit files and new corpus siblings still expand to the complete
+English catalogue. Catalog
 validation fails for an added or renamed unscoped test, empty or duplicate
-scope, missing production owner, retired known-overlap journey, or missing/stale
-runtime budget. The selector never truncates tests or locales. Only its
+scope, missing production owner, retired known-overlap journey, no-UI fixture
+directory named by app or UI-test Swift, or missing/stale runtime budget. The
+selector never truncates tests or locales. Only its
 diagnostic reason summary is bounded to 16 KiB at complete-entry boundaries;
 an omitted count and SHA-256 preserve deterministic identity without passing a
 historical integration diff as one oversized Linux environment string.
@@ -8085,10 +8158,11 @@ The shared `UITestSupport.swift` owns the existing geometry-based bounded scroll
 helper; no measured response or pending-input accumulator is active. The
 structural-correction journey uses ordinary disposable window placement, retains
 all split/merge/hide/restore effects and stops before activation if reveal fails.
-The forced compact-window argument and calibration fixture were unqualified
-experiments, not released behavior. Their withdrawal does not establish compact
-reachability: the retained compact failure and combined dropped/amplified native
-counterexample remain open in GAPS. Native interruption controls and the
+The earlier attachment-time forced compact-window argument and wheel-calibration
+fixture were unqualified experiments and withdrawn. The accepted fixture instead
+sets its frame after native restoration and asserts the actual AppKit result;
+its focused correction journey reaches the real editor in both locales. The
+combined dropped/amplified native counterexample remains open in GAPS. Native interruption controls and the
 full real-app catalog remain separate mandatory gates, with unchanged runtime
 budgets and no retries that relabel failures. See D533.
 
@@ -8224,6 +8298,33 @@ nonfinite or overflowing counters and duplicate ownership before publication.
 The existing redacted-support XCUITest also inspects host JSON and its disclosure;
 synthetic unit cases do not establish physical Sequoia/Tahoe or benchmark timing.
 
+### Model-memory profile evidence boundaries (D526)
+
+`ModelIdleReleaseTests` exercises actual AppServices scheduling with controllable
+clocks: default durations, 500-completion bursts, replaced/canceled callbacks,
+clock failure, preference rescheduling, released service lifetime, and refused
+release during preparation. `ModelMemoryGuidanceTests` enters the actual local
+provider probe through application discovery and includes unknown/8-GiB
+boundaries, maximum unsigned bytes, corrupt preferences, and temporary-store
+isolation. A reconstruction test calls the actual AppServices profile action for
+both choices from valid and corrupt defaults, then constructs an independent
+service/defaults reader and verifies persistence and untouched engine choices.
+The Settings category journey verifies the real toggle in both directions and
+its localized explanation, restoring the previous choice. It does not repeat
+preference permutations or extra pane transitions already covered below the UI;
+the normal category navigation and real control assertions remain.
+
+`PORTAVOZ_MODEL_RESIDENCY_TESTS=1` admits a separate installed-Parakeet test.
+It verifies pinned files, loads without download or audio, claims two real
+resident leases through AppServices, proves release is refused with either
+owner active, then checks final unload and unchanged verified files. Default
+runs explicitly skip this lane. No transcript, model-quality result, RAM budget,
+or low-memory hardware qualification is inferred from this lifetime test.
+
+Model-memory scheduling and released-service tests call the AppServices methods
+regardless of their composition-file split; this split does not change deadlines
+or lease ownership.
+A failed profile-control reveal ends its UI journey before any further input.
 
 ### Dictation controller phase observation
 

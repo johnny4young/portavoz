@@ -505,6 +505,8 @@ class UITestHostPreflightTests(unittest.TestCase):
         # callback. The native fixture verifies the failed aggregate result;
         # this ratchet only protects the nonreturning receipt/cleanup shape.
         guard = source.split("private func stopForUnexpectedInterruption", 1)[1]
+        guard = guard.split("\n    }\n", 1)[0]
+        self.assertIn("exit(EXIT_FAILURE)", guard)
         self.assertNotIn("record(XCTIssue(", guard)
         self.assertNotIn("continueAfterFailure", guard)
         self.assertLess(guard.index("UITestStorage.end(ownerID:"),

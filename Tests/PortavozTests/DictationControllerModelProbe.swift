@@ -37,6 +37,7 @@ enum DictationControllerModelProbe {
             DictationController.replacementsKey: "[]", "customVocabulary": ""
         ], forName: UserDefaults.argumentDomain)
         let dependencies = DictationSessionDependencies(
+            authorizeMicrophone: { true },
             makeMicrophone: { .init(source: microphone, warmUp: {}) },
             acquireRuntime: {
                 let runtime = try await acquireRuntime()
@@ -54,12 +55,18 @@ enum DictationControllerModelProbe {
                 return .focusUnavailable
             },
             defaults: defaults,
+            beginCapture: { {} },
             measurementSink: { measured.yield($0); measured.finish() })
         controller.toggle(using: dependencies)
         let stopDriver = Task {
             for await complete in microphone.completion {
                 inputCompleted = complete
-                guard complete, !Task.isCancelled, controller.phase == .listening else { break }
+                guard complete else { break }
+                // EOF can precede the controller's asynchronous first-buffer admission.
+                while controller.phase == .preparing, !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(1))
+                }
+                guard !Task.isCancelled, controller.phase == .listening else { break }
                 controller.toggle(using: dependencies)
             }
         }

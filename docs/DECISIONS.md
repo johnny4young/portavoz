@@ -19805,6 +19805,44 @@ reported case duration. A normalized real activity tree and an adversarial CLI
 budget reproduce the false pass. No timeout, retry or budget is relaxed.
 
 
+## D526 — Make lightweight memory explicit without changing model identity
+
+The application kept one generation counter per idle model group, but every
+completion left another sleeping task until its deadline. Cancellation must
+stop obsolete work, not merely prevent its eventual effect. One app-owned
+scheduler now keeps one cancellable task per existing group, identity-fences
+completion, and checks cancellation before registering the clock as well as
+before release. It delegates to the existing lease-protected runtime adapters;
+it is neither a second residency ledger nor an inference scheduler.
+
+Balanced remains the default, preserving the established 600-second speech and
+120-second Whisper/MLX windows. An explicit Lightweight preference shortens
+them to 60 seconds for speech and 30 seconds for Whisper/MLX and warns of the
+next-start latency trade-off. An immediate release was rejected: every
+push-to-talk would reload Parakeet, Stop would unload the weights its own
+post-capture job reloads seconds later, and follow-up questions would reload
+MLX. The grace keeps those bursts hot, cancels on the next acquisition, and
+still returns memory within a minute. Model warm-up, including onboarding,
+arms the recording deadline on every outcome instead of staying resident. Neither
+profile can evict an active lease or delete verified files. Rejected speech
+release settles from real runtime/load state rather than unconditionally
+replacing active preparation with unknown readiness.
+
+RAM advice uses binary capacity consistently: an 8-GiB Mac must not become a
+9-GB profile through decimal rounding. This does not establish measured memory
+footprints or constrained-governor thresholds. Catalog guidance is informational.
+The two Whisper variants currently have the same catalog RAM guidance; Compact's
+smaller disk size is not evidence of lower runtime memory. No automatic variant
+switch is introduced, including for fresh installations. Existing selections
+remain authoritative; lightweight retention is an independent explicit choice.
+
+Tests enter actual AppServices scheduling and provider-profile construction,
+including canceled-clock completion, burst replacement, corrupt preferences,
+unknown and boundary capacities, and release refused during preparation. An
+opt-in installed-model lane additionally borrows the real resident Parakeet
+engine twice and checks that only the final owner permits unloading. Neither
+lane certifies low-RAM performance, ASR quality, or physical device coverage.
+
 ## D527 — Unexpected UI interruptions stop the test, not decide consent
 
 XCTest has default interruption monitors even when a test registers none. A
@@ -20346,6 +20384,34 @@ selector at the call site: the child changes only documentation while its
 parent changes Dictation Settings, and the parent journey must remain selected.
 
 ---
+
+## D543 — Dictation begins with authorized, observed microphone input
+
+**Context:** the controller advertised listening before microphone permission
+or a first buffer, ignored the preferred Audio input, and timed capture from
+stream opening. Actual controller regressions with delayed/empty PCM admitted
+a short dictation after startup waiting. A held native Stop also showed the
+model lease ending before cleanup because its defer lived inside do/catch.
+
+**Decision:** reuse PlatformKit microphone authorization and one app-level
+preferred-input resolver across meeting/dictation composition. Permission
+precedes source/model construction. The panel remains Preparing until finite,
+nonempty microphone PCM arrives; silent PCM is valid, empty input is not
+readiness. One session-owned deadline starts before warm-up/stream opening.
+Failure retires input authority and remains actionable; fallback is visible and
+never replaces the user's saved preference. Native teardown stays owned by the
+controller and the runtime defer spans its catch cleanup.
+
+**Consequences:** the gesture and first-audio clocks remain separate, the
+existing minimum/tail durations do not change, and preparation is also an
+active capture state for portable-settings admission. Tests reach the real
+controller/adapter and real-app surface with deliberately delayed/invalid input.
+They do not claim physical microphone behavior, ASR quality, forced cancellation
+of a native call or verified external insertion. No new model, capability-module
+edge, microphone framework or network default is introduced.
+
+---
+
 ## D545 — Project dictation text from explicit caption invalidation
 
 **Context.** Rejoining every closed caption on every partial made projection
@@ -20394,6 +20460,108 @@ not necessarily total billed compute or queue delay. Savings require measured
 completed runs and are not promised from the graph alone. Full bilingual
 integration and first-attempt exact-head anchors remain mandatory.
 
+---
+
+## D548 — Keep Silero VAD verified and non-serving until capture admission
+
+**Date:** 2026-09-23
+
+**Context.** Voice activity is needed for a future optional silence countdown
+and more faithful meeting speech metrics. The 0.15.8 FluidAudio package offers
+Silero inference, but its convenient initializers call ModelHub and can
+download outside Portavoz's pinned model authority. Its streaming state advances
+by the caller's input length even when the model silently pads or truncates that
+input to 4,096 samples. A naive per-callback `AudioConverter` would also reset
+resampling phase and run allocation/inference on the realtime capture path.
+
+**Decision.** Pin only the five files of the MIT unified 256 ms v6.2.1 Core ML
+bundle at one immutable repository revision. The TranscriptionKit adapter
+requires a complete `ModelStore.verifiedInstallation`, loads through Core ML's
+macOS-14-compatible asynchronous API, and passes the already loaded `MLModel`
+to `VadManager`. No constructor with implicit network access is used. The
+capture converter's interpolation state moves into pure PortavozCore; its
+existing geometry/error wrapper remains in AudioCaptureKit. A separate
+session-scoped actor consumes mono `AudioChunk`s off callback, retains phase,
+supplies exact 4,096-sample 16 kHz frames, resets on loss or rate transition,
+and commits model state only after a complete noncancelled batch. CPU-only is
+the default until resource-interference evidence justifies another choice.
+
+**Consequences.** This slice is a reusable, real-model-tested capability, not
+an automatic dictation or meeting behavior. It does not install a model, alter
+original audio, gate transcripts, infer talk-time or end capture. The public
+English speech and silence lanes prove reachable positive/negative inference;
+they do not establish bilingual quality, device continuity, field acoustics,
+latency budgets, or safe app serving. T37 remains open for explicit preparation,
+resource admission and product-path integration before an opt-in auto-stop may
+rely on it.
+
+---
+
+## D549 — Compact Meeting Detail preserves two usable reading surfaces
+
+**Context:** a real-app 620-point disposable window had 180 points of generated
+material above a 166-point player. The transcript section received 27 points,
+of which its scroll viewport had one point. Its correction action was absent
+from the accessibility tree; changing wheel deltas could not reach it. An
+earlier attachment-time compact fixture had also been overwritten by native
+window restoration, so source-only layout tests were insufficient.
+
+**Decision:** `MeetingDetailPrimaryColumn` measures the player dock and keeps
+the existing simultaneous layout only when the column can reserve 180 points
+for generated material and 160 for transcript reading, plus player and spacing.
+Below that boundary, Summary and Transcript become explicit, identified panes;
+the player remains docked and both panes reuse the existing content/actions.
+The Meeting Detail root owns pane selection beside its existing playback
+navigation: evidence citations, pending scene seeks, and chapter seeks select
+Transcript before targeting a row. This keeps a citation in Summary from
+seeking into an unmounted transcript. UI journeys explicitly select Summary
+when their host window uses the compact layout instead of assuming both
+regions always render together.
+The normal window keeps its content-measured artifact section. Disposable
+620-point and minimum-size fixtures use the post-restoration window owner and
+assert the actual AppKit frame rather than the requested height.
+
+**Consequences:** the real correction action and summary remain reachable in
+small windows without a scroll multiplier or a second data projection. The
+minimum 560-point content frame may produce a 612-point outer NSWindow because
+of native chrome. Native policy tests and the bilingual real-app journey guard
+that distinction; ordinary-window and full-catalog evidence remain separate.
+Because playback loads after the detail, a measured-only decision first showed
+both regions and then switched to Transcript once the player appeared, and a
+UI selector could accept that transient frame. A meeting with an audio
+directory therefore reserves the measured 166-point dock from the first frame;
+the measured height replaces it only when larger. The accepted cost is that
+unreadable audio keeps the compact layout at heights where both regions would
+otherwise fit; it never flips during reading.
+
+---
+
+## D552 — Combine capture admission by owner, not by last controller event
+
+**Date:** 2026-09-24
+
+**Context.** Meeting recording and global dictation share maintenance and model
+admission, but a single last-written recording phase cannot represent both
+captures. Ending a meeting could announce idle while dictation still owned the
+microphone; cancelling one dictation could do the same to its replacement while
+the predecessor's native source was still stopping.
+
+**Decision.** Keep the recording phase and exact dictation-owner UUIDs separate
+inside the existing synchronized capture mirror. Admit dictation synchronously
+after insertion eligibility and before any asynchronous preparation. Its owner
+is retired only after that session's native source Stop has returned, including
+on cancellation and error. Duplicate or stale retirement cannot remove another
+owner. Meeting transitions update only the recording phase; existing background
+consumers read the aggregate state. Both live and disposable dictation
+composition require the capture-admission callback explicitly, so a future
+caller cannot silently omit it. Model-use leases remain independent.
+
+**Consequences.** Search reconciliation, standing briefs, sync, backup and model
+admission defer while either capture owner remains active. The boundary adds no
+database, new scheduler, network request or lock in an audio callback. Tests
+must enter real `AppServices` composition and the controller, cover both
+completion orders and held native teardown, and not treat synthetic audio as
+physical-device qualification.
 
 ## D553 — Exit interrupted test workers without reentering XCTest
 
@@ -20409,3 +20577,38 @@ validator must still observe exactly one failed, non-skipped case, the exact
 refusal category, complete owned cleanup, and no action or fallback effect.
 Timeouts and empty restarted suites remain failures. Real synchronous and
 asynchronous controls, not source-text assertions, qualify this boundary.
+
+---
+
+## D554 — Select Apple live speech without promoting provisional ranges
+
+**Context.** The macOS 26 SpeechAnalyzer spike accepts contextual vocabulary
+and emits low-latency volatile range replacements, but the serving caption
+coalescer accepts append-only deltas. Passing those replacements through it
+duplicates or falsifies meeting facts and dictation text. The OS adapter also
+labels system-audio results as microphone. On-device assets may be absent and
+the historical one-file English benchmark cannot justify a default switch.
+
+**Decision.** Keep Parakeet as the independent meeting and dictation default
+and the durable first-pass engine. Expose an explicit Apple option only for a
+fixed English/Spanish live route on macOS 26+. Settings checks installed
+equivalent locales without preparing them; a separate user action owns any
+Apple-hosted asset download and refuses admission when meeting capture is
+already active.
+Dictation resolves readiness before opening its microphone. Meeting capture
+stays audio-first, hot-attaches asynchronously, and retains durable recovery
+for uncovered or failed live audio. The app's range adapter forwards volatile
+results as transient previews but admits only monotonic finals to canonical
+captions, assistance, translation, storage, and paste. Unconfirmed stream end
+and overlapping final ranges fail closed. The recording attacher sets each
+result's channel from its captured feed rather than trusting an engine label.
+The analyzer feeder aborts on a nonempty chunk it cannot convert; skipping that
+chunk would make incomplete speech appear successfully transcribed.
+The transport marker is omitted from `TranscriptSegment` coding.
+
+**Validation boundary.** Bilingual synthetic controller and attacher tests,
+readiness/encoding tests, and disposable real-app Settings XCUITest qualify
+the routing and no-download contract. They do not qualify real Apple model
+accuracy, latency, memory, native permissions, hardware routes, or a default
+engine change. Those require a separately measured, installed-model corpus
+and physical-host evidence.
