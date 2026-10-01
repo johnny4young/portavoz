@@ -20658,9 +20658,12 @@ force changed/new files fresh, and never restore deleted, symlinked or
 out-of-checkout paths. SwiftPM still owns normal invalidation. Always execute
 the same complete test command; never use
 a cache hit as a result, skip-build signal or permission to retry a failure.
-`main` always builds cold and may seed compatible PR state after success.
-Limit save to a successful graph of at most 6 GiB; retain the existing cache
-quota and platform merge-ref isolation. The iOS and UI workflows remain outside
+`main` always builds cold and is the only producer of a seed after success;
+pull requests restore but never save, because a PR-scoped seed serves only that
+PR while consuming the shared quota. A hit that fails freshness validation is
+discarded and builds cold rather than failing the job, so an immutable seed
+cannot keep CI red. Limit save to a successful graph of at most 6 GiB; retain
+the existing cache quota. The iOS and UI workflows remain outside
 this change, and release/performance authority never consumes this cache.
 
 **Consequences:** Warm PR updates can avoid recompiling compatible dependencies,

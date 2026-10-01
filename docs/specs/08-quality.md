@@ -292,11 +292,15 @@ warnings-as-errors. No `--skip-build`, test filtering, retries, smaller test
 counts or cached success receipts are introduced. The fixed OS/toolchain matrix,
 iOS compile, strict lint, Linux policy tests, UI scopes/locales/assertions,
 first-attempt rules and runtime budgets are unchanged. Every `main` push uses a
-lookup-only cache probe and **still compiles cold**; it can publish a successful
-seed for subsequent PRs. GitHub's [cache access rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache)
-keep PR-created caches scoped to their merge ref; no privileged trigger or
-broader token permission is added.
-A cache miss or eviction takes the normal cold path. A failed build/test is not
+lookup-only cache probe and **still compiles cold**; only a `main` push records
+fingerprints, measures and saves a seed. Pull requests restore but never save:
+a PR-created cache would be reachable only from its own merge ref under GitHub's
+[cache access rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache)
+while consuming the shared repository quota. No privileged trigger or broader
+token permission is added. A cache miss or eviction takes the normal cold path.
+When freshness restoration rejects a hit, the step emits a warning, deletes the
+restored `.build` and the unchanged complete command compiles cold; an immutable
+seed therefore cannot keep a PR red. A failed build/test is not
 retried cold to manufacture a pass. Save occurs only after the full suite passes
 and only at or below a 6 GiB on-disk graph limit; oversized graphs remain uncached.
 The segment download timeout is two minutes. No repository cache billing or
@@ -307,8 +311,9 @@ The ordinary unprivileged Swift test build is not an artifact suitable for relea
 
 `Tests/Tooling/test_ci_swift_cache.py` exercises each identity input, lane/host
 separation, malformed or unavailable tool identity, exact CLI output, missing
-lockfiles, unconditional test ownership, cold-main policy, and the actual shell
-size gate at/beyond its boundary and on measurement failure. Repository hygiene
+lockfiles, unconditional test ownership, cold-main and main-only seeding policy,
+the actual shell size gate at/beyond its boundary and on measurement failure, and
+the actual freshness step discarding a rejected graph without failing the job. Repository hygiene
 owns these tests before either macOS test lane starts. Source-freshness tests
 also cover altered bytes with identical size/mtime, added/deleted/renamed files,
 mode changes, symlinks, untracked paths, missing/duplicate/oversized metadata and
@@ -331,8 +336,8 @@ For hosted comparison, inspect `gh run view <run-id> --json headSha,jobs,url`
 and the build log, separating job start/completion from queued workflow time.
 Compare cold versus exact cache-hit jobs on the same OS, toolchain, runner image,
 flags and test catalogue. Include restore/save overhead, do not credit reduced
-coverage as savings, and do not rerun a failed gate as qualification. A first
-cold PR run seeds state but does not establish warm-hit performance. Queue delay
+coverage as savings, and do not rerun a failed gate as qualification. A cold
+`main` run seeds state but does not establish warm-hit performance. Queue delay
 and full UI duration remain independent costs; this change neither fixes runner
 capacity nor asserts a global percentage reduction in end-to-end CI latency.
 

@@ -5448,8 +5448,9 @@ cached test verdict or conditional test execution. A successful build records
 tracked source fingerprints. Only matching bytes, size and permissions recover
 their prior timestamps; changed or new inputs remain fresh. Restoration never
 chooses paths outside the current Git inventory or follows source symlinks.
-Every push to `main` keeps a cold graph; successful bounded graphs can seed later
-PRs. UI products, iOS portability, release/performance evidence and private model
+Every push to `main` keeps a cold graph and is the only producer of a seed;
+pull requests restore but never save. A hit whose fingerprints fail validation
+is discarded and the job builds cold. UI products, iOS portability, release/performance evidence and private model
 or library state are outside this cache. The quality spec owns measurement and
 invalidation checks; a hit alone is not evidence of a faster or passing build.
 

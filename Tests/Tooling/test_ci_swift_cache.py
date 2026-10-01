@@ -181,14 +181,14 @@ class SwiftCacheWorkflowTests(unittest.TestCase):
                 self.assertIn("if: github.event_name == 'pull_request' && steps.swift_cache.outputs.cache-hit == 'true'", freshness)
                 self.assertLess(job.index('ci_swift_source_stamps.py restore'), job.index('run: scripts/run-swift-tests.sh'))
                 snapshot = next(step for step in steps if 'ci_swift_source_stamps.py snapshot' in step)
-                self.assertIn("if: steps.swift_cache.outputs.cache-hit != 'true'", snapshot)
+                self.assertIn("if: github.ref == 'refs/heads/main' && steps.swift_cache.outputs.cache-hit != 'true'", snapshot)
                 self.assertLess(job.index('run: scripts/run-swift-tests.sh'), job.index('ci_swift_source_stamps.py snapshot'))
                 self.assertLess(job.index('ci_swift_source_stamps.py snapshot'), job.index('actions/cache/save@'))
 
     def test_actual_size_gate_does_not_save_oversize_or_failed_measurements(self):
         for lane in cache.LANES:
             step = self.jobs[lane].split("      - name: Check Swift cache size\n", 1)[1].split("      - name:", 1)[0]
-            self.assertIn("if: steps.swift_cache.outputs.cache-hit != 'true'", step)
+            self.assertIn("if: github.ref == 'refs/heads/main' && steps.swift_cache.outputs.cache-hit != 'true'", step)
             shell = textwrap.dedent(step.split("        run: |\n", 1)[1])
             with tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
@@ -206,6 +206,38 @@ class SwiftCacheWorkflowTests(unittest.TestCase):
                                                 env=env, capture_output=True, text=True, timeout=5)
                         self.assertEqual(output.read_text() == "save=true\n", admitted)
                         self.assertEqual(result.returncode == 0, status == 0)
+
+    def test_only_main_pushes_can_produce_a_cache_seed(self):
+        for lane in cache.LANES:
+            with self.subTest(lane=lane):
+                steps = self.jobs[lane].split("      - ")[1:]
+                producers = [step for step in steps
+                             if "ci_swift_source_stamps.py snapshot" in step or "id: swift_cache_size" in step]
+                self.assertEqual(len(producers), 2)
+                for step in producers:
+                    self.assertIn("if: github.ref == 'refs/heads/main' && steps.swift_cache.outputs.cache-hit != 'true'", step)
+                save = next(step for step in steps if "actions/cache/save@" in step)
+                self.assertIn("if: steps.swift_cache_size.outputs.save == 'true'", save)
+
+    def test_rejected_freshness_discards_the_graph_and_builds_cold(self):
+        for lane in cache.LANES:
+            step = self.jobs[lane].split("      - name: Verify cached source freshness\n", 1)[1].split("      - name:", 1)[0]
+            self.assertNotIn("continue-on-error", step)
+            shell = textwrap.dedent(step.split("        run: |\n", 1)[1])
+            for status in (0, 1):
+                with self.subTest(lane=lane, status=status), tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    binary = root / "bin"
+                    binary.mkdir()
+                    (binary / "python3").write_text('#!/bin/sh\nexit "$RESTORE_EXIT"\n')
+                    (binary / "python3").chmod(0o755)
+                    (root / ".build/debug").mkdir(parents=True)
+                    env = dict(os.environ, PATH=f"{binary}:{os.environ['PATH']}", RESTORE_EXIT=str(status))
+                    result = subprocess.run(["bash", "-eo", "pipefail", "-c", shell], cwd=root,
+                                            env=env, capture_output=True, text=True, timeout=5)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual((root / ".build").exists(), status == 0)
+                    self.assertEqual("::warning::" in result.stdout, status != 0)
 
     def test_cache_policy_runs_in_repository_hygiene(self):
         hygiene = (ROOT / "scripts/check-repository-hygiene.sh").read_text()
