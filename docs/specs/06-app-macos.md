@@ -2760,6 +2760,10 @@ Normal source EOF before the controller actually issues Stop also fails closed:
 an input device can disappear without reporting an error, including during the
 pending tail after the user presses Stop. EOF alone never authorizes automatic
 insertion of the surviving partial.
+A caption stream that ends while the relay is still open means the engine never
+read the remaining audio; the pump marks relay end before closing the feed, and
+captions ending earlier fail as an interrupted capture. Every delivery veto fails
+the session directly when readiness no longer accepts a rejection.
 This does not add durable dictation audio, retry a paste, increase the buffer or
 replace the recognition engine.
 

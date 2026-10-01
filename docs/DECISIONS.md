@@ -20641,11 +20641,19 @@ controller actually issuing Stop, including during the pending Stop tail, treat
 it as an interrupted capture even when the producer has no failure report: the
 partial may omit the rest of the utterance.
 
+The same applies when the caption stream ends while the audio relay is still
+open: the engine stopped reading, so the remaining audio was never transcribed.
+Engines finalize only after their input ends; an earlier end is interrupted
+capture, not a short dictation. A delivery veto fails the session itself rather
+than relying on readiness still accepting the rejection.
+
 **Evidence boundary.** Actual-controller regressions cover both languages,
 127/128/129 pending buffers, ordinary and cancellation-shaped source errors,
 pre-EOF notifications, unnotified final failure and post-dispatch notifications.
 They also close a normally ending source before Stop and during its pending
 tail in both languages and assert the controller refuses to insert its partial.
+A caption stream that ends before the relay, in both languages, also fails with
+the interrupted message and a `pipelineFailed` measurement.
 The disposable UI fixture exercises failure visibility and dismissal without
 real audio or paste. Native hardware, recognition quality and external-editor
 verification remain independent qualifications. The added failure journey

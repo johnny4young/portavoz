@@ -474,8 +474,9 @@ Fixture selection is checked both with and without temporary composition.
 Capture-integrity regressions enter that controller with ordinary and
 cancellation-shaped source errors after EN/ES partials, 127/128/129 pending
 relay buffers, producer notifications before EOF, an unnotified failure at Stop,
-and clean EOF before Stop or during its tail. They require no automatic
-insertion, the localized interrupted message and a `pipelineFailed` measurement,
+clean EOF before Stop or during its tail, and captions that end before the
+audio relay. Streaming fixtures finish captions only after their audio input
+ends, as real engines do. They require no automatic insertion, the localized interrupted message and a `pipelineFailed` measurement,
 and retain cleanup ownership. A late failure from a cancelled source cannot
 retire its replacement; a late report after delivery cannot promise rollback.
 The disposable capture-failure journey checks the localized panel and repeatable

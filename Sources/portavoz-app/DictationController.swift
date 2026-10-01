@@ -89,6 +89,7 @@ final class DictationController {
     private var session: Task<Void, Never>?
     private var stopTask: Task<Void, Never>?
     private var stopIssuedSessionID: UUID?
+    private var relayEndedSessionID: UUID?
     private var failureDismissTask: Task<Void, Never>?
     private var activeSessionID: UUID?
     private var measurement: DictationSessionMeasurementRecorder?
@@ -338,6 +339,8 @@ final class DictationController {
             try await consumeCaptions(
                 from: runtime.engine.transcribe(audio, hints: dependencies.transcriptionHints()),
                 sessionID: id, measurement: measurement)
+            // Captions that end while audio still flows leave the rest untranscribed.
+            if activeSessionID == id, relayEndedSessionID != id { throw rejectDelivery(id: id) }
             await pump?.value
             try Task.checkCancellation()
             guard activeSessionID == id else { return }
@@ -546,6 +549,7 @@ private extension DictationController {
 
     func retireMicrophoneReadiness() {
         stopIssuedSessionID = nil
+        relayEndedSessionID = nil
         microphoneReadiness?.finish()
         microphoneReadiness = nil
     }
@@ -568,7 +572,10 @@ private extension DictationController {
     ) -> Task<Void, Never> {
         readiness.pump(
             stream: stream, feed: feed,
-            onInputEnded: { if let measurement { await measurement.record(.inputEnded) } },
+            onInputEnded: { [weak self] in
+                if let measurement { await measurement.record(.inputEnded) }
+                await self?.markRelayEnded(sessionID)
+            },
             updateMeter: { [weak self] peak in
                 guard let self, activeSessionID == sessionID else { return }
                 measurement?.record(.firstBufferHandled)
@@ -609,14 +616,26 @@ private extension DictationController {
 
     func verifyCaptureIntegrity(source: any AudioCaptureSource, id: UUID) throws {
         if (source as? any CaptureReportingSource)?.captureReport.failure != nil {
-            failCapture(id: id)
-            throw CancellationError()
+            throw rejectDelivery(id: id)
         }
         // EOF without our actual Stop call can be device teardown, even
         // when the source omits a failure report.
-        guard stopIssuedSessionID == id else {
-            failCapture(id: id)
-            throw CancellationError()
+        guard stopIssuedSessionID == id else { throw rejectDelivery(id: id) }
+    }
+
+    func markRelayEnded(_ id: UUID) {
+        guard activeSessionID == id else { return }
+        relayEndedSessionID = id
+    }
+
+    /// Fails the session even when readiness no longer accepts a rejection.
+    func rejectDelivery(id: UUID) -> CancellationError {
+        failCapture(id: id)
+        if activeSessionID == id {
+            measurement?.finish(.pipelineFailed)
+            failSession(
+                id: id, message: DictationMicrophoneReadiness.Failure.interrupted.message, autoDismiss: false)
         }
+        return CancellationError()
     }
 }
