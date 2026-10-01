@@ -20640,3 +20640,35 @@ previous recipe, with only its fixed registration command bound to the inert
 adapter, because it calls `open`. Source checks remain a supplemental
 ratchet, not the behavior proof. These tests cannot certify real signing, TCC,
 LaunchServices or a live library; real-app tests and native evidence stay separate.
+
+
+## D557 — Reuse compatible Swift compilation without reusing test verdicts
+
+**Context:** Hosted CI spends material time compiling the same pinned SwiftPM
+dependencies on every push. Runner queueing and XCUITest execution are separate
+costs; removing OS lanes or test assertions would trade away evidence rather
+than remove redundant compilation.
+
+**Decision:** Cache the complete unprivileged SwiftPM build graph for the
+current-SDK and Sequoia test jobs under an exact build-environment/dependency
+identity. Reuse one immutable seed per identity, without a source-SHA suffix or
+cross-toolchain fallback. A successful build records tracked source hashes,
+sizes, permissions and mtimes. Recover old mtimes only when bytes and mode match;
+force changed/new files fresh, and never restore deleted, symlinked or
+out-of-checkout paths. SwiftPM still owns normal invalidation. Always execute
+the same complete test command; never use
+a cache hit as a result, skip-build signal or permission to retry a failure.
+`main` always builds cold and is the only producer of a seed after success;
+pull requests restore but never save, because a PR-scoped seed serves only that
+PR while consuming the shared quota. A hit that fails freshness validation is
+discarded and builds cold rather than failing the job, so an immutable seed
+cannot keep CI red. Limit save to a successful graph of at most 6 GiB; retain
+the existing cache quota. The iOS and UI workflows remain outside
+this change, and release/performance authority never consumes this cache.
+
+**Consequences:** Warm PR updates can avoid recompiling compatible dependencies,
+while dependency, toolchain, SDK, image, workspace or build-policy changes start
+cold. Eviction or oversize graphs also remain cold, so speedup is conditional,
+not a CI SLA. Key-policy tests and fresh-checkout compiler/failing-test controls
+protect the boundary; cold/warm native and hosted timings, archive overhead and
+identical test totals must be reported separately from runner queue delays.
