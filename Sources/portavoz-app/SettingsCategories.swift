@@ -71,7 +71,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
             ["call safe capture echo aec dictation hotkey microphone mic level"]
         case .intelligence:
             [
-                "summary engine apple ollama mlx whisper refine vocabulary",
+                "summary engine apple ollama mlx whisper refine vocabulary model memory ram lightweight",
                 "voice enroll apuntador name remembered"
             ]
         case .agenda:

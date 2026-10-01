@@ -20,18 +20,20 @@ public struct EngineDescriptor: Codable, Sendable {
     public let displayName: String
     /// BCP-47 tags the engine supports; empty means "multilingual/auto".
     public let languages: [String]
-    /// Approximate real-time factor (lower is faster; 0.01 ≈ 100× realtime).
-    public let realTimeFactor: Double
+    /// Measured approximate real-time factor (lower is faster; 0.01 ≈ 100×
+    /// realtime). `nil` means this serving configuration has not been measured.
+    public let realTimeFactor: Double?
     public let runsOnDevice: Bool
-    public let approximateMemoryMB: Int
+    /// Measured approximate resident memory. `nil` is unknown, not zero.
+    public let approximateMemoryMB: Int?
 
     public init(
         id: String,
         displayName: String,
         languages: [String] = [],
-        realTimeFactor: Double,
+        realTimeFactor: Double?,
         runsOnDevice: Bool,
-        approximateMemoryMB: Int
+        approximateMemoryMB: Int?
     ) {
         self.id = id
         self.displayName = displayName

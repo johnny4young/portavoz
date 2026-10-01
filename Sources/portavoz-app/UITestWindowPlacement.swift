@@ -58,34 +58,29 @@ enum UITestWindowPlacement {
 
     static func positionMainWindow(_ window: NSWindow) {
         guard let visibleFrame = zeroScreenVisibleFrame else { return }
-
-        let minimumWidth: CGFloat = 900
-        let leftClearance = min(
-            400,
-            max(0, visibleFrame.width - minimumWidth))
-        let menuBarFixture = ProcessInfo.processInfo.arguments.contains("-show-menu-bar-content")
-        let frame = mainWindowFrame(
-            visibleFrame: visibleFrame,
-            leftClearance: leftClearance,
-            menuBarFixture: menuBarFixture)
+        let arguments = ProcessInfo.processInfo.arguments
+        let preferredHeight: CGFloat?
+        if arguments.contains("-seed-dictation-recovery") || arguments.contains("-seed-minimum-transcript-window") {
+            preferredHeight = 560
+        } else if arguments.contains("-seed-compact-transcript-window") {
+            preferredHeight = 620
+        } else {
+            preferredHeight = nil
+        }
+        let frame = mainWindowFrame(in: visibleFrame, preferredHeight: preferredHeight)
         applyAcceptedNotificationCenterIsolation(to: window)
         window.setFrame(frame, display: true, animate: false)
     }
 
     static func mainWindowFrame(
-        visibleFrame: NSRect, leftClearance: CGFloat, menuBarFixture: Bool
+        in visibleFrame: NSRect,
+        preferredHeight: CGFloat?
     ) -> NSRect {
-        guard menuBarFixture else {
-            return NSRect(
-                x: visibleFrame.minX + leftClearance,
-                y: visibleFrame.minY,
-                width: visibleFrame.width - leftClearance,
-                height: visibleFrame.height)
-        }
-        // The real MenuBarExtra is compact. Its disposable full-height window
-        // otherwise overlaps the bottom-anchored dictation panel; XCTest's
-        // implicit app activation then raises the test window over its actions.
-        let height = min(560, visibleFrame.height)
+        let minimumWidth: CGFloat = 900
+        let leftClearance = min(
+            400,
+            max(0, visibleFrame.width - minimumWidth))
+        let height = min(visibleFrame.height, preferredHeight ?? visibleFrame.height)
         return NSRect(
             x: visibleFrame.minX + leftClearance,
             y: visibleFrame.maxY - height,

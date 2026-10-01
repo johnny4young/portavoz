@@ -31,6 +31,9 @@ final class SettingsCategorySearchTests: XCTestCase {
         XCTAssertTrue(SettingsCategory.data.matches("icloud"))
         XCTAssertTrue(SettingsCategory.data.matches("spotlight"))
         XCTAssertTrue(SettingsCategory.intelligence.matches("enroll"))
+        XCTAssertTrue(SettingsCategory.intelligence.matches("memory"))
+        XCTAssertTrue(SettingsCategory.intelligence.matches("RAM"))
+        XCTAssertFalse(SettingsCategory.general.matches("lightweight"))
         XCTAssertFalse(SettingsCategory.audio.matches("spotlight"))
     }
 }

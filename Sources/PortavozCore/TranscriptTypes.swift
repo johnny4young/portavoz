@@ -1,5 +1,12 @@
 import Foundation
 
+/// Ephemeral live-stream semantics. Absent means the existing append-only
+/// delta contract; range revisions may update a preview but cannot become
+/// canonical transcript evidence until finalized.
+public enum LiveTranscriptUpdateMode: String, Codable, Sendable {
+    case rangeRevision
+}
+
 /// A segment of transcribed speech, attributed to a speaker and a channel.
 /// The `speakerID` may be nil while diarization is still resolving; the
 /// channel is always known at capture time.
@@ -16,6 +23,15 @@ public struct TranscriptSegment: Codable, Sendable, Identifiable {
     public var confidence: Double?
     /// Whether this segment is a live partial (may still change) or final.
     public var isFinal: Bool
+    /// Present only while transporting a range-revising live engine result.
+    /// Storage adapters intentionally persist transcript facts, not this
+    /// transient preview instruction.
+    public var liveUpdateMode: LiveTranscriptUpdateMode?
+
+    private enum CodingKeys: String, CodingKey {
+        case id, meetingID, speakerID, channel, text, language
+        case startTime, endTime, confidence, isFinal
+    }
 
     public init(
         id: UUID = UUID(),
@@ -27,7 +43,8 @@ public struct TranscriptSegment: Codable, Sendable, Identifiable {
         startTime: TimeInterval,
         endTime: TimeInterval,
         confidence: Double? = nil,
-        isFinal: Bool = false
+        isFinal: Bool = false,
+        liveUpdateMode: LiveTranscriptUpdateMode? = nil
     ) {
         self.id = id
         self.meetingID = meetingID
@@ -39,6 +56,7 @@ public struct TranscriptSegment: Codable, Sendable, Identifiable {
         self.endTime = endTime
         self.confidence = confidence
         self.isFinal = isFinal
+        self.liveUpdateMode = liveUpdateMode
     }
 }
 

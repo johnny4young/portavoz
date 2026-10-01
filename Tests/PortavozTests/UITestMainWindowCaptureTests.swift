@@ -74,31 +74,6 @@ final class UITestMainWindowCaptureTests: XCTestCase {
             .statusBar)
     }
 
-    func testMenuFixtureUsesTopOfScreenWithoutCoveringBottomPanel() async {
-        let screen = NSRect(x: 0, y: 25, width: 1_512, height: 870)
-        let frame = UITestWindowPlacement.mainWindowFrame(
-            visibleFrame: screen, leftClearance: 400, menuBarFixture: true)
-        XCTAssertEqual(frame, NSRect(x: 400, y: 335, width: 1_112, height: 560))
-        XCTAssertGreaterThan(frame.minY, screen.minY,
-                             "The top fixture must leave a separate bottom panel hit region")
-        XCTAssertEqual(UITestWindowPlacement.mainWindowFrame(
-            visibleFrame: screen, leftClearance: 400, menuBarFixture: false),
-            NSRect(x: 400, y: 25, width: 1_112, height: 870),
-            "Other disposable windows retain their full-height geometry")
-    }
-
-    func testMenuFixtureStaysWithinShortAndOffsetScreens() async {
-        for screen in [NSRect(x: -1_440, y: -200, width: 1_440, height: 900),
-                       NSRect(x: 0, y: 25, width: 1_280, height: 550)] {
-            let frame = UITestWindowPlacement.mainWindowFrame(
-                visibleFrame: screen, leftClearance: 380, menuBarFixture: true)
-            XCTAssertEqual(frame.maxY, screen.maxY)
-            XCTAssertGreaterThanOrEqual(frame.minY, screen.minY)
-            XCTAssertEqual(frame.minX, screen.minX + 380)
-            XCTAssertEqual(frame.maxX, screen.maxX)
-        }
-    }
-
     func testProductionAndUnacceptedPanelsRetainTheirFloatingLevel() async {
         let key = "PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS"
         XCTAssertEqual(UITestWindowPlacement.floatingPanelLevel(
@@ -108,6 +83,39 @@ final class UITestMainWindowCaptureTests: XCTestCase {
             XCTAssertEqual(UITestWindowPlacement.floatingPanelLevel(
                 arguments: ["portavoz-app", "-use-temp-store"],
                 environment: environment), .floating)
+        }
+    }
+
+    func testCompactFixtureFrameStaysInsideTheVisibleScreen() async {
+        for visible in [
+            NSRect(x: 0, y: 25, width: 1_512, height: 886),
+            NSRect(x: 0, y: 25, width: 1_024, height: 768),
+            NSRect(x: 0, y: 25, width: 900, height: 560)
+        ] {
+            let normal = UITestWindowPlacement.mainWindowFrame(
+                in: visible, preferredHeight: nil)
+            let compact = UITestWindowPlacement.mainWindowFrame(
+                in: visible, preferredHeight: 620)
+            let minimum = UITestWindowPlacement.mainWindowFrame(
+                in: visible, preferredHeight: 560)
+            XCTAssertEqual(normal.height, visible.height)
+            XCTAssertEqual(compact.height, min(visible.height, 620))
+            XCTAssertEqual(minimum.height, min(visible.height, 560))
+            XCTAssertTrue(visible.contains(normal))
+            XCTAssertTrue(visible.contains(compact))
+            XCTAssertTrue(visible.contains(minimum))
+            XCTAssertGreaterThanOrEqual(compact.width, 900)
+        }
+    }
+
+    func testMenuFixtureFramePreservesTopAlignmentOnOffsetScreens() async {
+        for screen in [NSRect(x: 0, y: 25, width: 1_512, height: 870),
+                       NSRect(x: -1_440, y: -200, width: 1_440, height: 900),
+                       NSRect(x: 0, y: 25, width: 1_280, height: 550)] {
+            let frame = UITestWindowPlacement.mainWindowFrame(in: screen, preferredHeight: 560)
+            XCTAssertEqual(frame.maxY, screen.maxY)
+            XCTAssertEqual(frame.height, min(560, screen.height))
+            XCTAssertTrue(screen.contains(frame))
         }
     }
 
