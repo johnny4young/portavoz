@@ -256,8 +256,15 @@ def load_execution(path: Path, expected_locale: str) -> dict[str, Any]:
         raise GateError(f"{expected_locale}: execution receipt shape differs")
     if (
         execution["schemaVersion"] != EXECUTION_SCHEMA_VERSION
+        or not isinstance(execution["schemaVersion"], int)
+        or isinstance(execution["schemaVersion"], bool)
         or execution["locale"] != expected_locale
+        or not isinstance(execution["classification"], str)
         or execution["classification"] not in EXECUTION_CLASSIFICATIONS
+        or (
+            execution["failureSignature"] is not None
+            and not isinstance(execution["failureSignature"], str)
+        )
         or not isinstance(execution["logSHA256"], str)
         or SHA256_PATTERN.fullmatch(execution["logSHA256"]) is None
         or not isinstance(execution["resultBundlePresent"], bool)
@@ -284,11 +291,10 @@ def load_execution(path: Path, expected_locale: str) -> dict[str, Any]:
             and signature is None
         )
     elif classification == "evidence-failure":
-        valid = (
-            exit_status == 0
-            and (not result_present or not runtime_present)
-            and signature is None
-        )
+        # Present files are not necessarily usable evidence: an interrupted
+        # worker can leave both artifacts and even restart with exit zero.
+        # The producer also uses this state for malformed runtime receipts.
+        valid = signature is None
     elif classification == "known-host-infrastructure":
         valid = (
             exit_status > 0
@@ -399,6 +405,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             continue
 
         assert execution is not None
+        if execution["classification"] == "evidence-failure":
+            failures.append(
+                f"{locale}: infrastructure-or-harness: unusable execution evidence"
+            )
+            summary_rows.append(
+                f"| {locale} | {outcome} | "
+                f"{receipt['caseCount'] if receipt else '-'} | "
+                "unusable execution evidence | unavailable | - |"
+            )
+            continue
         if (
             outcome == "failure"
             and execution["classification"] == "known-host-infrastructure"

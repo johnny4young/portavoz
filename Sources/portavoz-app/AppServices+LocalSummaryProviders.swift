@@ -6,63 +6,24 @@ extension AppServices {
     /// Presentation requests one application-owned discovery result; concrete
     /// Foundation Models, Ollama, process, and filesystem probes stay here.
     func discoverLocalSummaryProviders() async -> LocalSummaryProviderDiscovery {
-        await DiscoverLocalSummaryProviders(
-            probe: AppLocalSummaryProviderProbe(
-                appleOnDeviceAvailable: foundationModelsCapability.isAvailable,
-                usesTemporaryStore: ProcessInfo.processInfo.arguments
-                    .contains("-use-temp-store"))
-        ).execute(())
+        await DiscoverLocalSummaryProviders(probe: localSummaryProviderProbe()).execute(())
     }
 
     /// Clean-install configuration runs after recovery and durable worker
     /// resume. Existing user selection always wins.
     func configureInitialSummaryProviderIfNeeded() async {
         _ = await ConfigureInitialSummaryProvider(
-            probe: AppLocalSummaryProviderProbe(
-                appleOnDeviceAvailable: foundationModelsCapability.isAvailable,
-                usesTemporaryStore: ProcessInfo.processInfo.arguments
-                    .contains("-use-temp-store")),
+            probe: localSummaryProviderProbe(),
             selections: AppSummaryProviderSelectionStore()
         ).execute(())
     }
-}
 
-private struct AppLocalSummaryProviderProbe: LocalSummaryProviderProbing {
-    let appleOnDeviceAvailable: Bool
-    let usesTemporaryStore: Bool
-
-    func probeLocalSummaryProviders() async -> LocalSummaryProviderProfile {
-        // Disposable automation must not inherit the host's Ollama models,
-        // memory pressure, or disk state. The Apple capability may itself be
-        // an explicit deterministic fixture such as Sequoia simulation.
-        if usesTemporaryStore {
-            return LocalSummaryProviderProfile(
-                memoryGB: 16,
-                freeDiskGB: 100,
-                appleOnDeviceAvailable: appleOnDeviceAvailable,
-                ollama: .unavailable)
-        }
-        let memoryGB = Int(
-            (ProcessInfo.processInfo.physicalMemory + 500_000_000) / 1_000_000_000)
-        let free = try? URL(fileURLWithPath: NSHomeDirectory())
-            .resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-            .volumeAvailableCapacityForImportantUsage
-        let ollama: LocalOllamaAvailability
-        if await OllamaService.isRunning() {
-            ollama = .running(models: await OllamaService.models().map {
-                LocalSummaryModel(
-                    name: $0.name,
-                    parameterSize: $0.parameterSize,
-                    bytes: $0.bytes)
-            })
-        } else {
-            ollama = .unavailable
-        }
-        return LocalSummaryProviderProfile(
-            memoryGB: memoryGB,
-            freeDiskGB: Int((free ?? 0) / 1_000_000_000),
-            appleOnDeviceAvailable: appleOnDeviceAvailable,
-            ollama: ollama)
+    /// Provider guidance and the memory profile read one RAM observation.
+    func localSummaryProviderProbe() -> AppLocalSummaryProviderProbe {
+        AppLocalSummaryProviderProbe(
+            appleOnDeviceAvailable: foundationModelsCapability.isAvailable,
+            usesTemporaryStore: usesTemporaryMeetingStore,
+            capacity: modelMemoryPreferences.capacity)
     }
 }
 

@@ -141,7 +141,7 @@ private struct BackgroundWorkRow: View {
         case .idle:
             L10n.text("Idle")
         case .waitingForRecording:
-            L10n.text("Waiting for recording to end")
+            L10n.text("Waiting for capture to end")
         case .retryScheduled:
             L10n.text("Retry scheduled")
         case .failed:

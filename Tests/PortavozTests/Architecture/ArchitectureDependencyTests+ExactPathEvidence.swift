@@ -1198,7 +1198,7 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(makefile.contains(#"tail -20 "$$log""#))
 
         XCTAssertTrue(architecture.contains("4096-token guided-generation context"))
-        XCTAssertTrue(intelligenceSpec.contains("FluidAudio 0.15.6"))
+        XCTAssertTrue(intelligenceSpec.contains("FluidAudio \(try Self.requiredFluidAudioVersion())"))
         XCTAssertTrue(decisions.contains("## D380"))
     }
 
@@ -1479,10 +1479,10 @@ extension ArchitectureDependencyTests {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            479)
+            486)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
-            15)
+            16)
 
         let detailZero = try Self.jsonObject(
             at: "docs/evidence/meeting-detail-performance-baseline-20260801.json")

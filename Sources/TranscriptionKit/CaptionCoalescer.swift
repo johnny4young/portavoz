@@ -9,8 +9,9 @@ import PortavozCore
 /// on the same channel, so one intervention reads as one line, and starts a
 /// new row when the sentence closed and the speaker actually paused.
 ///
-/// Only the newest row ever grows — everything before it is frozen, which is
-/// what lets consumers (live translation) treat closed rows as immutable.
+/// The newest row normally grows. Replacing a microphone echo can expose and
+/// extend the preceding remote row; consumers must honor the returned
+/// invalidation index rather than assume the closed prefix never changes.
 public struct CaptionCoalescer: Sendable {
     /// Cross-channel comparisons stay bounded so a long meeting never turns
     /// live caption admission into a whole-transcript scan.
@@ -45,17 +46,20 @@ public struct CaptionCoalescer: Sendable {
     /// when it belongs to the same channel and is still "open", appends a
     /// fresh row otherwise. The merged row keeps its identity (`id`,
     /// `startTime`) so UI diffing and translation caches stay stable.
-    public func apply(_ segment: TranscriptSegment, to captions: inout [TranscriptSegment]) {
+    /// Returns the earliest written row index; every preceding row is unchanged.
+    /// `nil` means admission left the list untouched. A replacement can reduce
+    /// the count and reopen a preceding row, so count growth is not invalidation.
+    @discardableResult
+    public func apply(_ segment: TranscriptSegment, to captions: inout [TranscriptSegment]) -> Int? {
         let text = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
+        guard !text.isEmpty else { return nil }
         let hasLexicalContent = TranscriptionTextFilter.hasLexicalContent(text)
         if !hasLexicalContent {
-            appendPunctuationOnlyDelta(text, from: segment, to: &captions)
-            return
+            return appendPunctuationOnlyDelta(text, from: segment, to: &captions)
         }
         // Low mic signal produces character noise ("DDDDD") — never a row.
-        if TranscriptionTextFilter.isCharacterNoise(text) { return }
-        if suppressMicrophoneBleed(segment, in: &captions) { return }
+        if TranscriptionTextFilter.isCharacterNoise(text) { return nil }
+        if suppressMicrophoneBleed(segment, in: &captions) { return nil }
 
         guard let last = captions.last, last.channel == segment.channel,
             shouldExtend(last, with: segment)
@@ -63,7 +67,7 @@ public struct CaptionCoalescer: Sendable {
             var fresh = segment
             fresh.text = text
             captions.append(fresh)
-            return
+            return captions.count - 1
         }
 
         captions[captions.count - 1] = TranscriptSegment(
@@ -78,6 +82,7 @@ public struct CaptionCoalescer: Sendable {
             confidence: last.confidence,
             isFinal: segment.isFinal
         )
+        return captions.count - 1
     }
 
     /// The system tap is the direct source for remote participants. When the
@@ -100,11 +105,12 @@ public struct CaptionCoalescer: Sendable {
         }
         guard Self.isRemoteChannel(incoming) else { return false }
 
-        // Only the newest row is still mutable. Removing an older, already
-        // closed row would invalidate translation IDs and the rolling
-        // summary's cursor after those consumers had observed it. The normal
-        // delayed-callback case is adjacent: a microphone copy opens, then
-        // the direct system result arrives and replaces it before it closes.
+        // Never remove a closed microphone row: consumers may retain its
+        // identity. Only the newest microphone row is eligible for removal.
+        // Removing the tail can reopen the preceding remote row; apply
+        // reports that earlier invalidation. The normal delayed-callback
+        // case is adjacent: a microphone copy opens, then the direct system
+        // result arrives and replaces it before it closes.
         if let index = captions.indices.last,
             captions[index].channel == .microphone,
             MicBleedFilter.isBleed(
@@ -148,7 +154,7 @@ public struct CaptionCoalescer: Sendable {
         _ text: String,
         from segment: TranscriptSegment,
         to captions: inout [TranscriptSegment]
-    ) {
+    ) -> Int? {
         guard
             let last = captions.last,
             last.channel == segment.channel,
@@ -157,7 +163,7 @@ public struct CaptionCoalescer: Sendable {
             // A real sentence closer is 1-3 characters ("." / "?!" / "…");
             // longer runs ("....") are low-signal noise, not punctuation.
             text.count <= 3
-        else { return }
+        else { return nil }
 
         captions[captions.count - 1] = TranscriptSegment(
             id: last.id,
@@ -171,6 +177,7 @@ public struct CaptionCoalescer: Sendable {
             confidence: last.confidence,
             isFinal: segment.isFinal
         )
+        return captions.count - 1
     }
 
     static func endsSentence(_ text: String) -> Bool {

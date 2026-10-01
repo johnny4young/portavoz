@@ -61,6 +61,113 @@ final class DictationUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart() throws {
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-streaming"]
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+        XCTAssertTrue(app.prepareForInteraction())
+        let dictate = app.buttons["menu-bar-dictate"]
+        let expected = "No borres estas notas. Café C++. Final"
+        for _ in 0..<2 {
+            XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+            dictate.click()
+            let transcript = app.staticTexts["dictation-panel-transcript"]
+            XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: transcript) == expected })
+            let cancel = app.buttons["dictation-panel-cancel"]
+            XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
+            cancel.click()
+            XCTAssertTrue(waitForUITestCondition(timeout: 5) { !transcript.exists })
+        }
+    }
+
+    @MainActor
+    func testMicrophoneDenialRemainsRecoverableWithoutOpeningAudio() throws {
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-microphone-denied"]
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+        let dictate = app.buttons["menu-bar-dictate"]
+        XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+        dictate.click()
+        let state = app.staticTexts["dictation-panel-state"]
+        let message = UITestLocale.environmentLocale == "es"
+            ? "Permite el acceso al micrófono en Ajustes del Sistema y vuelve a intentar el dictado."
+            : "Allow microphone access in System Settings, then try dictation again."
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: state) == message })
+        XCTAssertFalse(app.descendants(matching: .any)["dictation-panel-meter"].exists)
+        let cancel = app.buttons["dictation-panel-cancel"]
+        XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
+        cancel.click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { !cancel.exists })
+        XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+        dictate.click()
+        let transcript = app.staticTexts["dictation-panel-transcript"]
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            renderedText(of: transcript).contains("No borres estas notas.")
+        })
+        XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
+        cancel.click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { !cancel.exists })
+    }
+
+    @MainActor
+    func testMissingMicrophoneAudioShowsFallbackAndAllowsRestart() throws {
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-microphone-no-audio"]
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+        let dictate = app.buttons["menu-bar-dictate"]
+        XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+        dictate.click()
+        let state = app.staticTexts["dictation-panel-state"]
+        let message = UITestLocale.environmentLocale == "es"
+            ? "No llegó audio del micrófono. Revisa el micrófono en los ajustes de Audio e inténtalo de nuevo."
+            : "No microphone audio arrived. Check the microphone in Audio settings and try again."
+        XCTAssertTrue(waitForUITestCondition(timeout: 10) { renderedText(of: state) == message })
+        let notice = app.staticTexts["dictation-panel-microphone-notice"]
+        XCTAssertTrue(notice.exists)
+        XCTAssertFalse(app.staticTexts["dictation-panel-transcript"].exists)
+        let cancel = app.buttons["dictation-panel-cancel"]
+        XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
+        cancel.click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { !cancel.exists })
+        XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+        dictate.click()
+        let transcript = app.staticTexts["dictation-panel-transcript"]
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            renderedText(of: transcript).contains("No borres estas notas.")
+        })
+        XCTAssertTrue(notice.exists)
+        XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
+        cancel.click()
+    }
+
+    @MainActor
+    func testPreparingDictationCanCancelWithoutAListeningClaim() throws {
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-preparation-held"]
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+        let dictate = app.buttons["menu-bar-dictate"]
+        XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+        dictate.click()
+        let state = app.staticTexts["dictation-panel-state"]
+        let title = UITestLocale.environmentLocale == "es" ? "Preparando el dictado…" : "Preparing dictation…"
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: state) == title })
+        XCTAssertFalse(app.descendants(matching: .any)["dictation-panel-meter"].exists)
+        XCTAssertFalse(app.staticTexts["dictation-panel-transcript"].exists)
+        let cancel = app.buttons["dictation-panel-cancel"]
+        XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
+        cancel.click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { !cancel.exists })
+    }
+
+    @MainActor
     func testDictationUnexpectedCompletionIsVisibleAndCanRestart() throws {
         let english = UITestLocale.environmentLocale == "en"
         let app = try XCUIApplication.portavoz(showMenuBarContent: true)
@@ -82,10 +189,14 @@ final class DictationUITests: PortavozUITestCase {
             let state = app.staticTexts["dictation-panel-state"]
             let expectedState = attempt == 0 ? expectedFailure : (english ? "Dictating" : "Dictando")
             XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: state) == expectedState })
-            let transcript = app.staticTexts["dictation-panel-transcript"]
-            XCTAssertTrue(waitForUITestCondition(timeout: 5) {
-                renderedText(of: transcript).contains(expectedText)
-            })
+            if attempt == 0 {
+                XCTAssertFalse(app.descendants(matching: .any)["dictation-panel-meter"].exists)
+            } else {
+                let transcript = app.staticTexts["dictation-panel-transcript"]
+                XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+                    renderedText(of: transcript).contains(expectedText)
+                })
+            }
             let cancel = app.buttons["dictation-panel-cancel"]
             XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
             cancel.click()
