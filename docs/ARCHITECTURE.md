@@ -5961,7 +5961,11 @@ sandbox composition.
 modified by development commands. `make install` builds, signs, verifies, and
 installs `/Applications/Portavoz Dev.app`, rewrites both base and localized
 names, gives it the distinct `app.portavoz.mac.dev` identity, and force-registers
-that exact bundle after signature verification. The XcodeGen host uses
+that exact bundle after signature verification. Registration ends installation;
+no app is automatically launched. Disposable validation starts separately
+with `-use-temp-store`. A normal manual Dev launch still selects the release
+composition's default SQLite URL: bundle identity is not library isolation.
+The XcodeGen host uses
 `app.portavoz.mac.uitest-host`. Production, development, and disposable
 DerivedData bundles therefore cannot compete for one LaunchServices/App Intents
 record. The separate Dev identity requires its own one-time macOS permissions

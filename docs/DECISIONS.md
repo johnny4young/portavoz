@@ -20641,3 +20641,31 @@ cold. Eviction or oversize graphs also remain cold, so speedup is conditional,
 not a CI SLA. Key-policy tests and fresh-checkout compiler/failing-test controls
 protect the boundary; cold/warm native and hosted timings, archive overhead and
 identical test totals must be reported separately from runner queue delays.
+
+
+## D556 — Register Dev installations without starting the shared library
+
+**Decision.** `make install` ends after re-signing, verifying both bundles,
+copying only Portavoz Dev and registering it with LaunchServices. Installation
+does not launch an app. Disposable validation is a separate explicit launch
+with `-use-temp-store`; the recipe prints that command rather than executing it.
+The registered Dev identity, production-profile refusal and released app remain
+unchanged. The Apple registration-tool path has an override for inert command
+boundary tests, not a new runtime storage or product configuration.
+
+**Why.** Normal Dev and release composition share the default SQLite URL.
+Opening Dev without arguments can start migration and recovery against the
+user's library, even when a preceding QA test used disposable storage. Automatically
+switching every developer launch to temporary storage would instead silently
+discard the expected persistent Dev session. Separate installation from launch
+so neither data choice nor foreground activation happens implicitly. This is
+not a repair to cross-process storage ownership or proof of past unchangedness.
+
+**Evidence boundary.** Executable Makefile tests use inert build, signing, copy,
+registration and Apple-event commands. They assert the full ordered recipe,
+no application launch, Dev-only paths, early profile rejection and failure
+before registration at either signature boundary. The same tests fail on the
+previous recipe, with only its fixed registration command bound to the inert
+adapter, because it calls `open`. Source checks remain a supplemental
+ratchet, not the behavior proof. These tests cannot certify real signing, TCC,
+LaunchServices or a live library; real-app tests and native evidence stay separate.
