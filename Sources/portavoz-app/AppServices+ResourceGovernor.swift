@@ -16,18 +16,35 @@ enum AppResourceGovernorAdmissionError: Error, Equatable, LocalizedError {
 
 final class AppResourceCaptureState: @unchecked Sendable {
     private let lock = NSLock()
-    private var state = ResourceCaptureState.inactive
+    private var recordingState = ResourceCaptureState.inactive
+    private var dictationOwners: Set<UUID> = []
 
     var current: ResourceCaptureState {
         lock.lock()
         defer { lock.unlock() }
-        return state
+        // A transitional meeting phase must not mask live dictation capture.
+        return dictationOwners.isEmpty ? recordingState : .active
     }
 
+    /// Recording phases never own or clear independent dictation sessions.
     func update(_ state: ResourceCaptureState) {
         lock.lock()
-        self.state = state
+        recordingState = state
         lock.unlock()
+    }
+
+    func beginDictation() -> UUID {
+        lock.lock()
+        defer { lock.unlock() }
+        let owner = UUID()
+        dictationOwners.insert(owner)
+        return owner
+    }
+
+    func endDictation(_ owner: UUID) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return dictationOwners.remove(owner) != nil
     }
 }
 
@@ -105,9 +122,21 @@ extension AppServices {
     }
 
     func recordingPhaseDidChange(_ phase: RecordingPhase) {
-        let next = phase.resourceCaptureState
-        resourceCaptureState.update(next)
-        guard next != .inactive else {
+        resourceCaptureState.update(phase.resourceCaptureState)
+        captureOwnershipDidChange()
+    }
+
+    func beginDictationCapture() -> () -> Void {
+        let owner = resourceCaptureState.beginDictation()
+        captureOwnershipDidChange()
+        return { [weak self] in
+            guard let self, resourceCaptureState.endDictation(owner) else { return }
+            captureOwnershipDidChange()
+        }
+    }
+
+    private func captureOwnershipDidChange() {
+        guard resourceCaptureState.current != .inactive else {
             semanticIndexingSupervisor.kick()
             memoryGraphProjectionSupervisor.kick()
             Task { await standingPreMeetingBriefs.kick() }

@@ -166,21 +166,33 @@ final class AudioImportQueueModel {
 
     private func finished(revision: Int) async {
         guard generation == revision else { return }
-        drain = nil
         isDraining = false
         currentID = nil
         phase = nil
         client?.audioImportWorkFinished()
-        if rerun { kick(); return }
+        if rerun { drain = nil; kick(); return }
+        // The idle lookup is still part of this owner. Retain its task so
+        // suspension can cancel/join it and admission queues one replacement,
+        // rather than abandoning the read while another drain starts.
+        let next: Date?
         do {
-            let next = try await client?.nextAudioImportWake()
-            guard generation == revision, drain == nil, let next else { return }
-            wake = Task { [weak self] in
-                do { try await Task.sleep(for: .seconds(max(0, next.timeIntervalSinceNow))) } catch { return }
-                guard !Task.isCancelled else { return }
-                self?.kick()
-            }
-        } catch { self.error = AudioImportQueueError.storage.localizedDescription }
+            next = try await client?.nextAudioImportWake()
+        } catch {
+            guard generation == revision, !Task.isCancelled else { return }
+            self.error = AudioImportQueueError.storage.localizedDescription
+            drain = nil
+            if rerun { kick() }
+            return
+        }
+        guard generation == revision else { return }
+        drain = nil
+        if rerun { kick(); return }
+        guard !storageMoveActive, let next else { return }
+        wake = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(max(0, next.timeIntervalSinceNow))) } catch { return }
+            guard !Task.isCancelled else { return }
+            self?.kick()
+        }
     }
 }
 

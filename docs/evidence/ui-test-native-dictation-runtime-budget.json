@@ -1,0 +1,13 @@
+{
+  "catalog": {
+    "expectedCaseCount": 1
+  },
+  "fullSuite": {
+    "maximumP95Seconds": 20.0,
+    "maximumTestDurationSecondsPerLocale": 20.0
+  },
+  "schemaVersion": 1,
+  "testBudgetsSeconds": {
+    "DictationUITests/testNativeInserterUsesDisposableReceiverAndClipboard()": 20.0
+  }
+}

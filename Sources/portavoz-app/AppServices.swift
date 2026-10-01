@@ -35,6 +35,7 @@ private struct AppSimulatedDatabaseOpenFailure: Error {}
 @MainActor
 @Observable
 final class AppServices {
+    @ObservationIgnored let defaults: UserDefaults
     enum ModelsState: Equatable {
         case unknown
         case downloading(String)
@@ -105,6 +106,9 @@ final class AppServices {
     @ObservationIgnored lazy var semanticSearchPreparation =
         SemanticSearchPreparationModel(
             client: AppSemanticSearchPreparationClient(services: self))
+    @ObservationIgnored lazy var appleSpeechPreparation =
+        AppleSpeechPreparationModel(client: appleSpeechPreparationClient)
+    @ObservationIgnored let appleSpeechPreparationClient: any AppleSpeechPreparationClient
     /// Background maintenance owns product corpus writes and coalesces them
     /// through one semantic-index flight.
     @ObservationIgnored let semanticIndexingCoordinator:
@@ -165,7 +169,8 @@ final class AppServices {
     @ObservationIgnored var liveSpeechRuntimeLoad: LiveSpeechRuntimeLoad?
     var diarizationRuntime: PyannoteDiarizationRuntime?
     @ObservationIgnored var diarizationRuntimeLoad: DiarizationRuntimeLoad?
-    var enginesIdleGeneration = 0
+    @ObservationIgnored let modelMemoryPreferences: AppModelMemoryPreferences
+    @ObservationIgnored let modelIdleReleaseScheduler: AppModelIdleReleaseScheduler
     var whisper: WhisperEngine?
     var whisperVariantID: String?
     @ObservationIgnored var whisperRuntimeLoad: WhisperRuntimeLoad?
@@ -174,14 +179,13 @@ final class AppServices {
     @ObservationIgnored var whisperPreparation: WhisperPreparation?
     @ObservationIgnored var whisperBackgroundPreparation: Task<Void, Never>?
     @ObservationIgnored var whisperProgressObservers: [UUID: WhisperPreparationObserver] = [:]
-    var whisperIdleGeneration = 0
     private(set) var mlxDownloaded = false
     /// IntelligenceKit owns container mechanics; composition owns the one
     /// process runtime and every residency transition around it.
     @ObservationIgnored let mlxSummaryRuntime = MLXSummaryRuntime()
     @ObservationIgnored var mlxRuntimeLoad: MLXRuntimeLoad?
+    @ObservationIgnored var mlxRuntimeRelease: Task<Bool, Never>?
     var mlxRuntimeDirectoryKey: String?
-    var mlxIdleGeneration = 0
 
     /// Process-scoped, coalescing reconciliation for the protected local
     /// Spotlight index. It is deliberately not owned by a SwiftUI window.
@@ -208,7 +212,9 @@ final class AppServices {
     @ObservationIgnored lazy var audioImportUITestFixture = AudioImportUITestFixture.makeIfRequested()
     /// System-wide dictation (⌥⌘D): lives here so the hotkey and its
     /// session survive any window coming and going.
-    let dictation = DictationController()
+    let dictation: DictationController
+    @ObservationIgnored let dictationUITestFixture: DictationUITestFixture?
+    let dictationNativeUITestFixture: DictationNativeUITestFixture?
     /// THE recording session (one at a time by design): shared so the
     /// recording view, the HUD and the menu bar all observe the same one,
     /// and navigating away can never orphan a live session.
@@ -261,22 +267,37 @@ final class AppServices {
         arguments: [String] = ProcessInfo.processInfo.arguments,
         environment: [String: String] = ProcessInfo.processInfo.environment,
         storagePolicy: AppStorageIsolationPolicy? = nil,
-        defaults: UserDefaults = .standard
+        defaults: UserDefaults = .standard,
+        modelMemoryPreferences: AppModelMemoryPreferences? = nil,
+        modelIdleReleaseScheduler: AppModelIdleReleaseScheduler = .init(),
+        dictation: DictationController = DictationController()
     ) throws {
+        self.dictation = dictation
+        self.defaults = defaults
         let storagePolicy = Self.prepareStoragePolicy(
             arguments: arguments,
             environment: environment,
             override: storagePolicy,
             defaults: defaults)
+        self.modelMemoryPreferences = modelMemoryPreferences ?? AppModelMemoryPreferences(defaults: defaults)
+        self.modelIdleReleaseScheduler = modelIdleReleaseScheduler
         recording = RecordingController(defaults: defaults)
         let usesTemporaryStore = storagePolicy.usesTemporaryMeetingStore
         usesTemporaryMeetingStore = usesTemporaryStore
         dictationShortcutUITestFixture = DictationShortcutUITestFixture(
             arguments: arguments, usesTemporaryStore: usesTemporaryStore)
+
+        dictationUITestFixture = DictationUITestFixture(
+            arguments: arguments, usesTemporaryStore: usesTemporaryStore)
+        dictationNativeUITestFixture = DictationNativeUITestFixture(
+            arguments: arguments, environment: environment, usesTemporaryStore: usesTemporaryStore)
         liveAssistUITestFixture = LiveAssistUITestFixture(
             arguments: arguments, usesTemporaryStore: usesTemporaryStore)
         let resourceCaptureState = AppResourceCaptureState()
         self.resourceCaptureState = resourceCaptureState
+        appleSpeechPreparationClient = AppleSpeechUITestFixture.make(
+            arguments: arguments, usesTemporaryStore: usesTemporaryStore)
+            ?? AppAppleSpeechPreparationClient(captureState: resourceCaptureState)
         // Open the authority before constructing process runtimes or installing
         // global telemetry. A failed retry therefore leaves no half-composed
         // service graph, model task, sensitive store, or background owner.
@@ -395,21 +416,6 @@ final class AppServices {
                     voiceprintStore: voiceprintStore))))
     }
 
-    private static func makeModelStore(usesTemporaryStore: Bool) -> ModelStore {
-        guard usesTemporaryStore else { return ModelStore() }
-        let rootDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "portavoz-uitest-models-\(UUID().uuidString)",
-            isDirectory: true)
-        return ModelStore(rootDirectory: rootDirectory)
-    }
-
-    private static func makeModelServices(
-        usesTemporaryStore: Bool
-    ) -> (ModelStore, VerifiedModelLifecycle) {
-        let store = makeModelStore(usesTemporaryStore: usesTemporaryStore)
-        return (store, VerifiedModelLifecycle(store: store))
-    }
-
     private static func makeSensitiveStorage(
         usesTemporaryStore: Bool
     ) -> (
@@ -470,43 +476,6 @@ final class AppServices {
             return
         }
         memoryGraphProjectionSupervisor.kick()
-    }
-
-    /// Explicit readiness for workflows that truly need both models.
-    func loadEnginesIfNeeded() async throws {
-        let liveSpeech = try await acquireLiveSpeechRuntime()
-        defer { _ = finishLiveSpeechRuntime(liveSpeech) }
-        let diarization = try await acquireDiarizationRuntime()
-        defer { _ = finishDiarizationRuntime(diarization) }
-        modelsState = .ready
-    }
-
-    /// Drops idle speech-model weights. In-flight preparation owns its result
-    /// until the workflow schedules a later release.
-    func releaseRecordingEngines() {
-        _ = releaseLiveSpeechRuntime()
-        _ = releaseDiarizationRuntime()
-        modelsState = .unknown
-    }
-
-    /// Keeps speech models hot for back-to-back work, then frees their memory.
-    func scheduleRecordingEnginesRelease() {
-        enginesIdleGeneration += 1
-        let generation = enginesIdleGeneration
-        Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(600))
-            guard let self, generation == self.enginesIdleGeneration else { return }
-            guard !self.refines.isRunning else { return }
-            self.releaseRecordingEngines()
-        }
-    }
-
-    func settleModelsState() {
-        if transcriber != nil, diarizationRuntime != nil {
-            modelsState = .ready
-        } else if liveSpeechRuntimeLoad == nil, diarizationRuntimeLoad == nil {
-            modelsState = .unknown
-        }
     }
 
     // MARK: - Summary engine (D25/M12)
@@ -589,5 +558,22 @@ final class AppServices {
         }
         try await modelLifecycle.remove(ModelCatalog.mlxQwen35)
         mlxDownloaded = false
+    }
+}
+
+private extension AppServices {
+    static func makeModelStore(usesTemporaryStore: Bool) -> ModelStore {
+        guard usesTemporaryStore else { return ModelStore() }
+        let rootDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "portavoz-uitest-models-\(UUID().uuidString)",
+            isDirectory: true)
+        return ModelStore(rootDirectory: rootDirectory)
+    }
+
+    static func makeModelServices(
+        usesTemporaryStore: Bool
+    ) -> (ModelStore, VerifiedModelLifecycle) {
+        let store = makeModelStore(usesTemporaryStore: usesTemporaryStore)
+        return (store, VerifiedModelLifecycle(store: store))
     }
 }

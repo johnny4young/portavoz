@@ -371,16 +371,6 @@
         }
       }
     },
-    "%lld imports · %lld unfinished": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld importaciones · %lld sin terminar"
-          }
-        }
-      }
-    },
     "1 meeting exported.": {
       "localizations": {
         "es": {
@@ -921,6 +911,16 @@
         }
       }
     },
+    "Allow microphone access in System Settings, then try dictation again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permite el acceso al micrófono en Ajustes del Sistema y vuelve a intentar el dictado."
+          }
+        }
+      }
+    },
     "Allow this one web request": {
       "localizations": {
         "es": {
@@ -967,16 +967,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Puede estar reservado por otra app o por el sistema. Elige otra combinación o reintenta."
-          }
-        }
-      }
-    },
-    "Another audio operation is finishing. Retry shortly.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Otra operación de audio está terminando. Reintenta en un momento."
           }
         }
       }
@@ -1117,6 +1107,96 @@
           "stringUnit": {
             "state": "translated",
             "value": "Apple Intelligence: resúmenes en el dispositivo, gratis y rápidos."
+          }
+        }
+      }
+    },
+    "Apple Speech (fixed language)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Speech (idioma fijo)"
+          }
+        }
+      }
+    },
+    "Apple Speech could not be checked or prepared. Choose Parakeet or try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo comprobar ni preparar Apple Speech. Elige Parakeet o inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Apple Speech could not start. Try Parakeet in Dictation settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Speech no pudo iniciarse. Prueba Parakeet en los ajustes de Dictado."
+          }
+        }
+      }
+    },
+    "Apple Speech does not support this language on this Mac. Choose Parakeet to continue.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Speech no admite este idioma en este Mac. Elige Parakeet para continuar."
+          }
+        }
+      }
+    },
+    "Apple Speech does not support this language. Choose Parakeet in Dictation settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Speech no admite este idioma. Elige Parakeet en los ajustes de Dictado."
+          }
+        }
+      }
+    },
+    "Apple Speech is ready for this language on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Speech está listo para este idioma en este Mac."
+          }
+        }
+      }
+    },
+    "Apple Speech is unavailable on this Mac. Choose Parakeet to continue.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Speech no está disponible en este Mac. Elige Parakeet para continuar."
+          }
+        }
+      }
+    },
+    "Apple Speech is unavailable. Choose Parakeet in Dictation settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Speech no está disponible. Elige Parakeet en los ajustes de Dictado."
+          }
+        }
+      }
+    },
+    "Apple Speech requires macOS Tahoe or later. Parakeet remains available here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Speech requiere macOS Tahoe o posterior. Parakeet sigue disponible aquí."
           }
         }
       }
@@ -1591,36 +1671,6 @@
         }
       }
     },
-    "Audio imports": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Importaciones de audio"
-          }
-        }
-      }
-    },
-    "Audio imports · %lld unfinished": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Importaciones de audio · %lld sin terminar"
-          }
-        }
-      }
-    },
-    "Audio work is still finishing. Try again shortly.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El trabajo de audio aún está terminando. Vuelve a intentarlo en un momento."
-          }
-        }
-      }
-    },
     "Auto-detect": {
       "localizations": {
         "es": {
@@ -1647,16 +1697,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Automático"
-          }
-        }
-      }
-    },
-    "Automatic (Spanish + English)": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Automático (español + inglés)"
           }
         }
       }
@@ -1827,6 +1867,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "El trabajo en segundo plano requiere atención"
+          }
+        }
+      }
+    },
+    "Balanced memory keeps models ready for back-to-back work.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La memoria equilibrada mantiene los modelos listos para tareas consecutivas."
           }
         }
       }
@@ -2111,16 +2161,6 @@
         }
       }
     },
-    "Cancelled — retry when you are ready": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancelado: reintenta cuando quieras"
-          }
-        }
-      }
-    },
     "Cancels this run only if execution has not started": {
       "localizations": {
         "es": {
@@ -2167,6 +2207,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Las tarjetas dirigidas a “%@” se marcan como preguntas para ti."
+          }
+        }
+      }
+    },
+    "Catalog RAM guidance: %d GB or more.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RAM orientativa del catálogo: %d GB o más."
           }
         }
       }
@@ -2291,6 +2341,16 @@
         }
       }
     },
+    "Check Apple Speech again": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a comprobar Apple Speech"
+          }
+        }
+      }
+    },
     "Check again": {
       "localizations": {
         "es": {
@@ -2331,6 +2391,16 @@
         }
       }
     },
+    "Checking Apple Speech availability…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando disponibilidad de Apple Speech…"
+          }
+        }
+      }
+    },
     "Checking Apple's on-device language assets. Exact search stays available.": {
       "localizations": {
         "es": {
@@ -2367,16 +2437,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Comprobando Whisper, que ya está en esta Mac…"
-          }
-        }
-      }
-    },
-    "Checking and copying audio…": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Verificando y copiando el audio…"
           }
         }
       }
@@ -2427,6 +2487,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Elegir"
+          }
+        }
+      }
+    },
+    "Choose English or Spanish above. Apple Speech cannot auto-detect a mixed-language session.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige inglés o español arriba. Apple Speech no puede detectar automáticamente una sesión con varios idiomas."
+          }
+        }
+      }
+    },
+    "Choose English or Spanish for Apple Speech in Dictation settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige inglés o español para Apple Speech en los ajustes de Dictado."
           }
         }
       }
@@ -2487,26 +2567,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Elige una persona existente o conserva esta como una persona distinta. Portavoz nunca combina personas automáticamente."
-          }
-        }
-      }
-    },
-    "Choose audio files to transcribe, or one .portavoz meeting file": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Elige archivos de audio para transcribir o un archivo de reunión .portavoz"
-          }
-        }
-      }
-    },
-    "Choose between 1 and 1,000 audio files to import.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Elige entre 1 y 1.000 archivos de audio para importar."
           }
         }
       }
@@ -4669,16 +4729,6 @@
         }
       }
     },
-    "Downloading Whisper %@… %lld%%": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Descargando Whisper %@… %lld%%"
-          }
-        }
-      }
-    },
     "Downloading Whisper (%@)… %d%%": {
       "localizations": {
         "es": {
@@ -5519,6 +5569,16 @@
         }
       }
     },
+    "Finish the current recording before preparing Apple Speech.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Termina la grabación actual antes de preparar Apple Speech."
+          }
+        }
+      }
+    },
     "Finish the recording before starting another large on-device AI task.": {
       "localizations": {
         "es": {
@@ -5655,6 +5715,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Libera el espacio usado por la variante que no usas"
+          }
+        }
+      }
+    },
+    "Frees idle models after about a minute. Models in use stay loaded; the next start may be slower.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Libera los modelos inactivos tras un minuto aproximadamente. Los modelos en uso siguen cargados; el siguiente inicio puede ser más lento."
           }
         }
       }
@@ -6129,16 +6199,6 @@
         }
       }
     },
-    "Import a meeting bundle on its own, or choose multiple audio files.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Importa un archivo de reunión por separado o elige varios archivos de audio."
-          }
-        }
-      }
-    },
     "Import audio…": {
       "localizations": {
         "es": {
@@ -6175,16 +6235,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Se importaron %lld ajustes. Los permisos y la activación de funciones no han cambiado."
-          }
-        }
-      }
-    },
-    "Imports continue when you close this panel. Your original files stay unchanged.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Las importaciones continúan al cerrar este panel. Tus archivos originales no se modifican."
           }
         }
       }
@@ -6699,6 +6749,16 @@
         }
       }
     },
+    "Lightweight model memory": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memoria ligera para modelos"
+          }
+        }
+      }
+    },
     "Line structure": {
       "localizations": {
         "es": {
@@ -6825,6 +6885,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Resumen en vivo"
+          }
+        }
+      }
+    },
+    "Live transcription engine": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motor de transcripción en vivo"
           }
         }
       }
@@ -7419,6 +7489,26 @@
         }
       }
     },
+    "Model choices and downloaded files are unchanged. This is not a RAM usage limit.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los modelos seleccionados y archivos descargados no cambian. Esto no limita el uso de RAM."
+          }
+        }
+      }
+    },
+    "Model memory": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memoria de modelos"
+          }
+        }
+      }
+    },
     "Models download once (about 1 GB) and work offline.": {
       "localizations": {
         "es": {
@@ -7779,16 +7869,6 @@
         }
       }
     },
-    "Next": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Siguiente"
-          }
-        }
-      }
-    },
     "Next Steps": {
       "localizations": {
         "es": {
@@ -7885,16 +7965,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "No hubo respuesta esta vez. La grabación y sus subtítulos permanecen intactos."
-          }
-        }
-      }
-    },
-    "No audio imports": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No hay importaciones de audio"
           }
         }
       }
@@ -8145,6 +8215,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aún no hay reuniones"
+          }
+        }
+      }
+    },
+    "No microphone audio arrived. Check the microphone in Audio settings and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No llegó audio del micrófono. Revisa el micrófono en los ajustes de Audio e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "No microphone is available. Choose an input in Audio settings and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay un micrófono disponible. Elige una entrada en los ajustes de Audio e inténtalo de nuevo."
           }
         }
       }
@@ -9159,6 +9249,16 @@
         }
       }
     },
+    "Parakeet (multilingual)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parakeet (multilingüe)"
+          }
+        }
+      }
+    },
     "Past 24 hours": {
       "localizations": {
         "es": {
@@ -9729,6 +9829,16 @@
         }
       }
     },
+    "Prepare Apple Speech": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparar Apple Speech"
+          }
+        }
+      }
+    },
     "Prepare brief": {
       "localizations": {
         "es": {
@@ -9755,6 +9865,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preparar búsqueda semántica"
+          }
+        }
+      }
+    },
+    "Prepare the Apple Speech language asset in Dictation settings first.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Primero prepara el recurso de idioma de Apple Speech en los ajustes de Dictado."
           }
         }
       }
@@ -9799,12 +9919,32 @@
         }
       }
     },
+    "Preparing dictation…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando el dictado…"
+          }
+        }
+      }
+    },
     "Preparing local search": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Preparando búsqueda local"
+          }
+        }
+      }
+    },
+    "Preparing microphone…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando el micrófono…"
           }
         }
       }
@@ -9849,6 +9989,16 @@
         }
       }
     },
+    "Preparing the Apple Speech language asset…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando el recurso de idioma de Apple Speech…"
+          }
+        }
+      }
+    },
     "Preparing…": {
       "localizations": {
         "es": {
@@ -9875,16 +10025,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Presiona ⌥⌘D en cualquier app, habla y presiona de nuevo. Necesita el permiso de Accesibilidad para escribir."
-          }
-        }
-      }
-    },
-    "Previous": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Anterior"
           }
         }
       }
@@ -9995,16 +10135,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Procesamiento"
-          }
-        }
-      }
-    },
-    "Processing failed. Check model readiness and available storage, then retry.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El procesamiento falló. Comprueba que los modelos estén listos y haya espacio disponible, y reintenta."
           }
         }
       }
@@ -10425,16 +10555,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Léelo, edita lo que quieras y luego elige a dónde va."
-          }
-        }
-      }
-    },
-    "Ready": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Listo"
           }
         }
       }
@@ -13031,6 +13151,16 @@
         }
       }
     },
+    "Spanish and English can still mix. This setting mainly keeps out other writing systems.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El español y el inglés pueden seguir mezclándose. Este ajuste sobre todo evita otros sistemas de escritura."
+          }
+        }
+      }
+    },
     "Spanish translation": {
       "localizations": {
         "es": {
@@ -13387,6 +13517,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fecha límite sugerida: %@"
+          }
+        }
+      }
+    },
+    "Suggested for this Mac: lightweight memory.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugerencia para esta Mac: memoria ligera."
           }
         }
       }
@@ -14071,16 +14211,6 @@
         }
       }
     },
-    "The import queue could not be updated. Your original files have not been changed.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No se pudo actualizar la cola de importaciones. Tus archivos originales no se han modificado."
-          }
-        }
-      }
-    },
     "The issue could not be created. Nothing left Portavoz.": {
       "localizations": {
         "es": {
@@ -14201,16 +14331,6 @@
         }
       }
     },
-    "The meeting was deleted, but some audio files could not be removed.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La reunión se eliminó, pero no se pudieron borrar algunos archivos de audio."
-          }
-        }
-      }
-    },
     "The memory request was not specific enough to answer safely.": {
       "localizations": {
         "es": {
@@ -14221,22 +14341,12 @@
         }
       }
     },
-    "The original changed. Import it again as a new file.": {
+    "The microphone sent unusable audio. Check the input device and try again.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El original cambió. Impórtalo de nuevo como un archivo nuevo."
-          }
-        }
-      }
-    },
-    "The original is unavailable. Reconnect its drive, then retry.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El original no está disponible. Reconecta su unidad y reintenta."
+            "value": "El micrófono envió audio no válido. Revisa el dispositivo de entrada e inténtalo de nuevo."
           }
         }
       }
@@ -14387,16 +14497,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "El resultado es demasiado grande para verificarlo de forma segura."
-          }
-        }
-      }
-    },
-    "The retained copy could not be verified. Import the original again.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No se pudo verificar la copia conservada. Importa de nuevo el original."
           }
         }
       }
@@ -14651,6 +14751,16 @@
         }
       }
     },
+    "This Mac is below the catalog guidance; performance may be limited.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta Mac no alcanza la RAM orientativa del catálogo; el rendimiento puede ser limitado."
+          }
+        }
+      }
+    },
     "This Mac or macOS version doesn't provide the required Apple language model. Exact search still works.": {
       "localizations": {
         "es": {
@@ -14837,6 +14947,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Este borrador de issue cambió. Revísalo de nuevo antes de publicarlo."
+          }
+        }
+      }
+    },
+    "This language needs an Apple-hosted download. Prepare it explicitly before recording.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este idioma requiere una descarga de Apple. Prepáralo explícitamente antes de grabar."
           }
         }
       }
@@ -15331,6 +15451,16 @@
         }
       }
     },
+    "Try preparing Apple Speech again": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a preparar Apple Speech"
+          }
+        }
+      }
+    },
     "Turbo — best quality": {
       "localizations": {
         "es": {
@@ -15771,12 +15901,12 @@
         }
       }
     },
-    "Waiting for recording to end": {
+    "Waiting for capture to end": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esperando a que termine la grabación"
+            "value": "Esperando a que termine la captura"
           }
         }
       }
@@ -15787,16 +15917,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Esperando tu elección sobre Recordatorios…"
-          }
-        }
-      }
-    },
-    "Waiting to import": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "En espera de importación"
           }
         }
       }
@@ -16307,6 +16427,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tus notas"
+          }
+        }
+      }
+    },
+    "Your preferred microphone is unavailable. Using the system default for this dictation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu micrófono preferido no está disponible. Se usará el predeterminado del sistema para este dictado."
           }
         }
       }
@@ -16917,12 +17047,12 @@
         }
       }
     },
-    "summary engine apple ollama mlx whisper refine vocabulary": {
+    "summary engine apple ollama mlx whisper refine vocabulary model memory ram lightweight": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "resumen motor apple ollama mlx whisper refine vocabulario"
+            "value": "resumen motor apple ollama mlx whisper refine vocabulario memoria modelo ram ligero"
           }
         }
       }
@@ -17073,6 +17203,236 @@
           "stringUnit": {
             "state": "translated",
             "value": "→ Español"
+          }
+        }
+      }
+    },
+    "%lld imports · %lld unfinished": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld importaciones · %lld sin terminar"
+          }
+        }
+      }
+    },
+    "Another audio operation is finishing. Retry shortly.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otra operación de audio está terminando. Reintenta en un momento."
+          }
+        }
+      }
+    },
+    "Audio imports": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importaciones de audio"
+          }
+        }
+      }
+    },
+    "Audio imports · %lld unfinished": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importaciones de audio · %lld sin terminar"
+          }
+        }
+      }
+    },
+    "Audio work is still finishing. Try again shortly.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El trabajo de audio aún está terminando. Vuelve a intentarlo en un momento."
+          }
+        }
+      }
+    },
+    "Cancelled — retry when you are ready": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelado: reintenta cuando quieras"
+          }
+        }
+      }
+    },
+    "Checking and copying audio…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificando y copiando el audio…"
+          }
+        }
+      }
+    },
+    "Choose audio files to transcribe, or one .portavoz meeting file": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige archivos de audio para transcribir o un archivo de reunión .portavoz"
+          }
+        }
+      }
+    },
+    "Choose between 1 and 1,000 audio files to import.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige entre 1 y 1.000 archivos de audio para importar."
+          }
+        }
+      }
+    },
+    "Downloading Whisper %@… %lld%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando Whisper %@… %lld%%"
+          }
+        }
+      }
+    },
+    "Import a meeting bundle on its own, or choose multiple audio files.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importa un archivo de reunión por separado o elige varios archivos de audio."
+          }
+        }
+      }
+    },
+    "Imports continue when you close this panel. Your original files stay unchanged.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las importaciones continúan al cerrar este panel. Tus archivos originales no se modifican."
+          }
+        }
+      }
+    },
+    "Next": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siguiente"
+          }
+        }
+      }
+    },
+    "No audio imports": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay importaciones de audio"
+          }
+        }
+      }
+    },
+    "Previous": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anterior"
+          }
+        }
+      }
+    },
+    "Processing failed. Check model readiness and available storage, then retry.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El procesamiento falló. Comprueba que los modelos estén listos y haya espacio disponible, y reintenta."
+          }
+        }
+      }
+    },
+    "Ready": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listo"
+          }
+        }
+      }
+    },
+    "The import queue could not be updated. Your original files have not been changed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo actualizar la cola de importaciones. Tus archivos originales no se han modificado."
+          }
+        }
+      }
+    },
+    "The meeting was deleted, but some audio files could not be removed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reunión se eliminó, pero no se pudieron borrar algunos archivos de audio."
+          }
+        }
+      }
+    },
+    "The original changed. Import it again as a new file.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El original cambió. Impórtalo de nuevo como un archivo nuevo."
+          }
+        }
+      }
+    },
+    "The original is unavailable. Reconnect its drive, then retry.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El original no está disponible. Reconecta su unidad y reintenta."
+          }
+        }
+      }
+    },
+    "The retained copy could not be verified. Import the original again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo verificar la copia conservada. Importa de nuevo el original."
+          }
+        }
+      }
+    },
+    "Waiting to import": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En espera de importación"
           }
         }
       }

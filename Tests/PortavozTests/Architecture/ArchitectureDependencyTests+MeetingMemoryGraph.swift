@@ -488,7 +488,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(fixture.contains("-seed-ask-memory"))
         XCTAssertTrue(fixture.contains("ProjectMeetingMemoryGraph("))
         XCTAssertTrue(uiTest.contains(
-            "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence"))
+            "testAskConfirmedMemoryLoadsPersonCommitmentsBlockersAndBothCitations"))
         XCTAssertTrue(uiTest.contains("ask-memory-load"))
         XCTAssertTrue(uiTest.contains("player-current-time"))
 
@@ -779,7 +779,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(fixture.contains(
             "ConfirmDecisionCommitmentBlocker(store: store)"))
         XCTAssertTrue(uiTest.contains(
-            "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence"))
+            "testAskConfirmedMemoryLoadsPersonCommitmentsBlockersAndBothCitations"))
         XCTAssertTrue(uiTest.contains(
             "ask-memory-blocker-B5D50000-0000-4000-8000-000000000007"))
         XCTAssertTrue(uiTest.contains(

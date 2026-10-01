@@ -135,6 +135,64 @@ final class AudioImportQueueModelTests: XCTestCase {
         await next.suspend()
     }
 
+    func testSuspendCancelsAndJoinsAnInFlightIdleWakeRead() async throws {
+        let fixture = try ImportQueueFixture()
+        defer { fixture.remove() }
+        let entered = expectation(description: "idle query entered")
+        let cancelled = expectation(description: "idle query cancelled with its owner")
+        let client = ImportQueueModelClient(fixture: fixture)
+        var query: CheckedContinuation<Date?, any Error>?
+        client.nextWake = {
+            try await withTaskCancellationHandler {
+                try await withCheckedThrowingContinuation { continuation in
+                    query = continuation
+                    entered.fulfill()
+                }
+            } onCancel: { cancelled.fulfill() }
+        }
+        let model = AudioImportQueueModel(client: client)
+        model.start()
+        await fulfillment(of: [entered], timeout: 10)
+        let suspension = Task { await model.suspend() }
+        await fulfillment(of: [cancelled], timeout: 2)
+        // Even an uncooperative storage read must be joined. Returning a
+        // non-cancellation error cannot publish feedback after suspension.
+        try XCTUnwrap(query).resume(throwing: QueueModelTestError.timeout)
+        await suspension.value
+        XCTAssertFalse(model.isDraining)
+        XCTAssertNil(model.error)
+        XCTAssertEqual(client.workerStarts, 1)
+    }
+
+    func testAdmissionDuringIdleWakeReadQueuesOneReplacementOwner() async throws {
+        let fixture = try ImportQueueFixture()
+        defer { fixture.remove() }
+        let entered = expectation(description: "first idle query entered")
+        let finished = expectation(description: "admitted replacement finished")
+        let client = ImportQueueModelClient(fixture: fixture)
+        var query: CheckedContinuation<Date?, any Error>?
+        client.nextWake = {
+            try await withCheckedThrowingContinuation { continuation in
+                query = continuation
+                entered.fulfill()
+            }
+        }
+        let model = AudioImportQueueModel(client: client)
+        model.start()
+        await fulfillment(of: [entered], timeout: 10)
+        client.nextWake = { nil }
+        client.onFinish = { finished.fulfill() }
+        try await model.admit([fixture.source])
+        XCTAssertEqual(client.workerStarts, 1, "Idle inspection still belongs to the current drain")
+        try XCTUnwrap(query).resume(returning: nil)
+        await fulfillment(of: [finished], timeout: 10)
+        await model.suspend()
+        let page = try await fixture.store.audioImportQueuePage()
+        XCTAssertEqual(page.entries.map(\.job.state), [.succeeded])
+        XCTAssertEqual(client.workerStarts, 2)
+        XCTAssertNil(model.error)
+    }
+
     func testStorageMoveExcludesAdmissionAndDoesNotInventSuccess() async throws {
         let fixture = try ImportQueueFixture()
         defer { fixture.remove() }
@@ -179,6 +237,8 @@ private final class ImportQueueModelClient: AudioImportQueueClient {
     let processor: ImportQueueProcessor
     var onFinish: () -> Void
     var observationFailures = 0
+    var workerStarts = 0
+    var nextWake: (() async throws -> Date?)?
 
     init(fixture: ImportQueueFixture, processor: ImportQueueProcessor = ImportQueueProcessor(),
          onFinish: @escaping () -> Void = {}) {
@@ -204,9 +264,13 @@ private final class ImportQueueModelClient: AudioImportQueueClient {
         }
         _ = try await fixture.store.enqueueAudioImports(inputs)
     }
-    func makeAudioImportWorker() -> ProcessAudioImports { fixture.worker(processor) }
+    func makeAudioImportWorker() -> ProcessAudioImports {
+        workerStarts += 1
+        return fixture.worker(processor)
+    }
     func nextAudioImportWake() async throws -> Date? {
-        try await fixture.store.nextScheduledProcessingDate(kinds: [.audioImport])
+        if let nextWake { return try await nextWake() }
+        return try await fixture.store.nextScheduledProcessingDate(kinds: [.audioImport])
     }
     func cancelAudioImport(_ id: MeetingID) async throws { try await fixture.store.cancelAudioImport(for: id) }
     func retryAudioImport(_ id: MeetingID) async throws { try await fixture.store.retryAudioImport(for: id) }

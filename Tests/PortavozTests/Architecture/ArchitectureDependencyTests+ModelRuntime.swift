@@ -157,8 +157,9 @@ extension ArchitectureDependencyTests {
                 pattern: #"SentenceEmbedder\s*\("#),
             [],
             "Application workflows must receive an injected embedding runtime")
-        XCTAssertTrue(whisper.contains("Task.sleep(for: .seconds(120))"))
-        XCTAssertTrue(services.contains("Task.sleep(for: .seconds(600))"))
+        XCTAssertTrue(whisper.contains("modelIdleReleaseScheduler.schedule(.quality"))
+        XCTAssertTrue(try Self.contents(of: "Sources/portavoz-app/AppServices+ModelMemory.swift")
+            .contains("modelIdleReleaseScheduler.schedule(.recording"))
         XCTAssertTrue(liveSpeech.contains("modelResidencyLedger.beginUse(.liveSpeech)"))
         XCTAssertTrue(mlx.contains("private static let idleRelease: Duration = .seconds(120)"))
         XCTAssertFalse(mlx.contains("static let shared"))
@@ -312,11 +313,13 @@ extension ArchitectureDependencyTests {
         let attacher = try Self.contents(
             of: "Sources/portavoz-app/LiveTranscriptionAttacher.swift")
         let dictation = try Self.contents(
-            of: "Sources/portavoz-app/DictationController.swift")
+            of: "Sources/portavoz-app/DictationSessionDependencies.swift")
         let recovery = try Self.contents(
             of: "Sources/portavoz-app/AppPostCaptureProcessingCapabilities.swift")
         let benchmark = try Self.contents(
             of: "Sources/portavoz-app/BenchMode+ResourceBatch.swift")
+        let syntheticStart = try Self.contents(
+            of: "Sources/portavoz-app/BenchSyntheticRecordingRuntime.swift")
 
         for transition in [
             "modelResidencyLedger.beginLoad(.liveSpeech)",
@@ -335,12 +338,18 @@ extension ArchitectureDependencyTests {
                 "Live-speech residency adapter is missing \(transition)")
         }
 
-        XCTAssertTrue(start.contains("services.acquireResidentLiveSpeechRuntime()"))
-        XCTAssertTrue(start.contains("services.acquireLiveSpeechRuntime()"))
-        XCTAssertTrue(start.contains("services.liveTranscriptionRuntime(runtime)"))
+        XCTAssertTrue(adapter.contains("func acquireLiveTranscriptionRuntime("))
+        XCTAssertTrue(adapter.contains("func acquireResidentLiveTranscriptionRuntime()"))
+        for recorder in [start, syntheticStart] {
+            XCTAssertTrue(recorder.contains("services.acquireResidentLiveTranscriptionRuntime()"))
+            XCTAssertTrue(recorder.contains("services.acquireLiveTranscriptionRuntime()"))
+            XCTAssertFalse(recorder.contains("services.acquireLiveSpeechRuntime()"))
+        }
         XCTAssertTrue(attacher.contains("await runtime?.finish()"))
         XCTAssertTrue(attacher.contains("await runtime.finish()"))
-        for borrower in [dictation, recovery, benchmark] {
+        XCTAssertTrue(dictation.contains("services.acquireLiveTranscriptionRuntime(for: .dictation)"))
+        XCTAssertFalse(dictation.contains("services.acquireLiveSpeechRuntime()"))
+        for borrower in [recovery, benchmark] {
             XCTAssertTrue(borrower.contains("services.acquireLiveSpeechRuntime("))
             XCTAssertTrue(borrower.contains("services.finishLiveSpeechRuntime("))
         }
@@ -534,7 +543,7 @@ extension ArchitectureDependencyTests {
             "struct MLXRuntimeLoad",
             "struct MLXRuntimeLease",
             "mlxSummaryRuntime.respondPrepared(",
-            "Task.sleep(for: .seconds(120))",
+            "modelIdleReleaseScheduler.schedule(.language",
         ] {
             XCTAssertTrue(
                 adapter.contains(transition),

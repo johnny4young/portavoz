@@ -138,11 +138,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testAskConversationAnswersAndSeeksToExactCitation"),
         test_id(
             "LibraryUITests",
-            "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence",
-        ),
-        test_id(
-            "LibraryUITests",
-            "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence",
+            "testAskConfirmedMemoryLoadsPersonCommitmentsBlockersAndBothCitations",
         ),
         test_id(
             "LibraryUITests",
@@ -296,6 +292,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "meeting-correction": (
         test_id(
             "MeetingDetailUITests",
+            "testCompactTranscriptCorrectionCanReachItsOwnAction",
+        ),
+        test_id(
+            "MeetingDetailUITests",
             "testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo",
         ),
         test_id(
@@ -433,9 +433,25 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "SettingsUITests",
             "testIntelligencePaneExplicitlyPreparesSemanticSearch",
         ),
+        test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
+        test_id("SettingsUITests", "testAppleSpeechInspectionFailureOffersExplicitRetry"),
         test_id("SettingsUITests", "testIntelligencePaneCreatesACustomStructure"),
     ),
+    "dictation": (
+        test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
+        test_id("SettingsUITests", "testAppleSpeechInspectionFailureOffersExplicitRetry"),
+        test_id("DictationUITests", "testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart"),
+        test_id("DictationUITests", "testDictationPanelCancelsAndRestartsWithoutGlobalInput"),
+        test_id("DictationUITests", "testMicrophoneDenialRemainsRecoverableWithoutOpeningAudio"),
+        test_id("DictationUITests", "testMissingMicrophoneAudioShowsFallbackAndAllowsRestart"),
+        test_id("DictationUITests", "testPreparingDictationCanCancelWithoutAListeningClaim"),
+        test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
+        test_id("SettingsUITests", "testDictationRecoversShortcutConflictAndRefreshesHelp"),
+        test_id("SettingsUITests", "testDictationRepairsCorruptShortcutWithoutLeavingSettings"),
+    ),
     "settings-audio": (
+        test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
+        test_id("SettingsUITests", "testAppleSpeechInspectionFailureOffersExplicitRetry"),
         test_id("SettingsUITests", "testAudioPaneOffersCaptureSourceControls"),
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
         test_id("SettingsUITests", "testDictationRecoversShortcutConflictAndRefreshesHelp"),
@@ -457,6 +473,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
 }
 
 ALL_TESTS = tuple(dict.fromkeys(test for tests in FEATURE_TESTS.values() for test in tests))
+# Needs a user-granted Accessibility decision; run only via test-ui-native-dictation.
+PERMISSION_GATED_TESTS = frozenset({
+    test_id("DictationUITests", "testNativeInserterUsesDisposableReceiverAndClipboard"),
+})
 ALL_FEATURES = frozenset(FEATURE_TESTS)
 MEETING_FEATURES = frozenset(
     feature
@@ -544,6 +564,8 @@ APUNTADOR_LEAK_UI_FEATURES = frozenset({
 })
 
 RETIRED_DUPLICATE_TESTS = frozenset({
+    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence"),
+    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence"),
     test_id("SkillsSettingsUITests", "testSkillActivityRefreshPreservesTheExpandedCurrentScope"),
     test_id("SkillsSettingsUITests", "testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest"),
     test_id("InsightsUITests", "testInsightsRendersHeatmap"),
@@ -597,6 +619,7 @@ FEATURE_SOURCE_SENTINELS: dict[str, str] = {
     "settings-transfer": "Sources/portavoz-app/SettingsTransferSection.swift",
     "production-sync": "Sources/portavoz-app/ProductionSyncQualificationRunner.swift",
     "settings-intelligence": "Sources/portavoz-app/SemanticSearchPreparationModel.swift",
+    "dictation": "Sources/portavoz-app/DictationController.swift",
     "settings-audio": "Sources/portavoz-app/AudioSection.swift",
     "settings-voice": "Sources/portavoz-app/SettingsVoiceSection.swift",
     "public-showcase": "Sources/portavoz-app/AppServices+Showcase.swift",
@@ -613,6 +636,10 @@ NO_UI_PREFIXES = (
     "packaging/",
 )
 NO_UI_FILES = {
+    "Fixtures/DictationValidation/README.md",
+    "Fixtures/DictationValidation/public-synthetic-v1.json",
+    # Only the headless --bench-live mode and the CLI call it; unit tests own it.
+    "Sources/TranscriptionKit/LiveTranscriptionBench.swift",
     ".gitignore",
     ".swiftlint.yml",
     "AGENTS.md",
@@ -623,7 +650,6 @@ NO_UI_FILES = {
     "LICENSE",
     "README.md",
     "SECURITY.md",
-    "Package.resolved",
 }
 
 
@@ -719,8 +745,12 @@ def app_features(filename: str) -> set[str]:
         return {"automation-entry", "commitment-radar"}
     if lowered == "appservices+meetingsync.swift":
         return {"settings-data"}
+    if lowered == "microphoneinputselection.swift":
+        return {"dictation", "recording-recovery", "settings-audio"}
+    if lowered == "appservices+settingstransfer.swift":
+        return {"settings-transfer", "dictation"}
     if lowered in {
-        "appportablesettingsstore.swift", "appservices+settingstransfer.swift",
+        "appportablesettingsstore.swift",
         "portablesettings.swift", "portablesettingstransfer.swift", "portablesettingsfile.swift",
         "settingstransfermodel.swift", "settingstransfersection.swift",
     }:
@@ -728,7 +758,7 @@ def app_features(filename: str) -> set[str]:
     if lowered in {"appservices.swift", "portavozapp.swift"}:
         # Process composition/startup changes need one deterministic canary per
         # route, not every feature permutation behind those destinations.
-        return {"background-work", "launch-recovery", "main-shell", "menu-bar-brief"}
+        return {"background-work", "launch-recovery", "main-shell", "menu-bar-brief", "dictation"}
     if "commitmentreminder" in lowered:
         return {"commitment-radar", "meeting-commitments"}
     if any(token in lowered for token in (
@@ -739,16 +769,19 @@ def app_features(filename: str) -> set[str]:
         return {"commitment-radar"}
     if any(token in lowered for token in ("l10n", "applanguage")):
         return set(ALL_FEATURES)
+    if any(token in lowered for token in ("applespeech", "livespeechselection")):
+        return {"dictation", "settings-intelligence", "recording-recovery"}
+    if "livetranscriptionattacher" in lowered:
+        return {"recording-recovery"}
     if "showcase" in lowered:
         return {"public-showcase"}
-    # Before the generic "section"/"settings" buckets: dictation UI lives in
-    # the Audio pane, and its system-wide surface (triggers, paste) has no
-    # other XCUITest-reachable evidence.
+    # Dictation owns controller/panel and native delivery journeys, not just
+    # the Settings controls. Keep this ahead of generic presentation buckets.
     if any(
         token in lowered
         for token in ("dictation", "mousebutton", "mouseptt", "hotkey", "textinserter")
     ):
-        return {"settings-audio"}
+        return {"dictation"}
     if "semanticsearchpreparation" in lowered:
         return {"settings-intelligence"}
     if any(token in lowered for token in ("ask", "commandpalette")):
@@ -780,7 +813,7 @@ def app_features(filename: str) -> set[str]:
     if any(token in lowered for token in ("library", "trash", "voicemix")):
         return {"library"}
     if "menubar" in lowered:
-        return {"menu-bar-brief"}
+        return {"menu-bar-brief", "dictation"}
     if any(token in lowered for token in (
         "standingskill", "standingpremeetingbriefsupervisor"
     )):
@@ -1074,7 +1107,7 @@ def lower_layer_features(path: str) -> set[str]:
     if "stoprecording" in lowered or "startrecording" in lowered:
         return {"library", "recording-recovery"}
     if any(token in lowered for token in ("dictation", "mouseptt")):
-        return {"settings-audio"}
+        return {"dictation"}
     if "subtitle" in lowered:
         return {"meeting-export"}
     if "recap" in lowered:
@@ -1123,6 +1156,11 @@ def select_paths(paths: Iterable[str]) -> Selection:
         # Independent of whichever product selection branch handles the path.
         interruption_controls = interruption_controls or requires_interruption_controls(path)
 
+        if path == "Package.resolved":
+            selected.update(HARNESS_TESTS)
+            reasons.append(f"{path}: complete English dependency fallback")
+            continue
+
         if path == "Resources/Localization/Portavoz/Localizable.xcstrings":
             selected.update(HARNESS_TESTS)
             locales.add("es")
@@ -1133,6 +1171,13 @@ def select_paths(paths: Iterable[str]) -> Selection:
             selected.update(HARNESS_TESTS)
             locales.add("es")
             reasons.append(f"{path}: complete bilingual shared-harness fallback")
+            continue
+
+        if path == "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift":
+            # The layout decides which Meeting Detail content exists for every
+            # journey that opens a meeting, not only the Meeting Detail suite.
+            selected.update(HARNESS_TESTS)
+            reasons.append(f"{path}: complete English Meeting Detail layout fallback")
             continue
 
         if path in APUNTADOR_LEAK_EVIDENCE_FILES:
@@ -1170,6 +1215,11 @@ def select_paths(paths: Iterable[str]) -> Selection:
             )
             continue
 
+        if path.startswith("Tests/PortavozDictationReceiver/"):
+            selected.update(feature_tests({"dictation"}))
+            reasons.append(f"{path}: native dictation receiver contract")
+            continue
+
         if path == "Tests/PortavozUITests/FeatureUITestHandshakeSupport.swift":
             selected.update(feature_tests({"ask", "settings-skills"}))
             reasons.append(f"{path}: Ask and Skills handshake contracts")
@@ -1203,15 +1253,18 @@ def select_paths(paths: Iterable[str]) -> Selection:
             reasons.append(f"{path}: {', '.join(sorted(features))}")
             continue
 
+        # CLI and reviewed test-only corpus paths cannot alter the app UI.
+        # Check them before generic Sources/*.swift: the latter otherwise
+        # swallows CLI.swift into the unknown-production full fallback.
+        if path.startswith(NO_UI_PREFIXES) or path in NO_UI_FILES or path.startswith(".github/") or path.startswith("scripts/"):
+            continue
+
         if path.startswith("Sources/") and path.endswith(".swift"):
             features = lower_layer_features(path)
             if not features:
                 continue
             selected.update(feature_tests(features))
             reasons.append(f"{path}: {', '.join(sorted(features))}")
-            continue
-
-        if path.startswith(NO_UI_PREFIXES) or path in NO_UI_FILES or path.startswith(".github/") or path.startswith("scripts/"):
             continue
 
         # Unknown build/configuration changes may alter the executable even if
@@ -1275,7 +1328,7 @@ def discovered_test_catalog(root: Path) -> set[str]:
 
 
 def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> None:
-    expected = set(ALL_TESTS)
+    expected = set(ALL_TESTS) | PERMISSION_GATED_TESTS
     discovered = discovered_test_catalog(root)
     missing = sorted(discovered - expected)
     stale = sorted(expected - discovered)
@@ -1288,6 +1341,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         feature for feature, tests in FEATURE_TESTS.items() if not tests
     )
     retired = sorted(discovered & RETIRED_DUPLICATE_TESTS)
+    permission_overlap = sorted(set(ALL_TESTS) & PERMISSION_GATED_TESTS)
     sentinel_mismatch = sorted(ALL_FEATURES ^ FEATURE_SOURCE_SENTINELS.keys())
     orphan_scopes: list[str] = []
     for feature, path in FEATURE_SOURCE_SENTINELS.items():
@@ -1298,6 +1352,20 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         mapped = app_features(source.name)
         if feature not in mapped or mapped == set(ALL_FEATURES):
             orphan_scopes.append(f"{feature} ({path})")
+
+    # A no-UI fixture must stay unreachable from the app and its UI tests.
+    no_ui_fixture_dirs = sorted({
+        path.rsplit("/", 1)[0] for path in NO_UI_FILES if path.startswith("Fixtures/")
+    })
+    reachable_fixtures: list[str] = []
+    for tree in ("Sources", "Tests/PortavozUITests"):
+        for source in sorted((root / tree).rglob("*.swift")):
+            if source.relative_to(root).as_posix().startswith(NO_UI_PREFIXES):
+                continue
+            text = source.read_text(encoding="utf-8")
+            for directory in no_ui_fixture_dirs:
+                if directory.split("/", 1)[1] in text:
+                    reachable_fixtures.append(f"{directory} ({source.relative_to(root)})")
 
     runtime_budget_errors: list[str] = []
     if runtime_budget_required:
@@ -1327,14 +1395,37 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
                     f"runtime budget count {budget_count!r} != {len(ALL_TESTS)}"
                 )
 
+        native_budget_path = root / "docs/evidence/ui-test-native-dictation-runtime-budget.json"
+        if not native_budget_path.is_file():
+            runtime_budget_errors.append(
+                f"missing {native_budget_path.relative_to(root)}"
+            )
+        else:
+            native_budget = json.loads(native_budget_path.read_text(encoding="utf-8"))
+            native_ids = set(native_budget.get("testBudgetsSeconds", {}))
+            expected_native_ids = {
+                "/".join(selector.split("/")[1:]) + "()"
+                for selector in PERMISSION_GATED_TESTS
+            }
+            if native_ids != expected_native_ids:
+                runtime_budget_errors.append(
+                    "permission-gated runtime budgets do not match their catalog"
+                )
+            if native_budget.get("catalog", {}).get("expectedCaseCount") != len(PERMISSION_GATED_TESTS):
+                runtime_budget_errors.append(
+                    "permission-gated runtime budget count is stale"
+                )
+
     if (
         missing
         or stale
         or duplicates
         or empty_scopes
         or retired
+        or permission_overlap
         or sentinel_mismatch
         or orphan_scopes
+        or reachable_fixtures
         or runtime_budget_errors
     ):
         details = []
@@ -1348,10 +1439,14 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
             details.append("empty feature scopes: " + ", ".join(empty_scopes))
         if retired:
             details.append("known duplicate tests returned: " + ", ".join(retired))
+        if permission_overlap:
+            details.append("permission-gated tests in hosted catalog: " + ", ".join(permission_overlap))
         if sentinel_mismatch:
             details.append("feature/source sentinel mismatch: " + ", ".join(sentinel_mismatch))
         if orphan_scopes:
             details.append("orphan feature scopes: " + ", ".join(orphan_scopes))
+        if reachable_fixtures:
+            details.append("no-UI fixtures reachable from UI sources: " + ", ".join(reachable_fixtures))
         details.extend(runtime_budget_errors)
         raise RuntimeError("UI-test scope catalog is stale; " + "; ".join(details))
 
