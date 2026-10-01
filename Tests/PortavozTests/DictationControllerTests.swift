@@ -102,6 +102,7 @@ final class DictationControllerTests: XCTestCase {
                 let finished = await awaitEventually { harness.finishes == 1 }
                 XCTAssertTrue(finished, "A failed microphone must release its exact runtime")
                 XCTAssertTrue(harness.insertions.isEmpty, "A partial after capture failure must not be pasted")
+                assertInterrupted(harness)
                 guard case .failed = harness.controller.phase else {
                     XCTFail("Unexpected source cancellation is capture failure, not successful EOF")
                     continue
@@ -123,6 +124,7 @@ final class DictationControllerTests: XCTestCase {
             let released = await awaitEventually { harness.finishes == 1 }
             XCTAssertTrue(released, "Unexpected EOF must release the runtime")
             XCTAssertTrue(harness.insertions.isEmpty, "EOF alone is not permission to paste")
+            assertInterrupted(harness)
             guard case .failed = harness.controller.phase else {
                 XCTFail("Unexpected EOF after a partial must be an actionable failure")
                 continue
@@ -145,6 +147,7 @@ final class DictationControllerTests: XCTestCase {
             let released = await awaitEventually { harness.finishes == 1 }
             XCTAssertTrue(released)
             XCTAssertTrue(harness.insertions.isEmpty, "The pending tail must not authorize early EOF")
+            assertInterrupted(harness)
             guard case .failed = harness.controller.phase else {
                 XCTFail("Early EOF during Stop tail must remain an actionable failure")
                 continue
@@ -193,6 +196,7 @@ final class DictationControllerTests: XCTestCase {
                 let released = await awaitEventually { harness.finishes == 1 }
                 XCTAssertTrue(released, "Retire the source and release its runtime without a user Stop")
                 XCTAssertTrue(harness.insertions.isEmpty)
+                assertInterrupted(harness)
             }
         }
     }
@@ -233,6 +237,7 @@ final class DictationControllerTests: XCTestCase {
                     XCTAssertEqual(harness.insertions, [text], "The exact capacity remains usable")
                 } else {
                     XCTAssertTrue(harness.insertions.isEmpty, "Chunk 129 must not silently evict prior audio")
+                    assertInterrupted(harness)
                     guard case .failed = harness.controller.phase else {
                         XCTFail("Overflow needs visible failure, not a successfully pasted suffix")
                         continue
@@ -257,6 +262,7 @@ final class DictationControllerTests: XCTestCase {
             let finished = await awaitEventually { harness.finishes == 1 }
             XCTAssertTrue(finished)
             XCTAssertTrue(harness.insertions.isEmpty, "Inspect authoritative producer state before delivery")
+            assertInterrupted(harness)
             guard case .failed = harness.controller.phase else {
                 XCTFail("A failed final report cannot become successful stream completion")
                 continue
@@ -375,6 +381,17 @@ final class DictationControllerTests: XCTestCase {
             try? await Task.sleep(for: .milliseconds(5))
         }
         return condition()
+    }
+}
+
+extension DictationControllerTests {
+    func assertInterrupted(
+        _ harness: DictationControllerHarness, file: StaticString = #filePath, line: UInt = #line
+    ) {
+        XCTAssertEqual(
+            harness.controller.phase, .failed(DictationMicrophoneReadiness.Failure.interrupted.message),
+            file: file, line: line)
+        XCTAssertEqual(harness.measurements.map(\.outcome), [.pipelineFailed], file: file, line: line)
     }
 }
 
