@@ -187,6 +187,12 @@ single-owner assumption is not a cross-process recovery lease. Side-by-side
 validation must use separate disposable copies; concurrent production owners and
 their recovery interaction are not qualified by the single-process tests.
 
+`make install` now stops after signature verification and registration, without
+opening the default library (D556). Explicit disposable validation uses
+`-use-temp-store`. This removes installation-triggered startup, not the shared
+database identity of an ordinary manual Dev launch. It does not retroactively
+prove an earlier library unchanged or qualify concurrent production owners.
+
 ### Source-size and lexical reuse boundaries
 
 The 2,400-line test-file check is a file readability limit, not a limit on an
