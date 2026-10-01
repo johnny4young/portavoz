@@ -285,9 +285,10 @@ A cache miss or eviction takes the normal cold path. A failed build/test is not
 retried cold to manufacture a pass. Save occurs only after the full suite passes
 and only at or below a 6 GiB on-disk graph limit; oversized graphs remain uncached.
 The segment download timeout is two minutes. No repository cache billing or
-quota setting changes, and no model, user library, secrets, UI result bundles or
-release products are cached. The ordinary unprivileged Swift test build is not
-an artifact suitable for release.
+quota setting changes. Downloaded model caches, the user library, secrets, UI
+result bundles and release products are outside the cached path. Checked-in
+build resources, including the bundled classifier, remain part of `.build`.
+The ordinary unprivileged Swift test build is not an artifact suitable for release.
 
 `Tests/Tooling/test_ci_swift_cache.py` exercises each identity input, lane/host
 separation, malformed or unavailable tool identity, exact CLI output, missing
