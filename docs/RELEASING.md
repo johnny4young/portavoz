@@ -324,6 +324,13 @@ source.
 `make app`, `make install`, and XCUITest intentionally use
 `packaging/portavoz-local.entitlements` when no profile is supplied. They stay
 fully local and the Sync pane reports that the build is not provisioned.
+`make install` verifies and registers the Dev bundle without opening it. For
+disposable validation, launch explicitly with
+`open -na "/Applications/Portavoz Dev.app" --args -use-temp-store`. An ordinary
+manual Dev launch shares the normal default SQLite URL with release; a different
+bundle identity does not isolate that library. Do not use a normal launch to
+qualify an installation or run automated tests against real data.
+
 `make install` changes the bundle identifier to `app.portavoz.mac.dev`, so it
 now rejects `PORTAVOZ_PROVISIONING_PROFILE`: a profile for the production App ID
 cannot authorize that development identity.

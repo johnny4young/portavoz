@@ -1,5 +1,15 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
+`test_dev_install` executes the real Makefile installation recipe in a Unicode,
+space-containing scratch directory with inert external-command adapters. It
+checks re-sign → distribution verification → Dev-only copy → installed verification
+→ registration, rejects a production profile before effects, and injects failures
+at both verification boundaries. An accidental `open` fails the fixture rather
+than starting an app. This validates command ownership and absence of automatic
+launch, not real signing, LaunchServices registration or live-library unchangedness.
+The native tool path defaults to Apple's `lsregister`; its Make override supplies
+the inert registration boundary. Real-app XCUITest remains a separate gate.
+
 Optional Apple Speech live routing (D554) has three distinct evidence layers.
 Pure readiness tests distinguish fixed en/es, unsupported, equivalent installed
 locales, absent assets and invalid ranges. Actual controller/attacher tests feed
