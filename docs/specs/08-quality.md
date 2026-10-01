@@ -278,8 +278,9 @@ counts or cached success receipts are introduced. The fixed OS/toolchain matrix,
 iOS compile, strict lint, Linux policy tests, UI scopes/locales/assertions,
 first-attempt rules and runtime budgets are unchanged. Every `main` push uses a
 lookup-only cache probe and **still compiles cold**; it can publish a successful
-seed for subsequent PRs. The service's normal merge-ref isolation applies to
-PR-created caches; no privileged trigger or broader token permission is added.
+seed for subsequent PRs. GitHub's [cache access rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache)
+keep PR-created caches scoped to their merge ref; no privileged trigger or
+broader token permission is added.
 A cache miss or eviction takes the normal cold path. A failed build/test is not
 retried cold to manufacture a pass. Save occurs only after the full suite passes
 and only at or below a 6 GiB on-disk graph limit; oversized graphs remain uncached.
@@ -318,6 +319,39 @@ coverage as savings, and do not rerun a failed gate as qualification. A first
 cold PR run seeds state but does not establish warm-hit performance. Queue delay
 and full UI duration remain independent costs; this change neither fixes runner
 capacity nor asserts a global percentage reduction in end-to-end CI latency.
+
+#### Local source-freshness comparison
+
+A single macOS 26.6.2 arm64 / Xcode 27 comparison on October 1, 2026 used the
+same Swift sources, complete test selection and warnings-as-errors flags. The
+cold graph was absent; system/SDK caches were not cleared. The restored graph
+traveled through a zstd archive, at the same absolute path, after refreshing
+checkout timestamps. Both qualified passes executed 3,328 XCTest with the same
+22 explicit skips and zero failures, plus four Swift Testing tests.
+
+| Observed boundary | Cold graph | Fingerprinted restore |
+|---|---:|---:|
+| Compiler-reported build | 82.50 s | 3.97 s |
+| XCTest execution | 212.150 s | 225.834 s |
+| Complete strict launcher wall time | 343.09 s | 244.09 s |
+| Archive restoration | — | 22.19 s |
+| Source fingerprint validation/restoration | — | 0.15 s |
+| Launcher plus restore/freshness overhead | 343.09 s | 266.43 s |
+
+The observed end-to-end reduction was 22.3%, not the much larger build-only
+percentage. Creating the approximately 1.9 GiB compressed seed took another
+28.18 s; saving is a cold-seed cost, not repeated on exact hits. Test execution
+variance remains visible rather than attributed to caching. This one local
+sample is not a hosted Xcode 26.6/26.3 measurement, network-transfer benchmark,
+release-performance qualification or end-to-end CI SLA.
+
+A plain graph restore without verified source timestamps rebuilt first-party
+inputs and did not consistently improve total local time. Its first run also
+caught a real architecture-document vocabulary violation; that receipt remains
+failed, the documentation was repaired, and subsequent complete passes did not
+waive or filter the assertion. Temporary production compiler errors and failing
+XCTest assertions established that restored state still rejects changed inputs;
+these negative controls are not passing feature tests.
 
 ### Scoped UI execution
 
