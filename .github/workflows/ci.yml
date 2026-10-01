@@ -37,11 +37,41 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Verify fixed Tahoe toolchain
         run: scripts/verify-ci-toolchain.sh 26 26.6
+      - name: Identify compatible Swift build state
+        id: swift_cache_key
+        run: python3 scripts/ci_swift_cache_key.py --lane build-and-test >> "$GITHUB_OUTPUT"
+      # Main always compiles cold. PRs may reuse compilation, never test results.
+      - name: Restore compatible Swift build state
+        id: swift_cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .build
+          key: ${{ steps.swift_cache_key.outputs.key }}
+          lookup-only: ${{ github.event_name != 'pull_request' }}
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: "2"
       # One invocation owns compilation and tests with identical flags. The
       # former build-then-test pair changed compiler arguments and could pay a
       # second package build while producing two different diagnostic modes.
       - name: Current-SDK build and complete test suite
         run: scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors
+      # Bound storage and save only after the complete suite succeeds. Oversize
+      # graphs stay cold; do not increase the repository's paid cache allowance.
+      - name: Check Swift cache size
+        id: swift_cache_size
+        if: steps.swift_cache.outputs.cache-hit != 'true'
+        run: |
+          size_kib="$(du -sk .build | awk '{print $1}')"
+          echo "Swift build cache: $size_kib KiB (limit 6291456 KiB)"
+          if (( size_kib <= 6291456 )); then
+            echo "save=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Save successful Swift build state
+        if: steps.swift_cache_size.outputs.save == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .build
+          key: ${{ steps.swift_cache_key.outputs.key }}
 
   sequoia-compatibility:
     needs: repository-hygiene
@@ -56,8 +86,38 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Verify fixed Sequoia toolchain
         run: scripts/verify-ci-toolchain.sh 15 26.3
+      - name: Identify compatible Swift build state
+        id: swift_cache_key
+        run: python3 scripts/ci_swift_cache_key.py --lane sequoia-compatibility >> "$GITHUB_OUTPUT"
+      # Main always compiles cold. PRs may reuse compilation, never test results.
+      - name: Restore compatible Swift build state
+        id: swift_cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .build
+          key: ${{ steps.swift_cache_key.outputs.key }}
+          lookup-only: ${{ github.event_name != 'pull_request' }}
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: "2"
       - name: Build and test on Sequoia
         run: scripts/run-swift-tests.sh
+      # Bound storage and save only after the complete suite succeeds. Oversize
+      # graphs stay cold; do not increase the repository's paid cache allowance.
+      - name: Check Swift cache size
+        id: swift_cache_size
+        if: steps.swift_cache.outputs.cache-hit != 'true'
+        run: |
+          size_kib="$(du -sk .build | awk '{print $1}')"
+          echo "Swift build cache: $size_kib KiB (limit 6291456 KiB)"
+          if (( size_kib <= 6291456 )); then
+            echo "save=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Save successful Swift build state
+        if: steps.swift_cache_size.outputs.save == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .build
+          key: ${{ steps.swift_cache_key.outputs.key }}
 
   ios-portability:
     needs: repository-hygiene

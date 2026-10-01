@@ -247,6 +247,65 @@ gate that runs before macOS allocation). Each behavioral Swift lane owns one
 test invocation, so compilation and tests use the same flags instead of a
 build/test pair that can compile twice. The iOS portability lane owns only its
 sequential destination compiles and cannot claim runtime/device behavior.
+
+### Compatible Swift build reuse, not test-result reuse (D555)
+
+The current-SDK and Sequoia jobs restore only `.build` with commit-pinned
+`actions/cache` restore/save actions. `scripts/ci_swift_cache_key.py` binds each
+immutable seed to its lane, absolute workspace and developer paths, CPU
+architecture, macOS version/build, runner image/version, Xcode and Swift build,
+macOS SDK path/build, `Package.swift`, `Package.resolved`, the CI workflow, test
+launcher, toolchain verifier and cache-key implementation. Unknown lanes,
+missing inputs, failed/empty tool reads and timeouts fail key generation; no
+broad key substitutes for an unknown identity. There are no restore prefixes
+and no per-commit cache copies. A dependency or build-policy change starts cold.
+Ordinary source changes retain the seed and rely on SwiftPM's normal build graph
+invalidation, with fresh checkout timestamps left intact, not reset to Git dates.
+
+Both complete test invocations are unconditional, including current-SDK
+warnings-as-errors. No `--skip-build`, test filtering, retries, smaller test
+counts or cached success receipts are introduced. The fixed OS/toolchain matrix,
+iOS compile, strict lint, Linux policy tests, UI scopes/locales/assertions,
+first-attempt rules and runtime budgets are unchanged. Every `main` push uses a
+lookup-only cache probe and **still compiles cold**; it can publish a successful
+seed for subsequent PRs. The service's normal merge-ref isolation applies to
+PR-created caches; no privileged trigger or broader token permission is added.
+A cache miss or eviction takes the normal cold path. A failed build/test is not
+retried cold to manufacture a pass. Save occurs only after the full suite passes
+and only at or below a 6 GiB on-disk graph limit; oversized graphs remain uncached.
+The segment download timeout is two minutes. No repository cache billing or
+quota setting changes, and no model, user library, secrets, UI result bundles or
+release products are cached. The ordinary unprivileged Swift test build is not
+an artifact suitable for release.
+
+`Tests/Tooling/test_ci_swift_cache.py` exercises each identity input, lane/host
+separation, malformed or unavailable tool identity, exact CLI output, missing
+lockfiles, unconditional test ownership, cold-main policy, and the actual shell
+size gate at/beyond its boundary and on measurement failure. Repository hygiene
+owns these tests before either macOS test lane starts. These tooling tests do
+not replace a real compiler invalidation check.
+
+For a matched local check, use a disposable checkout: run the strict launcher
+from a missing `.build`; preserve its graph with timestamps; refresh tracked
+source timestamps as a new checkout would; restore the graph at the identical
+absolute path; rerun the **same complete command**. Then introduce a temporary
+compile error and a failing test separately against restored state, require
+nonzero exits, restore the source bytes and run the strict suite cleanly again.
+Never use the release app or its library. Record the graph/archive size, archive
+restore cost, `Build complete` duration, full test totals/skips and wall time;
+an ordinary second incremental build is not a simulated hosted cache restore.
+
+For hosted comparison, inspect `gh run view <run-id> --json headSha,jobs,url`
+and the build log, separating job start/completion from queued workflow time.
+Compare cold versus exact cache-hit jobs on the same OS, toolchain, runner image,
+flags and test catalogue. Include restore/save overhead, do not credit reduced
+coverage as savings, and do not rerun a failed gate as qualification. A first
+cold PR run seeds state but does not establish warm-hit performance. Queue delay
+and full UI duration remain independent costs; this change neither fixes runner
+capacity nor asserts a global percentage reduction in end-to-end CI latency.
+
+### Scoped UI execution
+
 `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates macOS UI runners only when product presentation is
 affected: one job builds the exact products once into an `xctestproducts`

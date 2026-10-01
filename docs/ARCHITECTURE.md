@@ -5440,6 +5440,16 @@ fixed SHA-256 digests instead of floating Homebrew state.
 Third-party GitHub Actions are pinned to immutable full commit SHAs with their
 human-readable versions in comments; repository hygiene rejects mutable tags.
 
+The two complete Swift test lanes may restore a compatible SwiftPM `.build`
+graph on pull requests (D555). Cache identity binds the lane, absolute workspace,
+architecture, macOS build, runner image, Xcode/Swift/macOS SDK and build-policy
+inputs, including the dependency lock. There is no cross-identity restore prefix,
+source timestamp rewriting, cached test verdict or conditional test execution.
+Every push to `main` keeps a cold graph; successful bounded graphs can seed later
+PRs. UI products, iOS portability, release/performance evidence and private model
+or library state are outside this cache. The quality spec owns measurement and
+invalidation checks; a hit alone is not evidence of a faster or passing build.
+
 Pull-request UI evidence is selected deterministically from changed paths.
 Known presentation and application files map to feature-level XCUITest
 selectors; localization and shared-harness changes expand to the complete
