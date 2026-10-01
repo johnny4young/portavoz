@@ -6,23 +6,40 @@ import TranscriptionKit
 
 extension AppServices {
     func makeDictationSessionDependencies() -> DictationSessionDependencies {
-        guard usesTemporaryMeetingStore else { return .live(services: self) }
+        let beginCapture: () -> () -> Void = { [weak self] in
+            self?.beginDictationCapture() ?? {}
+        }
         // Temporary composition must never open real audio or prompt for
         // Accessibility just because a test clicked the production menu item.
-        return DictationUITestFixture.dependencies(fixture: dictationUITestFixture)
+        return usesTemporaryMeetingStore
+            ? DictationUITestFixture.dependencies(
+                fixture: dictationUITestFixture, beginCapture: beginCapture)
+            : .live(services: self, beginCapture: beginCapture)
     }
 }
 
-struct DictationUITestFixture: Sendable {
+@MainActor
+final class DictationUITestFixture {
     let text: String
     let recoversDestination: Bool
     let deliveryOutcome: DictationDeliveryOutcome?
+    var presentsRecoveryControls: Bool { recoversDestination || deliveryOutcome == .dispatched }
+    let streamsDeltas: Bool
+    let deniesMicrophoneOnce: Bool
+    let missesAudioOnce: Bool
+    let holdsPermission: Bool
+    private var permissionRequests = 0
+    private var sourceCreations = 0
 
     init?(arguments: [String], usesTemporaryStore: Bool) {
         guard usesTemporaryStore, arguments.contains("-seed-dictation") else { return nil }
         recoversDestination = arguments.contains("-seed-dictation-recovery")
         deliveryOutcome = arguments.contains("-seed-dictation-delivery")
             ? (arguments.contains("-seed-dictation-verified") ? .verified : .dispatched) : nil
+        streamsDeltas = arguments.contains("-seed-dictation-streaming")
+        deniesMicrophoneOnce = arguments.contains("-seed-dictation-microphone-denied")
+        missesAudioOnce = arguments.contains("-seed-dictation-microphone-no-audio")
+        holdsPermission = arguments.contains("-seed-dictation-preparation-held")
         text = arguments.contains("-seed-dictation-english")
             ? "Don't delete these notes."
             : "No borres estas notas."
@@ -30,7 +47,8 @@ struct DictationUITestFixture: Sendable {
 
     @MainActor
     static func dependencies(
-        fixture: Self?, environment: [String: String] = ProcessInfo.processInfo.environment
+        fixture: DictationUITestFixture?, beginCapture: @escaping () -> () -> Void,
+        environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> DictationSessionDependencies {
         let boardName = DictationNativeUITestFixture.validPasteboardName(
             environment[DictationNativeUITestFixture.environmentKey])
@@ -38,13 +56,27 @@ struct DictationUITestFixture: Sendable {
         var copyAttempts = 0
         var clockTick = 0.0
         return DictationSessionDependencies(
+            authorizeMicrophone: {
+                guard let fixture else { return false }
+                fixture.permissionRequests += 1
+                if fixture.holdsPermission {
+                    do { try await Task.sleep(for: .seconds(3_600)) } catch { return false }
+                }
+                return !(fixture.deniesMicrophoneOnce && fixture.permissionRequests == 1)
+            },
             makeMicrophone: {
-                .init(source: DictationFixtureMicrophone(), warmUp: {})
+                if let fixture { fixture.sourceCreations += 1 }
+                return .init(
+                    source: DictationFixtureMicrophone(
+                        emitsAudio: !(fixture?.missesAudioOnce == true && fixture?.sourceCreations == 1)),
+                    warmUp: {},
+                    usesSystemFallback: fixture?.missesAudioOnce == true)
             },
             acquireRuntime: {
                 guard let fixture else { throw CancellationError() }
                 return LiveTranscriptionRuntime(
-                    engine: DictationFixtureEngine(text: fixture.text), completion: {})
+                    engine: DictationFixtureEngine(text: fixture.text, streamsDeltas: fixture.streamsDeltas),
+                    completion: {})
             },
             canInsert: { fixture != nil },
             captureDestination: {
@@ -62,7 +94,7 @@ struct DictationUITestFixture: Sendable {
             copyText: { text in
                 copyAttempts += 1
                 // Deliberate first failure; later attempts use only a named board.
-                guard fixture?.recoversDestination == true, copyAttempts > 1, let boardName else { return false }
+                guard fixture?.presentsRecoveryControls == true, copyAttempts > 1, let boardName else { return false }
                 return TextInserter.copy(text, to: NSPasteboard(name: .init(boardName)))
             },
             defaults: .standard,
@@ -70,19 +102,25 @@ struct DictationUITestFixture: Sendable {
                 guard fixture?.recoversDestination == true || fixture?.deliveryOutcome != nil else { return Date() }
                 defer { clockTick += 1 }
                 return Date(timeIntervalSince1970: clockTick)
-            })
+            },
+            beginCapture: beginCapture)
     }
 }
 
 private actor DictationFixtureMicrophone: AudioCaptureSource {
     nonisolated let channel = AudioChannel.microphone
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
+    private let emitsAudio: Bool
+
+    init(emitsAudio: Bool) { self.emitsAudio = emitsAudio }
 
     func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
         let (stream, continuation) = AsyncThrowingStream.makeStream(of: AudioChunk.self)
         self.continuation = continuation
-        continuation.yield(AudioChunk(
-            channel: .microphone, samples: [0.1, -0.1], sampleRate: 16_000, timestamp: 0))
+        if emitsAudio {
+            continuation.yield(AudioChunk(
+                channel: .microphone, samples: [0.1, -0.1], sampleRate: 16_000, timestamp: 0))
+        }
         return stream
     }
 
@@ -94,6 +132,7 @@ private actor DictationFixtureMicrophone: AudioCaptureSource {
 
 private struct DictationFixtureEngine: TranscriptionEngine {
     let text: String
+    let streamsDeltas: Bool
     let descriptor = EngineDescriptor(
         id: "dictation-ui-fixture", displayName: "Dictation fixture",
         realTimeFactor: 0, runsOnDevice: true, approximateMemoryMB: 0)
@@ -101,7 +140,8 @@ private struct DictationFixtureEngine: TranscriptionEngine {
     func transcribe(
         _ audio: AsyncStream<AudioChunk>, hints: TranscriptionHints
     ) -> AsyncThrowingStream<TranscriptSegment, Error> {
-        let (stream, continuation) = AsyncThrowingStream.makeStream(of: TranscriptSegment.self)
+        let (stream, continuation) = AsyncThrowingStream.makeStream(
+            of: TranscriptSegment.self, bufferingPolicy: .bufferingOldest(16))
         let task = Task {
             var emitted = false
             for await _ in audio {
@@ -111,6 +151,13 @@ private struct DictationFixtureEngine: TranscriptionEngine {
                     continuation.yield(TranscriptSegment(
                         meetingID: hints.meetingID ?? MeetingID(),
                         channel: .microphone, text: text, startTime: 0, endTime: 1))
+                    if streamsDeltas {
+                        for (delta, time) in [("Café", 8.0), ("C++", 8.2), (".", 8.4), ("Final", 16.0)] {
+                            continuation.yield(TranscriptSegment(
+                                meetingID: hints.meetingID ?? MeetingID(), channel: .microphone,
+                                text: delta, startTime: time, endTime: time + 0.1))
+                        }
+                    }
                 }
             }
             continuation.finish()

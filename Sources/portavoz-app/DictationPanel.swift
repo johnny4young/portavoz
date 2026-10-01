@@ -55,8 +55,10 @@ final class DictationPanelController {
 /// otherwise moves the panel again after every explicit re-show.
 private enum DictationPanelLayout {
     static func height(for phase: DictationController.Phase) -> CGFloat {
-        if case .recovery = phase { return 288 }
-        return 96
+        switch phase {
+        case .recovery, .dispatched: 288
+        default: 96
+        }
     }
 }
 
@@ -72,9 +74,9 @@ private struct DictationStripView: View {
             if case .recovery(let failure) = controller.phase {
                 DictationRecoveryView(controller: controller, failure: failure)
             } else if case .verified(let words) = controller.phase {
-                deliveryView(words, verified: true)
-            } else if case .dispatched(let words) = controller.phase {
-                deliveryView(words, verified: false)
+                verifiedDeliveryView(words)
+            } else if case .dispatched = controller.phase {
+                DictationUnverifiedDeliveryView(controller: controller)
             } else {
                 dictatingView
             }
@@ -96,7 +98,7 @@ private struct DictationStripView: View {
                     .accessibilityIdentifier("dictation-panel-state")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                if let target = controller.targetApp, controller.phase == .listening {
+                if let target = controller.targetApp, controller.isActive {
                     targetChip(target)
                 }
                 Spacer()
@@ -114,8 +116,16 @@ private struct DictationStripView: View {
                 .accessibilityLabel(L10n.text("Cancel dictation"))
                 .accessibilityIdentifier("dictation-panel-cancel")
             }
-            if controller.confirmedText.isEmpty && controller.partialText.isEmpty {
-                Text("Listening…")
+            if let notice = controller.microphoneNotice {
+                Text(notice)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("dictation-panel-microphone-notice")
+            }
+            if isFailed {
+                EmptyView()
+            } else if controller.confirmedText.isEmpty && controller.partialText.isEmpty {
+                Text(emptyCaptionHint)
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -137,18 +147,16 @@ private struct DictationStripView: View {
 
     /// The brief confirmation after insertion: N words → the target app,
     /// and the honest reassurance that nothing was stored.
-    private func deliveryView(_ words: Int, verified: Bool) -> some View {
+    private func verifiedDeliveryView(_ words: Int) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: verified ? PVSymbol.success : "paperplane.circle")
-                .foregroundStyle(verified ? Color.green : Color.orange)
+            Image(systemName: PVSymbol.success)
+                .foregroundStyle(.green)
                 .font(.title3)
             VStack(alignment: .leading, spacing: 1) {
-                Text(verified ? insertedTitle(words) : L10n.text("Sent — insertion not verified"))
+                Text(insertedTitle(words))
                     .accessibilityIdentifier("dictation-panel-delivery-status")
                     .font(.callout.weight(.medium))
-                Text(verified
-                     ? L10n.text("Nothing was saved in Portavoz.")
-                     : L10n.text("Check the destination before pasting again. Nothing was saved in Portavoz."))
+                Text("Nothing was saved in Portavoz.")
                     .accessibilityIdentifier("dictation-panel-delivery-detail")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -203,8 +211,14 @@ private struct DictationStripView: View {
         return false
     }
 
+    private var emptyCaptionHint: String {
+        controller.phase == .preparing ? L10n.text("Preparing microphone…") : L10n.text("Listening…")
+    }
+
     private var title: String {
         switch controller.phase {
+        case .preparing:
+            return L10n.text("Preparing dictation…")
         case .listening:
             return L10n.text("Dictating")
         case .failed(let message):

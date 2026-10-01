@@ -8,11 +8,13 @@ struct PortavozApp: App {
     @State private var launch: AppLaunchModel
     @AppStorage("menuBarEnabled") private var menuBarEnabled = true
     private let runsIsolatedBenchmark: Bool
+    private let usesDisposableStore: Bool
 
     init() {
         let process = ProcessInfo.processInfo
         runsIsolatedBenchmark = BenchMode.runsIsolatedBenchmark(
             arguments: process.arguments)
+        usesDisposableStore = process.arguments.contains("-use-temp-store")
         ProductionSyncProcessWatchdog.runIfRequested(
             arguments: process.arguments)
         BenchResourceProcessWatchdog.runIfRequested(
@@ -59,6 +61,11 @@ struct PortavozApp: App {
                     .portavozLocalized()
                     .frame(minWidth: 900, minHeight: 560)
                     .tint(PVDesign.accent)
+                    .background {
+                        if usesDisposableStore {
+                            UITestMainWindowCapture()
+                        }
+                    }
             }
         } defaultValue: {
             .primary
@@ -116,9 +123,11 @@ private struct AppLaunchRootView: View {
             if presentsMenuBarUITestFixture {
                 MenuBarContent(model: services.makeMenuBarModel())
                     .environment(services)
-                    // Match the real menu's top edge instead of centering its
-                    // actions under the bottom-anchored recovery panel.
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    // Recovery needs a separate hit region; other menu fixtures
+                    // keep their existing intrinsic-size presentation.
+                    .frame(
+                        maxHeight: services.dictationUITestFixture?.presentsRecoveryControls == true ? .infinity : nil,
+                        alignment: .top)
                     .task { await services.seedDemoIfRequested() }
             } else {
                 ContentView(services: services)

@@ -27,7 +27,7 @@ final class DictationDeliveryOutcomeTests: XCTestCase {
                 let delivered = await eventually { controller.controller.phase == expected }
                 XCTAssertTrue(delivered)
                 XCTAssertEqual(receiver.posts, 1)
-                XCTAssertTrue(controller.controller.recoveryText.isEmpty)
+                XCTAssertEqual(controller.controller.recoveryText, supported ? "" : text)
                 controller.controller.retryUndeliveredText()
                 XCTAssertNil(controller.controller.retryDeliveryTask)
                 XCTAssertEqual(receiver.posts, 1, "Delivery observation must reach the controller, not a fake success")
@@ -36,26 +36,74 @@ final class DictationDeliveryOutcomeTests: XCTestCase {
         }
     }
 
-    func testRestartRetiresTheDeliveryTimerWithoutClosingTheNewCapture() async {
+    func testUnacknowledgedOutputSurvivesFailedCopyAndAnotherTriggerWithoutResending() async {
+        let longText = String(String(repeating: "café ñ 1,25 ", count: 1_500).prefix(16_384)) + "X"
+        XCTAssertEqual(longText.utf16.count, 16_385)
+        for text in ["Don’t remove 0.5 no punctuation", "No borres café C++ 1.250,50 €", longText] {
+            let harness = DictationControllerHarness(text: text)
+            let receiver = TextReadbackHarness()
+            defer { harness.controller.cancel(); receiver.board.releaseGlobally() }
+            harness.set(false, forKey: DictationController.fillerFilterKey)
+            receiver.readbackAvailable = false
+            receiver.appliesPaste = false
+            var copies: [String] = []
+            var dependencies = harness.dependencies
+            dependencies.captureDestination = {
+                CapturedDictationDestination(name: "Unsupported receiver", canRetry: true, insert: receiver.insert)
+            }
+            dependencies.copyText = { text in copies.append(text); return copies.count > 1 }
+            harness.controller.toggle(using: dependencies)
+            let recognized = await eventually { harness.controller.partialText == text }
+            XCTAssertTrue(recognized)
+            harness.now = harness.now.addingTimeInterval(1)
+            harness.controller.toggle(using: dependencies)
+            let dispatched = await eventually { if case .dispatched = harness.controller.phase { true } else { false } }
+            XCTAssertTrue(dispatched)
+            XCTAssertEqual(harness.controller.recoveryText, text, "Posted does not mean received")
+            XCTAssertNil(harness.controller.dismissTask, "An unacknowledged result cannot silently expire")
+            harness.controller.copyPendingText()
+            XCTAssertEqual(harness.controller.copyStatus, .failed)
+            XCTAssertEqual(harness.controller.recoveryText, text)
+            harness.controller.copyPendingText()
+            XCTAssertEqual(harness.controller.copyStatus, .copied)
+            XCTAssertEqual(copies, [text, text], "Copy uses complete output, not the visible excerpt")
+            harness.controller.retryUndeliveredText()
+            harness.controller.toggle(using: dependencies)
+            XCTAssertEqual(harness.controller.recoveryText, text)
+            XCTAssertFalse(harness.controller.isActive)
+            XCTAssertEqual(harness.loads, 1)
+            XCTAssertEqual(receiver.posts, 1, "No implicit second paste or new capture")
+            harness.controller.cancel()
+            XCTAssertTrue(harness.controller.recoveryText.isEmpty)
+            XCTAssertEqual(harness.controller.phase, .idle)
+        }
+    }
+
+    func testRestartRetiresVerifiedFeedbackWithoutClosingTheNewCapture() async {
         let harness = DictationControllerHarness(text: "Do not remove the notes")
-        defer { harness.controller.cancel() }
-        harness.controller.toggle(using: harness.dependencies)
+        let receiver = TextReadbackHarness()
+        defer { harness.controller.cancel(); receiver.board.releaseGlobally() }
+        var dependencies = harness.dependencies
+        dependencies.captureDestination = {
+            CapturedDictationDestination(name: "Disposable receiver", canRetry: true, insert: receiver.insert)
+        }
+        harness.controller.toggle(using: dependencies)
         let partial = await eventually { !harness.controller.partialText.isEmpty }
         XCTAssertTrue(partial)
         harness.now = harness.now.addingTimeInterval(1)
-        harness.controller.toggle(using: harness.dependencies)
-        let sent = await eventually { harness.controller.phase == .dispatched(5) }
+        harness.controller.toggle(using: dependencies)
+        let sent = await eventually { harness.controller.phase == .verified(5) }
         XCTAssertTrue(sent)
         XCTAssertEqual(harness.finishes, 1, "The banner must not own the completed runtime")
         let retiringTimer = harness.controller.dismissTask
         XCTAssertNotNil(retiringTimer)
-        harness.controller.toggle(using: harness.dependencies)
+        harness.controller.toggle(using: dependencies)
         await retiringTimer?.value
         let restarted = await eventually { harness.loads == 2 && !harness.controller.partialText.isEmpty }
         XCTAssertTrue(restarted)
         XCTAssertEqual(harness.controller.phase, .listening)
         XCTAssertNil(harness.controller.dismissTask)
-        XCTAssertEqual(harness.insertions.count, 1)
+        XCTAssertEqual(receiver.posts, 1)
         harness.controller.cancel()
         let released = await eventually { harness.finishes == 2 }
         XCTAssertTrue(released)
@@ -66,11 +114,13 @@ final class DictationDeliveryOutcomeTests: XCTestCase {
         let arguments = ["-seed-dictation", "-seed-dictation-delivery", "-seed-dictation-verified"]
         XCTAssertNil(DictationUITestFixture(arguments: arguments, usesTemporaryStore: false))
         XCTAssertNil(DictationUITestFixture(arguments: Array(arguments.dropFirst()), usesTemporaryStore: true))
-        XCTAssertFalse(DictationUITestFixture.dependencies(fixture: nil).canInsert())
+        let unavailable = DictationUITestFixture.dependencies(fixture: nil, beginCapture: { {} })
+        XCTAssertFalse(unavailable.canInsert())
         for verified in [false, true] {
             let flags = verified ? arguments : Array(arguments.dropLast())
             let fixture = DictationUITestFixture(arguments: flags, usesTemporaryStore: true)
-            let destination = DictationUITestFixture.dependencies(fixture: fixture).captureDestination()
+            let dependencies = DictationUITestFixture.dependencies(fixture: fixture, beginCapture: { {} })
+            let destination = dependencies.captureDestination()
             let result = await destination.insert("Synthetic output")
             XCTAssertEqual(result, verified ? .verified : .dispatched)
         }

@@ -106,6 +106,7 @@ final class AutomationUITests: PortavozUITestCase {
 
         XCTAssertTrue(opened, "LaunchServices must deliver the production recording URL")
         assertVisibleRecording(in: app, route: "URL")
+        try app.requireDisposableMainWindowOnZeroScreen()
         attachScreenshot(of: app, named: "automation-visible-recording")
         app.terminate()
         XCTAssertTrue(
@@ -217,6 +218,7 @@ final class AutomationUITests: PortavozUITestCase {
             seedCommitmentRadar: true,
             simulateAppEntityRoute: route)
         app.launchPortavoz()
+        try app.requireDisposableMainWindowOnZeroScreen()
         XCTAssertTrue(
             app.waitForSeedFixtureReady(),
             "the disposable entity catalog must exist before route assertions")

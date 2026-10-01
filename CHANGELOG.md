@@ -4,11 +4,6 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
-## September 24, 2026
-
-- 📨 **Honest dictation delivery** — distinguish verified insertion from an unconfirmed send, so an editor that cannot acknowledge text never looks like a confirmed success.
-- **🎯 Dictation that keeps your words** — if the original field changes or text cannot be sent, copy it, retry that field, or discard it explicitly instead of losing it or pasting into another app.
-
 ## 1.1.0 — September 17, 2026
 
 **Less noise, one place for everything.**
@@ -19,6 +14,41 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **🌅 Today leads with your next meeting** — the next call is the hero with its countdown, brief and record button; Ask is a field with three ready questions; Ask, Radar and the library lost their clutter.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
+
+## October 1, 2026
+
+- 📨 **Honest dictation delivery** — distinguish verified insertion from an unconfirmed send; keep unconfirmed text available to copy or discard without automatically pasting twice.
+
+- 📝 **Dictation recovery** — keep text when its original field changes; copy, explicitly reinsert, or discard without losing it to another trigger.
+
+## September 30, 2026
+
+- **📐 A steady meeting page in small windows** — the page picks its layout as soon as it opens, instead of jumping to the transcript when the audio finishes loading.
+
+- **🪶 Lighter model memory** — release idle models sooner without interrupting work or changing your model choices, with clearer RAM guidance.
+
+## September 29, 2026
+
+- **📖 Meeting details fit compact windows** — switch between the full transcript and meeting notes without losing the playback controls or transcript corrections.
+
+## September 28, 2026
+
+- **🎙️ Dictation gets breathing room** — background maintenance waits while dictation prepares, captures and finishes, even when a meeting ends at the same time.
+- **🎙️ Dictation that waits for your microphone** — clear preparation and recovery messages, your preferred input, and no accidental delivery while audio is still getting ready.
+
+## September 27, 2026
+
+- **🎙️ Your choice of live speech engine** — keep multilingual Parakeet or explicitly prepare Apple Speech for English or Spanish on Tahoe, with provisional words kept out of saved meeting facts and pasted dictation.
+
+- **🎙️ Cancelled starts stay quiet** — dictation that is already cancelled when preparation begins no longer starts a speech-model load.
+
+## September 25, 2026
+
+- **⚡ Smoother dictation text** — live updates stay lightweight as your text grows, without bringing back cancelled words.
+
+## September 24, 2026
+
+- **🌐 Clearer dictation language hints** — your dictation language now reaches the live decoder, with a plain note on why Spanish and English can still mix.
 
 ## September 22, 2026
 

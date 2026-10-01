@@ -58,6 +58,8 @@ struct SettingsView: View {
     // Internal (not private) so the intelligence-pane extension in
     // SettingsView+Intelligence.swift can reach them.
     @AppStorage(MeetingLanguagePreferences.transcriptKey) var transcriptionLanguage = "auto"
+    @AppStorage(LiveSpeechSelection.meetingKey) var meetingLiveEngine =
+        LiveSpeechSelection.parakeet.rawValue
     @AppStorage(MeetingLanguagePreferences.summaryKey) var summaryLanguage = "spoken"
     @State var customStructures: [Recipe] = CustomRecipeStore.custom()
     @State var editingStructure: Recipe?
@@ -107,6 +109,7 @@ struct SettingsView: View {
                     DictationSection()
                 case .intelligence:
                     summaryEngineSection
+                    ModelMemorySettingsSection(services: services)
                     transcriptionLanguageSection
                     summaryLanguageSection
                     companionSection
@@ -722,6 +725,7 @@ extension SettingsView {
                 WhisperModelRow(
                     variant: variant,
                     active: variant.compact == whisperCompact,
+                    belowCatalogRAM: services.modelMemoryPreferences.capacity.isBelowCatalogRAM(variant.minimumRAMGB),
                     preparationState: services.whisperPreparationState,
                     select: { whisperCompact = variant.compact },
                     download: { services.prepareWhisperVariant(variant.id) },

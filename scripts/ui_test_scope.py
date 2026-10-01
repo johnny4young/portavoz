@@ -133,11 +133,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testAskConversationAnswersAndSeeksToExactCitation"),
         test_id(
             "LibraryUITests",
-            "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence",
-        ),
-        test_id(
-            "LibraryUITests",
-            "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence",
+            "testAskConfirmedMemoryLoadsPersonCommitmentsBlockersAndBothCitations",
         ),
         test_id(
             "LibraryUITests",
@@ -291,6 +287,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "meeting-correction": (
         test_id(
             "MeetingDetailUITests",
+            "testCompactTranscriptCorrectionCanReachItsOwnAction",
+        ),
+        test_id(
+            "MeetingDetailUITests",
             "testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo",
         ),
         test_id(
@@ -428,11 +428,19 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "SettingsUITests",
             "testIntelligencePaneExplicitlyPreparesSemanticSearch",
         ),
+        test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
+        test_id("SettingsUITests", "testAppleSpeechInspectionFailureOffersExplicitRetry"),
         test_id("SettingsUITests", "testIntelligencePaneCreatesACustomStructure"),
     ),
     "dictation": (
         test_id("DictationUITests", "testDeliveredDictationDistinguishesDispatchFromVerification"),
+        test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
+        test_id("SettingsUITests", "testAppleSpeechInspectionFailureOffersExplicitRetry"),
+        test_id("DictationUITests", "testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart"),
         test_id("DictationUITests", "testDictationPanelCancelsAndRestartsWithoutGlobalInput"),
+        test_id("DictationUITests", "testMicrophoneDenialRemainsRecoverableWithoutOpeningAudio"),
+        test_id("DictationUITests", "testMissingMicrophoneAudioShowsFallbackAndAllowsRestart"),
+        test_id("DictationUITests", "testPreparingDictationCanCancelWithoutAListeningClaim"),
         test_id("DictationUITests", "testUndeliveredTextCanBeCopiedAndExplicitlyRetried"),
         test_id("DictationUITests", "testUndeliveredTextSurvivesAnotherTriggerUntilDiscarded"),
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
@@ -440,6 +448,8 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testDictationRepairsCorruptShortcutWithoutLeavingSettings"),
     ),
     "settings-audio": (
+        test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
+        test_id("SettingsUITests", "testAppleSpeechInspectionFailureOffersExplicitRetry"),
         test_id("SettingsUITests", "testAudioPaneOffersCaptureSourceControls"),
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
         test_id("SettingsUITests", "testDictationRecoversShortcutConflictAndRefreshesHelp"),
@@ -552,6 +562,8 @@ APUNTADOR_LEAK_UI_FEATURES = frozenset({
 })
 
 RETIRED_DUPLICATE_TESTS = frozenset({
+    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence"),
+    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence"),
     test_id("SkillsSettingsUITests", "testSkillActivityRefreshPreservesTheExpandedCurrentScope"),
     test_id("SkillsSettingsUITests", "testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest"),
     test_id("InsightsUITests", "testInsightsRendersHeatmap"),
@@ -621,6 +633,10 @@ NO_UI_PREFIXES = (
     "packaging/",
 )
 NO_UI_FILES = {
+    "Fixtures/DictationValidation/README.md",
+    "Fixtures/DictationValidation/public-synthetic-v1.json",
+    # Only the headless --bench-live mode and the CLI call it; unit tests own it.
+    "Sources/TranscriptionKit/LiveTranscriptionBench.swift",
     ".gitignore",
     ".swiftlint.yml",
     "AGENTS.md",
@@ -721,8 +737,12 @@ def app_features(filename: str) -> set[str]:
         return {"automation-entry", "commitment-radar"}
     if lowered == "appservices+meetingsync.swift":
         return {"settings-data"}
+    if lowered == "microphoneinputselection.swift":
+        return {"dictation", "recording-recovery", "settings-audio"}
+    if lowered == "appservices+settingstransfer.swift":
+        return {"settings-transfer", "dictation"}
     if lowered in {
-        "appportablesettingsstore.swift", "appservices+settingstransfer.swift",
+        "appportablesettingsstore.swift",
         "portablesettings.swift", "portablesettingstransfer.swift", "portablesettingsfile.swift",
         "settingstransfermodel.swift", "settingstransfersection.swift",
     }:
@@ -741,6 +761,10 @@ def app_features(filename: str) -> set[str]:
         return {"commitment-radar"}
     if any(token in lowered for token in ("l10n", "applanguage")):
         return set(ALL_FEATURES)
+    if any(token in lowered for token in ("applespeech", "livespeechselection")):
+        return {"dictation", "settings-intelligence", "recording-recovery"}
+    if "livetranscriptionattacher" in lowered:
+        return {"recording-recovery"}
     if "showcase" in lowered:
         return {"public-showcase"}
     # Dictation owns controller/panel and native delivery journeys, not just
@@ -1123,6 +1147,13 @@ def select_paths(paths: Iterable[str]) -> Selection:
             reasons.append(f"{path}: complete bilingual shared-harness fallback")
             continue
 
+        if path == "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift":
+            # The layout decides which Meeting Detail content exists for every
+            # journey that opens a meeting, not only the Meeting Detail suite.
+            selected.update(HARNESS_TESTS)
+            reasons.append(f"{path}: complete English Meeting Detail layout fallback")
+            continue
+
         if path in APUNTADOR_LEAK_EVIDENCE_FILES:
             selected.update(feature_tests(APUNTADOR_LEAK_UI_FEATURES))
             locales.add("es")
@@ -1196,15 +1227,18 @@ def select_paths(paths: Iterable[str]) -> Selection:
             reasons.append(f"{path}: {', '.join(sorted(features))}")
             continue
 
+        # CLI and reviewed test-only corpus paths cannot alter the app UI.
+        # Check them before generic Sources/*.swift: the latter otherwise
+        # swallows CLI.swift into the unknown-production full fallback.
+        if path.startswith(NO_UI_PREFIXES) or path in NO_UI_FILES or path.startswith(".github/") or path.startswith("scripts/"):
+            continue
+
         if path.startswith("Sources/") and path.endswith(".swift"):
             features = lower_layer_features(path)
             if not features:
                 continue
             selected.update(feature_tests(features))
             reasons.append(f"{path}: {', '.join(sorted(features))}")
-            continue
-
-        if path.startswith(NO_UI_PREFIXES) or path in NO_UI_FILES or path.startswith(".github/") or path.startswith("scripts/"):
             continue
 
         # Unknown build/configuration changes may alter the executable even if
@@ -1293,6 +1327,20 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         if feature not in mapped or mapped == set(ALL_FEATURES):
             orphan_scopes.append(f"{feature} ({path})")
 
+    # A no-UI fixture must stay unreachable from the app and its UI tests.
+    no_ui_fixture_dirs = sorted({
+        path.rsplit("/", 1)[0] for path in NO_UI_FILES if path.startswith("Fixtures/")
+    })
+    reachable_fixtures: list[str] = []
+    for tree in ("Sources", "Tests/PortavozUITests"):
+        for source in sorted((root / tree).rglob("*.swift")):
+            if source.relative_to(root).as_posix().startswith(NO_UI_PREFIXES):
+                continue
+            text = source.read_text(encoding="utf-8")
+            for directory in no_ui_fixture_dirs:
+                if directory.split("/", 1)[1] in text:
+                    reachable_fixtures.append(f"{directory} ({source.relative_to(root)})")
+
     runtime_budget_errors: list[str] = []
     if runtime_budget_required:
         budget_path = root / "docs/evidence/ui-test-runtime-budget.json"
@@ -1351,6 +1399,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         or permission_overlap
         or sentinel_mismatch
         or orphan_scopes
+        or reachable_fixtures
         or runtime_budget_errors
     ):
         details = []
@@ -1370,6 +1419,8 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
             details.append("feature/source sentinel mismatch: " + ", ".join(sentinel_mismatch))
         if orphan_scopes:
             details.append("orphan feature scopes: " + ", ".join(orphan_scopes))
+        if reachable_fixtures:
+            details.append("no-UI fixtures reachable from UI sources: " + ", ".join(reachable_fixtures))
         details.extend(runtime_budget_errors)
         raise RuntimeError("UI-test scope catalog is stale; " + "; ".join(details))
 

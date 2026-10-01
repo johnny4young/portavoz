@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Settings section for system-wide dictation: the enable toggle, both
-/// physical triggers (hotkey + mouse button), the constrained language,
+/// physical triggers (hotkey + mouse button), the language preference,
 /// and the deterministic dictionary tier. Registering/unregistering
 /// happens immediately via the shared `DictationController` so no restart
 /// is needed.
@@ -9,6 +9,8 @@ struct DictationSection: View {
     @Environment(AppServices.self) private var services
     @AppStorage(DictationController.defaultsKey) private var enabled = false
     @AppStorage(DictationController.languageKey) private var language = "auto"
+    @AppStorage(LiveSpeechSelection.dictationKey) private var liveEngine =
+        LiveSpeechSelection.parakeet.rawValue
     @AppStorage(DictationController.fillerFilterKey) private var filterFillers = true
 
     var body: some View {
@@ -29,11 +31,19 @@ struct DictationSection: View {
                         services: services, promptIfNeeded: true)
                 }
                 Picker("Dictation language", selection: $language) {
-                    Text("Automatic (Spanish + English)").tag("auto")
+                    Text("Automatic").tag("auto")
                     Text("Spanish").tag("es")
                     Text("English").tag("en")
                 }
                 .accessibilityIdentifier("settings-dictation-language")
+                AppleSpeechChoiceControls(
+                    selection: $liveEngine, language: language,
+                    identifierPrefix: "settings-dictation-live")
+                Text("Spanish and English can still mix. This setting mainly keeps out other writing systems.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("settings-dictation-language-support")
                 Toggle("Filter out filler words", isOn: $filterFillers)
                     .accessibilityIdentifier("settings-dictation-filler")
                 DictationDictionaryEditor()

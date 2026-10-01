@@ -24,13 +24,10 @@ struct DictationRecoveryView: View {
                 .lineLimit(4)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityIdentifier("dictation-recovery-text")
-            Text(copyMessage)
-                .lineLimit(2)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            DictationCopyStatusLabel(status: controller.copyStatus)
                 .accessibilityIdentifier("dictation-recovery-copy-status")
             HStack(spacing: 8) {
-                Button("Copy", action: controller.copyUndeliveredText)
+                Button("Copy", action: controller.copyPendingText)
                     .accessibilityIdentifier("dictation-recovery-copy")
                     .disabled(controller.isRetryingDelivery)
                 Button("Reinsert", action: controller.retryUndeliveredText)
@@ -65,14 +62,6 @@ struct DictationRecoveryView: View {
             return L10n.text("The original field can't be verified. Your text is still available to copy.")
         case .clipboardUnavailable, .eventUnavailable, .cancelled, .emptyText:
             return L10n.text("Delivery didn't complete. Reinsert into the original field, or copy your text.")
-        }
-    }
-
-    private var copyMessage: String {
-        switch controller.copyStatus {
-        case .idle: L10n.text("Kept only in memory. Copy it before quitting Portavoz.")
-        case .copied: L10n.text("Copied. You can paste the text yourself.")
-        case .failed: L10n.text("Couldn't copy. Your text is still here.")
         }
     }
 }

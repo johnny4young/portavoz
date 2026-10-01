@@ -73,10 +73,10 @@ final class DictationDestinationRecoveryTests: XCTestCase {
         }
         await enterRecovery(harness, dependencies: dependencies)
         XCTAssertFalse(harness.controller.canRetryDelivery)
-        harness.controller.copyUndeliveredText()
+        harness.controller.copyPendingText()
         XCTAssertEqual(harness.controller.copyStatus, .failed)
         XCTAssertEqual(harness.controller.recoveryText, text)
-        harness.controller.copyUndeliveredText()
+        harness.controller.copyPendingText()
         XCTAssertEqual(harness.controller.copyStatus, .copied)
         XCTAssertEqual(board.string(forType: .string), text, "Copy must not use the panel's truncated excerpt")
         XCTAssertEqual(harness.controller.recoveryText, text)
@@ -113,7 +113,7 @@ final class DictationDestinationRecoveryTests: XCTestCase {
                 }
             }
             await enterRecovery(harness, dependencies: dependencies)
-            harness.controller.copyUndeliveredText()
+            harness.controller.copyPendingText()
             XCTAssertEqual(harness.controller.copyStatus, .failed)
             XCTAssertEqual(harness.controller.recoveryText, "No borres — don't delete")
             XCTAssertEqual(board.string(forType: .string),
@@ -184,7 +184,7 @@ final class DictationDestinationRecoveryTests: XCTestCase {
             harness.set(DictationTextRules.encode([
                 .init(trigger: "beta", replacement: "changed after delivery"),
             ]), forKey: DictationController.replacementsKey)
-            harness.controller.copyUndeliveredText()
+            harness.controller.copyPendingText()
             for _ in 0..<2 {
                 harness.controller.retryUndeliveredText()
                 await harness.controller.retryDeliveryTask?.value

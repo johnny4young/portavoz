@@ -103,6 +103,7 @@ final class DictationControllerTests: XCTestCase {
         XCTAssertTrue(reached4)
         XCTAssertEqual(harness.insertions, ["Café Swift $5\\path"])
         XCTAssertEqual(harness.hints?.language, "es")
+        XCTAssertEqual(harness.hints?.filtersLiveScript, true)
         XCTAssertEqual(harness.hints?.vocabulary, ["Kubernetes", "Café"])
         harness.controller.cancel()
         let reached5 = await awaitEventually { harness.finishes == 1 }
@@ -150,7 +151,8 @@ final class DictationControllerTests: XCTestCase {
         XCTAssertNil(DictationUITestFixture(arguments: [], usesTemporaryStore: true))
         XCTAssertNotNil(DictationUITestFixture(
             arguments: ["-seed-dictation"], usesTemporaryStore: true))
-        XCTAssertFalse(DictationUITestFixture.dependencies(fixture: nil).canInsert())
+        XCTAssertFalse(DictationUITestFixture.dependencies(
+            fixture: nil, beginCapture: { {} }).canInsert())
     }
 
     func testRecoveryFixtureCannotCopyWithoutExplicitAdmissionAndNamedBoard() async {
@@ -163,7 +165,7 @@ final class DictationControllerTests: XCTestCase {
             for arguments in [[], ["-seed-dictation"], ["-seed-dictation-recovery"], flags] {
                 let fixture = DictationUITestFixture(arguments: arguments, usesTemporaryStore: temporary)
                 let dependencies = DictationUITestFixture.dependencies(
-                    fixture: fixture, environment: [key: board.name.rawValue])
+                    fixture: fixture, beginCapture: { {} }, environment: [key: board.name.rawValue])
                 let expectedCopy = temporary && arguments == flags
                 let destination = dependencies.captureDestination()
                 let delivery = await destination.insert("No native events")
@@ -175,7 +177,7 @@ final class DictationControllerTests: XCTestCase {
         }
         let fixture = DictationUITestFixture(arguments: flags, usesTemporaryStore: true)
         for invalid in ["", "NSGeneralPboard", DictationNativeUITestFixture.pasteboardPrefix + "invalid"] {
-            let dependencies = DictationUITestFixture.dependencies(fixture: fixture, environment: [key: invalid])
+            let dependencies = DictationUITestFixture.dependencies(fixture: fixture, beginCapture: { {} }, environment: [key: invalid])
             XCTAssertFalse(dependencies.copyText("First"))
             XCTAssertFalse(dependencies.copyText("Second"))
         }
@@ -193,7 +195,7 @@ final class DictationControllerTests: XCTestCase {
 
 @MainActor
 final class DictationControllerHarness {
-    let controller = DictationController(presentsPanel: false)
+    let controller: DictationController
     fileprivate let microphone = ControlledDictationMicrophone()
     let defaults = UserDefaults(suiteName: "dictation-tests-\(UUID().uuidString)")!
     let text: String
@@ -202,8 +204,10 @@ final class DictationControllerHarness {
     var finishes = 0
     var hints: TranscriptionHints?
     var insertions: [String] = []
+    var measurements: [DictationSessionMeasurement] = []
 
-    init(text: String) {
+    init(text: String, controller: DictationController = .init(presentsPanel: false)) {
+        self.controller = controller
         self.text = text
         defaults.setVolatileDomain([:], forName: UserDefaults.argumentDomain)
     }
@@ -216,6 +220,7 @@ final class DictationControllerHarness {
 
     var dependencies: DictationSessionDependencies {
         DictationSessionDependencies(
+            authorizeMicrophone: { true },
             makeMicrophone: { [microphone] in .init(source: microphone, warmUp: {}) },
             acquireRuntime: { [weak self] in
                 guard let self else { throw CancellationError() }
@@ -233,11 +238,13 @@ final class DictationControllerHarness {
                 }
             },
             copyText: { _ in false },
-            defaults: defaults, now: { [weak self] in self?.now ?? .distantPast })
+            defaults: defaults, now: { [weak self] in self?.now ?? .distantPast },
+            beginCapture: { {} },
+            measurementSink: { [weak self] in self?.measurements.append($0) })
     }
 }
 
-private actor ControlledDictationMicrophone: AudioCaptureSource {
+actor ControlledDictationMicrophone: AudioCaptureSource {
     nonisolated let channel = AudioChannel.microphone
     private(set) var starts = 0
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?

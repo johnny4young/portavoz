@@ -394,8 +394,7 @@ private enum UITestRuntimeSignal {
 private struct AppStartRecordingPreferences: StartRecordingPreferences {
     func startRecordingPreferences() async -> StartRecordingPreferencesSnapshot {
         let defaults = UserDefaults.standard
-        let inputID = defaults.string(forKey: "preferredInputUID")
-        let preferredInput = inputID == nil || inputID == "default" ? nil : inputID
+        let preferredInput = MicrophoneInputSelection.preferredIdentifier(defaults: defaults)
         let mode: StartRecordingCaptureMode
         switch defaults.string(forKey: "captureMode") {
         case "app": mode = .meetingApps
@@ -450,14 +449,9 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
         guard await services.authorizeMicrophoneForRecording() else {
             throw StartRecordingRuntimeError.preparationUnavailable
         }
-        let microphoneID = preferences.preferredInputDeviceID.flatMap { identifier in
-            (try? AudioDeviceCatalog.inputDevice(matching: identifier)) != nil
-                ? identifier : nil
-        }
-        let liveSpeech = try services.acquireResidentLiveSpeechRuntime()
-        let liveTranscriptionRuntime = liveSpeech.map {
-            services.liveTranscriptionRuntime($0)
-        }
+        let microphoneID = MicrophoneInputSelection.resolve(
+            preferences.preferredInputDeviceID).deviceIdentifier
+        let liveTranscriptionRuntime = try services.acquireResidentLiveTranscriptionRuntime()
         let microphone = MicrophoneSource(
             deviceIdentifier: microphoneID,
             // A meeting recorder must be observational. Enabling AVAudioEngine
@@ -504,8 +498,7 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
                 guard let services else {
                     throw StartRecordingRuntimeError.preparationUnavailable
                 }
-                let runtime = try await services.acquireLiveSpeechRuntime()
-                return services.liveTranscriptionRuntime(runtime)
+                return try await services.acquireLiveTranscriptionRuntime()
             },
             telemetry: services.workloadTelemetry,
             voiceprintTask: Task.detached(priority: .utility) {
