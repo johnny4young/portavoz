@@ -19,9 +19,9 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 - **🎙️ Reliable dictation handoff** — Stop finishes microphone cleanup before typing, and late captions or feedback cannot interrupt your next dictation.
 
-## September 30, 2026
-
 - **🛡️ Dictation stops before a broken paste** — interrupted or overloaded audio now shows a clear failure instead of automatically inserting an incomplete result.
+
+## September 30, 2026
 
 - **📐 A steady meeting page in small windows** — the page picks its layout as soon as it opens, instead of jumping to the transcript when the audio finishes loading.
 

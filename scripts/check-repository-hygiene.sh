@@ -115,6 +115,7 @@ python3 scripts/ui_test_scope.py --validate-catalog
 python3 -m unittest Tests.Tooling.test_collect_field_evidence
 python3 -m unittest Tests.Tooling.test_release_reliability
 python3 -m unittest Tests.Tooling.test_make_release
+python3 -m unittest Tests.Tooling.test_dev_install
 python3 -m unittest Tests.Tooling.test_candidate_automation
 python3 -m unittest Tests.Tooling.test_perf_binary
 python3 -m unittest Tests.Tooling.test_perf_host_readiness
@@ -127,6 +128,8 @@ python3 -m unittest Tests.Tooling.test_production_sync_qualification_packaging
 python3 -m unittest Tests.Tooling.test_assistive_technology_qualification
 python3 -m unittest Tests.Tooling.test_swift_test_failure_summary
 python3 -m unittest Tests.Tooling.test_ci_workflow
+python3 -m unittest Tests.Tooling.test_ci_swift_cache
+python3 -m unittest Tests.Tooling.test_ci_swift_source_stamps
 python3 -m unittest Tests.Tooling.test_ios_portability
 python3 -m unittest Tests.Tooling.test_ui_test_ci_gate
 python3 -m unittest Tests.Tooling.test_ui_test_execution

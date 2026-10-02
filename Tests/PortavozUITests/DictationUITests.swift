@@ -178,8 +178,8 @@ final class DictationUITests: PortavozUITestCase {
         defer { app.terminate() }
         let expectedText = english ? "Don't delete these notes." : "No borres estas notas."
         let expectedFailure = english
-            ? "Dictation failed: The dictation session ended unexpectedly. Nothing was typed."
-            : "El dictado falló: La sesión de dictado terminó inesperadamente. No se escribió nada."
+            ? "Audio capture was interrupted. Nothing was inserted. Try dictating again."
+            : "Se interrumpió la captura de audio. No se insertó nada. Vuelve a dictar."
 
         for attempt in 0..<2 {
             XCTAssertTrue(app.prepareForInteraction())
