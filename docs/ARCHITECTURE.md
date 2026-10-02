@@ -1115,6 +1115,12 @@ visible tail. They never enter the append-only coalescer or final text for
 paste; a stream ending with an unconfirmed range fails rather than inserting
 it. Meeting preview rows have the same isolation from canonical captions,
 translation, assistance, summaries and persistence.
+`TextInserter` delegates temporary clipboard ownership to the app-bound
+`DictationClipboard`: bounded, ordered, all-or-nothing snapshots plus an exclusive
+per-board restoration window. Platform-call injection replaces only modifier,
+security and keyboard-event effects in tests, not clipboard admission or restore.
+SwiftUI does not own clipboard bytes or timers; no persistence module participates.
+Restoration authority is the loan plus the clipboard generation, never text equality.
 System-wide input adapters remain at the app boundary: Carbon owns the keyboard
 hotkey and a session `CGEventTap` owns one explicitly configured middle or
 additional mouse button. `DictationShortcut` is the process-owned observable

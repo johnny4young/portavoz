@@ -405,17 +405,8 @@ final class DictationController {
 
     private func deliver(sessionID: UUID, dependencies: DictationSessionDependencies) async {
         guard activeSessionID == sessionID else { return }
-        // The two-tier dictionary's deterministic tier plus the filler
-        // filter run on the final text only — meeting transcripts stay
-        // verbatim records and never pass through here.
         let measurement = self.measurement
-        let text = DictationTextRules.apply(
-            DictationAssembler.text(
-                confirmed: confirmedText, partial: partialText),
-            replacements: DictationTextRules.decode(
-                replacements: dependencies.defaults.string(
-                    forKey: Self.replacementsKey) ?? ""),
-            removeFillers: Self.fillerFilterEnabled(in: dependencies.defaults))
+        let text = preparedText(using: dependencies.defaults)
         measurement?.record(.textPrepared)
         microphone = nil
         feed = nil
@@ -452,7 +443,12 @@ final class DictationController {
                 id: sessionID,
                 message: L10n.text(
                     "Release Command, Option, Control, and Shift, then try again."))
-        case .clipboardUnavailable, .eventUnavailable:
+        case .clipboardUnavailable:
+            failSession(
+                id: sessionID,
+                message: L10n.text(
+                    "Dictation left your clipboard unchanged. Copy something else and try again."))
+        case .eventUnavailable:
             failSession(
                 id: sessionID,
                 message: L10n.text(
@@ -569,6 +565,18 @@ private extension DictationController {
         try Task.checkCancellation()
         guard activeSessionID == id else { throw CancellationError() }
         try verifyCaptureIntegrity(source: source, id: id)
+    }
+
+    func preparedText(using defaults: UserDefaults) -> String {
+        // Final-only transformations keep meeting transcripts verbatim and
+        // avoid reapplying replacement rules on every live partial.
+        return DictationTextRules.apply(
+            DictationAssembler.text(
+                confirmed: confirmedText, partial: partialText),
+            replacements: DictationTextRules.decode(
+                replacements: defaults.string(
+                    forKey: Self.replacementsKey) ?? ""),
+            removeFillers: Self.fillerFilterEnabled(in: defaults))
     }
 
     func monitorCaptureFailure(_ source: any AudioCaptureSource, id: UUID) {

@@ -122,69 +122,67 @@ enum TextInserter {
         return role == secure || subrole == secure
     }
 
+    /// Platform calls only; tests still execute the production clipboard path.
+    @MainActor
+    struct Effects {
+        var isTargetAvailable: (EventTarget) -> Bool
+        var waitForModifiers: () async -> Bool
+        var focusedSecurity: (EventTarget) -> FocusedFieldSecurity
+        var post: (EventTarget) -> Bool
+
+        static var live: Self {
+            Self(isTargetAvailable: { $0.isAvailable },
+                 waitForModifiers: TextInserter.waitForModifierRelease,
+                 focusedSecurity: TextInserter.focusedFieldSecurity,
+                 post: TextInserter.postCommandV)
+        }
+    }
+
     /// Pastes `text` into the frontmost app, then restores the previous
     /// clipboard contents after the paste has landed. Waits for the physical
     /// hotkey modifiers to be released first, so the synthesized ⌘V cannot
     /// combine with a still-held ⌥/⇧/⌃ into a different app shortcut.
     @MainActor
     static func insert(
-        _ text: String, pasteboard: NSPasteboard = .general, eventTarget: EventTarget = .session
+        _ text: String, pasteboard: NSPasteboard = .general, eventTarget: EventTarget = .session,
+        effects: Effects = .live, clipboard: DictationClipboard = .shared
     ) async -> InsertionResult {
-        guard eventTarget.isAvailable else { return .eventUnavailable }
-        guard await waitForModifierRelease() else {
+        guard effects.isTargetAvailable(eventTarget) else { return .eventUnavailable }
+        guard await clipboard.waitForRestoration(on: pasteboard) else { return .cancelled }
+        guard await effects.waitForModifiers() else {
             return Task.isCancelled ? .cancelled : .modifiersStillPressed
         }
         guard !Task.isCancelled else { return .cancelled }
-        guard eventTarget.isAvailable else { return .eventUnavailable }
-
-        // This is intentionally the final check before clipboard mutation.
-        // Focus may change while the hotkey modifiers are being released.
-        switch focusedFieldSecurity(in: eventTarget) {
-        case .secure:
-            return .secureField
-        case .unavailable:
-            return .focusUnavailable
-        case .regular:
-            break
+        guard effects.isTargetAvailable(eventTarget) else { return .eventUnavailable }
+        if let failure = insertionRefusal(effects.focusedSecurity(eventTarget)) { return failure }
+        guard let loan = clipboard.borrow(text, on: pasteboard) else {
+            return Task.isCancelled ? .cancelled : .clipboardUnavailable
         }
 
-        let snapshot = PasteboardSnapshot(of: pasteboard)
-        pasteboard.declareTypes([.string], owner: nil)
-        guard pasteboard.setString(text, forType: .string) else {
-            restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: pasteboard.changeCount)
-            return .clipboardUnavailable
+        // Lazy providers and AX IPC can service cancellation, a secure-field
+        // transition or another clipboard writer. Inspect again after capture.
+        let failure = insertionRefusal(effects.focusedSecurity(eventTarget))
+        guard !Task.isCancelled, effects.isTargetAvailable(eventTarget), failure == nil,
+              clipboard.isCurrent(loan, on: pasteboard) else {
+            clipboard.restore(loan, on: pasteboard)
+            if Task.isCancelled { return .cancelled }
+            if !effects.isTargetAvailable(eventTarget) { return .eventUnavailable }
+            return failure ?? .clipboardUnavailable
         }
-        let ourChangeCount = pasteboard.changeCount
-
-        guard postCommandV(to: eventTarget) else {
-            restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
+        guard effects.post(eventTarget) else {
+            clipboard.restore(loan, on: pasteboard)
             return .eventUnavailable
         }
-
-        Task {
-            try? await Task.sleep(for: restoreDelay)
-            restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
-        }
+        clipboard.restoreLater(loan, on: pasteboard, after: restoreDelay)
         return .inserted
     }
 
-    /// Restore only when the pasteboard still holds our dictation: a changed
-    /// `changeCount` means the user or a clipboard manager took over, and
-    /// restoring would clobber their data. Value comparison cannot detect
-    /// that — an identical string written by a manager still advances the
-    /// count, and rich content never compares as `String`.
-    @MainActor
-    private static func restoreIfStillOurs(
-        _ snapshot: PasteboardSnapshot?,
-        pasteboard: NSPasteboard,
-        expectedChangeCount: Int
-    ) {
-        guard pasteboard.changeCount == expectedChangeCount else { return }
-        guard let snapshot else {
-            pasteboard.clearContents()
-            return
+    private static func insertionRefusal(_ security: FocusedFieldSecurity) -> InsertionResult? {
+        switch security {
+        case .regular: nil
+        case .secure: .secureField
+        case .unavailable: .focusUnavailable
         }
-        snapshot.restore(to: pasteboard)
     }
 
     /// Bounded wait for every physical modifier to be released. The dictation
@@ -330,50 +328,4 @@ extension TextInserter.BorrowedCFPropertyType where Value == CFString {
 
 extension TextInserter.BorrowedCFPropertyType where Value == CFData {
     static var data: Self { Self(typeID: CFDataGetTypeID()) }
-}
-
-/// Full multi-type snapshot of the pasteboard. Saving only the plain string
-/// (the previous behavior) silently destroyed rich content — an image, file
-/// URLs, styled text — the moment a dictation landed.
-struct PasteboardSnapshot {
-    private let types: [NSPasteboard.PasteboardType]
-    private let values: [NSPasteboard.PasteboardType: Value]
-
-    private enum Value {
-        case data(Data)
-        case string(String)
-        case propertyList(Any)
-    }
-
-    init?(of pasteboard: NSPasteboard) {
-        let types = pasteboard.types ?? []
-        var capturedTypes: [NSPasteboard.PasteboardType] = []
-        var values: [NSPasteboard.PasteboardType: Value] = [:]
-        for type in types {
-            if let data = pasteboard.data(forType: type) {
-                values[type] = .data(data)
-            } else if let string = pasteboard.string(forType: type) {
-                values[type] = .string(string)
-            } else if let list = pasteboard.propertyList(forType: type) {
-                values[type] = .propertyList(list)
-            } else {
-                continue
-            }
-            capturedTypes.append(type)
-        }
-        guard !values.isEmpty else { return nil }
-        self.types = capturedTypes
-        self.values = values
-    }
-
-    func restore(to pasteboard: NSPasteboard) {
-        pasteboard.declareTypes(types, owner: nil)
-        for (type, value) in values {
-            switch value {
-            case .data(let data): pasteboard.setData(data, forType: type)
-            case .string(let string): pasteboard.setString(string, forType: type)
-            case .propertyList(let list): pasteboard.setPropertyList(list, forType: type)
-            }
-        }
-    }
 }
