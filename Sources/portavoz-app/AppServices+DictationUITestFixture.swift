@@ -24,15 +24,20 @@ final class DictationUITestFixture {
     let deniesMicrophoneOnce: Bool
     let missesAudioOnce: Bool
     let holdsPermission: Bool
+    let captureFailure: Bool
+    private var finishesNextCapture: Bool
     private var permissionRequests = 0
     private var sourceCreations = 0
+    private var microphone: DictationFixtureMicrophone?
 
     init?(arguments: [String], usesTemporaryStore: Bool) {
         guard usesTemporaryStore, arguments.contains("-seed-dictation") else { return nil }
+        finishesNextCapture = arguments.contains("-seed-dictation-source-eof")
         streamsDeltas = arguments.contains("-seed-dictation-streaming")
         deniesMicrophoneOnce = arguments.contains("-seed-dictation-microphone-denied")
         missesAudioOnce = arguments.contains("-seed-dictation-microphone-no-audio")
         holdsPermission = arguments.contains("-seed-dictation-preparation-held")
+        captureFailure = arguments.contains("-seed-dictation-capture-failure")
         text = arguments.contains("-seed-dictation-english")
             ? "Don't delete these notes."
             : "No borres estas notas."
@@ -53,16 +58,24 @@ final class DictationUITestFixture {
             },
             makeMicrophone: {
                 if let fixture { fixture.sourceCreations += 1 }
+                let finishesImmediately = fixture?.finishesNextCapture ?? false
+                fixture?.finishesNextCapture = false
+                let microphone = DictationFixtureMicrophone(
+                    emitsAudio: !(fixture?.missesAudioOnce == true && fixture?.sourceCreations == 1),
+                    finishesImmediately: finishesImmediately)
+                fixture?.microphone = microphone
                 return .init(
-                    source: DictationFixtureMicrophone(
-                        emitsAudio: !(fixture?.missesAudioOnce == true && fixture?.sourceCreations == 1)),
+                    source: microphone,
                     warmUp: {},
                     usesSystemFallback: fixture?.missesAudioOnce == true)
             },
             acquireRuntime: {
                 guard let fixture else { throw CancellationError() }
                 return LiveTranscriptionRuntime(
-                    engine: DictationFixtureEngine(text: fixture.text, streamsDeltas: fixture.streamsDeltas),
+                    engine: DictationFixtureEngine(
+                        text: fixture.text,
+                        streamsDeltas: fixture.streamsDeltas,
+                        onFirstCaption: { await fixture.triggerCaptureFailure() }),
                     completion: {})
             },
             canInsert: { fixture != nil },
@@ -73,6 +86,11 @@ final class DictationUITestFixture {
             defaults: .standard,
             beginCapture: beginCapture)
     }
+
+    private func triggerCaptureFailure() async {
+        guard captureFailure else { return }
+        await microphone?.fail()
+    }
 }
 
 private actor DictationFixtureMicrophone: AudioCaptureSource {
@@ -80,7 +98,12 @@ private actor DictationFixtureMicrophone: AudioCaptureSource {
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
     private let emitsAudio: Bool
 
-    init(emitsAudio: Bool) { self.emitsAudio = emitsAudio }
+    private let finishesImmediately: Bool
+
+    init(emitsAudio: Bool, finishesImmediately: Bool) {
+        self.emitsAudio = emitsAudio
+        self.finishesImmediately = finishesImmediately
+    }
 
     func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
         let (stream, continuation) = AsyncThrowingStream.makeStream(of: AudioChunk.self)
@@ -89,6 +112,7 @@ private actor DictationFixtureMicrophone: AudioCaptureSource {
             continuation.yield(AudioChunk(
                 channel: .microphone, samples: [0.1, -0.1], sampleRate: 16_000, timestamp: 0))
         }
+        if finishesImmediately { continuation.finish() }
         return stream
     }
 
@@ -96,11 +120,19 @@ private actor DictationFixtureMicrophone: AudioCaptureSource {
         continuation?.finish()
         continuation = nil
     }
+
+    func fail() {
+        continuation?.finish(throwing: FixtureFailure.interrupted)
+        continuation = nil
+    }
+
+    private enum FixtureFailure: Error { case interrupted }
 }
 
 private struct DictationFixtureEngine: TranscriptionEngine {
     let text: String
     let streamsDeltas: Bool
+    let onFirstCaption: @Sendable () async -> Void
     let descriptor = EngineDescriptor(
         id: "dictation-ui-fixture", displayName: "Dictation fixture",
         realTimeFactor: 0, runsOnDevice: true, approximateMemoryMB: 0)
@@ -126,6 +158,7 @@ private struct DictationFixtureEngine: TranscriptionEngine {
                                 text: delta, startTime: time, endTime: time + 0.1))
                         }
                     }
+                    await onFirstCaption()
                 }
             }
             continuation.finish()

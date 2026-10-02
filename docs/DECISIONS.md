@@ -20774,3 +20774,141 @@ the routing and no-download contract. They do not qualify real Apple model
 accuracy, latency, memory, native permissions, hardware routes, or a default
 engine change. Those require a separately measured, installed-model corpus
 and physical-host evidence.
+
+## D547 — Capture integrity owns dictation delivery until the edit boundary
+
+**Date:** 2026-09-25
+
+**Context.** Dictation has no durable audio original. Treating a source error as
+EOF or dropping a relay buffer could turn an incomplete transcript into an
+automatic paste. A producer can also report failure before its admitted queue
+drains, so waiting only for the iterator's terminal error is insufficient.
+
+**Decision.** The controller observes the existing producer-failure capability
+and every bounded-relay yield. Any capture failure revokes delivery for that
+session before closing the feed. It cancels owned work, enters existing cleanup
+and reports a localized failure. An upstream cancellation error is not a user
+Cancel unless the owning task is cancelled. A cancelled caption iterator may end
+normally; check cancellation before joining its detached pump or publishing text.
+
+The final producer report is checked after draining and before delivery. Once
+delivery relinquishes capture, a delayed capture notification cannot claim that
+an already-dispatched edit was prevented. This is not rollback or proof of a
+verified external edit. Session identity fences obsolete callbacks; source and
+runtime cleanup stay with their existing owners. Buffer capacity, models,
+meeting capture and the silent user-cancellation path are unchanged.
+
+A clean source EOF does not itself authorize delivery. If it precedes the
+controller actually issuing Stop, including during the pending Stop tail, treat
+it as an interrupted capture even when the producer has no failure report: the
+partial may omit the rest of the utterance.
+
+The same applies when the caption stream ends while the audio relay is still
+open: the engine stopped reading, so the remaining audio was never transcribed.
+Engines finalize only after their input ends; an earlier end is interrupted
+capture, not a short dictation. A delivery veto fails the session itself rather
+than relying on readiness still accepting the rejection.
+
+**Evidence boundary.** Actual-controller regressions cover both languages,
+127/128/129 pending buffers, ordinary and cancellation-shaped source errors,
+pre-EOF notifications, unnotified final failure and post-dispatch notifications.
+They also close a normally ending source before Stop and during its pending
+tail in both languages and assert the controller refuses to insert its partial.
+A caption stream that ends before the relay, in both languages, also fails with
+the interrupted message and a `pipelineFailed` measurement.
+The disposable UI fixture exercises failure visibility and dismissal without
+real audio or paste. Native hardware, recognition quality and external-editor
+verification remain independent qualifications. The added failure journey
+raises the current permission-independent unattended catalog from 129 to 130
+without restoring the native receiver to that catalog.
+
+---
+
+## D550 — Own dictation completion, teardown, and feedback separately
+
+**Date:** 2026-10-01
+
+**Context.** A source or recognizer can finish cleanly before the user's Stop,
+including while the finish gesture's audio tail is pending. Neither EOF nor a
+requested Stop proves that all audio was captured. A native source Stop can
+outlive the stream; releasing the speech-runtime lease before its teardown
+returns permits a new capture to contend with the old one. A success banner is
+cosmetic and must not prolong that lease. Carbon can also deliver a key-up after
+the session that received its key-down has ended.
+
+**Decision.** The session-scoped stop-issued marker is set only when the controller
+actually issues source Stop. A clean completion before that marker is an
+interruption, not successful delivery. After an issued Stop, delivery waits for
+both the audio pump and that session's native Stop task, then checks cancellation,
+session identity, and the producer's final report. Runtime ownership spans
+normal completion and error cleanup. Feedback dismissal is a separate,
+identity-fenced task; it does not retain the runtime. Hotkey release may finish
+only the session that owned its press. A second press can recover a lost key-up,
+while a late release cannot stop a newer menu-started session.
+
+**Consequences.** A dependency-thrown cancellation error is visible when the
+owning task itself was not cancelled, and stays until dismissed. Source and
+recognizer EOF without an issued Stop leave the restartable interrupted-capture
+failure rather than pasting partial text.
+Synthetic bilingual controller and real-app fixture tests cover those call
+sites, including native Stop delay, cancellation and session replacement.
+Hardware capture and external-editor acknowledgement remain separate gates.
+
+## D556 — Register Dev installations without starting the shared library
+
+**Decision.** `make install` ends after re-signing, verifying both bundles,
+copying only Portavoz Dev and registering it with LaunchServices. Installation
+does not launch an app. Disposable validation is a separate explicit launch
+with `-use-temp-store`; the recipe prints that command rather than executing it.
+The registered Dev identity, production-profile refusal and released app remain
+unchanged. The Apple registration-tool path has an override for inert command
+boundary tests, not a new runtime storage or product configuration.
+
+**Why.** Normal Dev and release composition share the default SQLite URL.
+Opening Dev without arguments can start migration and recovery against the
+user's library, even when a preceding QA test used disposable storage. Automatically
+switching every developer launch to temporary storage would instead silently
+discard the expected persistent Dev session. Separate installation from launch
+so neither data choice nor foreground activation happens implicitly. This is
+not a repair to cross-process storage ownership or proof of past unchangedness.
+
+**Evidence boundary.** Executable Makefile tests use inert build, signing, copy,
+registration and Apple-event commands. They assert the full ordered recipe,
+no application launch, Dev-only paths, early profile rejection and failure
+before registration at either signature boundary. The same tests fail on the
+previous recipe, with only its fixed registration command bound to the inert
+adapter, because it calls `open`. Source checks remain a supplemental
+ratchet, not the behavior proof. These tests cannot certify real signing, TCC,
+LaunchServices or a live library; real-app tests and native evidence stay separate.
+
+
+## D557 — Reuse compatible Swift compilation without reusing test verdicts
+
+**Context:** Hosted CI spends material time compiling the same pinned SwiftPM
+dependencies on every push. Runner queueing and XCUITest execution are separate
+costs; removing OS lanes or test assertions would trade away evidence rather
+than remove redundant compilation.
+
+**Decision:** Cache the complete unprivileged SwiftPM build graph for the
+current-SDK and Sequoia test jobs under an exact build-environment/dependency
+identity. Reuse one immutable seed per identity, without a source-SHA suffix or
+cross-toolchain fallback. A successful build records tracked source hashes,
+sizes, permissions and mtimes. Recover old mtimes only when bytes and mode match;
+force changed/new files fresh, and never restore deleted, symlinked or
+out-of-checkout paths. SwiftPM still owns normal invalidation. Always execute
+the same complete test command; never use
+a cache hit as a result, skip-build signal or permission to retry a failure.
+`main` always builds cold and is the only producer of a seed after success;
+pull requests restore but never save, because a PR-scoped seed serves only that
+PR while consuming the shared quota. A hit that fails freshness validation is
+discarded and builds cold rather than failing the job, so an immutable seed
+cannot keep CI red. Limit save to a successful graph of at most 6 GiB; retain
+the existing cache quota. The iOS and UI workflows remain outside
+this change, and release/performance authority never consumes this cache.
+
+**Consequences:** Warm PR updates can avoid recompiling compatible dependencies,
+while dependency, toolchain, SDK, image, workspace or build-policy changes start
+cold. Eviction or oversize graphs also remain cold, so speedup is conditional,
+not a CI SLA. Key-policy tests and fresh-checkout compiler/failing-test controls
+protect the boundary; cold/warm native and hosted timings, archive overhead and
+identical test totals must be reported separately from runner queue delays.

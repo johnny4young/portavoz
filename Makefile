@@ -11,6 +11,7 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 # There are two Developer ID certs with the same name on this machine; this
 # SHA-1 disambiguates the Portavoz one. Override with the env var.
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
+PORTAVOZ_LSREGISTER := /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 
 .PHONY: build test test-ask-quality test-apuntador-validation \
 	test-live-assist-validation live-assist-baseline live-assist-bundled-question \
@@ -1064,6 +1065,8 @@ assistive-qualification-finalize:
 ## stable app. A fresh dev identity needs its own one-time TCC grants. Need real
 ## recordings/data for a test? COPY them — never operate on the release app's
 ## live folders.
+## Registration does not choose a library or steal foreground focus. Ordinary
+## manual Dev launches still share the default store; QA opts into temp storage.
 install:
 	@if [ -n "$(PORTAVOZ_PROVISIONING_PROFILE)" ]; then \
 		echo "make install cannot mutate a production-profile app into app.portavoz.mac.dev." >&2; \
@@ -1079,8 +1082,8 @@ install:
 		sed -i '' \
 			-e 's/^"CFBundleDisplayName" = ".*";$$/"CFBundleDisplayName" = "Portavoz Dev";/' \
 			-e 's/^"CFBundleName" = ".*";$$/"CFBundleName" = "Portavoz Dev";/' \
-			"$$plist"; \
-		plutil -lint "$$plist"; \
+			"$$plist" || exit 1; \
+		plutil -lint "$$plist" || exit 1; \
 	done
 	# Editing Info.plist invalidates the signature; re-sign or TCC grants
 	# (mic, screen recording) will not stick to the dev app.
@@ -1092,7 +1095,7 @@ install:
 	rm -rf "/Applications/Portavoz Dev.app"
 	cp -R dist/Portavoz.app "/Applications/Portavoz Dev.app"
 	codesign --verify --deep --strict --verbose=2 "/Applications/Portavoz Dev.app"
-	/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
+	"$(PORTAVOZ_LSREGISTER)" \
 		-f "/Applications/Portavoz Dev.app"
-	open "/Applications/Portavoz Dev.app"
-	@echo "✅ Portavoz Dev reinstalled (release copy untouched)."
+	@echo "✅ Portavoz Dev reinstalled and registered; automatic launch intentionally disabled."
+	@echo "For disposable validation: open -na '/Applications/Portavoz Dev.app' --args -use-temp-store"

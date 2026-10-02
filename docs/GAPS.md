@@ -30,9 +30,12 @@ watchdog or a sample-count duration guarantee; an input that stalls after its
 first callback needs separate capture-health evidence.
 
 The controller and native-receiver test seams (D515) improve reachability, not
-all dictation behavior. The microphone pump still finishes its transcription
-feed after a source error and does not promote dropped-yield evidence into a
-terminal failure. The displayed application name is not yet a pinned delivery
+all dictation behavior. Source errors, producer failure notifications and
+dropped relay yields revoke automatic delivery for their owning session;
+normal source or recognizer completion also requires the controller to have
+issued Stop, and cancelled terminal captions cannot overwrite a new session.
+These repairs do not provide durable recovery of interrupted dictation audio.
+The displayed application name is not yet a pinned delivery
 target; `.inserted` still denotes dispatched events rather than a verified
 external edit. These require call-site regressions and fixes before broad
 reliability claims. Model quality, Bluetooth transitions and the external-editor
@@ -184,6 +187,12 @@ Dev and release composition both select the same default database URL. The
 single-owner assumption is not a cross-process recovery lease. Side-by-side
 validation must use separate disposable copies; concurrent production owners and
 their recovery interaction are not qualified by the single-process tests.
+
+`make install` now stops after signature verification and registration, without
+opening the default library (D556). Explicit disposable validation uses
+`-use-temp-store`. This removes installation-triggered startup, not the shared
+database identity of an ordinary manual Dev launch. It does not retroactively
+prove an earlier library unchanged or qualify concurrent production owners.
 
 ### Source-size and lexical reuse boundaries
 

@@ -1,6 +1,7 @@
 import AppKit
 import AudioCaptureKit
 import Foundation
+import os
 import PortavozCore
 import TranscriptionKit
 import XCTest
@@ -88,6 +89,236 @@ final class DictationControllerTests: XCTestCase {
         }
     }
 
+    func testMicrophoneErrorAfterPartialCannotBecomeSuccessfulInsertion() async {
+        let errors: [any Error] = [SyntheticCaptureFailure.disconnected, CancellationError()]
+        for text in ["No borres estas notas", "Don’t delete these notes"] {
+            for error in errors {
+                let harness = DictationControllerHarness(text: text)
+                defer { harness.controller.cancel() }
+                harness.controller.toggle(using: harness.dependencies)
+                let partial = await awaitEventually { harness.controller.partialText == text }
+                XCTAssertTrue(partial)
+                await harness.microphone.fail(error)
+                let finished = await awaitEventually { harness.finishes == 1 }
+                XCTAssertTrue(finished, "A failed microphone must release its exact runtime")
+                XCTAssertTrue(harness.insertions.isEmpty, "A partial after capture failure must not be pasted")
+                assertInterrupted(harness)
+                guard case .failed = harness.controller.phase else {
+                    XCTFail("Unexpected source cancellation is capture failure, not successful EOF")
+                    continue
+                }
+            }
+        }
+    }
+
+    func testCleanSourceEOFWithoutRequestedStopCannotDeliverPartial() async {
+        for text in ["No borres estas notas", "Don’t delete these notes"] {
+            let harness = DictationControllerHarness(text: text)
+            defer { harness.controller.cancel() }
+            harness.controller.toggle(using: harness.dependencies)
+            let partial = await awaitEventually { harness.controller.partialText == text }
+            XCTAssertTrue(partial)
+            // A source can close normally without a user's Stop (for example,
+            // a device teardown that never publishes a failure report).
+            await harness.microphone.stop()
+            let released = await awaitEventually { harness.finishes == 1 }
+            XCTAssertTrue(released, "Unexpected EOF must release the runtime")
+            XCTAssertTrue(harness.insertions.isEmpty, "EOF alone is not permission to paste")
+            assertInterrupted(harness)
+            guard case .failed = harness.controller.phase else {
+                XCTFail("Unexpected EOF after a partial must be an actionable failure")
+                continue
+            }
+        }
+    }
+
+    func testCleanSourceEOFDuringStopTailCannotDeliverPartial() async {
+        for text in ["No borres estas notas", "Don’t delete these notes"] {
+            let harness = DictationControllerHarness(text: text)
+            defer { harness.controller.cancel() }
+            harness.controller.toggle(using: harness.dependencies)
+            let partial = await awaitEventually { harness.controller.partialText == text }
+            XCTAssertTrue(partial)
+            harness.now = harness.now.addingTimeInterval(1)
+            harness.controller.toggle(using: harness.dependencies)
+            // Stop has been requested, but the controller has not yet issued
+            // source.stop() after its 250 ms tail. This EOF is still untrusted.
+            await harness.microphone.stop()
+            let released = await awaitEventually { harness.finishes == 1 }
+            XCTAssertTrue(released)
+            XCTAssertTrue(harness.insertions.isEmpty, "The pending tail must not authorize early EOF")
+            assertInterrupted(harness)
+            guard case .failed = harness.controller.phase else {
+                XCTFail("Early EOF during Stop tail must remain an actionable failure")
+                continue
+            }
+        }
+    }
+
+    func testObsoleteProducerFailureCannotRetireReplacementCapture() async {
+        let controller = DictationController(presentsPanel: false)
+        let first = DictationControllerHarness(text: "No borres estas notas", controller: controller)
+        let replacement = DictationControllerHarness(text: "Don’t delete these notes", controller: controller)
+        defer { controller.cancel() }
+        controller.toggle(using: first.dependencies)
+        let firstReady = await awaitEventually { controller.partialText == first.text }
+        XCTAssertTrue(firstReady)
+        controller.cancel()
+        let retired = await awaitEventually { first.finishes == 1 }
+        XCTAssertTrue(retired)
+        controller.toggle(using: replacement.dependencies)
+        let replacementReady = await awaitEventually { controller.partialText == replacement.text }
+        XCTAssertTrue(replacementReady)
+        await first.microphone.signalFailure(.sourceFailed)
+        replacement.now = replacement.now.addingTimeInterval(1)
+        controller.toggle(using: replacement.dependencies)
+        let delivered = await awaitEventually { replacement.insertions == [replacement.text] }
+        XCTAssertTrue(delivered, "A late producer callback belongs only to its old capture")
+        XCTAssertTrue(first.insertions.isEmpty)
+    }
+
+    func testProducerFailureSignalRetiresCaptureWithoutWaitingForBufferedEOF() async {
+        for text in ["No borres estas notas", "Don’t delete these notes"] {
+            for failure in [PortavozCore.CaptureFailure.overloaded, .sourceFailed] {
+                let harness = DictationControllerHarness(text: text)
+                defer { harness.controller.cancel() }
+                harness.controller.toggle(using: harness.dependencies)
+                let partial = await awaitEventually { harness.controller.partialText == text }
+                XCTAssertTrue(partial)
+                // The native source reports failure before its retained queue drains.
+                // Do not finish this stream: retirement must not depend on future EOF.
+                await harness.microphone.signalFailure(failure)
+                let failed = await awaitEventually {
+                    if case .failed = harness.controller.phase { return true }
+                    return false
+                }
+                XCTAssertTrue(failed, "Producer failure must promptly leave the listening state")
+                let released = await awaitEventually { harness.finishes == 1 }
+                XCTAssertTrue(released, "Retire the source and release its runtime without a user Stop")
+                XCTAssertTrue(harness.insertions.isEmpty)
+                assertInterrupted(harness)
+            }
+        }
+    }
+
+    func testCaptionsEndingBeforeTheAudioRelayCannotDeliverAPartial() async {
+        for text in ["No borres estas notas", "Don’t delete these notes"] {
+            let harness = DictationControllerHarness(text: text, stopsReadingAfterFirstCaption: true)
+            defer { harness.controller.cancel() }
+            harness.controller.toggle(using: harness.dependencies)
+            // The engine finished while the microphone keeps producing audio it never read.
+            let failed = await awaitEventually {
+                if case .failed = harness.controller.phase { return true }
+                return false
+            }
+            XCTAssertTrue(failed, "An early caption end must fail before any Stop")
+            let released = await awaitEventually { harness.finishes == 1 }
+            XCTAssertTrue(released)
+            XCTAssertTrue(harness.insertions.isEmpty)
+            assertInterrupted(harness)
+        }
+    }
+
+    func testRelayCapacityBoundaryNeverDeliversAfterDiscardingAudio() async {
+        for text in ["No pagues 0,5 todavía", "Don’t pay 0.5 yet"] {
+            for pendingChunks in [127, 128, 129] {
+                let consumer = PreparationGate()
+                let harness = DictationControllerHarness(text: text, consumerGate: consumer)
+                defer {
+                    consumer.release()
+                    harness.controller.cancel()
+                }
+                harness.controller.toggle(using: harness.dependencies)
+                let held = await awaitEventually {
+                    consumer.started && harness.controller.partialText == text
+                }
+                XCTAssertTrue(held, "Hold the real relay consumer after the first partial")
+                for index in 1...pendingChunks {
+                    await harness.microphone.send(AudioChunk(
+                        channel: .microphone, samples: [0.2 + Float(index) / 1_000],
+                        sampleRate: 16_000, timestamp: Double(index) / 16_000))
+                }
+                let lastPeak = Float(0.2) + Float(pendingChunks) / 1_000
+                let handled = await awaitEventually {
+                    harness.controller.micLevel == lastPeak || harness.controller.phase != .listening
+                }
+                XCTAssertTrue(handled, "Observe pump progress before releasing the held consumer")
+                harness.now = harness.now.addingTimeInterval(1)
+                // Stop is valid; an input gap, not a short gesture, must veto delivery.
+                if harness.controller.phase == .listening {
+                    harness.controller.toggle(using: harness.dependencies)
+                }
+                consumer.release()
+                let finished = await awaitEventually { harness.finishes == 1 }
+                XCTAssertTrue(finished)
+                if pendingChunks <= 128 {
+                    XCTAssertEqual(harness.insertions, [text], "The exact capacity remains usable")
+                } else {
+                    XCTAssertTrue(harness.insertions.isEmpty, "Chunk 129 must not silently evict prior audio")
+                    assertInterrupted(harness)
+                    guard case .failed = harness.controller.phase else {
+                        XCTFail("Overflow needs visible failure, not a successfully pasted suffix")
+                        continue
+                    }
+                }
+            }
+        }
+    }
+
+    func testFinalProducerReportVetoesDeliveryEvenWithoutANotification() async {
+        for text in ["No borres estas notas", "Don’t delete these notes"] {
+            let harness = DictationControllerHarness(text: text)
+            defer { harness.controller.cancel() }
+            harness.controller.toggle(using: harness.dependencies)
+            let partial = await awaitEventually { harness.controller.partialText == text }
+            XCTAssertTrue(partial)
+            // The controller has issued its own Stop: early-EOF rejection
+            // cannot make this report assertion pass by accident.
+            await harness.microphone.armUnnotifiedFailureOnStop()
+            harness.now = harness.now.addingTimeInterval(1)
+            harness.controller.toggle(using: harness.dependencies)
+            let finished = await awaitEventually { harness.finishes == 1 }
+            XCTAssertTrue(finished)
+            XCTAssertTrue(harness.insertions.isEmpty, "Inspect authoritative producer state before delivery")
+            assertInterrupted(harness)
+            guard case .failed = harness.controller.phase else {
+                XCTFail("A failed final report cannot become successful stream completion")
+                continue
+            }
+        }
+    }
+
+    func testLateCaptureNotificationCannotClaimAnAlreadyDispatchedPasteWasPrevented() async {
+        let harness = DictationControllerHarness(text: "Already dispatched — ya enviado")
+        let delivery = PreparationGate()
+        defer {
+            delivery.release()
+            harness.controller.cancel()
+        }
+        var dependencies = harness.dependencies
+        let insert = dependencies.insert
+        dependencies.insert = { text in
+            let result = await insert(text)
+            await delivery.wait()
+            return result
+        }
+        harness.controller.toggle(using: dependencies)
+        let partial = await awaitEventually { harness.controller.partialText == harness.text }
+        XCTAssertTrue(partial)
+        harness.now = harness.now.addingTimeInterval(1)
+        harness.controller.toggle(using: dependencies)
+        let dispatched = await awaitEventually { delivery.started }
+        XCTAssertTrue(dispatched)
+        XCTAssertEqual(harness.insertions, [harness.text])
+        await harness.microphone.signalFailure(.sourceFailed)
+        delivery.release()
+        let finished = await awaitEventually { harness.finishes == 1 }
+        XCTAssertTrue(finished)
+        XCTAssertEqual(harness.insertions, [harness.text], "Do not repeat delivery")
+        XCTAssertEqual(harness.controller.phase, .inserted(harness.text.split(whereSeparator: \.isWhitespace).count),
+                       "A late notification cannot revoke dispatched feedback")
+    }
+
     func testFinalTextRunsThroughRealRulesAndSuppliesHintsToEngine() async {
         let harness = DictationControllerHarness(text: "eh Café C++")
         harness.set("es", forKey: DictationController.languageKey)
@@ -152,11 +383,18 @@ final class DictationControllerTests: XCTestCase {
         XCTAssertNil(DictationUITestFixture(arguments: [], usesTemporaryStore: true))
         XCTAssertNotNil(DictationUITestFixture(
             arguments: ["-seed-dictation"], usesTemporaryStore: true))
-        XCTAssertFalse(DictationUITestFixture.dependencies(
-            fixture: nil, beginCapture: { {} }).canInsert())
+        XCTAssertFalse(DictationUITestFixture.dependencies(fixture: nil, beginCapture: { {} }).canInsert())
+        let failureArguments = ["-seed-dictation", "-seed-dictation-capture-failure"]
+        XCTAssertNil(DictationUITestFixture(arguments: failureArguments, usesTemporaryStore: false))
+        XCTAssertNil(DictationUITestFixture(
+            arguments: ["-seed-dictation-capture-failure"], usesTemporaryStore: true))
+        XCTAssertEqual(DictationUITestFixture(
+            arguments: failureArguments, usesTemporaryStore: true)?.captureFailure, true)
+        XCTAssertEqual(DictationUITestFixture(
+            arguments: ["-seed-dictation"], usesTemporaryStore: true)?.captureFailure, false)
     }
 
-    private func awaitEventually(_ condition: @MainActor () -> Bool) async -> Bool {
+    func awaitEventually(_ condition: @escaping @MainActor () -> Bool) async -> Bool {
         let deadline = ContinuousClock.now.advanced(by: .seconds(3))
         while !condition(), ContinuousClock.now < deadline {
             try? await Task.sleep(for: .milliseconds(5))
@@ -165,22 +403,43 @@ final class DictationControllerTests: XCTestCase {
     }
 }
 
+extension DictationControllerTests {
+    func assertInterrupted(
+        _ harness: DictationControllerHarness, file: StaticString = #filePath, line: UInt = #line
+    ) {
+        XCTAssertEqual(
+            harness.controller.phase, .failed(DictationMicrophoneReadiness.Failure.interrupted.message),
+            file: file, line: line)
+        XCTAssertEqual(harness.measurements.map(\.outcome), [.pipelineFailed], file: file, line: line)
+    }
+}
+
 @MainActor
 final class DictationControllerHarness {
     let controller: DictationController
-    fileprivate let microphone = ControlledDictationMicrophone()
+    let microphone = ControlledDictationMicrophone()
     let defaults = UserDefaults(suiteName: "dictation-tests-\(UUID().uuidString)")!
     let text: String
     var now = Date(timeIntervalSince1970: 1_000)
     var loads = 0
     var finishes = 0
     var hints: TranscriptionHints?
+    var transcriptOutput: AsyncThrowingStream<TranscriptSegment, Error>.Continuation?
     var insertions: [String] = []
     var measurements: [DictationSessionMeasurement] = []
+    let consumerGate: PreparationGate?
+    let stopsReadingAfterFirstCaption: Bool
 
-    init(text: String, controller: DictationController = .init(presentsPanel: false)) {
+    init(
+        text: String,
+        controller: DictationController = .init(presentsPanel: false),
+        consumerGate: PreparationGate? = nil,
+        stopsReadingAfterFirstCaption: Bool = false
+    ) {
         self.controller = controller
         self.text = text
+        self.consumerGate = consumerGate
+        self.stopsReadingAfterFirstCaption = stopsReadingAfterFirstCaption
         defaults.setVolatileDomain([:], forName: UserDefaults.argumentDomain)
     }
 
@@ -198,7 +457,10 @@ final class DictationControllerHarness {
                 guard let self else { throw CancellationError() }
                 self.loads += 1
                 return LiveTranscriptionRuntime(engine: ControlledDictationEngine(
-                    text: self.text, receivedHints: { [weak self] in self?.hints = $0 })) { [weak self] in
+                    text: self.text, consumerGate: self.consumerGate,
+                    stopsReadingAfterFirstCaption: self.stopsReadingAfterFirstCaption,
+                    receivedHints: { [weak self] in self?.hints = $0 },
+                    receivedOutput: { [weak self] in self?.transcriptOutput = $0 })) { [weak self] in
                     self?.finishes += 1
                 }
             },
@@ -213,10 +475,32 @@ final class DictationControllerHarness {
     }
 }
 
-actor ControlledDictationMicrophone: AudioCaptureSource {
+actor ControlledDictationMicrophone: CaptureReportingSource {
+    private struct Health: Sendable {
+        var failure: PortavozCore.CaptureFailure?
+        var handler: (@Sendable () -> Void)?
+    }
+
     nonisolated let channel = AudioChannel.microphone
+    private nonisolated let health = OSAllocatedUnfairLock(initialState: Health())
     private(set) var starts = 0
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
+    private var failOnStop = false
+    private var stopDrain: (@Sendable () async -> Void)?
+
+    func holdStop(_ drain: @escaping @Sendable () async -> Void) { stopDrain = drain }
+
+    nonisolated var captureReport: CaptureChannelReport {
+        health.withLock { CaptureChannelReport(channel: .microphone, failure: $0.failure) }
+    }
+
+    nonisolated func setCaptureFailureHandler(_ handler: @escaping @Sendable () -> Void) {
+        let failed = health.withLock { state in
+            state.handler = handler
+            return state.failure != nil
+        }
+        if failed { handler() }
+    }
 
     func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
         starts += 1
@@ -228,14 +512,43 @@ actor ControlledDictationMicrophone: AudioCaptureSource {
     }
 
     func stop() async {
+        if failOnStop {
+            health.withLock { $0.failure = .sourceFailed }
+            failOnStop = false
+        }
         continuation?.finish()
         continuation = nil
+        await stopDrain?()
+    }
+
+    func fail(_ error: any Error) {
+        continuation?.finish(throwing: error)
+        continuation = nil
+    }
+
+    func send(_ chunk: AudioChunk) {
+        continuation?.yield(chunk)
+    }
+
+    func signalFailure(_ failure: PortavozCore.CaptureFailure) {
+        let handler = health.withLock { state in
+            state.failure = failure
+            return state.handler
+        }
+        handler?()
+    }
+
+    func armUnnotifiedFailureOnStop() {
+        failOnStop = true
     }
 }
 
 private struct ControlledDictationEngine: TranscriptionEngine {
     let text: String
+    let consumerGate: PreparationGate?
+    let stopsReadingAfterFirstCaption: Bool
     let receivedHints: @MainActor @Sendable (TranscriptionHints) -> Void
+    let receivedOutput: @MainActor @Sendable (AsyncThrowingStream<TranscriptSegment, Error>.Continuation) -> Void
     let descriptor = EngineDescriptor(
         id: "controlled", displayName: "Controlled", realTimeFactor: 0,
         runsOnDevice: true, approximateMemoryMB: 0)
@@ -245,11 +558,18 @@ private struct ControlledDictationEngine: TranscriptionEngine {
     ) -> AsyncThrowingStream<TranscriptSegment, Error> {
         let (stream, continuation) = AsyncThrowingStream.makeStream(of: TranscriptSegment.self)
         let task = Task {
+            await receivedOutput(continuation)
             await receivedHints(hints)
+            var isFirst = true
             for await _ in audio {
-                continuation.yield(TranscriptSegment(
-                    meetingID: hints.meetingID!, channel: .microphone,
-                    text: text, startTime: 0, endTime: 1))
+                if isFirst {
+                    continuation.yield(TranscriptSegment(
+                        meetingID: hints.meetingID!, channel: .microphone,
+                        text: text, startTime: 0, endTime: 1))
+                    isFirst = false
+                    await consumerGate?.wait()
+                    if stopsReadingAfterFirstCaption { break }
+                }
             }
             continuation.finish()
         }
@@ -258,8 +578,10 @@ private struct ControlledDictationEngine: TranscriptionEngine {
     }
 }
 
+private enum SyntheticCaptureFailure: Error { case disconnected }
+
 @MainActor
-private final class PreparationGate {
+final class PreparationGate {
     var started = false
     private var continuation: CheckedContinuation<Void, Never>?
 
