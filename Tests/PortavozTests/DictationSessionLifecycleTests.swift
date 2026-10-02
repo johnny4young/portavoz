@@ -372,10 +372,13 @@ extension DictationControllerTests {
                 prematureDelivery.isInverted = true
                 await harness.microphone.holdStop { await drain.wait() }
                 var dependencies = harness.dependencies
-                let insert = dependencies.insert
-                dependencies.insert = { value in
-                    if !drain.released { prematureDelivery.fulfill() }
-                    return await insert(value)
+                let capture = dependencies.captureDestination
+                dependencies.captureDestination = {
+                    let destination = capture()
+                    return CapturedDictationDestination(name: destination.name, canRetry: destination.canRetry) { value in
+                        if !drain.released { prematureDelivery.fulfill() }
+                        return await destination.insert(value)
+                    }
                 }
                 harness.controller.toggle(using: dependencies)
                 let ready = await awaitEventually { harness.controller.partialText == text }

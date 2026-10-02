@@ -35,10 +35,18 @@ dropped relay yields revoke automatic delivery for their owning session;
 normal source or recognizer completion also requires the controller to have
 issued Stop, and cancelled terminal captions cannot overwrite a new session.
 These repairs do not provide durable recovery of interrupted dictation audio.
-The displayed application name is not yet a pinned delivery
-target; `.inserted` still denotes dispatched events rather than a verified
-external edit. These require call-site regressions and fixes before broad
-reliability claims. Model quality, Bluetooth transitions and the external-editor
+The destination is now pinned before preparation to a process and focused AX element, with refused
+output retained for explicit Copy or retry (D544). Deterministic tests exercise
+the controller and actual inserter, but native focus switches, process
+termination/relaunch and secure-field transitions still need receiver/device
+evidence. Accessibility validation and keyboard-event posting are not an atomic
+editor transaction: `.inserted` still denotes dispatched events rather than a
+verified external edit. Recovery is RAM-only; quitting does not preserve the
+output. This recovery covers final text after completed recognition, not an
+incomplete capture/model failure: those failures still have no supported Copy
+or durable recovery of admitted partial captions. Clipboard snapshot
+size/materialization remains an independent limitation. Model quality,
+Bluetooth transitions and the external-editor
 matrix require separate evidence; a synthetic caption fixture cannot establish
 those results. Missing Accessibility permission makes the separately selected
 native delivery gate unqualified, not proof that insertion works. Hosted

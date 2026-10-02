@@ -17,7 +17,7 @@ final class DictationControllerTests: XCTestCase {
         let originalCount = board.changeCount
         for processID: pid_t in [0, -1, .min] {
             let result = await TextInserter.insert(
-                "Must never be delivered", pasteboard: board, eventTarget: .process(processID))
+                "Must never be delivered", into: .init(processID: processID, validate: { nil }), pasteboard: board)
             XCTAssertEqual(result, .eventUnavailable)
             XCTAssertEqual(board.changeCount, originalCount)
             XCTAssertEqual(board.string(forType: .string), "Do not replace — no reemplazar")
@@ -33,9 +33,8 @@ final class DictationControllerTests: XCTestCase {
         exited.executableURL = URL(fileURLWithPath: "/usr/bin/true")
         try exited.run()
         exited.waitUntilExit()
-        let target = TextInserter.EventTarget.process(exited.processIdentifier)
-        XCTAssertFalse(target.isAvailable)
-        let result = await TextInserter.insert("Must never be delivered", pasteboard: board, eventTarget: target)
+        let target = TextInserter.Target(processID: exited.processIdentifier, validate: { nil })
+        let result = await TextInserter.insert("Must never be delivered", into: target, pasteboard: board)
         XCTAssertEqual(result, .eventUnavailable)
         XCTAssertEqual(board.changeCount, originalCount)
         XCTAssertEqual(board.string(forType: .string), "original")
@@ -296,11 +295,19 @@ final class DictationControllerTests: XCTestCase {
             harness.controller.cancel()
         }
         var dependencies = harness.dependencies
-        let insert = dependencies.insert
-        dependencies.insert = { text in
-            let result = await insert(text)
-            await delivery.wait()
-            return result
+        let captureDestination = dependencies.captureDestination
+        var captures = 0
+        dependencies.captureDestination = {
+            captures += 1
+            let destination = captureDestination()
+            return CapturedDictationDestination(
+                name: destination.name,
+                canRetry: destination.canRetry,
+                insert: { text in
+                    let result = await destination.insert(text)
+                    await delivery.wait()
+                    return result
+                })
         }
         harness.controller.toggle(using: dependencies)
         let partial = await awaitEventually { harness.controller.partialText == harness.text }
@@ -315,6 +322,7 @@ final class DictationControllerTests: XCTestCase {
         let finished = await awaitEventually { harness.finishes == 1 }
         XCTAssertTrue(finished)
         XCTAssertEqual(harness.insertions, [harness.text], "Do not repeat delivery")
+        XCTAssertEqual(captures, 1, "A late report must not recapture a destination")
         XCTAssertEqual(harness.controller.phase, .inserted(harness.text.split(whereSeparator: \.isWhitespace).count),
                        "A late notification cannot revoke dispatched feedback")
     }
@@ -394,6 +402,35 @@ final class DictationControllerTests: XCTestCase {
             arguments: ["-seed-dictation"], usesTemporaryStore: true)?.captureFailure, false)
     }
 
+    func testRecoveryFixtureCannotCopyWithoutExplicitAdmissionAndNamedBoard() async {
+        let flags = ["-seed-dictation", "-seed-dictation-recovery"]
+        let key = DictationNativeUITestFixture.environmentKey
+        let board = NSPasteboard(name: .init(DictationNativeUITestFixture.pasteboardPrefix + UUID().uuidString))
+        defer { board.releaseGlobally() }
+        board.setString("Original", forType: .string)
+        for temporary in [false, true] {
+            for arguments in [[], ["-seed-dictation"], ["-seed-dictation-recovery"], flags] {
+                let fixture = DictationUITestFixture(arguments: arguments, usesTemporaryStore: temporary)
+                let dependencies = DictationUITestFixture.dependencies(
+                    fixture: fixture, beginCapture: { {} }, environment: [key: board.name.rawValue])
+                let expectedCopy = temporary && arguments == flags
+                let destination = dependencies.captureDestination()
+                let delivery = await destination.insert("No native events")
+                XCTAssertEqual(delivery, expectedCopy ? .targetChanged : .focusUnavailable)
+                XCTAssertFalse(dependencies.copyText("Never copied on the first attempt"))
+                XCTAssertEqual(dependencies.copyText("Consented scratch copy"), expectedCopy)
+                board.setString("Original", forType: .string)
+            }
+        }
+        let fixture = DictationUITestFixture(arguments: flags, usesTemporaryStore: true)
+        for invalid in ["", "NSGeneralPboard", DictationNativeUITestFixture.pasteboardPrefix + "invalid"] {
+            let dependencies = DictationUITestFixture.dependencies(fixture: fixture, beginCapture: { {} }, environment: [key: invalid])
+            XCTAssertFalse(dependencies.copyText("First"))
+            XCTAssertFalse(dependencies.copyText("Second"))
+        }
+        XCTAssertEqual(board.string(forType: .string), "Original")
+    }
+
     func awaitEventually(_ condition: @escaping @MainActor () -> Bool) async -> Bool {
         let deadline = ContinuousClock.now.advanced(by: .seconds(3))
         while !condition(), ContinuousClock.now < deadline {
@@ -464,11 +501,14 @@ final class DictationControllerHarness {
                     self?.finishes += 1
                 }
             },
-            canInsert: { true }, targetName: { "Disposable receiver" },
-            insert: { [weak self] text in
-                self?.insertions.append(text)
-                return .inserted
+            canInsert: { true },
+            captureDestination: { [weak self] in
+                CapturedDictationDestination(name: "Disposable receiver", canRetry: true) { [weak self] text in
+                    self?.insertions.append(text)
+                    return .inserted
+                }
             },
+            copyText: { _ in false },
             defaults: defaults, now: { [weak self] in self?.now ?? .distantPast },
             beginCapture: { {} },
             measurementSink: { [weak self] in self?.measurements.append($0) })
