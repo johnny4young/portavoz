@@ -6353,3 +6353,10 @@ releases generation, then verifies the final answer and persisted citation.
 This changes only temporary-store fixture composition, not production latency.
 The handshake uses the launch-owned temporary directory and retains cancellation,
 cleanup and the original deadlines. No assertion or runtime budget is removed.
+
+Dictation session completion and UI feedback have separate ownership.
+Recognizer EOF before an issued Stop is rejected before waiting for a live audio
+producer. Delivery waits for both its producer and its native Stop task; cosmetic
+feedback uses an independently fenced identity and never retains the runtime
+lease. Hotkey release belongs to the exact session that admitted its press,
+including permission/model preparation, without moving the first-buffer clock.

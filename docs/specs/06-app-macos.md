@@ -4193,3 +4193,23 @@ below-guidance Macs receive advice, not an admission ban. Both variant choices
 remain available. Compact is still a disk-saving option: there is no measured
 RAM advantage that would justify silently choosing it for an existing or new
 installation. A profile choice never starts a model download.
+
+### Dictation completion and feedback ownership (D550)
+
+A recognizer can end while capture is still live. Such EOF fails before joining
+the producer, rather than hanging indefinitely. Only an actually issued Stop
+permits completion; a source EOF before it shows the same localized interruption
+as other capture failures. Delivery also awaits that session's native Stop task
+before checking capture integrity. A dependency's CancellationError is a visible
+"ended unexpectedly" failure unless the owning task was cancelled or replaced;
+like capture interruptions and preparation permission/no-audio failures, it
+stays until dismissed because nothing was typed.
+
+Success and failure feedback have generation-scoped timers, independent of the
+capture task. New capture or Cancel revokes the old timer even when its wait
+ignores cancellation. Feedback does not retain the model/runtime lease. Hotkey
+press binds release to its admitted session, including Preparing; a long hold
+released before any audio cancels, never passes the minimum-audio threshold.
+A second press can recover lost key-up; a prior key-up cannot finish a newer
+menu-started capture. Gesture elapsed time and actual first-buffer time remain
+separate clocks.

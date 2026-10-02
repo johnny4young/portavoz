@@ -227,7 +227,7 @@ are unchanged. Functional and timing qualification still require actual runs.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 130 UI cases after consolidating one pair of
+The unattended catalog contains 131 UI cases after consolidating one pair of
 confirmed-person journeys, including portable-settings, shortcut-recovery, the
 real dictation-panel, three microphone-preparation/recovery, capture-failure
 recovery, two Apple Speech Settings, and the compact Meeting Detail correction
@@ -536,7 +536,7 @@ or destination identity fencing. The presence of this test is not evidence that
 the native gate passed. No general clipboard, real meeting, model download or microphone participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 130 unattended cases;
+`make test-ui-bilingual` and scoped hosted runs select the 131 unattended cases;
 `make test-ui-native-dictation` selects the one real receiver case in EN and ES.
 The catalog policy requires that case to remain discoverable but disjoint from
 unattended selectors. The runner excludes it only when no explicit selectors
@@ -8623,3 +8623,20 @@ validator still requires exactly one failed, non-skipped case, complete cleanup,
 the expected refusal reason, and no fallback/action effect. A timeout, empty
 worker restart, missing receipt or unexpected effect is not an accepted negative
 control. Positive controls still require normal successful action and teardown.
+
+### Dictation lifecycle ownership evidence
+
+`DictationSessionLifecycleTests.swift` exercises the real controller's EOF,
+provider cancellation, deferred native Stop, duplicate Stop, generation-fenced
+feedback, late key-up and replacement-session call sites. Bilingual text includes
+typographic apostrophes, punctuation-only input, empty text and the minimum
+capture boundary. Injected gates hold the actual lifecycle boundaries instead
+of guessing their completion with a fixed sleep. These complement readiness,
+resource-ownership and incremental-projection regressions; they do not substitute
+for physical devices, real ASR quality or native AX/editor readback.
+
+`testDictationSourceEOFBeforeStopIsVisibleAndCanRestart` uses the real app's
+menu/panel with an isolated first-capture EOF before Stop, shows the localized
+interrupted message, then proves dismissal and restart in each locale. The fixture consumes its one-shot failure at source construction,
+not during menu dependency construction. Its scope has an explicit 20-second
+per-case budget; aggregate full-suite budgets are unchanged.

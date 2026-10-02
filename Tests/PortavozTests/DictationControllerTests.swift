@@ -315,7 +315,8 @@ final class DictationControllerTests: XCTestCase {
         let finished = await awaitEventually { harness.finishes == 1 }
         XCTAssertTrue(finished)
         XCTAssertEqual(harness.insertions, [harness.text], "Do not repeat delivery")
-        XCTAssertEqual(harness.controller.phase, .idle, "A late notification cannot say nothing was inserted")
+        XCTAssertEqual(harness.controller.phase, .inserted(harness.text.split(whereSeparator: \.isWhitespace).count),
+                       "A late notification cannot revoke dispatched feedback")
     }
 
     func testFinalTextRunsThroughRealRulesAndSuppliesHintsToEngine() async {
@@ -393,7 +394,7 @@ final class DictationControllerTests: XCTestCase {
             arguments: ["-seed-dictation"], usesTemporaryStore: true)?.captureFailure, false)
     }
 
-    private func awaitEventually(_ condition: @MainActor () -> Bool) async -> Bool {
+    func awaitEventually(_ condition: @escaping @MainActor () -> Bool) async -> Bool {
         let deadline = ContinuousClock.now.advanced(by: .seconds(3))
         while !condition(), ContinuousClock.now < deadline {
             try? await Task.sleep(for: .milliseconds(5))
@@ -416,13 +417,14 @@ extension DictationControllerTests {
 @MainActor
 final class DictationControllerHarness {
     let controller: DictationController
-    fileprivate let microphone = ControlledDictationMicrophone()
+    let microphone = ControlledDictationMicrophone()
     let defaults = UserDefaults(suiteName: "dictation-tests-\(UUID().uuidString)")!
     let text: String
     var now = Date(timeIntervalSince1970: 1_000)
     var loads = 0
     var finishes = 0
     var hints: TranscriptionHints?
+    var transcriptOutput: AsyncThrowingStream<TranscriptSegment, Error>.Continuation?
     var insertions: [String] = []
     var measurements: [DictationSessionMeasurement] = []
     let consumerGate: PreparationGate?
@@ -457,7 +459,8 @@ final class DictationControllerHarness {
                 return LiveTranscriptionRuntime(engine: ControlledDictationEngine(
                     text: self.text, consumerGate: self.consumerGate,
                     stopsReadingAfterFirstCaption: self.stopsReadingAfterFirstCaption,
-                    receivedHints: { [weak self] in self?.hints = $0 })) { [weak self] in
+                    receivedHints: { [weak self] in self?.hints = $0 },
+                    receivedOutput: { [weak self] in self?.transcriptOutput = $0 })) { [weak self] in
                     self?.finishes += 1
                 }
             },
@@ -483,6 +486,9 @@ actor ControlledDictationMicrophone: CaptureReportingSource {
     private(set) var starts = 0
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
     private var failOnStop = false
+    private var stopDrain: (@Sendable () async -> Void)?
+
+    func holdStop(_ drain: @escaping @Sendable () async -> Void) { stopDrain = drain }
 
     nonisolated var captureReport: CaptureChannelReport {
         health.withLock { CaptureChannelReport(channel: .microphone, failure: $0.failure) }
@@ -512,6 +518,7 @@ actor ControlledDictationMicrophone: CaptureReportingSource {
         }
         continuation?.finish()
         continuation = nil
+        await stopDrain?()
     }
 
     func fail(_ error: any Error) {
@@ -541,6 +548,7 @@ private struct ControlledDictationEngine: TranscriptionEngine {
     let consumerGate: PreparationGate?
     let stopsReadingAfterFirstCaption: Bool
     let receivedHints: @MainActor @Sendable (TranscriptionHints) -> Void
+    let receivedOutput: @MainActor @Sendable (AsyncThrowingStream<TranscriptSegment, Error>.Continuation) -> Void
     let descriptor = EngineDescriptor(
         id: "controlled", displayName: "Controlled", realTimeFactor: 0,
         runsOnDevice: true, approximateMemoryMB: 0)
@@ -550,6 +558,7 @@ private struct ControlledDictationEngine: TranscriptionEngine {
     ) -> AsyncThrowingStream<TranscriptSegment, Error> {
         let (stream, continuation) = AsyncThrowingStream.makeStream(of: TranscriptSegment.self)
         let task = Task {
+            await receivedOutput(continuation)
             await receivedHints(hints)
             var isFirst = true
             for await _ in audio {

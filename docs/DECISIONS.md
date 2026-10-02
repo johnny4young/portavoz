@@ -20660,6 +20660,38 @@ verification remain independent qualifications. The added failure journey
 raises the current permission-independent unattended catalog from 129 to 130
 without restoring the native receiver to that catalog.
 
+---
+
+## D550 — Own dictation completion, teardown, and feedback separately
+
+**Date:** 2026-10-01
+
+**Context.** A source or recognizer can finish cleanly before the user's Stop,
+including while the finish gesture's audio tail is pending. Neither EOF nor a
+requested Stop proves that all audio was captured. A native source Stop can
+outlive the stream; releasing the speech-runtime lease before its teardown
+returns permits a new capture to contend with the old one. A success banner is
+cosmetic and must not prolong that lease. Carbon can also deliver a key-up after
+the session that received its key-down has ended.
+
+**Decision.** The session-scoped stop-issued marker is set only when the controller
+actually issues source Stop. A clean completion before that marker is an
+interruption, not successful delivery. After an issued Stop, delivery waits for
+both the audio pump and that session's native Stop task, then checks cancellation,
+session identity, and the producer's final report. Runtime ownership spans
+normal completion and error cleanup. Feedback dismissal is a separate,
+identity-fenced task; it does not retain the runtime. Hotkey release may finish
+only the session that owned its press. A second press can recover a lost key-up,
+while a late release cannot stop a newer menu-started session.
+
+**Consequences.** A dependency-thrown cancellation error is visible when the
+owning task itself was not cancelled, and stays until dismissed. Source and
+recognizer EOF without an issued Stop leave the restartable interrupted-capture
+failure rather than pasting partial text.
+Synthetic bilingual controller and real-app fixture tests cover those call
+sites, including native Stop delay, cancellation and session replacement.
+Hardware capture and external-editor acknowledgement remain separate gates.
+
 ## D556 — Register Dev installations without starting the shared library
 
 **Decision.** `make install` ends after re-signing, verifying both bundles,
