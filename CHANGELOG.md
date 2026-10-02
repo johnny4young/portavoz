@@ -15,6 +15,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## October 1, 2026
+
+- **🛡️ Dictation stops before a broken paste** — interrupted or overloaded audio now shows a clear failure instead of automatically inserting an incomplete result.
+
 ## September 30, 2026
 
 - **📋 Safer dictation paste** — preserves rich clipboard items, protects newer copies, and explains when it cannot safely borrow the clipboard.

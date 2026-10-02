@@ -237,6 +237,7 @@ private final class StreamingDictationFixture {
     let continuation: AsyncThrowingStream<TranscriptSegment, Error>.Continuation
     private let meetingID = MeetingID()
     private var ready = false
+    private var inputEnded = false
 
     init(harness: DictationControllerHarness = .init(text: "unused"), capacity: Int = 128) {
         self.harness = harness
@@ -250,15 +251,21 @@ private final class StreamingDictationFixture {
             guard let self else { throw CancellationError() }
             harness.loads += 1
             let engine: any TranscriptionEngine
+            let markInputEnded: @MainActor @Sendable () -> Void = { [weak self] in self?.inputEnded = true }
             if let speechLocale, #available(macOS 26.0, *) {
                 let stream = self.stream
-                engine = SpeechAnalyzerLiveEngine(locale: Locale(identifier: speechLocale)) { _, _ in
-                    stream
+                engine = SpeechAnalyzerLiveEngine(locale: Locale(identifier: speechLocale)) { audio, _ in
+                    Task {
+                        for await _ in audio {}
+                        await markInputEnded()
+                    }
+                    return stream
                 }
                 ready = true
             } else {
                 engine = StreamingDictationEngine(
-                    stream: stream, onStart: { [weak self] in self?.ready = true })
+                    stream: stream, onStart: { [weak self] in self?.ready = true },
+                    onInputEnded: markInputEnded)
             }
             return LiveTranscriptionRuntime(engine: engine) { [weak self] in
                 self?.harness.finishes += 1
@@ -294,6 +301,8 @@ private final class StreamingDictationFixture {
     func finish() async throws {
         harness.now = harness.now.addingTimeInterval(1)
         harness.controller.toggle(using: harness.dependencies)
+        // A real engine finalizes only after its audio input ends.
+        try await waitUntil { self.inputEnded }
         continuation.finish()
         try await waitUntil { self.harness.finishes == 1 }
     }
@@ -315,6 +324,7 @@ private final class StreamingDictationFixture {
 private struct StreamingDictationEngine: TranscriptionEngine {
     let stream: AsyncThrowingStream<TranscriptSegment, Error>
     let onStart: @MainActor @Sendable () -> Void
+    let onInputEnded: @MainActor @Sendable () -> Void
     let descriptor = EngineDescriptor(
         id: "streaming-fixture", displayName: "Streaming fixture", realTimeFactor: 0,
         runsOnDevice: true, approximateMemoryMB: 0)
@@ -322,7 +332,11 @@ private struct StreamingDictationEngine: TranscriptionEngine {
     func transcribe(
         _ audio: AsyncStream<AudioChunk>, hints: TranscriptionHints
     ) -> AsyncThrowingStream<TranscriptSegment, Error> {
-        Task { await onStart() }
+        Task {
+            await onStart()
+            for await _ in audio {}
+            await onInputEnded()
+        }
         return stream
     }
 }
