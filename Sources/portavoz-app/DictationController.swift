@@ -28,6 +28,14 @@ struct DictationCapturePolicy {
     }
 }
 
+enum DictationSessionError: LocalizedError {
+    case unexpectedCompletion
+
+    var errorDescription: String? {
+        L10n.text("The dictation session ended unexpectedly. Nothing was typed.")
+    }
+}
+
 /// System-wide dictation (the MacParakeet-validated surface): press the
 /// global hotkey anywhere, speak, press it again — the transcript lands in
 /// whatever app is frontmost. Reuses the meeting pipeline as-is: Parakeet
@@ -90,7 +98,10 @@ final class DictationController {
     private var stopTask: Task<Void, Never>?
     private var stopIssuedSessionID: UUID?
     private var relayEndedSessionID: UUID?
-    private var failureDismissTask: Task<Void, Never>?
+    private var feedbackDismissTask: Task<Void, Never>?
+    private var feedbackID: UUID?
+    private var pressedSessionID: UUID?
+    private var sessionFeedbackWait: (@MainActor (Duration) async throws -> Void)?
     private var activeSessionID: UUID?
     private var measurement: DictationSessionMeasurementRecorder?
     private let panel = DictationPanelController()
@@ -103,35 +114,6 @@ final class DictationController {
 
     private func showPanel() {
         if presentsPanel { panel.show(controller: self) }
-    }
-
-    /// Registers/unregisters the configured hotkey (⌥⌘D by default) to
-    /// match the Settings toggle AND the recorded combination. Called at
-    /// launch and whenever either changes — always re-registers so a new
-    /// combo takes effect immediately.
-    func syncHotkey(services: AppServices) {
-        if !UserDefaults.standard.bool(forKey: Self.defaultsKey), isActive {
-            cancel()
-        }
-        shortcut.sync(
-            registrar: services.dictationShortcutRegistrar,
-            onPress: { [weak self, weak services] in
-                guard let self, let services else { return }
-                self.pressedAt = Date()
-                self.toggle(services: services)
-            },
-            onRelease: { [weak self] in
-                guard let self else { return }
-                // Hold-to-talk: a TAP (quick release) leaves the toggle
-                // behavior untouched; holding the combo while speaking and
-                // letting go delivers — the walkie-talkie gesture. The
-                // threshold splits the two without any setting.
-                guard self.isActive,
-                    let pressedAt = self.pressedAt,
-                    Date().timeIntervalSince(pressedAt) > Self.holdThreshold
-                else { return }
-                self.finishAndInsert()
-            })
     }
 
     /// Arms/disarms the push-to-talk mouse button to match the Settings
@@ -234,11 +216,13 @@ final class DictationController {
     }
 
     private func start(using dependencies: DictationSessionDependencies) {
+        sessionFeedbackWait = dependencies.waitForFeedbackDismissal
         measurement = dependencies.measurementSink.map {
             DictationSessionMeasurementRecorder(now: dependencies.measurementClock, sink: $0)
         }
-        failureDismissTask?.cancel()
-        failureDismissTask = nil
+        pressedAt = nil
+        pressedSessionID = nil
+        cancelFeedbackDismissal()
         // The paste needs Accessibility; ask BEFORE recording so the user
         // never dictates into a void.
         guard dependencies.canInsert() else {
@@ -248,7 +232,7 @@ final class DictationController {
                 // swiftlint:disable:next line_length
                 "Dictation needs the Accessibility permission to type into other apps — grant it in System Settings and try again."))
             showPanel()
-            scheduleFailureDismiss()
+            scheduleFeedbackDismiss(after: .seconds(6), wait: dependencies.waitForFeedbackDismissal)
             return
         }
         // Capture the destination BEFORE the non-activating panel appears —
@@ -341,20 +325,21 @@ final class DictationController {
                 sessionID: id, measurement: measurement)
             // Captions that end while audio still flows leave the rest untranscribed.
             if activeSessionID == id, relayEndedSessionID != id { throw rejectDelivery(id: id) }
-            await pump?.value
-            try Task.checkCancellation()
-            guard activeSessionID == id else { return }
-            try verifyCaptureIntegrity(source: input.source, id: id)
+            try await awaitCaptureCompletion(id: id, pump: pump, source: input.source)
             await deliver(sessionID: id, dependencies: dependencies)
-        } catch is CancellationError {
-            measurement?.finish(.cancelled)
-            await stopCapture(feed: localFeed, pump: pump, microphone: microphone)
         } catch {
+            let cancelled = Task.isCancelled || activeSessionID != id
             let permissionDenied = (error as? DictationMicrophoneReadiness.Failure) == .permissionRequired
-            measurement?.finish(permissionDenied ? .permissionDenied : .pipelineFailed)
+            measurement?.finish(cancelled ? .cancelled : (permissionDenied ? .permissionDenied : .pipelineFailed))
             await stopCapture(feed: localFeed, pump: pump, microphone: microphone)
+            guard !Task.isCancelled, activeSessionID == id else { return }
             if let message = DictationMicrophoneReadiness.preparationMessage(for: error) {
                 failSession(id: id, message: message, autoDismiss: false)
+            } else if error is CancellationError {
+                // Nothing was typed: keep it visible like a capture interruption.
+                failSession(
+                    id: id, message: LiveSpeechFailureMessage.dictation(DictationSessionError.unexpectedCompletion),
+                    autoDismiss: false)
             } else {
                 failSession(id: id, message: LiveSpeechFailureMessage.dictation(error))
             }
@@ -394,6 +379,7 @@ final class DictationController {
     func cancel() {
         measurement?.finish(.cancelled)
         measurement = nil
+        sessionFeedbackWait = nil
         activeSessionID = nil
         sessionClock = nil
         confirmedText = ""
@@ -403,8 +389,9 @@ final class DictationController {
         mouseOwnsSession = false
         stopTask?.cancel()
         stopTask = nil
-        failureDismissTask?.cancel()
-        failureDismissTask = nil
+        pressedAt = nil
+        pressedSessionID = nil
+        cancelFeedbackDismissal()
         session?.cancel()
         session = nil
         let microphone = self.microphone
@@ -450,14 +437,7 @@ final class DictationController {
             completeSession(id: sessionID)
             let words = text.split(whereSeparator: \.isWhitespace).count
             phase = .inserted(words)
-            do {
-                try await Task.sleep(for: .milliseconds(1600))
-            } catch {
-                return
-            }
-            guard case .inserted = phase else { return }
-            phase = .idle
-            panel.close()
+            scheduleFeedbackDismiss(after: .milliseconds(1600), wait: dependencies.waitForFeedbackDismissal)
         case .secureField:
             failSession(
                 id: sessionID,
@@ -486,6 +466,9 @@ final class DictationController {
         guard activeSessionID == id else { return }
         activeSessionID = nil
         sessionClock = nil
+        pressedAt = nil
+        pressedSessionID = nil
+        sessionFeedbackWait = nil
         session = nil
         microphone = nil
         feed = nil
@@ -496,21 +479,35 @@ final class DictationController {
 
     private func failSession(id: UUID, message: String, autoDismiss: Bool = true) {
         guard activeSessionID == id else { return }
+        let wait: @MainActor (Duration) async throws -> Void = sessionFeedbackWait
+            ?? { try await Task.sleep(for: $0) }
         completeSession(id: id)
         phase = .failed(message)
-        if autoDismiss { scheduleFailureDismiss() }
+        if autoDismiss { scheduleFeedbackDismiss(after: .seconds(6), wait: wait) }
     }
 
-    private func scheduleFailureDismiss() {
-        failureDismissTask?.cancel()
-        failureDismissTask = Task { [weak self] in
+    private func cancelFeedbackDismissal() {
+        feedbackID = nil
+        feedbackDismissTask?.cancel()
+        feedbackDismissTask = nil
+    }
+
+    private func scheduleFeedbackDismiss(
+        after delay: Duration,
+        wait: @escaping @MainActor (Duration) async throws -> Void
+    ) {
+        cancelFeedbackDismissal()
+        let id = UUID()
+        feedbackID = id
+        feedbackDismissTask = Task { [weak self] in
             do {
-                try await Task.sleep(for: .seconds(6))
+                try await wait(delay)
             } catch {
                 return
             }
-            guard let self, case .failed = self.phase else { return }
-            self.failureDismissTask = nil
+            guard let self, self.feedbackID == id, !Task.isCancelled else { return }
+            self.feedbackID = nil
+            self.feedbackDismissTask = nil
             self.phase = .idle
             self.panel.close()
         }
@@ -518,7 +515,62 @@ final class DictationController {
 
 }
 
+extension DictationController {
+    /// Re-register the configured hotkey after either Settings value changes.
+    func syncHotkey(services: AppServices) {
+        if !UserDefaults.standard.bool(forKey: Self.defaultsKey), isActive {
+            cancel()
+        }
+        shortcut.sync(
+            registrar: services.dictationShortcutRegistrar,
+            onPress: { [weak self, weak services] in
+                guard let self, let services else { return }
+                self.handleHotkeyPress(using: services.makeDictationSessionDependencies(), at: Date())
+            },
+            onRelease: { [weak self] in
+                guard let self else { return }
+                self.handleHotkeyRelease(at: Date())
+            })
+    }
+
+    func handleHotkeyPress(using dependencies: DictationSessionDependencies, at now: Date) {
+        let wasActive = isActive
+        toggle(using: dependencies)
+        // Only a press that actually began this session can later finish it
+        // on release. A second press remains the recovery for a lost key-up.
+        if !wasActive, isActive {
+            pressedAt = now
+            pressedSessionID = activeSessionID
+        } else {
+            pressedAt = nil
+            pressedSessionID = nil
+        }
+    }
+
+    func handleHotkeyRelease(at now: Date) {
+        let ownsSession = activeSessionID != nil && pressedSessionID == activeSessionID
+        let heldLongEnough = pressedAt.map { now.timeIntervalSince($0) > Self.holdThreshold } ?? false
+        pressedAt = nil
+        pressedSessionID = nil
+        guard ownsSession, isActive, heldLongEnough else { return }
+        finishAndInsert()
+    }
+}
+
 private extension DictationController {
+    func awaitCaptureCompletion(
+        id: UUID, pump: Task<Void, Never>?, source: any AudioCaptureSource
+    ) async throws {
+        // Reject recognizer EOF before joining a producer that may still be live.
+        guard stopIssuedSessionID == id else { throw rejectDelivery(id: id) }
+        let nativeStop = stopTask
+        await pump?.value
+        await nativeStop?.value
+        try Task.checkCancellation()
+        guard activeSessionID == id else { throw CancellationError() }
+        try verifyCaptureIntegrity(source: source, id: id)
+    }
+
     func monitorCaptureFailure(_ source: any AudioCaptureSource, id: UUID) {
         (source as? any CaptureReportingSource)?.setCaptureFailureHandler { [weak self] in
             Task { @MainActor [weak self] in self?.failCapture(id: id) }

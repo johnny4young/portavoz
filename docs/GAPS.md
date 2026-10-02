@@ -31,10 +31,11 @@ first callback needs separate capture-health evidence.
 
 The controller and native-receiver test seams (D515) improve reachability, not
 all dictation behavior. Source errors, producer failure notifications and
-dropped relay yields now revoke automatic delivery for their owning session;
-the final producer report is rechecked before delivery. These repairs do not
-provide durable recovery of interrupted dictation audio. The displayed
-application name is not yet a pinned delivery
+dropped relay yields revoke automatic delivery for their owning session;
+normal source or recognizer completion also requires the controller to have
+issued Stop, and cancelled terminal captions cannot overwrite a new session.
+These repairs do not provide durable recovery of interrupted dictation audio.
+The displayed application name is not yet a pinned delivery
 target; `.inserted` still denotes dispatched events rather than a verified
 external edit. These require call-site regressions and fixes before broad
 reliability claims. Model quality, Bluetooth transitions and the external-editor
@@ -381,6 +382,25 @@ is not attributed from its frame; completion preferences and unrelated apps are
 not changed. Public-API admission remains a point-in-time observation: a window
 change after observation cannot be claimed atomically excluded. Full bilingual
 and exact-head hosted qualification remain distinct from native controls.
+
+### Native search submission and screenshot ownership remain unqualified
+
+Repeated real-app command-palette journeys retained the exact query and lexical
+hits but produced no answer or citation after Return. Failure hierarchies show
+an app-owned native completion window with zero results and keyboard focus.
+That observed state is not proof of causality: isolated controls have not
+reproduced it, and temporary composition uses a deterministic answerer rather
+than a Foundation Models session. Diagnose the native editor and submission
+call site; do not replace Return with another action, increase the timeout or
+change host-wide completion preferences to manufacture a passing test.
+
+An Audio Settings reachability failure also retained a target-window screenshot
+containing foreground pixels from an unrelated application. An accessibility
+query for the target window does not establish exclusive pixel ownership or
+visibility. That capture cannot prove a layout defect and must not become a
+public showcase asset. Keep diagnostics private, distinguish foreign occlusion
+from product failure, and qualify screenshot ownership separately from keyboard
+admission; point-in-time input checks do not certify a later capture.
 
 ### Unattributed asynchronous media-framework test crash
 
