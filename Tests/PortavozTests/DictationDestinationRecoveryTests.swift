@@ -1,4 +1,5 @@
 import AppKit
+import PortavozCore
 import TranscriptionKit
 import XCTest
 
@@ -19,9 +20,9 @@ final class DictationDestinationRecoveryTests: XCTestCase {
                 captures += 1
                 let original = current
                 return CapturedDictationDestination(name: "Original app", canRetry: true) { _ in
-                    guard current == original else { return .targetChanged }
+                    guard current == original else { return .refused(.targetChanged) }
                     deliveries.append(original)
-                    return .inserted
+                    return .dispatched
                 }
             }
             harness.controller.toggle(using: dependencies)
@@ -72,10 +73,10 @@ final class DictationDestinationRecoveryTests: XCTestCase {
         }
         await enterRecovery(harness, dependencies: dependencies)
         XCTAssertFalse(harness.controller.canRetryDelivery)
-        harness.controller.copyUndeliveredText()
+        harness.controller.copyPendingText()
         XCTAssertEqual(harness.controller.copyStatus, .failed)
         XCTAssertEqual(harness.controller.recoveryText, text)
-        harness.controller.copyUndeliveredText()
+        harness.controller.copyPendingText()
         XCTAssertEqual(harness.controller.copyStatus, .copied)
         XCTAssertEqual(board.string(forType: .string), text, "Copy must not use the panel's truncated excerpt")
         XCTAssertEqual(harness.controller.recoveryText, text)
@@ -112,7 +113,7 @@ final class DictationDestinationRecoveryTests: XCTestCase {
                 }
             }
             await enterRecovery(harness, dependencies: dependencies)
-            harness.controller.copyUndeliveredText()
+            harness.controller.copyPendingText()
             XCTAssertEqual(harness.controller.copyStatus, .failed)
             XCTAssertEqual(harness.controller.recoveryText, "No borres — don't delete")
             XCTAssertEqual(board.string(forType: .string),
@@ -132,9 +133,9 @@ final class DictationDestinationRecoveryTests: XCTestCase {
         dependencies.captureDestination = {
             CapturedDictationDestination(name: "Original app", canRetry: true) { _ in
                 attempts += 1
-                if attempts == 1 { return .targetChanged }
+                if attempts == 1 { return .refused(.targetChanged) }
                 await gate.wait()
-                return .inserted // A deliberately uncooperative late result, not a native effect.
+                return .dispatched // A deliberately uncooperative late result, not a native effect.
             }
         }
         await enterRecovery(harness, dependencies: dependencies)
@@ -172,7 +173,7 @@ final class DictationDestinationRecoveryTests: XCTestCase {
             dependencies.captureDestination = {
                 CapturedDictationDestination(name: "Original app", canRetry: true) { text in
                     delivered.append(text)
-                    return .targetChanged
+                    return .refused(.targetChanged)
                 }
             }
             dependencies.copyText = { copied.append($0); return true }
@@ -183,7 +184,7 @@ final class DictationDestinationRecoveryTests: XCTestCase {
             harness.set(DictationTextRules.encode([
                 .init(trigger: "beta", replacement: "changed after delivery"),
             ]), forKey: DictationController.replacementsKey)
-            harness.controller.copyUndeliveredText()
+            harness.controller.copyPendingText()
             for _ in 0..<2 {
                 harness.controller.retryUndeliveredText()
                 await harness.controller.retryDeliveryTask?.value
@@ -209,7 +210,7 @@ final class DictationDestinationRecoveryTests: XCTestCase {
                 captures += 1
                 return CapturedDictationDestination(name: "Original app", canRetry: true) { _ in
                     attempts += 1
-                    return attempts == 1 ? .targetChanged : .inserted
+                    return attempts == 1 ? .refused(.targetChanged) : .verified
                 }
             }
             dependencies.waitForFeedbackDismissal = { _ in await feedback.wait() }
@@ -217,7 +218,7 @@ final class DictationDestinationRecoveryTests: XCTestCase {
             first.controller.retryUndeliveredText()
             let waiting = await eventually { feedback.started && first.controller.retryDeliveryTask == nil }
             XCTAssertTrue(waiting, "Delivery must finish independently from cosmetic feedback")
-            XCTAssertEqual(first.controller.phase, .inserted(4))
+            XCTAssertEqual(first.controller.phase, .verified(4))
             let released = await eventually { first.finishes == 1 }
             XCTAssertTrue(released, "Recovery feedback cannot retain the transcription lease")
             XCTAssertEqual(captures, 1)

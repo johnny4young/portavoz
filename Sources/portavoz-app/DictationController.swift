@@ -66,12 +66,10 @@ final class DictationController {
         case idle
         case preparing
         case listening
-        /// Words landed in the target app — a brief confirmation before the
-        /// strip fades, so the user sees the dictation took (design system
-        /// 4b: "inserted, no trace").
-        case inserted(Int)
+        case verified(Int)
+        case dispatched(Int)
         case failed(String)
-        case recovery(TextInserter.InsertionResult)
+        case recovery(DictationDeliveryOutcome.Refusal)
     }
 
     private(set) var phase: Phase = .idle
@@ -93,6 +91,12 @@ final class DictationController {
     private(set) var copyStatus: CopyStatus = .idle
     private(set) var isRetryingDelivery = false
     var canRetryDelivery: Bool { destination?.canRetry == true }
+    private var hasPendingOutput: Bool {
+        switch phase {
+        case .recovery, .dispatched: true
+        default: false
+        }
+    }
     private var destination: CapturedDictationDestination?
     private var dependencies: DictationSessionDependencies?
     private var deliveryID: UUID?
@@ -214,13 +218,13 @@ final class DictationController {
 
     func toggle(using dependencies: DictationSessionDependencies) {
         switch phase {
-        case .idle, .failed, .inserted:
+        case .idle, .failed, .verified:
             start(using: dependencies)
         case .preparing:
             cancel()
         case .listening:
             finishAndInsert()
-        case .recovery:
+        case .recovery, .dispatched:
             showPanel()
         }
     }
@@ -231,7 +235,7 @@ final class DictationController {
 
     private func start(using dependencies: DictationSessionDependencies) {
         // A global trigger cannot silently replace undelivered words.
-        if case .recovery = phase { showPanel(); return }
+        if hasPendingOutput { showPanel(); return }
         retryDeliveryTask?.cancel()
         retryDeliveryTask = nil
         deliveryID = nil
@@ -469,14 +473,7 @@ final class DictationController {
         guard activeSessionID == sessionID else { return }
         completeSession(id: sessionID)
         deliveryID = sessionID
-        if result == .inserted {
-            showDispatchedText(text, id: sessionID)
-        } else {
-            recoveryText = text
-            copyStatus = .idle
-            phase = .recovery(result)
-            showPanel()
-        }
+        presentDelivery(result, text: text, id: sessionID)
     }
 
     private func completeSession(id: UUID) {
@@ -715,8 +712,8 @@ private extension DictationController {
 }
 
 extension DictationController {
-    func copyUndeliveredText() {
-        guard case .recovery = phase, !isRetryingDelivery, let dependencies else { return }
+    func copyPendingText() {
+        guard hasPendingOutput, !isRetryingDelivery, let dependencies else { return }
         copyStatus = dependencies.copyText(recoveryText) ? .copied : .failed
     }
 
@@ -729,22 +726,29 @@ extension DictationController {
             let result = await destination.insert(text)
             guard let self, self.deliveryID == id, !Task.isCancelled else { return }
             self.isRetryingDelivery = false
-            if result == .inserted {
-                self.showDispatchedText(text, id: id)
-            } else {
-                self.phase = .recovery(result)
-            }
+            self.presentDelivery(result, text: text, id: id)
             guard self.deliveryID == id || self.deliveryID == nil else { return }
             self.retryDeliveryTask = nil
         }
     }
 
-    private func showDispatchedText(_ text: String, id: UUID) {
+    private func presentDelivery(_ result: DictationDeliveryOutcome, text: String, id: UUID) {
         guard deliveryID == id, let dependencies else { return }
-        recoveryText = ""
+        cancelFeedbackDismissal()
         copyStatus = .idle
-        phase = .inserted(text.split(whereSeparator: \.isWhitespace).count)
+        if case .refused(let failure) = result {
+            recoveryText = text
+            phase = .recovery(failure)
+            showPanel()
+            return
+        }
+        destination = nil
+        let words = text.split(whereSeparator: \.isWhitespace).count
+        phase = result == .verified ? .verified(words) : .dispatched(words)
+        // A posted event may arrive late; retained output never authorizes replay.
+        recoveryText = result == .dispatched ? text : ""
         showPanel()
+        guard result == .verified else { return }
         scheduleFeedbackDismiss(after: .milliseconds(1600), wait: dependencies.waitForFeedbackDismissal)
     }
 }

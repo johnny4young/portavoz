@@ -35,18 +35,32 @@ dropped relay yields revoke automatic delivery for their owning session;
 normal source or recognizer completion also requires the controller to have
 issued Stop, and cancelled terminal captions cannot overwrite a new session.
 These repairs do not provide durable recovery of interrupted dictation audio.
-The destination is now pinned before preparation to a process and focused AX element, with refused
-output retained for explicit Copy or retry (D544). Deterministic tests exercise
-the controller and actual inserter, but native focus switches, process
-termination/relaunch and secure-field transitions still need receiver/device
-evidence. Accessibility validation and keyboard-event posting are not an atomic
-editor transaction: `.inserted` still denotes dispatched events rather than a
-verified external edit. Recovery is RAM-only; quitting does not preserve the
-output. This recovery covers final text after completed recognition, not an
-incomplete capture/model failure: those failures still have no supported Copy
-or durable recovery of admitted partial captions. Clipboard snapshot
-size/materialization remains an independent limitation. Model quality,
-Bluetooth transitions and the external-editor
+The destination is now pinned before preparation to a process
+and focused AX element, with refused output retained for explicit Copy or retry
+(D544). Deterministic tests exercise the controller and actual inserter, but
+native focus switches, process termination/relaunch and secure-field transitions
+still need receiver/device evidence. Accessibility validation and keyboard-event
+posting are not an atomic editor transaction. The result now distinguishes
+bounded matching readback from unverified dispatch and refusal; unsupported
+editors remain explicitly unverified. Deterministic controller/inserter coverage
+cannot qualify native AX observation. The dedicated receiver requires the
+verified result and actual text, but its existence does not establish a passed
+gate. Timeout setup is applied to each newly retrieved focused-field object before
+security inspection, not just its application or an equal captured object.
+That wiring follows the SDK contract; adversarial slow native AX servers remain
+unmeasured. Specific AX timeouts limit requested work, not arbitrary server allocation
+or later external edits. Unverified dispatch now retains complete final output
+in RAM for explicit Copy or Discard, without enabling Reinsert, automatic replay
+or another capture that silently replaces it. The user must check the destination
+before manually pasting: unsupported acknowledgement cannot distinguish a lost
+event from a late edit. This removes the expiring-copy gap, not native-delivery
+uncertainty or incomplete-capture loss.
+These failures and evidence boundaries prevent broad reliability claims. Recovery is RAM-only;
+quitting does not preserve the output. This recovery covers final text after
+completed recognition, not an incomplete capture/model failure: those failures
+still have no supported Copy or durable recovery of admitted partial captions.
+Clipboard snapshot size/materialization
+remains an independent limitation. Model quality, Bluetooth transitions and the external-editor
 matrix require separate evidence; a synthetic caption fixture cannot establish
 those results. Missing Accessibility permission makes the separately selected
 native delivery gate unqualified, not proof that insertion works. Hosted
@@ -54,6 +68,17 @@ unattended EN/ES UI qualification excludes exactly that TCC-owned receiver case
 (D540); run `make test-ui-native-dictation` on an explicitly authorized
 disposable app and retain its actual receipt before claiming cross-process
 delivery.
+
+### Live dictation still lacks speech admission
+
+Independent public/synthetic controller observations have produced lexical
+proposals from silence and tone inputs. The delivery double refused native
+Paste, but reaching that boundary disproves the assumption that a lexical result
+necessarily contains speech. The live lane has no pre-transcription VAD gate.
+Diagnose and validate speech admission without an ad-hoc output-token/RMS filter
+or changes to the original meeting audio. This delivery-observation work does
+not resolve model quality or certify that a matching external edit was a
+faithful transcription.
 
 The installed-model controller lane writes complete per-run receipts rather
 than per-caption progress. The sequential matrix launcher now preserves each

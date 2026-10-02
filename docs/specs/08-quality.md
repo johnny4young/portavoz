@@ -550,7 +550,7 @@ gate passed. No general clipboard, real meeting, model download or microphone
 participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 133 unattended cases;
+`make test-ui-bilingual` and scoped hosted runs select the 134 unattended cases;
 `make test-ui-native-dictation` selects the one real receiver case in EN and ES.
 The catalog policy requires that case to remain discoverable but disjoint from
 unattended selectors. The runner excludes it only when no explicit selectors
@@ -565,6 +565,25 @@ The receiver is an Xcode-only application target. SwiftPM's shared `Tests`
 root excludes that directory explicitly, alongside the UI and interruption
 fixtures; strict package diagnostics must not treat its entry point as an
 unhandled unit-test resource.
+
+`TextInsertionReadbackTests` runs the actual inserter against a deterministic
+receiver double, rather than testing only a comparison function. Cases cover
+bilingual Unicode and replaced selections, unchanged/wrong/unsupported editors,
+invalid and overflowing AX metadata, exact requested-span bounds, empty output,
+cancellation during inspection, a late matching answer, altered post-read
+selection and no duplicate event. `DictationDeliveryOutcomeTests` additionally
+routes final controller output through that same inserter, checks the resulting
+verified/unverified presentation state and rejects a retry after dispatch.
+These tests contain no native AX or model evaluation. The real receiver journey
+requires both `verified` and exact editor text; missing permission remains a
+failing gate. The dedicated delivery-banner journey exercises both distinct
+states in each locale: verified feedback expires, while unverified output
+supports failed Copy, successful full-output Copy and explicit Discard. Another
+trigger cannot replace it or start another session, and Reinsert remains absent.
+Neither UI doubles nor typed verified results qualify native delivery. Schema 1
+measurement continues to report `dispatchReported` and
+`verifiedDeliveryMeasured == false` for either typed port result. Its 25-second candidate budget is separate
+from a measured baseline; the full-suite budget is unchanged.
 
 UI builds remain ad-hoc by default. A local owner may explicitly set both
 `UI_TEST_CODE_SIGN_IDENTITY` (the certificate's 40-character SHA-1 identifier)
@@ -8709,3 +8728,22 @@ menu/panel with an isolated first-capture EOF before Stop, shows the localized
 interrupted message, then proves dismissal and restart in each locale. The fixture consumes its one-shot failure at source construction,
 not during menu dependency construction. Its scope has an explicit 20-second
 per-case budget; aggregate full-suite budgets are unchanged.
+
+Lifecycle success-feedback fixtures use `DictationControllerHarness.verifyingDelivery`
+to reach the real inserter and bounded readback through `TextReadbackHarness`.
+The general harness stays dispatched by default: a posted event is not a
+verified edit, and tests needing restartable success must supply observation
+explicitly. This remains deterministic platform-port evidence, not native AX
+or ASR qualification.
+
+The native receiver journey deliberately starts with a regular non-editor
+responder and an unavailable text view. It proves that the armed fixture stays
+waiting, then enables the editor through its identified control and requires
+both verified readback and exact Unicode content. Foreground identity and
+`canRetry` alone previously spent the only Paste before editor installation;
+the actual receiver remained empty. Read-only selection/count readiness now
+precedes that one attempt without changing production eligibility or the
+acknowledgement deadline. A failed status assertion does not return before
+checking the actual editor and clipboard: those are independent evidence, not
+implications of a port result. This prepared receiver does not qualify slow,
+unsupported or arbitrary third-party AX servers.

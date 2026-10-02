@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import PortavozCore
 import XCTest
 
 @testable import portavoz_app
@@ -31,7 +32,7 @@ final class TextInsertionTargetTests: XCTestCase {
                         checks += 1
                         return checks < exitAt
                     }))
-            XCTAssertEqual(result, .eventUnavailable)
+            XCTAssertEqual(result, .refused(.eventUnavailable))
             XCTAssertEqual(checks, exitAt)
             if exitAt < 3 { XCTAssertEqual(board.changeCount, originalCount) }
             XCTAssertEqual(board.string(forType: .string), "Original café")
@@ -49,13 +50,13 @@ final class TextInsertionTargetTests: XCTestCase {
             effects: .init(waitForModifiers: { isOriginal = false; return true }, post: { _ in
                 XCTFail("Changed focus reached native dispatch"); return true
             }))
-        XCTAssertEqual(result, .targetChanged)
+        XCTAssertEqual(result, .refused(.targetChanged))
         XCTAssertEqual(board.changeCount, originalCount)
         XCTAssertEqual(board.string(forType: .string), "Original café")
     }
 
     func testFinalTargetCheckRestoresOwnedRichClipboardAndNeverDispatches() async {
-        for failure: TextInserter.InsertionResult in [.targetChanged, .secureField, .focusUnavailable] {
+        for failure: DictationDeliveryOutcome.Refusal in [.targetChanged, .secureField, .focusUnavailable] {
             let board = makeBoard()
             defer { board.releaseGlobally() }
             var checks = 0
@@ -67,7 +68,7 @@ final class TextInsertionTargetTests: XCTestCase {
                 effects: .init(waitForModifiers: { true }, post: { _ in
                     XCTFail("A changed final destination reached dispatch"); return true
                 }))
-            XCTAssertEqual(result, failure)
+            XCTAssertEqual(result, .refused(failure))
             XCTAssertEqual(checks, 2)
             XCTAssertEqual(board.string(forType: .string), "Original café")
             XCTAssertEqual(board.data(forType: .rtf), Data("{\\rtf1 Original}".utf8))
@@ -80,7 +81,7 @@ final class TextInsertionTargetTests: XCTestCase {
             defer { board.releaseGlobally() }
             let originalCount = board.changeCount
             var checks = 0
-            var job: Task<TextInserter.InsertionResult, Never>?
+            var job: Task<DictationDeliveryOutcome, Never>?
             let target = TextInserter.Target(processID: 101) {
                 checks += 1
                 if checks == cancelAt { job?.cancel() }
@@ -94,7 +95,7 @@ final class TextInsertionTargetTests: XCTestCase {
             }
             let result = await job?.value
             job = nil
-            XCTAssertEqual(result, .cancelled)
+            XCTAssertEqual(result, .refused(.cancelled))
             XCTAssertEqual(board.string(forType: .string), "Original café")
             if cancelAt == 1 { XCTAssertEqual(board.changeCount, originalCount) }
         }
@@ -115,7 +116,7 @@ final class TextInsertionTargetTests: XCTestCase {
         }
         let result = await TextInserter.insert("Do not dispatch", into: target, pasteboard: board,
             effects: .init(waitForModifiers: { true }, post: { _ in XCTFail("Unexpected paste"); return true }))
-        XCTAssertEqual(result, .targetChanged)
+        XCTAssertEqual(result, .refused(.targetChanged))
         XCTAssertEqual(board.string(forType: .string), "Someone else's copy")
     }
 
@@ -135,7 +136,7 @@ final class TextInsertionTargetTests: XCTestCase {
             effects: .init(waitForModifiers: { true }, post: { _ in
                 XCTFail("The clipboard no longer contains the dictation"); return true
             }))
-        XCTAssertEqual(result, .clipboardUnavailable)
+        XCTAssertEqual(result, .refused(.clipboardUnavailable))
         XCTAssertEqual(board.string(forType: .string), "An unrelated copied command")
     }
 
@@ -146,7 +147,7 @@ final class TextInsertionTargetTests: XCTestCase {
         let target = TextInserter.Target(processID: 107) { nil }
         let result = await TextInserter.insert("Café — no borres 0,5", into: target, pasteboard: board,
             effects: .init(waitForModifiers: { true }, post: { posted.append($0); return true }))
-        XCTAssertEqual(result, .inserted, "This is dispatch evidence, not an external editor acknowledgement")
+        XCTAssertEqual(result, .dispatched, "This is dispatch evidence, not an external editor acknowledgement")
         XCTAssertEqual(posted, [107])
         XCTAssertEqual(board.string(forType: .string), "Café — no borres 0,5")
         let deadline = ContinuousClock.now.advanced(by: .seconds(4))

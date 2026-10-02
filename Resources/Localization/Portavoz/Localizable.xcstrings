@@ -2381,6 +2381,16 @@
         }
       }
     },
+    "Check the destination before pasting again. Nothing was saved in Portavoz.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa el destino antes de volver a pegar. No se guardó nada en Portavoz."
+          }
+        }
+      }
+    },
     "Check the source before adding anything to your commitments.": {
       "localizations": {
         "es": {
@@ -12617,6 +12627,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Envía solo la pregunta detectada, nunca audio ni texto de la reunión."
+          }
+        }
+      }
+    },
+    "Sent — insertion not verified": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviado — inserción sin verificar"
           }
         }
       }
