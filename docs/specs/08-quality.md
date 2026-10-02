@@ -8258,6 +8258,19 @@ attempts to restore either retired receipt journey with an otherwise valid scope
 and confirms that the actual duplicate policy rejects it.
 
 
+Skills catalogue membership, initial on/off values and reconstructed-window
+choices are observed together from the owning Settings window. Disclosures
+retain both their capability text and per-run approval text; filter resets retain
+both localized selections and the missing Clear action. Receipt inspection
+observes its privacy control, exactly three causal events and localized terminal
+state in one owner-window snapshot (the inspection identifier labels header
+text, not the timeline container). Every required identifier must be unique, malformed
+toggle values cannot silently become Off, and snapshot errors still propagate.
+These observations never supply click targets or input authority, are never reused
+across gestures, and leave all scrolling, handshakes, transient loading assertions,
+screenshots, case inventory and runtime budgets intact.
+
+
 ### Permission-free interruption controls
 
 The local-data ledger journey opens Settings from the seeded main window through
