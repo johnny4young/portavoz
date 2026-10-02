@@ -1661,6 +1661,16 @@
         }
       }
     },
+    "Audio capture was interrupted. Nothing was inserted. Try dictating again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se interrumpió la captura de audio. No se insertó nada. Vuelve a dictar."
+          }
+        }
+      }
+    },
     "Audio compressed — %@ freed.": {
       "localizations": {
         "es": {
@@ -14227,6 +14237,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "El destino cambió. Copia el texto para conservarlo."
+          }
+        }
+      }
+    },
+    "The dictation session ended unexpectedly. Nothing was typed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La sesión de dictado terminó inesperadamente. No se escribió nada."
           }
         }
       }

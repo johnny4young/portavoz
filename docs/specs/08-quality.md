@@ -1,5 +1,18 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
+`test_dev_install` executes the real Makefile installation recipe in a Unicode,
+space-containing scratch directory with inert external-command adapters. It
+checks re-sign → distribution verification → Dev-only copy → installed verification
+→ registration, rejects a production profile before effects, and injects failures
+at the localized-name rewrite and both verification boundaries. The localized
+Dev name must actually be rewritten; a Linux shim adapts BSD `sed -i ''` for GNU
+sed so the hygiene runner cannot pass on a failed rewrite. An accidental `open`
+fails the fixture rather than starting an app. This validates command ownership and absence of automatic
+launch, not real signing, LaunchServices registration or live-library unchangedness.
+The native tool path defaults to Apple's `lsregister`; only a Make command-line
+override supplies the inert registration boundary, and an inherited environment
+variable cannot replace it. Real-app XCUITest remains a separate gate.
+
 Optional Apple Speech live routing (D554) has three distinct evidence layers.
 Pure readiness tests distinguish fixed en/es, unsupported, equivalent installed
 locales, absent assets and invalid ranges. Actual controller/attacher tests feed
@@ -84,6 +97,19 @@ consumer admission. The live microphone adapter's injected source factory
 observes the actual resolved UID and preservation of stored preferences. The
 AppServices settings-write adapter is called while dictation awaits permission
 and after cancellation, proving that Preparing also blocks preference import.
+
+The capture-integrity regression for a failure arriving after dispatch wraps
+only the already-captured destination's inserter, holding its result while the
+real controller receives the late producer notification. It requires one
+capture and one insertion: the test must neither bypass destination admission
+nor recapture a target when delivery is already in flight.
+Native-stop ordering and shared capture-owner regressions likewise wrap the
+captured insertion capability, retaining its identity and retry availability;
+they do not reintroduce an uncaptured insertion port for test convenience.
+Successful explicit recovery retries use the same owned feedback deadline as
+first delivery. A call-site test holds that deadline through EN→ES and ES→EN
+restarts, then returns after cancellation; the new session stays listening and
+retains its captions, while the old retry has already released its runtime.
 
 Disposable UI journeys cover permission-denial recovery, absent first audio
 with explicit preferred-device fallback, and cancellation while preparing.
@@ -214,11 +240,11 @@ are unchanged. Functional and timing qualification still require actual runs.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 129 UI cases after consolidating one pair of
+The unattended catalog contains 133 UI cases after consolidating one pair of
 confirmed-person journeys, including portable-settings, shortcut-recovery, the
-real dictation-panel, three microphone-preparation/recovery, two Apple Speech
-Settings, and the compact Meeting Detail correction journeys. The compact
-journey checks the actual post-restoration AppKit frame at two short heights,
+real dictation-panel, three microphone-preparation/recovery, capture-failure
+recovery, two Apple Speech Settings, and the compact Meeting Detail correction
+journeys. The compact journey checks the actual post-restoration AppKit frame at two short heights,
 opens both reading panes, retains the player, and reaches the existing
 correction editor. Its per-case budget is 30 seconds. A citation journey proves
 that an action returns from Summary to Transcript. The native dictation-receiver
@@ -247,6 +273,122 @@ gate that runs before macOS allocation). Each behavioral Swift lane owns one
 test invocation, so compilation and tests use the same flags instead of a
 build/test pair that can compile twice. The iOS portability lane owns only its
 sequential destination compiles and cannot claim runtime/device behavior.
+
+### Compatible Swift build reuse, not test-result reuse (D557)
+
+The current-SDK and Sequoia jobs restore only `.build` with commit-pinned
+`actions/cache` restore/save actions. `scripts/ci_swift_cache_key.py` binds each
+immutable seed to its lane, absolute workspace and developer paths, CPU
+architecture, macOS version/build, runner image/version, Xcode and Swift build,
+macOS SDK path/build, `Package.swift`, `Package.resolved`, the CI workflow, test
+launcher, toolchain verifier, cache-key and source-freshness implementations. Unknown lanes,
+missing inputs, failed/empty tool reads and timeouts fail key generation; no
+broad key substitutes for an unknown identity. There are no restore prefixes
+and no per-commit cache copies. A dependency or build-policy change starts cold.
+Ordinary source changes retain the seed. After a successful suite,
+`scripts/ci_swift_source_stamps.py snapshot` records SHA-256, size, permissions and
+nanosecond mtime for tracked `Sources/`, `Tests/`, and package manifest/lock inputs
+inside `.build`. On an exact PR cache hit, `restore` intersects that receipt
+with the current Git inventory and restores mtime only for byte-identical,
+same-mode inputs. Changed/new inputs receive fresh timestamps even when their
+size and incoming mtime happen to match the old file. Deleted files are not
+resurrected; symlinks and resolved paths outside the checkout are never touched.
+No timestamp is inferred from Git commit dates. SwiftPM still owns build-graph
+invalidation, compilation and test discovery. The bounded, closed-schema receipt
+rejects duplicate keys, invalid hashes/numbers and missing/corrupt metadata
+before timestamp writes. Snapshot rereads its own receipt with the same
+validator, so a receipt restore would reject fails the cold run and is never
+saved into an immutable seed. A changed-during-read source cannot be fingerprinted.
+
+Both complete test invocations are unconditional, including current-SDK
+warnings-as-errors. No `--skip-build`, test filtering, retries, smaller test
+counts or cached success receipts are introduced. The fixed OS/toolchain matrix,
+iOS compile, strict lint, Linux policy tests, UI scopes/locales/assertions,
+first-attempt rules and runtime budgets are unchanged. Every `main` push uses a
+lookup-only cache probe and **still compiles cold**; only a `main` push records
+fingerprints, measures and saves a seed. Pull requests restore but never save:
+a PR-created cache would be reachable only from its own merge ref under GitHub's
+[cache access rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache)
+while consuming the shared repository quota. No privileged trigger or broader
+token permission is added. A cache miss or eviction takes the normal cold path.
+When freshness restoration rejects a hit, the step emits a warning, deletes the
+restored `.build` and the unchanged complete command compiles cold; an immutable
+seed therefore cannot keep a PR red. A failed build/test is not
+retried cold to manufacture a pass. Save occurs only after the full suite passes
+and only at or below a 6 GiB on-disk graph limit; oversized graphs remain uncached.
+The segment download timeout is two minutes. No repository cache billing or
+quota setting changes. Downloaded model caches, the user library, secrets, UI
+result bundles and release products are outside the cached path. Checked-in
+build resources, including the bundled classifier, remain part of `.build`.
+The ordinary unprivileged Swift test build is not an artifact suitable for release.
+
+`Tests/Tooling/test_ci_swift_cache.py` exercises each identity input, lane/host
+separation, malformed or unavailable tool identity, exact CLI output, missing
+lockfiles, unconditional test ownership, cold-main and main-only seeding policy,
+the actual shell size gate at/beyond its boundary and on measurement failure, and
+the actual freshness step discarding a rejected graph without failing the job. Repository hygiene
+owns these tests before either macOS test lane starts. Source-freshness tests
+also cover altered bytes with identical size/mtime, added/deleted/renamed files,
+mode changes, symlinks, untracked paths, missing/duplicate/oversized metadata and
+concurrent modification. These tooling tests do not replace a real compiler
+invalidation check.
+
+For a matched local check, use a disposable checkout: run the strict launcher
+from a missing `.build`; snapshot source fingerprints and archive its graph;
+refresh tracked source timestamps as a new checkout would; restore the graph at
+the identical absolute path; run hash-verified freshness restoration; rerun the
+**same complete command**. Then introduce a temporary
+compile error and a failing test separately against restored state, require
+nonzero exits after freshness restoration, restore the source bytes and run the
+strict suite cleanly again.
+Never use the release app or its library. Record the graph/archive size, archive
+restore cost, `Build complete` duration, full test totals/skips and wall time;
+an ordinary second incremental build is not a simulated hosted cache restore.
+
+For hosted comparison, inspect `gh run view <run-id> --json headSha,jobs,url`
+and the build log, separating job start/completion from queued workflow time.
+Compare cold versus exact cache-hit jobs on the same OS, toolchain, runner image,
+flags and test catalogue. Include restore/save overhead, do not credit reduced
+coverage as savings, and do not rerun a failed gate as qualification. A cold
+`main` run seeds state but does not establish warm-hit performance. Queue delay
+and full UI duration remain independent costs; this change neither fixes runner
+capacity nor asserts a global percentage reduction in end-to-end CI latency.
+
+#### Local source-freshness comparison
+
+A single macOS 26.6.2 arm64 / Xcode 27 comparison on October 1, 2026 used the
+same Swift sources, complete test selection and warnings-as-errors flags. The
+cold graph was absent; system/SDK caches were not cleared. The restored graph
+traveled through a zstd archive, at the same absolute path, after refreshing
+checkout timestamps. Both qualified passes executed 3,328 XCTest with the same
+22 explicit skips and zero failures, plus four Swift Testing tests.
+
+| Observed boundary | Cold graph | Fingerprinted restore |
+|---|---:|---:|
+| Compiler-reported build | 82.50 s | 3.97 s |
+| XCTest execution | 212.150 s | 225.834 s |
+| Complete strict launcher wall time | 343.09 s | 244.09 s |
+| Archive restoration | — | 22.19 s |
+| Source fingerprint validation/restoration | — | 0.15 s |
+| Launcher plus restore/freshness overhead | 343.09 s | 266.43 s |
+
+The observed end-to-end reduction was 22.3%, not the much larger build-only
+percentage. Creating the approximately 1.9 GiB compressed seed took another
+28.18 s; saving is a cold-seed cost, not repeated on exact hits. Test execution
+variance remains visible rather than attributed to caching. This one local
+sample is not a hosted Xcode 26.6/26.3 measurement, network-transfer benchmark,
+release-performance qualification or end-to-end CI SLA.
+
+A plain graph restore without verified source timestamps rebuilt first-party
+inputs and did not consistently improve total local time. Its first run also
+caught a real architecture-document vocabulary violation; that receipt remains
+failed, the documentation was repaired, and subsequent complete passes did not
+waive or filter the assertion. Temporary production compiler errors and failing
+XCTest assertions established that restored state still rejects changed inputs;
+these negative controls are not passing feature tests.
+
+### Scoped UI execution
+
 `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates macOS UI runners only when product presentation is
 affected: one job builds the exact products once into an `xctestproducts`
@@ -342,6 +484,16 @@ final deterministic replacements with literal regex metacharacters, effective
 hints at the engine invocation, punctuation-only output and late model
 preparation after cancellation. All preference changes use a volatile domain.
 Fixture selection is checked both with and without temporary composition.
+Capture-integrity regressions enter that controller with ordinary and
+cancellation-shaped source errors after EN/ES partials, 127/128/129 pending
+relay buffers, producer notifications before EOF, an unnotified failure at Stop,
+clean EOF before Stop or during its tail, and captions that end before the
+audio relay. Streaming fixtures finish captions only after their audio input
+ends, as real engines do. They require no automatic insertion, the localized interrupted message and a `pipelineFailed` measurement,
+and retain cleanup ownership. A late failure from a cancelled source cannot
+retire its replacement; a late report after delivery cannot promise rollback.
+The disposable capture-failure journey checks the localized panel and repeatable
+dismissal, not native hardware or verified external delivery.
 
 `DictationStreamingProjectionTests` drives the actual controller with an explicitly
 bounded delta stream: bilingual punctuation and final rules, noise/empty inputs,
@@ -398,7 +550,7 @@ gate passed. No general clipboard, real meeting, model download or microphone
 participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 132 unattended cases;
+`make test-ui-bilingual` and scoped hosted runs select the 133 unattended cases;
 `make test-ui-native-dictation` selects the one real receiver case in EN and ES.
 The catalog policy requires that case to remain discoverable but disjoint from
 unattended selectors. The runner excludes it only when no explicit selectors
@@ -8525,3 +8677,35 @@ validator still requires exactly one failed, non-skipped case, complete cleanup,
 the expected refusal reason, and no fallback/action effect. A timeout, empty
 worker restart, missing receipt or unexpected effect is not an accepted negative
 control. Positive controls still require normal successful action and teardown.
+
+### Packaging permission fixtures
+
+`test_app_payload_permissions.make_app` explicitly constructs the readable
+packaging baseline inside its private temporary parent before applying an
+intentionally unreadable resource mode. The real payload verifier runs against
+both resource layouts under creation masks `077`, `027` and `022`; the parent
+stays `0700`, and unreadable bundles still fail closed. A restrictive test-runner
+mask is not a simulated distribution defect.
+
+### Dictation lifecycle ownership evidence
+
+`DictationSessionLifecycleTests.swift` exercises the real controller's EOF,
+provider cancellation, deferred native Stop, duplicate Stop, generation-fenced
+feedback, late key-up and replacement-session call sites. Bilingual text includes
+typographic apostrophes, punctuation-only input, empty text and the minimum
+capture boundary. Injected gates hold the actual lifecycle boundaries instead
+of guessing their completion with a fixed sleep. These complement readiness,
+resource-ownership and incremental-projection regressions; they do not substitute
+for physical devices, real ASR quality or native AX/editor readback.
+
+`testLateRecoveryFeedbackCannotCloseTheNextLanguageSession` holds the actual
+recovery retry's cancellation-uncooperative feedback deadline across a replacement
+capture, in both EN-to-ES and ES-to-EN directions. It checks destination capture
+count, delivery completion, runtime lease release and unchanged next-session
+text/phase, not just a timer policy or word count.
+
+`testDictationSourceEOFBeforeStopIsVisibleAndCanRestart` uses the real app's
+menu/panel with an isolated first-capture EOF before Stop, shows the localized
+interrupted message, then proves dismissal and restart in each locale. The fixture consumes its one-shot failure at source construction,
+not during menu dependency construction. Its scope has an explicit 20-second
+per-case budget; aggregate full-suite budgets are unchanged.

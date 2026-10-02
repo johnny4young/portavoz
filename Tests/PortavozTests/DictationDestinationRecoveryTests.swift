@@ -195,6 +195,47 @@ final class DictationDestinationRecoveryTests: XCTestCase {
         }
     }
 
+    func testLateRecoveryFeedbackCannotCloseTheNextLanguageSession() async {
+        for texts in [["No borres estas notas.", "Don’t delete these notes."],
+                      ["Don’t delete these notes.", "No borres estas notas."]] {
+            let first = DictationControllerHarness(text: texts[0])
+            let next = DictationControllerHarness(text: texts[1], controller: first.controller)
+            let feedback = RetryGate()
+            defer { first.controller.cancel(); feedback.release() }
+            var attempts = 0
+            var captures = 0
+            var dependencies = first.dependencies
+            dependencies.captureDestination = {
+                captures += 1
+                return CapturedDictationDestination(name: "Original app", canRetry: true) { _ in
+                    attempts += 1
+                    return attempts == 1 ? .targetChanged : .inserted
+                }
+            }
+            dependencies.waitForFeedbackDismissal = { _ in await feedback.wait() }
+            await enterRecovery(first, dependencies: dependencies)
+            first.controller.retryUndeliveredText()
+            let waiting = await eventually { feedback.started && first.controller.retryDeliveryTask == nil }
+            XCTAssertTrue(waiting, "Delivery must finish independently from cosmetic feedback")
+            XCTAssertEqual(first.controller.phase, .inserted(4))
+            let released = await eventually { first.finishes == 1 }
+            XCTAssertTrue(released, "Recovery feedback cannot retain the transcription lease")
+            XCTAssertEqual(captures, 1)
+            XCTAssertEqual(attempts, 2)
+
+            first.controller.toggle(using: next.dependencies)
+            let listening = await eventually { first.controller.partialText == texts[1] }
+            XCTAssertTrue(listening)
+            feedback.release() // Deliberately ignores the old task's cancellation.
+            let finished = await eventually { feedback.returned }
+            XCTAssertTrue(finished)
+            XCTAssertEqual(first.controller.phase, .listening)
+            XCTAssertEqual(first.controller.partialText, texts[1])
+            XCTAssertTrue(next.insertions.isEmpty)
+            XCTAssertEqual(captures, 1, "A late deadline must not recapture the old destination")
+        }
+    }
+
     private func enterRecovery(_ harness: DictationControllerHarness, dependencies: DictationSessionDependencies) async {
         harness.controller.toggle(using: dependencies)
         let partial = await eventually { !harness.controller.partialText.isEmpty }

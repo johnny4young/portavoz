@@ -15,9 +15,15 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## October 2, 2026
+
+- **📝 Dictation recovery** — keep text when its original field changes; copy, explicitly reinsert, or discard without losing it to another trigger.
+
 ## October 1, 2026
 
-- 📝 **Dictation recovery** — keep text when its original field changes; copy, explicitly reinsert, or discard without losing it to another trigger.
+- **🎙️ Reliable dictation handoff** — Stop finishes microphone cleanup before typing, and late captions or feedback cannot interrupt your next dictation.
+
+- **🛡️ Dictation stops before a broken paste** — interrupted or overloaded audio now shows a clear failure instead of automatically inserting an incomplete result.
 
 ## September 30, 2026
 

@@ -1103,7 +1103,7 @@ extension ArchitectureDependencyTests {
         }
     }
 
-    func testDevInstallVerifiesTheSignedBundleBeforeLaunchingIt() throws {
+    func testDevInstallVerifiesTheSignedBundleBeforeRegisteringItWithoutLaunch() throws {
         let packager = try Self.contents(of: "scripts/make-app.sh")
         let makefile = try Self.contents(of: "Makefile")
 
@@ -1144,8 +1144,17 @@ extension ArchitectureDependencyTests {
             of: "-f \"/Applications/Portavoz Dev.app\"",
             range: verifyInstalled.upperBound..<makefile.endIndex))
         XCTAssertNotNil(makefile.range(
-            of: "open \"/Applications/Portavoz Dev.app\"",
+            of: "automatic launch intentionally disabled",
             range: register.upperBound..<makefile.endIndex))
+        let recipeStart = try XCTUnwrap(makefile.range(of: "\ninstall:\n"))
+        let recipeEnd = makefile.range(
+            of: "\n\n", range: recipeStart.upperBound..<makefile.endIndex)?.lowerBound
+            ?? makefile.endIndex
+        let launches = makefile[recipeStart.upperBound..<recipeEnd]
+            .split(separator: "\n")
+            .map { $0.drop { "\t @-".contains($0) } }
+            .filter { $0.hasPrefix("open ") }
+        XCTAssertEqual(launches, [])
     }
 
     func testProductionSyncQualificationPreservesExactProvisionedIdentity() throws {

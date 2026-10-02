@@ -47,8 +47,12 @@ def make_app(
         f"exit {0 if loadable else 1}\n",
         encoding="utf-8",
     )
-    os.chmod(binary, 0o755)
-    os.chmod(staged, mode)
+    # Match packaging's readable payload, not the caller's creation mask.
+    # The enclosing temporary directory remains private; an intentionally bad
+    # bundle mode is applied only after constructing the valid baseline.
+    for entry in [app, *app.rglob("*")]:
+        entry.chmod(0o755 if entry.is_dir() or entry == binary else 0o644)
+    staged.chmod(mode)
     return app
 
 
@@ -91,6 +95,26 @@ class AppPayloadPermissionTests(unittest.TestCase):
             app = make_app(Path(directory), resolved=None)
             completed = self.run_payload_gate(app)
             self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_payload_gate_fixture_is_independent_of_creation_mask(self):
+        for mask in (0o077, 0o027, 0o022):
+            previous = os.umask(mask)
+            try:
+                for nested in (False, True):
+                    with self.subTest(mask=oct(mask), nested=nested):
+                        with tempfile.TemporaryDirectory() as directory:
+                            root = Path(directory)
+                            app = make_app(root, resolved=None, nested_layout=nested)
+                            completed = self.run_payload_gate(app)
+                            self.assertEqual(completed.returncode, 0, completed.stderr)
+                            self.assertEqual(root.stat().st_mode & 0o777, 0o700)
+                            staged = app / "Contents/Resources/Portavoz_IntelligenceKit.bundle"
+                            staged.chmod(0o700)
+                            rejected = self.run_payload_gate(app)
+                            self.assertEqual(rejected.returncode, 65)
+                            self.assertIn("cannot read", rejected.stderr)
+            finally:
+                os.umask(previous)
 
     def test_payload_gate_accepts_the_nested_resource_layout(self):
         with tempfile.TemporaryDirectory() as directory:
