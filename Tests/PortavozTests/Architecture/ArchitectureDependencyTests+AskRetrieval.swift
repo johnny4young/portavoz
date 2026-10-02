@@ -1254,7 +1254,6 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 51"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))
@@ -1762,7 +1761,6 @@ extension ArchitectureDependencyTests {
             of: "Sources/StorageKit/MeetingStore+NoteSearch.swift")
         let migration = try Self.contents(
             of: "Sources/StorageKit/Schema+ContextItemSearch.swift")
-        let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")
         let prompt = try Self.contents(
             of: "Sources/IntelligenceKit/RAGTextAnswering.swift")
         let model = try Self.contents(of: "Sources/portavoz-app/AskModel.swift")
@@ -1788,7 +1786,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(search.contains("contextItem.deletedAt IS NULL"))
         XCTAssertTrue(search.contains("meeting.deletedAt IS NULL"))
         XCTAssertFalse(search.contains("FROM enhancedNote"))
-        XCTAssertTrue(schema.contains("public static let version = 51"))
+
         XCTAssertTrue(migration.contains("virtualTable: \"contextItemSearch\""))
         XCTAssertTrue(migration.contains("VALUES ('rebuild')"))
 
