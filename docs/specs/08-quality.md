@@ -8498,6 +8498,17 @@ A selector regression enumerates every current import source and enters the
 actual changed-path selector, so a green unrelated audio scope cannot substitute
 for import coverage. Shared-harness and unknown-path fallbacks remain intact.
 
+The disposable Xcode app exports the shipping `.portavoz` type declaration,
+including its JSON conformance and filename tag, but deliberately does not claim
+the release app's document-handler role. A tooling test runs XcodeGen's actual
+spec parser and compares its metadata to the shipping script's parsed plist;
+this cannot be masked by a release app already registered on the host. A native
+single-bundle journey writes the production typed codec, selects its file through
+the same picker, and verifies both unpunctuated Spanish and typographic-apostrophe
+English in Meeting Detail plus unchanged source bytes. It does not measure ASR
+or certify Finder associations on a clean Mac. Its 20-second budget is declared
+before measurement; existing per-case and aggregate budgets remain unchanged.
+
 Native open-panel file selection uses the panel's List view and Select All
 command; read-only filename text fields are not treated as clickable controls.
 Import journeys prepare the initial directory through the explicitly gated

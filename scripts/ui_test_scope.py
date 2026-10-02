@@ -69,6 +69,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testActiveRecordingRemainsReachableAfterBrowsingTheLibrary"),
     ),
     "audio-imports": (
+        test_id("AudioImportUITests", "testSingleMeetingBundleReachesDetailWithoutChangingTheOriginal"),
         test_id("AudioImportUITests", "testMultipleAudioFilesReachPagedQueueAndOpenTheirMeeting"),
         test_id("AudioImportUITests", "testCancelOneImportContinuesTheNextAndExplicitRetryReusesTheQueue"),
         test_id("AudioImportUITests", "testRelaunchResumesPublishedAudioWithoutTheSelectedOriginals"),

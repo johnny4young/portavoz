@@ -1,8 +1,10 @@
 import AVFoundation
+import IntegrationsKit
+import PortavozCore
 import XCTest
 
-/// Synthetic PCM is decoded and copied for real, but recognition is scripted.
-/// This exercises the native picker → admission → worker → queue → meeting route.
+/// Audio uses real PCM decoding with scripted recognition; bundles use the
+/// production typed codec. Both enter the native picker and ordinary admission.
 final class AudioImportUITests: PortavozUITestCase {
     private var ownedArtifacts: [URL] = []
 
@@ -15,6 +17,27 @@ final class AudioImportUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testSingleMeetingBundleReachesDetailWithoutChangingTheOriginal() throws {
+        let app = try fixtureApp()
+        let title = "Bundle · café"
+        let texts = ["No envíes 2 conserva 3,5 €", "Don’t send 2 keep 3.5 euros"]
+        let source = try makeBundleSelection(title: title, texts: texts, app: app)
+        let original = try Data(contentsOf: source)
+        app.launchPortavoz()
+        defer { app.terminate() }
+        guard chooseFiles(app: app, firstFilename: source.lastPathComponent) else { return }
+        XCTAssertTrue(app.control(withIdentifier: "detail-transcript-title").waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(app.staticTexts[title].waitForExistenceFast(timeout: 5))
+        for text in texts {
+            XCTAssertTrue(app.staticTexts.matching(NSPredicate(
+                format: "value == %@ OR label == %@", text, text)).firstMatch.waitForExistenceFast(timeout: 5))
+        }
+        XCTAssertFalse(app.control(withIdentifier: "import-queue-panel").exists,
+                       "A meeting bundle must not become an audio transcription job")
+        XCTAssertEqual(try Data(contentsOf: source), original, "Import must not mutate the original document")
+    }
+
+    @MainActor
     func testMultipleAudioFilesReachPagedQueueAndOpenTheirMeeting() throws {
         let app = try fixtureApp()
         let folder = try makeAudioSelection(count: 21, app: app)
@@ -23,7 +46,7 @@ final class AudioImportUITests: PortavozUITestCase {
         app.launchArguments.append("-audio-import-diarizer-unavailable")
         app.launchPortavoz()
         defer { app.terminate() }
-        guard chooseAudio(app: app) else { return }
+        guard chooseFiles(app: app) else { return }
         let panel = app.control(withIdentifier: "import-queue-panel")
         XCTAssertTrue(panel.waitForExistenceFast(timeout: 15))
         let expected = UITestLocale.environmentLocale == "es"
@@ -50,7 +73,8 @@ final class AudioImportUITests: PortavozUITestCase {
         open.click()
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "No envíes 2.")).firstMatch
             .waitForExistenceFast(timeout: 10))
-        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: folder.appendingPathComponent("selection").path).count, 21)
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(
+            atPath: folder.appendingPathComponent("selection").path).count, 21)
     }
 
     @MainActor
@@ -60,7 +84,7 @@ final class AudioImportUITests: PortavozUITestCase {
         app.launchArguments.append("-audio-import-fail-mutations-once")
         app.launchPortavoz()
         defer { app.terminate() }
-        guard chooseAudio(app: app) else { return }
+        guard chooseFiles(app: app) else { return }
         let panel = app.control(withIdentifier: "import-queue-panel")
         XCTAssertTrue(panel.waitForExistenceFast(timeout: 15))
         let state = panel.staticTexts.matching(NSPredicate(
@@ -78,14 +102,16 @@ final class AudioImportUITests: PortavozUITestCase {
         cancel.click()
         let retry = panel.buttons["import-queue-retry-\(id)"]
         XCTAssertTrue(retry.waitForExistenceFast(timeout: 10))
-        let other = panel.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "import-queue-open-")).firstMatch
+        let other = panel.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH %@", "import-queue-open-")).firstMatch
         XCTAssertTrue(other.waitForExistenceFast(timeout: 10))
         retry.click()
         XCTAssertTrue(panel.buttons["import-queue-open-\(id)"].waitForExistenceFast(timeout: 15))
         try assertReadyPage(panel, count: 2, previousEnabled: false, nextEnabled: false)
         panel.buttons["import-queue-close"].click()
         verifyRejectedLibraryDeletion(id: id, app: app)
-        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: folder.appendingPathComponent("selection").path).count, 2)
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(
+            atPath: folder.appendingPathComponent("selection").path).count, 2)
     }
 
     @MainActor
@@ -94,7 +120,7 @@ final class AudioImportUITests: PortavozUITestCase {
         let folder = try makeAudioSelection(count: 1, app: app)
         app.launchPortavoz()
         defer { app.terminate() }
-        guard chooseAudio(app: app) else { return }
+        guard chooseFiles(app: app) else { return }
         let panel = app.control(withIdentifier: "import-queue-panel")
         XCTAssertTrue(panel.waitForExistenceFast(timeout: 15))
         let state = panel.staticTexts.matching(NSPredicate(
@@ -204,7 +230,7 @@ final class AudioImportUITests: PortavozUITestCase {
     }
 
     @MainActor
-    private func chooseAudio(app: XCUIApplication) -> Bool {
+    private func chooseFiles(app: XCUIApplication, firstFilename: String = "Audio 00.wav") -> Bool {
         let menu = app.control(withIdentifier: "library-record-menu")
         guard menu.waitForHittable(timeout: 5) else {
             XCTFail("The Library must expose the import menu")
@@ -219,7 +245,7 @@ final class AudioImportUITests: PortavozUITestCase {
         action.click()
         let picker = app.dialogs["open-panel"]
         guard picker.waitForExistenceFast(timeout: 5) else {
-            XCTFail("The import action must open the native audio picker")
+            XCTFail("The import action must open the native import picker")
             return false
         }
         // The disposable fixture sets only the initial directory, never the
@@ -227,9 +253,9 @@ final class AudioImportUITests: PortavozUITestCase {
         // by the mandatory native interruption controls instead of every batch.
         // List view avoids NSOpenPanel's offscreen column frames for deep paths.
         typeKey("2", modifierFlags: .command, in: app, modalAnchor: "open-panel")
-        let first = app.textFields.matching(NSPredicate(format: "value == %@", "Audio 00.wav")).firstMatch
+        let first = app.textFields.matching(NSPredicate(format: "value == %@", firstFilename)).firstMatch
         guard first.waitForExistenceFast(timeout: 5) else {
-            XCTFail("The native picker did not reach the selected synthetic audio folder")
+            XCTFail("The native picker did not reach the selected synthetic file folder")
             return false
         }
         // The modal panel owns keyboard focus after switching to List view.
@@ -237,7 +263,7 @@ final class AudioImportUITests: PortavozUITestCase {
         // are not clickable controls even when their frames are visible.
         typeKey("a", modifierFlags: .command, in: app, modalAnchor: "open-panel")
         guard picker.buttons["OKButton"].waitForEnabled(timeout: 5) else {
-            XCTFail("The native picker did not enable import for its selected audio")
+            XCTFail("The native picker did not enable import for its selected files")
             return false
         }
         // Complete the keyboard-owned selection with its native default action.
@@ -249,6 +275,24 @@ final class AudioImportUITests: PortavozUITestCase {
             return false
         }
         return true
+    }
+
+    @MainActor
+    private func makeBundleSelection(title: String, texts: [String], app: XCUIApplication) throws -> URL {
+        let folder = URL(fileURLWithPath: try XCTUnwrap(app.launchEnvironment["TMPDIR"]), isDirectory: true)
+        let selection = folder.appendingPathComponent("selection")
+        ownedArtifacts.append(selection)
+        try FileManager.default.createDirectory(at: selection, withIntermediateDirectories: true)
+        let meeting = Meeting(title: title, startedAt: Date(timeIntervalSince1970: 1_000), language: "es")
+        let speaker = Speaker(meetingID: meeting.id, label: "S1")
+        let segments = texts.enumerated().map { index, text in
+            TranscriptSegment(meetingID: meeting.id, speakerID: speaker.id, channel: .system,
+                              text: text, startTime: Double(index * 3), endTime: Double(index * 3 + 2), isFinal: true)
+        }
+        let bundle = MeetingBundle(meeting: meeting, speakers: [speaker], segments: segments)
+        let source = selection.appendingPathComponent("Meeting").appendingPathExtension(MeetingBundle.fileExtension)
+        try bundle.encoded().write(to: source, options: .atomic)
+        return source
     }
 
     @MainActor
