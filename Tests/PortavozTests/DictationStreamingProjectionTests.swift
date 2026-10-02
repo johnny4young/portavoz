@@ -299,12 +299,19 @@ private final class StreamingDictationFixture {
     }
 
     func finish() async throws {
+        try await waitUntil { self.harness.controller.phase == .listening }
+        // Mirror a recognizer draining after the actual source Stop, not EOF
+        // during the controller's still-pending final-word tail.
+        await harness.microphone.holdStop { [weak self] in await self?.finishCaptionsAfterInput() }
         harness.now = harness.now.addingTimeInterval(1)
         harness.controller.toggle(using: harness.dependencies)
-        // A real engine finalizes only after its audio input ends.
-        try await waitUntil { self.inputEnded }
-        continuation.finish()
         try await waitUntil { self.harness.finishes == 1 }
+    }
+
+    // A real engine finalizes only after its audio input ends.
+    func finishCaptionsAfterInput() async {
+        try? await waitUntil { self.inputEnded }
+        continuation.finish()
     }
 
     func cancel() {

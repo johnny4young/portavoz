@@ -227,7 +227,7 @@ are unchanged. Functional and timing qualification still require actual runs.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 131 UI cases after consolidating one pair of
+The unattended catalog contains 132 UI cases after consolidating one pair of
 confirmed-person journeys, including portable-settings, shortcut-recovery, the
 real dictation-panel and clipboard-refusal journeys, three microphone
 preparation/recovery journeys, capture-failure recovery, two Apple Speech
@@ -558,7 +558,7 @@ or destination identity fencing. The presence of this test is not evidence that
 the native gate passed. No general clipboard, real meeting, model download or microphone participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 131 unattended cases;
+`make test-ui-bilingual` and scoped hosted runs select the 132 unattended cases;
 `make test-ui-native-dictation` selects the one real receiver case in EN and ES.
 The catalog policy requires that case to remain discoverable but disjoint from
 unattended selectors. The runner excludes it only when no explicit selectors
@@ -574,6 +574,13 @@ root excludes that directory explicitly, alongside the UI and interruption
 fixtures; strict package diagnostics must not treat its entry point as an
 unhandled unit-test resource.
 
+The synthetic application used by `test_app_payload_permissions` explicitly
+constructs packaging-equivalent readable payload modes, independently of the
+caller's creation mask. Its outer temporary directory remains private. Actual
+payload-gate subprocess tests exercise flat and nested layouts under restrictive
+and ordinary masks, then deliberately remove bundle readability and require
+rejection; normalization cannot silently erase the negative permission case.
+
 UI builds remain ad-hoc by default. A local owner may explicitly set both
 `UI_TEST_CODE_SIGN_IDENTITY` (the certificate's 40-character SHA-1 identifier)
 and `UI_TEST_DEVELOPMENT_TEAM` (the 10-character team ID) when invoking the
@@ -586,6 +593,16 @@ the repository. Certificate-backed designated requirements can remain stable
 across builds, unlike an ad-hoc code-hash requirement. Inspect the actual built
 app's requirement and authorize that disposable app through macOS; signing does
 not itself grant Accessibility, qualify native insertion, or authorize release.
+An earlier ad-hoc permission entry can retain a code-hash requirement that rejects
+a valid certificate-backed replacement at the same path and bundle identifier.
+An enabled switch alone therefore does not establish trust. If the native app
+reports missing trust, inspect its actual launched path and designated requirement;
+a TCC code-requirement mismatch is a signing-identity admission failure, not
+failed text insertion. Replacing only that disposable application's stale entry
+through System Settings is a human permission operation, not a runner reset or
+an automated TCC database edit. Preserve the denied native receipt and obtain a
+new actual receiver result after authorization changes. Never add a private TCC
+entitlement in response to system diagnostic recommendations.
 CI without those explicit inputs keeps the existing signing policy. The runner's
 command-boundary tests cover absent, exact, partial, oversized and injected
 values; the real signed build remains separate evidence.
@@ -8645,3 +8662,20 @@ validator still requires exactly one failed, non-skipped case, complete cleanup,
 the expected refusal reason, and no fallback/action effect. A timeout, empty
 worker restart, missing receipt or unexpected effect is not an accepted negative
 control. Positive controls still require normal successful action and teardown.
+
+### Dictation lifecycle ownership evidence
+
+`DictationSessionLifecycleTests.swift` exercises the real controller's EOF,
+provider cancellation, deferred native Stop, duplicate Stop, generation-fenced
+feedback, late key-up and replacement-session call sites. Bilingual text includes
+typographic apostrophes, punctuation-only input, empty text and the minimum
+capture boundary. Injected gates hold the actual lifecycle boundaries instead
+of guessing their completion with a fixed sleep. These complement readiness,
+resource-ownership and incremental-projection regressions; they do not substitute
+for physical devices, real ASR quality or native AX/editor readback.
+
+`testDictationSourceEOFBeforeStopIsVisibleAndCanRestart` uses the real app's
+menu/panel with an isolated first-capture EOF before Stop, shows the localized
+interrupted message, then proves dismissal and restart in each locale. The fixture consumes its one-shot failure at source construction,
+not during menu dependency construction. Its scope has an explicit 20-second
+per-case budget; aggregate full-suite budgets are unchanged.

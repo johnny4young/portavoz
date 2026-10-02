@@ -120,6 +120,9 @@ final class DictationResourceOwnershipTests: XCTestCase {
         var dependencies = services.makeDictationSessionDependencies()
         dependencies.now = { now }
         dependencies.makeMicrophone = { .init(source: microphone, warmUp: {}) }
+        var deliveries = 0
+        let insert = dependencies.insert
+        dependencies.insert = { text in deliveries += 1; return await insert(text) }
         let begin = dependencies.beginCapture
         dependencies.beginCapture = {
             let finish = begin()
@@ -130,8 +133,10 @@ final class DictationResourceOwnershipTests: XCTestCase {
         XCTAssertTrue(listening)
         now = now.addingTimeInterval(1)
         controller.toggle(using: dependencies)
-        let delivered = await eventually { !controller.isActive }
-        XCTAssertTrue(delivered, "End of stream reaches delivery while the native stop is still held")
+        let stopping = await eventuallyAsync { await microphone.stopRequests > 0 }
+        XCTAssertTrue(stopping)
+        XCTAssertTrue(controller.isActive, "Stream EOF cannot authorize delivery before native Stop returns")
+        XCTAssertEqual(deliveries, 0)
         let heldAfterDelivery = await eventually(within: .milliseconds(300)) { retired }
         XCTAssertFalse(heldAfterDelivery)
         XCTAssertEqual(services.resourceCaptureState.current, .active)
@@ -139,6 +144,7 @@ final class DictationResourceOwnershipTests: XCTestCase {
         let released = await eventually { retired }
         XCTAssertTrue(released)
         XCTAssertEqual(services.resourceCaptureState.current, .inactive)
+        XCTAssertEqual(deliveries, 1)
     }
 
     func testCaptureAdmissionCoversCancelledColdPreparationUntilItActuallyReturns() async throws {
