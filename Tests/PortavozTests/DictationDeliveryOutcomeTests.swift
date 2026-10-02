@@ -52,6 +52,8 @@ final class DictationDeliveryOutcomeTests: XCTestCase {
                 CapturedDictationDestination(name: "Unsupported receiver", canRetry: true, insert: receiver.insert)
             }
             dependencies.copyText = { text in copies.append(text); return copies.count > 1 }
+            var feedbackRequests = 0
+            dependencies.waitForFeedbackDismissal = { _ in feedbackRequests += 1 }
             harness.controller.toggle(using: dependencies)
             let recognized = await eventually { harness.controller.partialText == text }
             XCTAssertTrue(recognized)
@@ -60,7 +62,9 @@ final class DictationDeliveryOutcomeTests: XCTestCase {
             let dispatched = await eventually { if case .dispatched = harness.controller.phase { true } else { false } }
             XCTAssertTrue(dispatched)
             XCTAssertEqual(harness.controller.recoveryText, text, "Posted does not mean received")
-            XCTAssertNil(harness.controller.dismissTask, "An unacknowledged result cannot silently expire")
+            await Task.yield()
+            XCTAssertEqual(feedbackRequests, 0, "Unacknowledged output must not schedule an expiry")
+            XCTAssertEqual(harness.controller.recoveryText, text)
             harness.controller.copyPendingText()
             XCTAssertEqual(harness.controller.copyStatus, .failed)
             XCTAssertEqual(harness.controller.recoveryText, text)
@@ -82,8 +86,10 @@ final class DictationDeliveryOutcomeTests: XCTestCase {
     func testRestartRetiresVerifiedFeedbackWithoutClosingTheNewCapture() async {
         let harness = DictationControllerHarness(text: "Do not remove the notes")
         let receiver = TextReadbackHarness()
-        defer { harness.controller.cancel(); receiver.board.releaseGlobally() }
+        let feedback = DeliveryFeedbackGate()
+        defer { harness.controller.cancel(); feedback.release(); receiver.board.releaseGlobally() }
         var dependencies = harness.dependencies
+        dependencies.waitForFeedbackDismissal = { _ in await feedback.wait() }
         dependencies.captureDestination = {
             CapturedDictationDestination(name: "Disposable receiver", canRetry: true, insert: receiver.insert)
         }
@@ -95,14 +101,15 @@ final class DictationDeliveryOutcomeTests: XCTestCase {
         let sent = await eventually { harness.controller.phase == .verified(5) }
         XCTAssertTrue(sent)
         XCTAssertEqual(harness.finishes, 1, "The banner must not own the completed runtime")
-        let retiringTimer = harness.controller.dismissTask
-        XCTAssertNotNil(retiringTimer)
+        let waiting = await eventually { feedback.started }
+        XCTAssertTrue(waiting)
         harness.controller.toggle(using: dependencies)
-        await retiringTimer?.value
+        feedback.release() // The old wait deliberately ignores cancellation.
+        let returned = await eventually { feedback.returned }
+        XCTAssertTrue(returned)
         let restarted = await eventually { harness.loads == 2 && !harness.controller.partialText.isEmpty }
         XCTAssertTrue(restarted)
         XCTAssertEqual(harness.controller.phase, .listening)
-        XCTAssertNil(harness.controller.dismissTask)
         XCTAssertEqual(receiver.posts, 1)
         harness.controller.cancel()
         let released = await eventually { harness.finishes == 2 }
@@ -130,5 +137,23 @@ final class DictationDeliveryOutcomeTests: XCTestCase {
         let deadline = ContinuousClock.now.advanced(by: .seconds(4))
         while !predicate(), ContinuousClock.now < deadline { try? await Task.sleep(for: .milliseconds(5)) }
         return predicate()
+    }
+}
+
+@MainActor
+private final class DeliveryFeedbackGate {
+    private var continuation: CheckedContinuation<Void, Never>?
+    private(set) var started = false
+    private(set) var returned = false
+
+    func wait() async {
+        started = true
+        await withCheckedContinuation { continuation = $0 }
+        returned = true
+    }
+
+    func release() {
+        continuation?.resume()
+        continuation = nil
     }
 }

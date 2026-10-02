@@ -23,6 +23,9 @@ struct DictationSessionDependencies {
     var copyText: (String) -> Bool
     var defaults: UserDefaults
     var now: () -> Date = Date.init
+    var waitForFeedbackDismissal: @MainActor (Duration) async throws -> Void = {
+        try await Task.sleep(for: $0)
+    }
     /// Capture admission is independent of the model's active-use lease.
     /// Its completion belongs to this session, never the controller's next one.
     var beginCapture: () -> () -> Void

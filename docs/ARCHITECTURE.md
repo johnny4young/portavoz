@@ -5468,6 +5468,20 @@ fixed SHA-256 digests instead of floating Homebrew state.
 Third-party GitHub Actions are pinned to immutable full commit SHAs with their
 human-readable versions in comments; repository hygiene rejects mutable tags.
 
+The two complete Swift test lanes may restore a compatible SwiftPM `.build`
+graph on pull requests. Cache identity binds the lane, absolute workspace,
+architecture, macOS build, runner image, Xcode/Swift/macOS SDK and build-policy
+inputs, including the dependency lock. There is no cross-identity restore prefix,
+cached test verdict or conditional test execution. A successful build records
+tracked source fingerprints. Only matching bytes, size and permissions recover
+their prior timestamps; changed or new inputs remain fresh. Restoration never
+chooses paths outside the current Git inventory or follows source symlinks.
+Every push to `main` keeps a cold graph and is the only producer of a seed;
+pull requests restore but never save. A hit whose fingerprints fail validation
+is discarded and the job builds cold. UI products, iOS portability, release/performance evidence and private model
+or library state are outside this cache. The quality spec owns measurement and
+invalidation checks; a hit alone is not evidence of a faster or passing build.
+
 Pull-request UI evidence is selected deterministically from changed paths.
 Known presentation and application files map to feature-level XCUITest
 selectors; localization and shared-harness changes expand to the complete
@@ -5976,7 +5990,11 @@ sandbox composition.
 modified by development commands. `make install` builds, signs, verifies, and
 installs `/Applications/Portavoz Dev.app`, rewrites both base and localized
 names, gives it the distinct `app.portavoz.mac.dev` identity, and force-registers
-that exact bundle after signature verification. The XcodeGen host uses
+that exact bundle after signature verification. Registration ends installation;
+no app is automatically launched. Disposable validation starts separately
+with `-use-temp-store`. A normal manual Dev launch still selects the release
+composition's default SQLite URL: bundle identity is not library isolation.
+The XcodeGen host uses
 `app.portavoz.mac.uitest-host`. Production, development, and disposable
 DerivedData bundles therefore cannot compete for one LaunchServices/App Intents
 record. The separate Dev identity requires its own one-time macOS permissions
@@ -6363,3 +6381,10 @@ releases generation, then verifies the final answer and persisted citation.
 This changes only temporary-store fixture composition, not production latency.
 The handshake uses the launch-owned temporary directory and retains cancellation,
 cleanup and the original deadlines. No assertion or runtime budget is removed.
+
+Dictation session completion and UI feedback have separate ownership.
+Recognizer EOF before an issued Stop is rejected before waiting for a live audio
+producer. Delivery waits for both its producer and its native Stop task; cosmetic
+feedback uses an independently fenced identity and never retains the runtime
+lease. Hotkey release belongs to the exact session that admitted its press,
+including permission/model preparation, without moving the first-buffer clock.

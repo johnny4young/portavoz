@@ -236,7 +236,7 @@ copy. A temp-store-only simulation drives the complete English/Spanish
 XCUITest journey and cannot redirect or fail a production authority.
 
 - Signature: by SHA-1 of cert (`PORTAVOZ_SIGN_IDENTITY`) — there are TWO Developer IDs with the same name on the machine and the name is ambiguous.
-- `make install`: rejects a production provisioning profile, renames only a local-entitlement bundle to `Portavoz Dev`, re-signs it with Hardened Runtime and a secure timestamp, deep/strict-verifies `dist/Portavoz.app`, copies it to `/Applications/Portavoz Dev.app`, deep/strict-verifies the installed copy, and only then launches it. It never writes `/Applications/Portavoz.app`.
+- `make install`: rejects a production provisioning profile, renames only a local-entitlement bundle to `Portavoz Dev`, re-signs it with Hardened Runtime and a secure timestamp, deep/strict-verifies `dist/Portavoz.app`, copies it to `/Applications/Portavoz Dev.app`, deep/strict-verifies the installed copy, and registers it without launching it. It never writes `/Applications/Portavoz.app`. Disposable validation launches explicitly with `open -na '/Applications/Portavoz Dev.app' --args -use-temp-store`; an ordinary manual Dev launch still selects the shared default library, not an isolated Dev database (D556).
 - `make production-sync-qualification-app`: requires one clean exact version/build/commit checkout, a real signing identity, and the matching production profile. It materializes the profile-owned macOS App ID and developer-team entitlements, preserves `app.portavoz.mac`, changes only the display name, re-signs and re-verifies the bundle, then leaves `dist/Portavoz Sync Qualification.app` uninstalled and unregistered for direct execution by the isolated two-Mac evidence workflow (D403).
 - The **real-app production-sync qualification** mode (D404) admits only the wrapper's two inert AppKit key/value pairs, one `-use-temp-store`, and one exact hidden manifest/workspace/role/stage/timeout tuple; every additional or reordered argument fails closed. Its synchronous watchdog also requires the wrapper-sanitized environment to contain no inherited `PORTAVOZ_*` override and exactly one UUID-named role-local shell database path. The manifest and each stage bind the main executable, outer code-resource seal, embedded production provisioning profile, and contract digests, so either Mac rejects a copied or post-initialization variant before app launch. It starts from an inert SwiftUI shell without installing notification/App Intent launch plumbing or constructing ordinary `AppServices`, then uses the real CloudKit lifecycle/platform over role-local scratch stores and the fixed public EN/ES corpus before exiting after one owner-written receipt. Role B's push stage registers for APNs, writes a content-free live-stage marker, and waits without polling; role A must consume that marker before publishing, and only the delegate's remote-notification path initiates the qualifying synchronization. Normal app launches never parse a manifest, construct this scratch lifecycle, or write qualification evidence.
 - `make-dmg.sh`: with `PORTAVOZ_NOTARY_PROFILE`, first verifies the embedded CloudKit profile and exact signed production capabilities, then archives the app, notarizes/staples/validates it, creates the UDZO DMG + `/Applications` symlink, and separately signs/notarizes/staples the image. Apple-issued direct-distribution profiles may authorize iCloud services with `*`; the verifier accepts that profile form but still requires the signed app to narrow its service to exactly `CloudKit`. `verify-distribution.sh` mounts the final DMG, copies the app out like Homebrew Cask, independently requires codesign, stapler, Gatekeeper, and CloudKit-profile acceptance, and can emit a content-free distribution receipt only after every boundary passes (D147).
@@ -2745,6 +2745,31 @@ projections before awaiting microphone teardown. This does not add ASR rescoring
 decoder windows, resolve timestamp/replay quality gaps or bound total transcript
 storage. SwiftUI still renders the existing two-line panel.
 
+**Capture failure authority (D547).** Dictation keeps its bounded 128-buffer relay, but
+an overflow is a failed capture, not permission to deliver the surviving suffix.
+Source iteration errors, including an upstream `CancellationError` when the
+owning task was not cancelled, use the same session-fenced failure path. Native
+`CaptureReportingSource` notifications revoke delivery before admitted packets
+finish draining. The controller cancels its session and pending Stop, retains
+the existing source-cleanup path, and presents a localized interruption message.
+A cancelled caption iterator may end normally; cancellation is checked before
+joining the detached pump, otherwise an open source could keep its runtime alive.
+Ordinary user cancellation remains silent and does not become capture failure.
+The final producer report is checked after draining and before delivery, even
+when a notification is absent or still queued. Capture notifications cease to
+own the outcome once delivery relinquishes the microphone; a late callback
+cannot report that an already-dispatched edit was prevented.
+Normal source EOF before the controller actually issues Stop also fails closed:
+an input device can disappear without reporting an error, including during the
+pending tail after the user presses Stop. EOF alone never authorizes automatic
+insertion of the surviving partial.
+A caption stream that ends while the relay is still open means the engine never
+read the remaining audio; the pump marks relay end before closing the feed, and
+captions ending earlier fail as an interrupted capture. Every delivery veto fails
+the session directly when readiness no longer accepts a rejection.
+This does not add durable dictation audio, retry a paste, increase the buffer or
+replace the recognition engine.
+
 `TextInserter.insert` accepts a pasteboard with `.general` as its production
 default. The native receiver journey executes in the temporary app process, not
 XCTest's sandboxed runner. It uses an explicitly armed fixture and a UUID-named board, while
@@ -2759,6 +2784,12 @@ desktop overlays. Both production and fixture delivery use a captured process an
 capability; there is no session-wide fallback. This one receiver does not
 qualify the complete external-editor matrix. It does not read the user's clipboard. Actual
 Accessibility permission is required; tests do not grant it or dismiss prompts.
+The native fixture additionally requires valid bounded selection/count metadata
+from this known receiver before spending its single insertion. A foreground
+application or a regular focused button is not editor readiness. These read-only
+probes can repeat within the existing preparation deadline; an event never does.
+This is fixture preparation, not a new production-editor eligibility restriction,
+a longer acknowledgement window or a guarantee against later focus changes.
 A local certificate-backed UI build can use the explicit signer/team inputs in
 spec 08 so rebuilding does not necessarily change its designated requirement.
 The app remains a disposable test identity, not the installed release or Dev app.
@@ -4253,3 +4284,28 @@ below-guidance Macs receive advice, not an admission ban. Both variant choices
 remain available. Compact is still a disk-saving option: there is no measured
 RAM advantage that would justify silently choosing it for an existing or new
 installation. A profile choice never starts a model download.
+
+### Dictation completion and feedback ownership (D550)
+
+A recognizer can end while capture is still live. Such EOF fails before joining
+the producer, rather than hanging indefinitely. Only an actually issued Stop
+permits completion; a source EOF before it shows the same localized interruption
+as other capture failures. Delivery also awaits that session's native Stop task
+before checking capture integrity. A dependency's CancellationError is a visible
+"ended unexpectedly" failure unless the owning task was cancelled or replaced;
+like capture interruptions and preparation permission/no-audio failures, it
+stays until dismissed because nothing was typed.
+
+Successful explicit recovery retries use the same generation-scoped feedback
+timer as first delivery. The delivery attempt and model lease finish before
+that cosmetic deadline; dismissing its own feedback clears the retained target
+and dependencies. A cancelled late deadline cannot clear the next session.
+
+Success and failure feedback have generation-scoped timers, independent of the
+capture task. New capture or Cancel revokes the old timer even when its wait
+ignores cancellation. Feedback does not retain the model/runtime lease. Hotkey
+press binds release to its admitted session, including Preparing; a long hold
+released before any audio cancels, never passes the minimum-audio threshold.
+A second press can recover lost key-up; a prior key-up cannot finish a newer
+menu-started capture. Gesture elapsed time and actual first-buffer time remain
+separate clocks.

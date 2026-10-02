@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 132
+    "expectedCaseCount": 134
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -33,7 +33,9 @@
     "CommitmentRadarUITests/testReminderAlertOpensCommitmentRadar()": 20.0,
     "CommitmentRadarUITests/testReminderDraftRequiresExplicitAccessAndLeavesDurableReceipt()": 20.0,
     "CommitmentRadarUITests/testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence()": 20.0,
+    "DictationUITests/testDictationCaptureFailureIsVisibleAndCanBeDismissed()": 20.0,
     "DictationUITests/testDictationPanelCancelsAndRestartsWithoutGlobalInput()": 20.0,
+    "DictationUITests/testDictationSourceEOFBeforeStopIsVisibleAndCanRestart()": 20.0,
     "DictationUITests/testMicrophoneDenialRemainsRecoverableWithoutOpeningAudio()": 20.0,
     "DictationUITests/testMissingMicrophoneAudioShowsFallbackAndAllowsRestart()": 25.0,
     "DictationUITests/testPreparingDictationCanCancelWithoutAListeningClaim()": 15.0,
