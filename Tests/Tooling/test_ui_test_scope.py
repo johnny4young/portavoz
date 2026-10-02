@@ -927,6 +927,12 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertEqual(len(selection.tests), 2, path)
 
+    def test_atomic_snapshot_helper_requires_both_locales_without_neighboring_changes(self):
+        path = "Tests/PortavozUITests/UITestSnapshotSupport.swift"
+        selection = select_paths([path])
+        self.assertEqual(selection.tests, HARNESS_TESTS)
+        self.assertEqual(selection.locales, ("en", "es"))
+
     def test_shared_fixture_build_sources_and_permission_require_full_bilingual(self):
         for path in (
             "Package.swift",

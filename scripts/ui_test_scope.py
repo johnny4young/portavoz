@@ -495,6 +495,7 @@ FULL_BILINGUAL_HARNESS_FILES = frozenset({
     "Sources/portavoz-app/UITestWindowPlacement.swift",
     "Sources/portavoz-app/SettingsSkillReceiptNavigation.swift",
     "Tests/PortavozUITests/UITestSupport.swift",
+    "Tests/PortavozUITests/UITestSnapshotSupport.swift",
     "Tests/PortavozUITests/PortavozUITestCase.swift",
     "Tests/PortavozUITests/UITestWaitSupport.swift",
     "Tests/PortavozUITests/UITestKeyboardSupport.swift",

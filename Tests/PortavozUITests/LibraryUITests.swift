@@ -1214,26 +1214,25 @@ final class LibraryUITests: PortavozUITestCase {
         let conflict = app.descendants(matching: .any)[
             "ask-topic-conflict-B5D40000-0000-4000-8000-000000000005"]
         XCTAssertTrue(conflict.waitForExistenceFast(timeout: 10))
+        let conflictID = "ask-topic-conflict-B5D40000-0000-4000-8000-000000000005"
+        let replacedID = "ask-topic-conflict-replaced-B5D40000-0000-4000-8000-000000000005"
+        let currentEvidenceID = "ask-topic-conflict-evidence-B5D40000-0000-4000-8000-000000000005-0"
+        let replacedEvidenceID = "ask-topic-conflict-evidence-B5D40000-0000-4000-8000-000000000005-1"
+        let observation = try topicResultObservation(
+            text: [conflictID, replacedID], buttons: [currentEvidenceID, replacedEvidenceID], in: app)
         XCTAssertTrue(
-            renderedText(of: conflict).contains(
+            renderedText(of: try uiSnapshotElement(conflictID, in: observation)).contains(
                 "El rollout del modelo queda para el viernes."))
-        let replaced = app.descendants(matching: .any)[
-            "ask-topic-conflict-replaced-B5D40000-0000-4000-8000-000000000005"]
-        XCTAssertTrue(replaced.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(
-            renderedText(of: replaced).contains(
+            renderedText(of: try uiSnapshotElement(replacedID, in: observation)).contains(
                 "El rollout del modelo quedaba para el jueves."))
-        let currentEvidence = app.buttons[
-            "ask-topic-conflict-evidence-B5D40000-0000-4000-8000-000000000005-0"]
-        let replacedEvidence = app.buttons[
-            "ask-topic-conflict-evidence-B5D40000-0000-4000-8000-000000000005-1"]
-        XCTAssertTrue(currentEvidence.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(replacedEvidence.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(currentEvidence.label.contains("Test meeting · 00:03"))
-        XCTAssertTrue(replacedEvidence.label.contains("Planning baseline · 00:04"))
+        XCTAssertTrue(try uiSnapshotElement(currentEvidenceID, type: .button, in: observation)
+            .label.contains("Test meeting · 00:03"))
+        XCTAssertTrue(try uiSnapshotElement(replacedEvidenceID, type: .button, in: observation)
+            .label.contains("Planning baseline · 00:04"))
         attachScreenshot(of: app, named: "ask-confirmed-topic-decision-conflicts")
 
-        currentEvidence.click()
+        app.buttons[currentEvidenceID].click()
         let currentTime = app.staticTexts["player-current-time"]
         XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
@@ -1274,37 +1273,49 @@ final class LibraryUITests: PortavozUITestCase {
         let change = app.descendants(matching: .any)[
             "ask-topic-change-since-B5D40000-0000-4000-8000-000000000005"]
         XCTAssertTrue(change.waitForExistenceFast(timeout: 10))
-        XCTAssertTrue(renderedText(of: change).contains(
+        let changeID = "ask-topic-change-since-B5D40000-0000-4000-8000-000000000005"
+        let replacedID = "ask-topic-change-since-replaced-B5D40000-0000-4000-8000-000000000005"
+        let anchorID = "ask-topic-change-since-anchor"
+        let currentEvidenceID = "ask-topic-change-since-evidence-B5D40000-0000-4000-8000-000000000005-0"
+        let replacedEvidenceID = "ask-topic-change-since-evidence-B5D40000-0000-4000-8000-000000000005-1"
+        let observation = try topicResultObservation(
+            text: [changeID, replacedID, anchorID], buttons: [currentEvidenceID, replacedEvidenceID], in: app)
+        XCTAssertTrue(renderedText(of: try uiSnapshotElement(changeID, in: observation)).contains(
             "El rollout del modelo queda para el viernes."))
-        let replaced = app.descendants(matching: .any)[
-            "ask-topic-change-since-replaced-"
-                + "B5D40000-0000-4000-8000-000000000005"]
-        XCTAssertTrue(replaced.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(renderedText(of: replaced).contains(
+        XCTAssertTrue(renderedText(of: try uiSnapshotElement(replacedID, in: observation)).contains(
             "El rollout del modelo quedaba para el jueves."))
-        let anchorSummary = app.descendants(matching: .any)[
-            "ask-topic-change-since-anchor"]
-        XCTAssertTrue(anchorSummary.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(renderedText(of: anchorSummary).contains(
+        XCTAssertTrue(renderedText(of: try uiSnapshotElement(anchorID, in: observation)).contains(
             "Planning baseline"))
-
-        let currentEvidence = app.buttons[
-            "ask-topic-change-since-evidence-"
-                + "B5D40000-0000-4000-8000-000000000005-0"]
-        let replacedEvidence = app.buttons[
-            "ask-topic-change-since-evidence-"
-                + "B5D40000-0000-4000-8000-000000000005-1"]
-        XCTAssertTrue(currentEvidence.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(replacedEvidence.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(currentEvidence.label.contains("Test meeting · 00:03"))
-        XCTAssertTrue(replacedEvidence.label.contains(
+        XCTAssertTrue(try uiSnapshotElement(currentEvidenceID, type: .button, in: observation)
+            .label.contains("Test meeting · 00:03"))
+        XCTAssertTrue(try uiSnapshotElement(replacedEvidenceID, type: .button, in: observation).label.contains(
             "Planning baseline · 00:04"))
         attachScreenshot(of: app, named: "ask-confirmed-topic-changes-since")
 
-        currentEvidence.click()
+        app.buttons[currentEvidenceID].click()
         let currentTime = app.staticTexts["player-current-time"]
         XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
+    }
+
+    @MainActor
+    private func topicResultObservation(
+        text textIdentifiers: [String], buttons buttonIdentifiers: [String], in app: XCUIApplication
+    ) throws -> any XCUIElementSnapshot {
+        var observation: (any XCUIElementSnapshot)?
+        let ready = try waitForUITestCondition(timeout: 5) {
+            let snapshot = try app.windows["main-AppWindow-1"].snapshot()
+            let textsExist = textIdentifiers.allSatisfy { identifier in
+                !uiSnapshotMatches({ $0.identifier == identifier }, in: snapshot).isEmpty
+            }
+            let buttonsExist = buttonIdentifiers.allSatisfy { identifier in
+                !uiSnapshotMatches({ $0.identifier == identifier && $0.elementType == .button }, in: snapshot).isEmpty
+            }
+            guard textsExist, buttonsExist else { return false }
+            observation = snapshot
+            return true
+        }
+        return try XCTUnwrap(ready ? observation : nil, "The complete Topic result must be observable together")
     }
 
     @MainActor

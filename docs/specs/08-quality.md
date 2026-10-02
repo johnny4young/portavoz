@@ -11,6 +11,19 @@ Its 32-second candidate budget replaces four 20-second budgets; the aggregate
 1,300-second and p95 limits are unchanged. A smaller case count is not itself a
 performance result; paired actual receipts are required before claiming savings.
 
+Conflict and changes-since assertions read one fresh main-window observation per
+result phase after the primary result appears. A bounded predicate requires the
+complete text and exact button group together; extraction rejects missing or
+duplicate identifiers and retains value-first text semantics. Citation clicks
+and exact playback seeks still use live elements, and no snapshot crosses a
+user action. A change to the shared snapshot helper alone requires the complete
+bilingual catalog; neighboring changes cannot supply its missing locale scope.
+The existing iterative snapshot traversal is shared with detail
+evidence and publication-receipt tests without changing those assertions. This
+reduces repeated cross-process observations, not launches, jobs, screenshots,
+coverage or runtime ceilings. Compiler or tooling tests do not establish a
+latency benefit; matching native before/after receipts remain necessary.
+
 `test_dev_install` executes the real Makefile installation recipe in a Unicode,
 space-containing scratch directory with inert external-command adapters. It
 checks re-sign → distribution verification → Dev-only copy → installed verification
@@ -8651,3 +8664,12 @@ menu/panel with an isolated first-capture EOF before Stop, shows the localized
 interrupted message, then proves dismissal and restart in each locale. The fixture consumes its one-shot failure at source construction,
 not during menu dependency construction. Its scope has an explicit 20-second
 per-case budget; aggregate full-suite budgets are unchanged.
+
+### Payload permission fixture authority
+
+`test_app_payload_permissions.make_app` explicitly constructs the readable
+packaging baseline inside its private temporary parent before applying an
+intentionally unreadable resource mode. The real payload verifier runs against
+both resource layouts under creation masks `077`, `027` and `022`; the parent
+stays `0700`, and unreadable bundles still fail closed. A restrictive test-runner
+mask is not a simulated distribution defect.
