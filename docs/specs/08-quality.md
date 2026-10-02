@@ -1,5 +1,16 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
+Confirmed Topic memory has one real-app journey for current decisions, first
+discussion, decision conflicts and changes since a selected meeting. It retains
+each exact result, source label, screenshot and playback seek assertion, but
+seeds and launches once. Between citation visits it re-enters Ask through the
+sidebar and requires the original selected topic. Every job change must remove
+the preceding result before Load; separate fresh-app tests could not exercise
+that transition. Catalog policy rejects reintroducing the four retired journeys.
+Its 32-second candidate budget replaces four 20-second budgets; the aggregate
+1,300-second and p95 limits are unchanged. A smaller case count is not itself a
+performance result; paired actual receipts are required before claiming savings.
+
 `test_dev_install` executes the real Makefile installation recipe in a Unicode,
 space-containing scratch directory with inert external-command adapters. It
 checks re-sign → distribution verification → Dev-only copy → installed verification
@@ -227,8 +238,8 @@ are unchanged. Functional and timing qualification still require actual runs.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 130 UI cases after consolidating one pair of
-confirmed-person journeys, including portable-settings, shortcut-recovery, the
+The unattended catalog contains 127 UI cases after consolidating one pair of
+confirmed-person journeys and four Topic job journeys, including portable-settings, shortcut-recovery, the
 real dictation-panel, three microphone-preparation/recovery, capture-failure
 recovery, two Apple Speech Settings, and the compact Meeting Detail correction
 journeys. The compact journey checks the actual post-restoration AppKit frame at two short heights,
@@ -536,7 +547,7 @@ or destination identity fencing. The presence of this test is not evidence that
 the native gate passed. No general clipboard, real meeting, model download or microphone participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 130 unattended cases;
+`make test-ui-bilingual` and scoped hosted runs select the 127 unattended cases;
 `make test-ui-native-dictation` selects the one real receiver case in EN and ES.
 The catalog policy requires that case to remain discoverable but disjoint from
 unattended selectors. The runner excludes it only when no explicit selectors

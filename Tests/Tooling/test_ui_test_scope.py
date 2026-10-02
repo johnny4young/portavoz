@@ -959,7 +959,8 @@ class UITestScopeTests(unittest.TestCase):
         # Includes five distinct assist journeys: layout, identity/reentry,
         # manual requests, coalesced arrivals and unsubmitted drafts, plus four
         # durable-input journeys: recovery, retry, removal and held-write Stop.
-        self.assertEqual(len(expected), 20)
+        # Topic jobs share one owner without dropping their four result/citation paths.
+        self.assertEqual(len(expected), 17)
         self.assertTrue(ui_scope.APUNTADOR_LEAK_EVIDENCE_FILES.isdisjoint(
             ui_scope.FULL_BILINGUAL_HARNESS_FILES
         ))
@@ -1230,6 +1231,10 @@ class UITestScopeTests(unittest.TestCase):
         for test_class, method in (
             ("SkillsSettingsUITests", "testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest"),
             ("SkillsSettingsUITests", "testSkillActivityRefreshPreservesTheExpandedCurrentScope"),
+            ("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence"),
+            ("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence"),
+            ("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence"),
+            ("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence"),
             ("LibraryUITests", "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence"),
             ("LibraryUITests", "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence"),
         ):

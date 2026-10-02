@@ -1082,16 +1082,44 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence() throws {
-        let app = try XCUIApplication.portavoz(
-            seedDemo: true,
-            seedAskTopicMemory: true)
+    func testAskConfirmedMemoryLoadsAllTopicJobsAndExactCitations() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true, seedAskTopicMemory: true)
         app.launchPortavoz()
         defer { app.terminate() }
-
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         app.buttons["library-ask-button"].click()
 
+        try XCTContext.runActivity(named: "Current decisions and exact citation") { _ in
+            try assertExactTopicDecisionsAndEvidence(in: app)
+        }
+        returnToSelectedTopic(in: app)
+        try XCTContext.runActivity(named: "First discussion replaces decisions and seeks its citation") { _ in
+            try assertExactTopicFirstDiscussionAndEvidence(in: app)
+        }
+        returnToSelectedTopic(in: app)
+        try XCTContext.runActivity(named: "Conflict replaces first discussion and retains both sources") { _ in
+            try assertExactTopicDecisionConflictsAndEvidence(in: app)
+        }
+        returnToSelectedTopic(in: app)
+        try XCTContext.runActivity(named: "Changes since the chosen meeting replace conflicts") { _ in
+            try assertExactTopicChangesSinceMeetingAndEvidence(in: app)
+        }
+    }
+
+    /// A citation leaves Ask. Re-enter through the user's route and require
+    /// the same selected topic, rather than reseeding or reconstructing it.
+    @MainActor
+    private func returnToSelectedTopic(in app: XCUIApplication) {
+        let ask = app.buttons["library-ask-button"]
+        XCTAssertTrue(ask.waitForStableFrame(timeout: 5))
+        ask.click()
+        let selected = app.control(withIdentifier: "ask-topic-selected")
+        XCTAssertTrue(selected.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(renderedText(of: selected).contains("model rollout"))
+    }
+
+    @MainActor
+    private func assertExactTopicDecisionsAndEvidence(in app: XCUIApplication) throws {
         let topicSurface = app.descendants(matching: .any)[
             "ask-surface-topic-decisions"]
         XCTAssertTrue(topicSurface.waitForExistenceFast(timeout: 10))
@@ -1138,32 +1166,15 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence() throws {
-        let app = try XCUIApplication.portavoz(
-            seedDemo: true,
-            seedAskTopicMemory: true)
-        app.launchPortavoz()
-        defer { app.terminate() }
-
-        XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        app.buttons["library-ask-button"].click()
-
-        let topicSurface = app.descendants(matching: .any)[
-            "ask-surface-topic-decisions"]
-        XCTAssertTrue(topicSurface.waitForExistenceFast(timeout: 10))
-        topicSurface.click()
-
-        let topic = app.buttons.matching(
-            NSPredicate(format: "identifier BEGINSWITH 'ask-topic-option-'"))
-            .firstMatch
-        XCTAssertTrue(topic.waitForExistenceFast(timeout: 10))
-        XCTAssertTrue(topic.label.contains("model rollout"))
-        topic.click()
-
+    private func assertExactTopicFirstDiscussionAndEvidence(in app: XCUIApplication) throws {
         let firstDiscussionJob = app.descendants(matching: .any)[
             "ask-topic-job-first-discussion"]
         XCTAssertTrue(firstDiscussionJob.waitForExistenceFast(timeout: 5))
         firstDiscussionJob.click()
+        XCTAssertEqual(
+            app.descendants(matching: .any).matching(NSPredicate(
+                format: "identifier BEGINSWITH %@", "ask-topic-decision-")).count,
+            0, "Changing the Topic job must retire the preceding result before loading")
         app.buttons["ask-topic-load"].click()
 
         let discussion = app.descendants(matching: .any).matching(
@@ -1189,32 +1200,15 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence() throws {
-        let app = try XCUIApplication.portavoz(
-            seedDemo: true,
-            seedAskTopicMemory: true)
-        app.launchPortavoz()
-        defer { app.terminate() }
-
-        XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        app.buttons["library-ask-button"].click()
-
-        let topicSurface = app.descendants(matching: .any)[
-            "ask-surface-topic-decisions"]
-        XCTAssertTrue(topicSurface.waitForExistenceFast(timeout: 10))
-        topicSurface.click()
-
-        let topic = app.buttons.matching(
-            NSPredicate(format: "identifier BEGINSWITH 'ask-topic-option-'"))
-            .firstMatch
-        XCTAssertTrue(topic.waitForExistenceFast(timeout: 10))
-        XCTAssertTrue(topic.label.contains("model rollout"))
-        topic.click()
-
+    private func assertExactTopicDecisionConflictsAndEvidence(in app: XCUIApplication) throws {
         let conflictJob = app.descendants(matching: .any)[
             "ask-topic-job-decision-conflicts"]
         XCTAssertTrue(conflictJob.waitForExistenceFast(timeout: 5))
         conflictJob.click()
+        XCTAssertEqual(
+            app.descendants(matching: .any).matching(NSPredicate(
+                format: "identifier BEGINSWITH %@", "ask-topic-first-discussion-")).count,
+            0, "Changing the Topic job must retire the preceding result before loading")
         app.buttons["ask-topic-load"].click()
 
         let conflict = app.descendants(matching: .any)[
@@ -1246,32 +1240,15 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence() throws {
-        let app = try XCUIApplication.portavoz(
-            seedDemo: true,
-            seedAskTopicMemory: true)
-        app.launchPortavoz()
-        defer { app.terminate() }
-
-        XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        app.buttons["library-ask-button"].click()
-
-        let topicSurface = app.descendants(matching: .any)[
-            "ask-surface-topic-decisions"]
-        XCTAssertTrue(topicSurface.waitForExistenceFast(timeout: 10))
-        topicSurface.click()
-
-        let topic = app.buttons.matching(
-            NSPredicate(format: "identifier BEGINSWITH 'ask-topic-option-'"))
-            .firstMatch
-        XCTAssertTrue(topic.waitForExistenceFast(timeout: 10))
-        XCTAssertTrue(topic.label.contains("model rollout"))
-        topic.click()
-
+    private func assertExactTopicChangesSinceMeetingAndEvidence(in app: XCUIApplication) throws {
         let changesSinceJob = app.descendants(matching: .any)[
             "ask-topic-job-changes-since"]
         XCTAssertTrue(changesSinceJob.waitForExistenceFast(timeout: 5))
         changesSinceJob.click()
+        XCTAssertEqual(
+            app.descendants(matching: .any).matching(NSPredicate(
+                format: "identifier BEGINSWITH %@", "ask-topic-conflict-")).count,
+            0, "Changing the Topic job must retire the preceding result before loading")
 
         let anchorSearch = app.textFields["ask-topic-anchor-search"]
         XCTAssertTrue(anchorSearch.waitForExistenceFast(timeout: 5))
