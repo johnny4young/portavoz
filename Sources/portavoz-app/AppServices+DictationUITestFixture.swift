@@ -32,7 +32,7 @@ final class DictationUITestFixture {
 
     init?(arguments: [String], usesTemporaryStore: Bool) {
         guard usesTemporaryStore, arguments.contains("-seed-dictation") else { return nil }
-        finishesNextCapture = arguments.contains("-seed-dictation-unexpected-completion")
+        finishesNextCapture = arguments.contains("-seed-dictation-source-eof")
         streamsDeltas = arguments.contains("-seed-dictation-streaming")
         deniesMicrophoneOnce = arguments.contains("-seed-dictation-microphone-denied")
         missesAudioOnce = arguments.contains("-seed-dictation-microphone-no-audio")

@@ -4198,10 +4198,12 @@ installation. A profile choice never starts a model download.
 
 A recognizer can end while capture is still live. Such EOF fails before joining
 the producer, rather than hanging indefinitely. Only an actually issued Stop
-permits completion; delivery also awaits that session's native Stop task before
-checking capture integrity. A dependency's CancellationError is a visible
-interruption unless the owning task was cancelled or replaced. Preparation
-permission/no-audio failures retain their actionable, non-auto-dismissed state.
+permits completion; a source EOF before it shows the same localized interruption
+as other capture failures. Delivery also awaits that session's native Stop task
+before checking capture integrity. A dependency's CancellationError is a visible
+"ended unexpectedly" failure unless the owning task was cancelled or replaced;
+like capture interruptions and preparation permission/no-audio failures, it
+stays until dismissed because nothing was typed.
 
 Success and failure feedback have generation-scoped timers, independent of the
 capture task. New capture or Cancel revokes the old timer even when its wait

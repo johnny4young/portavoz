@@ -28,7 +28,7 @@ struct DictationCapturePolicy {
     }
 }
 
-private enum DictationSessionError: LocalizedError {
+enum DictationSessionError: LocalizedError {
     case unexpectedCompletion
 
     var errorDescription: String? {
@@ -335,9 +335,13 @@ final class DictationController {
             guard !Task.isCancelled, activeSessionID == id else { return }
             if let message = DictationMicrophoneReadiness.preparationMessage(for: error) {
                 failSession(id: id, message: message, autoDismiss: false)
+            } else if error is CancellationError {
+                // Nothing was typed: keep it visible like a capture interruption.
+                failSession(
+                    id: id, message: LiveSpeechFailureMessage.dictation(DictationSessionError.unexpectedCompletion),
+                    autoDismiss: false)
             } else {
-                let reason: any Error = error is CancellationError ? DictationSessionError.unexpectedCompletion : error
-                failSession(id: id, message: LiveSpeechFailureMessage.dictation(reason))
+                failSession(id: id, message: LiveSpeechFailureMessage.dictation(error))
             }
         }
     }

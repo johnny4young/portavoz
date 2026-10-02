@@ -227,7 +227,7 @@ are unchanged. Functional and timing qualification still require actual runs.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 130 UI cases after consolidating one pair of
+The unattended catalog contains 131 UI cases after consolidating one pair of
 confirmed-person journeys, including portable-settings, shortcut-recovery, the
 real dictation-panel, three microphone-preparation/recovery, capture-failure
 recovery, two Apple Speech Settings, and the compact Meeting Detail correction
@@ -8635,8 +8635,8 @@ of guessing their completion with a fixed sleep. These complement readiness,
 resource-ownership and incremental-projection regressions; they do not substitute
 for physical devices, real ASR quality or native AX/editor readback.
 
-`testDictationUnexpectedCompletionIsVisibleAndCanRestart` uses the real app's
-menu/panel with an isolated first-capture EOF, then proves dismissal and restart
-in each locale. The fixture consumes its one-shot failure at source construction,
+`testDictationSourceEOFBeforeStopIsVisibleAndCanRestart` uses the real app's
+menu/panel with an isolated first-capture EOF before Stop, shows the localized
+interrupted message, then proves dismissal and restart in each locale. The fixture consumes its one-shot failure at source construction,
 not during menu dependency construction. Its scope has an explicit 20-second
 per-case budget; aggregate full-suite budgets are unchanged.

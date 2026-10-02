@@ -20674,7 +20674,7 @@ returns permits a new capture to contend with the old one. A success banner is
 cosmetic and must not prolong that lease. Carbon can also deliver a key-up after
 the session that received its key-down has ended.
 
-**Decision.** The session-scoped P06 marker is set only when the controller
+**Decision.** The session-scoped stop-issued marker is set only when the controller
 actually issues source Stop. A clean completion before that marker is an
 interruption, not successful delivery. After an issued Stop, delivery waits for
 both the audio pump and that session's native Stop task, then checks cancellation,
@@ -20685,8 +20685,9 @@ only the session that owned its press. A second press can recover a lost key-up,
 while a late release cannot stop a newer menu-started session.
 
 **Consequences.** A dependency-thrown cancellation error is visible when the
-owning task itself was not cancelled. Source and recognizer EOF without an
-issued Stop leave a restartable failure rather than pasting partial text.
+owning task itself was not cancelled, and stays until dismissed. Source and
+recognizer EOF without an issued Stop leave the restartable interrupted-capture
+failure rather than pasting partial text.
 Synthetic bilingual controller and real-app fixture tests cover those call
 sites, including native Stop delay, cancellation and session replacement.
 Hardware capture and external-editor acknowledgement remain separate gates.

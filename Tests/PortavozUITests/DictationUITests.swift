@@ -168,10 +168,10 @@ final class DictationUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testDictationUnexpectedCompletionIsVisibleAndCanRestart() throws {
+    func testDictationSourceEOFBeforeStopIsVisibleAndCanRestart() throws {
         let english = UITestLocale.environmentLocale == "en"
         let app = try XCUIApplication.portavoz(showMenuBarContent: true)
-        app.launchArguments += ["-seed-dictation", "-seed-dictation-unexpected-completion"]
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-source-eof"]
         if english { app.launchArguments.append("-seed-dictation-english") }
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
         app.launchPortavoz()

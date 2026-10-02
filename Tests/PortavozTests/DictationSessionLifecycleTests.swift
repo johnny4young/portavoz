@@ -6,10 +6,10 @@ import XCTest
 
 @MainActor
 extension DictationControllerTests {
-    func testUnexpectedCompletionFixtureIsConsumedByCaptureNotDependencyConstruction() async throws {
+    func testSourceEOFFixtureIsConsumedByCaptureNotDependencyConstruction() async throws {
         for language in [[], ["-seed-dictation-english"]] {
             let fixture = try XCTUnwrap(DictationUITestFixture(
-                arguments: ["-seed-dictation", "-seed-dictation-unexpected-completion"] + language,
+                arguments: ["-seed-dictation", "-seed-dictation-source-eof"] + language,
                 usesTemporaryStore: true))
             let controller = DictationController(presentsPanel: false)
             defer { controller.cancel() }
@@ -20,6 +20,7 @@ extension DictationControllerTests {
                 return false
             }
             XCTAssertTrue(failed)
+            XCTAssertEqual(controller.phase, .failed(DictationMicrophoneReadiness.Failure.interrupted.message))
             XCTAssertEqual(controller.confirmedText, fixture.text)
             controller.cancel()
             controller.toggle(using: DictationUITestFixture.dependencies(fixture: fixture, beginCapture: { {} }))
@@ -154,9 +155,7 @@ extension DictationControllerTests {
                 XCTAssertTrue(finished)
                 XCTAssertTrue(harness.insertions.isEmpty,
                               "Unrequested EOF pasted text after \(elapsed) seconds")
-                if case .failed = harness.controller.phase {} else {
-                    XCTFail("Unrequested EOF must expose a recoverable interruption, not success or idle")
-                }
+                assertInterrupted(harness)
                 harness.controller.cancel()
             }
         }
@@ -197,7 +196,7 @@ extension DictationControllerTests {
         let closed = await awaitEventually { harness.finishes == 1 }
         XCTAssertTrue(closed, "Unexpected recognizer completion must stop, not join, a live microphone pump")
         XCTAssertTrue(harness.insertions.isEmpty)
-        if case .failed = harness.controller.phase {} else { XCTFail("Expected a visible interruption") }
+        assertInterrupted(harness)
     }
 
     func testCancelledPreparationDoesNotMasqueradeAsUserCancellationAndCanRestart() async {
@@ -224,6 +223,30 @@ extension DictationControllerTests {
         }
     }
 
+    func testUnexpectedCompletionStaysVisibleUntilDismissed() async {
+        for text in ["No borres estas notas.", "Don’t delete these notes."] {
+            let harness = DictationControllerHarness(text: text)
+            defer { harness.controller.cancel() }
+            var dismissalWaits = 0
+            var dependencies = harness.dependencies
+            dependencies.waitForFeedbackDismissal = { _ in dismissalWaits += 1 }
+            harness.controller.toggle(using: dependencies)
+            let ready = await awaitEventually { harness.controller.partialText == text }
+            XCTAssertTrue(ready)
+            harness.transcriptOutput?.finish(throwing: CancellationError())
+            let failed = await awaitEventually {
+                if case .failed = harness.controller.phase { return true }
+                return false
+            }
+            XCTAssertTrue(failed)
+            // An immediate dismissal wait would close the panel on the next turn.
+            for _ in 0..<20 { await Task.yield() }
+            XCTAssertEqual(dismissalWaits, 0, "Nothing was typed; the failure must wait for the user")
+            XCTAssertEqual(harness.controller.phase, .failed(
+                LiveSpeechFailureMessage.dictation(DictationSessionError.unexpectedCompletion)))
+        }
+    }
+
     func testCancelledRecognizerFailsWithoutDeliveryEvenAfterAnAcceptedStop() async {
         for text in ["No borres estas notas.", "Don’t delete these notes."] {
             for acceptedStop in [false, true] {
@@ -244,6 +267,9 @@ extension DictationControllerTests {
                     return false
                 }
                 XCTAssertTrue(failed)
+                XCTAssertEqual(harness.controller.phase, .failed(
+                    LiveSpeechFailureMessage.dictation(DictationSessionError.unexpectedCompletion)))
+                XCTAssertEqual(harness.measurements.map(\.outcome), [.pipelineFailed])
                 XCTAssertEqual(harness.finishes, 1)
                 XCTAssertEqual(harness.controller.partialText, text)
                 XCTAssertTrue(harness.insertions.isEmpty)
