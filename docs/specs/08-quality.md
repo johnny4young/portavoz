@@ -227,11 +227,11 @@ are unchanged. Functional and timing qualification still require actual runs.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 129 UI cases after consolidating one pair of
+The unattended catalog contains 130 UI cases after consolidating one pair of
 confirmed-person journeys, including portable-settings, shortcut-recovery, the
-real dictation-panel, three microphone-preparation/recovery, two Apple Speech
-Settings, and the compact Meeting Detail correction journeys. The compact
-journey checks the actual post-restoration AppKit frame at two short heights,
+real dictation-panel, three microphone-preparation/recovery, capture-failure
+recovery, two Apple Speech Settings, and the compact Meeting Detail correction
+journeys. The compact journey checks the actual post-restoration AppKit frame at two short heights,
 opens both reading panes, retains the player, and reaches the existing
 correction editor. Its per-case budget is 30 seconds. A citation journey proves
 that an action returns from Summary to Transcript. The native dictation-receiver
@@ -471,6 +471,16 @@ final deterministic replacements with literal regex metacharacters, effective
 hints at the engine invocation, punctuation-only output and late model
 preparation after cancellation. All preference changes use a volatile domain.
 Fixture selection is checked both with and without temporary composition.
+Capture-integrity regressions enter that controller with ordinary and
+cancellation-shaped source errors after EN/ES partials, 127/128/129 pending
+relay buffers, producer notifications before EOF, an unnotified failure at Stop,
+clean EOF before Stop or during its tail, and captions that end before the
+audio relay. Streaming fixtures finish captions only after their audio input
+ends, as real engines do. They require no automatic insertion, the localized interrupted message and a `pipelineFailed` measurement,
+and retain cleanup ownership. A late failure from a cancelled source cannot
+retire its replacement; a late report after delivery cannot promise rollback.
+The disposable capture-failure journey checks the localized panel and repeatable
+dismissal, not native hardware or verified external delivery.
 
 `DictationStreamingProjectionTests` drives the actual controller with an explicitly
 bounded delta stream: bilingual punctuation and final rules, noise/empty inputs,
@@ -526,7 +536,7 @@ or destination identity fencing. The presence of this test is not evidence that
 the native gate passed. No general clipboard, real meeting, model download or microphone participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 129 unattended cases;
+`make test-ui-bilingual` and scoped hosted runs select the 130 unattended cases;
 `make test-ui-native-dictation` selects the one real receiver case in EN and ES.
 The catalog policy requires that case to remain discoverable but disjoint from
 unattended selectors. The runner excludes it only when no explicit selectors
