@@ -70,9 +70,14 @@ final class BackgroundWorkUITests: PortavozUITestCase {
             identifier: "background-work-overview"
         ).firstMatch
         let settingsForm = settingsWindow.scrollViews.element(boundBy: 1)
+        // Scale the reveal to the actual form, not the shared conservative
+        // 48-point transcript-row default. The helper still limits travel to
+        // the missing distance and proves contained, stable hittability.
         let processingRetry = app.buttons["background-work-action-processing"]
         XCTAssertTrue(
-            processingRetry.revealVertically(in: settingsForm),
+            processingRetry.revealVertically(
+                in: settingsForm,
+                maximumStep: settingsForm.frame.height),
             "the processing recovery action must be reachable in the Your data pane")
         XCTAssertTrue(processingRetry.waitForHittable(timeout: 5))
         processingRetry.click()
@@ -83,7 +88,9 @@ final class BackgroundWorkUITests: PortavozUITestCase {
 
         let graphRetry = app.buttons["background-work-action-memory-graph"]
         XCTAssertTrue(
-            graphRetry.revealVertically(in: settingsForm),
+            graphRetry.revealVertically(
+                in: settingsForm,
+                maximumStep: settingsForm.frame.height),
             "the graph recovery action must be reachable in the bounded Settings form")
         graphRetry.click()
         XCTAssertTrue(
