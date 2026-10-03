@@ -7584,6 +7584,21 @@ capture, requires semantic and memory-graph work to wait, closes Settings,
 stops through the real recording control, and requires both owners to resume
 until the indicator disappears.
 
+The Background Work recovery journey uses the actual Settings form height as
+its maximum vertical reveal step. Unlike transformed transcript rows, these
+fixed owner actions need no small row-sized travel cap. The existing helper
+still derives wheel travel from target/viewport geometry with its existing
+insets and minimum nudge, caps it at that height, retains its finite attempt
+budget, and requires a contained, stable, hittable target before input.
+Both processing and memory-graph recovery actions use this same call-site
+policy. All five owner rows, exact localized aggregate counts, failure category,
+scheduled retry, and owner-specific recovery assertions remain; the recording
+priority/resume journey is unchanged. This is a scoped test-driver change, not a
+shipping UI change or a catalog-wide performance claim. Bilingual execution and
+activity evidence are required to distinguish fewer reveal events from an
+unrelated faster host. Runtime ceilings, selectors, waits, and assertions are
+not relaxed.
+
 Both journeys use stable `background-work-*` identifiers and one content-free
 seed admitted only with disposable storage. English and Spanish reuse one
 build, use exact localized assertions where text is the contract, contain no
