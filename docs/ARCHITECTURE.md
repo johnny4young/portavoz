@@ -236,8 +236,13 @@ board. The real event pair is directed to the receiver process so a focus change
 cannot route fixture Paste into another application. Production and fixture
 insertion both require an explicit captured process target; only production
 uses the general pasteboard. Change-count ownership protection remains shared.
-The native journey requires real app
-Accessibility permission and must not bypass or silently grant it. Synthetic
+A separately flagged native-controller journey reuses the existing scripted
+microphone/recognizer through the production controller, captures the fixed
+receiver at session admission, and stops only after a real panel mode choice plus
+an acknowledged Stop on a distinct UUID control board. It neither activates the
+receiver nor registers global input. The native journeys require real app
+Accessibility and event-synthesis authorization. Their public preflights are
+quiet and must not bypass or silently grant permission. Synthetic
 controller coverage and an event-dispatched result are not ASR or native-delivery
 qualification; the receiver's actual value is the oracle.
 

@@ -478,6 +478,7 @@ ALL_TESTS = tuple(dict.fromkeys(test for tests in FEATURE_TESTS.values() for tes
 # Needs a user-granted Accessibility decision; run only via test-ui-native-dictation.
 PERMISSION_GATED_TESTS = frozenset({
     test_id("DictationUITests", "testNativeInserterUsesDisposableReceiverAndClipboard"),
+    test_id("DictationUITests", "testNativeControllerModeChoicePreservesReceiverAndClipboard"),
 })
 ALL_FEATURES = frozenset(FEATURE_TESTS)
 MEETING_FEATURES = frozenset(

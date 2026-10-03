@@ -2769,6 +2769,28 @@ outside that composition; without an explicit fixture temporary dictation refuse
 admission. The menu-bar Dictate action and panel expose stable identifiers for
 restart/cancellation journeys. This is not a change to the production trigger,
 recognition or capture-loss policies. Destination recovery is specified below.
+An additional explicitly armed `-seed-dictation-native-controller` mode requires
+the native fixture, scripted recognition and English-caption flags together;
+it cannot fall back to direct insertion if its controller is unavailable. It
+reuses the scripted microphone/runtime but replaces only the native platform
+ports, preserving production admission, destination capture, mode policy,
+minimum-capture duration and Stop. The fixture waits for an actual Clean choice
+in the nonactivating panel and a separate Stop acknowledgement on a second,
+distinct UUID-named control board. XCTest publishes that acknowledgement only
+after its pointer gesture returns; selection alone must not dispatch Paste while
+automation is still injecting the click. Neither stage reactivates the receiver.
+Its separately bounded ten-second phases (choice, Stop acknowledgement,
+completion) end the admitted fixture session; an already active controller is
+rejected without being cancelled. The driver is isolated from global input and
+does not qualify a concurrent manual cancel-and-restart during its gesture.
+Cancellation cannot undo an
+already-dispatched paste. No trust prompt, real microphone or ASR model is used.
+Both native fixture paths quietly check public event-synthesis authorization
+before arming, separately from AX inspection. A denial reports
+`event-posting-required-for-app`, creates no receiver-waiting task and starts no
+controller session. This diagnostic neither requests authorization nor changes
+production event posting; a passing preflight is still not editor acknowledgement.
+
 The disposable main-window menu fixture is top-aligned, as the real menu is,
 so its trigger remains separate from the bottom-anchored recovery panel even
 on a compact display. The production menu and panel placement are unchanged.

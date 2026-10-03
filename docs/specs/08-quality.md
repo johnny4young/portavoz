@@ -550,16 +550,38 @@ gate passed. No general clipboard, real meeting, model download or microphone
 participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 133 unattended cases;
-`make test-ui-native-dictation` selects the one real receiver case in EN and ES.
-The catalog policy requires that case to remain discoverable but disjoint from
-unattended selectors. The runner excludes it only when no explicit selectors
+`make test-ui-bilingual` and scoped hosted runs select the 136 unattended cases;
+`make test-ui-native-dictation` selects two real receiver cases in EN and ES.
+The second enters the production controller with scripted audio/recognition,
+chooses Clean from the actual nonactivating panel, explicitly acknowledges Stop
+after the pointer gesture returns on a distinct UUID control board, and reads back the replacement
+from the original receiver. XCTest must not reactivate or click the receiver
+after choosing the mode: doing so would conceal a broken destination fence.
+Background element clicks activate their application before synthesizing input,
+so this journey instead anchors XCTest's public coordinate API in the already
+foreground owned receiver window, using each actual panel control's stable
+screen frame. Both frames require finite coordinates: macOS can give an
+application root an infinite synthetic frame, which is not a pointer anchor.
+Admission rejects a missing control or a receiver that lost foreground;
+it never repairs focus or disables the interruption monitor. This preserves
+the user's pointer gesture on the nonactivating panel instead of silently
+substituting application activation.
+Both cases check scratch-clipboard restoration; the controller case also checks
+that its owned session retires. These are delivery proofs, not acoustic quality.
+The catalog policy requires both cases to remain discoverable but disjoint from
+unattended selectors. The runner excludes them only when no explicit selectors
 were supplied, while an explicit native selector is never silently skipped.
-Its separate one-case runtime budget retains the original 20-second ceiling;
-an explicit native run cannot fail solely because its case was removed from
+The separate runtime budget preserves each case's 20-second ceiling and p95;
+the new two-case aggregate is 40 seconds, fixed before the new case's first run.
+An explicit native run cannot fail solely because its cases were removed from
 the unattended manifest.
 Neither a green hosted catalog nor a failed permissionless native run is
 positive native-delivery evidence.
+The fixture's public event-synthesis preflight is quiet: denial fails before
+arming either native path, with a fixed content-free status and no permission
+request. Deterministic tests exercise that actual start call site, including
+repeated denial, rather than interpreting an empty receiver as proof of a
+particular TCC failure. Successful authorization does not establish delivery.
 
 The receiver is an Xcode-only application target. SwiftPM's shared `Tests`
 root excludes that directory explicitly, alongside the UI and interruption
@@ -8755,3 +8777,13 @@ before returning on missing presentation, rather than typing into an unknown
 modal context. The corrupt-profile journey proves both expansion and collapse.
 A headless real-AppServices case proves unavailable-window admission reports an
 error, releases selection ownership, and writes no profile.
+
+
+The native-controller fixture's Swift Testing coverage enters the same driver
+used by the real-app journey: it must wait for both the mode choice and a
+separate Stop acknowledgement, deliver the
+transformed output once, retire owned resources on cancellation, and reject an
+already active controller without cancelling it. Constructor matrices reject
+missing scripted-recognition flags or non-temporary composition; missing
+controller dependencies cannot silently select the direct-inserter path. These
+deterministic cases do not claim native focus, Accessibility, timing or ASR proof.
