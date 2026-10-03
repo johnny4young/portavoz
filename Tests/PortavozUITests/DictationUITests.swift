@@ -347,4 +347,98 @@ final class DictationUITests: PortavozUITestCase {
             pasteboard.string(forType: .string) == "original fixture"
         })
     }
+
+    @MainActor
+    func testNativeControllerModeChoicePreservesReceiverAndClipboard() async throws {
+        let receiverURL = Bundle.main.bundleURL.deletingLastPathComponent()
+            .appendingPathComponent("PortavozDictationReceiver.app")
+        let receiver = XCUIApplication(url: receiverURL)
+        let name = "app.portavoz.dictation-test.\(UUID().uuidString)"
+        let pasteboard = NSPasteboard(name: .init(name))
+        defer { pasteboard.releaseGlobally() }
+        pasteboard.setString("original controller fixture", forType: .string)
+        let controlName = "app.portavoz.dictation-test.\(UUID().uuidString)"
+        let controlBoard = NSPasteboard(name: .init(controlName))
+        controlBoard.clearContents()
+        defer { controlBoard.releaseGlobally() }
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DICTATION_CONTROL_PASTEBOARD"] = controlName
+        app.launchArguments += ["-seed-dictation-native", "-seed-dictation-native-controller",
+                                "-seed-dictation", "-seed-dictation-english"]
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DICTATION_PASTEBOARD"] = name
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationTextMode":"literal","dictationApplicationTextProfiles":"[]","dictationReplacements":"[{\"trigger\":\"notes\",\"replacement\":\"documents\"}]"}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+        let start = app.buttons["dictation-native-start"]
+        XCTAssertTrue(start.waitForStableFrame(timeout: 5))
+        start.click()
+        let status = app.staticTexts["dictation-native-status"]
+        guard renderedText(of: status) == "waiting-for-receiver" else {
+            XCTFail("Native controller fixture did not arm: \(renderedText(of: status))")
+            return
+        }
+        try UITestStorage.register(receiver)
+        receiver.launchEnvironment["PORTAVOZ_RECEIVER_PASTEBOARD"] = name
+        receiver.launch()
+        defer { receiver.terminate() }
+        let editor = receiver.textViews["dictation-receiver-editor"]
+        XCTAssertTrue(editor.waitForExistenceFast(timeout: 5))
+        let transcript = app.staticTexts["dictation-panel-transcript"]
+        guard waitForUITestCondition(timeout: 5, {
+            renderedText(of: transcript).contains("Don't delete these notes.")
+        }) else {
+            XCTFail("The real controller must recognize the scripted caption before the mode choice")
+            return
+        }
+        let mode = app.menuButtons["dictation-panel-text-mode"]
+        XCTAssertTrue(renderedText(of: mode).contains("Literal"))
+        try clickNonactivatingControl(mode, from: receiver)
+        let clean = app.menuItems["dictation-panel-text-mode-clean"]
+        // The gesture helper already waits for an actionable stable control;
+        // a separate existence probe would repeat the same remote admission.
+        try clickNonactivatingControl(clean, from: receiver)
+        // Gesture acknowledgement precedes Stop. Posting Paste from inside an
+        // in-flight XCTest pointer action does not model a subsequent user Stop.
+        XCTAssertTrue(controlBoard.setString("stop", forType: .string))
+        // Never activate or click the receiver after the panel interaction:
+        // repairing focus in the test would hide a broken destination fence.
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            renderedText(of: status) != "controller-listening"
+        })
+        XCTAssertEqual(renderedText(of: status), "inserted")
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            editor.value as? String == "Don't delete these documents."
+        })
+        XCTAssertEqual(editor.value as? String, "Don't delete these documents.",
+                       "Read back the transformed text from the original receiver, not a dispatched event")
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            pasteboard.string(forType: .string) == "original controller fixture"
+        })
+        XCTAssertTrue(mode.waitForDisappearance(timeout: 5), "The fixture must retire its own session")
+    }
+
+
+    @MainActor
+    private func clickNonactivatingControl(_ control: XCUIElement, from receiver: XCUIApplication) throws {
+        // Background element.click() activates its app before synthesizing input.
+        // Anchor the public pointer API in the already foreground owned receiver,
+        // at the actual panel control's stable screen location. Do not repair focus.
+        _ = try XCTUnwrap(receiver.state == .runningForeground ? receiver : nil,
+                          "The original receiver must still be foreground before the mode gesture")
+        _ = try XCTUnwrap(control.waitForStableFrame(timeout: 5) ? control : nil)
+        let frame = control.frame
+        let window = receiver.windows.firstMatch
+        // The editor witness already admitted this owned window. Reading its
+        // current frame still rejects disappearance without an extra exists IPC.
+        let anchor = window.frame
+        _ = try XCTUnwrap(anchor.width > 0 && anchor.height > 0 && anchor.minX.isFinite && anchor.minY.isFinite
+                         ? anchor : nil, "An application's synthetic infinite frame is not a pointer anchor")
+        let origin = anchor.origin
+        _ = try XCTUnwrap(frame.width > 0 && frame.height > 0 && frame.midX.isFinite && frame.midY.isFinite
+                         ? frame : nil, "Never synthesize a pointer action at an unavailable control")
+        window.coordinate(withNormalizedOffset: .zero).withOffset(
+            CGVector(dx: frame.midX - origin.x, dy: frame.midY - origin.y)).click()
+    }
+
 }

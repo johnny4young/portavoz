@@ -236,8 +236,13 @@ board. The real event pair is directed to the receiver process so a focus change
 cannot route fixture Paste into another application. Production and fixture
 insertion both require an explicit captured process target; only production
 uses the general pasteboard. Change-count ownership protection remains shared.
-The native journey requires real app
-Accessibility permission and must not bypass or silently grant it. Synthetic
+A separately flagged native-controller journey reuses the existing scripted
+microphone/recognizer through the production controller, captures the fixed
+receiver at session admission, and stops only after a real panel mode choice plus
+an acknowledged Stop on a distinct UUID control board. It neither activates the
+receiver nor registers global input. The native journeys require real app
+Accessibility and event-synthesis authorization. Their public preflights are
+quiet and must not bypass or silently grant permission. Synthetic
 controller coverage and an event-dispatched result are not ASR or native-delivery
 qualification; the receiver's actual value is the oracle.
 
@@ -1131,9 +1136,19 @@ the Accessibility permission flow. Invalid persisted button numbers normalize
 to disabled; CGEvent indices 0/1 (left/right) are never eligible.
 TranscriptionKit owns only the post-ASR text policy: optional bilingual filler
 removal followed by one non-cascading, longest-trigger-first replacement pass.
-The policy reads one canonicalized rule snapshot at delivery, never mutates a
-meeting transcript, and treats the first match against the original dictation
-as the user's authoritative spelling.
+The app resolves explicit Literal/Clean mode by session choice, captured bundle-ID
+profile, then global preference. The existing destination capture supplies identity;
+no profile recaptures focus or grants insertion authority. Missing preferences
+initialize before the first UI enable action: prior configured choices retain
+Clean, untouched preferences choose Literal. The app Settings model owns bounded
+profile persistence and explicit corruption recovery; Core owns only the mode and
+bundle-ID value. Native application selection saves no paths, titles or context.
+The controller admits one rule/filler snapshot at session start and freezes its
+session override at Stop request, before the capture tail drains. Literal bypasses
+optional cleaning while retaining recognition/assembly hygiene. Clean applies the
+snapshot only to final dictation, never a meeting transcript, and treats the first
+match against original dictation as the user's authoritative spelling. Completion
+or cancellation retires the snapshot; recovery does not transform or insert again.
 The app-local `CapturedDictationDestination` binds the display name and insertion
 capability once, before model preparation or panel presentation. The platform
 adapter retains the original `NSRunningApplication` and focused AX element:

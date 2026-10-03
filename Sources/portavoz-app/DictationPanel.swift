@@ -97,6 +97,15 @@ private struct DictationStripView: View {
                 if let target = controller.targetApp, controller.isActive {
                     targetChip(target)
                 }
+                if controller.isActive {
+                    DictationTextModePicker(
+                        identifier: "dictation-panel-text-mode", label: Text("Text mode"), selection: Binding(
+                        get: { controller.textMode }, set: { controller.selectTextMode($0) }))
+                        .labelsHidden()
+                        .controlSize(.mini)
+                        .frame(width: 80)
+                        .disabled(!controller.canChangeTextMode)
+                }
                 Spacer()
                 if controller.phase == .listening {
                     meter

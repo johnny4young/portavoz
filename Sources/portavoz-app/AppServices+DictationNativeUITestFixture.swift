@@ -9,7 +9,10 @@ import Observation
 final class DictationNativeUITestFixture {
     static let pasteboardPrefix = "app.portavoz.dictation-test."
     static let environmentKey = "PORTAVOZ_UI_TEST_DICTATION_PASTEBOARD"
+    static let controlEnvironmentKey = "PORTAVOZ_UI_TEST_DICTATION_CONTROL_PASTEBOARD"
     private let pasteboardName: String
+    private let runsController: Bool
+    private let controlPasteboardName: String?
     private(set) var status = "idle"
     @ObservationIgnored private var task: Task<Void, Never>?
 
@@ -17,6 +20,11 @@ final class DictationNativeUITestFixture {
         guard usesTemporaryStore, arguments.contains("-seed-dictation-native"),
               let name = Self.validPasteboardName(environment[Self.environmentKey])
         else { return nil }
+        runsController = arguments.contains("-seed-dictation-native-controller")
+        controlPasteboardName = Self.validPasteboardName(environment[Self.controlEnvironmentKey])
+        guard !runsController || (arguments.contains("-seed-dictation")
+            && arguments.contains("-seed-dictation-english")
+            && controlPasteboardName != nil && controlPasteboardName != name) else { return nil }
         pasteboardName = name
     }
 
@@ -26,13 +34,29 @@ final class DictationNativeUITestFixture {
         return name
     }
 
-    func start() {
+    func start(
+        controller: DictationController? = nil, dependencies: DictationSessionDependencies? = nil,
+        postingPreflight: () -> Bool = { CGPreflightPostEventAccess() }
+    ) {
         guard task == nil else { return }
+        guard !runsController || (controller != nil && dependencies != nil) else {
+            status = "controller-required"
+            return
+        }
+        // AX inspection and event synthesis have separate public preflights.
+        // A constructed CGEvent is not proof that macOS will deliver it. This
+        // fixture diagnoses denied posting without requesting or granting it.
+        guard postingPreflight() else {
+            status = "event-posting-required-for-app"
+            return
+        }
         status = "waiting-for-receiver"
-        task = Task { [weak self] in await self?.deliverOnce() }
+        task = Task { [weak self, weak controller] in
+            await self?.deliverOnce(controller: controller, dependencies: dependencies)
+        }
     }
 
-    private func deliverOnce() async {
+    private func deliverOnce(controller: DictationController?, dependencies: DictationSessionDependencies?) async {
         // Arming precedes the receiver's launch, so readiness is timed from its arrival.
         var deadline = ContinuousClock.now.advanced(by: .seconds(20))
         var receiverSeen = false
@@ -52,8 +76,28 @@ final class DictationNativeUITestFixture {
                 let board = NSPasteboard(name: .init(pasteboardName))
                 let destination = TextInserter.captureDestination(pasteboard: board, matching: receiver)
                 if destination.canRetry {
-                    let result = await destination.insert("Don't delete — no borres: café, C++, 1.250,50 €.")
-                    status = String(describing: result)
+                    if runsController {
+                        guard let controller, var dependencies, let controlPasteboardName else {
+                            status = "controller-required"
+                            return
+                        }
+                        // The controller still captures its destination at admission.
+                        // The earlier capture witnesses only receiver readiness.
+                        dependencies.canInsert = { TextInserter.canInsert(promptIfNeeded: false) }
+                        dependencies.captureDestination = {
+                            TextInserter.captureDestination(pasteboard: board, matching: receiver)
+                        }
+                        dependencies.copyText = { TextInserter.copy($0, to: board) }
+                        status = "controller-listening"
+                        status = await DictationNativeControllerUITestFixture.run(
+                            controller: controller, dependencies: dependencies,
+                            stopRequested: {
+                                NSPasteboard(name: .init(controlPasteboardName)).string(forType: .string) == "stop"
+                            })
+                    } else {
+                        let result = await destination.insert("Don't delete — no borres: café, C++, 1.250,50 €.")
+                        status = String(describing: result)
+                    }
                     return
                 }
             }

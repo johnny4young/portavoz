@@ -433,6 +433,9 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testIntelligencePaneCreatesACustomStructure"),
     ),
     "dictation": (
+        test_id("DictationTextModeUITests", "testApplicationProfileUsesNativePickerAndKeepsTheOriginal"),
+        test_id("DictationTextModeUITests", "testCorruptProfilesShowAnExplicitResetWithoutChangingTheDefault"),
+        test_id("DictationTextModeUITests", "testSessionModeOverrideCancelsAndRestartsWithoutChangingDefaults"),
         test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
         test_id("SettingsUITests", "testAppleSpeechInspectionFailureOffersExplicitRetry"),
         test_id("DictationUITests", "testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart"),
@@ -475,6 +478,7 @@ ALL_TESTS = tuple(dict.fromkeys(test for tests in FEATURE_TESTS.values() for tes
 # Needs a user-granted Accessibility decision; run only via test-ui-native-dictation.
 PERMISSION_GATED_TESTS = frozenset({
     test_id("DictationUITests", "testNativeInserterUsesDisposableReceiverAndClipboard"),
+    test_id("DictationUITests", "testNativeControllerModeChoicePreservesReceiverAndClipboard"),
 })
 ALL_FEATURES = frozenset(FEATURE_TESTS)
 MEETING_FEATURES = frozenset(

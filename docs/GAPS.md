@@ -50,10 +50,20 @@ Bluetooth transitions and the external-editor
 matrix require separate evidence; a synthetic caption fixture cannot establish
 those results. Missing Accessibility permission makes the separately selected
 native delivery gate unqualified, not proof that insertion works. Hosted
-unattended EN/ES UI qualification excludes exactly that TCC-owned receiver case
+unattended EN/ES UI qualification excludes the two TCC-owned receiver cases
 (D540); run `make test-ui-native-dictation` on an explicitly authorized
 disposable app and retain its actual receipt before claiming cross-process
 delivery.
+
+The shared native harness still has an open expected-modal positive-control
+counterexample. An attached synthetic alert accepted the exact Unicode text,
+but its choice click did not produce the required completion effect; XCTest
+reported a non-finite pointer rectangle. Owned cleanup completed and the
+validator refused qualification before the product catalogue ran. This does
+not establish a product defect, denied authorization, or the cause of the
+missing action. Diagnose native geometry and editing handoff at that call site;
+do not waive the control, replace its failed receipt with a retry, or infer
+complete local UI qualification from separate native dictation journeys.
 
 The installed-model controller lane writes complete per-run receipts rather
 than per-caption progress. The sequential matrix launcher now preserves each

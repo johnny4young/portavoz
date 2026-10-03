@@ -211,6 +211,7 @@ final class AppServices {
     /// System-wide dictation (⌥⌘D): lives here so the hotkey and its
     /// session survive any window coming and going.
     let dictation: DictationController
+    let dictationTextSettings: DictationTextSettingsModel
     @ObservationIgnored let dictationUITestFixture: DictationUITestFixture?
     let dictationNativeUITestFixture: DictationNativeUITestFixture?
     /// THE recording session (one at a time by design): shared so the
@@ -300,6 +301,8 @@ final class AppServices {
         // global telemetry. A failed retry therefore leaves no half-composed
         // service graph, model task, sensitive store, or background owner.
         store = try Self.makeMeetingStore(storagePolicy: storagePolicy)
+        dictationTextSettings = DictationTextSettingsModel(
+            defaults: defaults, temporary: storagePolicy.usesTemporaryMeetingStore)
         let backgroundWork = BackgroundWorkCenterModel()
         self.backgroundWork = backgroundWork
         postCaptureProcessing = PostCaptureProcessingSupervisor(
