@@ -515,6 +515,7 @@ FULL_BILINGUAL_HARNESS_FILES = frozenset({
     "Tests/PortavozUITests/UITestKeyboardSupport.swift",
     "Tests/PortavozUITests/UITestStorageSupport.swift",
     "Tests/Support/UITestScratch.swift",
+    "Tests/Support/UITestActionGeometry.swift",
 })
 
 # The native interruption controls compile and qualify only these owners. A
@@ -532,6 +533,7 @@ INTERRUPTION_CONTROL_FILES = frozenset({
     "Tests/PortavozUITests/UITestStorageSupport.swift",
     "Tests/PortavozUITests/UITestWaitSupport.swift",
     "Tests/Support/UITestScratch.swift",
+    "Tests/Support/UITestActionGeometry.swift",
 })
 INTERRUPTION_FIXTURE_PREFIX = "Tests/UIInterruptionFixtures/"
 

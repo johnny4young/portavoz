@@ -383,6 +383,25 @@ not changed. Public-API admission remains a point-in-time observation: a window
 change after observation cannot be claimed atomically excluded. Full bilingual
 and exact-head hosted qualification remain distinct from native controls.
 
+A required native-controls invocation also stopped before its synchronous
+foreign-overlay counterexample was armed: the arm click was dispatched, but
+neither the armed status nor any overlay readiness/lifecycle effect appeared.
+Owned teardown completed; the first two positive controls had passed. This is
+unclassified fixture readiness, not a qualified negative control, an input-
+authority failure or a product regression. The real-app catalog was not reached.
+Diagnosis must distinguish an unobserved arm callback from a pending or failed
+native application launch without loosening effect validation, increasing waits
+or treating a later pass as attribution of this failure.
+
+A subsequent full app catalog reached the Skills recap proposal but did not
+observe its confirmation sheet after selecting the menu item. Retained owned-app
+accessibility snapshots contain the meeting window but no confirmation sheet;
+they do not establish whether the selection callback or preview completed.
+Later cases explicitly refused an unrelated window interruption. Those refusals
+do not retroactively explain the earlier missing sheet. Both failures remain
+unqualified; successful native controls and hosted runs cannot replace diagnosis
+of the missing presentation or full local bilingual evidence.
+
 ### Unattributed asynchronous media-framework test crash
 
 A full package-test process has terminated with `SIGSEGV` in asynchronous
