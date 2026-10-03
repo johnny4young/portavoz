@@ -6,11 +6,14 @@ import ApplicationServices
 @MainActor
 struct CapturedDictationDestination {
     let name: String?
+    var bundleIdentifier: String?
     let canRetry: Bool
     let insert: (String) async -> TextInserter.InsertionResult
 
-    static func unavailable(name: String?, result: TextInserter.InsertionResult) -> Self {
-        Self(name: name, canRetry: false, insert: { _ in result })
+    static func unavailable(
+        name: String?, bundleIdentifier: String? = nil, result: TextInserter.InsertionResult
+    ) -> Self {
+        Self(name: name, bundleIdentifier: bundleIdentifier, canRetry: false, insert: { _ in result })
     }
 }
 
@@ -31,11 +34,13 @@ extension TextInserter {
               application.processIdentifier > 0, !application.isTerminated,
               expectedApplication.map({ application.isEqual($0) }) ?? true,
               let element = focusedElement(in: AXUIElementCreateApplication(application.processIdentifier)) else {
-            return .unavailable(name: application?.localizedName, result: .focusUnavailable)
+            return .unavailable(name: application?.localizedName,
+                                bundleIdentifier: application?.bundleIdentifier, result: .focusUnavailable)
         }
         let initialSecurity = fieldSecurity(of: element)
         guard initialSecurity == .regular else {
             return .unavailable(name: application.localizedName,
+                                bundleIdentifier: application.bundleIdentifier,
                                 result: initialSecurity == .secure ? .secureField : .focusUnavailable)
         }
         let target = Target(processID: application.processIdentifier) {
@@ -55,7 +60,8 @@ extension TextInserter {
             case .unavailable: return .focusUnavailable
             }
         }
-        return CapturedDictationDestination(name: application.localizedName, canRetry: true) { text in
+        return CapturedDictationDestination(
+            name: application.localizedName, bundleIdentifier: application.bundleIdentifier, canRetry: true) { text in
             await insert(text, into: target, pasteboard: pasteboard)
         }
     }

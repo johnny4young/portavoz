@@ -44,6 +44,9 @@ struct DictationSection: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("settings-dictation-language-support")
+                DictationTextSettingsSection(model: services.dictationTextSettings) {
+                    await services.selectDictationProfileApplication()
+                }
                 Toggle("Filter out filler words", isOn: $filterFillers)
                     .accessibilityIdentifier("settings-dictation-filler")
                 DictationDictionaryEditor()

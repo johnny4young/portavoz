@@ -8709,3 +8709,49 @@ menu/panel with an isolated first-capture EOF before Stop, shows the localized
 interrupted message, then proves dismissal and restart in each locale. The fixture consumes its one-shot failure at source construction,
 not during menu dependency construction. Its scope has an explicit 20-second
 per-case budget; aggregate full-suite budgets are unchanged.
+
+
+### Deterministic dictation text-mode coverage
+
+Swift Testing enters the real DictationController from bilingual synthetic
+captions, not only the text-policy function. Cases preserve negations, typographic
+apostrophes, accented words, unpunctuated amounts and technical replacements;
+characterization separately exercises a fresh preference set and first Enable
+after actual AppServices construction. Legacy false filler/enable choices retain
+their semantics. Codec boundaries, profile replacement at capacity, rejected
+identifiers, temporary preference writes, chooser-fixture admission, and failed
+database admission have separate cases. Empty and non-lexical captions reach the
+real first-buffer/recognizer boundary rather than using an initially empty UI
+partial as readiness; literal fillers remain deliverable words. A parameterized matrix reaches delivery through exact captured
+bundle ID, exercises global/profile/session precedence and proves one destination
+capture. Late Settings edits, Stop-tail overrides, cancellation/restart and
+corrupt/duplicate profiles have separate observations. The existing fixture uses
+process-wide NSArgumentDomain; this suite serializes that fixture owner rather
+than claiming independent parallel preferences or production stress coverage.
+
+Three real-app journeys target the panel override/restart, malformed-profile
+Reset, and ordinary NSOpenPanel application selection/mode/removal/original
+preservation. Only the owned fixture's initial chooser directory is selected by
+composition; XCTest still selects the actual application bundle and production
+Bundle reader. Each new interactive control and mode choice has an identifier.
+The mode menu
+keeps the trigger identifier stable after selection; viewport-aware Settings
+interactions reuse the existing bounded reveal helper.
+Prospective per-case caps are 40/20/20 seconds; no existing cap, aggregate 1,300-second
+limit or full p95 30-second limit is widened. These cases belong to Dictation's
+scope; localization still expands bilingual coverage. These journeys target configuration and
+controller reachability, not acoustic recognition or universal native delivery.
+
+Unavailable delivery is exercised through the production destination factory
+and the real controller for secure/unreadable fields and bilingual captions.
+A captured Literal application profile must remain Literal in recovery, while
+Retry stays disabled and no paste is recorded. That test is not native AX or
+permission evidence. Profile-section journeys also assert the localized expansion
+state of the full-row disclosure button, not just the label's existence.
+
+The native application chooser is an asynchronous sheet attached to Settings;
+the journey queries that actual role and retains a diagnostic owned hierarchy
+before returning on missing presentation, rather than typing into an unknown
+modal context. The corrupt-profile journey proves both expansion and collapse.
+A headless real-AppServices case proves unavailable-window admission reports an
+error, releases selection ownership, and writes no profile.

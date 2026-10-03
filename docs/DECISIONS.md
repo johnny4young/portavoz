@@ -20798,3 +20798,58 @@ cold. Eviction or oversize graphs also remain cold, so speedup is conditional,
 not a CI SLA. Key-policy tests and fresh-checkout compiler/failing-test controls
 protect the boundary; cold/warm native and hosted timings, archive overhead and
 identical test totals must be reported separately from runner queue delays.
+
+
+## D558 — Choose deterministic dictation policy without changing delivery authority
+
+Literal and Clean are explicit post-recognition choices, not generative modes.
+An absent preference is initialized before the UI's first enable action; otherwise
+that new toggle would falsely identify a fresh user as a migrated installation.
+Any prior dictation configuration, including false values, preserves its existing
+cleaning and replacements. Untouched preferences choose Literal. Neither choice
+auto-enables dictation, storage, network use or a new model.
+
+The bundle ID comes from the existing captured NSRunningApplication, alongside
+its guarded delivery capability. Names, paths and a second read of foreground
+state must not determine the profile. Application overrides use exact ID equality,
+never prefixes. Session choice outranks that profile, which outranks the global
+mode. Core carries those values; app composition/settings owns preferences and
+native chooser commands; TranscriptionKit retains the established text rules.
+
+Preferences are snapped at admission rather than reread after asynchronous ASR.
+Only the explicit panel mode can modify the admitted policy. The first controller
+regression showed that gating on native Stop issuance left the entire tail delay
+open to a late mode change. Gate on the owned Stop task as well, keeping the
+existing gesture/audio clocks and duration budgets unchanged. Completion,
+cancellation and restart release that override; persistence or explicit recovery
+must never trigger another paste.
+
+Profiles store only ID/mode and are bounded to 64 records / 32 KiB. Malformed or duplicate
+profiles fall back without deleting data; a visible Reset is the sole repair
+write. The real native picker is not replaced by a scripted selection: disposable
+composition may set only its owned initial fixture directory. The new choices do
+not silently widen the portable-settings allowlist. Synthetic recognition and UI
+journeys do not certify acoustic quality or every external editor.
+
+Native UI characterization also exposed a SwiftUI Picker identity hazard: its
+selected option's identifier replaced the popup identifier after selection.
+Use explicit native menu actions with a separately identified trigger, rather
+than letting selected label identity masquerade as control identity. Settings
+journeys reuse the existing bounded viewport reveal before clicking offscreen
+controls; neither a blind click nor an existence-only assertion proves reachability.
+
+The captured application identity survives an unavailable delivery capability.
+A secure or unreadable field does not authorize insertion or Retry, but must not
+change a Literal profile into global Clean during recovery. Controller tests use
+the production unavailable-destination factory; native AX checks remain a
+separate boundary. Native characterization also showed that the default disclosure
+label click did not expand the section. Use an explicitly identified full-row
+button with localized expanded/collapsed state, rather than compensating with
+arrow coordinates or longer waits.
+
+The initial async NSOpenPanel.begin call exposed a modeless Window, not the
+Dialog presumed by the first native journey. The owned hierarchy and SDK
+contract identified that mismatch. Present a window-modal sheet asynchronously
+from the requesting Settings window, preserving explicit modal input ownership
+without a blocking nested event loop or weakening the keyboard guard. Missing
+window admission reports a distinct actionable error and retires chooser state.

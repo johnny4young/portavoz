@@ -1131,9 +1131,19 @@ the Accessibility permission flow. Invalid persisted button numbers normalize
 to disabled; CGEvent indices 0/1 (left/right) are never eligible.
 TranscriptionKit owns only the post-ASR text policy: optional bilingual filler
 removal followed by one non-cascading, longest-trigger-first replacement pass.
-The policy reads one canonicalized rule snapshot at delivery, never mutates a
-meeting transcript, and treats the first match against the original dictation
-as the user's authoritative spelling.
+The app resolves explicit Literal/Clean mode by session choice, captured bundle-ID
+profile, then global preference. The existing destination capture supplies identity;
+no profile recaptures focus or grants insertion authority. Missing preferences
+initialize before the first UI enable action: prior configured choices retain
+Clean, untouched preferences choose Literal. The app Settings model owns bounded
+profile persistence and explicit corruption recovery; Core owns only the mode and
+bundle-ID value. Native application selection saves no paths, titles or context.
+The controller admits one rule/filler snapshot at session start and freezes its
+session override at Stop request, before the capture tail drains. Literal bypasses
+optional cleaning while retaining recognition/assembly hygiene. Clean applies the
+snapshot only to final dictation, never a meeting transcript, and treats the first
+match against original dictation as the user's authoritative spelling. Completion
+or cancellation retires the snapshot; recovery does not transform or insert again.
 The app-local `CapturedDictationDestination` binds the display name and insertion
 capability once, before model preparation or panel presentation. The platform
 adapter retains the original `NSRunningApplication` and focused AX element:
