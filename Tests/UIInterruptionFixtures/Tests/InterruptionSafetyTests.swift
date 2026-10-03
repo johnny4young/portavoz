@@ -78,8 +78,13 @@ final class InterruptionSafetyTests: PortavozUITestCase {
         editor.click()
         typeText("Owner’s plan", in: app, modalAnchor: "proof-modal-editor")
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { editor.value as? String == "Owner’s plan" })
-        app.sheets.buttons["proof-modal-choice"].click()
+        let modal = app.sheets.firstMatch
+        XCTAssertFalse(clickModalChoice("proof-modal-choice", in: modal, app: app, anchorFrame: .infinite),
+                       "Invalid geometry must not dispatch a pointer or select the default action")
+        XCTAssertTrue(app.sheets.firstMatch.exists)
         let effects = try XCTUnwrap(ProcessInfo.processInfo.environment["PROOF_EFFECTS_ROOT"])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: effects + "/modal-choice"))
+        XCTAssertTrue(clickModalChoice("proof-modal-choice", in: modal, app: app))
         XCTAssertTrue(waitForUITestCondition(timeout: 5) {
             FileManager.default.fileExists(atPath: effects + "/modal-choice")
         })
@@ -110,7 +115,7 @@ final class InterruptionSafetyTests: PortavozUITestCase {
         editor.click()
         typeText("Owner’s plan", in: app, modalAnchor: "proof-dialog-editor")
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { editor.value as? String == "Owner’s plan" })
-        app.dialogs.buttons["proof-dialog-choice"].click()
+        XCTAssertTrue(clickModalChoice("proof-dialog-choice", in: app.dialogs.firstMatch, app: app))
         let effects = try XCTUnwrap(ProcessInfo.processInfo.environment["PROOF_EFFECTS_ROOT"])
         XCTAssertTrue(waitForUITestCondition(timeout: 5) {
             FileManager.default.fileExists(atPath: effects + "/modal-choice")
@@ -124,6 +129,19 @@ final class InterruptionSafetyTests: PortavozUITestCase {
     func testAsynchronousAppModalDialogInterruption() async throws {
         await Task.yield()
         try exerciseAppModalDialogInterruption()
+    }
+
+    /// Keep the pointer anchor inside the expected modal. A coordinate rooted
+    /// in the background window correctly triggers the interruption guard.
+    private func clickModalChoice(
+        _ identifier: String, in modal: XCUIElement, app: XCUIApplication, anchorFrame: CGRect? = nil
+    ) -> Bool {
+        let choice = modal.buttons[identifier]
+        guard app.state == .runningForeground, choice.isHittable else { return false }
+        guard let offset = uiPointerOffset(target: choice.frame, anchor: anchorFrame ?? modal.frame)
+        else { return false }
+        modal.coordinate(withNormalizedOffset: .zero).withOffset(offset).click()
+        return true
     }
 
     private func exerciseAppModalDialogInterruption() throws {
@@ -210,7 +228,14 @@ final class InterruptionSafetyTests: PortavozUITestCase {
 
     private func armInterruption(_ app: XCUIApplication) throws -> XCUIApplication {
         app.buttons["proof-arm"].click()
-        XCTAssertTrue(app.staticTexts["Dialog armed"].waitForExistence(timeout: readinessTimeout))
+        let armed = app.staticTexts["Dialog armed"].waitForExistence(timeout: readinessTimeout)
+        if !armed {
+            let phases = ["Ready": "arm-not-observed", "Opening fixture": "launch-pending",
+                          "Missing fixture path": "configuration-missing", "Fixture launch failed": "launch-failed"]
+            let phase = phases[app.staticTexts["proof-status"].label] ?? "unclassified"
+            print("FIXTURE_PREPARATION_FAILED phase=\(phase)")
+        }
+        XCTAssertTrue(armed)
         let effects = try XCTUnwrap(ProcessInfo.processInfo.environment["PROOF_EFFECTS_ROOT"])
         guard waitForUITestCondition(timeout: readinessTimeout, {
             FileManager.default.fileExists(atPath: effects + "/overlay-ready")

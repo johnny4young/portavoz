@@ -8382,6 +8382,32 @@ counterexample. All controls and full bilingual product journeys are required
 for this shared-harness change. These public-API observations are point-in-time,
 not an atomic OS input guarantee or permission-dialog certification (D534).
 
+### Expected-modal pointer geometry
+
+The native sheet and app-modal positive controls resolve their fixed button
+identifier within the expected modal and dispatch one physical pointer through
+that modal's public coordinate API. The anchor is not the background window:
+XCTest treats its app-modal dialog as an interruption of a background-window
+coordinate action, even when the resulting screen point falls on the button.
+The interruption guard remains unchanged; no Return, activation or second-click
+fallback substitutes for the choice callback.
+
+`UITestActionGeometry` rejects null/infinite rectangles, raw nonpositive sizes,
+nonfinite derived coordinates and relative-offset overflow. Scalar finiteness
+alone is insufficient: `CGRect.infinite` has finite members and rectangle
+accessors normalize negative sizes. Negative-display coordinates and subpixel
+centres remain valid. Swift boundary tests and the sheet's actual invalid-anchor
+refusal exercise different evidence: the latter requires the sheet to remain
+open with no choice effect before the valid pointer and its real completion.
+Both positive controls still require exact editor text, typed/choice effects and
+owned cleanup. The helper is fingerprinted and independently selects native
+controls plus full bilingual UI; it is test-only, not an app input API.
+
+An XCTest DisplayManager warning about an infinite rectangle has appeared in
+both passing and failing native modal controls; it does not establish the cause
+of a missing completion. These observations do not certify elimination of every
+host timing failure, an atomic input guarantee or a performance improvement.
+
 ### Runtime budget re-qualified with the 1.1 recording bar (Sep 2026)
 
 `LibraryUITests/testRecordingOffersObjectivesNextQuestionAndTalkBalance` opens
