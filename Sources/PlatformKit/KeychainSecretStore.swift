@@ -90,7 +90,6 @@ public struct KeychainSecretStore: SecretStoring, Sendable {
         switch result.status {
         case errSecSuccess:
             // Reject malformed authority rather than returning a replacement-character value.
-            // swiftlint:disable:next optional_data_string_conversion
             guard let data = result.data, let value = String(data: data, encoding: .utf8) else {
                 throw SecretError.invalidData
             }
