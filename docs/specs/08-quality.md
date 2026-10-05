@@ -608,6 +608,11 @@ values; the real signed build remains separate evidence.
 preparation and delivery, exercises bilingual unpunctuated output, failed/full
 Copy, duplicate Retry and Discard during an uncooperative late callback. It
 awaits the actual retry task before asserting that state cannot revive.
+`DictationRecoveryCopyTests` adds adversarial Copy admission cases: multiple
+ordered items are refused without reading lazy providers or calling the writer;
+a lazy provider that publishes a new clipboard owner during snapshot capture
+is not overwritten; a failed single-item write still restores every captured
+representation. These AppKit tests require macOS execution.
 The controller's real Copy action also injects a failed pasteboard write after
 declaration: a rich original is restored, whereas a newer writer is left
 untouched, and the refused text remains available in both cases.
