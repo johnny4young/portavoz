@@ -1153,7 +1153,9 @@ transaction.
 
 The controller retains a refused output in memory, independently of microphone
 and model lifetime. New input triggers reveal this recovery state instead of
-replacing it. Explicit Copy keeps the output available, Reinsert retries only
+replacing it. Explicit Copy keeps the output available and fails before mutation
+when the current snapshot cannot preserve ordered items or a lazy read changes
+clipboard ownership. Reinsert retries only
 the original captured destination without opening audio, and Discard retires
 the delivery identity and clears presentation copies. A destination that could
 not be captured permits Copy but not implicit retargeting. Retry tasks are
