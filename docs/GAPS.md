@@ -59,8 +59,10 @@ These failures and evidence boundaries prevent broad reliability claims. Recover
 quitting does not preserve the output. This recovery covers final text after
 completed recognition, not an incomplete capture/model failure: those failures
 still have no supported Copy or durable recovery of admitted partial captions.
-Clipboard snapshot size/materialization
-remains an independent limitation. Model quality, Bluetooth transitions and the external-editor
+Recovery Copy currently refuses multiple clipboard items rather than risking
+a lossy rollback, and keeps the full dictation available. Ordered clipboard
+preservation and snapshot size/materialization remain independent limitations.
+Model quality, Bluetooth transitions and the external-editor
 matrix require separate evidence; a synthetic caption fixture cannot establish
 those results. Missing Accessibility permission makes the separately selected
 native delivery gate unqualified, not proof that insertion works. Hosted

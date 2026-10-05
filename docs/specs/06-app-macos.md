@@ -2886,8 +2886,12 @@ A refused insertion releases capture resources and leaves the complete processed
 output in controller-owned RAM. The persistent recovery panel displays an
 excerpt and three individually identified actions: Copy, Reinsert and Discard.
 Copy writes the complete output, reports failure without erasing it, and does
-not close recovery. Before explicit Copy mutates the board, it requires a
-complete materializable snapshot of any existing representations. A failed
+not close recovery. Before explicit Copy mutates the board, it requires an
+empty board or one completely materializable item. The current board-level
+snapshot cannot reconstruct multiple ordered items, so Copy refuses them
+without reading lazy representations or changing the clipboard; the full
+dictation remains available in recovery. Clipboard generation and advertised
+types must remain unchanged throughout snapshot capture. A failed
 write restores that snapshot only if the dictation operation still owns the
 board; a newer clipboard writer is never overwritten. Reinsert requires the
 original capture and revalidates it

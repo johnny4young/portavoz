@@ -47,9 +47,19 @@ enum TextInserter {
         writeString: (NSPasteboard, String) -> Bool = { $0.setString($1, forType: .string) }
     ) -> Bool {
         guard !text.isEmpty else { return false }
+        let generation = pasteboard.changeCount
         let existingTypes = pasteboard.types ?? []
+        // This board-level snapshot cannot reconstruct multiple ordered items.
+        // Refuse before materializing or replacing them, even when they expose
+        // the same types and would appear to be a complete snapshot.
+        guard existingTypes.isEmpty || pasteboard.pasteboardItems?.count == 1,
+              pasteboard.changeCount == generation else { return false }
         let snapshot = PasteboardSnapshot(of: pasteboard)
-        guard existingTypes.isEmpty || snapshot?.isComplete == true else { return false }
+        // A lazy provider may publish a new owner while supplying its bytes.
+        // Do not replace that owner's content or restore an obsolete snapshot.
+        guard existingTypes.isEmpty || snapshot?.isComplete == true,
+              (pasteboard.types ?? []) == existingTypes,
+              pasteboard.changeCount == generation else { return false }
         pasteboard.declareTypes([.string], owner: nil)
         let ourChangeCount = pasteboard.changeCount
         guard writeString(pasteboard, text) else {
