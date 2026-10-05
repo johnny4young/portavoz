@@ -52,6 +52,33 @@ class SourceStampTests(unittest.TestCase):
         self.assertNotEqual(self.source.stat().st_mtime_ns, self.original['mtime_ns'])
         self.assertEqual(self.source.stat().st_mode & 0o777, 0o755)
 
+    def test_vendored_c_and_header_inputs_recover_only_verified_timestamps(self):
+        vendor = self.root / 'Vendor/sqlite-vec'
+        vendor.mkdir(parents=True)
+        source = vendor / 'sqlite-vec.c'
+        header = vendor / 'sqlite-vec.h'
+        for path in (source, header):
+            path.write_text('int value = 1;\n')
+            os.utime(path, ns=(self.original['mtime_ns'], self.original['mtime_ns']))
+        self.git_add('Vendor')
+        self.assertEqual(stamps.snapshot(self.root), 3)
+        os.utime(source, None)
+        header.write_text('int value = 2;\n')
+        os.utime(header, ns=(self.original['mtime_ns'], self.original['mtime_ns']))
+        with patch.object(stamps.time, 'time_ns', return_value=1800000000000000000):
+            self.assertEqual(stamps.restore(self.root), (2, 1))
+        self.assertEqual(source.stat().st_mtime_ns, self.original['mtime_ns'])
+        self.assertEqual(header.stat().st_mtime_ns, 1800000000000000000)
+        self.assertEqual(header.read_text(), 'int value = 2;\n')
+
+    def test_repository_vendored_includes_belong_to_source_inventory(self):
+        # This is a real dependency outside Sources, not a SwiftPM package URL.
+        wrapper = ROOT / 'Sources/CSQLiteVecResearch/SQLiteVecResearch.c'
+        self.assertIn('../../Vendor/sqlite-vec/sqlite-vec.c', wrapper.read_text())
+        inventory = stamps.inputs(ROOT)
+        for name in ('Vendor/sqlite-vec/sqlite-vec.c', 'Vendor/sqlite-vec/sqlite-vec.h'):
+            self.assertTrue(name in inventory, f'Missing compiled vendor input: {name}')
+
     def test_added_deleted_and_renamed_inputs_are_not_resurrected(self):
         self.source.unlink()
         new = self.root / 'Sources/Renamed.swift'

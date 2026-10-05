@@ -21,8 +21,10 @@ MAX_RECEIPT_BYTES = 4 * 1024 * 1024
 
 
 def inputs(root: Path) -> dict[str, Path]:
+    # CSQLiteVecResearch includes vendored C and headers directly. Their
+    # freshness belongs to the same verified build-input inventory as Sources.
     names = subprocess.check_output(
-        ['git', 'ls-files', '-z', '--', 'Sources', 'Tests', 'Package.swift', 'Package.resolved'],
+        ['git', 'ls-files', '-z', '--', 'Sources', 'Tests', 'Vendor', 'Package.swift', 'Package.resolved'],
         cwd=root, timeout=30,
     )
     result = {}

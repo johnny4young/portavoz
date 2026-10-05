@@ -274,8 +274,13 @@ broad key substitutes for an unknown identity. There are no restore prefixes
 and no per-commit cache copies. A dependency or build-policy change starts cold.
 Ordinary source changes retain the seed. After a successful suite,
 `scripts/ci_swift_source_stamps.py snapshot` records SHA-256, size, permissions and
-nanosecond mtime for tracked `Sources/`, `Tests/`, and package manifest/lock inputs
-inside `.build`. On an exact PR cache hit, `restore` intersects that receipt
+nanosecond mtime for tracked `Sources/`, `Tests/`, `Vendor/`, and package manifest/lock inputs
+inside `.build`. The vendor inventory includes the sqlite-vec C implementation
+and header included directly by `CSQLiteVecResearch`; otherwise an unchanged
+vendored dependency retains fresh-checkout timestamps while its wrapper recovers
+the prior build's timestamp. Regression tests cover unchanged vendor reuse and
+same-size, same-timestamp vendor edits that must become fresh inputs. This is
+input-coverage evidence, not a measured CI speedup. On an exact PR cache hit, `restore` intersects that receipt
 with the current Git inventory and restores mtime only for byte-identical,
 same-mode inputs. Changed/new inputs receive fresh timestamps even when their
 size and incoming mtime happen to match the old file. Deleted files are not
