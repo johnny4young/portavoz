@@ -1592,6 +1592,16 @@ the adapter and inject it into application credential workflows and encrypted
 voice stores. GitHub, Linear, BYOK, voiceprint, and voice-gallery secrets never
 enter SQLite, UserDefaults, sync payloads, bundles, or diagnostics.
 
+Credential replacement first uses Security's atomic update operation, changing
+only the value bytes and preserving existing accessibility attributes. A failed
+update leaves the prior credential intact. Only a missing item permits an add;
+a duplicate-add contender permits one bounded update retry. Concurrent successful
+sets have Security-operation ordering (the last successful update wins), without
+a delete/recreate gap. Explicit deletion remains a separate operation. Malformed
+stored data fails closed with a content-free error and no mutation. Injected
+Security-boundary tests cover failures and duplicate contenders without accessing
+the host Keychain; actual platform availability remains a native integration gate.
+
 ## Known limits
 
 1. No SQLCipher (optional and planned, PRODUCT/security).
