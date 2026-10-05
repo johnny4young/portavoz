@@ -16,6 +16,8 @@ final class DictationRecoveryCopyTests: XCTestCase {
         second.setString("Second — segundo", forType: .string)
         second.setDataProvider(provider, forTypes: [.rtf])
         XCTAssertTrue(board.writeObjects([first, second]))
+        let stringBytes = board.pasteboardItems?.map { $0.data(forType: .string) }
+        let advertisedTypes = board.pasteboardItems?.map(\.types)
         let generation = board.changeCount
         var writes = 0
 
@@ -27,9 +29,12 @@ final class DictationRecoveryCopyTests: XCTestCase {
         XCTAssertEqual(writes, 0, "Refusal must precede the destructive clipboard declaration")
         XCTAssertEqual(provider.reads, 0, "An inadmissible item layout must not invoke lazy providers")
         XCTAssertEqual(board.changeCount, generation)
+        // AppKit may advertise additional string encodings. Compare the exact
+        // admitted inventory before string readback can synthesize conversions.
+        XCTAssertEqual(board.pasteboardItems?.map(\.types), advertisedTypes)
+        XCTAssertEqual(board.pasteboardItems?.map { $0.data(forType: .string) }, stringBytes)
         XCTAssertEqual(board.pasteboardItems?.map { $0.string(forType: .string) },
                        ["First — primero", "Second — segundo"])
-        XCTAssertEqual(board.pasteboardItems?.last?.types, [.string, .rtf])
     }
 
     func testCopyRefusesForeignOwnerPublishedDuringSnapshot() async {
