@@ -20661,6 +20661,16 @@ match abandoning this pending operation, including its loss of progress. The
 single-click and geometry assertions remain in the journeys. No global focus or
 first-click override is introduced. Post-event focus races and durable recovery
 are not claimed solved by this change.
+
+**Amendment (review follow-up).** Two refinements keep D544 from regressing
+released behavior. (1) An application that exposes no focused AX element at
+capture cannot be pinned; instead of refusing, its destination keeps the prior
+contract (same frontmost application, system-wide focused field inspectable and
+not secure at delivery, session-stream Paste). Pinned destinations keep
+process-addressed posting. (2) Recovery Copy is an explicit user Copy and
+replaces the clipboard, including multiple items, with no snapshot or rollback;
+the excerpt is scrollable and selectable so a failed Copy never strands the text.
+
 ## D547 — Capture integrity owns dictation delivery until the edit boundary
 
 **Date:** 2026-09-25

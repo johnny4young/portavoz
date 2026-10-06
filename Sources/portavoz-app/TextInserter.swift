@@ -38,35 +38,17 @@ enum TextInserter {
     /// contents instead of the dictation.
     static let restoreDelay: Duration = .milliseconds(1500)
 
-    /// Explicit recovery Copy is not a paste. If the write fails after
-    /// declaration, restore only while this operation still owns the board.
-    /// An unmaterializable existing representation must be left untouched.
+    /// Explicit recovery Copy is a user-initiated Copy command, not a paste:
+    /// like any Copy it replaces whatever the clipboard held, including several
+    /// items, without reading, snapshotting or restoring the previous contents.
     @MainActor
     static func copy(
         _ text: String, to pasteboard: NSPasteboard = .general,
         writeString: (NSPasteboard, String) -> Bool = { $0.setString($1, forType: .string) }
     ) -> Bool {
         guard !text.isEmpty else { return false }
-        let generation = pasteboard.changeCount
-        let existingTypes = pasteboard.types ?? []
-        // This board-level snapshot cannot reconstruct multiple ordered items.
-        // Refuse before materializing or replacing them, even when they expose
-        // the same types and would appear to be a complete snapshot.
-        guard existingTypes.isEmpty || pasteboard.pasteboardItems?.count == 1,
-              pasteboard.changeCount == generation else { return false }
-        let snapshot = PasteboardSnapshot(of: pasteboard)
-        // A lazy provider may publish a new owner while supplying its bytes.
-        // Do not replace that owner's content or restore an obsolete snapshot.
-        guard existingTypes.isEmpty || snapshot?.isComplete == true,
-              (pasteboard.types ?? []) == existingTypes,
-              pasteboard.changeCount == generation else { return false }
         pasteboard.declareTypes([.string], owner: nil)
-        let ourChangeCount = pasteboard.changeCount
-        guard writeString(pasteboard, text) else {
-            restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
-            return false
-        }
-        return true
+        return writeString(pasteboard, text)
     }
 
     @MainActor
@@ -158,7 +140,8 @@ enum TextInserter {
             restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
             return .refused(.eventUnavailable)
         }
-        guard effects.post(target.processID) else {
+        let posted = target.route == .session ? effects.postToSession() : effects.post(target.processID)
+        guard posted else {
             restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
             return .refused(.eventUnavailable)
         }
@@ -209,6 +192,8 @@ enum TextInserter {
         var waitForModifiers: () async -> Bool
         var post: (pid_t) -> Bool
         var isProcessLive: (pid_t) -> Bool = { _ in true }
+        /// Session-stream paste for `EventRoute.session` targets only.
+        var postToSession: () -> Bool = { false }
 
         static var live: Self {
             Self(
@@ -219,7 +204,8 @@ enum TextInserter {
                           let application = NSRunningApplication(processIdentifier: processID)
                     else { return false }
                     return !application.isTerminated
-                })
+                },
+                postToSession: TextInserter.postSessionCommandV)
         }
     }
 
@@ -265,6 +251,22 @@ enum TextInserter {
     }
 
     private static func postCommandV(to processID: pid_t) -> Bool {
+        guard let (keyDown, keyUp) = commandVEvents() else { return false }
+        keyDown.postToPid(processID)
+        keyUp.postToPid(processID)
+        return true
+    }
+
+    /// The session event stream, exactly as delivery worked before destination
+    /// pinning. Used only for targets whose focused field could not be pinned.
+    private static func postSessionCommandV() -> Bool {
+        guard let (keyDown, keyUp) = commandVEvents() else { return false }
+        keyDown.post(tap: .cghidEventTap)
+        keyUp.post(tap: .cghidEventTap)
+        return true
+    }
+
+    private static func commandVEvents() -> (CGEvent, CGEvent)? {
         let source = CGEventSource(stateID: .combinedSessionState)
         let keyCode = pasteKeyCode()
         guard
@@ -272,12 +274,10 @@ enum TextInserter {
                 keyboardEventSource: source, virtualKey: keyCode, keyDown: true),
             let keyUp = CGEvent(
                 keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
-        else { return false }
+        else { return nil }
         keyDown.flags = .maskCommand
         keyUp.flags = .maskCommand
-        keyDown.postToPid(processID)
-        keyUp.postToPid(processID)
-        return true
+        return (keyDown, keyUp)
     }
 
     /// The key that produces "v" in the CURRENT layout. Hardcoding the QWERTY
@@ -404,7 +404,6 @@ extension TextInserter.BorrowedCFPropertyType where Value == AXUIElement {
 struct PasteboardSnapshot {
     private let types: [NSPasteboard.PasteboardType]
     private let values: [NSPasteboard.PasteboardType: Value]
-    let isComplete: Bool
 
     private enum Value {
         case data(Data)
@@ -431,7 +430,6 @@ struct PasteboardSnapshot {
         guard !values.isEmpty else { return nil }
         self.types = capturedTypes
         self.values = values
-        isComplete = capturedTypes.count == types.count
     }
 
     func restore(to pasteboard: NSPasteboard) {

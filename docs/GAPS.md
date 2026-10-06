@@ -49,19 +49,22 @@ gate. Timeout setup is applied to each newly retrieved focused-field object befo
 security inspection, not just its application or an equal captured object.
 That wiring follows the SDK contract; adversarial slow native AX servers remain
 unmeasured. Specific AX timeouts limit requested work, not arbitrary server allocation
-or later external edits. Unverified dispatch now retains complete final output
-in RAM for explicit Copy or Discard, without enabling Reinsert, automatic replay
-or another capture that silently replaces it. The user must check the destination
-before manually pasting: unsupported acknowledgement cannot distinguish a lost
-event from a late edit. This removes the expiring-copy gap, not native-delivery
+or later external edits. Unverified dispatch keeps the last complete output
+in RAM for explicit Copy or Discard, without enabling Reinsert or automatic
+replay. It does not block the next dictation: a new trigger starts normally and
+replaces only that non-modal notice. The user must check the destination before
+manually pasting: unsupported acknowledgement cannot distinguish a lost event
+from a late edit. This removes the expiring-copy gap, not native-delivery
 uncertainty or incomplete-capture loss.
 These failures and evidence boundaries prevent broad reliability claims. Recovery is RAM-only;
 quitting does not preserve the output. This recovery covers final text after
 completed recognition, not an incomplete capture/model failure: those failures
 still have no supported Copy or durable recovery of admitted partial captions.
-Recovery Copy currently refuses multiple clipboard items rather than risking
-a lossy rollback, and keeps the full dictation available. Ordered clipboard
-preservation and snapshot size/materialization remain independent limitations.
+Recovery Copy is an explicit Copy that replaces the clipboard (including
+multiple items); the excerpt stays selectable. Ordered clipboard preservation
+for the paste path and snapshot size/materialization remain independent
+limitations. Applications without a pinnable focused field use the previous
+session-stream delivery and checks, not field pinning, and remain unverified.
 Model quality, Bluetooth transitions and the external-editor
 matrix require separate evidence; a synthetic caption fixture cannot establish
 those results. Missing Accessibility permission makes the separately selected
