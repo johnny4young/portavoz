@@ -91,12 +91,6 @@ final class DictationController {
     private(set) var copyStatus: CopyStatus = .idle
     private(set) var isRetryingDelivery = false
     var canRetryDelivery: Bool { destination?.canRetry == true }
-    private var hasPendingOutput: Bool {
-        switch phase {
-        case .recovery, .dispatched: true
-        default: false
-        }
-    }
     private var destination: CapturedDictationDestination?
     private var dependencies: DictationSessionDependencies?
     private var deliveryID: UUID?
@@ -716,6 +710,13 @@ private extension DictationController {
 }
 
 extension DictationController {
+    private var hasPendingOutput: Bool {
+        switch phase {
+        case .recovery, .dispatched: true
+        default: false
+        }
+    }
+
     func copyPendingText() {
         guard hasPendingOutput, !isRetryingDelivery, let dependencies else { return }
         copyStatus = dependencies.copyText(recoveryText) ? .copied : .failed
