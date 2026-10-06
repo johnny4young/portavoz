@@ -20849,3 +20849,11 @@ archives a successful delivery. Controller
 and inserter call-site tests are distinct from the permission-dependent native
 receiver, which must assert both verified status and actual Unicode content.
 The presence of those tests is not evidence that native qualification passed.
+
+**Amendment (review follow-up).** Unverified dispatch must not block the next
+dictation. In apps without exact AX readback most deliveries are unverified, so
+requiring Discard before every new dictation would regress the released
+workflow. The notice stays non-modal: the last unverified output remains
+available for Copy or Discard until the next dictation starts, which replaces
+the notice without re-sending the previous output. Refused (undelivered) output
+still blocks a new trigger and keeps its recovery panel.

@@ -426,14 +426,15 @@ private extension DictationUITests {
         let dictate = app.buttons["menu-bar-dictate"]
         XCTAssertFalse(originalFrame.intersects(dictate.frame))
         dictate.click()
-        XCTAssertEqual(renderedText(of: text), recoveryFixtureText)
-        XCTAssertEqual(panel.frame, originalFrame)
-        XCTAssertFalse(app.staticTexts["dictation-panel-transcript"].exists, "Another trigger must not start capture")
+        // An unverified notice is non-modal: the next dictation starts and
+        // replaces it, and the previous output is not sent again.
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { !text.exists }, "Another trigger starts a new capture")
+        let cancel = app.buttons["dictation-panel-cancel"]
+        XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
+        XCTAssertEqual(board.string(forType: .string), recoveryFixtureText, "A new capture never re-sends output")
         app.activate()
-        let discard = app.buttons["dictation-unverified-discard"]
-        XCTAssertTrue(discard.isHittable)
-        discard.click()
-        XCTAssertTrue(waitForUITestCondition(timeout: 5) { !panel.exists }, "Explicit Discard must exit in one action")
+        cancel.click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { !panel.exists }, "Cancel must exit in one action")
     }
 
 }

@@ -218,13 +218,13 @@ final class DictationController {
 
     func toggle(using dependencies: DictationSessionDependencies) {
         switch phase {
-        case .idle, .failed, .verified:
+        case .idle, .failed, .verified, .dispatched:
             start(using: dependencies)
         case .preparing:
             cancel()
         case .listening:
             finishAndInsert()
-        case .recovery, .dispatched:
+        case .recovery:
             showPanel()
         }
     }
@@ -234,12 +234,16 @@ final class DictationController {
     }
 
     private func start(using dependencies: DictationSessionDependencies) {
-        // A global trigger cannot silently replace undelivered words.
-        if hasPendingOutput { showPanel(); return }
+        // A global trigger cannot silently replace refused, undelivered words.
+        // An unverified dispatch was already sent: its notice is non-modal and
+        // a new dictation replaces it (never re-sending the old output).
+        if case .recovery = phase { showPanel(); return }
         retryDeliveryTask?.cancel()
         retryDeliveryTask = nil
         deliveryID = nil
         destination = nil
+        recoveryText = ""
+        copyStatus = .idle
         self.dependencies = dependencies
         sessionFeedbackWait = dependencies.waitForFeedbackDismissal
         measurement = dependencies.measurementSink.map {

@@ -1156,7 +1156,8 @@ whole external document nor an old selection enters the domain or storage.
 Unsupported or ambiguous readback remains dispatched and cannot authorize a
 retry. The controller expires only verified feedback through a separately owned
 dismissal task. Unverified dispatch retains complete output for explicit Copy or
-Discard, with no retry capability or implicit restart. Neither presentation
+Discard, with no retry capability; it is non-modal, so the next dictation starts
+normally and replaces only that notice. Neither presentation
 retains the capture runtime lease; SwiftUI does not inspect Accessibility. Event dispatch is not an external editor
 acknowledgement, and even matching readback is not an atomic focus transaction.
 

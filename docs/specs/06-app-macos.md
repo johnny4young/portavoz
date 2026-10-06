@@ -2878,9 +2878,11 @@ The delivery banner has its own cancelled-on-restart, identity-fenced dismissal
 task; waiting for presentation never holds the capture runtime lease. The brief
 banner is green only for verified insertion (1.6 seconds). Dispatch without
 verification keeps an amber send status and the complete final output in RAM
-until explicit Discard. Copy is available with visible failure/success feedback;
-it does not post another Paste or close the result. Another global trigger
-reveals this panel, rather than replacing its words. Reinsert is absent because
+until explicit Discard or the next dictation. Copy is available with visible
+failure/success feedback; it does not post another Paste or close the result.
+The notice is non-modal: the text was already sent, so another global trigger
+starts a new dictation and replaces only this notice, never re-sending the old
+output. Reinsert is absent because
 a late editor may still apply the original event. The user must check the
 destination before manually pasting; Discard is a single-action exit. Neither result writes history or archives a
 successful delivery. The storage reassurance is limited to Portavoz, not a

@@ -36,7 +36,7 @@ final class DictationDeliveryOutcomeTests: XCTestCase {
         }
     }
 
-    func testUnacknowledgedOutputSurvivesFailedCopyAndAnotherTriggerWithoutResending() async {
+    func testUnacknowledgedOutputSurvivesFailedCopyAndDoesNotBlockTheNextDictation() async {
         let longText = String(String(repeating: "café ñ 1,25 ", count: 1_500).prefix(16_384)) + "X"
         XCTAssertEqual(longText.utf16.count, 16_385)
         for text in ["Don’t remove 0.5 no punctuation", "No borres café C++ 1.250,50 €", longText] {
@@ -72,11 +72,15 @@ final class DictationDeliveryOutcomeTests: XCTestCase {
             XCTAssertEqual(harness.controller.copyStatus, .copied)
             XCTAssertEqual(copies, [text, text], "Copy uses complete output, not the visible excerpt")
             harness.controller.retryUndeliveredText()
+            XCTAssertEqual(receiver.posts, 1, "Dispatched output is never re-sent")
+            // The unverified notice is non-modal: the next trigger starts a fresh
+            // capture and replaces it, without posting the previous output again.
             harness.controller.toggle(using: dependencies)
-            XCTAssertEqual(harness.controller.recoveryText, text)
-            XCTAssertFalse(harness.controller.isActive)
-            XCTAssertEqual(harness.loads, 1)
-            XCTAssertEqual(receiver.posts, 1, "No implicit second paste or new capture")
+            XCTAssertTrue(harness.controller.isActive)
+            XCTAssertTrue(harness.controller.recoveryText.isEmpty)
+            let restarted = await eventually { harness.loads == 2 }
+            XCTAssertTrue(restarted)
+            XCTAssertEqual(receiver.posts, 1, "No implicit second paste")
             harness.controller.cancel()
             XCTAssertTrue(harness.controller.recoveryText.isEmpty)
             XCTAssertEqual(harness.controller.phase, .idle)
