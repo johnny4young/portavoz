@@ -438,6 +438,9 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             : "Any time"
         let resetFilters = try skillsObservation(requiredIdentifiers: [
             "settings-skills-receipt-skill-filter", "settings-skills-receipt-period-filter"
+        ], expectedText: [
+            "settings-skills-receipt-skill-filter": allSkillsTitle,
+            "settings-skills-receipt-period-filter": anytimeTitle
         ], in: app)
         XCTAssertTrue(skillSnapshot(try uiSnapshotElement("settings-skills-receipt-skill-filter", in: resetFilters),
                                     contains: allSkillsTitle))
@@ -1287,16 +1290,16 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(inspection.waitForExistenceFast(timeout: 5))
         // The anchor is the header Text, not a container for the timeline.
         let inspectionOwner = app.windows.containing(.any, identifier: "skill-receipt-inspection").firstMatch
-        let timeline = try skillsObservation(requiredIdentifiers: [
-            "skill-receipt-inspection-privacy", "skill-receipt-inspection-event-1",
-            "skill-receipt-inspection-event-2", "skill-receipt-inspection-event-3"
-        ], owner: inspectionOwner)
-        let events = uiSnapshotMatches({ $0.identifier.hasPrefix("skill-receipt-inspection-event-") }, in: timeline)
-        XCTAssertEqual(events.count, 3, "the confirmed run must expose its complete causal timeline")
-        let terminalEvent = try uiSnapshotElement("skill-receipt-inspection-event-3", in: timeline)
         let successTitle = UITestLocale.environmentLocale == "es"
             ? "El intento informó éxito"
             : "Attempt reported success"
+        let timeline = try skillsObservation(requiredIdentifiers: [
+            "skill-receipt-inspection-privacy", "skill-receipt-inspection-event-1",
+            "skill-receipt-inspection-event-2", "skill-receipt-inspection-event-3"
+        ], expectedText: ["skill-receipt-inspection-event-3": successTitle], owner: inspectionOwner)
+        let events = uiSnapshotMatches({ $0.identifier.hasPrefix("skill-receipt-inspection-event-") }, in: timeline)
+        XCTAssertEqual(events.count, 3, "the confirmed run must expose its complete causal timeline")
+        let terminalEvent = try uiSnapshotElement("skill-receipt-inspection-event-3", in: timeline)
         XCTAssertTrue(
             skillSnapshot(terminalEvent, contains: successTitle),
             "the terminal event must expose the localized success state")
@@ -1686,13 +1689,15 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         try scrollToVisible(toggle, in: app)
         let disclosureID = "settings-skill-\(skillID)-boundary"
         let confirmationID = "settings-skill-\(skillID)-confirmation"
-        let observation = try skillsObservation(requiredIdentifiers: [disclosureID, confirmationID], in: app)
-        let disclosure = try uiSnapshotElement(disclosureID, in: observation)
-        XCTAssertTrue(skillSnapshot(disclosure, contains: expectedText),
-                      "the disclosure must follow the executable capability boundary")
         let approvalText = UITestLocale.environmentLocale == "es"
             ? "Requiere aprobación en cada ejecución"
             : "Approval required every time"
+        let observation = try skillsObservation(
+            requiredIdentifiers: [disclosureID, confirmationID],
+            expectedText: [disclosureID: expectedText, confirmationID: approvalText], in: app)
+        let disclosure = try uiSnapshotElement(disclosureID, in: observation)
+        XCTAssertTrue(skillSnapshot(disclosure, contains: expectedText),
+                      "the disclosure must follow the executable capability boundary")
         let confirmation = try uiSnapshotElement(confirmationID, in: observation)
         XCTAssertTrue(skillSnapshot(confirmation, contains: approvalText),
                       "an enabled row must still disclose proposal-scoped approval")
@@ -1850,21 +1855,27 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 private extension SkillsSettingsUITests {
     @MainActor
     func skillsObservation(
-        requiredIdentifiers: Set<String>, in app: XCUIApplication
+        requiredIdentifiers: Set<String>, expectedText: [String: String] = [:], in app: XCUIApplication
     ) throws -> any XCUIElementSnapshot {
         let settings = app.windows.containing(.any, identifier: "settings-skills-pause-all").firstMatch
-        return try skillsObservation(requiredIdentifiers: requiredIdentifiers, owner: settings)
+        return try skillsObservation(
+            requiredIdentifiers: requiredIdentifiers, expectedText: expectedText, owner: settings)
     }
 
     @MainActor
     func skillsObservation(
-        requiredIdentifiers: Set<String>, owner: XCUIElement, timeout: TimeInterval = 5
+        requiredIdentifiers: Set<String>, expectedText: [String: String] = [:],
+        owner: XCUIElement, timeout: TimeInterval = 5
     ) throws -> any XCUIElementSnapshot {
         var observation: (any XCUIElementSnapshot)?
-        let ready = try waitForUITestCondition(timeout: timeout) {
-            let snapshot = try owner.snapshot()
+        // Like the former per-element label waits, readiness includes content.
+        // A transient snapshot failure retries within the same deadline.
+        let ready = waitForUITestCondition(timeout: timeout) {
+            guard let snapshot = try? owner.snapshot() else { return false }
             guard requiredIdentifiers.allSatisfy({ identifier in
                 uiSnapshotMatches({ $0.identifier == identifier }, in: snapshot).count == 1
+            }), expectedText.allSatisfy({ identifier, text in
+                uiSnapshot(snapshot, identifier: identifier, contains: text)
             }) else { return false }
             observation = snapshot
             return true

@@ -1219,7 +1219,13 @@ final class LibraryUITests: PortavozUITestCase {
         let currentEvidenceID = "ask-topic-conflict-evidence-B5D40000-0000-4000-8000-000000000005-0"
         let replacedEvidenceID = "ask-topic-conflict-evidence-B5D40000-0000-4000-8000-000000000005-1"
         let observation = try topicResultObservation(
-            text: [conflictID, replacedID], buttons: [currentEvidenceID, replacedEvidenceID], in: app)
+            text: [conflictID, replacedID], buttons: [currentEvidenceID, replacedEvidenceID],
+            expectedText: [
+                conflictID: "El rollout del modelo queda para el viernes.",
+                replacedID: "El rollout del modelo quedaba para el jueves.",
+                currentEvidenceID: "Test meeting · 00:03",
+                replacedEvidenceID: "Planning baseline · 00:04"
+            ], in: app)
         XCTAssertTrue(
             renderedText(of: try uiSnapshotElement(conflictID, in: observation)).contains(
                 "El rollout del modelo queda para el viernes."))
@@ -1279,7 +1285,14 @@ final class LibraryUITests: PortavozUITestCase {
         let currentEvidenceID = "ask-topic-change-since-evidence-B5D40000-0000-4000-8000-000000000005-0"
         let replacedEvidenceID = "ask-topic-change-since-evidence-B5D40000-0000-4000-8000-000000000005-1"
         let observation = try topicResultObservation(
-            text: [changeID, replacedID, anchorID], buttons: [currentEvidenceID, replacedEvidenceID], in: app)
+            text: [changeID, replacedID, anchorID], buttons: [currentEvidenceID, replacedEvidenceID],
+            expectedText: [
+                changeID: "El rollout del modelo queda para el viernes.",
+                replacedID: "El rollout del modelo quedaba para el jueves.",
+                anchorID: "Planning baseline",
+                currentEvidenceID: "Test meeting · 00:03",
+                replacedEvidenceID: "Planning baseline · 00:04"
+            ], in: app)
         XCTAssertTrue(renderedText(of: try uiSnapshotElement(changeID, in: observation)).contains(
             "El rollout del modelo queda para el viernes."))
         XCTAssertTrue(renderedText(of: try uiSnapshotElement(replacedID, in: observation)).contains(
@@ -1300,18 +1313,24 @@ final class LibraryUITests: PortavozUITestCase {
 
     @MainActor
     private func topicResultObservation(
-        text textIdentifiers: [String], buttons buttonIdentifiers: [String], in app: XCUIApplication
+        text textIdentifiers: [String], buttons buttonIdentifiers: [String],
+        expectedText: [String: String] = [:], in app: XCUIApplication
     ) throws -> any XCUIElementSnapshot {
         var observation: (any XCUIElementSnapshot)?
-        let ready = try waitForUITestCondition(timeout: 5) {
-            let snapshot = try app.windows["main-AppWindow-1"].snapshot()
+        // A transient AX snapshot failure is retried inside the same bound;
+        // readiness includes the expected content, not only element presence.
+        let ready = waitForUITestCondition(timeout: 5) {
+            guard let snapshot = try? app.windows["main-AppWindow-1"].snapshot() else { return false }
             let textsExist = textIdentifiers.allSatisfy { identifier in
                 !uiSnapshotMatches({ $0.identifier == identifier }, in: snapshot).isEmpty
             }
             let buttonsExist = buttonIdentifiers.allSatisfy { identifier in
                 !uiSnapshotMatches({ $0.identifier == identifier && $0.elementType == .button }, in: snapshot).isEmpty
             }
-            guard textsExist, buttonsExist else { return false }
+            let contentReady = expectedText.allSatisfy { identifier, text in
+                uiSnapshot(snapshot, identifier: identifier, contains: text)
+            }
+            guard textsExist, buttonsExist, contentReady else { return false }
             observation = snapshot
             return true
         }

@@ -34,3 +34,13 @@ func renderedText(of snapshot: any XCUIElementSnapshot) -> String {
     guard let value = snapshot.value as? String, !value.isEmpty else { return snapshot.label }
     return value
 }
+
+/// True when exactly one `identifier` element in this observation exposes
+/// `text` through its label, value or title. Content readiness, not presence.
+@MainActor
+func uiSnapshot(_ snapshot: any XCUIElementSnapshot, identifier: String, contains text: String) -> Bool {
+    let matches = uiSnapshotMatches({ $0.identifier == identifier }, in: snapshot)
+    guard matches.count == 1 else { return false }
+    return [matches[0].label, matches[0].value as? String, matches[0].title]
+        .compactMap { $0 }.contains { $0.contains(text) }
+}
