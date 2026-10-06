@@ -156,6 +156,20 @@ final class TextInsertionTargetTests: XCTestCase {
         XCTAssertEqual(board.string(forType: .string), "Original café", "Observe restoration, not only elapsed time")
     }
 
+    func testUnpinnedTargetKeepsTheSessionRouteInsteadOfTheProcess() async {
+        let board = makeBoard()
+        defer { board.releaseGlobally() }
+        var sessionPosts = 0
+        let target = TextInserter.Target(processID: 107, validate: { nil }, route: .session)
+        let result = await TextInserter.insert("Electron — sin foco fijado", into: target, pasteboard: board,
+            effects: .init(
+                waitForModifiers: { true },
+                post: { _ in XCTFail("An unpinned target must not switch to process routing"); return true },
+                postToSession: { sessionPosts += 1; return true }))
+        XCTAssertEqual(result, .inserted)
+        XCTAssertEqual(sessionPosts, 1)
+    }
+
     func testExplicitCopyWritesTheFullTextToTheChosenBoard() async {
         let board = makeBoard()
         defer { board.releaseGlobally() }

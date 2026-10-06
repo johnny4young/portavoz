@@ -18,11 +18,16 @@ struct DictationRecoveryView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("dictation-recovery-reason")
-            Text(controller.recoveryText)
-                .font(.body)
-                .lineLimit(4)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityIdentifier("dictation-recovery-text")
+            // The complete output stays reachable even when Copy fails: it
+            // scrolls inside the bounded panel and can be selected manually.
+            ScrollView {
+                Text(controller.recoveryText)
+                    .font(.body)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("dictation-recovery-text")
+            }
+            .frame(maxHeight: .infinity)
             Text(copyMessage)
                 .lineLimit(2)
                 .font(.caption)
