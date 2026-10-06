@@ -225,7 +225,8 @@ final class ProcessAudioImportsTests: XCTestCase {
         let contended = Date()
         _ = try await fixture.worker(contender).execute(.init())
         // Contention is transient: the job is rescheduled with backoff, not failed.
-        let busy = try XCTUnwrap(try await fixture.store.processingJobs(for: input.meetingID).first)
+        let busyJobs = try await fixture.store.processingJobs(for: input.meetingID)
+        let busy = try XCTUnwrap(busyJobs.first)
         XCTAssertEqual(busy.state, .pending)
         XCTAssertEqual(busy.errorCode, "import.copy.busy")
         XCTAssertGreaterThan(try XCTUnwrap(busy.notBefore), contended)
