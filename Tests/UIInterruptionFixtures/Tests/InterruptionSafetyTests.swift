@@ -232,7 +232,12 @@ final class InterruptionSafetyTests: PortavozUITestCase {
         if !armed {
             let phases = ["Ready": "arm-not-observed", "Opening fixture": "launch-pending",
                           "Missing fixture path": "configuration-missing", "Fixture launch failed": "launch-failed"]
-            let phase = phases[app.staticTexts["proof-status"].label] ?? "unclassified"
+            // An AppKit label exposes its text as the accessibility value; its
+            // label is usually empty. Read value first so the phase is classified.
+            let status = app.staticTexts["proof-status"]
+            let observed = status.exists
+                ? ((status.value as? String).flatMap { $0.isEmpty ? nil : $0 } ?? status.label) : ""
+            let phase = phases[observed] ?? "unclassified"
             print("FIXTURE_PREPARATION_FAILED phase=\(phase)")
         }
         XCTAssertTrue(armed)
