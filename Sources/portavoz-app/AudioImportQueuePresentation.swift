@@ -10,11 +10,14 @@ enum AudioImportQueuePresentation {
         switch job.state {
         case .pending: L10n.text("Waiting to import")
         case .cancelled:
-            canRetry
-                ? L10n.text("Cancelled — retry when you are ready")
-                : L10n.text("Cancelled — import the file again to continue")
+            if canRetry {
+                L10n.text("Cancelled — retry when you are ready")
+            } else {
+                L10n.text("Cancelled — import the file again to continue")
+            }
         case .succeeded: L10n.text("Ready")
-        case .failed: canRetry ? failure(job.errorCode) : retiredFailure(job.errorCode)
+        case .failed:
+            if canRetry { failure(job.errorCode) } else { retiredFailure(job.errorCode) }
         case .running: progress(phase)
         }
     }
