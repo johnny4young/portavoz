@@ -21,6 +21,11 @@ extension AppServices {
 @MainActor
 final class DictationUITestFixture {
     let text: String
+    let recoversDestination: Bool
+    let deliveryOutcome: DictationDeliveryOutcome?
+    /// Real clipboard borrowing on a named board, with inert native effects.
+    let exerciseClipboard: Bool
+    var presentsRecoveryControls: Bool { recoversDestination || deliveryOutcome == .dispatched }
     let streamsDeltas: Bool
     let deniesMicrophoneOnce: Bool
     let missesAudioOnce: Bool
@@ -29,18 +34,20 @@ final class DictationUITestFixture {
     private var finishesNextCapture: Bool
     private var permissionRequests = 0
     private var sourceCreations = 0
-    let exerciseClipboard: Bool
     private var microphone: DictationFixtureMicrophone?
 
     init?(arguments: [String], usesTemporaryStore: Bool) {
         guard usesTemporaryStore, arguments.contains("-seed-dictation") else { return nil }
+        recoversDestination = arguments.contains("-seed-dictation-recovery")
+        deliveryOutcome = arguments.contains("-seed-dictation-delivery")
+            ? (arguments.contains("-seed-dictation-verified") ? .verified : .dispatched) : nil
         finishesNextCapture = arguments.contains("-seed-dictation-source-eof")
         streamsDeltas = arguments.contains("-seed-dictation-streaming")
         deniesMicrophoneOnce = arguments.contains("-seed-dictation-microphone-denied")
         missesAudioOnce = arguments.contains("-seed-dictation-microphone-no-audio")
         holdsPermission = arguments.contains("-seed-dictation-preparation-held")
-        exerciseClipboard = arguments.contains("-seed-dictation-clipboard")
         captureFailure = arguments.contains("-seed-dictation-capture-failure")
+        exerciseClipboard = arguments.contains("-seed-dictation-clipboard")
         text = arguments.contains("-seed-dictation-english")
             ? "Don't delete these notes."
             : "No borres estas notas."
@@ -51,6 +58,11 @@ final class DictationUITestFixture {
         fixture: DictationUITestFixture?, beginCapture: @escaping () -> () -> Void,
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> DictationSessionDependencies {
+        let boardName = DictationNativeUITestFixture.validPasteboardName(
+            environment[DictationNativeUITestFixture.environmentKey])
+        var deliveryAttempts = 0
+        var copyAttempts = 0
+        var clockTick = 0.0
         return DictationSessionDependencies(
             authorizeMicrophone: {
                 guard let fixture else { return false }
@@ -83,31 +95,47 @@ final class DictationUITestFixture {
                     completion: {})
             },
             canInsert: { fixture != nil },
-            targetName: { "Dictation test receiver" },
-            // This fixture qualifies the controller and panel, not native
-            // paste. The separate receiver journey calls TextInserter itself.
-            insert: { text in
-                guard fixture?.exerciseClipboard == true else { return .focusUnavailable }
-                return await clipboardInsertion(text, environment: environment)
+            captureDestination: {
+                if fixture?.exerciseClipboard == true {
+                    return CapturedDictationDestination(name: "Dictation test receiver", canRetry: true) { text in
+                        await clipboardInsertion(text, boardName: boardName)
+                    }
+                }
+                // No native events. The separate receiver journey owns those.
+                let name = fixture?.recoversDestination == true
+                    ? String(repeating: "Dictation receiver — / ", count: 12)
+                    : "Dictation test receiver"
+                return CapturedDictationDestination(name: name, canRetry: true) { _ in
+                    deliveryAttempts += 1
+                    if let outcome = fixture?.deliveryOutcome { return outcome }
+                    guard fixture?.recoversDestination == true else { return .refused(.focusUnavailable) }
+                    return deliveryAttempts == 1 ? .refused(.targetChanged) : .dispatched
+                }
+            },
+            copyText: { text in
+                copyAttempts += 1
+                // Deliberate first failure; later attempts use only a named board.
+                guard fixture?.presentsRecoveryControls == true, copyAttempts > 1, let boardName else { return false }
+                return TextInserter.copy(text, to: NSPasteboard(name: .init(boardName)))
             },
             defaults: .standard,
+            now: {
+                guard fixture?.recoversDestination == true || fixture?.deliveryOutcome != nil else { return Date() }
+                defer { clockTick += 1 }
+                return Date(timeIntervalSince1970: clockTick)
+            },
             beginCapture: beginCapture)
     }
 
-    /// Real clipboard admission, inert native effects. Names must stay inside
-    /// the same explicit UUID namespace as the separate native receiver test.
+    /// The production inserter and clipboard loan on a UUID-named board only;
+    /// the paste event is never posted, so the borrowed clipboard is restored.
     @MainActor
-    private static func clipboardInsertion(
-        _ text: String, environment: [String: String]
-    ) async -> TextInserter.InsertionResult {
-        let prefix = DictationNativeUITestFixture.pasteboardPrefix
-        guard let name = environment[DictationNativeUITestFixture.environmentKey], name.hasPrefix(prefix),
-              UUID(uuidString: String(name.dropFirst(prefix.count))) != nil else { return .clipboardUnavailable }
+    private static func clipboardInsertion(_ text: String, boardName: String?) async -> DictationDeliveryOutcome {
+        guard let boardName else { return .refused(.clipboardUnavailable) }
+        let target = TextInserter.Target(processID: ProcessInfo.processInfo.processIdentifier, validate: { nil })
         return await TextInserter.insert(
-            text, pasteboard: NSPasteboard(name: .init(name)),
-            eventTarget: .process(ProcessInfo.processInfo.processIdentifier),
-            effects: .init(isTargetAvailable: { _ in true }, waitForModifiers: { true },
-                           focusedSecurity: { _ in .regular }, post: { _ in false }))
+            text, into: target, pasteboard: NSPasteboard(name: .init(boardName)),
+            effects: .init(waitForModifiers: { true }, post: { _ in false }))
     }
 
     private func triggerCaptureFailure() async {

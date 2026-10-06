@@ -108,6 +108,17 @@ final class UITestMainWindowCaptureTests: XCTestCase {
         }
     }
 
+    func testMenuFixtureFramePreservesTopAlignmentOnOffsetScreens() async {
+        for screen in [NSRect(x: 0, y: 25, width: 1_512, height: 870),
+                       NSRect(x: -1_440, y: -200, width: 1_440, height: 900),
+                       NSRect(x: 0, y: 25, width: 1_280, height: 550)] {
+            let frame = UITestWindowPlacement.mainWindowFrame(in: screen, preferredHeight: 560)
+            XCTAssertEqual(frame.maxY, screen.maxY)
+            XCTAssertEqual(frame.height, min(560, screen.height))
+            XCTAssertTrue(screen.contains(frame))
+        }
+    }
+
     private func makeHiddenWindow() -> NSWindow {
         NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 100, height: 100),

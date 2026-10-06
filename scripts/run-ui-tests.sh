@@ -234,6 +234,7 @@ for locale in $locales; do
     # explicit gate, not part of the unattended functional catalog.
     test_args+=(
       -skip-testing:PortavozUITests/DictationUITests/testNativeInserterUsesDisposableReceiverAndClipboard
+      -skip-testing:PortavozUITests/DictationUITests/testNativeControllerModeChoicePreservesReceiverAndClipboard
     )
   else
     test_args+=("${only_testing[@]}")

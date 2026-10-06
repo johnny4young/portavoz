@@ -1,5 +1,6 @@
 import AppKit
 import os
+import PortavozCore
 import XCTest
 
 @testable import portavoz_app
@@ -20,7 +21,7 @@ final class DictationClipboardInsertionTests: XCTestCase {
         let before = contents(board)
         var sent: String?
         let result = await insert("Own text", on: board) { sent = board.string(forType: .string); return true }
-        XCTAssertEqual(result, .inserted)
+        XCTAssertEqual(result, .dispatched, "No readback: dispatch, not verification")
         XCTAssertEqual(sent, "Own text")
         let deadline = ContinuousClock.now.advanced(by: .seconds(10))
         while contents(board) != before && ContinuousClock.now < deadline {
@@ -31,22 +32,22 @@ final class DictationClipboardInsertionTests: XCTestCase {
             "Restoration must finish on the original board; pending loans: \(DictationClipboard.shared.pendingLoanCount)")
     }
 
-    func testUnknownRepresentationNeverInvokesProviderOrPosts() async {
+    func testPrivateRepresentationIsBorrowedAsOpaqueBytesAndRestored() async {
         let board = makeBoard()
         defer { board.releaseGlobally() }
-        let unknown = NSPasteboard.PasteboardType("app.portavoz.tests.unbounded-provider")
-        let provider = ClipboardInsertionProvider(data: Data([1]))
+        let unknown = NSPasteboard.PasteboardType("app.portavoz.tests.private-provider")
+        let provider = ClipboardInsertionProvider(data: Data([1, 2, 3]))
         let item = NSPasteboardItem()
         item.setString("Keep original", forType: .string)
         item.setDataProvider(provider, forTypes: [unknown])
         XCTAssertTrue(board.writeObjects([item]))
-        let generation = board.changeCount
         var posts = 0
-        let result = await insert("No conversion", on: board) { posts += 1; return false }
-        XCTAssertEqual(result, .clipboardUnavailable)
-        XCTAssertEqual(posts, 0)
-        XCTAssertEqual(provider.reads, 0)
-        XCTAssertEqual(board.changeCount, generation)
+        let result = await insert("Private formats do not block", on: board) { posts += 1; return false }
+        XCTAssertEqual(result, .refused(.eventUnavailable))
+        XCTAssertEqual(posts, 1, "An unknown type no longer refuses dictation")
+        XCTAssertEqual(provider.reads, 1)
+        XCTAssertEqual(board.string(forType: .string), "Keep original")
+        XCTAssertEqual(board.data(forType: unknown), Data([1, 2, 3]))
     }
 
     func testUnreadableRichFormatCannotBecomeSuccessfulPlainTextSnapshot() async {
@@ -60,7 +61,7 @@ final class DictationClipboardInsertionTests: XCTestCase {
         let generation = board.changeCount
         var posts = 0
         let result = await insert("Refuse partial preservation", on: board) { posts += 1; return false }
-        XCTAssertEqual(result, .clipboardUnavailable)
+        XCTAssertEqual(result, .refused(.clipboardUnavailable))
         XCTAssertEqual(posts, 0)
         XCTAssertEqual(board.changeCount, generation)
     }
@@ -77,9 +78,9 @@ final class DictationClipboardInsertionTests: XCTestCase {
             }
             return true
         }
-        XCTAssertEqual(first, .inserted)
+        XCTAssertEqual(first, .dispatched)
         let second = await insert("Second — segundo", on: board) { true }
-        XCTAssertEqual(second, .inserted)
+        XCTAssertEqual(second, .dispatched)
         let observed = await reader?.value
         XCTAssertEqual(observed, "First — primero", "Restoring later does not repair a paste that read the wrong dictation")
         try await waitForString("Original", on: board)
@@ -90,7 +91,7 @@ final class DictationClipboardInsertionTests: XCTestCase {
         defer { board.releaseGlobally() }
         board.setString("Prior owner", forType: .string)
         let result = await insert("Identical content", on: board) { true }
-        XCTAssertEqual(result, .inserted)
+        XCTAssertEqual(result, .dispatched)
         board.clearContents()
         board.setString("Identical content", forType: .string)
         let foreignGeneration = board.changeCount
@@ -111,7 +112,7 @@ final class DictationClipboardInsertionTests: XCTestCase {
             }
             return false
         }
-        XCTAssertEqual(result, .eventUnavailable)
+        XCTAssertEqual(result, .refused(.eventUnavailable))
         XCTAssertEqual(calls, 1)
         XCTAssertTrue(board.pasteboardItems?.isEmpty != false)
     }
@@ -119,7 +120,7 @@ final class DictationClipboardInsertionTests: XCTestCase {
     func testCancellationDuringLazyReadDoesNotBorrowOrPost() async {
         let board = makeBoard()
         defer { board.releaseGlobally() }
-        let taskBox = OSAllocatedUnfairLock<Task<TextInserter.InsertionResult, Never>?>(initialState: nil)
+        let taskBox = OSAllocatedUnfairLock<Task<DictationDeliveryOutcome, Never>?>(initialState: nil)
         let provider = ClipboardInsertionProvider(data: Data([1]), onRead: { taskBox.withLock { $0?.cancel() } })
         let item = NSPasteboardItem()
         item.setDataProvider(provider, forTypes: [.init("org.nspasteboard.source")])
@@ -131,7 +132,7 @@ final class DictationClipboardInsertionTests: XCTestCase {
         let result = await task.value
         taskBox.withLock { $0 = nil }
         XCTAssertEqual(provider.reads, 1)
-        XCTAssertEqual(result, .cancelled)
+        XCTAssertEqual(result, .refused(.cancelled))
         XCTAssertEqual(posts, 0)
         XCTAssertEqual(board.changeCount, generation)
     }
@@ -145,12 +146,11 @@ final class DictationClipboardInsertionTests: XCTestCase {
         item.setDataProvider(provider, forTypes: [.init("org.nspasteboard.source")])
         board.writeObjects([item])
         var posts = 0
+        let target = testTarget { becameSecure.withLock { $0 } ? .secureField : nil }
         let result = await TextInserter.insert(
-            "Not a password", pasteboard: board, eventTarget: testTarget,
-            effects: .init(isTargetAvailable: { _ in true }, waitForModifiers: { true }, focusedSecurity: { _ in
-                becameSecure.withLock { $0 } ? .secure : .regular
-            }, post: { _ in posts += 1; return false }))
-        XCTAssertEqual(result, .secureField)
+            "Not a password", into: target, pasteboard: board,
+            effects: .init(waitForModifiers: { true }, post: { _ in posts += 1; return false }))
+        XCTAssertEqual(result, .refused(.secureField))
         XCTAssertEqual(posts, 0)
         XCTAssertEqual(board.pasteboardItems?.first?.data(forType: .init("org.nspasteboard.source")), Data([1]))
     }
@@ -161,47 +161,40 @@ final class DictationClipboardInsertionTests: XCTestCase {
         board.setString("Original", forType: .string)
         var inspections = 0
         var posts = 0
+        let target = testTarget {
+            inspections += 1
+            if inspections == 2 {
+                board.clearContents()
+                board.setString("Foreign copy", forType: .string)
+            }
+            return nil
+        }
         let result = await TextInserter.insert(
-            "Own text", pasteboard: board, eventTarget: testTarget,
-            effects: .init(isTargetAvailable: { _ in true }, waitForModifiers: { true }, focusedSecurity: { _ in
-                inspections += 1
-                if inspections == 2 {
-                    board.clearContents()
-                    board.setString("Foreign copy", forType: .string)
-                }
-                return .regular
-            }, post: { _ in posts += 1; return false }))
-        XCTAssertEqual(result, .clipboardUnavailable)
+            "Own text", into: target, pasteboard: board,
+            effects: .init(waitForModifiers: { true }, post: { _ in posts += 1; return false }))
+        XCTAssertEqual(result, .refused(.clipboardUnavailable))
         XCTAssertEqual(posts, 0)
         XCTAssertEqual(board.string(forType: .string), "Foreign copy")
     }
 
-    func testProcessTargetIsUsedForBothSecurityChecksAndDispatch() async {
+    func testCapturedProcessIsValidatedTwiceAndIsTheOnlyDispatchTarget() async {
         let board = makeBoard()
         defer { board.releaseGlobally() }
         board.setString("Preserve", forType: .string)
-        var inspected: [pid_t] = []
-        var posted: pid_t?
-        let result = await TextInserter.insert("No borres", pasteboard: board, eventTarget: testTarget,
-            effects: .init(isTargetAvailable: { _ in true }, waitForModifiers: { true }, focusedSecurity: { target in
-                guard case .process(let processID) = target else {
-                    XCTFail("Clipboard admission must not inspect system-wide focus")
-                    return .unavailable
-                }
-                inspected.append(processID)
-                return .regular
-            }, post: { target in
-                guard case .process(let processID) = target else {
-                    XCTFail("Clipboard delivery must not fall back to session routing")
-                    return false
-                }
-                posted = processID
+        var validations = 0
+        var posted: [pid_t] = []
+        let target = testTarget { validations += 1; return nil }
+        let result = await TextInserter.insert("No borres", into: target, pasteboard: board,
+            effects: .init(waitForModifiers: { true }, post: { processID in
+                posted.append(processID)
+                return false
+            }, postToSession: {
+                XCTFail("Clipboard delivery must not fall back to session routing")
                 return false
             }))
-        let ownPID = ProcessInfo.processInfo.processIdentifier
-        XCTAssertEqual(result, .eventUnavailable)
-        XCTAssertEqual(inspected, [ownPID, ownPID])
-        XCTAssertEqual(posted, ownPID)
+        XCTAssertEqual(result, .refused(.eventUnavailable))
+        XCTAssertEqual(validations, 2, "Validate before borrowing and again before posting")
+        XCTAssertEqual(posted, [ProcessInfo.processInfo.processIdentifier])
         XCTAssertEqual(board.string(forType: .string), "Preserve")
     }
 
@@ -216,12 +209,11 @@ final class DictationClipboardInsertionTests: XCTestCase {
         item.setDataProvider(provider, forTypes: [.init("org.nspasteboard.source")])
         XCTAssertTrue(board.writeObjects([item]))
         var posts = 0
-        let result = await TextInserter.insert("Never paste", pasteboard: board, eventTarget: testTarget,
-            effects: .init(isTargetAvailable: { _ in available.withLock { $0 } },
-                           waitForModifiers: { true }, focusedSecurity: { _ in .regular },
-                           post: { _ in posts += 1; return true }))
+        let result = await TextInserter.insert("Never paste", into: testTarget(), pasteboard: board,
+            effects: .init(waitForModifiers: { true }, post: { _ in posts += 1; return true },
+                           isProcessLive: { _ in available.withLock { $0 } }))
         XCTAssertEqual(provider.reads, 1)
-        XCTAssertEqual(result, .eventUnavailable)
+        XCTAssertEqual(result, .refused(.eventUnavailable))
         XCTAssertEqual(posts, 0)
         XCTAssertEqual(board.pasteboardItems?.first?.data(forType: .init("org.nspasteboard.source")), Data([1]))
     }
@@ -232,13 +224,13 @@ final class DictationClipboardInsertionTests: XCTestCase {
         board.setString("Original", forType: .string)
         var posts = 0
         let result = await TextInserter.insert(
-            "Late contender", pasteboard: board, eventTarget: testTarget,
-            effects: .init(isTargetAvailable: { _ in true }, waitForModifiers: {
+            "Late contender", into: testTarget(), pasteboard: board,
+            effects: .init(waitForModifiers: {
                 let first = await self.insert("First posted", on: board) { posts += 1; return true }
-                XCTAssertEqual(first, .inserted)
+                XCTAssertEqual(first, .dispatched)
                 return true
-            }, focusedSecurity: { _ in .regular }, post: { _ in posts += 1; return true }))
-        XCTAssertEqual(result, .clipboardUnavailable)
+            }, post: { _ in posts += 1; return true }))
+        XCTAssertEqual(result, .refused(.clipboardUnavailable))
         XCTAssertEqual(posts, 1)
         XCTAssertEqual(board.string(forType: .string), "First posted")
         try await waitForString("Original", on: board)
@@ -246,14 +238,16 @@ final class DictationClipboardInsertionTests: XCTestCase {
 
     private func insert(
         _ text: String, on board: NSPasteboard, post: @escaping @MainActor () -> Bool
-    ) async -> TextInserter.InsertionResult {
-        await TextInserter.insert(text, pasteboard: board, eventTarget: testTarget,
-            effects: .init(isTargetAvailable: { _ in true }, waitForModifiers: { true },
-                           focusedSecurity: { _ in .regular }, post: { _ in post() }))
+    ) async -> DictationDeliveryOutcome {
+        await TextInserter.insert(text, into: testTarget(), pasteboard: board,
+            effects: .init(waitForModifiers: { true }, post: { _ in post() }))
     }
 
-    private var testTarget: TextInserter.EventTarget {
-        .process(ProcessInfo.processInfo.processIdentifier)
+    /// The test process is a live, positive PID; refusal comes only from `validate`.
+    private func testTarget(
+        validate: @escaping () -> DictationDeliveryOutcome.Refusal? = { nil }
+    ) -> TextInserter.Target {
+        TextInserter.Target(processID: ProcessInfo.processInfo.processIdentifier, validate: validate)
     }
 
     private func makeBoard() -> NSPasteboard {

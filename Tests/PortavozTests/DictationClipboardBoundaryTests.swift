@@ -1,54 +1,53 @@
 import AppKit
+import PortavozCore
 import XCTest
 
 @testable import portavoz_app
 
 @MainActor
 final class DictationClipboardBoundaryTests: XCTestCase {
-    func testOrderedItemAndRepresentationLimitsAreInclusive() async {
-        for (count, extraType, accepted) in [(16, false, true), (17, false, false), (16, true, false)] {
+    func testOpaqueItemsOfAnyTypeAreCapturedInOrderUpToTheItemLimit() async {
+        let limit = PasteboardSnapshot.maximumItems
+        for count in [2, limit, limit + 1] {
             let board = makeBoard()
             defer { board.releaseGlobally() }
+            // Private and legacy types are retained as bytes, not allow-listed.
             let types: [NSPasteboard.PasteboardType] = [
-                .string, .init("public.utf16-plain-text"), .init("public.utf16-external-plain-text"),
-                .init("org.nspasteboard.source")
+                .string, .init("com.apple.webarchive"), .init("org.chromium.source-url"), .init("dyn.ah62d4rv4gu8y")
             ]
             let items = (0..<count).map { index in
                 let item = NSPasteboardItem()
-                for type in types { item.setData(Data([UInt8(index)]), forType: type) }
-                if extraType && index == 0 { item.setData(Data([1]), forType: .font) }
+                for type in types { item.setData(Data([UInt8(index % 256)]), forType: type) }
                 return item
             }
             XCTAssertTrue(board.writeObjects(items))
-            XCTAssertEqual(board.pasteboardItems?.reduce(0) { $0 + $1.types.count }, count * 4 + (extraType ? 1 : 0))
             let generation = board.changeCount
             let snapshot = PasteboardSnapshot(of: board)
-            XCTAssertEqual(snapshot != nil, accepted, "items=\(count), extra representation=\(extraType)")
+            XCTAssertEqual(snapshot != nil, count <= limit, "items=\(count)")
             XCTAssertEqual(board.changeCount, generation)
             if let snapshot {
                 XCTAssertTrue(snapshot.restore(to: board))
                 XCTAssertEqual(board.pasteboardItems?.count, count)
                 for (index, item) in (board.pasteboardItems ?? []).enumerated() {
-                    XCTAssertEqual(item.data(forType: .init("org.nspasteboard.source")), Data([UInt8(index)]))
+                    XCTAssertEqual(item.data(forType: .init("com.apple.webarchive")), Data([UInt8(index % 256)]))
                 }
             }
         }
     }
 
-    func testRetainedByteLimitsAcceptTheBoundaryAndRefuseTheNextByte() async {
-        let cap = PasteboardSnapshot.maximumRepresentationBytes
-        for sizes in [[cap], [cap + 1], [cap, cap], [cap, cap, 1]] {
+    func testRetainedByteBoundAcceptsTheBoundaryAndRefusesTheNextByte() async {
+        let cap = PasteboardSnapshot.maximumRetainedBytes
+        for sizes in [[cap], [cap + 1], [cap / 2, cap / 2], [cap / 2, cap / 2, 1]] {
             let board = makeBoard()
             defer { board.releaseGlobally() }
             let items = sizes.map { size in
                 let item = NSPasteboardItem()
-                item.setData(Data(repeating: 0x41, count: size), forType: .init("org.nspasteboard.source"))
+                item.setData(Data(repeating: 0x41, count: size), forType: .init("public.tiff"))
                 return item
             }
             XCTAssertTrue(board.writeObjects(items))
             let generation = board.changeCount
-            let accepted = sizes.allSatisfy { $0 <= cap }
-                && sizes.reduce(0, +) <= PasteboardSnapshot.maximumRetainedBytes
+            let accepted = sizes.reduce(0, +) <= cap
             XCTAssertEqual(PasteboardSnapshot(of: board) != nil, accepted, "sizes=\(sizes)")
             XCTAssertEqual(board.changeCount, generation)
         }
@@ -103,8 +102,8 @@ final class DictationClipboardBoundaryTests: XCTestCase {
                     let dependencies = DictationUITestFixture.dependencies(fixture: fixture, beginCapture: { {} }, environment: [
                         DictationNativeUITestFixture.environmentKey: name
                     ])
-                    let outcome = await dependencies.insert("Must not touch real data")
-                    XCTAssertEqual(outcome, fixture?.exerciseClipboard == true ? .clipboardUnavailable : .focusUnavailable)
+                    let outcome = await dependencies.captureDestination().insert("Must not touch real data")
+                    XCTAssertEqual(outcome, .refused(fixture?.exerciseClipboard == true ? .clipboardUnavailable : .focusUnavailable))
                 }
             }
         }

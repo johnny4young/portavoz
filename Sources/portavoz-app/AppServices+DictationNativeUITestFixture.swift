@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import Observation
 
 /// The real inserter must run in the app's process, not XCTest's sandboxed
@@ -9,25 +10,55 @@ import Observation
 final class DictationNativeUITestFixture {
     static let pasteboardPrefix = "app.portavoz.dictation-test."
     static let environmentKey = "PORTAVOZ_UI_TEST_DICTATION_PASTEBOARD"
+    static let controlEnvironmentKey = "PORTAVOZ_UI_TEST_DICTATION_CONTROL_PASTEBOARD"
+    private static let outputText = "Don't delete — no borres: café, C++, 1.250,50 €."
     private let pasteboardName: String
+    private let runsController: Bool
+    private let controlPasteboardName: String?
     private(set) var status = "idle"
     @ObservationIgnored private var task: Task<Void, Never>?
 
     init?(arguments: [String], environment: [String: String], usesTemporaryStore: Bool) {
         guard usesTemporaryStore, arguments.contains("-seed-dictation-native"),
-              let name = environment[Self.environmentKey], name.hasPrefix(Self.pasteboardPrefix),
-              UUID(uuidString: String(name.dropFirst(Self.pasteboardPrefix.count))) != nil
+              let name = Self.validPasteboardName(environment[Self.environmentKey])
         else { return nil }
+        runsController = arguments.contains("-seed-dictation-native-controller")
+        controlPasteboardName = Self.validPasteboardName(environment[Self.controlEnvironmentKey])
+        guard !runsController || (arguments.contains("-seed-dictation")
+            && arguments.contains("-seed-dictation-english")
+            && controlPasteboardName != nil && controlPasteboardName != name) else { return nil }
         pasteboardName = name
     }
 
-    func start() {
-        guard task == nil else { return }
-        status = "waiting-for-receiver"
-        task = Task { [weak self] in await self?.deliverOnce() }
+    static func validPasteboardName(_ name: String?) -> String? {
+        guard let name, name.hasPrefix(pasteboardPrefix),
+              UUID(uuidString: String(name.dropFirst(pasteboardPrefix.count))) != nil else { return nil }
+        return name
     }
 
-    private func deliverOnce() async {
+    func start(
+        controller: DictationController? = nil, dependencies: DictationSessionDependencies? = nil,
+        postingPreflight: () -> Bool = { CGPreflightPostEventAccess() }
+    ) {
+        guard task == nil else { return }
+        guard !runsController || (controller != nil && dependencies != nil) else {
+            status = "controller-required"
+            return
+        }
+        // AX inspection and event synthesis have separate public preflights.
+        // A constructed CGEvent is not proof that macOS will deliver it. This
+        // fixture diagnoses denied posting without requesting or granting it.
+        guard postingPreflight() else {
+            status = "event-posting-required-for-app"
+            return
+        }
+        status = "waiting-for-receiver"
+        task = Task { [weak self, weak controller] in
+            await self?.deliverOnce(controller: controller, dependencies: dependencies)
+        }
+    }
+
+    private func deliverOnce(controller: DictationController?, dependencies: DictationSessionDependencies?) async {
         // Arming precedes the receiver's launch, so readiness is timed from its arrival.
         var deadline = ContinuousClock.now.advanced(by: .seconds(20))
         var receiverSeen = false
@@ -42,20 +73,49 @@ final class DictationNativeUITestFixture {
                     status = "accessibility-required-for-app"
                     return
                 }
-                // Launch can precede first-responder installation. Read-only
-                // readiness may repeat; the insertion itself never does.
-                let target = TextInserter.EventTarget.process(receiver.processIdentifier)
-                if TextInserter.focusedFieldSecurity(in: target) == .regular {
+                // A regular focused window/button can retry but cannot provide
+                // the known receiver's text metadata. Probe before the one paste.
+                if receiverHasReadableSelection(receiver) {
                     let board = NSPasteboard(name: .init(pasteboardName))
-                    let result = await TextInserter.insert(
-                        "Don't delete — no borres: café, C++, 1.250,50 €.", pasteboard: board,
-                        eventTarget: target)
-                    status = String(describing: result)
-                    return
+                    let destination = TextInserter.captureDestination(pasteboard: board, matching: receiver)
+                    if destination.canRetry {
+                        if runsController {
+                            guard let controller, var dependencies, let controlPasteboardName else {
+                                status = "controller-required"
+                                return
+                            }
+                            // The controller still captures its destination at admission.
+                            // The earlier capture witnesses only receiver readiness.
+                            dependencies.canInsert = { TextInserter.canInsert(promptIfNeeded: false) }
+                            dependencies.captureDestination = {
+                                TextInserter.captureDestination(pasteboard: board, matching: receiver)
+                            }
+                            dependencies.copyText = { TextInserter.copy($0, to: board) }
+                            status = "controller-listening"
+                            status = await DictationNativeControllerUITestFixture.run(
+                                controller: controller, dependencies: dependencies,
+                                stopRequested: {
+                                    NSPasteboard(name: .init(controlPasteboardName)).string(forType: .string) == "stop"
+                                })
+                        } else {
+                            let result = await destination.insert(Self.outputText)
+                            status = String(describing: result)
+                        }
+                        return
+                    }
                 }
             }
             do { try await Task.sleep(for: .milliseconds(50)) } catch { return }
         }
         status = receiverSeen ? "receiver-focus-unavailable" : "receiver-unavailable"
+    }
+
+    private func receiverHasReadableSelection(_ receiver: NSRunningApplication) -> Bool {
+        let owner = AXUIElementCreateApplication(receiver.processIdentifier)
+        guard AXUIElementSetMessagingTimeout(owner, 0.1) == .success,
+              let element = TextInserter.focusedElement(in: owner),
+              TextInserter.fieldSecurity(of: element) == .regular,
+              let readback = DictationTextReadback.accessibility(element) else { return false }
+        return readback.baseline(for: Self.outputText) != nil
     }
 }

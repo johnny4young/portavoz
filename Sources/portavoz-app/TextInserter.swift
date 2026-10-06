@@ -1,8 +1,9 @@
 import AppKit
 import ApplicationServices
 import Carbon.HIToolbox
+import PortavozCore
 
-/// Inserts dictated text into whatever app is frontmost: paste-and-restore
+/// Inserts dictated text into a captured destination: paste-and-restore
 /// (the reliable industry pattern — synthetic per-character typing breaks
 /// with non-ASCII and secure fields). The synthetic ⌘V needs macOS's
 /// Accessibility permission; `canInsert` checks it and (optionally)
@@ -14,33 +15,6 @@ enum TextInserter {
         fileprivate init(typeID: CFTypeID) {
             self.typeID = typeID
         }
-    }
-
-    /// Native fixtures route real keyboard events to their disposable receiver
-    /// so a focus race cannot send a paste shortcut to an unrelated application.
-    /// Production keeps session routing; this seam does not qualify that routing.
-    enum EventTarget {
-        case session
-        case process(pid_t)
-
-        /// A process target must still name a running application; anything else fails closed.
-        @MainActor
-        var isAvailable: Bool {
-            guard case .process(let processID) = self else { return true }
-            guard processID > 0, let application = NSRunningApplication(processIdentifier: processID)
-            else { return false }
-            return !application.isTerminated
-        }
-    }
-
-    enum InsertionResult: Equatable {
-        case inserted
-        case secureField
-        case focusUnavailable
-        case modifiersStillPressed
-        case clipboardUnavailable
-        case eventUnavailable
-        case cancelled
     }
 
     enum FocusedFieldSecurity: Equatable {
@@ -64,26 +38,31 @@ enum TextInserter {
     /// contents instead of the dictation.
     static let restoreDelay: Duration = .milliseconds(1500)
 
-    /// Security classification for the element that would receive the paste.
-    /// Any failed or malformed AX inspection is unavailable, not regular: a
-    /// privacy boundary must fail closed when macOS cannot prove the target.
-    /// A process target is inspected in that application, not wherever focus is.
+    /// Explicit recovery Copy is a user-initiated Copy command, not a paste:
+    /// like any Copy it replaces whatever the clipboard held, including several
+    /// items, without reading, snapshotting or restoring the previous contents.
     @MainActor
-    static func focusedFieldSecurity(in target: EventTarget = .session) -> FocusedFieldSecurity {
-        guard AXIsProcessTrusted() else { return .unavailable }
-        let root = switch target {
-        case .session: AXUIElementCreateSystemWide()
-        case .process(let processID): AXUIElementCreateApplication(processID)
-        }
+    static func copy(
+        _ text: String, to pasteboard: NSPasteboard = .general,
+        writeString: (NSPasteboard, String) -> Bool = { $0.setString($1, forType: .string) }
+    ) -> Bool {
+        guard !text.isEmpty else { return false }
+        pasteboard.declareTypes([.string], owner: nil)
+        return writeString(pasteboard, text)
+    }
+
+    @MainActor
+    static func focusedElement(in owner: AXUIElement) -> AXUIElement? {
         var focused: CFTypeRef?
-        let status = AXUIElementCopyAttributeValue(
-            root, kAXFocusedUIElementAttribute as CFString, &focused)
-        guard status == .success, let focused,
-            CFGetTypeID(focused) == AXUIElementGetTypeID()
-        else { return .unavailable }
-        // The cast through CFTypeRef is the sanctioned bridge for AX values.
-        // swiftlint:disable:next force_cast
-        let element = focused as! AXUIElement
+        let status = AXUIElementCopyAttributeValue(owner, kAXFocusedUIElementAttribute as CFString, &focused)
+        guard status == .success, let focused else { return nil }
+        guard let element = checkedCFValue(focused, as: .accessibilityElement),
+              AXUIElementSetMessagingTimeout(element, 0.1) == .success else { return nil }
+        return element
+    }
+
+    @MainActor
+    static func fieldSecurity(of element: AXUIElement) -> FocusedFieldSecurity {
         var role: CFTypeRef?
         let roleStatus = AXUIElementCopyAttributeValue(
             element, kAXRoleAttribute as CFString, &role)
@@ -122,66 +101,112 @@ enum TextInserter {
         return role == secure || subrole == secure
     }
 
-    /// Platform calls only; tests still execute the production clipboard path.
-    @MainActor
-    struct Effects {
-        var isTargetAvailable: (EventTarget) -> Bool
-        var waitForModifiers: () async -> Bool
-        var focusedSecurity: (EventTarget) -> FocusedFieldSecurity
-        var post: (EventTarget) -> Bool
-
-        static var live: Self {
-            Self(isTargetAvailable: { $0.isAvailable },
-                 waitForModifiers: TextInserter.waitForModifierRelease,
-                 focusedSecurity: TextInserter.focusedFieldSecurity,
-                 post: TextInserter.postCommandV)
-        }
-    }
-
-    /// Pastes `text` into the frontmost app, then restores the previous
-    /// clipboard contents after the paste has landed. Waits for the physical
+    /// Dispatches `text` only to the captured process. Event dispatch is not
+    /// acknowledgement that an external editor applied the edit. Waits for the physical
     /// hotkey modifiers to be released first, so the synthesized ⌘V cannot
     /// combine with a still-held ⌥/⇧/⌃ into a different app shortcut.
     @MainActor
     static func insert(
-        _ text: String, pasteboard: NSPasteboard = .general, eventTarget: EventTarget = .session,
+        _ text: String, into target: Target, pasteboard: NSPasteboard = .general,
         effects: Effects = .live, clipboard: DictationClipboard = .shared
-    ) async -> InsertionResult {
-        guard effects.isTargetAvailable(eventTarget) else { return .eventUnavailable }
-        guard await clipboard.waitForRestoration(on: pasteboard) else { return .cancelled }
+    ) async -> DictationDeliveryOutcome {
+        guard !text.isEmpty else { return .refused(.emptyText) }
+        guard target.processID > 0, effects.isProcessLive(target.processID) else {
+            return .refused(.eventUnavailable)
+        }
+        // A posted event may not have read the clipboard yet. Do not replace it
+        // for this dictation until the earlier restoration window has ended.
+        guard await clipboard.waitForRestoration(on: pasteboard) else { return .refused(.cancelled) }
+        if let failure = await failureAfterModifiers(to: target, effects: effects) { return .refused(failure) }
+
+        let baseline = target.readback?.baseline(for: text)
+        guard !Task.isCancelled else { return .refused(.cancelled) }
+        // AX can service a new clipboard owner. Borrow after that inspection,
+        // so refusing this attempt restores the latest owner. A clipboard that
+        // cannot be captured completely is never replaced: the refusal keeps
+        // the output in recovery and leaves the clipboard untouched.
+        guard let loan = clipboard.borrow(text, on: pasteboard) else {
+            return .refused(Task.isCancelled ? .cancelled : .clipboardUnavailable)
+        }
+
+        if let failure = failureBeforePosting(to: target, baseline: baseline) {
+            clipboard.restore(loan, on: pasteboard)
+            return .refused(failure)
+        }
+        // AX IPC can let another clipboard owner publish during validation.
+        // Never send that owner's text as if it were this dictation; retiring
+        // the loan never writes over that newer owner.
+        guard clipboard.isCurrent(loan, on: pasteboard) else {
+            clipboard.restore(loan, on: pasteboard)
+            return .refused(.clipboardUnavailable)
+        }
+        guard effects.isProcessLive(target.processID) else {
+            clipboard.restore(loan, on: pasteboard)
+            return .refused(.eventUnavailable)
+        }
+        let posted = target.route == .session ? effects.postToSession() : effects.post(target.processID)
+        guard posted else {
+            clipboard.restore(loan, on: pasteboard)
+            return .refused(.eventUnavailable)
+        }
+
+        clipboard.restoreLater(loan, on: pasteboard, after: restoreDelay)
+        // Beyond post, no observation failure can make retry safe.
+        guard let baseline, let readback = target.readback else { return .dispatched }
+        return await readback.verify(text, from: baseline, target: target) ? .verified : .dispatched
+    }
+
+    @MainActor
+    private static func failureAfterModifiers(
+        to target: Target, effects: Effects
+    ) async -> DictationDeliveryOutcome.Refusal? {
         guard await effects.waitForModifiers() else {
             return Task.isCancelled ? .cancelled : .modifiersStillPressed
         }
         guard !Task.isCancelled else { return .cancelled }
-        guard effects.isTargetAvailable(eventTarget) else { return .eventUnavailable }
-        if let failure = insertionRefusal(effects.focusedSecurity(eventTarget)) { return failure }
-        guard let loan = clipboard.borrow(text, on: pasteboard) else {
-            return Task.isCancelled ? .cancelled : .clipboardUnavailable
-        }
-
-        // Lazy providers and AX IPC can service cancellation, a secure-field
-        // transition or another clipboard writer. Inspect again after capture.
-        let failure = insertionRefusal(effects.focusedSecurity(eventTarget))
-        guard !Task.isCancelled, effects.isTargetAvailable(eventTarget), failure == nil,
-              clipboard.isCurrent(loan, on: pasteboard) else {
-            clipboard.restore(loan, on: pasteboard)
-            if Task.isCancelled { return .cancelled }
-            if !effects.isTargetAvailable(eventTarget) { return .eventUnavailable }
-            return failure ?? .clipboardUnavailable
-        }
-        guard effects.post(eventTarget) else {
-            clipboard.restore(loan, on: pasteboard)
-            return .eventUnavailable
-        }
-        clipboard.restoreLater(loan, on: pasteboard, after: restoreDelay)
-        return .inserted
+        guard effects.isProcessLive(target.processID) else { return .eventUnavailable }
+        let failure = target.validate()
+        return Task.isCancelled ? .cancelled : failure
     }
 
-    private static func insertionRefusal(_ security: FocusedFieldSecurity) -> InsertionResult? {
-        switch security {
-        case .regular: nil
-        case .secure: .secureField
-        case .unavailable: .focusUnavailable
+    @MainActor
+    private static func failureBeforePosting(
+        to target: Target, baseline: DictationTextReadback.Position?
+    ) -> DictationDeliveryOutcome.Refusal? {
+        let failure = target.validate()
+        guard !Task.isCancelled else { return .cancelled }
+        if let failure { return failure }
+        if let baseline {
+            let current = target.readback?.position()
+            guard !Task.isCancelled else { return .cancelled }
+            guard let current, current.isValid else { return .focusUnavailable }
+            guard current == baseline else { return .targetChanged }
+            // Readback is another AX call that can service a focus transition.
+            let finalFailure = target.validate()
+            return Task.isCancelled ? .cancelled : finalFailure
+        }
+        return nil
+    }
+
+    @MainActor
+    struct Effects {
+        var waitForModifiers: () async -> Bool
+        var post: (pid_t) -> Bool
+        var isProcessLive: (pid_t) -> Bool = { _ in true }
+        /// Session-stream paste for `EventRoute.session` targets only.
+        var postToSession: () -> Bool = { false }
+
+        static var live: Self {
+            Self(
+                waitForModifiers: TextInserter.waitForModifierRelease,
+                post: TextInserter.postCommandV,
+                isProcessLive: { processID in
+                    guard processID > 0,
+                          let application = NSRunningApplication(processIdentifier: processID)
+                    else { return false }
+                    return !application.isTerminated
+                },
+                postToSession: TextInserter.postSessionCommandV)
         }
     }
 
@@ -207,7 +232,23 @@ enum TextInserter {
         return false
     }
 
-    private static func postCommandV(to target: EventTarget) -> Bool {
+    private static func postCommandV(to processID: pid_t) -> Bool {
+        guard let (keyDown, keyUp) = commandVEvents() else { return false }
+        keyDown.postToPid(processID)
+        keyUp.postToPid(processID)
+        return true
+    }
+
+    /// The session event stream, exactly as delivery worked before destination
+    /// pinning. Used only for targets whose focused field could not be pinned.
+    private static func postSessionCommandV() -> Bool {
+        guard let (keyDown, keyUp) = commandVEvents() else { return false }
+        keyDown.post(tap: .cghidEventTap)
+        keyUp.post(tap: .cghidEventTap)
+        return true
+    }
+
+    private static func commandVEvents() -> (CGEvent, CGEvent)? {
         let source = CGEventSource(stateID: .combinedSessionState)
         let keyCode = pasteKeyCode()
         guard
@@ -215,18 +256,10 @@ enum TextInserter {
                 keyboardEventSource: source, virtualKey: keyCode, keyDown: true),
             let keyUp = CGEvent(
                 keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
-        else { return false }
+        else { return nil }
         keyDown.flags = .maskCommand
         keyUp.flags = .maskCommand
-        switch target {
-        case .session:
-            keyDown.post(tap: .cghidEventTap)
-            keyUp.post(tap: .cghidEventTap)
-        case .process(let processID):
-            keyDown.postToPid(processID)
-            keyUp.postToPid(processID)
-        }
-        return true
+        return (keyDown, keyUp)
     }
 
     /// The key that produces "v" in the CURRENT layout. Hardcoding the QWERTY
@@ -317,6 +350,12 @@ enum TextInserter {
     ) -> Property? {
         guard let pointer else { return nil }
         let value = Unmanaged<CFTypeRef>.fromOpaque(pointer).takeUnretainedValue()
+        return checkedCFValue(value, as: propertyType)
+    }
+
+    static func checkedCFValue<Property: AnyObject>(
+        _ value: CFTypeRef, as propertyType: BorrowedCFPropertyType<Property>
+    ) -> Property? {
         guard CFGetTypeID(value) == propertyType.typeID else { return nil }
         return value as? Property
     }
@@ -328,4 +367,15 @@ extension TextInserter.BorrowedCFPropertyType where Value == CFString {
 
 extension TextInserter.BorrowedCFPropertyType where Value == CFData {
     static var data: Self { Self(typeID: CFDataGetTypeID()) }
+}
+
+extension TextInserter.BorrowedCFPropertyType where Value == CFNumber {
+    static var number: Self { Self(typeID: CFNumberGetTypeID()) }
+}
+
+extension TextInserter.BorrowedCFPropertyType where Value == AXValue {
+    static var accessibilityValue: Self { Self(typeID: AXValueGetTypeID()) }
+}
+extension TextInserter.BorrowedCFPropertyType where Value == AXUIElement {
+    static var accessibilityElement: Self { Self(typeID: AXUIElementGetTypeID()) }
 }

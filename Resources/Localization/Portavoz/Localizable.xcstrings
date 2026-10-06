@@ -681,6 +681,16 @@
         }
       }
     },
+    "Add application profile…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir perfil de aplicación…"
+          }
+        }
+      }
+    },
     "Add correction…": {
       "localizations": {
         "es": {
@@ -1261,6 +1271,26 @@
         }
       }
     },
+    "Application profiles": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perfiles por aplicación"
+          }
+        }
+      }
+    },
+    "Application profiles could not be read. Dictation uses the default mode until you reset them.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron leer los perfiles de aplicaciones. El dictado usa el modo predeterminado hasta que los restablezcas."
+          }
+        }
+      }
+    },
     "Apply": {
       "localizations": {
         "es": {
@@ -1697,6 +1727,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "La detección automática conserva el idioma de cada persona en reuniones mixtas. Fija un solo idioma únicamente cuando el audio bajo o ruidoso se haya detectado mal."
+          }
+        }
+      }
+    },
+    "Filler filtering and replacements apply only in Clean mode.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El filtro de muletillas y los reemplazos solo se aplican en modo Limpio."
           }
         }
       }
@@ -2381,6 +2421,16 @@
         }
       }
     },
+    "Check the destination before pasting again. Nothing was saved in Portavoz.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa el destino antes de volver a pegar. No se guardó nada en Portavoz."
+          }
+        }
+      }
+    },
     "Check the source before adding anything to your commitments.": {
       "localizations": {
         "es": {
@@ -2561,6 +2611,26 @@
         }
       }
     },
+    "Choose an application for its dictation text mode. Only its bundle identifier is saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige una app para su modo de texto del dictado. Solo se guarda su identificador de bundle."
+          }
+        }
+      }
+    },
+    "Choose an application with a valid bundle identifier. Profiles are limited to 64.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige una app con un identificador de bundle válido. Los perfiles tienen un límite de 64."
+          }
+        }
+      }
+    },
     "Choose an audio file to transcribe, or a .portavoz meeting file": {
       "localizations": {
         "es": {
@@ -2607,6 +2677,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Elige la carpeta donde Portavoz guardará tus grabaciones"
+          }
+        }
+      }
+    },
+    "Clean": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limpio"
           }
         }
       }
@@ -3133,6 +3213,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Convierte el audio a AAC para ahorrar espacio, sin pérdida audible en voz"
+          }
+        }
+      }
+    },
+    "Copied. You can paste the text yourself.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiado. Puedes pegar el texto manualmente."
           }
         }
       }
@@ -3707,6 +3797,16 @@
         }
       }
     },
+    "Couldn't copy. Your text is still here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo copiar. Tu texto sigue aquí."
+          }
+        }
+      }
+    },
     "Couldn’t complete": {
       "localizations": {
         "es": {
@@ -4123,6 +4223,16 @@
         }
       }
     },
+    "Default text mode": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modo de texto predeterminado"
+          }
+        }
+      }
+    },
     "Degraded result": {
       "localizations": {
         "es": {
@@ -4229,6 +4339,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Eliminada %@"
+          }
+        }
+      }
+    },
+    "Delivery didn't complete. Reinsert into the original field, or copy your text.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El envío no se completó. Reinserta en el campo original o copia el texto."
           }
         }
       }
@@ -4369,16 +4489,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Idioma del dictado"
-          }
-        }
-      }
-    },
-    "Dictation left your clipboard unchanged. Copy something else and try again.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El dictado no cambió tu portapapeles. Copia otra cosa y vuelve a intentarlo."
           }
         }
       }
@@ -6619,6 +6729,16 @@
         }
       }
     },
+    "Kept only in memory. Copy it before quitting Portavoz.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo se conserva en memoria. Cópialo antes de cerrar Portavoz."
+          }
+        }
+      }
+    },
     "Key deleted. Apuntador goes back to answering only on-device.": {
       "localizations": {
         "es": {
@@ -6865,6 +6985,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Escuchando… %d s"
+          }
+        }
+      }
+    },
+    "Literal": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Literal"
+          }
+        }
+      }
+    },
+    "Literal keeps recognized words. Clean uses your filler filter and replacements. Neither rewrites.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Literal conserva las palabras reconocidas. Limpio usa tu filtro de muletillas y reemplazos. Ninguno reescribe."
           }
         }
       }
@@ -10189,6 +10329,16 @@
         }
       }
     },
+    "Profiles save bundle IDs, not window titles or web addresses. A session choice takes priority.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los perfiles guardan ID de apps, no títulos de ventanas ni direcciones web. La elección de esta sesión tiene prioridad."
+          }
+        }
+      }
+    },
     "Progress": {
       "localizations": {
         "es": {
@@ -11019,6 +11169,16 @@
         }
       }
     },
+    "Reinsert": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reinsertar"
+          }
+        }
+      }
+    },
     "Reinstall Portavoz to restore its bundled offline question detector.": {
       "localizations": {
         "es": {
@@ -11339,6 +11499,26 @@
         }
       }
     },
+    "Remove": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar"
+          }
+        }
+      }
+    },
+    "Remove application profile": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar perfil de aplicación"
+          }
+        }
+      }
+    },
     "Remove card": {
       "localizations": {
         "es": {
@@ -11529,6 +11709,16 @@
         }
       }
     },
+    "Reset application profiles": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restablecer perfiles de aplicaciones"
+          }
+        }
+      }
+    },
     "Restore": {
       "localizations": {
         "es": {
@@ -11691,6 +11881,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reintentar atajo"
+          }
+        }
+      }
+    },
+    "Return to %@ and the original field to reinsert, or copy your text.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelve a %@ y al campo original para reinsertar, o copia el texto."
           }
         }
       }
@@ -12567,6 +12767,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Envía solo la pregunta detectada, nunca audio ni texto de la reunión."
+          }
+        }
+      }
+    },
+    "Sent — insertion not verified": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviado — inserción sin verificar"
           }
         }
       }
@@ -13871,6 +14081,16 @@
         }
       }
     },
+    "Text mode": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modo de texto"
+          }
+        }
+      }
+    },
     "Text only — audio never enters the package.": {
       "localizations": {
         "es": {
@@ -13887,6 +14107,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reemplazos de texto"
+          }
+        }
+      }
+    },
+    "Text wasn't sent": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El texto no se envió"
           }
         }
       }
@@ -14171,6 +14401,16 @@
         }
       }
     },
+    "The destination changed. Copy your text to keep it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El destino cambió. Copia el texto para conservarlo."
+          }
+        }
+      }
+    },
     "The dictation session ended unexpectedly. Nothing was typed.": {
       "localizations": {
         "es": {
@@ -14377,6 +14617,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "El micrófono envió audio no válido. Revisa el dispositivo de entrada e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "The original field can't be verified. Your text is still available to copy.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede verificar el campo original. Tu texto sigue disponible para copiar."
           }
         }
       }
@@ -17233,6 +17483,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "→ Español"
+          }
+        }
+      }
+    },
+    "Expanded": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expandido"
+          }
+        }
+      }
+    },
+    "Collapsed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contraído"
+          }
+        }
+      }
+    },
+    "The application chooser needs a Settings window. Open Settings and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El selector de aplicaciones necesita una ventana de Ajustes. Abre Ajustes e inténtalo de nuevo."
           }
         }
       }

@@ -17,8 +17,8 @@ final class DictationControllerTests: XCTestCase {
         let originalCount = board.changeCount
         for processID: pid_t in [0, -1, .min] {
             let result = await TextInserter.insert(
-                "Must never be delivered", pasteboard: board, eventTarget: .process(processID))
-            XCTAssertEqual(result, .eventUnavailable)
+                "Must never be delivered", into: .init(processID: processID, validate: { nil }), pasteboard: board)
+            XCTAssertEqual(result, .refused(.eventUnavailable))
             XCTAssertEqual(board.changeCount, originalCount)
             XCTAssertEqual(board.string(forType: .string), "Do not replace — no reemplazar")
         }
@@ -33,10 +33,9 @@ final class DictationControllerTests: XCTestCase {
         exited.executableURL = URL(fileURLWithPath: "/usr/bin/true")
         try exited.run()
         exited.waitUntilExit()
-        let target = TextInserter.EventTarget.process(exited.processIdentifier)
-        XCTAssertFalse(target.isAvailable)
-        let result = await TextInserter.insert("Must never be delivered", pasteboard: board, eventTarget: target)
-        XCTAssertEqual(result, .eventUnavailable)
+        let target = TextInserter.Target(processID: exited.processIdentifier, validate: { nil })
+        let result = await TextInserter.insert("Must never be delivered", into: target, pasteboard: board)
+        XCTAssertEqual(result, .refused(.eventUnavailable))
         XCTAssertEqual(board.changeCount, originalCount)
         XCTAssertEqual(board.string(forType: .string), "original")
     }
@@ -60,39 +59,35 @@ final class DictationControllerTests: XCTestCase {
         }
     }
 
-    func testClipboardRefusalReachesControllerFailureWithoutDispatching() async {
+    func testUncapturableClipboardKeepsTextInRecoveryWithoutDispatching() async {
         for text in ["Don't delete these notes.", "No borres estas notas."] {
             let harness = DictationControllerHarness(text: text)
             let board = NSPasteboard(name: .init("app.portavoz.clipboard-controller." + UUID().uuidString))
             defer { harness.controller.cancel(); board.releaseGlobally() }
+            // A representation that cannot be read cannot be restored, so the
+            // clipboard is not borrowed; the output stays in recovery instead.
             let item = NSPasteboardItem()
             item.setString("Private original", forType: .string)
-            item.setData(Data(), forType: DictationClipboard.concealed)
+            item.setDataProvider(UnreadableClipboardProvider(), forTypes: [.rtf])
             board.writeObjects([item])
             let generation = board.changeCount
             var posts = 0
             var dependencies = harness.dependencies
-            dependencies.insert = { output in
-                await TextInserter.insert(
-                    output, pasteboard: board,
-                    eventTarget: .process(ProcessInfo.processInfo.processIdentifier),
-                    effects: .init(isTargetAvailable: { _ in true }, waitForModifiers: { true },
-                                   focusedSecurity: { _ in .regular }, post: { _ in
-                        posts += 1
-                        return false
-                    }))
+            dependencies.captureDestination = {
+                let target = TextInserter.Target(processID: ProcessInfo.processInfo.processIdentifier, validate: { nil })
+                return CapturedDictationDestination(name: "Clipboard fixture", canRetry: true) { output in
+                    await TextInserter.insert(output, into: target, pasteboard: board,
+                        effects: .init(waitForModifiers: { true }, post: { _ in posts += 1; return false }))
+                }
             }
             harness.controller.toggle(using: dependencies)
             let listening = await awaitEventually { harness.controller.partialText == text }
             XCTAssertTrue(listening)
             harness.now = harness.now.addingTimeInterval(1)
             harness.controller.toggle(using: dependencies)
-            let finished = await awaitEventually { harness.finishes == 1 }
-            XCTAssertTrue(finished)
-            guard case .failed(let reason) = harness.controller.phase else {
-                return XCTFail("Real clipboard refusal must not claim insertion")
-            }
-            XCTAssertEqual(reason, L10n.text("Dictation left your clipboard unchanged. Copy something else and try again."))
+            let refused = await awaitEventually { harness.controller.phase == .recovery(.clipboardUnavailable) }
+            XCTAssertTrue(refused, "An uncapturable clipboard must not claim insertion or lose the text")
+            XCTAssertEqual(harness.controller.recoveryText, text)
             XCTAssertEqual(posts, 0)
             XCTAssertEqual(board.changeCount, generation)
             XCTAssertEqual(board.string(forType: .string), "Private original")
@@ -335,11 +330,19 @@ final class DictationControllerTests: XCTestCase {
             harness.controller.cancel()
         }
         var dependencies = harness.dependencies
-        let insert = dependencies.insert
-        dependencies.insert = { text in
-            let result = await insert(text)
-            await delivery.wait()
-            return result
+        let captureDestination = dependencies.captureDestination
+        var captures = 0
+        dependencies.captureDestination = {
+            captures += 1
+            let destination = captureDestination()
+            return CapturedDictationDestination(
+                name: destination.name,
+                canRetry: destination.canRetry,
+                insert: { text in
+                    let result = await destination.insert(text)
+                    await delivery.wait()
+                    return result
+                })
         }
         harness.controller.toggle(using: dependencies)
         let partial = await awaitEventually { harness.controller.partialText == harness.text }
@@ -354,7 +357,8 @@ final class DictationControllerTests: XCTestCase {
         let finished = await awaitEventually { harness.finishes == 1 }
         XCTAssertTrue(finished)
         XCTAssertEqual(harness.insertions, [harness.text], "Do not repeat delivery")
-        XCTAssertEqual(harness.controller.phase, .inserted(harness.text.split(whereSeparator: \.isWhitespace).count),
+        XCTAssertEqual(captures, 1, "A late report must not recapture a destination")
+        XCTAssertEqual(harness.controller.phase, .dispatched(harness.text.split(whereSeparator: \.isWhitespace).count),
                        "A late notification cannot revoke dispatched feedback")
     }
 
@@ -433,6 +437,35 @@ final class DictationControllerTests: XCTestCase {
             arguments: ["-seed-dictation"], usesTemporaryStore: true)?.captureFailure, false)
     }
 
+    func testRecoveryFixtureCannotCopyWithoutExplicitAdmissionAndNamedBoard() async {
+        let flags = ["-seed-dictation", "-seed-dictation-recovery"]
+        let key = DictationNativeUITestFixture.environmentKey
+        let board = NSPasteboard(name: .init(DictationNativeUITestFixture.pasteboardPrefix + UUID().uuidString))
+        defer { board.releaseGlobally() }
+        board.setString("Original", forType: .string)
+        for temporary in [false, true] {
+            for arguments in [[], ["-seed-dictation"], ["-seed-dictation-recovery"], flags] {
+                let fixture = DictationUITestFixture(arguments: arguments, usesTemporaryStore: temporary)
+                let dependencies = DictationUITestFixture.dependencies(
+                    fixture: fixture, beginCapture: { {} }, environment: [key: board.name.rawValue])
+                let expectedCopy = temporary && arguments == flags
+                let destination = dependencies.captureDestination()
+                let delivery = await destination.insert("No native events")
+                XCTAssertEqual(delivery, .refused(expectedCopy ? .targetChanged : .focusUnavailable))
+                XCTAssertFalse(dependencies.copyText("Never copied on the first attempt"))
+                XCTAssertEqual(dependencies.copyText("Consented scratch copy"), expectedCopy)
+                board.setString("Original", forType: .string)
+            }
+        }
+        let fixture = DictationUITestFixture(arguments: flags, usesTemporaryStore: true)
+        for invalid in ["", "NSGeneralPboard", DictationNativeUITestFixture.pasteboardPrefix + "invalid"] {
+            let dependencies = DictationUITestFixture.dependencies(fixture: fixture, beginCapture: { {} }, environment: [key: invalid])
+            XCTAssertFalse(dependencies.copyText("First"))
+            XCTAssertFalse(dependencies.copyText("Second"))
+        }
+        XCTAssertEqual(board.string(forType: .string), "Original")
+    }
+
     func awaitEventually(_ condition: @escaping @MainActor () -> Bool) async -> Bool {
         let deadline = ContinuousClock.now.advanced(by: .seconds(3))
         while !condition(), ContinuousClock.now < deadline {
@@ -488,6 +521,20 @@ final class DictationControllerHarness {
         defaults.setVolatileDomain(values, forName: UserDefaults.argumentDomain)
     }
 
+    func verifyingDelivery(using receiver: TextReadbackHarness) -> DictationSessionDependencies {
+        var result = dependencies
+        result.captureDestination = { [weak self] in
+            CapturedDictationDestination(name: "Readback fixture", canRetry: true) { [weak self] text in
+                guard let self else { return .refused(.cancelled) }
+                let postedBefore = receiver.posts
+                let outcome = await receiver.insert(text)
+                if receiver.posts > postedBefore { self.insertions.append(text) }
+                return outcome
+            }
+        }
+        return result
+    }
+
     var dependencies: DictationSessionDependencies {
         DictationSessionDependencies(
             authorizeMicrophone: { true },
@@ -503,11 +550,14 @@ final class DictationControllerHarness {
                     self?.finishes += 1
                 }
             },
-            canInsert: { true }, targetName: { "Disposable receiver" },
-            insert: { [weak self] text in
-                self?.insertions.append(text)
-                return .inserted
+            canInsert: { true },
+            captureDestination: { [weak self] in
+                CapturedDictationDestination(name: "Disposable receiver", canRetry: true) { [weak self] text in
+                    self?.insertions.append(text)
+                    return .dispatched
+                }
             },
+            copyText: { _ in false },
             defaults: defaults, now: { [weak self] in self?.now ?? .distantPast },
             beginCapture: { {} },
             measurementSink: { [weak self] in self?.measurements.append($0) })
@@ -633,4 +683,10 @@ final class PreparationGate {
         continuation?.resume()
         continuation = nil
     }
+}
+
+/// Advertises a representation it never supplies, like a provider that failed.
+private final class UnreadableClipboardProvider: NSObject, NSPasteboardItemDataProvider {
+    func pasteboard(_ pasteboard: NSPasteboard?, item: NSPasteboardItem,
+                    provideDataForType type: NSPasteboard.PasteboardType) {}
 }

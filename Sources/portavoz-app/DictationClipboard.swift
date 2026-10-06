@@ -29,8 +29,17 @@ final class DictationClipboard {
 
     /// A posted event may not have read the clipboard yet. Do not replace it
     /// for another dictation until its existing restoration window has ended.
+    /// The wait is bounded: a restoration that could not run within its own
+    /// window plus a margin retires its loan without writing, so dictation can
+    /// never hang behind it.
     func waitForRestoration(on pasteboard: NSPasteboard) async -> Bool {
+        let deadline = ContinuousClock.now.advanced(by: TextInserter.restoreDelay + .seconds(2))
         while states[pasteboard.name]?.restoration != nil {
+            guard ContinuousClock.now < deadline else {
+                Self.logger.error("Clipboard restoration did not complete; its loan was retired without writing.")
+                retire(pasteboard.name)
+                break
+            }
             do { try await Task.sleep(for: .milliseconds(25)) } catch { return false }
         }
         return !Task.isCancelled
@@ -70,6 +79,11 @@ final class DictationClipboard {
               states[loan.name]?.restoration == nil else { return }
         states[loan.name]?.restoration = Task { [weak self] in
             do { try await Task.sleep(for: delay) } catch { return }
+            // Never skip a deferred restore because another synchronous
+            // mutation is in progress: yield until it ends, then restore.
+            while self?.isMutating == true {
+                do { try await Task.sleep(for: .milliseconds(10)) } catch { return }
+            }
             self?.restore(loan, on: pasteboard)
         }
     }

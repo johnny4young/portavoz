@@ -2,11 +2,12 @@ import AppKit
 
 /// Owned bytes, not server-bound NSPasteboardItems: those become stale as soon
 /// as the clipboard changes. Capture is all-or-nothing across ordered items.
+/// Every advertised representation is retained as opaque bytes, whatever its
+/// type (public, private or legacy), within one bound on retained bytes.
 struct PasteboardSnapshot {
-    static let maximumItems = 16
-    static let maximumRepresentations = 64
-    static let maximumRepresentationBytes = 4 * 1_024 * 1_024
-    static let maximumRetainedBytes = 8 * 1_024 * 1_024
+    static let maximumItems = 256
+    static let maximumRepresentations = 1_024
+    static let maximumRetainedBytes = 32 * 1_024 * 1_024
 
     private struct Representation {
         let type: NSPasteboard.PasteboardType
@@ -16,15 +17,9 @@ struct PasteboardSnapshot {
     private let items: [[Representation]]
     let changeCount: Int
 
-    // No arbitrary conversion services, promised-file dereferencing or keyed
-    // object decoding. Unknown formats keep the clipboard untouched.
-    private static let supportedTypes: Set<NSPasteboard.PasteboardType> = [
-        .string, .rtf, .rtfd, .html, .png, .tiff, .pdf, .URL, .fileURL,
-        .font, .ruler, .color,
-        .init("public.utf16-plain-text"), .init("public.utf16-external-plain-text"),
-        .init("org.nspasteboard.source")
-    ]
-
+    /// Nil when the clipboard cannot be preserved completely: a representation
+    /// is unreadable, the retained bytes would exceed the bound, or another
+    /// owner published during capture. Callers then leave the clipboard alone.
     init?(of pasteboard: NSPasteboard) {
         let generation = pasteboard.changeCount
         guard let source = pasteboard.pasteboardItems else {
@@ -39,7 +34,7 @@ struct PasteboardSnapshot {
         var representationCount = 0
         for types in advertisedTypes {
             guard !types.isEmpty, types.count <= Self.maximumRepresentations - representationCount,
-                  types.allSatisfy(Self.supportedTypes.contains), Set(types).count == types.count else { return nil }
+                  Set(types).count == types.count else { return nil }
             representationCount += types.count
         }
         guard pasteboard.changeCount == generation else { return nil }
@@ -48,10 +43,9 @@ struct PasteboardSnapshot {
         for (item, types) in zip(source, advertisedTypes) {
             var values: [Representation] = []
             for type in types {
-                // AppKit has no size-limited read. These are retained-byte
-                // bounds, not a promise about a provider's peak allocation.
+                // AppKit has no size-limited read. This bounds retained bytes,
+                // not a provider's peak allocation or latency.
                 guard let data = item.data(forType: type), pasteboard.changeCount == generation,
-                      data.count <= Self.maximumRepresentationBytes,
                       data.count <= Self.maximumRetainedBytes - retainedBytes else { return nil }
                 retainedBytes += data.count
                 values.append(Representation(type: type, data: data))
