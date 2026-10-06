@@ -181,7 +181,7 @@ final class DictationUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
         enterDestinationRecovery(app)
-        let text = app.staticTexts["dictation-recovery-text"]
+        let text = app.descendants(matching: .any)["dictation-recovery-text"]
         XCTAssertTrue(renderedText(of: text).contains(recoveryFixtureText))
         let status = app.staticTexts["dictation-recovery-copy-status"]
         let initial = renderedText(of: status)
@@ -214,7 +214,7 @@ final class DictationUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
         enterDestinationRecovery(app)
-        let text = app.staticTexts["dictation-recovery-text"]
+        let text = app.descendants(matching: .any)["dictation-recovery-text"]
         let original = renderedText(of: text)
         let originalFrame = app.dialogs["dictation-panel"].frame
         let dictate = app.buttons["menu-bar-dictate"]

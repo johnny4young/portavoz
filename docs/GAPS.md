@@ -44,10 +44,11 @@ editor transaction: `.inserted` still denotes dispatched events rather than a
 verified external edit. Recovery is RAM-only; quitting does not preserve the
 output. This recovery covers final text after completed recognition, not an
 incomplete capture/model failure: those failures still have no supported Copy
-or durable recovery of admitted partial captions. Recovery Copy currently
-refuses multiple clipboard items rather than risking a lossy rollback, and
-keeps the full dictation available. Ordered clipboard preservation and snapshot
-size/materialization remain independent limitations. Model quality,
+or durable recovery of admitted partial captions. Recovery Copy is an explicit Copy that replaces the
+clipboard (including multiple items); the excerpt stays selectable. Ordered
+clipboard preservation for the paste path and snapshot size/materialization
+remain independent limitations. Applications without a pinnable focused field
+use the previous session-stream delivery and checks, not field pinning. Model quality,
 Bluetooth transitions and the external-editor
 matrix require separate evidence; a synthetic caption fixture cannot establish
 those results. Missing Accessibility permission makes the separately selected

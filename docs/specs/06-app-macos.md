@@ -2827,8 +2827,13 @@ held modifiers, missing trust, secure/uninspectable focus and a changed original
 target all refuse delivery. It validates before borrowing the clipboard and
 again after writing, immediately before constructing/posting the event pair;
 cancellation is checked after each synchronous inspection. It then posts only
-to the captured positive PID, never to the session stream, and never activates
-or refocuses an application. If final inspection serviced a new clipboard owner,
+to the captured positive PID and never activates or refocuses an application.
+An application that exposes no focused AX element at capture (some Electron,
+Java and remote-desktop clients) cannot be pinned. Rather than refusing where
+the previous delivery worked, its destination keeps that contract: the same
+application must still be frontmost, the system-wide focused field must be
+inspectable and not secure at delivery, and the shortcut uses the session event
+stream. A fixture that names its receiver still waits for a pinnable field. If final inspection serviced a new clipboard owner,
 no event is posted and that owner's content is not restored over.
 
 The existing layout-aware shortcut and captured rich clipboard representations
@@ -2844,14 +2849,11 @@ A refused insertion releases capture resources and leaves the complete processed
 output in controller-owned RAM. The persistent recovery panel displays an
 excerpt and three individually identified actions: Copy, Reinsert and Discard.
 Copy writes the complete output, reports failure without erasing it, and does
-not close recovery. Before explicit Copy mutates the board, it requires an
-empty board or one completely materializable item. The current board-level
-snapshot cannot reconstruct multiple ordered items, so Copy refuses them
-without reading lazy representations or changing the clipboard; the full
-dictation remains available in recovery. Clipboard generation and advertised
-types must remain unchanged throughout snapshot capture. A failed
-write restores that snapshot only if the dictation operation still owns the
-board; a newer clipboard writer is never overwritten. Reinsert requires the
+not close recovery. Copy is an explicit user Copy command: like any Copy it
+replaces whatever the clipboard held, including several items, without reading,
+snapshotting or restoring the previous contents. The excerpt scrolls inside the
+bounded panel and is selectable, so the complete output stays reachable even if
+the clipboard write fails. Reinsert requires the
 original capture and revalidates it
 without acquiring audio/model resources; users must first return to that app
 and field. An unavailable initial capture disables Reinsert and explains the

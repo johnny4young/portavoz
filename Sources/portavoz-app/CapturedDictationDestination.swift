@@ -15,11 +15,22 @@ struct CapturedDictationDestination {
 }
 
 extension TextInserter {
+    /// How the paste shortcut reaches the destination.
+    enum EventRoute: Equatable {
+        /// Posted only to the captured process: the pinned focused field was verified.
+        case process
+        /// The pre-destination session stream, used only when the application
+        /// exposes no focused element to pin (some Electron, Java and remote
+        /// clients). It keeps the previous delivery and checks instead of refusing.
+        case session
+    }
+
     @MainActor
     struct Target {
         let processID: pid_t
         /// Nil permits this exact attempt. Revalidation never activates an app.
         let validate: () -> InsertionResult?
+        var route: EventRoute = .process
     }
 
     @MainActor
@@ -29,9 +40,16 @@ extension TextInserter {
         let application = NSWorkspace.shared.frontmostApplication
         guard canInsert(promptIfNeeded: false), let application,
               application.processIdentifier > 0, !application.isTerminated,
-              expectedApplication.map({ application.isEqual($0) }) ?? true,
-              let element = focusedElement(in: AXUIElementCreateApplication(application.processIdentifier)) else {
+              expectedApplication.map({ application.isEqual($0) }) ?? true else {
             return .unavailable(name: application?.localizedName, result: .focusUnavailable)
+        }
+        guard let element = focusedElement(in: AXUIElementCreateApplication(application.processIdentifier)) else {
+            // Nothing to pin. A fixture that names its receiver keeps waiting;
+            // production never refuses where the previous delivery would work.
+            guard expectedApplication == nil else {
+                return .unavailable(name: application.localizedName, result: .focusUnavailable)
+            }
+            return sessionDestination(for: application, pasteboard: pasteboard)
         }
         let initialSecurity = fieldSecurity(of: element)
         guard initialSecurity == .regular else {
@@ -60,4 +78,36 @@ extension TextInserter {
         }
     }
 
+    /// The previous delivery contract for an application without an inspectable
+    /// focused element at capture: same application still frontmost, then the
+    /// system-wide focused field must be inspectable and not secure at delivery.
+    @MainActor
+    private static func sessionDestination(
+        for application: NSRunningApplication, pasteboard: NSPasteboard
+    ) -> CapturedDictationDestination {
+        let target = Target(processID: application.processIdentifier, validate: {
+            guard canInsert(promptIfNeeded: false) else { return .focusUnavailable }
+            guard !application.isTerminated,
+                  let current = NSWorkspace.shared.frontmostApplication,
+                  application.isEqual(current), !current.isTerminated else { return .targetChanged }
+            switch sessionFocusedFieldSecurity() {
+            case .regular: return nil
+            case .secure: return .secureField
+            case .unavailable: return .focusUnavailable
+            }
+        }, route: .session)
+        return CapturedDictationDestination(name: application.localizedName, canRetry: true) { text in
+            await insert(text, into: target, pasteboard: pasteboard)
+        }
+    }
+
+    /// Classification of whatever field currently owns system-wide keyboard
+    /// focus; any failed or malformed inspection is unavailable, never regular.
+    @MainActor
+    static func sessionFocusedFieldSecurity() -> FocusedFieldSecurity {
+        guard AXIsProcessTrusted(), let element = focusedElement(in: AXUIElementCreateSystemWide()) else {
+            return .unavailable
+        }
+        return fieldSecurity(of: element)
+    }
 }
