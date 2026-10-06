@@ -17,7 +17,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 5, 2026
 
-- **🛡️ Safer dictation recovery** — Copy leaves multiple clipboard items and newer copies untouched when they cannot be safely preserved.
+- **🛡️ Safer dictation recovery** — scroll and select the full recovered text, and Copy works whatever your clipboard held; apps that hide their text field keep pasting as before.
 
 ## October 2, 2026
 
