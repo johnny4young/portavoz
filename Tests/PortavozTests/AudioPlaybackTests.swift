@@ -183,6 +183,28 @@ final class AudioClipExporterTests: XCTestCase {
         XCTAssertEqual(duration, 15, accuracy: 0.5, "the clip must be ~15 s long")
     }
 
+    func testRoleAwareClipPathsKeepRangeAndOriginalAudio() async throws {
+        let source = try writeWAV(seconds: 2)
+        defer { try? FileManager.default.removeItem(at: source) }
+        let original = try Data(contentsOf: source)
+        for clearPlayback in [false, true] {
+            let output = FileManager.default.temporaryDirectory
+                .appendingPathComponent("clip-role-\(UUID().uuidString).m4a")
+            defer { try? FileManager.default.removeItem(at: output) }
+            try await AudioClipExporter.export(
+                systemFile: source,
+                microphoneFile: source,
+                microphoneAudibleRanges: [0.5...1.0],
+                clearPlayback: clearPlayback,
+                range: 0.5...1.5,
+                to: output)
+            let duration = try await AVURLAsset(url: output).load(.duration).seconds
+            XCTAssertEqual(duration, 1, accuracy: 0.1)
+            XCTAssertEqual(try Data(contentsOf: source), original)
+            XCTAssertGreaterThan(try Data(contentsOf: output).count, 0)
+        }
+    }
+
     func testRejectsInvalidRangeAndMissingAudio() async {
         let out = FileManager.default.temporaryDirectory.appendingPathComponent("x.m4a")
         do {
