@@ -1731,6 +1731,16 @@
         }
       }
     },
+    "Filler filtering and replacements apply only in Clean mode.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El filtro de muletillas y los reemplazos solo se aplican en modo Limpio."
+          }
+        }
+      }
+    },
     "Automatic": {
       "localizations": {
         "es": {

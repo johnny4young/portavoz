@@ -275,6 +275,23 @@ extension DictationTextModeDeliveryTests {
     }
 
     @Test
+    func fillerAndReplacementControlsFollowAnyCleanUse() throws {
+        let suite = "dictation-text-clean-use-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.setVolatileDomain([:], forName: UserDefaults.argumentDomain)
+        let model = DictationTextSettingsModel(defaults: defaults, temporary: true)
+        #expect(model.globalMode == .literal)
+        #expect(model.cleanModeInUse == false, "Literal never applies fillers or replacements")
+        model.setProfile(bundleIdentifier: "app.portavoz.fixture", mode: .clean)
+        #expect(model.cleanModeInUse, "One Clean application profile still uses them")
+        model.removeProfile(bundleIdentifier: "app.portavoz.fixture")
+        #expect(model.cleanModeInUse == false)
+        model.setGlobalMode(.clean)
+        #expect(model.cleanModeInUse)
+    }
+
+    @Test
     func profileCodecAcceptsItsExactLimitsAndRejectsTheNextByte() throws {
         let maximumIdentifier = String(repeating: "a", count: 255)
         let profiles = (0..<64).map {

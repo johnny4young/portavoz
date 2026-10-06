@@ -2676,7 +2676,9 @@ replacements; it is not a promise of acoustic verbatim recognition and retains
 existing caption hygiene/assembly. Clean applies the existing TranscriptionKit
 filler setting and one non-cascading replacement pass. Neither requires a
 translation/provider/model beyond recognition. Rules and filler choices remain
-configured while Literal is selected.
+configured while Literal is selected. Settings keeps those controls visible but
+disables them, with a "Clean mode only" note, unless the default or at least one
+readable application profile uses Clean (`DictationTextSettingsModel.cleanModeInUse`).
 
 Resolution is session override, then exact captured bundle-ID profile, then
 global mode. The destination's existing NSRunningApplication capture supplies
