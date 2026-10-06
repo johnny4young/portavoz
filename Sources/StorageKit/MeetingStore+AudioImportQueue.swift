@@ -35,7 +35,11 @@ extension MeetingStore {
                      job.createdAt DESC, job.id DESC
             LIMIT ? OFFSET ?
             """, arguments: [limit, offset]).map { row in
-            AudioImportQueueEntry(title: row["meetingTitle"], job: try ProcessingJobRecord(row: row).job)
+            let job = try ProcessingJobRecord(row: row).job
+            // At most one page (50 rows): a retired source cannot be retried.
+            let input = try AudioImportInputRecord.fetchOne(db, key: job.meetingID.rawValue.uuidString)
+            let canRetry = (try? input?.decoded())?.canResume ?? false
+            return AudioImportQueueEntry(title: row["meetingTitle"], job: job, canRetry: canRetry)
         }
         return AudioImportQueuePage(entries: entries, total: count?["total"] ?? 0,
                                     unfinished: count?["unfinished"] ?? 0, offset: offset)

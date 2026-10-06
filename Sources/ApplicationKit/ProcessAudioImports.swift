@@ -153,8 +153,23 @@ public struct ProcessAudioImports: ApplicationUseCase {
         case AudioImportFileError.acquisitionBusy: code = "import.copy.busy"
         default: code = "import.processing.failed"
         }
+        // Contention with a purge or another acquisition is transient: back
+        // off (5 s, 10 s, …, at most 60 s) and let the queue wake retry it
+        // within the job's bounded attempts instead of failing terminally.
+        var retryAt: Date?
+        if (error as? AudioImportFileError) == .acquisitionBusy {
+            let backoff = min(60, 5 * pow(2, Double(max(0, current.attempt - 1))))
+            retryAt = now().addingTimeInterval(backoff)
+        }
+        let failed: ProcessingJob
         do {
-            _ = try await store.failProcessingJob(job.id, owner: owner, failure: .init(code: code), at: now())
+            failed = try await store.failProcessingJob(
+                job.id, owner: owner, failure: .init(code: code), retryAt: retryAt, at: now())
         } catch StorageError.processingJobLeaseLost { return }
+        guard failed.state == .failed else { return }
+        // A terminal failure before publication cannot resume without a fresh
+        // selection. Retiring the bookmark is best-effort: the job is already
+        // failed and its row is removed with the meeting.
+        try? await store.retireFailedAudioImportSource(for: job.meetingID)
     }
 }

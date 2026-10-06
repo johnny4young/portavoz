@@ -1,6 +1,7 @@
 import ApplicationKit
 import DiarizationKit
 import Foundation
+import GRDB
 import IntelligenceKit
 import PlatformKit
 import PortavozCore
@@ -221,9 +222,13 @@ final class ProcessAudioImportsTests: XCTestCase {
                                  arguments: [Date().addingTimeInterval(-1), input.meetingID.rawValue.uuidString])
         }
         let contender = ImportQueueProcessor()
+        let contended = Date()
         _ = try await fixture.worker(contender).execute(.init())
-        let busy = try await fixture.store.detail(input.meetingID)
-        XCTAssertEqual(busy?.meeting.lastProcessingError, "import.copy.busy")
+        // Contention is transient: the job is rescheduled with backoff, not failed.
+        let busy = try XCTUnwrap(try await fixture.store.processingJobs(for: input.meetingID).first)
+        XCTAssertEqual(busy.state, .pending)
+        XCTAssertEqual(busy.errorCode, "import.copy.busy")
+        XCTAssertGreaterThan(try XCTUnwrap(busy.notBefore), contended)
         let state = await contender.state()
         XCTAssertEqual(state.maximumConcurrent, 0)
         hold.continuation.finish()
@@ -231,8 +236,16 @@ final class ProcessAudioImportsTests: XCTestCase {
         let retained = try await fixture.store.detail(input.meetingID)
         XCTAssertEqual(retained?.meeting.audioDirectory, input.copyDirectory)
         XCTAssertTrue(retained?.segments.isEmpty == true)
-        _ = try await fixture.store.retryAudioImport(for: input.meetingID)
+        // Before the backoff elapses nothing is claimable; afterwards the same
+        // job resumes automatically, without an explicit user retry.
         _ = try await fixture.worker(contender).execute(.init())
+        let waiting = try await fixture.store.processingJobs(for: input.meetingID)
+        XCTAssertEqual(waiting.first?.state, .pending)
+        let later = ProcessAudioImports(
+            store: fixture.store, files: fixture.files, makeProcessor: { contender },
+            summaries: ImportQueueSummary(), heartbeatInterval: .milliseconds(10),
+            now: { Date().addingTimeInterval(120) })
+        _ = try await later.execute(.init())
         let completed = try await fixture.store.detail(input.meetingID)
         XCTAssertEqual(completed?.meeting.lifecycleState, .ready)
         XCTAssertEqual(completed?.meeting.audioDirectory, input.copyDirectory)
@@ -250,5 +263,20 @@ final class ProcessAudioImportsTests: XCTestCase {
         XCTAssertEqual(detail?.meeting.lastProcessingError, "import.source.unavailable")
         let state = await processor.state()
         XCTAssertEqual(state.maximumConcurrent, 0)
+        // A terminal pre-copy failure retires the external bookmark: the queue
+        // offers no Retry and the store refuses to resume without reselection.
+        let page = try await fixture.store.audioImportQueuePage()
+        XCTAssertEqual(page.entries.first { $0.id == input.meetingID }?.canRetry, false)
+        do {
+            _ = try await fixture.store.retryAudioImport(for: input.meetingID)
+            XCTFail("A retired source cannot be retried")
+        } catch {}
+        let payload = try await fixture.store.database.read { database in
+            try Data.fetchOne(database, sql: "SELECT payload FROM audioImportInput WHERE meetingID = ?",
+                              arguments: [input.meetingID.rawValue.uuidString])
+        }
+        let retired = try JSONDecoder().decode(AudioImportRequest.self, from: try XCTUnwrap(payload))
+        XCTAssertNil(retired.sourceBookmark)
+        XCTAssertFalse(retired.canResume)
     }
 }

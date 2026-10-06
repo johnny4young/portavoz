@@ -17247,6 +17247,36 @@
         }
       }
     },
+    "Cancelled — import the file again to continue": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelado: vuelve a importar el archivo para continuar"
+          }
+        }
+      }
+    },
+    "The original is unavailable. Reconnect its drive, then import it again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El original no está disponible. Reconecta su unidad y vuelve a importarlo."
+          }
+        }
+      }
+    },
+    "The original could not be copied. Import it again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo copiar el original. Vuelve a importarlo."
+          }
+        }
+      }
+    },
     "Audio imports": {
       "localizations": {
         "es": {

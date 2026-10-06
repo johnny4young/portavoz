@@ -44,6 +44,9 @@ public struct AudioImportRequest: Codable, Equatable, Sendable {
     public var sourceBookmark: Data?
     public var copiedAudioDirectory: String?
     public var copiedAudioDigest: String?
+    /// False once a cancelled or failed import retired its external bookmark
+    /// before any owned copy existed: only a fresh selection can resume it.
+    public var canResume: Bool { sourceBookmark != nil || copiedAudioDirectory != nil }
 
     public init(
         meetingID: MeetingID = MeetingID(), copyID: UUID = UUID(), title: String, fileExtension: String,

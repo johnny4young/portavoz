@@ -25,7 +25,7 @@ final class AudioImportQueueTests: XCTestCase, @unchecked Sendable {
         XCTAssertFalse(current.entries.contains { $0.id == id })
     }
 
-    func testTerminalRowsMoveBehindPendingAndRetryRejoinsWithoutDuplicates() async throws {
+    func testTerminalRowsMoveBehindPendingAndUncopiedCancellationRetiresItsSource() async throws {
         let fixture = try ImportQueueFixture()
         defer { fixture.remove() }
         let first = try await fixture.admit()
@@ -34,10 +34,16 @@ final class AudioImportQueueTests: XCTestCase, @unchecked Sendable {
         let cancelled = try await fixture.store.audioImportQueuePage()
         XCTAssertEqual(cancelled.entries.map(\.id), [first.meetingID, second.meetingID])
         XCTAssertEqual(cancelled.unfinished, 1)
-        try await fixture.store.retryAudioImport(for: second.meetingID)
+        XCTAssertEqual(cancelled.entries.map(\.canRetry), [true, false])
+        // Cancelling before any owned copy drops the external bookmark, so the
+        // import cannot silently resume; the user selects the file again.
+        do {
+            try await fixture.store.retryAudioImport(for: second.meetingID)
+            XCTFail("A cancelled import without an owned copy has no source to resume")
+        } catch {}
         let retry = try await fixture.store.audioImportQueuePage()
         XCTAssertEqual(retry.total, 2)
-        XCTAssertEqual(retry.unfinished, 2)
+        XCTAssertEqual(retry.unfinished, 1)
     }
 
     func testEmptyBoundaryAndInvalidPagesAreExplicit() async throws {

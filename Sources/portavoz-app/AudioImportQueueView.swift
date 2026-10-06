@@ -66,7 +66,7 @@ struct AudioImportQueueView: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text(entry.title).font(.body.weight(.medium)).lineLimit(2)
                 Text(AudioImportQueuePresentation.status(
-                    entry.job, phase: model.currentID == entry.id ? model.phase : nil))
+                    entry.job, phase: model.currentID == entry.id ? model.phase : nil, canRetry: entry.canRetry))
                     .font(.caption).foregroundStyle(.secondary)
                     .accessibilityIdentifier("import-queue-state-\(id)")
             }
@@ -76,8 +76,10 @@ struct AudioImportQueueView: View {
                 Button("Cancel", role: .destructive) { Task { await model.cancel(entry.id) } }
                     .accessibilityIdentifier("import-queue-cancel-\(id)")
             case .failed, .cancelled:
-                Button("Retry") { Task { await model.retry(entry.id) } }
-                    .accessibilityIdentifier("import-queue-retry-\(id)")
+                if entry.canRetry {
+                    Button("Retry") { Task { await model.retry(entry.id) } }
+                        .accessibilityIdentifier("import-queue-retry-\(id)")
+                }
             case .succeeded:
                 Button("Open") { onOpen(entry.id) }
                     .accessibilityIdentifier("import-queue-open-\(id)")

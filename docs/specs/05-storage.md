@@ -1997,6 +1997,18 @@ an empty transcript; existing non-import artifact validators still require text.
 retaining job identity and copied audio. It cannot steal a live lease or replay
 success. Expired work uses the existing processing-job recovery policy.
 
+The external bookmark does not outlive an import that can no longer use it.
+`cancelAudioImport` retires it in the cancelling transaction when no owned copy
+was published, and the worker calls `retireFailedAudioImportSource` after a
+terminal failure (the store re-checks that the job is `failed` and uncopied, so a
+scheduled retry keeps its source). A retired input has neither a bookmark nor a
+copy (`canResume == false`); `retryAudioImport` rejects it, the queue page reports
+`canRetry == false`, and the UI asks for a fresh selection instead of offering
+Retry. A failure after publication keeps the owned copy and remains retryable.
+Acquisition contention (`import.copy.busy`) is not terminal: the worker fails the
+attempt with `retryAt` (5 s, then 10 s, … capped at 60 s) inside the job's
+bounded attempts, and the queue's scheduled wake resumes it automatically.
+
 File-backed reopen and injected child-write failures exercise these storage
 boundaries. `ProcessAudioImports` now consumes them through a native copy adapter
 and the existing model workflow through app-owned Library admission/supervision.

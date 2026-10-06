@@ -71,6 +71,10 @@ struct AudioImportInputRecord: Codable, FetchableRecord, PersistableRecord {
                   input.copiedAudioDirectory == nil, input.copiedAudioDigest == nil else {
                 throw StorageError.invalidImportedMeeting("mixed external and owned source authority")
             }
+        } else if input.copiedAudioDirectory == nil, input.copiedAudioDigest == nil {
+            // Retired: cancelled or failed before an owned copy existed. No
+            // source path remains; the import cannot resume without reselection.
+            return
         } else {
             guard let path = input.copiedAudioDirectory, let digest = input.copiedAudioDigest else {
                 throw StorageError.invalidImportedMeeting("missing owned audio copy")

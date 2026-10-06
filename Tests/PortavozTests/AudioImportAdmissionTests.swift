@@ -215,4 +215,47 @@ final class AudioImportAdmissionTests: XCTestCase {
             XCTAssertEqual(try Int.fetchOne(database, sql: "SELECT count(*) FROM meeting"), 0)
         }
     }
+
+    func testCancellationBeforeCopyRetiresTheSourceAndRefusesRetry() async throws {
+        let store = try MeetingStore.inMemory()
+        let request = input()
+        _ = try await store.enqueueAudioImports([request], at: now)
+        _ = try await store.cancelAudioImport(for: request.meetingID, at: now)
+        let retired = try await store.database.read { database in
+            try AudioImportInputRecord.fetchOne(database, key: request.meetingID.rawValue.uuidString)?.decoded()
+        }
+        XCTAssertNil(try XCTUnwrap(retired).sourceBookmark)
+        XCTAssertFalse(try XCTUnwrap(retired).canResume)
+        let page = try await store.audioImportQueuePage()
+        XCTAssertEqual(page.entries.map(\.canRetry), [false])
+        do {
+            _ = try await store.retryAudioImport(for: request.meetingID, at: now)
+            XCTFail("A retired external source cannot be resumed without a new selection")
+        } catch {}
+        let jobs = try await store.processingJobs(for: request.meetingID)
+        XCTAssertEqual(jobs.first?.state, .cancelled)
+    }
+
+    func testOnlyTerminalPreCopyFailureRetiresTheSource() async throws {
+        let store = try MeetingStore.inMemory()
+        let request = input()
+        let admitted = try await store.enqueueAudioImports([request], at: now)
+        let job = try XCTUnwrap(admitted.first)
+        _ = try await store.claimNextProcessingJob(kinds: [.audioImport], owner: "first", leaseDuration: 30, at: now)
+        let scheduled = try await store.failProcessingJob(
+            job.id, owner: "first", failure: .init(code: "import.copy.busy"),
+            retryAt: now.addingTimeInterval(5), at: now)
+        XCTAssertEqual(scheduled.state, .pending)
+        try await store.retireFailedAudioImportSource(for: request.meetingID)
+        let pending = try await store.audioImportQueuePage()
+        XCTAssertEqual(pending.entries.map(\.canRetry), [true], "A scheduled retry keeps its source")
+        let later = now.addingTimeInterval(5)
+        _ = try await store.claimNextProcessingJob(kinds: [.audioImport], owner: "second", leaseDuration: 30, at: later)
+        let failed = try await store.failProcessingJob(
+            job.id, owner: "second", failure: .init(code: "import.source.unavailable"), at: later)
+        XCTAssertEqual(failed.state, .failed)
+        try await store.retireFailedAudioImportSource(for: request.meetingID)
+        let terminal = try await store.audioImportQueuePage()
+        XCTAssertEqual(terminal.entries.map(\.canRetry), [false])
+    }
 }

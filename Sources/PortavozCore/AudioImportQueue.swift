@@ -4,11 +4,14 @@ import Foundation
 public struct AudioImportQueueEntry: Equatable, Sendable, Identifiable {
     public let title: String
     public let job: ProcessingJob
+    /// Whether explicit Retry can still reach the source or its owned copy.
+    public let canRetry: Bool
     public var id: MeetingID { job.meetingID }
 
-    public init(title: String, job: ProcessingJob) {
+    public init(title: String, job: ProcessingJob, canRetry: Bool = true) {
         self.title = title
         self.job = job
+        self.canRetry = canRetry
     }
 }
 

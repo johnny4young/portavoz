@@ -74,7 +74,7 @@ extension MeetingStore {
         }
         return try await database.write { db in
             let key = meetingID.rawValue.uuidString
-            guard let input = try AudioImportInputRecord.fetchOne(db, key: key),
+            guard var input = try AudioImportInputRecord.fetchOne(db, key: key),
                   let meeting = try MeetingRecord.fetchOne(db, key: key), meeting.deletedAt == nil,
                   var job = try ProcessingJobRecord.fetchOne(db, key: input.jobID),
                   job.kind == ProcessingJobKind.audioImport.rawValue,
@@ -92,9 +92,33 @@ extension MeetingStore {
             job.finishedAt = timestamp
             job.updatedAt = timestamp
             try job.update(db)
+            // Cancellation is user intent to stop. Do not keep the external
+            // source path for an import that has no owned copy yet.
+            try Self.retireUncopiedSource(&input, in: db)
             try Self.reconcileProcessingLifecycle(for: meetingID, at: timestamp, in: db)
             return try job.job
         }
+    }
+
+    /// Retires the external bookmark of a terminally failed import that never
+    /// published an owned copy. A pending (scheduled retry) job keeps it.
+    public func retireFailedAudioImportSource(for meetingID: MeetingID) async throws {
+        try await database.write { db in
+            let key = meetingID.rawValue.uuidString
+            guard var input = try AudioImportInputRecord.fetchOne(db, key: key),
+                  let job = try ProcessingJobRecord.fetchOne(db, key: input.jobID),
+                  job.kind == ProcessingJobKind.audioImport.rawValue,
+                  job.state == ProcessingJobState.failed.rawValue else { return }
+            try Self.retireUncopiedSource(&input, in: db)
+        }
+    }
+
+    static func retireUncopiedSource(_ record: inout AudioImportInputRecord, in db: Database) throws {
+        var request = try record.decoded()
+        guard request.sourceBookmark != nil, request.copiedAudioDirectory == nil else { return }
+        request.sourceBookmark = nil
+        try record.replacePayload(request)
+        try record.update(db)
     }
 
     static func ownedAudioImport(
@@ -131,9 +155,12 @@ extension MeetingStore {
                   job.inputFingerprint == input.inputFingerprint else {
                 throw StorageError.invalidImportedMeeting("missing retryable import")
             }
-            _ = try input.decoded()
+            let request = try input.decoded()
             guard job.state == ProcessingJobState.failed.rawValue
                 || job.state == ProcessingJobState.cancelled.rawValue else { return try job.job }
+            guard request.canResume else {
+                throw StorageError.invalidImportedMeeting("retired import source; import the file again")
+            }
             job.resetForExplicitRetry(at: timestamp)
             try job.update(db)
             try Self.reconcileProcessingLifecycle(for: meetingID, at: timestamp, in: db)
