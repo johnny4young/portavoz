@@ -344,9 +344,9 @@ extension DictationTextModeDeliveryTests {
 }
 
 extension DictationTextModeDeliveryTests {
-    @Test(arguments: [TextInserter.InsertionResult.secureField, .focusUnavailable], examples)
+    @Test(arguments: [DictationDeliveryOutcome.Refusal.secureField, .focusUnavailable], examples)
     func unavailableDeliveryKeepsTheCapturedApplicationPolicy(
-        _ failure: TextInserter.InsertionResult, _ example: Example
+        _ failure: DictationDeliveryOutcome.Refusal, _ example: Example
     ) async throws {
         let harness = DictationControllerHarness(text: example.recognized)
         defer { harness.controller.cancel() }

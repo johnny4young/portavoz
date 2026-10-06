@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import Observation
 
 /// The real inserter must run in the app's process, not XCTest's sandboxed
@@ -10,6 +11,7 @@ final class DictationNativeUITestFixture {
     static let pasteboardPrefix = "app.portavoz.dictation-test."
     static let environmentKey = "PORTAVOZ_UI_TEST_DICTATION_PASTEBOARD"
     static let controlEnvironmentKey = "PORTAVOZ_UI_TEST_DICTATION_CONTROL_PASTEBOARD"
+    private static let outputText = "Don't delete — no borres: café, C++, 1.250,50 €."
     private let pasteboardName: String
     private let runsController: Bool
     private let controlPasteboardName: String?
@@ -71,38 +73,49 @@ final class DictationNativeUITestFixture {
                     status = "accessibility-required-for-app"
                     return
                 }
-                // Launch can precede first-responder installation. Read-only
-                // readiness may repeat; the insertion itself never does.
-                let board = NSPasteboard(name: .init(pasteboardName))
-                let destination = TextInserter.captureDestination(pasteboard: board, matching: receiver)
-                if destination.canRetry {
-                    if runsController {
-                        guard let controller, var dependencies, let controlPasteboardName else {
-                            status = "controller-required"
-                            return
+                // A regular focused window/button can retry but cannot provide
+                // the known receiver's text metadata. Probe before the one paste.
+                if receiverHasReadableSelection(receiver) {
+                    let board = NSPasteboard(name: .init(pasteboardName))
+                    let destination = TextInserter.captureDestination(pasteboard: board, matching: receiver)
+                    if destination.canRetry {
+                        if runsController {
+                            guard let controller, var dependencies, let controlPasteboardName else {
+                                status = "controller-required"
+                                return
+                            }
+                            // The controller still captures its destination at admission.
+                            // The earlier capture witnesses only receiver readiness.
+                            dependencies.canInsert = { TextInserter.canInsert(promptIfNeeded: false) }
+                            dependencies.captureDestination = {
+                                TextInserter.captureDestination(pasteboard: board, matching: receiver)
+                            }
+                            dependencies.copyText = { TextInserter.copy($0, to: board) }
+                            status = "controller-listening"
+                            status = await DictationNativeControllerUITestFixture.run(
+                                controller: controller, dependencies: dependencies,
+                                stopRequested: {
+                                    NSPasteboard(name: .init(controlPasteboardName)).string(forType: .string) == "stop"
+                                })
+                        } else {
+                            let result = await destination.insert(Self.outputText)
+                            status = String(describing: result)
                         }
-                        // The controller still captures its destination at admission.
-                        // The earlier capture witnesses only receiver readiness.
-                        dependencies.canInsert = { TextInserter.canInsert(promptIfNeeded: false) }
-                        dependencies.captureDestination = {
-                            TextInserter.captureDestination(pasteboard: board, matching: receiver)
-                        }
-                        dependencies.copyText = { TextInserter.copy($0, to: board) }
-                        status = "controller-listening"
-                        status = await DictationNativeControllerUITestFixture.run(
-                            controller: controller, dependencies: dependencies,
-                            stopRequested: {
-                                NSPasteboard(name: .init(controlPasteboardName)).string(forType: .string) == "stop"
-                            })
-                    } else {
-                        let result = await destination.insert("Don't delete — no borres: café, C++, 1.250,50 €.")
-                        status = String(describing: result)
+                        return
                     }
-                    return
                 }
             }
             do { try await Task.sleep(for: .milliseconds(50)) } catch { return }
         }
         status = receiverSeen ? "receiver-focus-unavailable" : "receiver-unavailable"
+    }
+
+    private func receiverHasReadableSelection(_ receiver: NSRunningApplication) -> Bool {
+        let owner = AXUIElementCreateApplication(receiver.processIdentifier)
+        guard AXUIElementSetMessagingTimeout(owner, 0.1) == .success,
+              let element = TextInserter.focusedElement(in: owner),
+              TextInserter.fieldSecurity(of: element) == .regular,
+              let readback = DictationTextReadback.accessibility(element) else { return false }
+        return readback.baseline(for: Self.outputText) != nil
     }
 }

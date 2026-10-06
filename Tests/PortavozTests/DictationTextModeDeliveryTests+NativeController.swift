@@ -102,7 +102,7 @@ extension DictationTextModeDeliveryTests {
         #expect(harness.insertions.isEmpty, "Mode selection alone is not the Stop gesture")
         #expect(harness.controller.isActive)
         stopRequested = true
-        #expect(await task.value == "inserted")
+        #expect(await task.value == "dispatched", "The typed double reports dispatch, not native verification")
         #expect(harness.insertions == ["Don't delete these documents."])
         #expect(harness.controller.phase == .idle)
         try await waitForNativeDriver { harness.finishes == 1 }

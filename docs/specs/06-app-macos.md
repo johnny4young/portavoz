@@ -2849,6 +2849,12 @@ desktop overlays. Both production and fixture delivery use a captured process an
 capability; there is no session-wide fallback. This one receiver does not
 qualify the complete external-editor matrix. It does not read the user's clipboard. Actual
 Accessibility permission is required; tests do not grant it or dismiss prompts.
+The native fixture additionally requires valid bounded selection/count metadata
+from this known receiver before spending its single insertion. A foreground
+application or a regular focused button is not editor readiness. These read-only
+probes can repeat within the existing preparation deadline; an event never does.
+This is fixture preparation, not a new production-editor eligibility restriction,
+a longer acknowledgement window or a guarantee against later focus changes.
 A local certificate-backed UI build can use the explicit signer/team inputs in
 spec 08 so rebuilding does not necessarily change its designated requirement.
 The app remains a disposable test identity, not the installed release or Dev app.
@@ -2907,8 +2913,46 @@ owner remains alive, checked for runtime type and a complete layout header;
 invalid values fall back to the QWERTY shortcut. Clipboard-write or event
 construction failure restores immediately while still owned. Dispatched events
 schedule restoration after 1.5 seconds, only while the same change count owns
-the board. `.inserted` still means dispatched, not verified external delivery;
-no automatic repeat is safe after that boundary.
+the board. The result distinguishes `verified`, `dispatched` and `refused`;
+no automatic repeat is safe after dispatch, including cancellation or failed
+readback. Empty inserter input refuses before borrowing the clipboard.
+
+**Bounded delivery observation (D555).** When the captured field supports AX selection,
+character count and string-for-range, insertion snapshots only selection/count
+immediately before borrowing the clipboard. A changed selection or unavailable
+previously readable metadata during final validation refuses the attempt. After
+posting once, a bounded observer requires
+the expected character-count delta, collapsed caret, exact inserted UTF-16 span,
+unchanged destination and matching metadata after the read. Destination identity
+is checked again after the final metadata read, which can itself service a
+focus change. It never reads the old selection, full field value, title, URL or
+screen. Comparing code units does
+not silently accept smart quotes, canonical normalization or other changes.
+
+The requested span is limited to 16,384 UTF-16 units; longer output is still sent
+in full but not read back. The observer uses a 750 ms window, at most 30 polls
+and a 25 ms asynchronous pause only while the field remains unchanged. Specific
+application/field AX objects use 100 ms messaging timeouts, never a global
+system-wide timeout. AX IPC and third-party server allocations are not a hard
+real-time or memory guarantee. Missing, malformed, delayed or changed observations
+return `dispatched`, not a retryable failure. An editor whose AX offsets do not
+follow Cocoa UTF-16 conventions cannot be qualified by this observer. This is a point-in-time observation,
+not proof against a later user edit or an atomic editor transaction.
+
+The delivery banner has its own cancelled-on-restart, identity-fenced dismissal
+task; waiting for presentation never holds the capture runtime lease. The brief
+banner is green only for verified insertion (1.6 seconds). Dispatch without
+verification keeps an amber send status and the complete final output in RAM
+until explicit Discard or the next dictation. Copy is available with visible
+failure/success feedback; it does not post another Paste or close the result.
+The notice is non-modal: the text was already sent, so another global trigger
+starts a new dictation and replaces only this notice, never re-sending the old
+output. Reinsert is absent because
+a late editor may still apply the original event. The user must check the
+destination before manually pasting; Discard is a single-action exit. Neither result writes history or archives a
+successful delivery. The storage reassurance is limited to Portavoz, not a
+promise that the destination or a clipboard manager leaves no trace. Refused
+output alone enters the explicit recovery below.
 
 A refused insertion releases capture resources and leaves the complete processed
 output in controller-owned RAM. The persistent recovery panel displays an
@@ -2932,7 +2976,7 @@ repeated reveals from moving a self-sizing panel. Discard is a native cancel
 operation, consistent with discarding an unapplied Refine draft; it requires
 one explicit click and does not delete a saved library item.
 
-Capture timing starts at the first admitted nonempty microphone buffer, not when the stream opens, model preparation or the panel starts. A finish before readiness or before 0.75 seconds have elapsed after first PCM admission cancels silently; one owned 250 ms tail task preserves the last phoneme and suppresses duplicate finish gestures. Session cancellation closes the transcription feed immediately, stops local resources, fences stale state, and prevents later insertion. Audio feeding and peak calculation run off the main actor; only the meter mutation crosses back. A single cancellable failure-dismiss task prevents an older error from closing a restarted session. `DictationAssembler` joins confirmed plus partial text and requires lexical content, so punctuation-only noise never pastes. A pre-transcription VAD is deliberately absent because live Parakeet silence yields no segment; the batch-Whisper hallucination class is handled elsewhere. The Settings toggle remains off by default. Verified E2E: the hotkey triggers with the app in the background, the panel transcribes live audio, and final insertion works in the field.
+Capture timing starts at the first admitted nonempty microphone buffer, not when the stream opens, model preparation or the panel starts. A finish before readiness or before 0.75 seconds have elapsed after first PCM admission cancels silently; one owned 250 ms tail task preserves the last phoneme and suppresses duplicate finish gestures. Session cancellation closes the transcription feed immediately, stops local resources, fences stale state, and prevents later insertion. Audio feeding and peak calculation run off the main actor; only the meter mutation crosses back. A single cancellable failure-dismiss task prevents an older error from closing a restarted session. `DictationAssembler` joins confirmed plus partial text and requires lexical content, so punctuation-only noise never pastes. There is no pre-transcription speech-admission gate in live dictation. Public/synthetic controller observations have produced lexical proposals from silence and tones; this remains an explicit GAPS limitation, not proof of speech. The Settings toggle remains off by default. Native cross-process paste and exact-span readback remain separate permission-dependent qualification; deterministic controller coverage does not certify them.
 
 **Mouse-button push-to-talk (Jul 2026)**: `MouseButtonPTT` owns one session `CGEventTap` over `otherMouseDown`/`otherMouseUp` that CONSUMES the configured button (the app under the cursor never sees the click) and passes every other button through; a tap disabled by timeout is always re-armed. CGEvent index 2+ is eligible — vendor-facing Button 3+ means middle click or an additional button — while indices 0/1 (left/right) can never become a trigger. Invalid persisted values normalize to Off. The tap needs the same Accessibility trust as the paste path: choosing a button prompts once, a denied/pending prompt leaves the keyboard trigger working, and returning from System Settings retries registration. Rebinding first cancels any mouse-owned capture so its consumed release cannot strand the session. `MousePTTGesture` (app input boundary, pure, 3 tests) is the decision table: press starts when idle and finishes a listening session whoever started it; release delivers only when the button itself started the session, so a stray release can never double-finish a hotkey session. There is no tap-vs-hold discriminator on the mouse — the capture minimum already cancels an accidental click. `MouseButtonRecorder` in Settings captures the next middle/additional-button click (`settings-dictation-mouse-recorder`; Esc cancels) with an explicit clear control; both mouse and keyboard recorders remove their local monitors when their Settings row disappears.
 

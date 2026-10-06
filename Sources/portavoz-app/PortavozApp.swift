@@ -126,7 +126,7 @@ private struct AppLaunchRootView: View {
                     // Recovery needs a separate hit region; other menu fixtures
                     // keep their existing intrinsic-size presentation.
                     .frame(
-                        maxHeight: services.dictationUITestFixture?.recoversDestination == true ? .infinity : nil,
+                        maxHeight: services.dictationUITestFixture?.presentsRecoveryControls == true ? .infinity : nil,
                         alignment: .top)
                     .task { await services.seedDemoIfRequested() }
             } else {

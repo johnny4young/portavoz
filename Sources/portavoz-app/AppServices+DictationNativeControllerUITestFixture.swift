@@ -45,8 +45,9 @@ enum DictationNativeControllerUITestFixture {
 
     private static func terminalOutcome(_ phase: DictationController.Phase) -> String? {
         switch phase {
-        case .inserted: "inserted"
-        case .recovery(let result): String(describing: result)
+        case .verified: "verified"
+        case .dispatched: "dispatched"
+        case .recovery(let refusal): String(describing: refusal)
         case .failed: "controller-failed"
         case .idle: "controller-cancelled"
         case .preparing, .listening: nil

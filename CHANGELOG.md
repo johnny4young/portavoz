@@ -23,6 +23,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 - **🎛️ Dictation your way** — choose Literal or Clean, save a mode for each application, and override it for one session without changing your defaults.
 
+- **📨 Honest dictation delivery** — distinguish verified insertion from an unconfirmed send; keep unconfirmed text available to copy or discard without automatically pasting twice.
+
 - **📝 Dictation recovery** — keep text when its original field changes; copy, explicitly reinsert, or discard without losing it to another trigger.
 
 ## October 1, 2026
