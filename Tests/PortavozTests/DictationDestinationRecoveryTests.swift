@@ -87,7 +87,9 @@ final class DictationDestinationRecoveryTests: XCTestCase {
         XCTAssertNil(harness.controller.targetApp)
     }
 
-    func testControllerFailedCopyRestoresRichClipboardWithoutOverwritingAnotherWriter() async {
+    func testControllerFailedCopyKeepsTheOutputAndNeverWritesAfterAnotherWriter() async {
+        // Recovery Copy is an explicit user Copy: it replaces the clipboard and
+        // does not snapshot or restore it. A failed write keeps the output.
         for anotherWriterTakesOver in [false, true] {
             let harness = DictationControllerHarness(text: "No borres — don't delete")
             defer { harness.controller.cancel() }
@@ -98,7 +100,7 @@ final class DictationDestinationRecoveryTests: XCTestCase {
             XCTAssertTrue(board.setString("Original", forType: .string))
             XCTAssertTrue(board.setData(richText, forType: .rtf))
             XCTAssertFalse(TextInserter.copy("", to: board))
-            XCTAssertEqual(board.data(forType: .rtf), richText)
+            XCTAssertEqual(board.data(forType: .rtf), richText, "Empty text never touches the clipboard")
 
             var dependencies = harness.dependencies
             dependencies.captureDestination = { .unavailable(name: nil, result: .focusUnavailable) }
@@ -115,10 +117,8 @@ final class DictationDestinationRecoveryTests: XCTestCase {
             harness.controller.copyUndeliveredText()
             XCTAssertEqual(harness.controller.copyStatus, .failed)
             XCTAssertEqual(harness.controller.recoveryText, "No borres — don't delete")
-            XCTAssertEqual(board.string(forType: .string),
-                           anotherWriterTakesOver ? "Another writer" : "Original")
-            if !anotherWriterTakesOver {
-                XCTAssertEqual(board.data(forType: .rtf), richText)
+            if anotherWriterTakesOver {
+                XCTAssertEqual(board.string(forType: .string), "Another writer")
             }
         }
     }
