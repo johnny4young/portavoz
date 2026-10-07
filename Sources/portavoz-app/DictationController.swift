@@ -732,7 +732,6 @@ extension DictationController {
             guard let self, self.deliveryID == id, !Task.isCancelled else { return }
             self.isRetryingDelivery = false
             self.presentDelivery(result, text: text, id: id)
-            guard self.deliveryID == id || self.deliveryID == nil else { return }
             self.retryDeliveryTask = nil
         }
     }
