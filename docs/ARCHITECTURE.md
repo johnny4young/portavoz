@@ -1166,8 +1166,11 @@ capability targets receive no AppKit or Accessibility dependency.
 The last-mile `TextInserter` returns a typed result. It waits for physical
 modifiers, revalidates the captured destination before borrowing the clipboard
 and immediately before posting, and checks cancellation after synchronous AX
-inspection. It only posts to the captured positive process identifier; there
-is no session-wide fallback or application activation. Rich clipboard snapshots
+inspection. A pinned destination posts only to the captured positive process
+identifier. An application that exposes no focused AX element at capture keeps
+the previous session-stream Paste, gated on the same frontmost application, a
+non-secure inspectable system-wide focused field, and no key Portavoz panel
+holding the keyboard stream. Delivery never activates an application. Rich clipboard snapshots
 are restored after refusal or a delay only while their change count still owns
 the board. A clipboard owner change during final inspection prevents dispatch.
 `DictationDeliveryOutcome` in Core separates verified observation, unverified
@@ -1185,9 +1188,9 @@ acknowledgement, and even matching readback is not an atomic focus transaction.
 
 The controller retains a refused output in memory, independently of microphone
 and model lifetime. New input triggers reveal this recovery state instead of
-replacing it. Explicit Copy keeps the output available and fails before mutation
-when the current snapshot cannot preserve ordered items or a lazy read changes
-clipboard ownership. Reinsert retries only
+replacing it. Explicit Copy is a user Copy that replaces the clipboard without
+snapshot or rollback; the output stays available and selectable whether it
+succeeds or fails. Reinsert retries only
 the original captured destination without opening audio, and Discard retires
 the delivery identity and clears presentation copies. A destination that could
 not be captured permits Copy but not implicit retargeting. Retry tasks are

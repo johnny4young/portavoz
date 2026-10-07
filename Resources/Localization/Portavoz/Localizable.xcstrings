@@ -4443,26 +4443,6 @@
         }
       }
     },
-    "Dictation couldn't type into the focused app. Try again.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El dictado no pudo escribir en la app seleccionada. Inténtalo de nuevo."
-          }
-        }
-      }
-    },
-    "Dictation couldn't verify the focused field, so it didn't type anything.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El dictado no pudo verificar el campo seleccionado, así que no escribió nada."
-          }
-        }
-      }
-    },
     "Dictation failed: %@": {
       "localizations": {
         "es": {

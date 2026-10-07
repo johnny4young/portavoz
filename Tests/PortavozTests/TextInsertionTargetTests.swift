@@ -171,6 +171,17 @@ final class TextInsertionTargetTests: XCTestCase {
         XCTAssertEqual(sessionPosts, 1)
     }
 
+    func testSessionRouteRefusesWhileTheInactiveRecoveryPanelOwnsKeyboardFocus() {
+        // Clicking Reinsert keys the non-activating panel: a session Paste would land there.
+        XCTAssertFalse(TextInserter.sessionStreamReachesFrontmostApplication(
+            portavozIsActive: false, portavozHasKeyWindow: true))
+        XCTAssertTrue(TextInserter.sessionStreamReachesFrontmostApplication(
+            portavozIsActive: false, portavozHasKeyWindow: false))
+        // Dictating into Portavoz itself keeps its own key window.
+        XCTAssertTrue(TextInserter.sessionStreamReachesFrontmostApplication(
+            portavozIsActive: true, portavozHasKeyWindow: true))
+    }
+
     func testExplicitCopyWritesTheFullTextToTheChosenBoard() async {
         let board = makeBoard()
         defer { board.releaseGlobally() }

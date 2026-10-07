@@ -8,6 +8,9 @@ struct DictationTextPreferenceSnapshot: Sendable {
     let removeFillers: Bool
     let replacements: [DictationReplacement]
 
+    /// No session: nothing optional applies.
+    static let inert = Self(mode: .literal, removeFillers: false, replacements: [])
+
     func applying(to text: String) -> String {
         DictationTextRules.apply(
             text, replacements: mode == .clean ? replacements : [],
@@ -28,13 +31,17 @@ enum DictationTextPreferences {
     /// app initializes only its volatile domain, never a persistent preference file.
     static func initialize(in defaults: UserDefaults, temporary: Bool) {
         guard defaults.object(forKey: modeKey) == nil else { return }
-        let value = globalMode(in: defaults).rawValue
+        store(globalMode(in: defaults).rawValue, forKey: modeKey, in: defaults, temporary: temporary)
+    }
+
+    /// The temporary app writes only its volatile argument domain, never a preference file.
+    static func store(_ value: String, forKey key: String, in defaults: UserDefaults, temporary: Bool) {
         if temporary {
             var domain = defaults.volatileDomain(forName: UserDefaults.argumentDomain)
-            domain[modeKey] = value
+            domain[key] = value
             defaults.setVolatileDomain(domain, forName: UserDefaults.argumentDomain)
         } else {
-            defaults.set(value, forKey: modeKey)
+            defaults.set(value, forKey: key)
         }
     }
 

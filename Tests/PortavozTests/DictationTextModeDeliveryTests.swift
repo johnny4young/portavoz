@@ -240,6 +240,40 @@ extension DictationTextModeDeliveryTests {
     }
 
     @Test
+    func aChoiceDuringInsertionCannotRelabelTheDeliveredText() async throws {
+        let harness = DictationControllerHarness(text: "um no borres C++ 9,50 €")
+        let delivery = PreparationGate()
+        defer {
+            delivery.release()
+            harness.controller.cancel()
+        }
+        harness.set("literal", forKey: DictationTextPreferences.modeKey)
+        harness.set(#"[{"trigger":"C++","replacement":"Swift"}]"#, forKey: DictationController.replacementsKey)
+        var dependencies = harness.dependencies
+        let capture = dependencies.captureDestination
+        dependencies.captureDestination = {
+            let destination = capture()
+            return CapturedDictationDestination(name: destination.name, canRetry: destination.canRetry) { text in
+                await delivery.wait()
+                return await destination.insert(text)
+            }
+        }
+        harness.controller.toggle(using: dependencies)
+        try await eventually { harness.controller.partialText == harness.text }
+        harness.now = harness.now.addingTimeInterval(1)
+        harness.controller.toggle(using: dependencies)
+        try await eventually { delivery.started }
+        // Stop bookkeeping has retired, but the prepared text is already final.
+        #expect(harness.controller.isActive)
+        #expect(harness.controller.canChangeTextMode == false)
+        harness.controller.selectTextMode(.clean)
+        #expect(harness.controller.textMode == .literal)
+        delivery.release()
+        try await eventually { harness.insertions.count == 1 }
+        #expect(harness.insertions == [harness.text])
+    }
+
+    @Test
     func settingsMutationsStayBoundedAndTemporary() throws {
         let suite = "dictation-text-temporary-" + UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: suite))

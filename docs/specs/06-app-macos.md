@@ -2688,7 +2688,9 @@ and application identity are independent: unavailable delivery keeps the selecte
 text policy for explicit recovery, without allowing Retry.
 One immutable preference snapshot is admitted before preparation. A panel choice
 changes only its mode; subsequent Settings edits affect later sessions. Stop
-request, not the delayed native Stop issuance, freezes the mode. Cancellation,
+request, not the delayed native Stop issuance, freezes the mode; once delivery
+has prepared its text the panel choice stays disabled while insertion settles,
+even though Stop bookkeeping has already retired. Cancellation,
 completion and restart retire the override and rule snapshot; recovery retains
 the processed output, never silently reprocesses or repeats insertion.
 
@@ -2701,7 +2703,9 @@ addresses or surrounding text. The chosen app is not launched or registered.
 The bounded codec accepts at most 64 unique IDs (1–255 ASCII identifier bytes)
 and 32 KiB JSON, rejects duplicate/invalid records as a whole, and never salvages an
 ambiguous winner. Invalid profiles remain intact and visible until an explicit
-Reset; dictation safely falls back to the global mode. Per-row mode and Remove
+Reset; dictation safely falls back to the global mode. Choosing an application
+that already has a profile keeps its saved mode; only a new profile starts from
+the global mode. Per-row mode and Remove
 controls retain bundle-ID identity. The existing portable-settings allowlist is
 unchanged; these new choices are not implicitly exported or imported.
 
@@ -2845,8 +2849,9 @@ focus change. A process target that does not name a running application fails
 before clipboard mutation, its secure-field inspection reads that application's
 focused element, and it never falls back to session routing. The receiver establishes its own first
 responder; the test asserts actual Unicode content rather than clicking through
-desktop overlays. Both production and fixture delivery use a captured process and focused-element
-capability; there is no session-wide fallback. This one receiver does not
+desktop overlays. The fixture and pinned production destinations use a captured process and
+focused-element capability; only production applications without a pinnable
+focused field keep session-stream delivery (below). This one receiver does not
 qualify the complete external-editor matrix. It does not read the user's clipboard. Actual
 Accessibility permission is required; tests do not grant it or dismiss prompts.
 The native fixture additionally requires valid bounded selection/count metadata
@@ -2904,7 +2909,10 @@ Java and remote-desktop clients) cannot be pinned. Rather than refusing where
 the previous delivery worked, its destination keeps that contract: the same
 application must still be frontmost, the system-wide focused field must be
 inspectable and not secure at delivery, and the shortcut uses the session event
-stream. A fixture that names its receiver still waits for a pinnable field. If final inspection serviced a new clipboard owner,
+stream. Because clicking Reinsert keys the non-activating panel without
+activating Portavoz, that route also refuses (`.focusUnavailable`, text kept)
+while an inactive Portavoz holds a key window: the session stream would paste
+into the panel and report a dispatch that never reached the destination. A fixture that names its receiver still waits for a pinnable field. If final inspection serviced a new clipboard owner,
 no event is posted and that owner's content is not restored over.
 
 The existing layout-aware shortcut and captured rich clipboard representations

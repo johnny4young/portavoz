@@ -631,8 +631,9 @@ These tests contain no native AX or model evaluation. The real receiver journey
 requires both `verified` and exact editor text; missing permission remains a
 failing gate. The dedicated delivery-banner journey exercises both distinct
 states in each locale: verified feedback expires, while unverified output
-supports failed Copy, successful full-output Copy and explicit Discard. Another
-trigger cannot replace it or start another session, and Reinsert remains absent.
+supports failed Copy, successful full-output Copy and an explicit Discard control.
+Another trigger starts a new session that replaces only that notice without
+re-sending the old output, and Reinsert remains absent.
 Neither UI doubles nor typed verified results qualify native delivery. Schema 1
 measurement continues to report `dispatchReported` and
 `verifiedDeliveryMeasured == false` for either typed port result. Its 25-second candidate budget is separate
