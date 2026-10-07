@@ -44,9 +44,24 @@ struct DictationSection: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("settings-dictation-language-support")
+                DictationTextSettingsSection(model: services.dictationTextSettings) {
+                    await services.selectDictationProfileApplication()
+                }
+                // Literal mode never applies these; keep them visible but inert
+                // until a default or application profile uses Clean mode.
+                let cleanInUse = services.dictationTextSettings.cleanModeInUse
                 Toggle("Filter out filler words", isOn: $filterFillers)
                     .accessibilityIdentifier("settings-dictation-filler")
+                    .disabled(!cleanInUse)
                 DictationDictionaryEditor()
+                    .disabled(!cleanInUse)
+                if !cleanInUse {
+                    Text("Filler filtering and replacements apply only in Clean mode.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("settings-dictation-clean-only")
+                }
             }
             Text(
                 "Dictation stays on this Mac and is not stored. Inserting text requires Accessibility permission."

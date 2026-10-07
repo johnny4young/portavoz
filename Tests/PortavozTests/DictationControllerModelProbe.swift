@@ -48,12 +48,15 @@ enum DictationControllerModelProbe {
                     released.finish()
                 }
             },
-            canInsert: { true }, targetName: { nil },
-            insert: { text in
-                proposedText = text
-                // No native permission/focus inspection, clipboard or key event.
-                return .focusUnavailable
+            canInsert: { true },
+            captureDestination: {
+                CapturedDictationDestination(name: nil, canRetry: true) { text in
+                    proposedText = text
+                    // No native permission/focus inspection, clipboard or key event.
+                    return .refused(.focusUnavailable)
+                }
             },
+            copyText: { _ in false },
             defaults: defaults,
             beginCapture: { {} },
             measurementSink: { measured.yield($0); measured.finish() })
