@@ -20642,9 +20642,10 @@ and [AX Core Foundation equality](https://developer.apple.com/documentation/appl
 not a new history, file or meeting. Copy retains it, Reinsert requires the same
 captured destination, and Discard retires pending effects. A new trigger cannot
 silently replace it. Capture/model resources are not reacquired for retry.
-Missing initial focus offers Copy, not a guessed destination. A failed Copy
-restores the previous captured clipboard only while it still owns the board;
-the live composition must provide the effect explicitly. Presentation owns
+Missing initial focus offers Copy, not a guessed destination (see the
+amendment for unpinnable applications). Copy is an explicit user Copy whose
+effect the live composition provides; the amendment below defines its clipboard
+semantics. Presentation owns
 no pasteboard or pipeline work. Successful event dispatch still is not verified
 delivery, and cancellation after posting does not undo an edit.
 
