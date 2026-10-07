@@ -35,14 +35,17 @@ enum DictationTextPreferences {
     }
 
     /// The temporary app writes only its volatile argument domain, never a preference file.
+    /// A persistent edit supersedes a startup override, as in `HotkeySetting.save`;
+    /// otherwise Settings would show a mode that the next session never reads.
     static func store(_ value: String, forKey key: String, in defaults: UserDefaults, temporary: Bool) {
+        var domain = defaults.volatileDomain(forName: UserDefaults.argumentDomain)
         if temporary {
-            var domain = defaults.volatileDomain(forName: UserDefaults.argumentDomain)
             domain[key] = value
-            defaults.setVolatileDomain(domain, forName: UserDefaults.argumentDomain)
         } else {
             defaults.set(value, forKey: key)
+            guard domain.removeValue(forKey: key) != nil else { return }
         }
+        defaults.setVolatileDomain(domain, forName: UserDefaults.argumentDomain)
     }
 
     static func globalMode(in defaults: UserDefaults) -> DictationTextMode {

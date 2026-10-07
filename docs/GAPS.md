@@ -112,7 +112,9 @@ stream. Clicking Reinsert makes the non-activating recovery panel key while
 Portavoz stays inactive, so that stream would reach the panel instead of the
 destination. Delivery therefore refuses with `focusUnavailable` and the text
 stays in recovery: Copy works and nothing is lost, but Reinsert cannot succeed
-on this route. The likely fix is a panel that does not become key for a button
+on this route. Choosing Literal or Clean in the panel during a session
+keys the panel the same way, so that session's delivery on this route is refused
+into recovery too. The likely fix is a panel that does not become key for a button
 click (for example `becomesKeyOnlyIfNeeded`), which needs native verification
 in Slack, VS Code, a Java editor and a remote-desktop client before it ships.
 
@@ -124,6 +126,14 @@ existing cancel-during-delivery contract: the posted paste may still land, but
 the verified or unverified notice and its Copy are discarded and the receipt
 records `cancelled`. Fencing input during readback would change that released
 contract and needs an explicit product decision plus native evidence.
+
+### Dictation text mode and settings transfer
+
+D558 keeps the dictation text mode and application profiles out of the
+portable-settings allowlist. A fresh installation initializes Literal at
+launch, so importing settings with filler removal and replacements from another
+Mac leaves them inactive until the user chooses Clean. Carrying the mode in
+settings transfer would widen the allowlist and needs an explicit decision.
 
 ### Live dictation can propose text without speech
 
