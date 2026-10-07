@@ -53,7 +53,7 @@ final class OnboardingModelPreparationTests: XCTestCase {
     }
 
     @MainActor
-    func testFixtureRequiresDisposableStoreAndNeverCallsRealPreparation() throws {
+    func testFixtureRequiresDisposableStoreAndNeverCallsRealPreparation() async throws {
         let flag = "-simulate-onboarding-model-recovery"
         XCTAssertNil(OnboardingModelPreparation.disposableFixtureResult(arguments: [flag], attempt: 1))
         XCTAssertNil(OnboardingModelPreparation.disposableFixtureResult(arguments: ["-use-temp-store"], attempt: 1))
