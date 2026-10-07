@@ -125,19 +125,10 @@ public enum AudioTranscoder {
                 presetName: AVAssetExportPresetAppleM4A)
         else { throw TranscodeError.exportFailed("no export session") }
 
-        if #available(macOS 15.0, iOS 18.0, *) {
-            try await session.export(to: output, as: .m4a)
-        } else {
-            session.outputURL = output
-            session.outputFileType = .m4a
-            await withCheckedContinuation { continuation in
-                session.exportAsynchronously { continuation.resume() }
-            }
-            guard session.status == .completed else {
-                throw TranscodeError.exportFailed(
-                    session.error?.localizedDescription ?? "unknown")
-            }
-        }
+        try await AudioExportSession.export(
+            session,
+            to: output,
+            legacyFailure: TranscodeError.exportFailed)
     }
 
     private static func verifyAudio(at output: URL) throws {

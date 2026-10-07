@@ -153,6 +153,17 @@ text delivery, and no captured content or destination identity enters a receipt.
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners including recording-scoped proactive-assist state, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
 | `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
 
+### Audio export compatibility boundary
+
+`AudioPlaybackKit.AudioExportSession` owns the shared AAC export bridge used by
+both clip-export paths and compression. Composition, requested ranges, clear
+mixing, output replacement, rollback, verification and source deletion remain
+with their existing callers. Current systems retain AVFoundation's async export
+and native errors. The macOS 14/iOS 17 fallback waits for its callback and accepts
+only `.completed`, mapping failures through the caller's existing error family.
+Cancelling a legacy wait does not retire the export before that callback; this
+refactor adds no cancellation or filesystem owner.
+
 ### Parakeet job preparation
 
 Inside `TranscriptionKit`, each Parakeet transcription job receives a fresh native
