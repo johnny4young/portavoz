@@ -1,4 +1,5 @@
 import Foundation
+import PortavozCore
 
 /// Developer-requested, content-free observation of the controller, not a claim
 /// about microphone hardware, ASR quality or text verified in another process.
@@ -21,7 +22,7 @@ struct DictationSessionMeasurement: Codable, Equatable, Sendable {
         case cancelled
         case pipelineFailed
         case empty
-        // TextInserter's legacy `.inserted` reports event dispatch, not readback.
+        // This observer records the controller port, not native verification evidence.
         case dispatchReported
         case deliveryRejected
     }
@@ -64,11 +65,11 @@ final class DictationSessionMeasurementRecorder {
             outcome: outcome, verifiedDeliveryMeasured: false))
     }
 
-    func finishDelivery(_ result: TextInserter.InsertionResult) {
+    func finishDelivery(_ result: DictationDeliveryOutcome) {
         record(.deliveryReturned)
         switch result {
-        case .inserted: finish(.dispatchReported)
-        case .cancelled: finish(.cancelled)
+        case .verified, .dispatched: finish(.dispatchReported)
+        case .refused(.cancelled): finish(.cancelled)
         default: finish(.deliveryRejected)
         }
     }

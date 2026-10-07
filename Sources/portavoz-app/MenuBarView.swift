@@ -23,7 +23,10 @@ struct MenuBarContent: View {
             statusHeader
             quickActions
             if let fixture = services.dictationNativeUITestFixture {
-                Button("Dictate", action: fixture.start)
+                Button("Dictate") {
+                    fixture.start(controller: services.dictation,
+                                  dependencies: services.makeDictationSessionDependencies())
+                }
                     .accessibilityIdentifier("dictation-native-start")
                 Text(verbatim: fixture.status)
                     .accessibilityIdentifier("dictation-native-status")
