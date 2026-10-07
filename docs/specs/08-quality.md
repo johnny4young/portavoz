@@ -8757,20 +8757,6 @@ interrupted message, then proves dismissal and restart in each locale. The fixtu
 not during menu dependency construction. Its scope has an explicit 20-second
 per-case budget; aggregate full-suite budgets are unchanged.
 
-## Audio export bridge characterization
-
-`AudioExportSessionTests` drives the real internal callback bridge with immediate
-and held fake completions, including caller cancellation before/after start. It
-checks every known non-completed status and both existing domain error families,
-with native error text and missing-error fallback. These injected checks establish
-callback/error ownership, not AVFoundation runtime cancellation behavior. The
-real synthetic-WAV clip tests exercise both role-aware clear/original mixes and
-assert output duration, byte-identical input, and lower post-release microphone
-energy only in the clear mix; existing raw clip and compression
-rollback/verification tests remain. Hosted Sequoia/current-SDK tests exercise the
-modern AVFoundation branch. Physical macOS 14 callback-export qualification and
-acoustic/performance measurements remain distinct and are not inferred from mocks.
-
 ### Deterministic dictation text-mode coverage
 
 Swift Testing enters the real DictationController from bilingual synthetic
@@ -8844,3 +8830,17 @@ acknowledgement deadline. A failed status assertion does not return before
 checking the actual editor and clipboard: those are independent evidence, not
 implications of a port result. This prepared receiver does not qualify slow,
 unsupported or arbitrary third-party AX servers.
+
+### Audio export bridge characterization
+
+`AudioExportSessionTests` drives the real internal callback bridge with immediate
+and held fake completions, including caller cancellation before/after start. It
+checks every known non-completed status and both existing domain error families,
+with native error text and missing-error fallback. These injected checks establish
+callback/error ownership, not AVFoundation runtime cancellation behavior. The
+real synthetic-WAV clip tests exercise both role-aware clear/original mixes and
+assert output duration, byte-identical input, and lower post-release microphone
+energy only in the clear mix; existing raw clip and compression
+rollback/verification tests remain. Hosted Sequoia/current-SDK tests exercise the
+modern AVFoundation branch. Physical macOS 14 callback-export qualification and
+acoustic/performance measurements remain distinct and are not inferred from mocks.
