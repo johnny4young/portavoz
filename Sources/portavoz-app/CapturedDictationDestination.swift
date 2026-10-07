@@ -81,7 +81,7 @@ extension TextInserter {
     }
 
     @MainActor
-    private static func focusedApplicationElement(_ processID: pid_t) -> AXUIElement? {
+    static func focusedApplicationElement(_ processID: pid_t) -> AXUIElement? {
         let owner = AXUIElementCreateApplication(processID)
         guard AXUIElementSetMessagingTimeout(owner, 0.1) == .success else { return nil }
         return focusedElement(in: owner)

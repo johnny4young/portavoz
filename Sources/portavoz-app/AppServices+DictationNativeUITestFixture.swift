@@ -1,5 +1,4 @@
 import AppKit
-import ApplicationServices
 import Observation
 
 /// The real inserter must run in the app's process, not XCTest's sandboxed
@@ -67,9 +66,7 @@ final class DictationNativeUITestFixture {
     }
 
     private func receiverHasReadableSelection(_ receiver: NSRunningApplication) -> Bool {
-        let owner = AXUIElementCreateApplication(receiver.processIdentifier)
-        guard AXUIElementSetMessagingTimeout(owner, 0.1) == .success,
-              let element = TextInserter.focusedElement(in: owner),
+        guard let element = TextInserter.focusedApplicationElement(receiver.processIdentifier),
               TextInserter.fieldSecurity(of: element) == .regular,
               let readback = DictationTextReadback.accessibility(element) else { return false }
         return readback.baseline(for: Self.outputText) != nil

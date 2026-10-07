@@ -16,10 +16,16 @@ struct DictationUnverifiedDeliveryView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("dictation-panel-delivery-detail")
-            Text(controller.recoveryText)
-                .lineLimit(4)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityIdentifier("dictation-unverified-text")
+            // Like recovery, the complete output stays reachable when Copy
+            // fails: it scrolls inside the bounded panel and can be selected.
+            ScrollView {
+                Text(controller.recoveryText)
+                    .font(.body)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("dictation-unverified-text")
+            }
+            .frame(maxHeight: .infinity)
             DictationCopyStatusLabel(status: controller.copyStatus)
                 .accessibilityIdentifier("dictation-unverified-copy-status")
             HStack(spacing: 8) {
