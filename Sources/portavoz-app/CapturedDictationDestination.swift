@@ -90,6 +90,12 @@ extension TextInserter {
             guard !application.isTerminated,
                   let current = NSWorkspace.shared.frontmostApplication,
                   application.isEqual(current), !current.isTerminated else { return .targetChanged }
+            // Clicking Reinsert makes the non-activating panel key without
+            // activating Portavoz; the session stream would paste there.
+            let app = NSApplication.shared
+            guard sessionStreamReachesFrontmostApplication(
+                portavozIsActive: app.isActive, portavozHasKeyWindow: app.keyWindow != nil
+            ) else { return .focusUnavailable }
             switch sessionFocusedFieldSecurity() {
             case .regular: return nil
             case .secure: return .secureField
@@ -99,6 +105,15 @@ extension TextInserter {
         return CapturedDictationDestination(name: application.localizedName, canRetry: true) { text in
             await insert(text, into: target, pasteboard: pasteboard)
         }
+    }
+
+    /// Pure decision, split out for tests: an inactive Portavoz holds a key
+    /// window only through its non-activating panel, which then receives the
+    /// session keyboard stream instead of the frontmost application.
+    static func sessionStreamReachesFrontmostApplication(
+        portavozIsActive: Bool, portavozHasKeyWindow: Bool
+    ) -> Bool {
+        portavozIsActive || !portavozHasKeyWindow
     }
 
     /// Classification of whatever field currently owns system-wide keyboard

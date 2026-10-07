@@ -734,7 +734,6 @@ extension DictationController {
             } else {
                 self.phase = .recovery(result)
             }
-            guard self.deliveryID == id || self.deliveryID == nil else { return }
             self.retryDeliveryTask = nil
         }
     }
