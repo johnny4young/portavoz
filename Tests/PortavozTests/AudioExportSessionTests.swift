@@ -14,15 +14,15 @@ final class AudioExportSessionTests: XCTestCase {
             for error in [nil, nativeError] {
                 let reason = error == nil ? "unknown" : "fixture failure"
                 XCTAssertThrowsError(try AudioExportSession.requireLegacyCompletion(
-                    status: status, error: error, failure: AudioClipExporter.ClipError.exportFailed)) { error in
-                    guard case AudioClipExporter.ClipError.exportFailed(let message) = error else {
+                    status: status, error: error, failure: AudioClipExporter.ClipError.exportFailed)) { thrown in
+                    guard case AudioClipExporter.ClipError.exportFailed(let message) = thrown else {
                         return XCTFail("the clip caller must keep its own failure type")
                     }
                     XCTAssertEqual(message, reason)
                 }
                 XCTAssertThrowsError(try AudioExportSession.requireLegacyCompletion(
-                    status: status, error: error, failure: AudioTranscoder.TranscodeError.exportFailed)) { error in
-                    guard case AudioTranscoder.TranscodeError.exportFailed(let message) = error else {
+                    status: status, error: error, failure: AudioTranscoder.TranscodeError.exportFailed)) { thrown in
+                    guard case AudioTranscoder.TranscodeError.exportFailed(let message) = thrown else {
                         return XCTFail("the compression caller must keep its own failure type")
                     }
                     XCTAssertEqual(message, reason)
@@ -47,6 +47,8 @@ final class AudioExportSessionTests: XCTestCase {
         callback.complete()
         await task.value
         XCTAssertTrue(callback.hasReturned)
+        XCTAssertTrue(callback.returnedAfterCompletion,
+                      "the wait must not return before the native callback fires")
     }
 
     func testAlreadyCancelledLegacyWaitStillDrainsItsCallback() async {
@@ -61,6 +63,8 @@ final class AudioExportSessionTests: XCTestCase {
         callback.complete()
         await task.value
         XCTAssertTrue(callback.hasReturned)
+        XCTAssertTrue(callback.returnedAfterCompletion,
+                      "the wait must not return before the native callback fires")
     }
 }
 
@@ -70,9 +74,12 @@ private final class LegacyExportCallback: @unchecked Sendable {
     private var completion: (@Sendable () -> Void)?
     private var installed = false
     private var returned = false
+    private var delivered = false
+    private var deliveredBeforeReturn = false
     private var installationWaiter: CheckedContinuation<Void, Never>?
 
     var hasReturned: Bool { lock.withLock { returned } }
+    var returnedAfterCompletion: Bool { lock.withLock { deliveredBeforeReturn } }
 
     func install(_ completion: @escaping @Sendable () -> Void) {
         let waiter = lock.withLock {
@@ -100,10 +107,16 @@ private final class LegacyExportCallback: @unchecked Sendable {
         let completion = lock.withLock {
             let value = self.completion
             self.completion = nil
+            delivered = true
             return value
         }
         completion?()
     }
 
-    func recordReturn() { lock.withLock { returned = true } }
+    func recordReturn() {
+        lock.withLock {
+            returned = true
+            deliveredBeforeReturn = delivered
+        }
+    }
 }
