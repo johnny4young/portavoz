@@ -37,7 +37,7 @@ final class DictationClipboard {
         let deadline = ContinuousClock.now.advanced(by: TextInserter.restoreDelay + .seconds(2))
         while states[pasteboard.name]?.restoration != nil {
             guard ContinuousClock.now < deadline else {
-                Self.logger.error("Clipboard restoration did not run in its window; restoring before retiring its loan.")
+                Self.logger.error("Clipboard restoration missed its window; restoring before retiring the loan.")
                 if let loan = states[pasteboard.name]?.loan { restore(loan, on: pasteboard) }
                 retire(pasteboard.name)
                 break
