@@ -2,6 +2,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import unittest
@@ -51,6 +52,63 @@ class SourceStampTests(unittest.TestCase):
         self.assertEqual(stamps.restore(self.root), (0, 1))
         self.assertNotEqual(self.source.stat().st_mtime_ns, self.original['mtime_ns'])
         self.assertEqual(self.source.stat().st_mode & 0o777, 0o755)
+
+    def test_vendored_c_and_header_inputs_recover_only_verified_timestamps(self):
+        vendor = self.root / 'Vendor/sqlite-vec'
+        vendor.mkdir(parents=True)
+        source = vendor / 'sqlite-vec.c'
+        header = vendor / 'sqlite-vec.h'
+        for path in (source, header):
+            path.write_text('int value = 1;\n')
+            os.utime(path, ns=(self.original['mtime_ns'], self.original['mtime_ns']))
+        self.git_add('Vendor')
+        self.assertEqual(stamps.snapshot(self.root), 3)
+        os.utime(source, None)
+        header.write_text('int value = 2;\n')
+        os.utime(header, ns=(self.original['mtime_ns'], self.original['mtime_ns']))
+        with patch.object(stamps.time, 'time_ns', return_value=1800000000000000000):
+            self.assertEqual(stamps.restore(self.root), (2, 1))
+        self.assertEqual(source.stat().st_mtime_ns, self.original['mtime_ns'])
+        self.assertEqual(header.stat().st_mtime_ns, 1800000000000000000)
+        self.assertEqual(header.read_text(), 'int value = 2;\n')
+
+    def test_every_quoted_include_reachable_from_compiled_sources_is_inventoried(self):
+        # C-family targets may textually include repository files outside
+        # Sources (CSQLiteVecResearch compiles Vendor/sqlite-vec). Walk quoted
+        # includes transitively so a new out-of-tree input cannot silently keep
+        # fresh-checkout timestamps behind a restored wrapper.
+        inventory = stamps.inputs(ROOT)
+        root = ROOT.resolve()
+        suffixes = {'.c', '.h', '.m', '.mm', '.cc', '.cpp', '.hpp'}
+        pending = [path.resolve() for path in inventory.values() if path.suffix in suffixes]
+        seen = set(pending)
+        directive = re.compile(r'^\s*#\s*(?:include|import)\s*"([^"]+)"', re.MULTILINE)
+        while pending:
+            current = pending.pop()
+            for target in directive.findall(current.read_text(errors='replace')):
+                included = (current.parent / target).resolve()
+                if not included.is_file() or included in seen:
+                    continue
+                seen.add(included)
+                pending.append(included)
+                # An include escaping the checkout is an untracked input.
+                self.assertTrue(included.is_relative_to(root), f'Compiled input outside checkout: {included}')
+                name = included.relative_to(root).as_posix()
+                self.assertTrue(name in inventory, f'Missing compiled input: {name}')
+        # Keep the walk anchored: it must actually reach the vendored blob.
+        for name in ('Vendor/sqlite-vec/sqlite-vec.c', 'Vendor/sqlite-vec/sqlite-vec.h'):
+            self.assertIn((root / name).resolve(), seen)
+
+    def test_manifest_declares_no_compiled_roots_outside_the_inventory(self):
+        # The include walker resolves quoted includes relative to the including
+        # file only. Search paths or target roots outside Sources/Tests would
+        # add compiled inputs it cannot see; extend the inventory and the
+        # walker before introducing either.
+        manifest = (ROOT / 'Package.swift').read_text()
+        for path in re.findall(r'\bpath:\s*"([^"]+)"', manifest):
+            self.assertRegex(path, r'^(Sources|Tests)(/|$)')
+        for setting in ('headerSearchPath', 'unsafeFlags'):
+            self.assertNotIn(setting, manifest)
 
     def test_added_deleted_and_renamed_inputs_are_not_resurrected(self):
         self.source.unlink()

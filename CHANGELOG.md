@@ -17,6 +17,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 7, 2026
 
+- **🔑 Safer credential updates** — a failed API-key replacement keeps your previous working credential.
+
 - **🎛️ Dictation your way** — choose Literal or Clean, save a mode for each application, and override it for one session without changing your defaults.
 
 - **📨 Honest dictation delivery** — distinguish verified insertion from an unconfirmed send; keep unconfirmed text available to copy or discard without automatically pasting twice.

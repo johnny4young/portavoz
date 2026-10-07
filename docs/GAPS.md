@@ -135,6 +135,21 @@ launch, so importing settings with filler removal and replacements from another
 Mac leaves them inactive until the user chooses Clean. Carrying the mode in
 settings transfer would widen the allowlist and needs an explicit decision.
 
+### Keychain replacement and the file-based keychain trust list
+
+Credential replacement now updates the existing item in place, so a failed
+write keeps the previous working credential. The store does not opt into the
+data-protection keychain, so on macOS items live in the file-based keychain,
+where the creating binary's trust list controls access. The stable app, the
+Dev app and the CLI share each item. The released delete-and-recreate made the
+saving binary the new owner. An in-place update keeps the old trust list and
+the accessibility class the item was created with, so a save from a
+differently signed binary may prompt, fail, or leave reads prompting. The
+duplicate-item retry also overwrites a contender's value, which matters for
+encryption keys only when a pre-D358 binary bypasses the voice-store lease.
+Native evidence on a signed release, a Dev build and the CLI is required
+before choosing between trust repair and failure safety.
+
 ### Live dictation can propose text without speech
 
 **Open, reproduced in the public controller corpus.** The first complete
@@ -464,6 +479,25 @@ is not attributed from its frame; completion preferences and unrelated apps are
 not changed. Public-API admission remains a point-in-time observation: a window
 change after observation cannot be claimed atomically excluded. Full bilingual
 and exact-head hosted qualification remain distinct from native controls.
+
+A required native-controls invocation also stopped before its synchronous
+foreign-overlay counterexample was armed: the arm click was dispatched, but
+neither the armed status nor any overlay readiness/lifecycle effect appeared.
+Owned teardown completed; the first two positive controls had passed. This is
+unclassified fixture readiness, not a qualified negative control, an input-
+authority failure or a product regression. The real-app catalog was not reached.
+Diagnosis must distinguish an unobserved arm callback from a pending or failed
+native application launch without loosening effect validation, increasing waits
+or treating a later pass as attribution of this failure.
+
+A subsequent full app catalog reached the Skills recap proposal but did not
+observe its confirmation sheet after selecting the menu item. Retained owned-app
+accessibility snapshots contain the meeting window but no confirmation sheet;
+they do not establish whether the selection callback or preview completed.
+Later cases explicitly refused an unrelated window interruption. Those refusals
+do not retroactively explain the earlier missing sheet. Both failures remain
+unqualified; successful native controls and hosted runs cannot replace diagnosis
+of the missing presentation or full local bilingual evidence.
 
 ### Native search submission and screenshot ownership remain unqualified
 

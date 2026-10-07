@@ -313,18 +313,30 @@ broad key substitutes for an unknown identity. There are no restore prefixes
 and no per-commit cache copies. A dependency or build-policy change starts cold.
 Ordinary source changes retain the seed. After a successful suite,
 `scripts/ci_swift_source_stamps.py snapshot` records SHA-256, size, permissions and
-nanosecond mtime for tracked `Sources/`, `Tests/`, and package manifest/lock inputs
-inside `.build`. On an exact PR cache hit, `restore` intersects that receipt
-with the current Git inventory and restores mtime only for byte-identical,
-same-mode inputs. Changed/new inputs receive fresh timestamps even when their
-size and incoming mtime happen to match the old file. Deleted files are not
-resurrected; symlinks and resolved paths outside the checkout are never touched.
-No timestamp is inferred from Git commit dates. SwiftPM still owns build-graph
-invalidation, compilation and test discovery. The bounded, closed-schema receipt
-rejects duplicate keys, invalid hashes/numbers and missing/corrupt metadata
-before timestamp writes. Snapshot rereads its own receipt with the same
-validator, so a receipt restore would reject fails the cold run and is never
-saved into an immutable seed. A changed-during-read source cannot be fingerprinted.
+nanosecond mtime for tracked `Sources/`, `Tests/`, `Vendor/`, and package
+manifest/lock inputs inside `.build`. The vendor inventory includes the
+sqlite-vec C implementation and header included directly by
+`CSQLiteVecResearch`; otherwise an unchanged vendored dependency retains
+fresh-checkout timestamps while its wrapper recovers the prior build's
+timestamp. Regression tests cover unchanged vendor reuse, same-size,
+same-timestamp vendor edits that must become fresh inputs, and every quoted
+C-family include reachable from inventoried sources resolving inside the
+checkout and belonging to the inventory. Because that walk resolves includes
+only relative to the including file, a manifest guard rejects target paths
+outside `Sources/`/`Tests/`, `headerSearchPath`, and `unsafeFlags` until the
+inventory and walker learn them. This is input-coverage evidence, not a
+measured CI speedup. On an exact PR cache hit,
+`restore` intersects that receipt with the current Git inventory and restores
+mtime only for byte-identical, same-mode inputs. Changed/new inputs receive
+fresh timestamps even when their size and incoming mtime happen to match the old
+file. Deleted files are not resurrected; symlinks and resolved paths outside the
+checkout are never touched. No timestamp is inferred from Git commit dates.
+SwiftPM still owns build-graph invalidation, compilation and test discovery. The
+bounded, closed-schema receipt rejects duplicate keys, invalid hashes/numbers
+and missing/corrupt metadata before timestamp writes. Snapshot rereads its own
+receipt with the same validator, so a receipt restore would reject fails the
+cold run and is never saved into an immutable seed. A changed-during-read source
+cannot be fingerprinted.
 
 Both complete test invocations are unconditional, including current-SDK
 warnings-as-errors. No `--skip-build`, test filtering, retries, smaller test
@@ -8413,8 +8425,9 @@ The retained failure is not evidence of a layout race or another app's intrusion
 
 `make test-ui-interruption-safety UI_INTERRUPTION_RESULTS=<new-private-directory>`
 builds a tiny separate app/overlay/runner target once. It uses the exact shared
-`PortavozUITestCase`, `UITestStorage`, `UITestScratch` and wait-helper sources;
-there is no copied guard implementation. Its original four pointer controls distinguish:
+`PortavozUITestCase`, `UITestStorage`, `UITestScratch`, `UITestActionGeometry` and
+wait-helper sources; there is no copied guard implementation. Its original four
+pointer controls distinguish:
 
 - an uninterrupted action, which must produce an observable synthetic effect;
 - a deliberate synthetic choice, which calibrates the choice effect detector;
@@ -8540,6 +8553,36 @@ Bare application typing and foreground-only typing each have a retained native
 counterexample. All controls and full bilingual product journeys are required
 for this shared-harness change. These public-API observations are point-in-time,
 not an atomic OS input guarantee or permission-dialog certification (D534).
+
+### Expected-modal pointer geometry
+
+The native sheet and app-modal positive controls resolve their fixed button
+identifier within the expected modal and dispatch one physical pointer through
+that modal's public coordinate API. The anchor is not the background window:
+XCTest treats its app-modal dialog as an interruption of a background-window
+coordinate action, even when the resulting screen point falls on the button.
+The interruption guard remains unchanged; no Return, activation or second-click
+fallback substitutes for the choice callback.
+
+`UITestActionGeometry` rejects null/infinite rectangles, raw nonpositive sizes,
+nonfinite derived coordinates and relative-offset overflow. Scalar finiteness
+alone is insufficient: `CGRect.infinite` has finite members and rectangle
+accessors normalize negative sizes. Negative-display coordinates and subpixel
+centres remain valid. The modal controls additionally require the choice centre
+to lie inside the live modal frame that the pointer is rooted in, refuse a
+modal frame that changed between its accessibility reads, and accept an
+explicit test anchor only when it yields the same contained offset, so that
+anchor can refuse a click but never redirect it. Swift boundary tests and the sheet's actual invalid-anchor
+refusal exercise different evidence: the latter requires the sheet to remain
+open with no choice effect before the valid pointer and its real completion.
+Both positive controls still require exact editor text, typed/choice effects and
+owned cleanup. The helper is fingerprinted and independently selects native
+controls plus full bilingual UI; it is test-only, not an app input API.
+
+An XCTest DisplayManager warning about an infinite rectangle has appeared in
+both passing and failing native modal controls; it does not establish the cause
+of a missing completion. These observations do not certify elimination of every
+host timing failure, an atomic input guarantee or a performance improvement.
 
 ### Runtime budget re-qualified with the 1.1 recording bar (Sep 2026)
 
