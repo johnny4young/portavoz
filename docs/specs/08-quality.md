@@ -612,13 +612,6 @@ root excludes that directory explicitly, alongside the UI and interruption
 fixtures; strict package diagnostics must not treat its entry point as an
 unhandled unit-test resource.
 
-The synthetic application used by `test_app_payload_permissions` explicitly
-constructs packaging-equivalent readable payload modes, independently of the
-caller's creation mask. Its outer temporary directory remains private. Actual
-payload-gate subprocess tests exercise flat and nested layouts under restrictive
-and ordinary masks, then deliberately remove bundle readability and require
-rejection; normalization cannot silently erase the negative permission case.
-
 `TextInsertionReadbackTests` runs the actual inserter against a deterministic
 receiver double, rather than testing only a comparison function. Cases cover
 bilingual Unicode and replaced selections, unchanged/wrong/unsupported editors,
