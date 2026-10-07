@@ -14,6 +14,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
 import dictation_corpus as corpus
+import dictation_model_receipt as receipt
 import run_dictation_model_baseline as runner
 from Tests.Tooling.test_dictation_materialization import NAMES, SpeechDouble
 from materialize_dictation_corpus import materialize
@@ -357,13 +358,68 @@ class DictationModelRunnerTests(unittest.TestCase):
                 self.assertEqual(result['outcome'], 'invalid-observation')
                 self.assertNotIn('must-not-be-admitted', (output / 'outcome.json').read_text())
 
+    def test_impossible_word_accounting_fails_at_the_launch_boundary(self):
+        mutations = [
+            dict(referenceWords=2, hypothesisWords=2, wordErrorRate=0.25),
+            dict(referenceWords=2, hypothesisWords=5, wordErrorRate=1),
+            dict(referenceWords=2, hypothesisWords=2, wordErrorRate=1.5),
+            dict(referenceWords=2, hypothesisWords=0, wordErrorRate=0),
+            dict(referenceWords=2, hypothesisWords=0, wordErrorRate=1, characterErrorRate=0),
+            dict(referenceWords=0, hypothesisWords=0, wordErrorRate=1),
+            dict(referenceWords=0, hypothesisWords=1, wordErrorRate=0),
+        ]
+        for index, mutation in enumerate(mutations):
+            with self.subTest(mutation=mutation):
+                def invoke(arguments, **options):
+                    result = self.successful_double(arguments, **options)
+                    path = Path(options['env']['PORTAVOZ_DICTATION_BASELINE_OUTPUT'])
+                    document = json.loads(path.read_text())
+                    document['cells'][0]['score'].update(exactReferenceMatch=False, **mutation)
+                    path.write_text(json.dumps(document))
+                    return result
+                result = runner.run(self.audio, self.cases, self.bundle,
+                                    self.root / f'accounting-{index}', self.launcher, invoke=invoke)
+                self.assertEqual(result['outcome'], 'invalid-observation')
+                self.assertFalse(result['verifiedDeliveryMeasured'])
+
+    def test_legacy_empty_reference_scores_are_admitted_without_quality_acceptance(self):
+        self.cases = ['non-speech-silence.clean']
+        for hypothesis in (0, 3):
+            def invoke(arguments, **options):
+                result = self.successful_double(arguments, **options)
+                path = Path(options['env']['PORTAVOZ_DICTATION_BASELINE_OUTPUT'])
+                document = json.loads(path.read_text())
+                for row in document['cells']:
+                    for key in ('score', 'adapterDeltas'):
+                        row[key].update(wordErrorRate=int(hypothesis > 0),
+                                        characterErrorRate=int(hypothesis > 0), referenceWords=0,
+                                        hypothesisWords=hypothesis, exactReferenceMatch=hypothesis == 0)
+                    if hypothesis == 0:
+                        del row['firstUpdateSeconds']
+                path.write_text(json.dumps(document))
+                return result
+            result = runner.run(self.audio, self.cases, self.bundle,
+                                self.root / f'no-speech-{hypothesis}', self.launcher, invoke=invoke)
+            self.assertEqual(result['outcome'], 'observed')
+            self.assertFalse(result['verifiedDeliveryMeasured'])
+            self.assertFalse(result['sourceCommitQualified'])
+
+    def test_word_edit_roundoff_preserves_legitimate_rates_and_empty_speech(self):
+        for reference, hypothesis, edits in ((3, 2, 1), (999983, 999979, 333329),
+                                              (1, 1000000, 1000000), (2, 0, 2)):
+            score = dict(wordErrorRate=edits / reference, characterErrorRate=1,
+                         referenceWords=reference, hypothesisWords=hypothesis,
+                         exactReferenceMatch=False, legacyCleanupChangedText=False)
+            receipt.validate_score(score)
+
     def test_high_error_rates_remain_observations_not_a_censored_quality_pass(self):
         def invoke(arguments, **options):
             result = self.successful_double(arguments, **options)
             path = Path(options['env']['PORTAVOZ_DICTATION_BASELINE_OUTPUT'])
             document = json.loads(path.read_text())
             for row in document['cells']:
-                row['score'].update(wordErrorRate=5.5, characterErrorRate=7.0, exactReferenceMatch=False)
+                row['score'].update(wordErrorRate=5.5, characterErrorRate=7.0,
+                                    referenceWords=2, hypothesisWords=12, exactReferenceMatch=False)
             path.write_text(json.dumps(document))
             return result
         self.assertEqual(self.observe(invoke)['outcome'], 'observed')
