@@ -22,6 +22,8 @@ extension AppServices {
 final class DictationUITestFixture {
     let text: String
     let recoversDestination: Bool
+    let deliveryOutcome: DictationDeliveryOutcome?
+    var presentsRecoveryControls: Bool { recoversDestination || deliveryOutcome == .dispatched }
     let streamsDeltas: Bool
     let deniesMicrophoneOnce: Bool
     let missesAudioOnce: Bool
@@ -35,6 +37,8 @@ final class DictationUITestFixture {
     init?(arguments: [String], usesTemporaryStore: Bool) {
         guard usesTemporaryStore, arguments.contains("-seed-dictation") else { return nil }
         recoversDestination = arguments.contains("-seed-dictation-recovery")
+        deliveryOutcome = arguments.contains("-seed-dictation-delivery")
+            ? (arguments.contains("-seed-dictation-verified") ? .verified : .dispatched) : nil
         finishesNextCapture = arguments.contains("-seed-dictation-source-eof")
         streamsDeltas = arguments.contains("-seed-dictation-streaming")
         deniesMicrophoneOnce = arguments.contains("-seed-dictation-microphone-denied")
@@ -95,19 +99,20 @@ final class DictationUITestFixture {
                     : "Dictation test receiver"
                 return CapturedDictationDestination(name: name, canRetry: true) { _ in
                     deliveryAttempts += 1
-                    guard fixture?.recoversDestination == true else { return .focusUnavailable }
-                    return deliveryAttempts == 1 ? .targetChanged : .inserted
+                    if let outcome = fixture?.deliveryOutcome { return outcome }
+                    guard fixture?.recoversDestination == true else { return .refused(.focusUnavailable) }
+                    return deliveryAttempts == 1 ? .refused(.targetChanged) : .dispatched
                 }
             },
             copyText: { text in
                 copyAttempts += 1
                 // Deliberate first failure; later attempts use only a named board.
-                guard fixture?.recoversDestination == true, copyAttempts > 1, let boardName else { return false }
+                guard fixture?.presentsRecoveryControls == true, copyAttempts > 1, let boardName else { return false }
                 return TextInserter.copy(text, to: NSPasteboard(name: .init(boardName)))
             },
             defaults: .standard,
             now: {
-                guard fixture?.recoversDestination == true else { return Date() }
+                guard fixture?.recoversDestination == true || fixture?.deliveryOutcome != nil else { return Date() }
                 defer { clockTick += 1 }
                 return Date(timeIntervalSince1970: clockTick)
             },

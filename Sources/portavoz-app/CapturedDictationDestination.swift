@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import PortavozCore
 
 /// A session's destination and its delivery capability travel together. Names
 /// are display-only; neither a name nor a bundle identifier authorizes a paste.
@@ -7,10 +8,10 @@ import ApplicationServices
 struct CapturedDictationDestination {
     let name: String?
     let canRetry: Bool
-    let insert: (String) async -> TextInserter.InsertionResult
+    let insert: (String) async -> DictationDeliveryOutcome
 
-    static func unavailable(name: String?, result: TextInserter.InsertionResult) -> Self {
-        Self(name: name, canRetry: false, insert: { _ in result })
+    static func unavailable(name: String?, result: DictationDeliveryOutcome.Refusal) -> Self {
+        Self(name: name, canRetry: false, insert: { _ in .refused(result) })
     }
 }
 
@@ -28,8 +29,9 @@ extension TextInserter {
     @MainActor
     struct Target {
         let processID: pid_t
+        var readback: DictationTextReadback?
         /// Nil permits this exact attempt. Revalidation never activates an app.
-        let validate: () -> InsertionResult?
+        let validate: () -> DictationDeliveryOutcome.Refusal?
         var route: EventRoute = .process
     }
 
@@ -43,7 +45,7 @@ extension TextInserter {
               expectedApplication.map({ application.isEqual($0) }) ?? true else {
             return .unavailable(name: application?.localizedName, result: .focusUnavailable)
         }
-        guard let element = focusedElement(in: AXUIElementCreateApplication(application.processIdentifier)) else {
+        guard let element = focusedApplicationElement(application.processIdentifier) else {
             // Nothing to pin. A fixture that names its receiver keeps waiting;
             // production never refuses where the previous delivery would work.
             guard expectedApplication == nil else {
@@ -56,14 +58,14 @@ extension TextInserter {
             return .unavailable(name: application.localizedName,
                                 result: initialSecurity == .secure ? .secureField : .focusUnavailable)
         }
-        let target = Target(processID: application.processIdentifier) {
+        let target = Target(processID: application.processIdentifier, readback: .accessibility(element)) {
             guard canInsert(promptIfNeeded: false) else { return .focusUnavailable }
             // Apple specifies NSRunningApplication equality for process identity,
             // not PID equality. launchDate is absent for non-LaunchServices apps.
             guard !application.isTerminated,
                   let current = NSWorkspace.shared.frontmostApplication,
                   application.isEqual(current), !current.isTerminated else { return .targetChanged }
-            guard let focused = focusedElement(in: AXUIElementCreateApplication(current.processIdentifier)) else {
+            guard let focused = focusedApplicationElement(current.processIdentifier) else {
                 return .focusUnavailable
             }
             guard CFEqual(element, focused) else { return .targetChanged }
@@ -76,6 +78,13 @@ extension TextInserter {
         return CapturedDictationDestination(name: application.localizedName, canRetry: true) { text in
             await insert(text, into: target, pasteboard: pasteboard)
         }
+    }
+
+    @MainActor
+    static func focusedApplicationElement(_ processID: pid_t) -> AXUIElement? {
+        let owner = AXUIElementCreateApplication(processID)
+        guard AXUIElementSetMessagingTimeout(owner, 0.1) == .success else { return nil }
+        return focusedElement(in: owner)
     }
 
     /// The previous delivery contract for an application without an inspectable

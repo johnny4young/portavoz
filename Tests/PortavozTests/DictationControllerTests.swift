@@ -18,7 +18,7 @@ final class DictationControllerTests: XCTestCase {
         for processID: pid_t in [0, -1, .min] {
             let result = await TextInserter.insert(
                 "Must never be delivered", into: .init(processID: processID, validate: { nil }), pasteboard: board)
-            XCTAssertEqual(result, .eventUnavailable)
+            XCTAssertEqual(result, .refused(.eventUnavailable))
             XCTAssertEqual(board.changeCount, originalCount)
             XCTAssertEqual(board.string(forType: .string), "Do not replace — no reemplazar")
         }
@@ -35,7 +35,7 @@ final class DictationControllerTests: XCTestCase {
         exited.waitUntilExit()
         let target = TextInserter.Target(processID: exited.processIdentifier, validate: { nil })
         let result = await TextInserter.insert("Must never be delivered", into: target, pasteboard: board)
-        XCTAssertEqual(result, .eventUnavailable)
+        XCTAssertEqual(result, .refused(.eventUnavailable))
         XCTAssertEqual(board.changeCount, originalCount)
         XCTAssertEqual(board.string(forType: .string), "original")
     }
@@ -323,7 +323,7 @@ final class DictationControllerTests: XCTestCase {
         XCTAssertTrue(finished)
         XCTAssertEqual(harness.insertions, [harness.text], "Do not repeat delivery")
         XCTAssertEqual(captures, 1, "A late report must not recapture a destination")
-        XCTAssertEqual(harness.controller.phase, .inserted(harness.text.split(whereSeparator: \.isWhitespace).count),
+        XCTAssertEqual(harness.controller.phase, .dispatched(harness.text.split(whereSeparator: \.isWhitespace).count),
                        "A late notification cannot revoke dispatched feedback")
     }
 
@@ -416,7 +416,7 @@ final class DictationControllerTests: XCTestCase {
                 let expectedCopy = temporary && arguments == flags
                 let destination = dependencies.captureDestination()
                 let delivery = await destination.insert("No native events")
-                XCTAssertEqual(delivery, expectedCopy ? .targetChanged : .focusUnavailable)
+                XCTAssertEqual(delivery, .refused(expectedCopy ? .targetChanged : .focusUnavailable))
                 XCTAssertFalse(dependencies.copyText("Never copied on the first attempt"))
                 XCTAssertEqual(dependencies.copyText("Consented scratch copy"), expectedCopy)
                 board.setString("Original", forType: .string)
@@ -486,6 +486,20 @@ final class DictationControllerHarness {
         defaults.setVolatileDomain(values, forName: UserDefaults.argumentDomain)
     }
 
+    func verifyingDelivery(using receiver: TextReadbackHarness) -> DictationSessionDependencies {
+        var result = dependencies
+        result.captureDestination = { [weak self] in
+            CapturedDictationDestination(name: "Readback fixture", canRetry: true) { [weak self] text in
+                guard let self else { return .refused(.cancelled) }
+                let postedBefore = receiver.posts
+                let outcome = await receiver.insert(text)
+                if receiver.posts > postedBefore { self.insertions.append(text) }
+                return outcome
+            }
+        }
+        return result
+    }
+
     var dependencies: DictationSessionDependencies {
         DictationSessionDependencies(
             authorizeMicrophone: { true },
@@ -505,7 +519,7 @@ final class DictationControllerHarness {
             captureDestination: { [weak self] in
                 CapturedDictationDestination(name: "Disposable receiver", canRetry: true) { [weak self] text in
                     self?.insertions.append(text)
-                    return .inserted
+                    return .dispatched
                 }
             },
             copyText: { _ in false },

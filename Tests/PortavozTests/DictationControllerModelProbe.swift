@@ -53,7 +53,7 @@ enum DictationControllerModelProbe {
                 CapturedDictationDestination(name: nil, canRetry: true) { text in
                     proposedText = text
                     // No native permission/focus inspection, clipboard or key event.
-                    return .focusUnavailable
+                    return .refused(.focusUnavailable)
                 }
             },
             copyText: { _ in false },

@@ -9,6 +9,7 @@ import Observation
 final class DictationNativeUITestFixture {
     static let pasteboardPrefix = "app.portavoz.dictation-test."
     static let environmentKey = "PORTAVOZ_UI_TEST_DICTATION_PASTEBOARD"
+    private static let outputText = "Don't delete — no borres: café, C++, 1.250,50 €."
     private let pasteboardName: String
     private(set) var status = "idle"
     @ObservationIgnored private var task: Task<Void, Never>?
@@ -47,18 +48,27 @@ final class DictationNativeUITestFixture {
                     status = "accessibility-required-for-app"
                     return
                 }
-                // Launch can precede first-responder installation. Read-only
-                // readiness may repeat; the insertion itself never does.
-                let board = NSPasteboard(name: .init(pasteboardName))
-                let destination = TextInserter.captureDestination(pasteboard: board, matching: receiver)
-                if destination.canRetry {
-                    let result = await destination.insert("Don't delete — no borres: café, C++, 1.250,50 €.")
-                    status = String(describing: result)
-                    return
+                // A regular focused window/button can retry but cannot provide
+                // the known receiver's text metadata. Probe before the one paste.
+                if receiverHasReadableSelection(receiver) {
+                    let board = NSPasteboard(name: .init(pasteboardName))
+                    let destination = TextInserter.captureDestination(pasteboard: board, matching: receiver)
+                    if destination.canRetry {
+                        let result = await destination.insert(Self.outputText)
+                        status = String(describing: result)
+                        return
+                    }
                 }
             }
             do { try await Task.sleep(for: .milliseconds(50)) } catch { return }
         }
         status = receiverSeen ? "receiver-focus-unavailable" : "receiver-unavailable"
+    }
+
+    private func receiverHasReadableSelection(_ receiver: NSRunningApplication) -> Bool {
+        guard let element = TextInserter.focusedApplicationElement(receiver.processIdentifier),
+              TextInserter.fieldSecurity(of: element) == .regular,
+              let readback = DictationTextReadback.accessibility(element) else { return false }
+        return readback.baseline(for: Self.outputText) != nil
     }
 }

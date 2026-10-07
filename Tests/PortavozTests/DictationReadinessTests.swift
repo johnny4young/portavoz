@@ -426,7 +426,7 @@ private final class ReadinessHarness {
             captureDestination: { [weak self] in
                 CapturedDictationDestination(name: "Disposable receiver", canRetry: true) { [weak self] text in
                     self?.insertions.append(text)
-                    return .inserted
+                    return .dispatched
                 }
             },
             copyText: { _ in false },
