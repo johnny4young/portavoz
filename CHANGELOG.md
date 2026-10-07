@@ -15,6 +15,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## October 7, 2026
+
+- **📥 Audio import queue** — import several files at once, follow each one’s progress in your language, cancel or retry without touching your originals, and keep the transcript even when speaker identification is unavailable.
+
 ## October 1, 2026
 
 - **🎙️ Reliable dictation handoff** — Stop finishes microphone cleanup before typing, and late captions or feedback cannot interrupt your next dictation.
@@ -53,15 +57,6 @@ catchy entry for every user-visible change — feature name + what it gives you.
 ## September 22, 2026
 
 - **🎙️ Sharper live captions and dictation** — a reviewed speech-engine update keeps more bilingual phrases intact in meeting captions and dictation, without changing your models, privacy settings or workflow.
-
-## September 21, 2026
-
-- **🛡️ Safer import cancellation** — already-cancelled work leaves your staged audio untouched.
-
-## September 20, 2026
-
-- **🌐 Import queue in your language** — readiness and page navigation now follow your selected language.
-- **📥 Audio import queue** — import multiple files, follow each file’s progress, and cancel or retry without changing your originals.
 
 ## September 16, 2026
 
@@ -125,10 +120,6 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **A clearer review loop** — reversible clear playback, dismissible suggestions, enhanced notes, recaps, subtitles, chapters, privacy receipts, and actionable processing recovery make finished meetings easier to trust and use.
 - **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
 - **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
-
-## September 15, 2026
-
-- **📝 Import without speaker models** — keep your transcript when speaker identification is unavailable, instead of failing the whole import.
 
 ## September 12, 2026
 
