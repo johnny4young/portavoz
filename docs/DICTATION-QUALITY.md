@@ -47,19 +47,17 @@ These are evidence about their identified trees, not this proposal's experiments
 
 The older complete observation elsewhere in spec 08 has different denominators
 and a word-weighted score over nonempty proposals. Do not combine it with the
-September 21 arithmetic-mean scores. Historical spec 06 wording about no silence
-segments and verified E2E is not current certification: GAPS explicitly records
-silence proposals and dispatch-only delivery. Preserve dated failures and resolve
-that documentation discrepancy before making a release claim.
+September 21 arithmetic-mean scores. Spec 06 previously stated that live
+Parakeet silence yields no segment and that final insertion was verified end to
+end; GAPS records silence proposals and dispatch-only delivery, so this change
+marks that spec 06 wording as withdrawn/historical. Neither statement was ever
+current certification; preserve dated failures before making a release claim.
 
-Open PR documentation was checked on the research date: #40, #59, #61, #69, #80,
-#81, #82, #84, #85 and #86. None supplies this natural-speaker comparative contract.
-Relevant proposals remain separate and unmerged: [#59](https://github.com/johnny4young/portavoz/pull/59)
-(destination/recovery), [#61](https://github.com/johnny4young/portavoz/pull/61)
-(clipboard ownership), [#69](https://github.com/johnny4young/portavoz/pull/69)
-(verified/dispatched/refused outcomes), [#81](https://github.com/johnny4young/portavoz/pull/81)
-(Literal/Clean profiles). Do not add their feature lists together and call the
-combination main. Any eventual integrated SHA needs its own qualification.
+Related destination/recovery, clipboard-ownership, verified/dispatched/refused
+outcome and Literal/Clean profile work was proposed separately and was not part
+of the observed main tree. Do not add separate proposals' feature lists together
+and call the combination main. Any eventual integrated SHA needs its own
+qualification.
 
 ## 3. Data and consent before models
 
@@ -144,8 +142,8 @@ Start with a small predeclared tuning grid:
 
 | Profile | Voice route | Transform | Purpose |
 |---|---|---|---|
-| Local baseline | Current pinned Parakeet/controller | Literal rules recorded exactly | Characterize current shipping path |
-| Local alternative | Supported pinned local engine on supported OS | Same literal policy | Isolate engine/runtime trade-off |
+| Local baseline | Current pinned Parakeet/controller | Shipping text rules recorded exactly (bilingual filler removal on by default, deterministic dictionary replacements) | Characterize current shipping path |
+| Local alternative | Supported pinned local engine on supported OS | Same text-rule policy | Isolate engine/runtime trade-off |
 | Local clean | Winning local voice route | Explicit deterministic or local clean mode | Measure added semantic risk and editing savings |
 | Cloud voice/clean | Named versioned provider(s), only with approval | Stage-specific network policy | Separate cost/privacy/latency class |
 
@@ -154,6 +152,9 @@ fixed-language route cannot silently stand in for natural code-switch support.
 A refinement model is not automatically a selectable live dictation engine.
 Proposed VAD/context/vocabulary mechanisms need their own call-site admission;
 this table does not claim that any unimplemented configuration already exists.
+The shipping baseline is not a literal mode: its default post-rule text drops
+hesitation fillers, so literal-reference WER at that stage must be reported
+separately from raw/adapter-stage WER rather than attributed to recognition.
 Tune on development data with a bounded grid and keep all candidates' results.
 Select one default per supported profile before testing, rather than selecting a
 winner per utterance. Keep offline and cloud leaderboards separate. A local ASR
@@ -176,8 +177,11 @@ Randomize paired product order with a saved seed, block by host/day/condition,
 keep foreground/background work stable and record disturbances. Use at least
 three independent sessions/days, 30 declared process-cold starts and 200 warm
 utterances per primary host/profile. No claim of stable tail latency from 30
-cold observations: report wide intervals and increase the sample before a tight
-cold p95 claim.
+cold observations: a distribution-free one-sided 95% upper bound on p95 needs at
+least 59 independent observations (0.95^59 < 0.05), so 30 starts can support a
+cold p50 estimate but leave the cold p95 gate inconclusive. Three session blocks
+are likewise too few for a meaningful block bootstrap; add independent
+sessions/days before treating a latency interval as a gate verdict.
 
 ## 5. Metrics and candidate numerical goals
 
@@ -199,7 +203,7 @@ confidence intervals even when the candidate target is missed.
 | Warm Stop-to-final prepared text | p50 <=500 ms, p95 <=1,000 ms | Internal finishing interval, separately from delivery |
 | Warm Stop-to-observed edit | p50 <=700 ms, p95 <=1,500 ms | Useful completion where a receiver can verify the edit |
 | Process-cold request-to-ready | p50 <=2 s, p95 <=5 s | Visible readiness before inviting speech; collect enough trials for tail uncertainty |
-| Verified delivery in supported matrix | >=99.5% eligible attempts; zero wrong-target or duplicate inserts | Separate observed, dispatched-unverified, refused, failed and cancelled outcomes |
+| Verified delivery in supported matrix | >=99.5% eligible attempts; zero wrong-target or duplicate inserts | Separate `verified`, `dispatched-unverified`, `refused`, `failed` and `not-attempted` delivery outcomes; cancellation is an attempt status |
 | Cancellation | feedback p95 <=200 ms; zero later dispatch after pre-dispatch cancel | A posted event cannot be undone by later cancellation; report that boundary |
 | Safe recovery | >=99% of predeclared completed-output failure opportunities recoverable by explicit user choice | Lost/unretained output counts as failure; qualify same-process and crash/relaunch recovery separately from interrupted audio |
 | Resource cost | <=1.5 GiB peak total attributable memory; steady idle <=1% of one CPU core; active mean <=100% of one core | Candidate 16 GB baseline; include helper/service costs or mark attribution unavailable |
@@ -328,7 +332,9 @@ For fixed absolute gates, use the adverse one-sided 95% confidence bound: upper
 for error/latency/resource limits, lower for completion/exact-match rates. Report
 both point estimate and interval. “No events observed” is not zero true risk.
 About 3,000 independent zero-failure opportunities are needed for a one-sided
-95% binomial upper bound near 0.1%; roughly 600 for 0.5%. An all-zero empirical
+95% binomial upper bound near 0.1%; roughly 600 for 0.5%. The non-speech
+lexical-output gate therefore needs an explicitly budgeted no-speech suite of
+that size; otherwise it is inconclusive by construction. An all-zero empirical
 bootstrap interval cannot certify zero risk: use an exact one-sided binomial
 bound only when independent trials are justified, otherwise mark the population
 rate inconclusive and limit the claim to the tested matrix. Repeated audio, one
@@ -423,7 +429,7 @@ rejected; no raw text/path/secret in public receipts):
 | Object | Required fields and invariants |
 |---|---|
 | `evaluation-config/1` | `protocolDigest`, `sourceCommit`, `treeClean`, `binaryDigest`, `dependencyDigest`, `modelDigests[]`, `runtimeDigest`, `hostID`, `osBuild`, `profileID`, `mode`, `networkPolicy`, `dictionaryDigest`, `normalizerDigest`, `datasetDigest`, `splitDigest`, `seed`, `timeouts`, `budgetDigest`; valid hash/type/enums, no secret values |
-| `dataset-manifest/1` | `datasetID`, `generationDigest`, `licenseReviewID`, `consentPolicyID`, `split`; each case has opaque `caseID`, `speakerClusterID`, `familyID`, `sessionID`, `strata[]`, `audioDigest`, `referenceDigest`, `durationMs`, `speechExpected`; no names, transcripts, source paths or private consent forms |
+| `dataset-manifest/1` | `datasetID`, `generationDigest`, `licenseReviewID`, `consentPolicyID`, `split`; each case has opaque `caseID`, `speakerClusterID`, `householdID`, `familyID`, `paraphraseFamilyID`, `sessionID`, `sourceRecordingID`, `voiceID` (synthetic only, else `null`), `strata[]`, `audioDigest`, `referenceDigest`, `durationMs`, `speechExpected`; no names, transcripts, source paths or private consent forms |
 | `run-plan/1` | Config/manifest digests, ordered unique `(caseID, repetition, conditionID, productProfileID)` keys, planned count, randomization seed, independent-cluster counts and registered exclusions; immutable before execution |
 | `attempt/1` | Run/config/case identities, ordinal, terminal `status`, typed `failureReason`, capture/readiness state, ordered monotonic phase offsets or `null`, frame accounting, raw/post-rule error counts and reference lengths, critical-slot counts, semantic-review IDs, lexical-output flag, `deliveryOutcome`, receiver-proof digest or `null`, clipboard/focus ownership verdicts, bounded resource observations |
 | `evaluation-report/1` | Exact source/head/build identities; all planned/observed/failed/cancelled/missing counts; per-stratum denominators; score/quantile estimates and intervals; uncertainty method/seed/cluster counts; candidate thresholds and adverse bounds; gate states; artifact digests; deviations and limitations as controlled IDs; reviewer sign-offs |
@@ -469,8 +475,8 @@ These phases are proposed evidence dependencies, not a private delivery schedule
 or authorization to merge existing work.
 
 1. **Protocol review:** maintainers approve scope, candidate budgets, rubric,
-   consent/license process, device/editor matrix and analysis plan. Reconcile
-   historical silence/E2E wording without erasing negative evidence.
+   consent/license process, device/editor matrix and analysis plan. Keep the
+   withdrawn silence/E2E wording reconciled without erasing negative evidence.
 2. **Attribution:** characterize model output, segment mapping/coalescing, cleanup
    and controller behavior independently. Fix reproduced token loss/replay and
    silence admission with call-site counterexamples; no epsilon/token blacklist
@@ -525,7 +531,7 @@ must be checked again and exact versions recorded at experiment time.
   and [English normalizer](https://github.com/openai/whisper/blob/main/whisper/normalizers/english.py):
   examples of consequential scoring transformations, not a mandated ES/EN policy.
 - [Apple CGEvent post](https://developer.apple.com/documentation/coregraphics/cgevent/post%28tap%3A%29?language=objc)
-  and [AX attribute read errors](https://developer.apple.com/documentation/applicationservices/1462085-axuielementcopyattributevalue?changes=_5):
+  and [AX attribute read errors](https://developer.apple.com/documentation/applicationservices/1462085-axuielementcopyattributevalue):
   posted events and fallible readback motivate the delivery-evidence distinction.
 - [FLEURS dataset card](https://huggingface.co/datasets/google/fleurs/blob/main/README.md):
   multilingual read-speech coverage and CC-BY-4.0. Its published sample ID is not a
