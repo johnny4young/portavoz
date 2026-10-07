@@ -2927,8 +2927,9 @@ readback. Empty inserter input refuses before borrowing the clipboard.
 
 **Clipboard loans (D551).** `DictationClipboard` owns one exclusive loan per
 pasteboard in the app process. Another insertion waits cancellably for the prior
-1.5-second restoration window (bounded: a restoration that cannot run retires its
-loan without writing, so dictation never hangs); admission rechecks exclusivity
+1.5-second restoration window (bounded: a restoration that cannot run is
+performed at the deadline, only while the loan still owns the board, and then
+retired, so dictation never hangs); admission rechecks exclusivity
 after modifier waiting. Otherwise a delayed editor Paste could read the next
 dictation. Loan identity and AppKit `changeCount`, never string equality,
 authorize restoration; a foreign write is never overwritten, and a deferred

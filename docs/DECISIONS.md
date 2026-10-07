@@ -20700,6 +20700,7 @@ controller UI fixture uses only a UUID named board with inert native effects.
 That evidence does not replace the separate AX-authorized receiver qualification.
 A deferred restore is never skipped by a concurrent synchronous mutation, and
 waiting for a prior restoration is bounded so a stuck loan cannot hang dictation.
+
 ## D547 — Capture integrity owns dictation delivery until the edit boundary
 
 **Date:** 2026-09-25

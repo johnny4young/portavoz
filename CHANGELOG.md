@@ -17,6 +17,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 7, 2026
 
+- **📋 Safer dictation paste** — keeps every clipboard item and format, protects newer copies, and keeps your text ready to copy when the clipboard can't be borrowed safely.
+
 - **🎛️ Dictation your way** — choose Literal or Clean, save a mode for each application, and override it for one session without changing your defaults.
 
 - **📨 Honest dictation delivery** — distinguish verified insertion from an unconfirmed send; keep unconfirmed text available to copy or discard without automatically pasting twice.
@@ -36,8 +38,6 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **🛡️ Dictation stops before a broken paste** — interrupted or overloaded audio now shows a clear failure instead of automatically inserting an incomplete result.
 
 ## September 30, 2026
-
-- **📋 Safer dictation paste** — keeps every clipboard item and format, protects newer copies, and keeps your text ready to copy when the clipboard can't be borrowed safely.
 
 - **📐 A steady meeting page in small windows** — the page picks its layout as soon as it opens, instead of jumping to the transcript when the audio finishes loading.
 

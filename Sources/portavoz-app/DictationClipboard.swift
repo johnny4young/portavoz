@@ -30,13 +30,15 @@ final class DictationClipboard {
     /// A posted event may not have read the clipboard yet. Do not replace it
     /// for another dictation until its existing restoration window has ended.
     /// The wait is bounded: a restoration that could not run within its own
-    /// window plus a margin retires its loan without writing, so dictation can
-    /// never hang behind it.
+    /// window plus a margin is performed now, still only while the loan owns
+    /// the board, and the loan is retired, so dictation can never hang behind
+    /// it and the user's original clipboard is not left replaced.
     func waitForRestoration(on pasteboard: NSPasteboard) async -> Bool {
         let deadline = ContinuousClock.now.advanced(by: TextInserter.restoreDelay + .seconds(2))
         while states[pasteboard.name]?.restoration != nil {
             guard ContinuousClock.now < deadline else {
-                Self.logger.error("Clipboard restoration did not complete; its loan was retired without writing.")
+                Self.logger.error("Clipboard restoration did not run in its window; restoring before retiring its loan.")
+                if let loan = states[pasteboard.name]?.loan { restore(loan, on: pasteboard) }
                 retire(pasteboard.name)
                 break
             }
