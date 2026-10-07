@@ -86,7 +86,12 @@ extension AppServices: LibraryModelClient {
 
     func restoreLibraryMeeting(_ id: MeetingID) async throws {
         defer { requestSearchReconciliation() }
-        try await meetingLifecycle.restore(id)
+        do {
+            try await meetingLifecycle.restore(id)
+        } catch AudioImportFileError.acquisitionBusy {
+            // Same localized contention copy as purge, never a raw enum description.
+            throw AudioImportQueueError.busy
+        }
         audioImports.start()
     }
 

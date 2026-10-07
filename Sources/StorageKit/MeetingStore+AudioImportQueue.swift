@@ -30,15 +30,22 @@ extension MeetingStore {
             \(source)
             """)
         let entries = try Row.fetchAll(db, sql: """
-            SELECT job.*, meeting.title AS meetingTitle \(source)
+            SELECT job.*, meeting.title AS meetingTitle,
+                   input.meetingID AS importMeetingID, input.jobID AS importJobID,
+                   input.inputFingerprint AS importInputFingerprint,
+                   input.payloadDigest AS importPayloadDigest, input.payload AS importPayload
+            \(source)
             ORDER BY CASE WHEN job.state IN ('pending', 'running') THEN 0 ELSE 1 END,
                      job.createdAt DESC, job.id DESC
             LIMIT ? OFFSET ?
             """, arguments: [limit, offset]).map { row in
             let job = try ProcessingJobRecord(row: row).job
-            // At most one page (50 rows): a retired source cannot be retried.
-            let input = try AudioImportInputRecord.fetchOne(db, key: job.meetingID.rawValue.uuidString)
-            let canRetry = (try? input?.decoded())?.canResume ?? false
+            // The joined input already answers retryability: a retired source cannot be retried.
+            let input = AudioImportInputRecord(
+                meetingID: row["importMeetingID"], jobID: row["importJobID"],
+                inputFingerprint: row["importInputFingerprint"],
+                payloadDigest: row["importPayloadDigest"], payload: row["importPayload"])
+            let canRetry = (try? input.decoded())?.canResume ?? false
             return AudioImportQueueEntry(title: row["meetingTitle"], job: job, canRetry: canRetry)
         }
         return AudioImportQueuePage(entries: entries, total: count?["total"] ?? 0,

@@ -54,7 +54,9 @@ public struct ProcessAudioImports: ApplicationUseCase {
             do {
                 await request.started(job.meetingID)
                 try await executeOwned(job, owner: owner, request: request)
-            } catch is CancellationError {
+            } catch let error where error is CancellationError || Task.isCancelled {
+                // A native capability may surface its own error once cancelled;
+                // that is still cancellation, never a terminal import failure.
                 // GRDB propagates caller cancellation before executing a
                 // write. Cleanup needs its own cancellation lifetime, and we
                 // join it before allowing the supervisor to start another run.
@@ -166,7 +168,9 @@ public struct ProcessAudioImports: ApplicationUseCase {
             failed = try await store.failProcessingJob(
                 job.id, owner: owner, failure: .init(code: code), retryAt: retryAt, at: now())
         } catch StorageError.processingJobLeaseLost { return }
-        guard failed.state == .failed else { return }
+        // Exhausted contention leaves the selected source valid: keep its
+        // bookmark so explicit Retry can still reach the original.
+        guard failed.state == .failed, retryAt == nil else { return }
         // A terminal failure before publication cannot resume without a fresh
         // selection. Retiring the bookmark is best-effort: the job is already
         // failed and its row is removed with the meeting.

@@ -76,6 +76,12 @@ extension MeetingStore {
                 .fetchAll(db)
             var retried: [ProcessingJob] = []
             for var record in records {
+                // Same guard as `retryAudioImport`: a retired source needs reselection.
+                if record.kind == ProcessingJobKind.audioImport.rawValue {
+                    guard let input = try AudioImportInputRecord.fetchOne(db, key: key),
+                          input.jobID == record.id,
+                          (try? input.decoded())?.canResume == true else { continue }
+                }
                 record.resetForExplicitRetry(at: timestamp)
                 try record.update(db)
                 retried.append(try record.job)

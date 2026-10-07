@@ -171,11 +171,25 @@ func withLiveSummaryRefinementTimeout<Value: Sendable>(
 /// Production filesystem adapter for permanent meeting-audio removal.
 private struct AppMeetingAudioFiles: MeetingAudioFiles {
     let root: URL
+    /// `RecordingsLocation.resolve` still reads from the default root after an
+    /// interrupted move or a stale custom-location marker; purge must reach it.
+    var fallbackRoot: URL = RecordingsLocation.shared.defaultRoot
 
     func removeAudioDirectory(_ relativePath: String) throws {
-        let directory = root.appendingPathComponent(relativePath, isDirectory: true)
-        guard FileManager.default.fileExists(atPath: directory.path) else { return }
-        try FileManager.default.removeItem(at: directory)
+        var bases = [root]
+        if fallbackRoot.standardizedFileURL != root.standardizedFileURL { bases.append(fallbackRoot) }
+        for base in bases {
+            let directory = base.appendingPathComponent(relativePath, isDirectory: true)
+            guard FileManager.default.fileExists(atPath: directory.path) else { continue }
+            try FileManager.default.removeItem(at: directory)
+            // An import stage sits below `Audio/<meeting>/Imports`; drop the
+            // now-empty meeting parents. `rmdir` never removes a non-empty one.
+            var parent = directory.deletingLastPathComponent()
+            for _ in 0..<max(0, relativePath.split(separator: "/").count - 2) {
+                guard rmdir(parent.path) == 0 else { break }
+                parent = parent.deletingLastPathComponent()
+            }
+        }
     }
 }
 

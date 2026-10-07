@@ -18,9 +18,14 @@ extension AppServices: AudioImportQueueClient {
         var inputs: [AudioImportRequest] = []
         for url in urls {
             try Task.checkCancellation()
-            inputs.append(try await files.prepareSelection(
-                url, meetingID: MeetingID(), title: url.deletingPathExtension().lastPathComponent,
-                preferences: preferences))
+            do {
+                inputs.append(try await files.prepareSelection(
+                    url, meetingID: MeetingID(), title: url.deletingPathExtension().lastPathComponent,
+                    preferences: preferences))
+            } catch is AudioImportFileError {
+                // The adapter enum has no user copy; nothing was admitted or changed.
+                throw AudioImportQueueError.storage
+            }
         }
         _ = try await store.enqueueAudioImports(inputs)
     }
