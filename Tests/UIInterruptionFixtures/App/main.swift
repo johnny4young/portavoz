@@ -91,6 +91,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
             status.stringValue = "Missing fixture path"
             return
         }
+        status.stringValue = "Opening fixture"
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.arguments = [String(Double(window.frame.minX)), String(Double(window.frame.minY)),
                                    String(ProcessInfo.processInfo.processIdentifier), effects,

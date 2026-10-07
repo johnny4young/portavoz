@@ -8367,8 +8367,9 @@ The retained failure is not evidence of a layout race or another app's intrusion
 
 `make test-ui-interruption-safety UI_INTERRUPTION_RESULTS=<new-private-directory>`
 builds a tiny separate app/overlay/runner target once. It uses the exact shared
-`PortavozUITestCase`, `UITestStorage`, `UITestScratch` and wait-helper sources;
-there is no copied guard implementation. Its original four pointer controls distinguish:
+`PortavozUITestCase`, `UITestStorage`, `UITestScratch`, `UITestActionGeometry` and
+wait-helper sources; there is no copied guard implementation. Its original four
+pointer controls distinguish:
 
 - an uninterrupted action, which must produce an observable synthetic effect;
 - a deliberate synthetic choice, which calibrates the choice effect detector;
@@ -8494,6 +8495,36 @@ Bare application typing and foreground-only typing each have a retained native
 counterexample. All controls and full bilingual product journeys are required
 for this shared-harness change. These public-API observations are point-in-time,
 not an atomic OS input guarantee or permission-dialog certification (D534).
+
+### Expected-modal pointer geometry
+
+The native sheet and app-modal positive controls resolve their fixed button
+identifier within the expected modal and dispatch one physical pointer through
+that modal's public coordinate API. The anchor is not the background window:
+XCTest treats its app-modal dialog as an interruption of a background-window
+coordinate action, even when the resulting screen point falls on the button.
+The interruption guard remains unchanged; no Return, activation or second-click
+fallback substitutes for the choice callback.
+
+`UITestActionGeometry` rejects null/infinite rectangles, raw nonpositive sizes,
+nonfinite derived coordinates and relative-offset overflow. Scalar finiteness
+alone is insufficient: `CGRect.infinite` has finite members and rectangle
+accessors normalize negative sizes. Negative-display coordinates and subpixel
+centres remain valid. The modal controls additionally require the choice centre
+to lie inside the live modal frame that the pointer is rooted in, refuse a
+modal frame that changed between its accessibility reads, and accept an
+explicit test anchor only when it yields the same contained offset, so that
+anchor can refuse a click but never redirect it. Swift boundary tests and the sheet's actual invalid-anchor
+refusal exercise different evidence: the latter requires the sheet to remain
+open with no choice effect before the valid pointer and its real completion.
+Both positive controls still require exact editor text, typed/choice effects and
+owned cleanup. The helper is fingerprinted and independently selects native
+controls plus full bilingual UI; it is test-only, not an app input API.
+
+An XCTest DisplayManager warning about an infinite rectangle has appeared in
+both passing and failing native modal controls; it does not establish the cause
+of a missing completion. These observations do not certify elimination of every
+host timing failure, an atomic input guarantee or a performance improvement.
 
 ### Runtime budget re-qualified with the 1.1 recording bar (Sep 2026)
 
