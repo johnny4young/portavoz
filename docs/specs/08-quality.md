@@ -8498,7 +8498,11 @@ fallback substitutes for the choice callback.
 nonfinite derived coordinates and relative-offset overflow. Scalar finiteness
 alone is insufficient: `CGRect.infinite` has finite members and rectangle
 accessors normalize negative sizes. Negative-display coordinates and subpixel
-centres remain valid. Swift boundary tests and the sheet's actual invalid-anchor
+centres remain valid. The modal controls additionally require the choice centre
+to lie inside the live modal frame that the pointer is rooted in, refuse a
+modal frame that changed between its accessibility reads, and accept an
+explicit test anchor only when it yields the same contained offset, so that
+anchor can refuse a click but never redirect it. Swift boundary tests and the sheet's actual invalid-anchor
 refusal exercise different evidence: the latter requires the sheet to remain
 open with no choice effect before the valid pointer and its real completion.
 Both positive controls still require exact editor text, typed/choice effects and

@@ -14,3 +14,12 @@ func uiPointerOffset(target: CGRect, anchor: CGRect) -> CGVector? {
     let offset = CGVector(dx: target.midX - anchor.minX, dy: target.midY - anchor.minY)
     return offset.dx.isFinite && offset.dy.isFinite ? offset : nil
 }
+
+/// The same offset, admitted only when the target centre lies inside the
+/// anchor, so a pointer rooted in an owned modal can never land outside it.
+func uiContainedPointerOffset(target: CGRect, within anchor: CGRect) -> CGVector? {
+    guard let offset = uiPointerOffset(target: target, anchor: anchor),
+          anchor.contains(CGPoint(x: target.midX, y: target.midY))
+    else { return nil }
+    return offset
+}

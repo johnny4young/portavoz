@@ -4,10 +4,27 @@ import XCTest
 final class UITestActionGeometryTests: XCTestCase {
     func testObservedCentreRetainsNegativeDisplayCoordinatesAndSubpixels() throws {
         let offset = try XCTUnwrap(uiPointerOffset(
-            target: CGRect(x: -630.25, y: -415.5, width: 40.5, height: 21),
+            target: CGRect(x: -630.25, y: -415.5, width: 40, height: 20),
             anchor: CGRect(x: -800, y: -600, width: 640, height: 480)))
-        XCTAssertEqual(offset.dx, 190)
-        XCTAssertEqual(offset.dy, 195)
+        XCTAssertEqual(offset.dx, 189.75)
+        XCTAssertEqual(offset.dy, 194.5)
+    }
+
+    func testContainedOffsetRefusesATargetCentreOutsideTheAnchor() throws {
+        let anchor = CGRect(x: -800, y: -600, width: 640, height: 480)
+        let inside = CGRect(x: -630.25, y: -415.5, width: 40, height: 20)
+        XCTAssertEqual(uiContainedPointerOffset(target: inside, within: anchor),
+                       uiPointerOffset(target: inside, anchor: anchor))
+        for outside in [
+            CGRect(x: -900, y: -415.5, width: 40, height: 20),
+            CGRect(x: -150, y: -415.5, width: 40, height: 20),
+            CGRect(x: -630.25, y: -700, width: 40, height: 20),
+            CGRect(x: -630.25, y: -110, width: 40, height: 20)
+        ] {
+            XCTAssertNotNil(uiPointerOffset(target: outside, anchor: anchor))
+            XCTAssertNil(uiContainedPointerOffset(target: outside, within: anchor))
+        }
+        XCTAssertNil(uiContainedPointerOffset(target: inside, within: .infinite))
     }
 
     func testInvalidGeometryOnEitherSideNeverProducesAPointer() {

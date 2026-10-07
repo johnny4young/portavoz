@@ -81,7 +81,9 @@ final class InterruptionSafetyTests: PortavozUITestCase {
         let choice = app.sheets.buttons["proof-modal-choice"]
         // Establish every non-geometry precondition first so the refusal below
         // can only come from the invalid anchor, not from a hidden choice.
-        XCTAssertTrue(app.state == .runningForeground && choice.isHittable)
+        XCTAssertEqual(app.sheets.containing(.button, identifier: "proof-modal-choice").count, 1)
+        XCTAssertEqual(app.state, .runningForeground)
+        XCTAssertTrue(choice.isHittable)
         XCTAssertFalse(clickModalChoice("proof-modal-choice", in: app.sheets, app: app, anchorFrame: .infinite),
                        "Invalid geometry must not dispatch a pointer or select the default action")
         XCTAssertTrue(choice.exists)
@@ -139,6 +141,9 @@ final class InterruptionSafetyTests: PortavozUITestCase {
     /// The modal is the single one that owns the choice: `firstMatch` could
     /// resolve to another dialog, such as the non-hittable Writing Tools
     /// affordance macOS exposes after a native text selection.
+    /// The pointer is dispatched relative to the live modal origin, so the
+    /// offset is measured from that same frame and its centre must lie inside
+    /// it. `anchorFrame` can only refuse a click, never redirect one.
     private func clickModalChoice(
         _ identifier: String, in modals: XCUIElementQuery, app: XCUIApplication, anchorFrame: CGRect? = nil
     ) -> Bool {
@@ -146,8 +151,13 @@ final class InterruptionSafetyTests: PortavozUITestCase {
         guard app.state == .runningForeground, owners.count == 1 else { return false }
         let modal = owners.element
         let choice = modal.buttons[identifier]
-        guard choice.isHittable,
-              let offset = uiPointerOffset(target: choice.frame, anchor: anchorFrame ?? modal.frame)
+        guard choice.isHittable else { return false }
+        let modalFrame = modal.frame
+        let target = choice.frame
+        // Separate accessibility reads: refuse an anchor that moved between them.
+        guard modal.frame == modalFrame,
+              let offset = uiContainedPointerOffset(target: target, within: modalFrame),
+              anchorFrame.map({ uiContainedPointerOffset(target: target, within: $0) == offset }) ?? true
         else { return false }
         modal.coordinate(withNormalizedOffset: .zero).withOffset(offset).click()
         return true
