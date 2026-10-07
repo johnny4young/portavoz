@@ -27,6 +27,9 @@ extension AppServices {
             dictationTextSettings.reportSelectionError()
             return
         }
-        dictationTextSettings.setProfile(bundleIdentifier: identifier, mode: dictationTextSettings.globalMode)
+        // Choosing an application that already has a profile keeps its saved mode.
+        let existing = dictationTextSettings.profiles.first { $0.bundleIdentifier == identifier }?.mode
+        dictationTextSettings.setProfile(
+            bundleIdentifier: identifier, mode: existing ?? dictationTextSettings.globalMode)
     }
 }

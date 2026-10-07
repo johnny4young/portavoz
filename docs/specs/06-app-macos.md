@@ -2688,7 +2688,9 @@ and application identity are independent: unavailable delivery keeps the selecte
 text policy for explicit recovery, without allowing Retry.
 One immutable preference snapshot is admitted before preparation. A panel choice
 changes only its mode; subsequent Settings edits affect later sessions. Stop
-request, not the delayed native Stop issuance, freezes the mode. Cancellation,
+request, not the delayed native Stop issuance, freezes the mode; once delivery
+has prepared its text the panel choice stays disabled while insertion settles,
+even though Stop bookkeeping has already retired. Cancellation,
 completion and restart retire the override and rule snapshot; recovery retains
 the processed output, never silently reprocesses or repeats insertion.
 
@@ -2701,7 +2703,9 @@ addresses or surrounding text. The chosen app is not launched or registered.
 The bounded codec accepts at most 64 unique IDs (1–255 ASCII identifier bytes)
 and 32 KiB JSON, rejects duplicate/invalid records as a whole, and never salvages an
 ambiguous winner. Invalid profiles remain intact and visible until an explicit
-Reset; dictation safely falls back to the global mode. Per-row mode and Remove
+Reset; dictation safely falls back to the global mode. Choosing an application
+that already has a profile keeps its saved mode; only a new profile starts from
+the global mode. Per-row mode and Remove
 controls retain bundle-ID identity. The existing portable-settings allowlist is
 unchanged; these new choices are not implicitly exported or imported.
 

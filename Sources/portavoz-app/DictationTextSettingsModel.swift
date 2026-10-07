@@ -74,12 +74,6 @@ final class DictationTextSettingsModel {
     }
 
     private func write(_ value: String, forKey key: String) {
-        if temporary {
-            var domain = defaults.volatileDomain(forName: UserDefaults.argumentDomain)
-            domain[key] = value
-            defaults.setVolatileDomain(domain, forName: UserDefaults.argumentDomain)
-        } else {
-            defaults.set(value, forKey: key)
-        }
+        DictationTextPreferences.store(value, forKey: key, in: defaults, temporary: temporary)
     }
 }
