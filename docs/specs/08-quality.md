@@ -274,23 +274,26 @@ broad key substitutes for an unknown identity. There are no restore prefixes
 and no per-commit cache copies. A dependency or build-policy change starts cold.
 Ordinary source changes retain the seed. After a successful suite,
 `scripts/ci_swift_source_stamps.py snapshot` records SHA-256, size, permissions and
-nanosecond mtime for tracked `Sources/`, `Tests/`, `Vendor/`, and package manifest/lock inputs
-inside `.build`. The vendor inventory includes the sqlite-vec C implementation
-and header included directly by `CSQLiteVecResearch`; otherwise an unchanged
-vendored dependency retains fresh-checkout timestamps while its wrapper recovers
-the prior build's timestamp. Regression tests cover unchanged vendor reuse and
-same-size, same-timestamp vendor edits that must become fresh inputs. This is
-input-coverage evidence, not a measured CI speedup. On an exact PR cache hit, `restore` intersects that receipt
-with the current Git inventory and restores mtime only for byte-identical,
-same-mode inputs. Changed/new inputs receive fresh timestamps even when their
-size and incoming mtime happen to match the old file. Deleted files are not
-resurrected; symlinks and resolved paths outside the checkout are never touched.
-No timestamp is inferred from Git commit dates. SwiftPM still owns build-graph
-invalidation, compilation and test discovery. The bounded, closed-schema receipt
-rejects duplicate keys, invalid hashes/numbers and missing/corrupt metadata
-before timestamp writes. Snapshot rereads its own receipt with the same
-validator, so a receipt restore would reject fails the cold run and is never
-saved into an immutable seed. A changed-during-read source cannot be fingerprinted.
+nanosecond mtime for tracked `Sources/`, `Tests/`, `Vendor/`, and package
+manifest/lock inputs inside `.build`. The vendor inventory includes the
+sqlite-vec C implementation and header included directly by
+`CSQLiteVecResearch`; otherwise an unchanged vendored dependency retains
+fresh-checkout timestamps while its wrapper recovers the prior build's
+timestamp. Regression tests cover unchanged vendor reuse, same-size,
+same-timestamp vendor edits that must become fresh inputs, and every quoted
+C-family include reachable from `Sources/` belonging to the inventory. This is
+input-coverage evidence, not a measured CI speedup. On an exact PR cache hit,
+`restore` intersects that receipt with the current Git inventory and restores
+mtime only for byte-identical, same-mode inputs. Changed/new inputs receive
+fresh timestamps even when their size and incoming mtime happen to match the old
+file. Deleted files are not resurrected; symlinks and resolved paths outside the
+checkout are never touched. No timestamp is inferred from Git commit dates.
+SwiftPM still owns build-graph invalidation, compilation and test discovery. The
+bounded, closed-schema receipt rejects duplicate keys, invalid hashes/numbers
+and missing/corrupt metadata before timestamp writes. Snapshot rereads its own
+receipt with the same validator, so a receipt restore would reject fails the
+cold run and is never saved into an immutable seed. A changed-during-read source
+cannot be fingerprinted.
 
 Both complete test invocations are unconditional, including current-SDK
 warnings-as-errors. No `--skip-build`, test filtering, retries, smaller test

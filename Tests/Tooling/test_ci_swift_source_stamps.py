@@ -2,6 +2,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import unittest
@@ -78,6 +79,29 @@ class SourceStampTests(unittest.TestCase):
         inventory = stamps.inputs(ROOT)
         for name in ('Vendor/sqlite-vec/sqlite-vec.c', 'Vendor/sqlite-vec/sqlite-vec.h'):
             self.assertTrue(name in inventory, f'Missing compiled vendor input: {name}')
+
+    def test_every_quoted_include_reachable_from_sources_is_inventoried(self):
+        # Any C-family target may include a repository file outside Sources.
+        # Walk quoted includes transitively so a new out-of-tree input cannot
+        # silently keep fresh-checkout timestamps behind a restored wrapper.
+        inventory = stamps.inputs(ROOT)
+        root = ROOT.resolve()
+        suffixes = {'.c', '.h', '.m', '.mm', '.cc', '.cpp', '.hpp'}
+        pending = [path.resolve() for name, path in inventory.items()
+                   if name.startswith('Sources/') and path.suffix in suffixes]
+        seen = set(pending)
+        directive = re.compile(r'^\s*#\s*(?:include|import)\s*"([^"]+)"', re.MULTILINE)
+        while pending:
+            current = pending.pop()
+            for target in directive.findall(current.read_text(errors='replace')):
+                included = (current.parent / target).resolve()
+                if not included.is_file() or included in seen:
+                    continue
+                seen.add(included)
+                pending.append(included)
+                if included.is_relative_to(root):
+                    name = included.relative_to(root).as_posix()
+                    self.assertTrue(name in inventory, f'Missing compiled input: {name}')
 
     def test_added_deleted_and_renamed_inputs_are_not_resurrected(self):
         self.source.unlink()
