@@ -3,8 +3,8 @@ import TranscriptionKit
 
 /// The deterministic tier of the dictation dictionary as Settings UI: a
 /// quick-add row plus the current rules. Rules persist immediately on
-/// every change — the controller re-reads them per delivery, so there is
-/// no sync call to forget.
+/// every change; the controller snapshots them when the next session starts.
+/// Literal mode leaves the rules configured but does not apply them.
 struct DictationDictionaryEditor: View {
     @State private var rules: [DictationReplacement] = DictationTextRules.decode(
         replacements: UserDefaults.standard.string(

@@ -19,6 +19,18 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 - **📥 Audio import queue** — import several files at once, follow each one’s progress in your language, cancel or retry without touching your originals, and keep the transcript even when speaker identification is unavailable.
 
+- **🎛️ Dictation your way** — choose Literal or Clean, save a mode for each application, and override it for one session without changing your defaults.
+
+- **📨 Honest dictation delivery** — distinguish verified insertion from an unconfirmed send; keep unconfirmed text available to copy or discard without automatically pasting twice.
+
+## October 5, 2026
+
+- **🛡️ Safer dictation recovery** — scroll and select the full recovered text, and Copy works whatever your clipboard held; apps that hide their text field keep pasting as before.
+
+## October 2, 2026
+
+- **📝 Dictation recovery** — keep text when its original field changes; copy, explicitly reinsert, or discard without losing it to another trigger.
+
 ## October 1, 2026
 
 - **🎙️ Reliable dictation handoff** — Stop finishes microphone cleanup before typing, and late captions or feedback cannot interrupt your next dictation.

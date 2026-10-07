@@ -422,11 +422,14 @@ private final class ReadinessHarness {
                     onChunk: { [weak self] in self?.observedChunks += 1 }
                 )) { [weak self] in self?.finishes += 1 }
             },
-            canInsert: { true }, targetName: { "Disposable receiver" },
-            insert: { [weak self] text in
-                self?.insertions.append(text)
-                return .inserted
+            canInsert: { true },
+            captureDestination: { [weak self] in
+                CapturedDictationDestination(name: "Disposable receiver", canRetry: true) { [weak self] text in
+                    self?.insertions.append(text)
+                    return .dispatched
+                }
             },
+            copyText: { _ in false },
             defaults: defaults, now: { [weak self] in
                 Date(timeIntervalSince1970: self?.now ?? 0)
             },

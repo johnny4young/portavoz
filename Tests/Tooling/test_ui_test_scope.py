@@ -873,29 +873,35 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(set(selection.tests), set(FEATURE_TESTS["dictation"]))
         self.assertEqual(selection.locales, ("en",))
 
-    def test_native_delivery_is_one_discoverable_explicit_gate_not_a_hosted_pass(self):
+    def test_native_delivery_journeys_are_discoverable_explicit_gates_not_hosted_passes(self):
         native = ui_scope.test_id(
             "DictationUITests", "testNativeInserterUsesDisposableReceiverAndClipboard"
         )
-        self.assertEqual(PERMISSION_GATED_TESTS, frozenset({native}))
-        self.assertNotIn(native, ALL_TESTS)
-        self.assertNotIn(native, FEATURE_TESTS["dictation"])
-        self.assertIn(native, ui_scope.discovered_test_catalog(ROOT))
+        controller = ui_scope.test_id(
+            "DictationUITests", "testNativeControllerModeChoicePreservesReceiverAndClipboard"
+        )
+        self.assertEqual(PERMISSION_GATED_TESTS, frozenset({native, controller}))
+        for selector in (native, controller):
+            self.assertNotIn(selector, ALL_TESTS)
+            self.assertNotIn(selector, FEATURE_TESTS["dictation"])
+            self.assertIn(selector, ui_scope.discovered_test_catalog(ROOT))
         budget = json.loads((
             ROOT / "docs/evidence/ui-test-native-dictation-runtime-budget.json"
         ).read_text(encoding="utf-8"))
-        self.assertEqual(budget["catalog"]["expectedCaseCount"], 1)
+        self.assertEqual(budget["catalog"]["expectedCaseCount"], 2)
         self.assertEqual(
             budget["testBudgetsSeconds"],
-            {"DictationUITests/testNativeInserterUsesDisposableReceiverAndClipboard()": 20.0},
+            {"DictationUITests/testNativeInserterUsesDisposableReceiverAndClipboard()": 20.0,
+             "DictationUITests/testNativeControllerModeChoicePreservesReceiverAndClipboard()": 20.0},
         )
         self.assertEqual(budget["fullSuite"], {
             "maximumP95Seconds": 20.0,
-            "maximumTestDurationSecondsPerLocale": 20.0,
+            "maximumTestDurationSecondsPerLocale": 40.0,
         })
         makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
         native_target = makefile.split("test-ui-native-dictation:", 1)[1].split("\n\n", 1)[0]
         self.assertIn(native, native_target)
+        self.assertIn(controller, native_target)
         self.assertIn("ui-test-native-dictation-runtime-budget.json", native_target)
         validate_catalog(ROOT)
 

@@ -35,17 +35,65 @@ dropped relay yields revoke automatic delivery for their owning session;
 normal source or recognizer completion also requires the controller to have
 issued Stop, and cancelled terminal captions cannot overwrite a new session.
 These repairs do not provide durable recovery of interrupted dictation audio.
-The displayed application name is not yet a pinned delivery
-target; `.inserted` still denotes dispatched events rather than a verified
-external edit. These require call-site regressions and fixes before broad
-reliability claims. Model quality, Bluetooth transitions and the external-editor
+The destination is now pinned before preparation to a process
+and focused AX element, with refused output retained for explicit Copy or retry
+(D544). Deterministic tests exercise the controller and actual inserter, but
+native focus switches, process termination/relaunch and secure-field transitions
+still need receiver/device evidence. Accessibility validation and keyboard-event
+posting are not an atomic editor transaction. The result now distinguishes
+bounded matching readback from unverified dispatch and refusal; unsupported
+editors remain explicitly unverified. Deterministic controller/inserter coverage
+cannot qualify native AX observation. The dedicated receiver requires the
+verified result and actual text, but its existence does not establish a passed
+gate. Timeout setup is applied to each newly retrieved focused-field object before
+security inspection, not just its application or an equal captured object.
+That wiring follows the SDK contract; adversarial slow native AX servers remain
+unmeasured. Specific AX timeouts limit requested work, not arbitrary server allocation
+or later external edits. Unverified dispatch keeps the last complete output
+in RAM for explicit Copy or Discard, without enabling Reinsert or automatic
+replay. It does not block the next dictation: a new trigger starts normally and
+replaces only that non-modal notice. The user must check the destination before
+manually pasting: unsupported acknowledgement cannot distinguish a lost event
+from a late edit. This removes the expiring-copy gap, not native-delivery
+uncertainty or incomplete-capture loss.
+These failures and evidence boundaries prevent broad reliability claims. Recovery is RAM-only;
+quitting does not preserve the output. This recovery covers final text after
+completed recognition, not an incomplete capture/model failure: those failures
+still have no supported Copy or durable recovery of admitted partial captions.
+Recovery Copy is an explicit Copy that replaces the clipboard (including
+multiple items); the excerpt stays selectable. Ordered clipboard preservation
+for the paste path and snapshot size/materialization remain independent
+limitations. Applications without a pinnable focused field use the previous
+session-stream delivery and checks, not field pinning, and remain unverified.
+Model quality, Bluetooth transitions and the external-editor
 matrix require separate evidence; a synthetic caption fixture cannot establish
 those results. Missing Accessibility permission makes the separately selected
 native delivery gate unqualified, not proof that insertion works. Hosted
-unattended EN/ES UI qualification excludes exactly that TCC-owned receiver case
+unattended EN/ES UI qualification excludes the two TCC-owned receiver cases
 (D540); run `make test-ui-native-dictation` on an explicitly authorized
 disposable app and retain its actual receipt before claiming cross-process
 delivery.
+
+The shared native harness still has an open expected-modal positive-control
+counterexample. An attached synthetic alert accepted the exact Unicode text,
+but its choice click did not produce the required completion effect; XCTest
+reported a non-finite pointer rectangle. Owned cleanup completed and the
+validator refused qualification before the product catalogue ran. This does
+not establish a product defect, denied authorization, or the cause of the
+missing action. Diagnose native geometry and editing handoff at that call site;
+do not waive the control, replace its failed receipt with a retry, or infer
+complete local UI qualification from separate native dictation journeys.
+
+### Live dictation still lacks speech admission
+
+Independent public/synthetic controller observations have produced lexical
+proposals from silence and tone inputs. The delivery double refused native
+Paste, but reaching that boundary disproves the assumption that a lexical result
+necessarily contains speech. The live lane has no pre-transcription VAD gate.
+Diagnose and validate speech admission without an ad-hoc output-token/RMS filter
+or changes to the original meeting audio. This delivery-observation work does
+not resolve model quality or certify that a matching external edit was a
+faithful transcription.
 
 The installed-model controller lane writes complete per-run receipts rather
 than per-caption progress. The sequential matrix launcher now preserves each
@@ -55,6 +103,37 @@ no admitted partial cell count; a fresh process per cohort does not establish
 long single-process endurance or explain a backend stall. Complete matrix
 observation, quality acceptance, leak evidence and native delivery remain
 distinct requirements.
+
+### Recovery Reinsert for applications without a pinnable field
+
+For applications whose focused field cannot be pinned at capture (some
+Electron, Java and remote-desktop clients), delivery uses the session keyboard
+stream. Clicking Reinsert makes the non-activating recovery panel key while
+Portavoz stays inactive, so that stream would reach the panel instead of the
+destination. Delivery therefore refuses with `focusUnavailable` and the text
+stays in recovery: Copy works and nothing is lost, but Reinsert cannot succeed
+on this route. Choosing Literal or Clean in the panel during a session
+keys the panel the same way, so that session's delivery on this route is refused
+into recovery too. The likely fix is a panel that does not become key for a button
+click (for example `becomesKeyOnlyIfNeeded`), which needs native verification
+in Slack, VS Code, a Java editor and a remote-desktop client before it ships.
+
+### Cancel during unverified-delivery readback
+
+Delivery observes the destination for up to 750 ms after the paste is posted.
+Esc or a hotkey press inside that window cancels the session under the
+existing cancel-during-delivery contract: the posted paste may still land, but
+the verified or unverified notice and its Copy are discarded and the receipt
+records `cancelled`. Fencing input during readback would change that released
+contract and needs an explicit product decision plus native evidence.
+
+### Dictation text mode and settings transfer
+
+D558 keeps the dictation text mode and application profiles out of the
+portable-settings allowlist. A fresh installation initializes Literal at
+launch, so importing settings with filler removal and replacements from another
+Mac leaves them inactive until the user chooses Clean. Carrying the mode in
+settings transfer would widen the allowlist and needs an explicit decision.
 
 ### Live dictation can propose text without speech
 
@@ -111,7 +190,10 @@ preparation to manufacture successful delivery. Any policy change needs separate
 gesture/capture characterization and preservation of tap/hold behavior.
 Do not adopt another engine or promote proposed numerical budgets on the
 strength of the corpus count. The source and audio-manifest contract lives in
-`Fixtures/DictationValidation/README.md` and the quality specification.
+`Fixtures/DictationValidation/README.md` and the quality specification. A
+proposed, not yet accepted, natural-speaker qualification and comparison
+protocol lives in [DICTATION-QUALITY.md](DICTATION-QUALITY.md); its candidate
+targets are not release budgets.
 
 ### Live Parakeet still lacks reliable token-delivery ownership
 

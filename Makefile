@@ -802,7 +802,7 @@ test-ui-bilingual: test-ui-scoped
 ## granted Accessibility. Never count the unattended catalog as this proof.
 test-ui-native-dictation:
 	@$(MAKE) --no-print-directory test-ui-scoped \
-		UI_TESTS="PortavozUITests/DictationUITests/testNativeInserterUsesDisposableReceiverAndClipboard" \
+		UI_TESTS="PortavozUITests/DictationUITests/testNativeInserterUsesDisposableReceiverAndClipboard PortavozUITests/DictationUITests/testNativeControllerModeChoicePreservesReceiverAndClipboard" \
 		UI_TEST_LOCALES="en es" \
 		UI_TEST_RUNTIME_BUDGET="$(CURDIR)/docs/evidence/ui-test-native-dictation-runtime-budget.json"
 

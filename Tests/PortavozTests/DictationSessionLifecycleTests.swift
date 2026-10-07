@@ -48,7 +48,7 @@ extension DictationControllerTests {
             oldDeadline.release()
             let oldFinished = await awaitEventually { oldDeadline.finished }
             XCTAssertTrue(oldFinished)
-            XCTAssertEqual(controller.phase, .inserted(4),
+            XCTAssertEqual(controller.phase, .verified(4),
                            "A late deadline belongs to its completed session, not this equal phase")
             XCTAssertEqual(second.insertions, [texts[1]])
             newDeadline.release()
@@ -67,7 +67,7 @@ extension DictationControllerTests {
         await finish(harness, waitingOn: deadline)
         let released = await awaitEventually { harness.finishes == 1 }
         XCTAssertTrue(released, "A cosmetic confirmation must not retain a live model lease")
-        XCTAssertEqual(harness.controller.phase, .inserted(4))
+        XCTAssertEqual(harness.controller.phase, .verified(4))
         harness.controller.cancel()
         deadline.release()
         let finished = await awaitEventually { deadline.finished }
@@ -281,12 +281,14 @@ extension DictationControllerTests {
         let controller = DictationController(presentsPanel: false)
         let first = DictationControllerHarness(text: "No borres estas notas.", controller: controller)
         let second = DictationControllerHarness(text: "Don’t delete these notes.", controller: controller)
-        defer { controller.cancel() }
-        controller.toggle(using: first.dependencies)
+        let receiver = TextReadbackHarness()
+        defer { controller.cancel(); receiver.board.releaseGlobally() }
+        let firstDependencies = first.verifyingDelivery(using: receiver)
+        controller.toggle(using: firstDependencies)
         let ready = await awaitEventually { controller.partialText == first.text }
         XCTAssertTrue(ready)
         first.now = first.now.addingTimeInterval(0.75)
-        for _ in 0..<3 { controller.toggle(using: first.dependencies) }
+        for _ in 0..<3 { controller.toggle(using: firstDependencies) }
         let delivered = await awaitEventually { first.finishes == 1 }
         XCTAssertTrue(delivered)
         XCTAssertEqual(first.insertions, [first.text])
@@ -372,10 +374,13 @@ extension DictationControllerTests {
                 prematureDelivery.isInverted = true
                 await harness.microphone.holdStop { await drain.wait() }
                 var dependencies = harness.dependencies
-                let insert = dependencies.insert
-                dependencies.insert = { value in
-                    if !drain.released { prematureDelivery.fulfill() }
-                    return await insert(value)
+                let capture = dependencies.captureDestination
+                dependencies.captureDestination = {
+                    let destination = capture()
+                    return CapturedDictationDestination(name: destination.name, canRetry: destination.canRetry) { value in
+                        if !drain.released { prematureDelivery.fulfill() }
+                        return await destination.insert(value)
+                    }
                 }
                 harness.controller.toggle(using: dependencies)
                 let ready = await awaitEventually { harness.controller.partialText == text }
@@ -426,7 +431,9 @@ extension DictationControllerTests {
     }
 
     private func finish(_ harness: DictationControllerHarness, waitingOn deadline: FeedbackDeadline) async {
-        var dependencies = harness.dependencies
+        let receiver = TextReadbackHarness()
+        defer { receiver.board.releaseGlobally() }
+        var dependencies = harness.verifyingDelivery(using: receiver)
         dependencies.waitForFeedbackDismissal = { await deadline.wait($0) }
         harness.controller.toggle(using: dependencies)
         let transcribed = await awaitEventually { harness.controller.partialText == harness.text }
@@ -437,6 +444,8 @@ extension DictationControllerTests {
         XCTAssertTrue(waiting)
         XCTAssertEqual(deadline.duration, .milliseconds(1600))
         XCTAssertEqual(harness.insertions, [harness.text])
+        XCTAssertEqual(receiver.posts, 1)
+        XCTAssertEqual(receiver.requestedSpans.count, 1, "Feedback tests need an actual observed edit")
     }
 
 }
