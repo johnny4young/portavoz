@@ -204,6 +204,8 @@ final class DictationController {
     /// mid-phoneme.
     private static let stopTail: Duration = .milliseconds(250)
     private var microphoneReadiness: DictationMicrophoneReadiness?
+    /// Set while a paste is sent and verified; hotkey and Esc wait for its outcome.
+    private var deliveringSessionID: UUID?
 
     /// Hotkey press: start listening, or finish-and-insert if already on.
     func toggle(services: AppServices) {
@@ -374,7 +376,7 @@ final class DictationController {
 
     /// Second hotkey press: stop the mic; the drained stream delivers.
     private func finishAndInsert() {
-        guard isActive else { return }
+        guard isActive, deliveringSessionID == nil else { return }
         guard stopTask == nil else { return }
         measurement?.record(.stopRequested)
         guard DictationCapturePolicy.finishDecision(
@@ -399,43 +401,6 @@ final class DictationController {
             self.stopIssuedSessionID = sessionID
             await microphone?.stop()
         }
-    }
-
-    /// Esc in the panel: throw everything away.
-    func cancel() {
-        retryDeliveryTask?.cancel()
-        retryDeliveryTask = nil
-        deliveryID = nil
-        destination = nil
-        dependencies = nil
-        recoveryText = ""
-        targetApp = nil
-        copyStatus = .idle
-        isRetryingDelivery = false
-        measurement?.finish(.cancelled)
-        measurement = nil
-        sessionFeedbackWait = nil
-        activeSessionID = nil
-        sessionClock = nil
-        confirmedText = ""
-        partialText = ""
-        micLevel = 0
-        retireMicrophoneReadiness()
-        mouseOwnsSession = false
-        stopTask?.cancel()
-        stopTask = nil
-        pressedAt = nil
-        pressedSessionID = nil
-        cancelFeedbackDismissal()
-        session?.cancel()
-        session = nil
-        let microphone = self.microphone
-        Task { await microphone?.stop() }
-        self.microphone = nil
-        feed?.finish()
-        feed = nil
-        phase = .idle
-        panel.close()
     }
 
     private func deliver(sessionID: UUID, dependencies: DictationSessionDependencies) async {
@@ -466,7 +431,9 @@ final class DictationController {
             return
         }
         measurement?.record(.deliveryStarted)
+        deliveringSessionID = sessionID
         let result = await destination.insert(text)
+        deliveringSessionID = nil
         measurement?.finishDelivery(result)
         guard activeSessionID == sessionID else { return }
         completeSession(id: sessionID)
@@ -530,6 +497,47 @@ final class DictationController {
         }
     }
 
+}
+
+extension DictationController {
+    /// Esc in the panel: throw everything away.
+    func cancel() {
+        // A sent paste is being verified: its outcome must reach the user.
+        guard deliveringSessionID == nil else { return }
+        retryDeliveryTask?.cancel()
+        retryDeliveryTask = nil
+        deliveryID = nil
+        destination = nil
+        dependencies = nil
+        recoveryText = ""
+        targetApp = nil
+        copyStatus = .idle
+        isRetryingDelivery = false
+        measurement?.finish(.cancelled)
+        measurement = nil
+        sessionFeedbackWait = nil
+        activeSessionID = nil
+        sessionClock = nil
+        confirmedText = ""
+        partialText = ""
+        micLevel = 0
+        retireMicrophoneReadiness()
+        mouseOwnsSession = false
+        stopTask?.cancel()
+        stopTask = nil
+        pressedAt = nil
+        pressedSessionID = nil
+        cancelFeedbackDismissal()
+        session?.cancel()
+        session = nil
+        let microphone = self.microphone
+        Task { await microphone?.stop() }
+        self.microphone = nil
+        feed?.finish()
+        feed = nil
+        phase = .idle
+        panel.close()
+    }
 }
 
 extension DictationController {

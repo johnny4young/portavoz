@@ -2876,7 +2876,10 @@ system-wide timeout. AX IPC and third-party server allocations are not a hard
 real-time or memory guarantee. Missing, malformed, delayed or changed observations
 return `dispatched`, not a retryable failure. An editor whose AX offsets do not
 follow Cocoa UTF-16 conventions cannot be qualified by this observer. This is a point-in-time observation,
-not proof against a later user edit or an atomic editor transaction.
+not proof against a later user edit or an atomic editor transaction. While a
+paste is being sent and observed, the hotkey and Esc wait for its outcome: the
+event was already posted, so the result must still reach the verified or
+unverified notice instead of being discarded by a cancel.
 
 The delivery banner has its own cancelled-on-restart, identity-fenced dismissal
 task; waiting for presentation never holds the capture runtime lease. The brief
