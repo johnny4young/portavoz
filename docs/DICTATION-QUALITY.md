@@ -49,8 +49,8 @@ The older complete observation elsewhere in spec 08 has different denominators
 and a word-weighted score over nonempty proposals. Do not combine it with the
 September 21 arithmetic-mean scores. Spec 06 previously stated that live
 Parakeet silence yields no segment and that final insertion was verified end to
-end; GAPS records silence proposals and dispatch-only delivery, so this change
-marks that spec 06 wording as withdrawn/historical. Neither statement was ever
+end; GAPS records silence proposals and dispatch-only delivery, so spec 06 now marks
+that wording as withdrawn/historical. Neither statement was ever
 current certification; preserve dated failures before making a release claim.
 
 Related destination/recovery, clipboard-ownership, verified/dispatched/refused
@@ -175,11 +175,11 @@ process with declared disk caches; “system/model cold” requires a reproducib
 explicitly authorized cache condition. Do not erase user caches to create it.
 Randomize paired product order with a saved seed, block by host/day/condition,
 keep foreground/background work stable and record disturbances. Use at least
-three independent sessions/days, 30 declared process-cold starts and 200 warm
-utterances per primary host/profile. No claim of stable tail latency from 30
-cold observations: a distribution-free one-sided 95% upper bound on p95 needs at
-least 59 independent observations (0.95^59 < 0.05), so 30 starts can support a
-cold p50 estimate but leave the cold p95 gate inconclusive. Three session blocks
+three independent sessions/days, 59 declared process-cold starts and 200 warm
+utterances per primary host/profile. A distribution-free one-sided 95% upper
+bound on p95 needs at least 59 independent observations (0.95^59 < 0.05); fewer
+cold starts can support a cold p50 estimate but leave the cold p95 gate
+inconclusive. Three session blocks
 are likewise too few for a meaningful block bootstrap; add independent
 sessions/days before treating a latency interval as a gate verdict.
 
@@ -488,7 +488,7 @@ or authorization to merge existing work.
    and latency feasibility, power estimate; then freeze protocol/configuration.
 5. **Sealed qualification:** natural holdout, native receiver/editor, physical
    device/OS/accessibility, privacy/resource/endurance and paired competitor lanes.
-   Integrating current PRs is a separate reviewed decision; test the actual final
+   Integrating separately proposed work is its own reviewed decision; test the actual final
    integrated tree and retain its source and build identities.
 6. **Claim review:** independent bilingual semantic reviewer plus maintainer
    review all gates, confidence bounds, failures and exclusions. Publish the
