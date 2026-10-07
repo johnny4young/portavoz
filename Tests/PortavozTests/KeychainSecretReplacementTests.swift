@@ -18,6 +18,7 @@ final class KeychainSecretReplacementTests: XCTestCase {
         private var contender: Data?
         private var operations: [String] = []
         private var replacementKeys: [String] = []
+        private var updateQueryKeys: [String] = []
 
         init(
             data: Data? = nil, accessibility: String? = nil,
@@ -43,9 +44,15 @@ final class KeychainSecretReplacementTests: XCTestCase {
             lock.withLock { (data, accessibility, operations, replacementKeys) }
         }
 
+        /// Keys of the last update query; SecItemUpdate rejects return/limit keys.
+        func lastUpdateQueryKeys() -> [String] {
+            lock.withLock { updateQueryKeys }
+        }
+
         private func update(_ query: CFDictionary, attributes: CFDictionary) -> OSStatus {
             lock.withLock {
                 operations.append("update")
+                updateQueryKeys = (query as NSDictionary).allKeys.compactMap { $0 as? String }.sorted()
                 let values = attributes as NSDictionary
                 replacementKeys = values.allKeys.compactMap { $0 as? String }.sorted()
                 if !updateStatuses.isEmpty {
@@ -129,6 +136,9 @@ final class KeychainSecretReplacementTests: XCTestCase {
         XCTAssertEqual(state.accessibility, "original-accessibility")
         XCTAssertEqual(state.operations, ["update"])
         XCTAssertEqual(state.keys, [kSecValueData as String])
+        XCTAssertEqual(
+            fixture.lastUpdateQueryKeys(),
+            [kSecAttrAccount as String, kSecAttrService as String, kSecClass as String].sorted())
     }
 
     func testDuplicateFirstWriterConvergesWithOneUpdateRetry() throws {

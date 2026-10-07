@@ -51,15 +51,20 @@ public struct KeychainSecretStore: SecretStoring, Sendable {
 
     public func set(_ secret: String, for identifier: SecretIdentifier) throws {
         let query = matchingQuery(for: identifier)
-        let attributes: [String: Any] = [kSecValueData as String: Data(secret.utf8)]
+        let value = Data(secret.utf8)
+        let attributes: [String: Any] = [kSecValueData as String: value]
         var status = security.update(query as CFDictionary, attributes as CFDictionary)
-        guard status == errSecItemNotFound else {
-            guard status == errSecSuccess else { throw SecretError.keychain(status) }
+        switch status {
+        case errSecSuccess:
             return
+        case errSecItemNotFound:
+            break
+        default:
+            throw SecretError.keychain(status)
         }
 
         var addition = query
-        addition[kSecValueData as String] = Data(secret.utf8)
+        addition[kSecValueData as String] = value
         addition[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         status = security.add(addition as CFDictionary)
         if status == errSecDuplicateItem {
@@ -79,13 +84,10 @@ public struct KeychainSecretStore: SecretStoring, Sendable {
     }
 
     public func value(for identifier: SecretIdentifier) throws -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: identifier.rawValue,
-            kSecAttrAccount as String: Self.account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
+        // Return/limit keys stay on this copy only: SecItemUpdate rejects them.
+        var query = matchingQuery(for: identifier)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
         let result = security.copyMatching(query as CFDictionary)
         switch result.status {
         case errSecSuccess:
@@ -102,12 +104,7 @@ public struct KeychainSecretStore: SecretStoring, Sendable {
     }
 
     public func delete(_ identifier: SecretIdentifier) throws {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: identifier.rawValue,
-            kSecAttrAccount as String: Self.account
-        ]
-        let status = security.delete(query as CFDictionary)
+        let status = security.delete(matchingQuery(for: identifier) as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw SecretError.keychain(status)
         }
