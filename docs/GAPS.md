@@ -119,6 +119,37 @@ cannot recover across a crash. Cooperative privacy markers do not bind external
 readers. Destination fencing, readback and refused-text recovery remain separate
 from this clipboard mechanism; native receiver evidence is still required.
 
+### Recovery Reinsert for applications without a pinnable field
+
+For applications whose focused field cannot be pinned at capture (some
+Electron, Java and remote-desktop clients), delivery uses the session keyboard
+stream. Clicking Reinsert makes the non-activating recovery panel key while
+Portavoz stays inactive, so that stream would reach the panel instead of the
+destination. Delivery therefore refuses with `focusUnavailable` and the text
+stays in recovery: Copy works and nothing is lost, but Reinsert cannot succeed
+on this route. Choosing Literal or Clean in the panel during a session
+keys the panel the same way, so that session's delivery on this route is refused
+into recovery too. The likely fix is a panel that does not become key for a button
+click (for example `becomesKeyOnlyIfNeeded`), which needs native verification
+in Slack, VS Code, a Java editor and a remote-desktop client before it ships.
+
+### Cancel during unverified-delivery readback
+
+Delivery observes the destination for up to 750 ms after the paste is posted.
+Esc or a hotkey press inside that window cancels the session under the
+existing cancel-during-delivery contract: the posted paste may still land, but
+the verified or unverified notice and its Copy are discarded and the receipt
+records `cancelled`. Fencing input during readback would change that released
+contract and needs an explicit product decision plus native evidence.
+
+### Dictation text mode and settings transfer
+
+D558 keeps the dictation text mode and application profiles out of the
+portable-settings allowlist. A fresh installation initializes Literal at
+launch, so importing settings with filler removal and replacements from another
+Mac leaves them inactive until the user chooses Clean. Carrying the mode in
+settings transfer would widen the allowlist and needs an explicit decision.
+
 ### Live dictation can propose text without speech
 
 **Open, reproduced in the public controller corpus.** The first complete
@@ -174,7 +205,10 @@ preparation to manufacture successful delivery. Any policy change needs separate
 gesture/capture characterization and preservation of tap/hold behavior.
 Do not adopt another engine or promote proposed numerical budgets on the
 strength of the corpus count. The source and audio-manifest contract lives in
-`Fixtures/DictationValidation/README.md` and the quality specification.
+`Fixtures/DictationValidation/README.md` and the quality specification. A
+proposed, not yet accepted, natural-speaker qualification and comparison
+protocol lives in [DICTATION-QUALITY.md](DICTATION-QUALITY.md); its candidate
+targets are not release budgets.
 
 ### Live Parakeet still lacks reliable token-delivery ownership
 
