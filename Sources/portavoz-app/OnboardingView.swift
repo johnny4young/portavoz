@@ -284,44 +284,6 @@ struct OnboardingView: View {
         }
     }
 
-    @ViewBuilder private var modelPreparationStatus: some View {
-        switch modelPreparation.phase {
-        case .ready:
-            Label("Models ready", systemImage: PVSymbol.success)
-                .foregroundStyle(.green)
-                .accessibilityIdentifier("onboarding-models-ready")
-        case .preparing:
-            HStack(spacing: 10) {
-                ProgressView().controlSize(.small)
-                Text(modelsStatus).font(.callout).foregroundStyle(.secondary)
-            }
-            .accessibilityIdentifier("onboarding-models-preparing")
-        case .failed(let failure):
-            VStack(alignment: .leading, spacing: 10) {
-                Text(failure.message)
-                    .font(.callout)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("onboarding-models-error")
-                HStack {
-                    Button("Try again") { downloadModels() }
-                        .accessibilityIdentifier("onboarding-models-retry")
-                    Button("Continue without models") { step += 1 }
-                        .accessibilityIdentifier("onboarding-models-continue-without")
-                }
-                Text("You can still record audio. Transcription will be available after the models are ready.")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        case .idle:
-            HStack(spacing: 10) {
-                Button("Download now") { downloadModels() }
-                    .accessibilityIdentifier("onboarding-models-download")
-                Text("Or skip — they download on your first recording.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-        }
-    }
-
     /// Whether the first-listen captured enough audio to enroll from directly
     /// (≥ 4 s), so the user needn't speak a second time.
     private var canReuseFirstListen: Bool {
@@ -517,5 +479,45 @@ private struct FirstListenWaveform: View {
         let bell = sin(Double(index) / Double(barCount - 1) * .pi)
         let amplitude = active ? (0.2 + level * bell) : (0.10 + 0.06 * idle)
         return CGFloat(8 + amplitude * 40)
+    }
+}
+
+private extension OnboardingView {
+    @ViewBuilder var modelPreparationStatus: some View {
+        switch modelPreparation.phase {
+        case .ready:
+            Label("Models ready", systemImage: PVSymbol.success)
+                .foregroundStyle(.green)
+                .accessibilityIdentifier("onboarding-models-ready")
+        case .preparing:
+            HStack(spacing: 10) {
+                ProgressView().controlSize(.small)
+                Text(modelsStatus).font(.callout).foregroundStyle(.secondary)
+            }
+            .accessibilityIdentifier("onboarding-models-preparing")
+        case .failed(let failure):
+            VStack(alignment: .leading, spacing: 10) {
+                Text(failure.message)
+                    .font(.callout)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("onboarding-models-error")
+                HStack {
+                    Button("Try again") { downloadModels() }
+                        .accessibilityIdentifier("onboarding-models-retry")
+                    Button("Continue without models") { step += 1 }
+                        .accessibilityIdentifier("onboarding-models-continue-without")
+                }
+                Text("You can still record audio. Transcription will be available after the models are ready.")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        case .idle:
+            HStack(spacing: 10) {
+                Button("Download now") { downloadModels() }
+                    .accessibilityIdentifier("onboarding-models-download")
+                Text("Or skip — they download on your first recording.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
     }
 }
