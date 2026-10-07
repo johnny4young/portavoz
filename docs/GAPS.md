@@ -94,6 +94,18 @@ long single-process endurance or explain a backend stall. Complete matrix
 observation, quality acceptance, leak evidence and native delivery remain
 distinct requirements.
 
+### Recovery Reinsert for applications without a pinnable field
+
+For applications whose focused field cannot be pinned at capture (some
+Electron, Java and remote-desktop clients), delivery uses the session keyboard
+stream. Clicking Reinsert makes the non-activating recovery panel key while
+Portavoz stays inactive, so that stream would reach the panel instead of the
+destination. Delivery therefore refuses with `focusUnavailable` and the text
+stays in recovery: Copy works and nothing is lost, but Reinsert cannot succeed
+on this route. The likely fix is a panel that does not become key for a button
+click (for example `becomesKeyOnlyIfNeeded`), which needs native verification
+in Slack, VS Code, a Java editor and a remote-desktop client before it ships.
+
 ### Live dictation can propose text without speech
 
 **Open, reproduced in the public controller corpus.** The first complete
