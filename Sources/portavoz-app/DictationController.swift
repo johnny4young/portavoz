@@ -116,6 +116,7 @@ final class DictationController {
     private var measurement: DictationSessionMeasurementRecorder?
     private var textPolicy = DictationTextPreferenceSnapshot.inert
     /// Set once delivery has prepared its text; a later panel choice could not apply.
+    /// Only `start` clears it: between sessions `canChangeTextMode` is already false.
     private var textPolicySealed = false
     private let panel = DictationPanelController()
     private let presentsPanel: Bool
@@ -423,7 +424,6 @@ final class DictationController {
         sessionFeedbackWait = nil
         activeSessionID = nil
         textPolicy = .inert
-        textPolicySealed = false
         sessionClock = nil
         confirmedText = ""
         partialText = ""
@@ -484,7 +484,6 @@ final class DictationController {
         guard activeSessionID == id else { return }
         activeSessionID = nil
         textPolicy = .inert
-        textPolicySealed = false
         sessionClock = nil
         pressedAt = nil
         pressedSessionID = nil
