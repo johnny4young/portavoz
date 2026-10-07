@@ -121,8 +121,14 @@ final class DictationResourceOwnershipTests: XCTestCase {
         dependencies.now = { now }
         dependencies.makeMicrophone = { .init(source: microphone, warmUp: {}) }
         var deliveries = 0
-        let insert = dependencies.insert
-        dependencies.insert = { text in deliveries += 1; return await insert(text) }
+        let capture = dependencies.captureDestination
+        dependencies.captureDestination = {
+            let destination = capture()
+            return CapturedDictationDestination(name: destination.name, canRetry: destination.canRetry) { text in
+                deliveries += 1
+                return await destination.insert(text)
+            }
+        }
         let begin = dependencies.beginCapture
         dependencies.beginCapture = {
             let finish = begin()
