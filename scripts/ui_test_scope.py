@@ -418,6 +418,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testIntelligencePaneCreatesACustomStructure"),
     ),
     "dictation": (
+        test_id("DictationTextModeUITests", "testApplicationProfileUsesNativePickerAndKeepsTheOriginal"),
+        test_id("DictationTextModeUITests", "testCorruptProfilesShowAnExplicitResetWithoutChangingTheDefault"),
+        test_id("DictationTextModeUITests", "testSessionModeOverrideCancelsAndRestartsWithoutChangingDefaults"),
+        test_id("DictationUITests", "testDeliveredDictationDistinguishesDispatchFromVerification"),
         test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
         test_id("SettingsUITests", "testAppleSpeechInspectionFailureOffersExplicitRetry"),
         test_id("DictationUITests", "testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart"),
@@ -427,6 +431,8 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("DictationUITests", "testMicrophoneDenialRemainsRecoverableWithoutOpeningAudio"),
         test_id("DictationUITests", "testMissingMicrophoneAudioShowsFallbackAndAllowsRestart"),
         test_id("DictationUITests", "testPreparingDictationCanCancelWithoutAListeningClaim"),
+        test_id("DictationUITests", "testUndeliveredTextCanBeCopiedAndExplicitlyRetried"),
+        test_id("DictationUITests", "testUndeliveredTextSurvivesAnotherTriggerUntilDiscarded"),
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
         test_id("SettingsUITests", "testDictationRecoversShortcutConflictAndRefreshesHelp"),
         test_id("SettingsUITests", "testDictationRepairsCorruptShortcutWithoutLeavingSettings"),
@@ -458,6 +464,7 @@ ALL_TESTS = tuple(dict.fromkeys(test for tests in FEATURE_TESTS.values() for tes
 # Needs a user-granted Accessibility decision; run only via test-ui-native-dictation.
 PERMISSION_GATED_TESTS = frozenset({
     test_id("DictationUITests", "testNativeInserterUsesDisposableReceiverAndClipboard"),
+    test_id("DictationUITests", "testNativeControllerModeChoicePreservesReceiverAndClipboard"),
 })
 ALL_FEATURES = frozenset(FEATURE_TESTS)
 MEETING_FEATURES = frozenset(

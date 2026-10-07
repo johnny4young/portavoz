@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 128
+    "expectedCaseCount": 134
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -33,6 +33,9 @@
     "CommitmentRadarUITests/testReminderAlertOpensCommitmentRadar()": 20.0,
     "CommitmentRadarUITests/testReminderDraftRequiresExplicitAccessAndLeavesDurableReceipt()": 20.0,
     "CommitmentRadarUITests/testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence()": 20.0,
+    "DictationTextModeUITests/testApplicationProfileUsesNativePickerAndKeepsTheOriginal()": 40.0,
+    "DictationTextModeUITests/testCorruptProfilesShowAnExplicitResetWithoutChangingTheDefault()": 20.0,
+    "DictationTextModeUITests/testSessionModeOverrideCancelsAndRestartsWithoutChangingDefaults()": 20.0,
     "DictationUITests/testDictationCaptureFailureIsVisibleAndCanBeDismissed()": 20.0,
     "DictationUITests/testDictationPanelCancelsAndRestartsWithoutGlobalInput()": 20.0,
     "DictationUITests/testDictationSourceEOFBeforeStopIsVisibleAndCanRestart()": 20.0,
@@ -151,7 +154,9 @@
     "SkillsSettingsUITests/testWaitingReceiptIgnoresUnavailablePolicyAndReviewsSourceWithoutRunning()": 24.924,
     "SkillsSettingsUITests/testWaitingSkillApprovalCanBeRevokedBeforeHandoff()": 24.508,
     "UITestStorageUITests/testSharedScratchProtectsOwnershipAndRoundTripsAppFixtures()": 15.0,
-    "DictationUITests/testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart()": 20.0
-
+    "DictationUITests/testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart()": 20.0,
+    "DictationUITests/testUndeliveredTextCanBeCopiedAndExplicitlyRetried()": 20.0,
+    "DictationUITests/testUndeliveredTextSurvivesAnotherTriggerUntilDiscarded()": 20.0,
+    "DictationUITests/testDeliveredDictationDistinguishesDispatchFromVerification()": 25.0
   }
 }

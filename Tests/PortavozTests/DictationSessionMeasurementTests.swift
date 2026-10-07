@@ -48,6 +48,28 @@ final class DictationSessionMeasurementTests: XCTestCase {
         }
     }
 
+    func testTypedDeliveryDoubleCannotQualifyNativeVerificationMeasurement() async throws {
+        for outcome: DictationDeliveryOutcome in [.verified, .dispatched] {
+            let harness = DictationControllerHarness(text: "No borres café 0,5")
+            defer { harness.controller.cancel() }
+            var dependencies = harness.dependencies
+            dependencies.captureDestination = {
+                CapturedDictationDestination(name: "Declared test double", canRetry: false, insert: { _ in outcome })
+            }
+            harness.controller.toggle(using: dependencies)
+            await eventually { !harness.controller.partialText.isEmpty }
+            harness.now = harness.now.addingTimeInterval(1)
+            harness.controller.toggle(using: dependencies)
+            await eventually { harness.measurements.count == 1 }
+            let receipt = try XCTUnwrap(harness.measurements.first)
+            XCTAssertEqual(receipt.schemaVersion, 1)
+            XCTAssertEqual(receipt.outcome, .dispatchReported)
+            XCTAssertNotNil(receipt.elapsedSeconds["deliveryReturned"])
+            XCTAssertFalse(receipt.verifiedDeliveryMeasured,
+                           "A typed port result is not the separate native receiver's evidence")
+        }
+    }
+
     func testDeniedAndSubminimumRequestsCannotLookLikePreparedSessions() async throws {
         let denied = DictationControllerHarness(text: "Never read")
         var dependencies = denied.dependencies
@@ -147,9 +169,11 @@ final class DictationSessionMeasurementTests: XCTestCase {
         let harness = DictationControllerHarness(text: "Do not paste twice")
         let gate = Gate()
         var dependencies = harness.dependencies
-        dependencies.insert = { _ in
-            await gate.wait()
-            return .inserted
+        dependencies.captureDestination = {
+            CapturedDictationDestination(name: nil, canRetry: true) { _ in
+                await gate.wait()
+                return .dispatched
+            }
         }
         harness.controller.toggle(using: dependencies)
         await eventually { !harness.controller.partialText.isEmpty }
@@ -171,7 +195,7 @@ final class DictationSessionMeasurementTests: XCTestCase {
         for text in ["", "… — !!!", "No borres esto"] {
             let harness = DictationControllerHarness(text: text)
             var dependencies = harness.dependencies
-            dependencies.insert = { _ in .focusUnavailable }
+            dependencies.captureDestination = { .unavailable(name: nil, result: .focusUnavailable) }
             harness.controller.toggle(using: dependencies)
             await eventually { harness.hints != nil }
             harness.now = harness.now.addingTimeInterval(1)
