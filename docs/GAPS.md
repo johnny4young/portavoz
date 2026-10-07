@@ -134,7 +134,10 @@ preparation to manufacture successful delivery. Any policy change needs separate
 gesture/capture characterization and preservation of tap/hold behavior.
 Do not adopt another engine or promote proposed numerical budgets on the
 strength of the corpus count. The source and audio-manifest contract lives in
-`Fixtures/DictationValidation/README.md` and the quality specification.
+`Fixtures/DictationValidation/README.md` and the quality specification. A
+proposed, not yet accepted, natural-speaker qualification and comparison
+protocol lives in [DICTATION-QUALITY.md](DICTATION-QUALITY.md); its candidate
+targets are not release budgets.
 
 ### Live Parakeet still lacks reliable token-delivery ownership
 
