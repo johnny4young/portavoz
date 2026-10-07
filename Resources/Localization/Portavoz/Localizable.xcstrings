@@ -17226,6 +17226,66 @@
           }
         }
       }
+    },
+    "Continue without models": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuar sin modelos"
+          }
+        }
+      }
+    },
+    "Model preparation was interrupted. You can try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La preparación de los modelos se interrumpió. Puedes intentarlo de nuevo."
+          }
+        }
+      }
+    },
+    "Models could not be downloaded. Check your connection and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron descargar los modelos. Comprueba la conexión e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Models could not be prepared. Try again, or continue setup and download them later.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron preparar los modelos. Reinténtalo o continúa la configuración y descárgalos después."
+          }
+        }
+      }
+    },
+    "Models could not be saved. Check available disk space and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron guardar los modelos. Comprueba el espacio libre e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "You can still record audio. Transcription will be available after the models are ready.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puedes seguir grabando audio. La transcripción estará disponible cuando los modelos estén listos."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

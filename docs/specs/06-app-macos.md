@@ -1953,6 +1953,17 @@ renders unavailable only for that tile, while a measured zero remains zero.
 Its network tile states explicit-action/opt-in policy rather than claiming an
 unmeasured byte count.
 
+Onboarding's explicit model preparation has one presentation state: idle,
+preparing, ready, or a closed failure category. Network, disk-space and
+interruption failures offer a localized recovery message; unknown failures
+never display raw paths, URLs or error descriptions. Retry admits one load at a
+time. Continue without models and Skip remain available, and Back retains the
+observed result for this presentation. Dismissing or moving between steps does
+not cancel the AppServices-owned shared model task or change its lease/release
+policy. Model failure does not mark setup ineligible or remove audio-first
+recording. A disposable-store-only fixture supplies a first failure and then
+success without downloading models.
+
 First Listen owns a separate generation-fenced microphone/caption session.
 On Tahoe it resolves the optional SpeechAnalyzer asset before microphone start;
 on Sequoia the caption capability resolves unavailable without changing the

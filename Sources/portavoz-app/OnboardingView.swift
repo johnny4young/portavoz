@@ -14,8 +14,7 @@ struct OnboardingView: View {
     @State private var micGranted = false
     @State private var calendarConnected = false
     @State private var providerRecommendation: LocalSummaryProviderRecommendation?
-    @State private var downloadingModels = false
-    @State private var modelsReady = false
+    @State private var modelPreparation = OnboardingModelPreparation()
     @State private var enrolling = false
     @State private var enrolled = false
     @State private var enrollMessage: String?
@@ -263,33 +262,61 @@ struct OnboardingView: View {
     }
 
     private var models: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("On-device models").font(.largeTitle.bold())
-            Text("Models download once (about 1 GB) and work offline.")
-                .foregroundStyle(.secondary)
-            HStack(spacing: 10) {
-                if modelsReady {
-                    Image(systemName: PVSymbol.success).foregroundStyle(.green)
-                    Text("Models ready").font(.callout)
-                } else if downloadingModels {
-                    ProgressView().controlSize(.small)
-                    Text(modelsStatus).font(.callout).foregroundStyle(.secondary)
-                } else {
-                    Button("Download now") { downloadModels() }
-                    Text("Or skip — they download on your first recording.")
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("On-device models").font(.largeTitle.bold())
+                Text("Models download once (about 1 GB) and work offline.")
+                    .foregroundStyle(.secondary)
+                modelPreparationStatus
+                if let providerRecommendation {
+                    Divider()
+                    Label(
+                        providerRecommendation.localizedHeadline,
+                        systemImage: PVSymbol.generate)
+                        .font(.callout.weight(.medium))
+                    ForEach(providerRecommendation.localizedReasons, id: \.self) { reason in
+                        Text("• \(reason)").font(.caption).foregroundStyle(.secondary)
+                    }
+                    Text("You can change the summary engine anytime in Settings.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
-            if let providerRecommendation {
-                Divider()
-                Label(
-                    providerRecommendation.localizedHeadline,
-                    systemImage: PVSymbol.generate)
-                    .font(.callout.weight(.medium))
-                ForEach(providerRecommendation.localizedReasons, id: \.self) { reason in
-                    Text("• \(reason)").font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder private var modelPreparationStatus: some View {
+        switch modelPreparation.phase {
+        case .ready:
+            Label("Models ready", systemImage: PVSymbol.success)
+                .foregroundStyle(.green)
+                .accessibilityIdentifier("onboarding-models-ready")
+        case .preparing:
+            HStack(spacing: 10) {
+                ProgressView().controlSize(.small)
+                Text(modelsStatus).font(.callout).foregroundStyle(.secondary)
+            }
+            .accessibilityIdentifier("onboarding-models-preparing")
+        case .failed(let failure):
+            VStack(alignment: .leading, spacing: 10) {
+                Text(failure.message)
+                    .font(.callout)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("onboarding-models-error")
+                HStack {
+                    Button("Try again") { downloadModels() }
+                        .accessibilityIdentifier("onboarding-models-retry")
+                    Button("Continue without models") { step += 1 }
+                        .accessibilityIdentifier("onboarding-models-continue-without")
                 }
-                Text("You can change the summary engine anytime in Settings.")
+                Text("You can still record audio. Transcription will be available after the models are ready.")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        case .idle:
+            HStack(spacing: 10) {
+                Button("Download now") { downloadModels() }
+                    .accessibilityIdentifier("onboarding-models-download")
+                Text("Or skip — they download on your first recording.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -358,6 +385,7 @@ struct OnboardingView: View {
             Spacer()
             if step > 0 {
                 Button("Back") { step -= 1 }
+                    .accessibilityIdentifier("onboarding-back")
             }
             Button(step == lastStep ? L10n.text("Start using Portavoz") : L10n.text("Continue")) {
                 if step == lastStep { finish() } else { step += 1 }
@@ -411,10 +439,17 @@ struct OnboardingView: View {
     }
 
     private func downloadModels() {
-        downloadingModels = true
         Task { @MainActor in
-            defer { downloadingModels = false }
-            modelsReady = (try? await services.loadEnginesIfNeeded()) != nil
+            await modelPreparation.prepare {
+                if let result = OnboardingModelPreparation.disposableFixtureResult(
+                    arguments: ProcessInfo.processInfo.arguments,
+                    attempt: modelPreparation.attempt
+                ) {
+                    try result.get()
+                } else {
+                    try await services.loadEnginesIfNeeded()
+                }
+            }
         }
     }
 

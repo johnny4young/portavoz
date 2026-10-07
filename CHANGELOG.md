@@ -15,6 +15,11 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## October 6, 2026
+
+- **🔄 Clear model setup recovery** — see a safe explanation when model preparation fails, retry, or continue setup without models.
+- **📦 Easier first install** — the website leads with the DMG and states the published release's macOS requirements beside the download.
+
 ## October 1, 2026
 
 - **🎙️ Reliable dictation handoff** — Stop finishes microphone cleanup before typing, and late captions or feedback cannot interrupt your next dictation.

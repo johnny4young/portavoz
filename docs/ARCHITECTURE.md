@@ -33,6 +33,11 @@ The system combines these patterns:
 - injected capability and platform adapters;
 - explicit, content-free policy records before meeting-content network egress.
 
+The onboarding view uses a bounded observable preparation state with closed,
+localized failure categories and explicit retry/continue actions. The view
+never owns model leases or cancels process-shared loads; existing AppServices
+readiness and audio-first capture remain the authority.
+
 Feature parity is a permanent constraint: audio and user-owned data remain
 discoverable when transcription, diarization, generation, indexing, sync, or an
 external integration fails.

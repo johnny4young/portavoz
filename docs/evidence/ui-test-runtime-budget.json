@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 131
+    "expectedCaseCount": 132
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -154,7 +154,7 @@
     "SkillsSettingsUITests/testWaitingReceiptIgnoresUnavailablePolicyAndReviewsSourceWithoutRunning()": 24.924,
     "SkillsSettingsUITests/testWaitingSkillApprovalCanBeRevokedBeforeHandoff()": 24.508,
     "UITestStorageUITests/testSharedScratchProtectsOwnershipAndRoundTripsAppFixtures()": 15.0,
-    "DictationUITests/testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart()": 20.0
-
+    "DictationUITests/testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart()": 20.0,
+    "OnboardingUITests/testModelFailureCanContinueBackAndRetryWithoutDownloading()": 35.0
   }
 }
