@@ -294,8 +294,12 @@ sqlite-vec C implementation and header included directly by
 fresh-checkout timestamps while its wrapper recovers the prior build's
 timestamp. Regression tests cover unchanged vendor reuse, same-size,
 same-timestamp vendor edits that must become fresh inputs, and every quoted
-C-family include reachable from `Sources/` belonging to the inventory. This is
-input-coverage evidence, not a measured CI speedup. On an exact PR cache hit,
+C-family include reachable from inventoried sources resolving inside the
+checkout and belonging to the inventory. Because that walk resolves includes
+only relative to the including file, a manifest guard rejects target paths
+outside `Sources/`/`Tests/`, `headerSearchPath`, and `unsafeFlags` until the
+inventory and walker learn them. This is input-coverage evidence, not a
+measured CI speedup. On an exact PR cache hit,
 `restore` intersects that receipt with the current Git inventory and restores
 mtime only for byte-identical, same-mode inputs. Changed/new inputs receive
 fresh timestamps even when their size and incoming mtime happen to match the old

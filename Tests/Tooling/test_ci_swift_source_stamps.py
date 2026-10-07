@@ -72,23 +72,15 @@ class SourceStampTests(unittest.TestCase):
         self.assertEqual(header.stat().st_mtime_ns, 1800000000000000000)
         self.assertEqual(header.read_text(), 'int value = 2;\n')
 
-    def test_repository_vendored_includes_belong_to_source_inventory(self):
-        # This is a real dependency outside Sources, not a SwiftPM package URL.
-        wrapper = ROOT / 'Sources/CSQLiteVecResearch/SQLiteVecResearch.c'
-        self.assertIn('../../Vendor/sqlite-vec/sqlite-vec.c', wrapper.read_text())
-        inventory = stamps.inputs(ROOT)
-        for name in ('Vendor/sqlite-vec/sqlite-vec.c', 'Vendor/sqlite-vec/sqlite-vec.h'):
-            self.assertTrue(name in inventory, f'Missing compiled vendor input: {name}')
-
-    def test_every_quoted_include_reachable_from_sources_is_inventoried(self):
-        # Any C-family target may include a repository file outside Sources.
-        # Walk quoted includes transitively so a new out-of-tree input cannot
-        # silently keep fresh-checkout timestamps behind a restored wrapper.
+    def test_every_quoted_include_reachable_from_compiled_sources_is_inventoried(self):
+        # C-family targets may textually include repository files outside
+        # Sources (CSQLiteVecResearch compiles Vendor/sqlite-vec). Walk quoted
+        # includes transitively so a new out-of-tree input cannot silently keep
+        # fresh-checkout timestamps behind a restored wrapper.
         inventory = stamps.inputs(ROOT)
         root = ROOT.resolve()
         suffixes = {'.c', '.h', '.m', '.mm', '.cc', '.cpp', '.hpp'}
-        pending = [path.resolve() for name, path in inventory.items()
-                   if name.startswith('Sources/') and path.suffix in suffixes]
+        pending = [path.resolve() for path in inventory.values() if path.suffix in suffixes]
         seen = set(pending)
         directive = re.compile(r'^\s*#\s*(?:include|import)\s*"([^"]+)"', re.MULTILINE)
         while pending:
@@ -99,9 +91,24 @@ class SourceStampTests(unittest.TestCase):
                     continue
                 seen.add(included)
                 pending.append(included)
-                if included.is_relative_to(root):
-                    name = included.relative_to(root).as_posix()
-                    self.assertTrue(name in inventory, f'Missing compiled input: {name}')
+                # An include escaping the checkout is an untracked input.
+                self.assertTrue(included.is_relative_to(root), f'Compiled input outside checkout: {included}')
+                name = included.relative_to(root).as_posix()
+                self.assertTrue(name in inventory, f'Missing compiled input: {name}')
+        # Keep the walk anchored: it must actually reach the vendored blob.
+        for name in ('Vendor/sqlite-vec/sqlite-vec.c', 'Vendor/sqlite-vec/sqlite-vec.h'):
+            self.assertIn((root / name).resolve(), seen)
+
+    def test_manifest_declares_no_compiled_roots_outside_the_inventory(self):
+        # The include walker resolves quoted includes relative to the including
+        # file only. Search paths or target roots outside Sources/Tests would
+        # add compiled inputs it cannot see; extend the inventory and the
+        # walker before introducing either.
+        manifest = (ROOT / 'Package.swift').read_text()
+        for path in re.findall(r'\bpath:\s*"([^"]+)"', manifest):
+            self.assertRegex(path, r'^(Sources|Tests)(/|$)')
+        for setting in ('headerSearchPath', 'unsafeFlags'):
+            self.assertNotIn(setting, manifest)
 
     def test_added_deleted_and_renamed_inputs_are_not_resurrected(self):
         self.source.unlink()
