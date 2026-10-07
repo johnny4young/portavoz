@@ -2048,6 +2048,14 @@ keyed to the audio directory rather than review revisions, so cancellation by
 independent initial section updates cannot consume the only attempt. SwiftUI
 retains only transport controls, drawing, and the native save panel.
 
+Both `AudioClipExporter` overloads and `AudioTranscoder` use one internal
+`AudioExportSession` compatibility bridge. The native async path propagates its
+original errors unchanged; the callback fallback preserves clip/compression
+error families, localized reason or `unknown`, and callback completion ownership.
+Caller composition, clear-mix range, output replacement and cleanup stay local
+to the exporter; compression still verifies every output before removing sources.
+The bridge neither removes files nor changes the existing cancellation policy.
+
 SwiftPM and the XcodeGen UI-test project link `ApplicationKit`. It exposes the
 Sendable async `ApplicationUseCase<Request, Response>` contract and admits
 capability dependencies only with characterized vertical workflows.

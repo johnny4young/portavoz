@@ -421,13 +421,3 @@ decode with unknown capture evidence, not a complete-recording claim. No raw
 error messages or new outbound transport are introduced. Older readers may
 ignore the additive field; physical CloudKit multi-device validation remains
 separate from codec/replay tests.
-
-## AAC export adapter
-
-Both `AudioClipExporter` overloads and `AudioTranscoder` use one internal
-`AudioExportSession` compatibility bridge. The native async path propagates its
-original errors unchanged; the callback fallback preserves clip/compression
-error families, localized reason or `unknown`, and callback completion ownership.
-Caller composition, clear-mix range, output replacement and cleanup stay local
-to the exporter; compression still verifies every output before removing sources.
-The bridge neither removes files nor changes the existing cancellation policy.
