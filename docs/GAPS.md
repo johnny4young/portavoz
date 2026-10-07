@@ -135,6 +135,21 @@ launch, so importing settings with filler removal and replacements from another
 Mac leaves them inactive until the user chooses Clean. Carrying the mode in
 settings transfer would widen the allowlist and needs an explicit decision.
 
+### Keychain replacement and the file-based keychain trust list
+
+Credential replacement now updates the existing item in place, so a failed
+write keeps the previous working credential. The store does not opt into the
+data-protection keychain, so on macOS items live in the file-based keychain,
+where the creating binary's trust list controls access. The stable app, the
+Dev app and the CLI share each item. The released delete-and-recreate made the
+saving binary the new owner. An in-place update keeps the old trust list and
+the accessibility class the item was created with, so a save from a
+differently signed binary may prompt, fail, or leave reads prompting. The
+duplicate-item retry also overwrites a contender's value, which matters for
+encryption keys only when a pre-D358 binary bypasses the voice-store lease.
+Native evidence on a signed release, a Dev build and the CLI is required
+before choosing between trust repair and failure safety.
+
 ### Live dictation can propose text without speech
 
 **Open, reproduced in the public controller corpus.** The first complete
