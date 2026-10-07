@@ -1092,15 +1092,15 @@ final class LibraryUITests: PortavozUITestCase {
         try XCTContext.runActivity(named: "Current decisions and exact citation") { _ in
             try assertExactTopicDecisionsAndEvidence(in: app)
         }
-        returnToSelectedTopic(in: app)
+        try returnToSelectedTopic(in: app)
         try XCTContext.runActivity(named: "First discussion replaces decisions and seeks its citation") { _ in
             try assertExactTopicFirstDiscussionAndEvidence(in: app)
         }
-        returnToSelectedTopic(in: app)
+        try returnToSelectedTopic(in: app)
         try XCTContext.runActivity(named: "Conflict replaces first discussion and retains both sources") { _ in
             try assertExactTopicDecisionConflictsAndEvidence(in: app)
         }
-        returnToSelectedTopic(in: app)
+        try returnToSelectedTopic(in: app)
         try XCTContext.runActivity(named: "Changes since the chosen meeting replace conflicts") { _ in
             try assertExactTopicChangesSinceMeetingAndEvidence(in: app)
         }
@@ -1109,13 +1109,21 @@ final class LibraryUITests: PortavozUITestCase {
     /// A citation leaves Ask. Re-enter through the user's route and require
     /// the same selected topic, rather than reseeding or reconstructing it.
     @MainActor
-    private func returnToSelectedTopic(in app: XCUIApplication) {
+    private func returnToSelectedTopic(in app: XCUIApplication) throws {
         let ask = app.buttons["library-ask-button"]
-        XCTAssertTrue(ask.waitForStableFrame(timeout: 5))
+        try requireTopicStep(ask.waitForStableFrame(timeout: 5), "Ask must be reachable after a citation")
         ask.click()
         let selected = app.control(withIdentifier: "ask-topic-selected")
-        XCTAssertTrue(selected.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(renderedText(of: selected).contains("model rollout"))
+        try requireTopicStep(
+            selected.waitForExistenceFast(timeout: 5)
+                && renderedText(of: selected).contains("model rollout"),
+            "Re-entering Ask must restore the selected model rollout topic")
+    }
+
+    /// A broken phase boundary ends the shared journey. Later jobs would
+    /// otherwise click and type on the wrong surface and bury the first cause.
+    private func requireTopicStep(_ condition: Bool, _ message: String) throws {
+        _ = try XCTUnwrap(condition ? true : nil, message)
     }
 
     @MainActor
@@ -1167,7 +1175,7 @@ final class LibraryUITests: PortavozUITestCase {
 
     @MainActor
     private func assertExactTopicFirstDiscussionAndEvidence(in app: XCUIApplication) throws {
-        selectTopicJob(
+        try selectTopicJob(
             "ask-topic-job-first-discussion",
             retiringResultsWithPrefix: "ask-topic-decision-", in: app)
         app.buttons["ask-topic-load"].click()
@@ -1196,34 +1204,25 @@ final class LibraryUITests: PortavozUITestCase {
 
     @MainActor
     private func assertExactTopicDecisionConflictsAndEvidence(in app: XCUIApplication) throws {
-        selectTopicJob(
+        try selectTopicJob(
             "ask-topic-job-decision-conflicts",
             retiringResultsWithPrefix: "ask-topic-first-discussion-", in: app)
         app.buttons["ask-topic-load"].click()
 
         let conflictID = "ask-topic-conflict-B5D40000-0000-4000-8000-000000000005"
         XCTAssertTrue(app.descendants(matching: .any)[conflictID].waitForExistenceFast(timeout: 10))
-        let replacedID = "ask-topic-conflict-replaced-B5D40000-0000-4000-8000-000000000005"
         let currentEvidenceID = "ask-topic-conflict-evidence-B5D40000-0000-4000-8000-000000000005-0"
-        let replacedEvidenceID = "ask-topic-conflict-evidence-B5D40000-0000-4000-8000-000000000005-1"
-        let observation = try topicResultObservation(
-            text: [conflictID, replacedID], buttons: [currentEvidenceID, replacedEvidenceID],
-            expectedText: [
+        try assertTopicResult(
+            text: [
                 conflictID: "El rollout del modelo queda para el viernes.",
-                replacedID: "El rollout del modelo quedaba para el jueves.",
+                "ask-topic-conflict-replaced-B5D40000-0000-4000-8000-000000000005":
+                    "El rollout del modelo quedaba para el jueves."
+            ],
+            buttons: [
                 currentEvidenceID: "Test meeting · 00:03",
-                replacedEvidenceID: "Planning baseline · 00:04"
+                "ask-topic-conflict-evidence-B5D40000-0000-4000-8000-000000000005-1":
+                    "Planning baseline · 00:04"
             ], in: app)
-        XCTAssertTrue(
-            renderedText(of: try uiSnapshotElement(conflictID, in: observation)).contains(
-                "El rollout del modelo queda para el viernes."))
-        XCTAssertTrue(
-            renderedText(of: try uiSnapshotElement(replacedID, in: observation)).contains(
-                "El rollout del modelo quedaba para el jueves."))
-        XCTAssertTrue(try uiSnapshotElement(currentEvidenceID, type: .button, in: observation)
-            .label.contains("Test meeting · 00:03"))
-        XCTAssertTrue(try uiSnapshotElement(replacedEvidenceID, type: .button, in: observation)
-            .label.contains("Planning baseline · 00:04"))
         attachScreenshot(of: app, named: "ask-confirmed-topic-decision-conflicts")
 
         app.buttons[currentEvidenceID].click()
@@ -1234,7 +1233,7 @@ final class LibraryUITests: PortavozUITestCase {
 
     @MainActor
     private func assertExactTopicChangesSinceMeetingAndEvidence(in app: XCUIApplication) throws {
-        selectTopicJob(
+        try selectTopicJob(
             "ask-topic-job-changes-since",
             retiringResultsWithPrefix: "ask-topic-conflict-", in: app)
 
@@ -1261,29 +1260,19 @@ final class LibraryUITests: PortavozUITestCase {
 
         let changeID = "ask-topic-change-since-B5D40000-0000-4000-8000-000000000005"
         XCTAssertTrue(app.descendants(matching: .any)[changeID].waitForExistenceFast(timeout: 10))
-        let replacedID = "ask-topic-change-since-replaced-B5D40000-0000-4000-8000-000000000005"
-        let anchorID = "ask-topic-change-since-anchor"
         let currentEvidenceID = "ask-topic-change-since-evidence-B5D40000-0000-4000-8000-000000000005-0"
-        let replacedEvidenceID = "ask-topic-change-since-evidence-B5D40000-0000-4000-8000-000000000005-1"
-        let observation = try topicResultObservation(
-            text: [changeID, replacedID, anchorID], buttons: [currentEvidenceID, replacedEvidenceID],
-            expectedText: [
+        try assertTopicResult(
+            text: [
                 changeID: "El rollout del modelo queda para el viernes.",
-                replacedID: "El rollout del modelo quedaba para el jueves.",
-                anchorID: "Planning baseline",
+                "ask-topic-change-since-replaced-B5D40000-0000-4000-8000-000000000005":
+                    "El rollout del modelo quedaba para el jueves.",
+                "ask-topic-change-since-anchor": "Planning baseline"
+            ],
+            buttons: [
                 currentEvidenceID: "Test meeting · 00:03",
-                replacedEvidenceID: "Planning baseline · 00:04"
+                "ask-topic-change-since-evidence-B5D40000-0000-4000-8000-000000000005-1":
+                    "Planning baseline · 00:04"
             ], in: app)
-        XCTAssertTrue(renderedText(of: try uiSnapshotElement(changeID, in: observation)).contains(
-            "El rollout del modelo queda para el viernes."))
-        XCTAssertTrue(renderedText(of: try uiSnapshotElement(replacedID, in: observation)).contains(
-            "El rollout del modelo quedaba para el jueves."))
-        XCTAssertTrue(renderedText(of: try uiSnapshotElement(anchorID, in: observation)).contains(
-            "Planning baseline"))
-        XCTAssertTrue(try uiSnapshotElement(currentEvidenceID, type: .button, in: observation)
-            .label.contains("Test meeting · 00:03"))
-        XCTAssertTrue(try uiSnapshotElement(replacedEvidenceID, type: .button, in: observation).label.contains(
-            "Planning baseline · 00:04"))
         attachScreenshot(of: app, named: "ask-confirmed-topic-changes-since")
 
         app.buttons[currentEvidenceID].click()
@@ -1292,20 +1281,30 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
     }
 
+    /// One bounded observation of a complete Topic result: readiness includes
+    /// every expected string, then the same observation asserts value-first
+    /// text for result rows and the label of each exact evidence button.
     @MainActor
-    private func topicResultObservation(
-        text textIdentifiers: [String], buttons buttonIdentifiers: [String],
-        expectedText: [String: String] = [:], in app: XCUIApplication
-    ) throws -> any XCUIElementSnapshot {
-        // Readiness includes the expected content, not only element presence.
-        try uiObservation(
+    private func assertTopicResult(
+        text expectedText: [String: String],
+        buttons expectedButtons: [String: String],
+        in app: XCUIApplication
+    ) throws {
+        let observation = try uiObservation(
             of: app.windows["main-AppWindow-1"],
-            requiring: Set(textIdentifiers),
-            types: Dictionary(uniqueKeysWithValues: buttonIdentifiers.map {
-                ($0, XCUIElement.ElementType.button)
-            }),
-            expectedText: expectedText,
+            types: expectedButtons.mapValues { _ in .button },
+            expectedText: expectedText.merging(expectedButtons) { text, _ in text },
             message: "The complete Topic result must be observable together")
+        for (identifier, text) in expectedText.sorted(by: { $0.key < $1.key }) {
+            XCTAssertTrue(
+                renderedText(of: try uiSnapshotElement(identifier, in: observation)).contains(text),
+                "\(identifier) must render \(text)")
+        }
+        for (identifier, text) in expectedButtons.sorted(by: { $0.key < $1.key }) {
+            XCTAssertTrue(
+                try uiSnapshotElement(identifier, type: .button, in: observation).label.contains(text),
+                "\(identifier) must be labelled \(text)")
+        }
     }
 
     /// Re-entry must still show the preceding result; only then does its
@@ -1315,17 +1314,19 @@ final class LibraryUITests: PortavozUITestCase {
         _ jobIdentifier: String,
         retiringResultsWithPrefix retiredPrefix: String,
         in app: XCUIApplication
-    ) {
+    ) throws {
         let preceding = app.descendants(matching: .any).matching(NSPredicate(
             format: "identifier BEGINSWITH %@", retiredPrefix))
-        XCTAssertTrue(
+        try requireTopicStep(
             preceding.firstMatch.waitForExistenceFast(timeout: 5),
             "The preceding Topic result must survive re-entry before the job changes")
         let job = app.descendants(matching: .any)[jobIdentifier]
-        XCTAssertTrue(job.waitForExistenceFast(timeout: 5))
+        try requireTopicStep(job.waitForExistenceFast(timeout: 5), "Missing Topic job \(jobIdentifier)")
         job.click()
-        XCTAssertEqual(
-            preceding.count, 0,
+        // Bounded, not a single probe: AX publication may trail the click.
+        // Load is not clicked until this resolves, so it still precedes Load.
+        try requireTopicStep(
+            waitForUITestCondition(timeout: 5) { preceding.count == 0 },
             "Changing the Topic job must retire the preceding result before loading")
     }
 

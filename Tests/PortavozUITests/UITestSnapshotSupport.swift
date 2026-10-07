@@ -46,7 +46,8 @@ func uiSnapshotText(_ snapshot: any XCUIElementSnapshot, contains text: String) 
 /// required, typed or text-bearing identifier must appear exactly once in the
 /// same observation, with its required element type and expected content.
 /// Each poll indexes the tree in one traversal. A transient snapshot failure
-/// retries inside the same deadline; the last error is reported on expiry.
+/// retries inside the same deadline; on expiry the failure names the unmet
+/// identifiers and reports a snapshot error only if one ended the final poll.
 @MainActor
 func uiObservation(
     of owner: XCUIElement,
@@ -61,10 +62,14 @@ func uiObservation(
         .union(expectedText.keys)
     var observation: (any XCUIElementSnapshot)?
     var lastError: (any Error)?
+    // Name what the final successful observation still lacked, as the former
+    // per-element assertions did, instead of failing with only the phase.
+    var unmet = identifiers.sorted()
     let ready = waitForUITestCondition(timeout: timeout) {
         let snapshot: any XCUIElementSnapshot
         do {
             snapshot = try owner.snapshot()
+            lastError = nil
         } catch {
             lastError = error
             return false
@@ -73,18 +78,19 @@ func uiObservation(
         for node in uiSnapshotMatches({ identifiers.contains($0.identifier) }, in: snapshot) {
             index[node.identifier, default: []].append(node)
         }
-        let complete = identifiers.allSatisfy { identifier in
-            guard let nodes = index[identifier], nodes.count == 1 else { return false }
-            if let type = requiredTypes[identifier], nodes[0].elementType != type { return false }
+        unmet = identifiers.filter { identifier in
+            guard let nodes = index[identifier], nodes.count == 1 else { return true }
+            if let type = requiredTypes[identifier], nodes[0].elementType != type { return true }
             if let text = expectedText[identifier], !uiSnapshotText(nodes[0], contains: text) {
-                return false
+                return true
             }
-            return true
-        }
-        guard complete else { return false }
+            return false
+        }.sorted()
+        guard unmet.isEmpty else { return false }
         observation = snapshot
         return true
     }
-    let diagnostic = lastError.map { "; last snapshot error: \($0)" } ?? ""
+    var diagnostic = unmet.isEmpty ? "" : "; unmet: \(unmet.joined(separator: ", "))"
+    if let lastError { diagnostic += "; last snapshot error: \(lastError)" }
     return try XCTUnwrap(ready ? observation : nil, message + diagnostic)
 }

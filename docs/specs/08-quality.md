@@ -2763,10 +2763,11 @@ architecture ratchet pins the catalog/application/storage boundary, exact
 `TopicID`, absence of model inference, stable accessibility identifiers, real
 confirmation fixture, honest docs, and remaining product/field gaps.
 
-One real-app XCUITest per locale launches a temporary store, saves the fixed
-summary observation, confirms it about the exact `model rollout` topic through
-`ConfirmDecisionAboutTopic`, projects the disposable graph, opens **By topic**,
-loads the current decision, and follows its exact evidence to 00:03. It uses no
+The first phase of the shared real-app Topic journey (one XCUITest per locale)
+launches a temporary store, saves the fixed summary observation, confirms it
+about the exact `model rollout` topic through `ConfirmDecisionAboutTopic`,
+projects the disposable graph, opens **By topic**, loads the current decision,
+and follows its exact evidence to 00:03. It uses no
 user library, network, or Foundation Models. This proves the executable
 localized Sequoia/Tahoe-compatible code path, not physical VoiceOver,
 clean-install Sequoia, separate-hardware Tahoe, private-corpus quality, or
@@ -2785,10 +2786,9 @@ window non-retention. One architecture ratchet pins production composition,
 job-specific completeness validation, stable accessibility identifiers,
 fixture reuse, bilingual XCUITest, and honest remaining gaps.
 
-One additional real-app XCUITest per locale launches the temporary store,
-confirms and projects the same exact `model rollout` topic evidence, opens **By
-topic**, switches to **First confirmed discussion**, and follows its only exact
-source to 00:03. It uses no user library, network, Foundation Models, or Tahoe-
+The second phase of that shared journey re-enters Ask with the same selected
+`model rollout` topic, switches to **First confirmed discussion**, and follows
+its only exact source to 00:03. It uses no user library, network, Foundation Models, or Tahoe-
 only API. This is executable bilingual regression evidence on the local host,
 not physical VoiceOver, clean-install Sequoia, separate-hardware Tahoe, private-
 corpus quality, or accepted supported-host graph performance evidence.
@@ -2808,8 +2808,8 @@ contracts load-bearing.
 One architecture ratchet pins the existing ApplicationKit/StorageKit query,
 exact topic-only app composition, two-source presentation boundary, stable
 accessibility identities, real confirmed-relationship fixture, UI-impact scope,
-tracked documentation, and remaining gaps. One additional real-app XCUITest per
-locale opens **By topic**, selects **Decision changes**, verifies the successor
+tracked documentation, and remaining gaps. The third phase of the shared Topic
+journey re-enters **By topic**, selects **Decision changes**, verifies the successor
 and replaced Spanish statements plus both exact evidence actions, and follows
 the successor source to 00:03. It uses a disposable temporary store, no network,
 no user library, no Foundation Models, and no Tahoe-only API. This is local
@@ -2859,7 +2859,7 @@ relationship validation, native radio-group UX, unique speakable accessibility
 labels, stable leaf identifiers, temporary-store fixture, UI-impact scope,
 tracked documentation, and honest remaining broader product/field gaps.
 
-One additional real-app XCUITest per locale opens **By topic**, selects
+The fourth phase of the shared Topic journey re-enters **By topic**, selects
 **Changes since**, searches and selects the exact **Planning baseline** meeting,
 verifies both Spanish decision statements and both exact source actions, and
 follows the successor source to 00:03. It uses a disposable store, no network,
@@ -8386,7 +8386,8 @@ observes its privacy control, exactly three causal events and localized terminal
 state in one owner-window snapshot (the inspection identifier labels header
 text, not the timeline container). Every required identifier must be unique, malformed
 toggle values cannot silently become Off, and a transient snapshot error retries
-within the same deadline; on expiry the failure reports the last snapshot error.
+within the same deadline; on expiry the failure names the unmet identifiers and
+reports a snapshot error only when one ended the final poll.
 These observations never supply click targets or input authority, are never reused
 across gestures, and leave all scrolling, handshakes, transient loading assertions,
 screenshots, case inventory and runtime budgets intact.

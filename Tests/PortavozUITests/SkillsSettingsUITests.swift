@@ -1671,10 +1671,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         timeout: TimeInterval = 5
     ) throws -> Bool {
         try waitForUITestCondition(timeout: timeout) {
-            let value = try toggle.snapshot().value
-            guard let rawValue = value as? Int ?? (value as? String).flatMap(Int.init),
-                  rawValue == 0 || rawValue == 1 else { return false }
-            return (rawValue == 1) == expected
+            guard let bit = Self.toggleBit(try toggle.snapshot().value) else { return false }
+            return (bit == 1) == expected
         }
     }
 
@@ -1759,10 +1757,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     ) throws -> Bool {
         try waitForUITestCondition(timeout: timeout) {
             guard element.exists else { return false }
-            let snapshot = try element.snapshot()
-            return [snapshot.label, snapshot.value as? String, snapshot.title]
-                .compactMap { $0 }
-                .contains { $0.contains(expectedText) }
+            return uiSnapshotText(try element.snapshot(), contains: expectedText)
         }
     }
 
@@ -1846,8 +1841,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     private static func isOn(_ toggle: XCUIElement) -> Bool {
-        let value = toggle.value
-        return (value as? Int) == 1 || (value as? String) == "1"
+        toggleBit(toggle.value) == 1
     }
 }
 
@@ -1884,9 +1878,13 @@ private extension SkillsSettingsUITests {
 
     @MainActor
     func skillToggleIsOn(_ identifier: String, in snapshot: any XCUIElementSnapshot) throws -> Bool {
-        let value = try uiSnapshotElement(identifier, in: snapshot).value
-        let raw = value as? Int ?? (value as? String).flatMap(Int.init)
-        let bit = raw.flatMap { $0 == 0 || $0 == 1 ? $0 : nil }
+        let bit = Self.toggleBit(try uiSnapshotElement(identifier, in: snapshot).value)
         return try XCTUnwrap(bit, "A rendered toggle must publish only 0 or 1") == 1
+    }
+
+    /// The one toggle-value parser: `0`/`1` as Int or String, else `nil`.
+    static func toggleBit(_ value: Any?) -> Int? {
+        let raw = value as? Int ?? (value as? String).flatMap(Int.init)
+        return raw.flatMap { $0 == 0 || $0 == 1 ? $0 : nil }
     }
 }
