@@ -33,6 +33,7 @@ Portavoz **as-built** documentation: it describes what the code does TODAY, veri
 - [../IOS.md](../IOS.md) — technical breakdown of the iOS phase.
 - [../GAPS.md](../GAPS.md) — gap analysis + pending field verification.
 - [../FIELD-VALIDATION.md](../FIELD-VALIDATION.md) — privacy-safe real-call evidence protocol and fixture matrix.
+- [../DICTATION-QUALITY.md](../DICTATION-QUALITY.md) — proposed, not yet accepted, dictation quality qualification and comparison protocol.
 
 The repository roadmap and completed migration execution ledger are local
 maintainer state. Current public truth is reconstructed from the architecture,

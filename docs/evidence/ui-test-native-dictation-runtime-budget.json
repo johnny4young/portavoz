@@ -1,13 +1,14 @@
 {
   "catalog": {
-    "expectedCaseCount": 1
+    "expectedCaseCount": 2
   },
   "fullSuite": {
     "maximumP95Seconds": 20.0,
-    "maximumTestDurationSecondsPerLocale": 20.0
+    "maximumTestDurationSecondsPerLocale": 40.0
   },
   "schemaVersion": 1,
   "testBudgetsSeconds": {
+    "DictationUITests/testNativeControllerModeChoicePreservesReceiverAndClipboard()": 20.0,
     "DictationUITests/testNativeInserterUsesDisposableReceiverAndClipboard()": 20.0
   }
 }
