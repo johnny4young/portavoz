@@ -2663,6 +2663,53 @@ creating an evidence package; it does not certify an unobserved real-world check
 
 ## Global dictation (Jul 2026)
 
+**Explicit deterministic text modes.** PortavozCore owns Literal/Clean and the
+bundle-ID profile value; the app owns preference resolution and presentation.
+The Settings model initializes a missing `dictationTextMode` before UI can write
+its first enable toggle. Previously configured dictation keys, including a saved
+false toggle or filler choice, retain implicit Clean and existing replacements;
+untouched preferences initialize Literal. A corrupt mode falls back to that same
+legacy-aware policy without erasing the stored choices or enabling dictation.
+
+Literal keeps the admitted recognized words without optional filler filtering or
+replacements; it is not a promise of acoustic verbatim recognition and retains
+existing caption hygiene/assembly. Clean applies the existing TranscriptionKit
+filler setting and one non-cascading replacement pass. Neither requires a
+translation/provider/model beyond recognition. Rules and filler choices remain
+configured while Literal is selected. Settings keeps those controls visible but
+disables them, with a "Clean mode only" note, unless the default or at least one
+readable application profile uses Clean (`DictationTextSettingsModel.cleanModeInUse`).
+
+Resolution is session override, then exact captured bundle-ID profile, then
+global mode. The destination's existing NSRunningApplication capture supplies
+its bundle ID even when the captured field is secure or focus cannot be read;
+profile lookup never recaptures focus or authorizes delivery. Insertion capability
+and application identity are independent: unavailable delivery keeps the selected
+text policy for explicit recovery, without allowing Retry.
+One immutable preference snapshot is admitted before preparation. A panel choice
+changes only its mode; subsequent Settings edits affect later sessions. Stop
+request, not the delayed native Stop issuance, freezes the mode; once delivery
+has prepared its text the panel choice stays disabled while insertion settles,
+even though Stop bookkeeping has already retired. Cancellation,
+completion and restart retire the override and rule snapshot; recovery retains
+the processed output, never silently reprocesses or repeats insertion.
+
+Application profiles are explicit Settings choices through a native application
+chooser attached asynchronously to the requesting Settings window. A missing
+owned window reports an actionable error instead of opening an unowned panel.
+A full-row button expands the section with a localized accessibility
+state; expansion does not require locating a small disclosure-arrow hit target. Only bundle ID and mode are saved, never app paths, window titles, web
+addresses or surrounding text. The chosen app is not launched or registered.
+The bounded codec accepts at most 64 unique IDs (1–255 ASCII identifier bytes)
+and 32 KiB JSON, rejects duplicate/invalid records as a whole, and never salvages an
+ambiguous winner. Invalid profiles remain intact and visible until an explicit
+Reset; dictation safely falls back to the global mode. Choosing an application
+that already has a profile keeps its saved mode; only a new profile starts from
+the global mode. Per-row mode and Remove
+controls retain bundle-ID identity. The existing portable-settings allowlist is
+unchanged; these new choices are not implicitly exported or imported.
+
+
 **Microphone preparation (D543).** Dictation resolves microphone permission
 through the existing PlatformKit client before constructing a capture source or
 loading a model. A pending permission or cold model is **Preparing**, never
@@ -2728,6 +2775,28 @@ outside that composition; without an explicit fixture temporary dictation refuse
 admission. The menu-bar Dictate action and panel expose stable identifiers for
 restart/cancellation journeys. This is not a change to the production trigger,
 recognition or capture-loss policies. Destination recovery is specified below.
+An additional explicitly armed `-seed-dictation-native-controller` mode requires
+the native fixture, scripted recognition and English-caption flags together;
+it cannot fall back to direct insertion if its controller is unavailable. It
+reuses the scripted microphone/runtime but replaces only the native platform
+ports, preserving production admission, destination capture, mode policy,
+minimum-capture duration and Stop. The fixture waits for an actual Clean choice
+in the nonactivating panel and a separate Stop acknowledgement on a second,
+distinct UUID-named control board. XCTest publishes that acknowledgement only
+after its pointer gesture returns; selection alone must not dispatch Paste while
+automation is still injecting the click. Neither stage reactivates the receiver.
+Its separately bounded ten-second phases (choice, Stop acknowledgement,
+completion) end the admitted fixture session; an already active controller is
+rejected without being cancelled. The driver is isolated from global input and
+does not qualify a concurrent manual cancel-and-restart during its gesture.
+Cancellation cannot undo an
+already-dispatched paste. No trust prompt, real microphone or ASR model is used.
+Both native fixture paths quietly check public event-synthesis authorization
+before arming, separately from AX inspection. A denial reports
+`event-posting-required-for-app`, creates no receiver-waiting task and starts no
+controller session. This diagnostic neither requests authorization nor changes
+production event posting; a passing preflight is still not editor acknowledgement.
+
 The disposable main-window menu fixture is top-aligned, as the real menu is,
 so its trigger remains separate from the bottom-anchored recovery panel even
 on a compact display. The production menu and panel placement are unchanged.
@@ -2919,7 +2988,7 @@ Capture timing starts at the first admitted nonempty microphone buffer, not when
 
 **Mouse-button push-to-talk (Jul 2026)**: `MouseButtonPTT` owns one session `CGEventTap` over `otherMouseDown`/`otherMouseUp` that CONSUMES the configured button (the app under the cursor never sees the click) and passes every other button through; a tap disabled by timeout is always re-armed. CGEvent index 2+ is eligible — vendor-facing Button 3+ means middle click or an additional button — while indices 0/1 (left/right) can never become a trigger. Invalid persisted values normalize to Off. The tap needs the same Accessibility trust as the paste path: choosing a button prompts once, a denied/pending prompt leaves the keyboard trigger working, and returning from System Settings retries registration. Rebinding first cancels any mouse-owned capture so its consumed release cannot strand the session. `MousePTTGesture` (app input boundary, pure, 3 tests) is the decision table: press starts when idle and finishes a listening session whoever started it; release delivers only when the button itself started the session, so a stray release can never double-finish a hotkey session. There is no tap-vs-hold discriminator on the mouse — the capture minimum already cancels an accidental click. `MouseButtonRecorder` in Settings captures the next middle/additional-button click (`settings-dictation-mouse-recorder`; Esc cancels) with an explicit clear control; both mouse and keyboard recorders remove their local monitors when their Settings row disappears.
 
-**Two-tier dictionary and filler filter (Jul 2026)**: `DictationTextRules` (TranscriptionKit, pure, 10 tests) is the deterministic tier — one non-cascading pass of user-defined whole-word, case-insensitive replacements applied longest-trigger-first with punctuation-aware lookaround boundaries (regex-metacharacter triggers like "c++" match literally; replacement strings including `$` and `\` stay literal). Matching is computed against the original text, so a preferred spelling can never become input to a later rule. The codec trims triggers, drops empty rules, and keeps the newest case-insensitive duplicate before the Settings list or matcher consumes it. A conservative bilingual hesitation-filler pass (only tokens meaningless in BOTH languages: um/uh/er/hmm/eh/ehm…, on by default via `dictationFillerFilter`) runs first and repairs seams (collapsed spaces, no space stranded before closing punctuation). The other tier is the existing vocabulary prompt (`customVocabulary`), which the dictation controller forwards as `hints.vocabulary`: WhisperEngine turns it into `promptTokens` and the optional live Apple Speech engine into `contextualStrings`; default live Parakeet still does not read it (FluidAudio 0.15.8 offers `configureVocabularyBoosting` only with the extra `parakeet-ctc-110m` model, which is not in the pinned model catalog). Deterministic replacement remains the only dictionary tier that changes default Parakeet dictation; no unmeasured quality claim is made for the optional Apple route. Rules persist as one JSON string (`dictationReplacements`, codec in the same type) edited by `DictationDictionaryEditor` in Settings (quick-add row `settings-dictation-dict-add`; re-adding a trigger updates it instead of stacking an unreachable duplicate). Both passes run in `deliver` on the final dictation text only — meeting transcripts stay verbatim records.
+**Two-tier dictionary and filler filter (Jul 2026)**: `DictationTextRules` (TranscriptionKit, pure, 10 tests) is the deterministic tier — one non-cascading pass of user-defined whole-word, case-insensitive replacements applied longest-trigger-first with punctuation-aware lookaround boundaries (regex-metacharacter triggers like "c++" match literally; replacement strings including `$` and `\` stay literal). Matching is computed against the original text, so a preferred spelling can never become input to a later rule. The codec trims triggers, drops empty rules, and keeps the newest case-insensitive duplicate before the Settings list or matcher consumes it. A conservative bilingual hesitation-filler pass (only tokens meaningless in BOTH languages: um/uh/er/hmm/eh/ehm…, on by default via `dictationFillerFilter`) runs first and repairs seams (collapsed spaces, no space stranded before closing punctuation). The other tier is the existing vocabulary prompt (`customVocabulary`), which the dictation controller forwards as `hints.vocabulary`: WhisperEngine turns it into `promptTokens` and the optional live Apple Speech engine into `contextualStrings`; default live Parakeet still does not read it (FluidAudio 0.15.8 offers `configureVocabularyBoosting` only with the extra `parakeet-ctc-110m` model, which is not in the pinned model catalog). Deterministic replacement remains the only dictionary tier that changes default Parakeet dictation; no unmeasured quality claim is made for the optional Apple route. Rules persist as one JSON string (`dictationReplacements`, codec in the same type) edited by `DictationDictionaryEditor` in Settings (quick-add row `settings-dictation-dict-add`; re-adding a trigger updates it instead of stacking an unreachable duplicate). The admitted session snapshot applies both passes in `deliver` on the final dictation text only — meeting transcripts stay verbatim records.
 
 **Dictation language preference:** `dictationLanguage` accepts {es, en}; other
 stored values mean automatic. The picker retains these preference values and

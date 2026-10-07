@@ -681,6 +681,16 @@
         }
       }
     },
+    "Add application profile…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir perfil de aplicación…"
+          }
+        }
+      }
+    },
     "Add correction…": {
       "localizations": {
         "es": {
@@ -1261,6 +1271,26 @@
         }
       }
     },
+    "Application profiles": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perfiles por aplicación"
+          }
+        }
+      }
+    },
+    "Application profiles could not be read. Dictation uses the default mode until you reset them.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron leer los perfiles de aplicaciones. El dictado usa el modo predeterminado hasta que los restablezcas."
+          }
+        }
+      }
+    },
     "Apply": {
       "localizations": {
         "es": {
@@ -1697,6 +1727,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "La detección automática conserva el idioma de cada persona en reuniones mixtas. Fija un solo idioma únicamente cuando el audio bajo o ruidoso se haya detectado mal."
+          }
+        }
+      }
+    },
+    "Filler filtering and replacements apply only in Clean mode.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El filtro de muletillas y los reemplazos solo se aplican en modo Limpio."
           }
         }
       }
@@ -2571,6 +2611,26 @@
         }
       }
     },
+    "Choose an application for its dictation text mode. Only its bundle identifier is saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige una app para su modo de texto del dictado. Solo se guarda su identificador de bundle."
+          }
+        }
+      }
+    },
+    "Choose an application with a valid bundle identifier. Profiles are limited to 64.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige una app con un identificador de bundle válido. Los perfiles tienen un límite de 64."
+          }
+        }
+      }
+    },
     "Choose an audio file to transcribe, or a .portavoz meeting file": {
       "localizations": {
         "es": {
@@ -2617,6 +2677,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Elige la carpeta donde Portavoz guardará tus grabaciones"
+          }
+        }
+      }
+    },
+    "Clean": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limpio"
           }
         }
       }
@@ -4149,6 +4219,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Decisiones"
+          }
+        }
+      }
+    },
+    "Default text mode": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modo de texto predeterminado"
           }
         }
       }
@@ -6885,6 +6965,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Escuchando… %d s"
+          }
+        }
+      }
+    },
+    "Literal": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Literal"
+          }
+        }
+      }
+    },
+    "Literal keeps recognized words. Clean uses your filler filter and replacements. Neither rewrites.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Literal conserva las palabras reconocidas. Limpio usa tu filtro de muletillas y reemplazos. Ninguno reescribe."
           }
         }
       }
@@ -10209,6 +10309,16 @@
         }
       }
     },
+    "Profiles save bundle IDs, not window titles or web addresses. A session choice takes priority.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los perfiles guardan ID de apps, no títulos de ventanas ni direcciones web. La elección de esta sesión tiene prioridad."
+          }
+        }
+      }
+    },
     "Progress": {
       "localizations": {
         "es": {
@@ -11369,6 +11479,26 @@
         }
       }
     },
+    "Remove": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar"
+          }
+        }
+      }
+    },
+    "Remove application profile": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar perfil de aplicación"
+          }
+        }
+      }
+    },
     "Remove card": {
       "localizations": {
         "es": {
@@ -11555,6 +11685,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Restablecer"
+          }
+        }
+      }
+    },
+    "Reset application profiles": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restablecer perfiles de aplicaciones"
           }
         }
       }
@@ -13917,6 +14057,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Texto corregido"
+          }
+        }
+      }
+    },
+    "Text mode": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modo de texto"
           }
         }
       }
@@ -17313,6 +17463,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "→ Español"
+          }
+        }
+      }
+    },
+    "Expanded": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expandido"
+          }
+        }
+      }
+    },
+    "Collapsed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contraído"
+          }
+        }
+      }
+    },
+    "The application chooser needs a Settings window. Open Settings and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El selector de aplicaciones necesita una ventana de Ajustes. Abre Ajustes e inténtalo de nuevo."
           }
         }
       }

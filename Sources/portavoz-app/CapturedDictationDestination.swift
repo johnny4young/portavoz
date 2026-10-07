@@ -7,11 +7,14 @@ import PortavozCore
 @MainActor
 struct CapturedDictationDestination {
     let name: String?
+    var bundleIdentifier: String?
     let canRetry: Bool
     let insert: (String) async -> DictationDeliveryOutcome
 
-    static func unavailable(name: String?, result: DictationDeliveryOutcome.Refusal) -> Self {
-        Self(name: name, canRetry: false, insert: { _ in .refused(result) })
+    static func unavailable(
+        name: String?, bundleIdentifier: String? = nil, result: DictationDeliveryOutcome.Refusal
+    ) -> Self {
+        Self(name: name, bundleIdentifier: bundleIdentifier, canRetry: false, insert: { _ in .refused(result) })
     }
 }
 
@@ -43,19 +46,22 @@ extension TextInserter {
         guard canInsert(promptIfNeeded: false), let application,
               application.processIdentifier > 0, !application.isTerminated,
               expectedApplication.map({ application.isEqual($0) }) ?? true else {
-            return .unavailable(name: application?.localizedName, result: .focusUnavailable)
+            return .unavailable(name: application?.localizedName,
+                                bundleIdentifier: application?.bundleIdentifier, result: .focusUnavailable)
         }
         guard let element = focusedApplicationElement(application.processIdentifier) else {
             // Nothing to pin. A fixture that names its receiver keeps waiting;
             // production never refuses where the previous delivery would work.
             guard expectedApplication == nil else {
-                return .unavailable(name: application.localizedName, result: .focusUnavailable)
+                return .unavailable(name: application.localizedName,
+                                    bundleIdentifier: application.bundleIdentifier, result: .focusUnavailable)
             }
             return sessionDestination(for: application, pasteboard: pasteboard)
         }
         let initialSecurity = fieldSecurity(of: element)
         guard initialSecurity == .regular else {
             return .unavailable(name: application.localizedName,
+                                bundleIdentifier: application.bundleIdentifier,
                                 result: initialSecurity == .secure ? .secureField : .focusUnavailable)
         }
         let target = Target(processID: application.processIdentifier, readback: .accessibility(element)) {
@@ -75,7 +81,8 @@ extension TextInserter {
             case .unavailable: return .focusUnavailable
             }
         }
-        return CapturedDictationDestination(name: application.localizedName, canRetry: true) { text in
+        return CapturedDictationDestination(
+            name: application.localizedName, bundleIdentifier: application.bundleIdentifier, canRetry: true) { text in
             await insert(text, into: target, pasteboard: pasteboard)
         }
     }
@@ -111,7 +118,8 @@ extension TextInserter {
             case .unavailable: return .focusUnavailable
             }
         }, route: .session)
-        return CapturedDictationDestination(name: application.localizedName, canRetry: true) { text in
+        return CapturedDictationDestination(
+            name: application.localizedName, bundleIdentifier: application.bundleIdentifier, canRetry: true) { text in
             await insert(text, into: target, pasteboard: pasteboard)
         }
     }

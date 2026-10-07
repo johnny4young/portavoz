@@ -550,16 +550,38 @@ gate passed. No general clipboard, real meeting, model download or microphone
 participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 134 unattended cases;
-`make test-ui-native-dictation` selects the one real receiver case in EN and ES.
-The catalog policy requires that case to remain discoverable but disjoint from
-unattended selectors. The runner excludes it only when no explicit selectors
+`make test-ui-bilingual` and scoped hosted runs select the 137 unattended cases;
+`make test-ui-native-dictation` selects two real receiver cases in EN and ES.
+The second enters the production controller with scripted audio/recognition,
+chooses Clean from the actual nonactivating panel, explicitly acknowledges Stop
+after the pointer gesture returns on a distinct UUID control board, and reads back the replacement
+from the original receiver. XCTest must not reactivate or click the receiver
+after choosing the mode: doing so would conceal a broken destination fence.
+Background element clicks activate their application before synthesizing input,
+so this journey instead anchors XCTest's public coordinate API in the already
+foreground owned receiver window, using each actual panel control's stable
+screen frame. Both frames require finite coordinates: macOS can give an
+application root an infinite synthetic frame, which is not a pointer anchor.
+Admission rejects a missing control or a receiver that lost foreground;
+it never repairs focus or disables the interruption monitor. This preserves
+the user's pointer gesture on the nonactivating panel instead of silently
+substituting application activation.
+Both cases check scratch-clipboard restoration; the controller case also checks
+that its owned session retires. These are delivery proofs, not acoustic quality.
+The catalog policy requires both cases to remain discoverable but disjoint from
+unattended selectors. The runner excludes them only when no explicit selectors
 were supplied, while an explicit native selector is never silently skipped.
-Its separate one-case runtime budget retains the original 20-second ceiling;
-an explicit native run cannot fail solely because its case was removed from
+The separate runtime budget preserves each case's 20-second ceiling and p95;
+the new two-case aggregate is 40 seconds, fixed before the new case's first run.
+An explicit native run cannot fail solely because its cases were removed from
 the unattended manifest.
 Neither a green hosted catalog nor a failed permissionless native run is
 positive native-delivery evidence.
+The fixture's public event-synthesis preflight is quiet: denial fails before
+arming either native path, with a fixed content-free status and no permission
+request. Deterministic tests exercise that actual start call site, including
+repeated denial, rather than interpreting an empty receiver as proof of a
+particular TCC failure. Successful authorization does not establish delivery.
 
 The receiver is an Xcode-only application target. SwiftPM's shared `Tests`
 root excludes that directory explicitly, alongside the UI and interruption
@@ -8734,6 +8756,62 @@ menu/panel with an isolated first-capture EOF before Stop, shows the localized
 interrupted message, then proves dismissal and restart in each locale. The fixture consumes its one-shot failure at source construction,
 not during menu dependency construction. Its scope has an explicit 20-second
 per-case budget; aggregate full-suite budgets are unchanged.
+
+
+### Deterministic dictation text-mode coverage
+
+Swift Testing enters the real DictationController from bilingual synthetic
+captions, not only the text-policy function. Cases preserve negations, typographic
+apostrophes, accented words, unpunctuated amounts and technical replacements;
+characterization separately exercises a fresh preference set and first Enable
+after actual AppServices construction. Legacy false filler/enable choices retain
+their semantics. Codec boundaries, profile replacement at capacity, rejected
+identifiers, temporary preference writes, chooser-fixture admission, and failed
+database admission have separate cases. Empty and non-lexical captions reach the
+real first-buffer/recognizer boundary rather than using an initially empty UI
+partial as readiness; literal fillers remain deliverable words. A parameterized matrix reaches delivery through exact captured
+bundle ID, exercises global/profile/session precedence and proves one destination
+capture. Late Settings edits, Stop-tail overrides, cancellation/restart and
+corrupt/duplicate profiles have separate observations. The existing fixture uses
+process-wide NSArgumentDomain; this suite serializes that fixture owner rather
+than claiming independent parallel preferences or production stress coverage.
+
+Three real-app journeys target the panel override/restart, malformed-profile
+Reset, and ordinary NSOpenPanel application selection/mode/removal/original
+preservation. Only the owned fixture's initial chooser directory is selected by
+composition; XCTest still selects the actual application bundle and production
+Bundle reader. Each new interactive control and mode choice has an identifier.
+The mode menu
+keeps the trigger identifier stable after selection; viewport-aware Settings
+interactions reuse the existing bounded reveal helper.
+Prospective per-case caps are 40/20/20 seconds; no existing cap, aggregate 1,300-second
+limit or full p95 30-second limit is widened. These cases belong to Dictation's
+scope; localization still expands bilingual coverage. These journeys target configuration and
+controller reachability, not acoustic recognition or universal native delivery.
+
+Unavailable delivery is exercised through the production destination factory
+and the real controller for secure/unreadable fields and bilingual captions.
+A captured Literal application profile must remain Literal in recovery, while
+Retry stays disabled and no paste is recorded. That test is not native AX or
+permission evidence. Profile-section journeys also assert the localized expansion
+state of the full-row disclosure button, not just the label's existence.
+
+The native application chooser is an asynchronous sheet attached to Settings;
+the journey queries that actual role and retains a diagnostic owned hierarchy
+before returning on missing presentation, rather than typing into an unknown
+modal context. The corrupt-profile journey proves both expansion and collapse.
+A headless real-AppServices case proves unavailable-window admission reports an
+error, releases selection ownership, and writes no profile.
+
+
+The native-controller fixture's Swift Testing coverage enters the same driver
+used by the real-app journey: it must wait for both the mode choice and a
+separate Stop acknowledgement, deliver the
+transformed output once, retire owned resources on cancellation, and reject an
+already active controller without cancelling it. Constructor matrices reject
+missing scripted-recognition flags or non-temporary composition; missing
+controller dependencies cannot silently select the direct-inserter path. These
+deterministic cases do not claim native focus, Accessibility, timing or ASR proof.
 
 Lifecycle success-feedback fixtures use `DictationControllerHarness.verifyingDelivery`
 to reach the real inserter and bounded readback through `TextReadbackHarness`.

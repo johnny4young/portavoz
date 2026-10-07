@@ -69,10 +69,20 @@ Model quality, Bluetooth transitions and the external-editor
 matrix require separate evidence; a synthetic caption fixture cannot establish
 those results. Missing Accessibility permission makes the separately selected
 native delivery gate unqualified, not proof that insertion works. Hosted
-unattended EN/ES UI qualification excludes exactly that TCC-owned receiver case
+unattended EN/ES UI qualification excludes the two TCC-owned receiver cases
 (D540); run `make test-ui-native-dictation` on an explicitly authorized
 disposable app and retain its actual receipt before claiming cross-process
 delivery.
+
+The shared native harness still has an open expected-modal positive-control
+counterexample. An attached synthetic alert accepted the exact Unicode text,
+but its choice click did not produce the required completion effect; XCTest
+reported a non-finite pointer rectangle. Owned cleanup completed and the
+validator refused qualification before the product catalogue ran. This does
+not establish a product defect, denied authorization, or the cause of the
+missing action. Diagnose native geometry and editing handoff at that call site;
+do not waive the control, replace its failed receipt with a retry, or infer
+complete local UI qualification from separate native dictation journeys.
 
 ### Live dictation still lacks speech admission
 
@@ -102,7 +112,9 @@ stream. Clicking Reinsert makes the non-activating recovery panel key while
 Portavoz stays inactive, so that stream would reach the panel instead of the
 destination. Delivery therefore refuses with `focusUnavailable` and the text
 stays in recovery: Copy works and nothing is lost, but Reinsert cannot succeed
-on this route. The likely fix is a panel that does not become key for a button
+on this route. Choosing Literal or Clean in the panel during a session
+keys the panel the same way, so that session's delivery on this route is refused
+into recovery too. The likely fix is a panel that does not become key for a button
 click (for example `becomesKeyOnlyIfNeeded`), which needs native verification
 in Slack, VS Code, a Java editor and a remote-desktop client before it ships.
 
@@ -114,6 +126,14 @@ existing cancel-during-delivery contract: the posted paste may still land, but
 the verified or unverified notice and its Copy are discarded and the receipt
 records `cancelled`. Fencing input during readback would change that released
 contract and needs an explicit product decision plus native evidence.
+
+### Dictation text mode and settings transfer
+
+D558 keeps the dictation text mode and application profiles out of the
+portable-settings allowlist. A fresh installation initializes Literal at
+launch, so importing settings with filler removal and replacements from another
+Mac leaves them inactive until the user chooses Clean. Carrying the mode in
+settings transfer would widen the allowlist and needs an explicit decision.
 
 ### Live dictation can propose text without speech
 

@@ -114,6 +114,10 @@ final class DictationController {
     private var sessionFeedbackWait: (@MainActor (Duration) async throws -> Void)?
     private var activeSessionID: UUID?
     private var measurement: DictationSessionMeasurementRecorder?
+    private var textPolicy = DictationTextPreferenceSnapshot.inert
+    /// Set once delivery has prepared its text; a later panel choice could not apply.
+    /// Only `start` clears it: between sessions `canChangeTextMode` is already false.
+    private var textPolicySealed = false
     private let panel = DictationPanelController()
     private let presentsPanel: Bool
     private var sessionClock: (() -> Date)?
@@ -264,6 +268,9 @@ final class DictationController {
         let destination = dependencies.captureDestination()
         self.destination = destination
         targetApp = destination.name
+        textPolicy = DictationTextPreferences.snapshot(
+            in: dependencies.defaults, bundleIdentifier: destination.bundleIdentifier)
+        textPolicySealed = false
         phase = .preparing
         confirmedText = ""
         partialText = ""
@@ -416,6 +423,7 @@ final class DictationController {
         measurement = nil
         sessionFeedbackWait = nil
         activeSessionID = nil
+        textPolicy = .inert
         sessionClock = nil
         confirmedText = ""
         partialText = ""
@@ -444,13 +452,11 @@ final class DictationController {
         // filter run on the final text only — meeting transcripts stay
         // verbatim records and never pass through here.
         let measurement = self.measurement
-        let text = DictationTextRules.apply(
-            DictationAssembler.text(
-                confirmed: confirmedText, partial: partialText),
-            replacements: DictationTextRules.decode(
-                replacements: dependencies.defaults.string(
-                    forKey: Self.replacementsKey) ?? ""),
-            removeFillers: Self.fillerFilterEnabled(in: dependencies.defaults))
+        let text = textPolicy.applying(to: DictationAssembler.text(
+            confirmed: confirmedText, partial: partialText))
+        // Stop bookkeeping retires below while the phase stays active until the
+        // insertion settles; the panel must not offer a choice that cannot apply.
+        textPolicySealed = true
         measurement?.record(.textPrepared)
         microphone = nil
         feed = nil
@@ -477,6 +483,7 @@ final class DictationController {
     private func completeSession(id: UUID) {
         guard activeSessionID == id else { return }
         activeSessionID = nil
+        textPolicy = .inert
         sessionClock = nil
         pressedAt = nil
         pressedSessionID = nil
@@ -754,5 +761,19 @@ extension DictationController {
         showPanel()
         guard result == .verified else { return }
         scheduleFeedbackDismiss(after: .milliseconds(1600), wait: dependencies.waitForFeedbackDismissal)
+    }
+}
+
+// A session override changes text policy, never preferences or destination authority.
+extension DictationController {
+    var textMode: DictationTextMode { textPolicy.mode }
+    var canChangeTextMode: Bool {
+        isActive && activeSessionID != nil && !textPolicySealed && stopTask == nil
+            && stopIssuedSessionID != activeSessionID
+    }
+
+    func selectTextMode(_ mode: DictationTextMode) {
+        guard canChangeTextMode else { return }
+        textPolicy.mode = mode
     }
 }
