@@ -170,6 +170,17 @@ concurrent replacement cannot retain a prelaunch digest as admitted evidence.
 Binary identity remains separate from source/commit qualification. Commands and limitations
 live in the corpus README.
 
+The separately versioned offline `dictation_benchmark.py` adapter validates a
+frozen configuration/dataset/run plan and explicit content-free edit counts,
+phase offsets and receiver declarations. It reports per-split/stratum micro and
+speaker-macro precision, success-conditional warm/cold latency, all-planned
+eligible delivery fractions, missing evidence and safety counterexamples.
+[Its schema and synthetic golden](../../Tests/Tooling/Fixtures/DictationBenchmark/README.md)
+reuse existing score admission and owner-only atomic JSON publication; existing
+collector receipts are unchanged and need a separately reviewed adapter before
+use. Consent IDs remain assertions, no raw audio is inspected, and no population
+confidence bound or quality threshold is qualified by this report tool.
+
 The September 21 complete controller observation re-rendered the pinned public
 corpus using the declared installed tuning/holdout voices, then measured all 480
 variants twice in 31 sequential bounded processes. All 960 attempts have admitted

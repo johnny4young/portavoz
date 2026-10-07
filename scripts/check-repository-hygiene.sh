@@ -164,7 +164,8 @@ bash -n scripts/run-correction-composition-benchmark.sh
 bash -n scripts/run-commitment-radar-benchmark.sh
 python3 -m unittest Tests.Tooling.test_dictation_corpus \
   Tests.Tooling.test_dictation_materialization Tests.Tooling.test_dictation_model_runner \
-  Tests.Tooling.test_dictation_controller_runner Tests.Tooling.test_dictation_controller_matrix
+  Tests.Tooling.test_dictation_controller_runner Tests.Tooling.test_dictation_controller_matrix \
+  Tests.Tooling.test_dictation_benchmark
 python3 scripts/dictation_corpus.py verify-public
 python3 -m unittest Tests.Tooling.test_commitment_quality
 python3 scripts/commitment_quality.py validate \
