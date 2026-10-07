@@ -4,17 +4,19 @@ Confirmed Topic memory has one real-app journey for current decisions, first
 discussion, decision conflicts and changes since a selected meeting. It retains
 each exact result, source label, screenshot and playback seek assertion, but
 seeds and launches once. Between citation visits it re-enters Ask through the
-sidebar and requires the original selected topic. Every job change must remove
-the preceding result before Load; separate fresh-app tests could not exercise
-that transition. Catalog policy rejects reintroducing the four retired journeys.
+sidebar and requires the original selected topic. Every job change must first
+observe the preceding result after re-entry and then prove it is removed before
+Load; separate fresh-app tests could not exercise that transition. Catalog policy rejects reintroducing the four retired journeys.
 Its 32-second candidate budget replaces four 20-second budgets; the aggregate
 1,300-second and p95 limits are unchanged. A smaller case count is not itself a
 performance result; paired actual receipts are required before claiming savings.
 
 Conflict and changes-since assertions read one fresh main-window observation per
 result phase after the primary result appears. A bounded predicate requires the
-complete text and exact button group together; extraction rejects missing or
-duplicate identifiers and retains value-first text semantics. Citation clicks
+complete text and exact button group together, indexing each observation in
+one traversal; extraction rejects missing or duplicate identifiers and retains
+value-first text semantics. The Topic and Skills phases share this bounded
+observation helper. Citation clicks
 and exact playback seeks still use live elements, and no snapshot crosses a
 user action. A change to the shared snapshot helper alone requires the complete
 bilingual catalog; neighboring changes cannot supply its missing locale scope.
@@ -8274,13 +8276,16 @@ and confirms that the actual duplicate policy rejects it.
 
 
 Skills catalogue membership, initial on/off values and reconstructed-window
-choices are observed together from the owning Settings window. Disclosures
+choices are observed together from the Settings window that owns an
+identifier the phase itself requires, never from a distant row that a lazily
+materialized Form may omit after scrolling. Disclosures
 retain both their capability text and per-run approval text; filter resets retain
 both localized selections and the missing Clear action. Receipt inspection
 observes its privacy control, exactly three causal events and localized terminal
 state in one owner-window snapshot (the inspection identifier labels header
 text, not the timeline container). Every required identifier must be unique, malformed
-toggle values cannot silently become Off, and snapshot errors still propagate.
+toggle values cannot silently become Off, and a transient snapshot error retries
+within the same deadline; on expiry the failure reports the last snapshot error.
 These observations never supply click targets or input authority, are never reused
 across gestures, and leave all scrolling, handshakes, transient loading assertions,
 screenshots, case inventory and runtime budgets intact.

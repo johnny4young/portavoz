@@ -442,10 +442,10 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "settings-skills-receipt-skill-filter": allSkillsTitle,
             "settings-skills-receipt-period-filter": anytimeTitle
         ], in: app)
-        XCTAssertTrue(skillSnapshot(try uiSnapshotElement("settings-skills-receipt-skill-filter", in: resetFilters),
-                                    contains: allSkillsTitle))
-        XCTAssertTrue(skillSnapshot(try uiSnapshotElement("settings-skills-receipt-period-filter", in: resetFilters),
-                                    contains: anytimeTitle))
+        XCTAssertTrue(uiSnapshotText(try uiSnapshotElement("settings-skills-receipt-skill-filter", in: resetFilters),
+                                     contains: allSkillsTitle))
+        XCTAssertTrue(uiSnapshotText(try uiSnapshotElement("settings-skills-receipt-period-filter", in: resetFilters),
+                                     contains: anytimeTitle))
         XCTAssertTrue(uiSnapshotMatches({ $0.identifier == "settings-skills-receipt-clear-filters" },
                                         in: resetFilters).isEmpty)
 
@@ -1301,7 +1301,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertEqual(events.count, 3, "the confirmed run must expose its complete causal timeline")
         let terminalEvent = try uiSnapshotElement("skill-receipt-inspection-event-3", in: timeline)
         XCTAssertTrue(
-            skillSnapshot(terminalEvent, contains: successTitle),
+            uiSnapshotText(terminalEvent, contains: successTitle),
             "the terminal event must expose the localized success state")
         attachScreenshot(of: app, named: "skills-control-recent-receipt")
         app.buttons["skill-receipt-inspection-close"].click()
@@ -1696,10 +1696,10 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             requiredIdentifiers: [disclosureID, confirmationID],
             expectedText: [disclosureID: expectedText, confirmationID: approvalText], in: app)
         let disclosure = try uiSnapshotElement(disclosureID, in: observation)
-        XCTAssertTrue(skillSnapshot(disclosure, contains: expectedText),
+        XCTAssertTrue(uiSnapshotText(disclosure, contains: expectedText),
                       "the disclosure must follow the executable capability boundary")
         let confirmation = try uiSnapshotElement(confirmationID, in: observation)
-        XCTAssertTrue(skillSnapshot(confirmation, contains: approvalText),
+        XCTAssertTrue(uiSnapshotText(confirmation, contains: approvalText),
                       "an enabled row must still disclose proposal-scoped approval")
     }
 
@@ -1857,7 +1857,13 @@ private extension SkillsSettingsUITests {
     func skillsObservation(
         requiredIdentifiers: Set<String>, expectedText: [String: String] = [:], in app: XCUIApplication
     ) throws -> any XCUIElementSnapshot {
-        let settings = app.windows.containing(.any, identifier: "settings-skills-pause-all").firstMatch
+        // Anchor the owning window on an identifier this phase itself requires.
+        // A distant row (such as Pause all, at the top of the Form) is not a
+        // safe anchor once the pane has scrolled to Action history.
+        let anchor = try XCTUnwrap(
+            requiredIdentifiers.union(expectedText.keys).min(),
+            "A Skills observation must require at least one identifier")
+        let settings = app.windows.containing(.any, identifier: anchor).firstMatch
         return try skillsObservation(
             requiredIdentifiers: requiredIdentifiers, expectedText: expectedText, owner: settings)
     }
@@ -1867,26 +1873,13 @@ private extension SkillsSettingsUITests {
         requiredIdentifiers: Set<String>, expectedText: [String: String] = [:],
         owner: XCUIElement, timeout: TimeInterval = 5
     ) throws -> any XCUIElementSnapshot {
-        var observation: (any XCUIElementSnapshot)?
         // Like the former per-element label waits, readiness includes content.
-        // A transient snapshot failure retries within the same deadline.
-        let ready = waitForUITestCondition(timeout: timeout) {
-            guard let snapshot = try? owner.snapshot() else { return false }
-            guard requiredIdentifiers.allSatisfy({ identifier in
-                uiSnapshotMatches({ $0.identifier == identifier }, in: snapshot).count == 1
-            }), expectedText.allSatisfy({ identifier, text in
-                uiSnapshot(snapshot, identifier: identifier, contains: text)
-            }) else { return false }
-            observation = snapshot
-            return true
-        }
-        return try XCTUnwrap(ready ? observation : nil, "The complete unique Skills phase must be observable together")
-    }
-
-    @MainActor
-    func skillSnapshot(_ snapshot: any XCUIElementSnapshot, contains text: String) -> Bool {
-        [snapshot.label, snapshot.value as? String, snapshot.title]
-            .compactMap { $0 }.contains { $0.contains(text) }
+        try uiObservation(
+            of: owner,
+            requiring: requiredIdentifiers,
+            expectedText: expectedText,
+            timeout: timeout,
+            message: "The complete unique Skills phase must be observable together")
     }
 
     @MainActor

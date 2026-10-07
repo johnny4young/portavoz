@@ -1167,14 +1167,9 @@ final class LibraryUITests: PortavozUITestCase {
 
     @MainActor
     private func assertExactTopicFirstDiscussionAndEvidence(in app: XCUIApplication) throws {
-        let firstDiscussionJob = app.descendants(matching: .any)[
-            "ask-topic-job-first-discussion"]
-        XCTAssertTrue(firstDiscussionJob.waitForExistenceFast(timeout: 5))
-        firstDiscussionJob.click()
-        XCTAssertEqual(
-            app.descendants(matching: .any).matching(NSPredicate(
-                format: "identifier BEGINSWITH %@", "ask-topic-decision-")).count,
-            0, "Changing the Topic job must retire the preceding result before loading")
+        selectTopicJob(
+            "ask-topic-job-first-discussion",
+            retiringResultsWithPrefix: "ask-topic-decision-", in: app)
         app.buttons["ask-topic-load"].click()
 
         let discussion = app.descendants(matching: .any).matching(
@@ -1201,20 +1196,13 @@ final class LibraryUITests: PortavozUITestCase {
 
     @MainActor
     private func assertExactTopicDecisionConflictsAndEvidence(in app: XCUIApplication) throws {
-        let conflictJob = app.descendants(matching: .any)[
-            "ask-topic-job-decision-conflicts"]
-        XCTAssertTrue(conflictJob.waitForExistenceFast(timeout: 5))
-        conflictJob.click()
-        XCTAssertEqual(
-            app.descendants(matching: .any).matching(NSPredicate(
-                format: "identifier BEGINSWITH %@", "ask-topic-first-discussion-")).count,
-            0, "Changing the Topic job must retire the preceding result before loading")
+        selectTopicJob(
+            "ask-topic-job-decision-conflicts",
+            retiringResultsWithPrefix: "ask-topic-first-discussion-", in: app)
         app.buttons["ask-topic-load"].click()
 
-        let conflict = app.descendants(matching: .any)[
-            "ask-topic-conflict-B5D40000-0000-4000-8000-000000000005"]
-        XCTAssertTrue(conflict.waitForExistenceFast(timeout: 10))
         let conflictID = "ask-topic-conflict-B5D40000-0000-4000-8000-000000000005"
+        XCTAssertTrue(app.descendants(matching: .any)[conflictID].waitForExistenceFast(timeout: 10))
         let replacedID = "ask-topic-conflict-replaced-B5D40000-0000-4000-8000-000000000005"
         let currentEvidenceID = "ask-topic-conflict-evidence-B5D40000-0000-4000-8000-000000000005-0"
         let replacedEvidenceID = "ask-topic-conflict-evidence-B5D40000-0000-4000-8000-000000000005-1"
@@ -1246,14 +1234,9 @@ final class LibraryUITests: PortavozUITestCase {
 
     @MainActor
     private func assertExactTopicChangesSinceMeetingAndEvidence(in app: XCUIApplication) throws {
-        let changesSinceJob = app.descendants(matching: .any)[
-            "ask-topic-job-changes-since"]
-        XCTAssertTrue(changesSinceJob.waitForExistenceFast(timeout: 5))
-        changesSinceJob.click()
-        XCTAssertEqual(
-            app.descendants(matching: .any).matching(NSPredicate(
-                format: "identifier BEGINSWITH %@", "ask-topic-conflict-")).count,
-            0, "Changing the Topic job must retire the preceding result before loading")
+        selectTopicJob(
+            "ask-topic-job-changes-since",
+            retiringResultsWithPrefix: "ask-topic-conflict-", in: app)
 
         let anchorSearch = app.textFields["ask-topic-anchor-search"]
         XCTAssertTrue(anchorSearch.waitForExistenceFast(timeout: 5))
@@ -1276,10 +1259,8 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(load.isEnabled)
         load.click()
 
-        let change = app.descendants(matching: .any)[
-            "ask-topic-change-since-B5D40000-0000-4000-8000-000000000005"]
-        XCTAssertTrue(change.waitForExistenceFast(timeout: 10))
         let changeID = "ask-topic-change-since-B5D40000-0000-4000-8000-000000000005"
+        XCTAssertTrue(app.descendants(matching: .any)[changeID].waitForExistenceFast(timeout: 10))
         let replacedID = "ask-topic-change-since-replaced-B5D40000-0000-4000-8000-000000000005"
         let anchorID = "ask-topic-change-since-anchor"
         let currentEvidenceID = "ask-topic-change-since-evidence-B5D40000-0000-4000-8000-000000000005-0"
@@ -1316,25 +1297,36 @@ final class LibraryUITests: PortavozUITestCase {
         text textIdentifiers: [String], buttons buttonIdentifiers: [String],
         expectedText: [String: String] = [:], in app: XCUIApplication
     ) throws -> any XCUIElementSnapshot {
-        var observation: (any XCUIElementSnapshot)?
-        // A transient AX snapshot failure is retried inside the same bound;
-        // readiness includes the expected content, not only element presence.
-        let ready = waitForUITestCondition(timeout: 5) {
-            guard let snapshot = try? app.windows["main-AppWindow-1"].snapshot() else { return false }
-            let textsExist = textIdentifiers.allSatisfy { identifier in
-                !uiSnapshotMatches({ $0.identifier == identifier }, in: snapshot).isEmpty
-            }
-            let buttonsExist = buttonIdentifiers.allSatisfy { identifier in
-                !uiSnapshotMatches({ $0.identifier == identifier && $0.elementType == .button }, in: snapshot).isEmpty
-            }
-            let contentReady = expectedText.allSatisfy { identifier, text in
-                uiSnapshot(snapshot, identifier: identifier, contains: text)
-            }
-            guard textsExist, buttonsExist, contentReady else { return false }
-            observation = snapshot
-            return true
-        }
-        return try XCTUnwrap(ready ? observation : nil, "The complete Topic result must be observable together")
+        // Readiness includes the expected content, not only element presence.
+        try uiObservation(
+            of: app.windows["main-AppWindow-1"],
+            requiring: Set(textIdentifiers),
+            types: Dictionary(uniqueKeysWithValues: buttonIdentifiers.map {
+                ($0, XCUIElement.ElementType.button)
+            }),
+            expectedText: expectedText,
+            message: "The complete Topic result must be observable together")
+    }
+
+    /// Re-entry must still show the preceding result; only then does its
+    /// absence after the job change prove retirement rather than a reset.
+    @MainActor
+    private func selectTopicJob(
+        _ jobIdentifier: String,
+        retiringResultsWithPrefix retiredPrefix: String,
+        in app: XCUIApplication
+    ) {
+        let preceding = app.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier BEGINSWITH %@", retiredPrefix))
+        XCTAssertTrue(
+            preceding.firstMatch.waitForExistenceFast(timeout: 5),
+            "The preceding Topic result must survive re-entry before the job changes")
+        let job = app.descendants(matching: .any)[jobIdentifier]
+        XCTAssertTrue(job.waitForExistenceFast(timeout: 5))
+        job.click()
+        XCTAssertEqual(
+            preceding.count, 0,
+            "Changing the Topic job must retire the preceding result before loading")
     }
 
     @MainActor
