@@ -241,7 +241,9 @@
   // hiding via [data-lang]); persisted so a reload keeps your choice.
   (function () {
     var root = document.documentElement;
-    var saved = localStorage.getItem("portavoz-lang");
+    // Persistence is optional: restricted storage must not disable the page.
+    var saved;
+    try { saved = localStorage.getItem("portavoz-lang"); } catch (e) {}
     if (saved === "en" || saved === "es") {
       root.setAttribute("data-lang", saved);
       root.setAttribute("lang", saved);
@@ -251,26 +253,38 @@
         var lang = btn.getAttribute("data-lang-val");
         root.setAttribute("data-lang", lang);
         root.setAttribute("lang", lang);
-        localStorage.setItem("portavoz-lang", lang);
+        try { localStorage.setItem("portavoz-lang", lang); } catch (e) {}
       });
     });
 
     // Copy the brew command with "copiado ✓ / copied ✓" feedback (1.6 s).
     var brew = document.getElementById("brew");
     var hint = brew.querySelector(".brew-hint");
-    brew.addEventListener("click", function () {
+    var copying = false;
+    brew.addEventListener("click", async function () {
+      if (copying) return;
+      copying = true;
+      brew.disabled = true;
+      clearTimeout(brew._t);
+      brew.classList.remove("copied");
+      hint.innerHTML = '<span class="es">copiando…</span><span class="en">copying…</span>';
       try {
-        navigator.clipboard.writeText(
+        await navigator.clipboard.writeText(
           "brew install --cask johnny4young/tap/portavoz"
         );
-      } catch (e) {}
-      hint.innerHTML = '<span class="es">copiado ✓</span><span class="en">copied ✓</span>';
-      brew.classList.add("copied");
-      clearTimeout(brew._t);
-      brew._t = setTimeout(function () {
-        hint.innerHTML = '<span class="es">copiar</span><span class="en">copy</span>';
-        brew.classList.remove("copied");
-      }, 1600);
+        hint.innerHTML = '<span class="es">copiado ✓</span><span class="en">copied ✓</span>';
+        brew.classList.add("copied");
+        brew._t = setTimeout(function () {
+          hint.innerHTML = '<span class="es">copiar</span><span class="en">copy</span>';
+          brew.classList.remove("copied");
+        }, 1600);
+      } catch (e) {
+        // Keep the command visible and selectable for manual copying.
+        hint.innerHTML = '<span class="es">copia manualmente</span><span class="en">copy manually</span>';
+      } finally {
+        copying = false;
+        brew.disabled = false;
+      }
     });
 
     // Screenshot lightbox — click a thumbnail to open the full image; close

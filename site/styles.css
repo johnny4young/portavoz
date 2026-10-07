@@ -181,6 +181,8 @@ a { color: inherit; }
 .brew:hover { border-color: var(--amber); }
 
 .brew code {
+  -webkit-user-select: text;
+  user-select: text;
   font-family: "IBM Plex Mono", monospace;
   font-size: 16.5px;
   color: var(--amber);
