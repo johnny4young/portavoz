@@ -171,7 +171,7 @@ final class TextInsertionTargetTests: XCTestCase {
         XCTAssertEqual(sessionPosts, 1)
     }
 
-    func testSessionRouteRefusesWhileTheInactiveRecoveryPanelOwnsKeyboardFocus() {
+    func testSessionRouteRefusesWhileTheInactiveRecoveryPanelOwnsKeyboardFocus() async {
         // Clicking Reinsert keys the non-activating panel: a session Paste would land there.
         XCTAssertFalse(TextInserter.sessionStreamReachesFrontmostApplication(
             portavozIsActive: false, portavozHasKeyWindow: true))
