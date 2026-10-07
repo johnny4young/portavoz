@@ -237,34 +237,6 @@ final class DictationDestinationRecoveryTests: XCTestCase {
         }
     }
 
-    func testHotkeyAndEscWaitForAnInsertionInFlight() async {
-        let harness = DictationControllerHarness(text: "Keep this sent text.")
-        let gate = RetryGate()
-        defer { gate.release(); harness.controller.cancel() }
-        var dependencies = harness.dependencies
-        dependencies.captureDestination = {
-            CapturedDictationDestination(name: "Editor", canRetry: true) { _ in
-                await gate.wait()
-                return .dispatched
-            }
-        }
-        harness.controller.toggle(using: dependencies)
-        let partial = await eventually { !harness.controller.partialText.isEmpty }
-        XCTAssertTrue(partial)
-        harness.now = harness.now.addingTimeInterval(1)
-        harness.controller.toggle(using: dependencies)
-        let sending = await eventually { gate.started }
-        XCTAssertTrue(sending)
-        // The paste was already posted: neither the hotkey nor Esc may discard
-        // the outcome that the user still needs to copy or confirm.
-        harness.controller.toggle(using: dependencies)
-        harness.controller.cancel()
-        gate.release()
-        let presented = await eventually { harness.controller.phase == .dispatched(4) }
-        XCTAssertTrue(presented, "A sent paste must reach its unverified notice")
-        XCTAssertEqual(harness.controller.recoveryText, "Keep this sent text.")
-    }
-
     private func enterRecovery(_ harness: DictationControllerHarness, dependencies: DictationSessionDependencies) async {
         harness.controller.toggle(using: dependencies)
         let partial = await eventually { !harness.controller.partialText.isEmpty }

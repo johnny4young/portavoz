@@ -106,6 +106,15 @@ on this route. The likely fix is a panel that does not become key for a button
 click (for example `becomesKeyOnlyIfNeeded`), which needs native verification
 in Slack, VS Code, a Java editor and a remote-desktop client before it ships.
 
+### Cancel during unverified-delivery readback
+
+Delivery observes the destination for up to 750 ms after the paste is posted.
+Esc or a hotkey press inside that window cancels the session under the
+existing cancel-during-delivery contract: the posted paste may still land, but
+the verified or unverified notice and its Copy are discarded and the receipt
+records `cancelled`. Fencing input during readback would change that released
+contract and needs an explicit product decision plus native evidence.
+
 ### Live dictation can propose text without speech
 
 **Open, reproduced in the public controller corpus.** The first complete
