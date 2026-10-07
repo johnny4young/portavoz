@@ -757,7 +757,7 @@ word loss and replay protection as a joint unresolved contract (D518).
 | LiveCompanionWorkCoordinatorTests / LiveSummaryWorkCoordinatorTests / LiveSummaryWindowPolicyTests | One complete active Apuntador request plus one newest pending candidate; lifecycle cancellation and fresh-session handoff; one delayed summary cycle for burst signals, one retained wake during active work, successful bounded-backlog continuation, cancelled-worker replacement, oldest-unseen 32-row/6,000-character admission, and oversized-head progress |
 | LiveAssistValidationRunnerTests / `test_live_assist_validation.py` | Strict checksum-bound bilingual corpus and budget loading; released-prefilter product-path observations without decoded ground truth or content; exact Interview, summary, and translation policies; real-owner cancel/relaunch and obsolete-publication outcomes; bounded resource samples; owner-only non-replacing observations and scorecards; and explicit installed-Foundation-Models capability refusal |
 | LegacyScrollInteractionTrackerTests | macOS 14.4 AppKit reader-intent observer scope, unrelated-scroll isolation, disconnect, and exact reconnect behavior |
-| WaveformTests / AudioTranscoderTests / MeetingAudioWorkflowTests | Exact range-aligned Accelerate envelopes, deterministic fixed-chunk cancellation, already-cancelled caller rejection, one 600-default/2,000-maximum immutable waveform snapshot, host AAC integration, canonical-output collision preservation, all-channel verification before raw deletion, rollback after later-channel failure, live filesystem byte accounting, text-only playback degradation, role-aware reversible clear-mix ranges, injected application codec semantics, and matched waveform/media-export work |
+| WaveformTests / AudioTranscoderTests / AudioExportSessionTests / MeetingAudioWorkflowTests | Exact range-aligned Accelerate envelopes, deterministic fixed-chunk cancellation, already-cancelled caller rejection, one 600-default/2,000-maximum immutable waveform snapshot, host AAC integration, canonical-output collision preservation, all-channel verification before raw deletion, rollback after later-channel failure, live filesystem byte accounting, text-only playback degradation, role-aware reversible clear-mix ranges, injected application codec semantics, and matched waveform/media-export work |
 | AudioProcessCatalogTests | direct tap scope by bundle ID: exact app/allowed helpers accepted, lookalikes and unrelated apps rejected |
 | AcceleratorFallbackTests / SubtitleExportTests / ExportDocumentTypesTests | One cancellation-aware CPU retry with both Whisper load failures preserved; exact SRT/VTT timestamps, lexical filtering, rendered prefix-aware cue bounds, same-name speaker identity separation, line/arrow sanitization; and extension-preserving text-conforming macOS subtitle content types |
 | DictationTextRulesTests / MousePTTGestureTests / MouseButtonSettingTests | Conservative bilingual filler seams; one-pass case-insensitive whole-trigger replacement without cascading or regex-template interpretation; canonical corrupt/duplicate storage; mouse press/release ownership; and vendor-facing Button 3+/invalid-default normalization without admitting left/right |
@@ -8757,7 +8757,6 @@ interrupted message, then proves dismissal and restart in each locale. The fixtu
 not during menu dependency construction. Its scope has an explicit 20-second
 per-case budget; aggregate full-suite budgets are unchanged.
 
-
 ### Deterministic dictation text-mode coverage
 
 Swift Testing enters the real DictationController from bilingual synthetic
@@ -8831,3 +8830,17 @@ acknowledgement deadline. A failed status assertion does not return before
 checking the actual editor and clipboard: those are independent evidence, not
 implications of a port result. This prepared receiver does not qualify slow,
 unsupported or arbitrary third-party AX servers.
+
+### Audio export bridge characterization
+
+`AudioExportSessionTests` drives the real internal callback bridge with immediate
+and held fake completions, including caller cancellation before/after start. It
+checks every known non-completed status and both existing domain error families,
+with native error text and missing-error fallback. These injected checks establish
+callback/error ownership, not AVFoundation runtime cancellation behavior. The
+real synthetic-WAV clip tests exercise both role-aware clear/original mixes and
+assert output duration, byte-identical input, and lower post-release microphone
+energy only in the clear mix; existing raw clip and compression
+rollback/verification tests remain. Hosted Sequoia/current-SDK tests exercise the
+modern AVFoundation branch. Physical macOS 14 callback-export qualification and
+acoustic/performance measurements remain distinct and are not inferred from mocks.
