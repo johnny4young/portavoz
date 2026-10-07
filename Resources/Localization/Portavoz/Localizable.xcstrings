@@ -2631,16 +2631,6 @@
         }
       }
     },
-    "Choose an audio file to transcribe, or a .portavoz meeting file": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Elige un archivo de audio para transcribir, o un archivo de reunión .portavoz"
-          }
-        }
-      }
-    },
     "Choose an existing person or keep this as a separate person. Portavoz never merges people automatically.": {
       "localizations": {
         "es": {
@@ -11769,6 +11759,16 @@
         }
       }
     },
+    "Retry": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reintentar"
+          }
+        }
+      }
+    },
     "Retry available — attempt %d of %d": {
       "localizations": {
         "es": {
@@ -15611,12 +15611,12 @@
         }
       }
     },
-    "Transcribing audio (Whisper)…": {
+    "Transcribing…": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Transcribiendo audio (Whisper)…"
+            "value": "Transcribiendo…"
           }
         }
       }

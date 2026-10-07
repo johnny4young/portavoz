@@ -41,6 +41,31 @@ final class LocalAudioImportFilesTests: XCTestCase {
         XCTAssertNil(retained.sourceBookmark)
     }
 
+    /// A copy published while the custom root was unplugged lives under the
+    /// default root; resuming after reconnection must still verify it there.
+    func testPublishedCopyUnderFallbackRootStillVerifies() async throws {
+        let fixture = try AudioImportFileFixture()
+        defer { fixture.remove() }
+        let request = try await fixture.selection()
+        let databaseURL = fixture.directory.appendingPathComponent("library.sqlite")
+        let store = try MeetingStore(databaseURL: databaseURL)
+        _ = try await store.enqueueAudioImports([request])
+        let claimed = try await store.claimNextProcessingJob(kinds: [.audioImport], owner: "owner", leaseDuration: 30)
+        let job = try XCTUnwrap(claimed)
+        let copy = try await fixture.files.copySelectedAudio(request)
+        let retained = try await store.publishAudioImportCopy(
+            for: job.id, owner: "owner", relativeDirectory: copy.relativeDirectory, digest: copy.digest)
+        let customRoot = fixture.directory.appendingPathComponent("custom")
+        try FileManager.default.createDirectory(at: customRoot, withIntermediateDirectories: true)
+        let reconnected = LocalAudioImportFiles(root: customRoot, fallbackRoot: fixture.root)
+        let restored = try await reconnected.verifyOwnedAudio(retained)
+        XCTAssertEqual(try Data(contentsOf: restored.fileURL), fixture.bytes)
+        do {
+            _ = try await LocalAudioImportFiles(root: customRoot).verifyOwnedAudio(retained)
+            XCTFail("Without the fallback root the copy is not reachable")
+        } catch {}
+    }
+
     func testSourceMutationAfterAdmissionRejectsWithoutCreatingOwnedAudio() async throws {
         let fixture = try AudioImportFileFixture()
         defer { fixture.remove() }

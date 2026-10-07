@@ -113,6 +113,32 @@ final class ProcessAudioImportsTests: XCTestCase {
         XCTAssertEqual(state.lateResults, 1)
     }
 
+    func testTrashedRunningImportYieldsItsAttemptAndResumesAfterRestore() async throws {
+        let fixture = try ImportQueueFixture()
+        defer { fixture.remove() }
+        let input = try await fixture.admit()
+        let started = expectation(description: "real import reached transcriber")
+        let hold = AsyncStream<Void>.makeStream()
+        let processor = ImportQueueProcessor(hold: hold.stream, onTranscribe: { started.fulfill() })
+        let worker = fixture.worker(processor)
+        let task = Task { try await worker.execute(.init()) }
+        defer { hold.continuation.finish(); task.cancel() }
+        await fulfillment(of: [started], timeout: 5)
+        try await fixture.store.delete(input.meetingID)
+        // The heartbeat notices the tombstone and stops held model work.
+        _ = try await task.value
+        let state = await processor.state()
+        XCTAssertEqual(state.lateResults, 1)
+        XCTAssertEqual(state.releaseCount, 1)
+        try await fixture.store.restore(input.meetingID)
+        let yielded = try await fixture.store.processingJobs(for: input.meetingID)
+        XCTAssertEqual(yielded.first?.state, .pending)
+        XCTAssertEqual(yielded.first?.attempt, 0, "Trash is not a failed attempt")
+        _ = try await fixture.worker(ImportQueueProcessor()).execute(.init())
+        let resumed = try await fixture.store.processingJobs(for: input.meetingID)
+        XCTAssertEqual(resumed.first?.state, .succeeded)
+    }
+
     func testTaskCancellationSuspendsAndRelaunchResumesSameCopyAndIdentity() async throws {
         let fixture = try ImportQueueFixture()
         defer { fixture.remove() }

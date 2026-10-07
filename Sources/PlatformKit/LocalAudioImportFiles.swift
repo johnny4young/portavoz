@@ -5,9 +5,15 @@ import PortavozCore
 /// comes from explicit selection or the application's recording root.
 public struct LocalAudioImportFiles: AudioImportFiles {
     let root: URL
+    /// Read-only fallback for already published copies, matching
+    /// `RecordingsLocation.resolve`: an unplugged custom root makes the app
+    /// write to the default root, and a later resume must still find that copy.
+    let fallbackRoot: URL?
 
-    public init(root: URL) {
+    public init(root: URL, fallbackRoot: URL? = nil) {
         self.root = root.standardizedFileURL.resolvingSymlinksInPath()
+        let fallback = fallbackRoot?.standardizedFileURL.resolvingSymlinksInPath()
+        self.fallbackRoot = fallback == self.root ? nil : fallback
     }
 
     public func prepareSelection(
@@ -88,7 +94,12 @@ public struct LocalAudioImportFiles: AudioImportFiles {
             try Task.checkCancellation()
             guard input.sourceBookmark == nil, let relative = input.copiedAudioDirectory,
                   let expected = input.copiedAudioDigest else { throw AudioImportFileError.invalidOwnedCopy }
-            let directory = try ownedDirectory(relative, meetingID: input.meetingID, createParents: false)
+            var directory = try ownedDirectory(relative, meetingID: input.meetingID, createParents: false)
+            if !FileManager.default.fileExists(atPath: directory.path), let fallbackRoot {
+                let fallback = try ownedDirectory(
+                    relative, meetingID: input.meetingID, createParents: false, base: fallbackRoot)
+                if FileManager.default.fileExists(atPath: fallback.path) { directory = fallback }
+            }
             let file = try audioURL(in: directory, fileExtension: input.fileExtension)
             let metadata = try AudioImportSourceMetadata.read(file)
             guard metadata.size == input.sourceByteCount else { throw AudioImportFileError.invalidOwnedCopy }
@@ -110,7 +121,10 @@ public struct LocalAudioImportFiles: AudioImportFiles {
         return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
     }
 
-    private func ownedDirectory(_ relative: String, meetingID: MeetingID, createParents: Bool) throws -> URL {
+    private func ownedDirectory(
+        _ relative: String, meetingID: MeetingID, createParents: Bool, base: URL? = nil
+    ) throws -> URL {
+        let root = base ?? self.root
         let parts = relative.split(separator: "/", omittingEmptySubsequences: false)
         guard root.isFileURL, parts.count == 4, parts[0] == "Audio",
               parts[1] == Substring(meetingID.rawValue.uuidString), parts[2] == "Imports",

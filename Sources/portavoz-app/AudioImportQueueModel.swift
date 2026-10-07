@@ -12,6 +12,12 @@ protocol AudioImportQueueClient: AnyObject {
     func cancelAudioImport(_ id: MeetingID) async throws
     func retryAudioImport(_ id: MeetingID) async throws
     func audioImportWorkFinished()
+    /// One import settled; derived search can include it before the drain ends.
+    func audioImportCompleted(_ id: MeetingID)
+}
+
+extension AudioImportQueueClient {
+    func audioImportCompleted(_ id: MeetingID) {}
 }
 
 /// One process owner; closing a Library window does not cancel admitted work.
@@ -143,6 +149,8 @@ final class AudioImportQueueModel {
                     await self?.started(id, revision: revision)
                 }, progress: { [weak self] id, phase in
                     await self?.progress(id, phase: phase, revision: revision)
+                }, completed: { [weak self] id in
+                    await self?.completed(id, revision: revision)
                 }))
             } catch {
                 if !(error is CancellationError), !Task.isCancelled {
@@ -162,6 +170,11 @@ final class AudioImportQueueModel {
     private func progress(_ id: MeetingID, phase: ImportMeetingProgress, revision: Int) {
         guard generation == revision, currentID == id else { return }
         self.phase = phase
+    }
+
+    private func completed(_ id: MeetingID, revision: Int) {
+        guard generation == revision else { return }
+        client?.audioImportCompleted(id)
     }
 
     private func finished(revision: Int) async {

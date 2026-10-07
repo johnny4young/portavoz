@@ -135,6 +135,17 @@ launch, so importing settings with filler removal and replacements from another
 Mac leaves them inactive until the user chooses Clean. Carrying the mode in
 settings transfer would widen the allowlist and needs an explicit decision.
 
+### Queued audio imports across a restart or remount
+
+Before copying, a queued import compares the source's `fileResourceIdentifier`
+with the one recorded at admission. Apple documents that identifier as not
+persistent across restarts, and it includes the volume device number, so a
+pending import from an external or remounted volume may fail as
+`sourceChanged` after a restart and require a fresh selection even though the
+file is unchanged. The original is never modified. A restart-stable identity
+(for example volume UUID plus file ID) needs verification on macOS with internal
+and external volumes before it replaces the current check.
+
 ### Live dictation can propose text without speech
 
 **Open, reproduced in the public controller corpus.** The first complete

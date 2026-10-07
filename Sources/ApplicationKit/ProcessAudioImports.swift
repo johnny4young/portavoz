@@ -5,11 +5,16 @@ import StorageKit
 public struct ProcessAudioImportsRequest: Sendable {
     public let started: @Sendable (MeetingID) async -> Void
     public let progress: @Sendable (MeetingID, ImportMeetingProgress) async -> Void
+    /// Called once per settled attempt (success or durable failure), so derived
+    /// search projections need not wait for the whole queue to drain.
+    public let completed: @Sendable (MeetingID) async -> Void
 
     public init(started: @escaping @Sendable (MeetingID) async -> Void = { _ in },
-                progress: @escaping @Sendable (MeetingID, ImportMeetingProgress) async -> Void = { _, _ in }) {
+                progress: @escaping @Sendable (MeetingID, ImportMeetingProgress) async -> Void = { _, _ in },
+                completed: @escaping @Sendable (MeetingID) async -> Void = { _ in }) {
         self.started = started
         self.progress = progress
+        self.completed = completed
     }
 }
 
@@ -68,6 +73,7 @@ public struct ProcessAudioImports: ApplicationUseCase {
             } catch {
                 try await failIfOwned(job, owner: owner, error: error)
             }
+            await request.completed(job.meetingID)
             processed += 1
         }
         return processed
@@ -129,6 +135,10 @@ public struct ProcessAudioImports: ApplicationUseCase {
                 if try await currentJob(job)?.state == .succeeded { return }
                 throw error
             }
+            // The lease itself ignores tombstones. A trashed import stops its
+            // file/model work here instead of finishing work that publication
+            // must reject; `failIfOwned` then yields the lease for restore.
+            if try await currentJob(job) == nil { throw AudioImportWorkerInterruption.meetingRemoved }
         }
     }
 
@@ -137,16 +147,23 @@ public struct ProcessAudioImports: ApplicationUseCase {
     }
 
     private func suspendIfOwned(_ job: ProcessingJob, owner: String) async throws {
-        guard let current = try await currentJob(job), current.state == .running,
-              current.leaseOwner == owner else { return }
+        guard let current = try await currentJob(job) else { return await yieldTrashedLease(job, owner: owner) }
+        guard current.state == .running, current.leaseOwner == owner else { return }
         do {
             _ = try await store.suspendProcessingJob(job.id, owner: owner, at: now())
         } catch StorageError.processingJobLeaseLost { return }
     }
 
+    /// Trashed (or purged) mid-attempt is not an import failure. Return the
+    /// attempt to pending without spending its retry budget, so restoring the
+    /// meeting resumes it; claims already skip tombstoned meetings.
+    private func yieldTrashedLease(_ job: ProcessingJob, owner: String) async {
+        _ = try? await store.suspendProcessingJob(job.id, owner: owner, at: now())
+    }
+
     private func failIfOwned(_ job: ProcessingJob, owner: String, error: Error) async throws {
-        guard let current = try await currentJob(job), current.state == .running,
-              current.leaseOwner == owner else { return }
+        guard let current = try await currentJob(job) else { return await yieldTrashedLease(job, owner: owner) }
+        guard current.state == .running, current.leaseOwner == owner else { return }
         let code: String
         switch error {
         case AudioImportFileError.sourceChanged: code = "import.source.changed"
@@ -176,4 +193,8 @@ public struct ProcessAudioImports: ApplicationUseCase {
         // failed and its row is removed with the meeting.
         try? await store.retireFailedAudioImportSource(for: job.meetingID)
     }
+}
+
+private enum AudioImportWorkerInterruption: Error {
+    case meetingRemoved
 }

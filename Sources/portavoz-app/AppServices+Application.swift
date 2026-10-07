@@ -11,7 +11,9 @@ import TranscriptionKit
 extension AppServices {
     /// ApplicationKit commands composed from the real local adapters.
     var meetingLifecycle: MeetingLifecycleUseCases { .init(store: store, acquisition: audioImportFiles) }
-    var audioImportFiles: LocalAudioImportFiles { .init(root: Self.audioRoot) }
+    var audioImportFiles: LocalAudioImportFiles {
+        .init(root: Self.audioRoot, fallbackRoot: RecordingsLocation.shared.defaultRoot)
+    }
     var meetingPurge: MeetingPurgeUseCases {
         let root = Self.audioRoot
         return .init(store: store, audioFiles: AppMeetingAudioFiles(root: root),

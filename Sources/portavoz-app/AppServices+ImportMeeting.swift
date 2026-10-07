@@ -20,7 +20,8 @@ extension AppServices: AudioImportQueueClient {
             try Task.checkCancellation()
             do {
                 inputs.append(try await files.prepareSelection(
-                    url, meetingID: MeetingID(), title: url.deletingPathExtension().lastPathComponent,
+                    // Released library contract: imported meetings stay recognizable by title.
+                    url, meetingID: MeetingID(), title: "Imported · " + url.deletingPathExtension().lastPathComponent,
                     preferences: preferences))
             } catch is AudioImportFileError {
                 // The adapter enum has no user copy; nothing was admitted or changed.
@@ -50,6 +51,7 @@ extension AppServices: AudioImportQueueClient {
     }
     func retryAudioImport(_ id: MeetingID) async throws { _ = try await store.retryAudioImport(for: id) }
     func audioImportWorkFinished() { requestSearchReconciliation() }
+    func audioImportCompleted(_ id: MeetingID) { requestSearchReconciliation() }
 
     private var audioImportPreferences: ImportMeetingPreferencesSnapshot {
         let localeLanguage = AppLanguage.current.locale.language.languageCode?.identifier

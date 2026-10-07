@@ -1995,7 +1995,10 @@ It preserves intervening title edits. Silent imports may retain owned audio with
 an empty transcript; existing non-import artifact validators still require text.
 `retryAudioImport` resets only failed/cancelled work under explicit user intent,
 retaining job identity and copied audio. It cannot steal a live lease or replay
-success. Expired work uses the existing processing-job recovery policy.
+success. Expired work uses the existing processing-job recovery policy. Because
+the lease ignores tombstones, the worker re-reads the live job after each
+heartbeat and suspends (refunds) an attempt whose meeting was trashed instead of
+finishing model work that publication must reject.
 
 The external bookmark does not outlive an import that can no longer use it.
 `cancelAudioImport` retires it in the cancelling transaction when no owned copy
@@ -2016,7 +2019,9 @@ Real-file tests complement storage tests without certifying real model output. T
 before any file write. Under native acquisition exclusion, the worker reads its
 current input, validates the original and replaces only that unpublished stage.
 Rejected publication retains its durable staging identity; published input takes
-the verification path instead. Purge uses the same reserved location, so both
+the verification path instead; like `RecordingsLocation.resolve`, verification
+falls back to the default recordings root for a copy published while the custom
+root was unavailable. Purge uses the same reserved location, so both
 unpublished staging and published audio participate in the existing trash policy.
 Native copy and acquisition bridges reject cancellation in the calling task
 before spawning detached work. Child-only cancellation checks are insufficient:

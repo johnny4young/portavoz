@@ -2076,7 +2076,8 @@ versus visible provider and persistence outcomes (D62).
 Slice 2F moves external audio import through `ApplicationKit.ImportMeeting`.
 `AppServices` now only samples platform preferences, constructs private
 filesystem/model/provider adapters, provides typed progress and requests
-search reconciliation after each queue drain. The Library opens a result only
+search reconciliation after each settled import and again when the queue
+drains, so long batches do not hide finished meetings from search. The Library opens a result only
 through the user's explicit queue action. The use case owns required transcription, degradable
 diarization and summary, independent transcript/summary languages, idle
 release, staged-audio rollback, and atomic meeting/cast/transcript installation.
@@ -2100,7 +2101,9 @@ verifies the retained source before creating model capabilities, and runs
 children; explicit cancellation rejects late output, while process interruption
 awaits uncancelled storage cleanup and returns work to pending. A failed source
 does not prepare models; a failed transcription keeps copied audio for retry and
-does not prevent the next queued file from running. The app owns a shared supervisor for this worker, starts it after recording
+does not prevent the next queued file from running. Trashing a meeting while
+its import runs stops that attempt at the next heartbeat and returns it to
+pending without spending a retry; restoring the meeting resumes it. The app owns a shared supervisor for this worker, starts it after recording
 recovery, coalesces admissions and explicit retries, and wakes once for a future
 lease expiry. Closing the queue or a Library window does not cancel admitted
 work. Acquisition holds a native content-free lock through
