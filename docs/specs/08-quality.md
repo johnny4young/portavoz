@@ -8254,8 +8254,9 @@ The retained failure is not evidence of a layout race or another app's intrusion
 
 `make test-ui-interruption-safety UI_INTERRUPTION_RESULTS=<new-private-directory>`
 builds a tiny separate app/overlay/runner target once. It uses the exact shared
-`PortavozUITestCase`, `UITestStorage`, `UITestScratch` and wait-helper sources;
-there is no copied guard implementation. Its original four pointer controls distinguish:
+`PortavozUITestCase`, `UITestStorage`, `UITestScratch`, `UITestActionGeometry` and
+wait-helper sources; there is no copied guard implementation. Its original four
+pointer controls distinguish:
 
 - an uninterrupted action, which must produce an observable synthetic effect;
 - a deliberate synthetic choice, which calibrates the choice effect detector;

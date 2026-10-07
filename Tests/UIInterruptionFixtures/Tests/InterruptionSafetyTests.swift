@@ -78,13 +78,16 @@ final class InterruptionSafetyTests: PortavozUITestCase {
         editor.click()
         typeText("Owner’s plan", in: app, modalAnchor: "proof-modal-editor")
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { editor.value as? String == "Owner’s plan" })
-        let modal = app.sheets.firstMatch
-        XCTAssertFalse(clickModalChoice("proof-modal-choice", in: modal, app: app, anchorFrame: .infinite),
+        let choice = app.sheets.buttons["proof-modal-choice"]
+        // Establish every non-geometry precondition first so the refusal below
+        // can only come from the invalid anchor, not from a hidden choice.
+        XCTAssertTrue(app.state == .runningForeground && choice.isHittable)
+        XCTAssertFalse(clickModalChoice("proof-modal-choice", in: app.sheets, app: app, anchorFrame: .infinite),
                        "Invalid geometry must not dispatch a pointer or select the default action")
-        XCTAssertTrue(app.sheets.firstMatch.exists)
+        XCTAssertTrue(choice.exists)
         let effects = try XCTUnwrap(ProcessInfo.processInfo.environment["PROOF_EFFECTS_ROOT"])
         XCTAssertFalse(FileManager.default.fileExists(atPath: effects + "/modal-choice"))
-        XCTAssertTrue(clickModalChoice("proof-modal-choice", in: modal, app: app))
+        XCTAssertTrue(clickModalChoice("proof-modal-choice", in: app.sheets, app: app))
         XCTAssertTrue(waitForUITestCondition(timeout: 5) {
             FileManager.default.fileExists(atPath: effects + "/modal-choice")
         })
@@ -115,7 +118,7 @@ final class InterruptionSafetyTests: PortavozUITestCase {
         editor.click()
         typeText("Owner’s plan", in: app, modalAnchor: "proof-dialog-editor")
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { editor.value as? String == "Owner’s plan" })
-        XCTAssertTrue(clickModalChoice("proof-dialog-choice", in: app.dialogs.firstMatch, app: app))
+        XCTAssertTrue(clickModalChoice("proof-dialog-choice", in: app.dialogs, app: app))
         let effects = try XCTUnwrap(ProcessInfo.processInfo.environment["PROOF_EFFECTS_ROOT"])
         XCTAssertTrue(waitForUITestCondition(timeout: 5) {
             FileManager.default.fileExists(atPath: effects + "/modal-choice")
@@ -133,12 +136,18 @@ final class InterruptionSafetyTests: PortavozUITestCase {
 
     /// Keep the pointer anchor inside the expected modal. A coordinate rooted
     /// in the background window correctly triggers the interruption guard.
+    /// The modal is the single one that owns the choice: `firstMatch` could
+    /// resolve to another dialog, such as the non-hittable Writing Tools
+    /// affordance macOS exposes after a native text selection.
     private func clickModalChoice(
-        _ identifier: String, in modal: XCUIElement, app: XCUIApplication, anchorFrame: CGRect? = nil
+        _ identifier: String, in modals: XCUIElementQuery, app: XCUIApplication, anchorFrame: CGRect? = nil
     ) -> Bool {
+        let owners = modals.containing(.button, identifier: identifier)
+        guard app.state == .runningForeground, owners.count == 1 else { return false }
+        let modal = owners.element
         let choice = modal.buttons[identifier]
-        guard app.state == .runningForeground, choice.isHittable else { return false }
-        guard let offset = uiPointerOffset(target: choice.frame, anchor: anchorFrame ?? modal.frame)
+        guard choice.isHittable,
+              let offset = uiPointerOffset(target: choice.frame, anchor: anchorFrame ?? modal.frame)
         else { return false }
         modal.coordinate(withNormalizedOffset: .zero).withOffset(offset).click()
         return true
@@ -228,10 +237,10 @@ final class InterruptionSafetyTests: PortavozUITestCase {
 
     private func armInterruption(_ app: XCUIApplication) throws -> XCUIApplication {
         app.buttons["proof-arm"].click()
-        let armed = app.staticTexts["Dialog armed"].waitForExistence(timeout: readinessTimeout)
-        if !armed {
+        guard app.staticTexts["Dialog armed"].waitForExistence(timeout: readinessTimeout) else {
             let phases = ["Ready": "arm-not-observed", "Opening fixture": "launch-pending",
-                          "Missing fixture path": "configuration-missing", "Fixture launch failed": "launch-failed"]
+                          "Missing fixture path": "configuration-missing", "Fixture launch failed": "launch-failed",
+                          "Dialog armed": "armed-after-deadline"]
             // An AppKit label exposes its text as the accessibility value; its
             // label is usually empty. Read value first so the phase is classified.
             let status = app.staticTexts["proof-status"]
@@ -239,8 +248,10 @@ final class InterruptionSafetyTests: PortavozUITestCase {
                 ? ((status.value as? String).flatMap { $0.isEmpty ? nil : $0 } ?? status.label) : ""
             let phase = phases[observed] ?? "unclassified"
             print("FIXTURE_PREPARATION_FAILED phase=\(phase)")
+            // Stop here: waiting for an overlay that was never armed only
+            // spends another readiness budget before the same failure.
+            throw NSError(domain: "FIXTURE_NOT_READY", code: 4)
         }
-        XCTAssertTrue(armed)
         let effects = try XCTUnwrap(ProcessInfo.processInfo.environment["PROOF_EFFECTS_ROOT"])
         guard waitForUITestCondition(timeout: readinessTimeout, {
             FileManager.default.fileExists(atPath: effects + "/overlay-ready")
