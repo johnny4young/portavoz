@@ -147,9 +147,11 @@ final class DictationSessionMeasurementTests: XCTestCase {
         let harness = DictationControllerHarness(text: "Do not paste twice")
         let gate = Gate()
         var dependencies = harness.dependencies
-        dependencies.insert = { _ in
-            await gate.wait()
-            return .inserted
+        dependencies.captureDestination = {
+            CapturedDictationDestination(name: nil, canRetry: true) { _ in
+                await gate.wait()
+                return .inserted
+            }
         }
         harness.controller.toggle(using: dependencies)
         await eventually { !harness.controller.partialText.isEmpty }
@@ -171,7 +173,7 @@ final class DictationSessionMeasurementTests: XCTestCase {
         for text in ["", "… — !!!", "No borres esto"] {
             let harness = DictationControllerHarness(text: text)
             var dependencies = harness.dependencies
-            dependencies.insert = { _ in .focusUnavailable }
+            dependencies.captureDestination = { .unavailable(name: nil, result: .focusUnavailable) }
             harness.controller.toggle(using: dependencies)
             await eventually { harness.hints != nil }
             harness.now = harness.now.addingTimeInterval(1)

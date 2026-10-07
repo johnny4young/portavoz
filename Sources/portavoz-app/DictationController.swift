@@ -38,7 +38,8 @@ enum DictationSessionError: LocalizedError {
 
 /// System-wide dictation (the MacParakeet-validated surface): press the
 /// global hotkey anywhere, speak, press it again — the transcript lands in
-/// whatever app is frontmost. Reuses the meeting pipeline as-is: Parakeet
+/// the captured original field, or stays available for explicit recovery.
+/// Reuses the meeting pipeline as-is: Parakeet
 /// streaming on the ANE, the caption coalescer's echo/noise hygiene, and
 /// the user's custom vocabulary. Mic-only, nothing is stored: no meeting,
 /// no database row, no audio file.
@@ -70,6 +71,7 @@ final class DictationController {
         /// 4b: "inserted, no trace").
         case inserted(Int)
         case failed(String)
+        case recovery(TextInserter.InsertionResult)
     }
 
     private(set) var phase: Phase = .idle
@@ -85,6 +87,16 @@ final class DictationController {
     /// The app that was frontmost when dictation started — where the text
     /// will land. The strip shows it so you never dictate "blind" (4b).
     private(set) var targetApp: String?
+
+    enum CopyStatus: Equatable { case idle, copied, failed }
+    private(set) var recoveryText = ""
+    private(set) var copyStatus: CopyStatus = .idle
+    private(set) var isRetryingDelivery = false
+    var canRetryDelivery: Bool { destination?.canRetry == true }
+    private var destination: CapturedDictationDestination?
+    private var dependencies: DictationSessionDependencies?
+    private var deliveryID: UUID?
+    @ObservationIgnored private(set) var retryDeliveryTask: Task<Void, Never>?
 
     let shortcut = DictationShortcut()
     private var mousePTT: MouseButtonPTT?
@@ -208,6 +220,8 @@ final class DictationController {
             cancel()
         case .listening:
             finishAndInsert()
+        case .recovery:
+            showPanel()
         }
     }
 
@@ -216,6 +230,13 @@ final class DictationController {
     }
 
     private func start(using dependencies: DictationSessionDependencies) {
+        // A global trigger cannot silently replace undelivered words.
+        if case .recovery = phase { showPanel(); return }
+        retryDeliveryTask?.cancel()
+        retryDeliveryTask = nil
+        deliveryID = nil
+        destination = nil
+        self.dependencies = dependencies
         sessionFeedbackWait = dependencies.waitForFeedbackDismissal
         measurement = dependencies.measurementSink.map {
             DictationSessionMeasurementRecorder(now: dependencies.measurementClock, sink: $0)
@@ -226,6 +247,7 @@ final class DictationController {
         // The paste needs Accessibility; ask BEFORE recording so the user
         // never dictates into a void.
         guard dependencies.canInsert() else {
+            self.dependencies = nil
             measurement?.finish(.permissionDenied)
             phase = .failed(L10n.text(
                 // One-line UI copy.
@@ -237,7 +259,9 @@ final class DictationController {
         }
         // Capture the destination BEFORE the non-activating panel appears —
         // the frontmost app is still the one the user will dictate into.
-        targetApp = dependencies.targetName()
+        let destination = dependencies.captureDestination()
+        self.destination = destination
+        targetApp = destination.name
         phase = .preparing
         confirmedText = ""
         partialText = ""
@@ -377,6 +401,15 @@ final class DictationController {
 
     /// Esc in the panel: throw everything away.
     func cancel() {
+        retryDeliveryTask?.cancel()
+        retryDeliveryTask = nil
+        deliveryID = nil
+        destination = nil
+        dependencies = nil
+        recoveryText = ""
+        targetApp = nil
+        copyStatus = .idle
+        isRetryingDelivery = false
         measurement?.finish(.cancelled)
         measurement = nil
         sessionFeedbackWait = nil
@@ -404,7 +437,7 @@ final class DictationController {
     }
 
     private func deliver(sessionID: UUID, dependencies: DictationSessionDependencies) async {
-        guard activeSessionID == sessionID else { return }
+        guard activeSessionID == sessionID, let destination else { return }
         // The two-tier dictionary's deterministic tier plus the filler
         // filter run on the final text only — meeting transcripts stay
         // verbatim records and never pass through here.
@@ -424,41 +457,25 @@ final class DictationController {
         guard DictationAssembler.hasLexicalContent(text) else {
             measurement?.finish(.empty)
             completeSession(id: sessionID)
+            self.destination = nil
+            self.dependencies = nil
             phase = .idle
             panel.close()
             return
         }
         measurement?.record(.deliveryStarted)
-        let result = await dependencies.insert(text)
+        let result = await destination.insert(text)
         measurement?.finishDelivery(result)
         guard activeSessionID == sessionID else { return }
-        switch result {
-        case .inserted:
-            completeSession(id: sessionID)
-            let words = text.split(whereSeparator: \.isWhitespace).count
-            phase = .inserted(words)
-            scheduleFeedbackDismiss(after: .milliseconds(1600), wait: dependencies.waitForFeedbackDismissal)
-        case .secureField:
-            failSession(
-                id: sessionID,
-                message: L10n.text("Dictation never types into password fields."))
-        case .focusUnavailable:
-            failSession(
-                id: sessionID,
-                message: L10n.text(
-                    "Dictation couldn't verify the focused field, so it didn't type anything."))
-        case .modifiersStillPressed:
-            failSession(
-                id: sessionID,
-                message: L10n.text(
-                    "Release Command, Option, Control, and Shift, then try again."))
-        case .clipboardUnavailable, .eventUnavailable:
-            failSession(
-                id: sessionID,
-                message: L10n.text(
-                    "Dictation couldn't type into the focused app. Try again."))
-        case .cancelled:
-            return
+        completeSession(id: sessionID)
+        deliveryID = sessionID
+        if result == .inserted {
+            showDispatchedText(text, id: sessionID)
+        } else {
+            recoveryText = text
+            copyStatus = .idle
+            phase = .recovery(result)
+            showPanel()
         }
     }
 
@@ -482,6 +499,8 @@ final class DictationController {
         let wait: @MainActor (Duration) async throws -> Void = sessionFeedbackWait
             ?? { try await Task.sleep(for: $0) }
         completeSession(id: id)
+        destination = nil
+        dependencies = nil
         phase = .failed(message)
         if autoDismiss { scheduleFeedbackDismiss(after: .seconds(6), wait: wait) }
     }
@@ -508,6 +527,9 @@ final class DictationController {
             guard let self, self.feedbackID == id, !Task.isCancelled else { return }
             self.feedbackID = nil
             self.feedbackDismissTask = nil
+            self.deliveryID = nil
+            self.destination = nil
+            self.dependencies = nil
             self.phase = .idle
             self.panel.close()
         }
@@ -689,5 +711,39 @@ private extension DictationController {
                 id: id, message: DictationMicrophoneReadiness.Failure.interrupted.message, autoDismiss: false)
         }
         return CancellationError()
+    }
+}
+
+extension DictationController {
+    func copyUndeliveredText() {
+        guard case .recovery = phase, !isRetryingDelivery, let dependencies else { return }
+        copyStatus = dependencies.copyText(recoveryText) ? .copied : .failed
+    }
+
+    func retryUndeliveredText() {
+        guard case .recovery = phase, !isRetryingDelivery,
+              let id = deliveryID, let destination, destination.canRetry else { return }
+        let text = recoveryText
+        isRetryingDelivery = true
+        retryDeliveryTask = Task { [weak self] in
+            let result = await destination.insert(text)
+            guard let self, self.deliveryID == id, !Task.isCancelled else { return }
+            self.isRetryingDelivery = false
+            if result == .inserted {
+                self.showDispatchedText(text, id: id)
+            } else {
+                self.phase = .recovery(result)
+            }
+            self.retryDeliveryTask = nil
+        }
+    }
+
+    private func showDispatchedText(_ text: String, id: UUID) {
+        guard deliveryID == id, let dependencies else { return }
+        recoveryText = ""
+        copyStatus = .idle
+        phase = .inserted(text.split(whereSeparator: \.isWhitespace).count)
+        showPanel()
+        scheduleFeedbackDismiss(after: .milliseconds(1600), wait: dependencies.waitForFeedbackDismissal)
     }
 }

@@ -35,10 +35,21 @@ dropped relay yields revoke automatic delivery for their owning session;
 normal source or recognizer completion also requires the controller to have
 issued Stop, and cancelled terminal captions cannot overwrite a new session.
 These repairs do not provide durable recovery of interrupted dictation audio.
-The displayed application name is not yet a pinned delivery
-target; `.inserted` still denotes dispatched events rather than a verified
-external edit. These require call-site regressions and fixes before broad
-reliability claims. Model quality, Bluetooth transitions and the external-editor
+The destination is now pinned before preparation to a process and focused AX element, with refused
+output retained for explicit Copy or retry (D544). Deterministic tests exercise
+the controller and actual inserter, but native focus switches, process
+termination/relaunch and secure-field transitions still need receiver/device
+evidence. Accessibility validation and keyboard-event posting are not an atomic
+editor transaction: `.inserted` still denotes dispatched events rather than a
+verified external edit. Recovery is RAM-only; quitting does not preserve the
+output. This recovery covers final text after completed recognition, not an
+incomplete capture/model failure: those failures still have no supported Copy
+or durable recovery of admitted partial captions. Recovery Copy is an explicit Copy that replaces the
+clipboard (including multiple items); the excerpt stays selectable. Ordered
+clipboard preservation for the paste path and snapshot size/materialization
+remain independent limitations. Applications without a pinnable focused field
+use the previous session-stream delivery and checks, not field pinning. Model quality,
+Bluetooth transitions and the external-editor
 matrix require separate evidence; a synthetic caption fixture cannot establish
 those results. Missing Accessibility permission makes the separately selected
 native delivery gate unqualified, not proof that insertion works. Hosted
@@ -55,6 +66,18 @@ no admitted partial cell count; a fresh process per cohort does not establish
 long single-process endurance or explain a backend stall. Complete matrix
 observation, quality acceptance, leak evidence and native delivery remain
 distinct requirements.
+
+### Recovery Reinsert for applications without a pinnable field
+
+For applications whose focused field cannot be pinned at capture (some
+Electron, Java and remote-desktop clients), delivery uses the session keyboard
+stream. Clicking Reinsert makes the non-activating recovery panel key while
+Portavoz stays inactive, so that stream would reach the panel instead of the
+destination. Delivery therefore refuses with `focusUnavailable` and the text
+stays in recovery: Copy works and nothing is lost, but Reinsert cannot succeed
+on this route. The likely fix is a panel that does not become key for a button
+click (for example `becomesKeyOnlyIfNeeded`), which needs native verification
+in Slack, VS Code, a Java editor and a remote-desktop client before it ships.
 
 ### Live dictation can propose text without speech
 
