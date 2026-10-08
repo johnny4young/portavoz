@@ -209,7 +209,9 @@ outputs may omit a first-update time; nonempty outputs may not. Large WER/CER
 values remain valid observations of bad quality, not reasons to censor a run.
 Score admission also checks the unit-cost word-edit count implied by WER:
 it must be integral within floating-point roundoff and fall between the word-count
-difference and the larger word count. An empty hypothesis for nonempty speech
+difference and the larger word count. Words and characters derive from one
+normalized string, so zero WER, zero implied word edits and zero CER must
+coincide exactly. An empty hypothesis for nonempty speech
 must retain full word/character deletions, including cancelled attempts. The
 existing Swift producer's empty-reference 0/1 sentinel remains admitted for
 compatibility; it is not a defined no-speech WER. No-speech evaluation requires

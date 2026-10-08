@@ -365,6 +365,9 @@ class DictationModelRunnerTests(unittest.TestCase):
             dict(referenceWords=2, hypothesisWords=2, wordErrorRate=1.5),
             dict(referenceWords=2, hypothesisWords=0, wordErrorRate=0),
             dict(referenceWords=2, hypothesisWords=0, wordErrorRate=1, characterErrorRate=0),
+            dict(referenceWords=2, hypothesisWords=2, wordErrorRate=0, characterErrorRate=0.5),
+            dict(referenceWords=2, hypothesisWords=2, wordErrorRate=0.5, characterErrorRate=0),
+            dict(referenceWords=2, hypothesisWords=2, wordErrorRate=1e-9, characterErrorRate=0.5),
             dict(referenceWords=0, hypothesisWords=0, wordErrorRate=1),
             dict(referenceWords=0, hypothesisWords=1, wordErrorRate=0),
         ]
