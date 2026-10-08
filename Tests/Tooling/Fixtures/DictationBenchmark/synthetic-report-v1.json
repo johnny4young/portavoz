@@ -1,0 +1,381 @@
+{
+  "audioBytesVerified": false,
+  "binaryDigest": "4d7c4c7f562116fc23efac1d0aca249308eb2f451dbe6fe560278efbbe066030",
+  "configurationDigest": "cdd48865c2579c7faedec8ae1fc7ae16875f12ce54e913090383256885c79aa4",
+  "consentVerified": false,
+  "counts": {
+    "datasetCases": 4,
+    "missing": 1,
+    "observed": 4,
+    "planned": 5,
+    "plannedCases": 4,
+    "plannedFamilyClusters": 4,
+    "plannedSpeakerClusters": 3,
+    "terminal": {
+      "cancelled": 1,
+      "completed": 3,
+      "failed": 0,
+      "refused": 0,
+      "timed-out": 0
+    },
+    "unselectedCases": 0
+  },
+  "datasetDigest": "9559cf4e0a23a3c1469582deece3c5e835fc933ab72332551612ce8ccecfe441",
+  "delivery": {
+    "eligiblePlanned": 4,
+    "outcomes": {
+      "dispatched-unverified": 1,
+      "failed": 0,
+      "missing": 1,
+      "not-attempted": 1,
+      "refused": 0,
+      "verified": 1
+    },
+    "verifiedFractionOfAllPlanned": 0.25
+  },
+  "evidenceClass": "synthetic-fixture",
+  "gate": "inconclusive",
+  "inputDigest": "605066ab3941b9b2761324d26062d00af33ae20e7e2082dfeea82f95fe69b979",
+  "kind": "dictation-benchmark-report",
+  "latency": [
+    {
+      "eligiblePlanned": 4,
+      "estimator": "success-conditional-nearest-rank",
+      "measuredCompleted": 2,
+      "metric": "request-to-ready",
+      "missingOrUnsuccessful": 2,
+      "missingReason": "missing-phase-or-unsuccessful-attempt",
+      "p50": 20,
+      "p95": 20,
+      "temperature": "warm",
+      "unit": "ms"
+    },
+    {
+      "eligiblePlanned": 3,
+      "estimator": "success-conditional-nearest-rank",
+      "measuredCompleted": 1,
+      "metric": "onset-to-rendered-partial",
+      "missingOrUnsuccessful": 2,
+      "missingReason": "missing-phase-or-unsuccessful-attempt",
+      "p50": 150,
+      "p95": 150,
+      "temperature": "warm",
+      "unit": "ms"
+    },
+    {
+      "eligiblePlanned": 4,
+      "estimator": "success-conditional-nearest-rank",
+      "measuredCompleted": 2,
+      "metric": "stop-to-prepared",
+      "missingOrUnsuccessful": 2,
+      "missingReason": "missing-phase-or-unsuccessful-attempt",
+      "p50": 200,
+      "p95": 300,
+      "temperature": "warm",
+      "unit": "ms"
+    },
+    {
+      "eligiblePlanned": 3,
+      "estimator": "success-conditional-nearest-rank",
+      "measuredCompleted": 1,
+      "metric": "stop-to-observed-edit",
+      "missingOrUnsuccessful": 2,
+      "missingReason": "missing-phase-or-unsuccessful-attempt",
+      "p50": 400,
+      "p95": 400,
+      "temperature": "warm",
+      "unit": "ms"
+    },
+    {
+      "eligiblePlanned": 1,
+      "estimator": "success-conditional-nearest-rank",
+      "measuredCompleted": 1,
+      "metric": "request-to-ready",
+      "missingOrUnsuccessful": 0,
+      "missingReason": null,
+      "p50": 1000,
+      "p95": 1000,
+      "temperature": "process-cold",
+      "unit": "ms"
+    },
+    {
+      "eligiblePlanned": 1,
+      "estimator": "success-conditional-nearest-rank",
+      "measuredCompleted": 1,
+      "metric": "onset-to-rendered-partial",
+      "missingOrUnsuccessful": 0,
+      "missingReason": null,
+      "p50": 200,
+      "p95": 200,
+      "temperature": "process-cold",
+      "unit": "ms"
+    },
+    {
+      "eligiblePlanned": 1,
+      "estimator": "success-conditional-nearest-rank",
+      "measuredCompleted": 1,
+      "metric": "stop-to-prepared",
+      "missingOrUnsuccessful": 0,
+      "missingReason": null,
+      "p50": 500,
+      "p95": 500,
+      "temperature": "process-cold",
+      "unit": "ms"
+    },
+    {
+      "eligiblePlanned": 1,
+      "estimator": "success-conditional-nearest-rank",
+      "measuredCompleted": 0,
+      "metric": "stop-to-observed-edit",
+      "missingOrUnsuccessful": 1,
+      "missingReason": "missing-phase-or-unsuccessful-attempt",
+      "p50": null,
+      "p95": null,
+      "temperature": "process-cold",
+      "unit": "ms"
+    }
+  ],
+  "limitations": [
+    "asserted-inputs-not-producer-attestation",
+    "consent-record-review-required",
+    "audio-reference-bytes-not-inspected",
+    "no-semantic-or-resource-qualification",
+    "no-population-confidence-bound",
+    "no-acceptance-thresholds-adopted"
+  ],
+  "metricRegistryDigest": "ee866d3f0b03302d3e434ff1f56d727db4f0a8f3dbe77a9862641e41104821c1",
+  "modelDigests": [
+    "6bd8f29788b203c2c450e1f34c8de0bd01b55eb7f05d55d24672b070251e1d64"
+  ],
+  "nonSpeech": {
+    "completeIncidence": 1.0,
+    "lexicalProposals": 1,
+    "lexicalWordsPerMinute": 120.0,
+    "missing": 0,
+    "observedIncidence": 1.0,
+    "planned": 1,
+    "scored": 1,
+    "scoredExposureMs": 1000.0
+  },
+  "normalizerDigest": "239b79c3b2f0950798893f1b7c8b84374c456b62bab647e5c55421681b281f95",
+  "planDigest": "3a6550de79a22901060a39cff412ff5a4e1628715ef9c9a13743b4edfa2ff5c5",
+  "populationQualified": false,
+  "precision": [
+    {
+      "split": "holdout",
+      "stages": {
+        "postRule": {
+          "character": {
+            "completeErrorRate": null,
+            "edits": 0,
+            "observedErrorRate": null,
+            "plannedReferenceCount": 0,
+            "scoredReferenceCount": 0
+          },
+          "missingReason": null,
+          "missingScores": 0,
+          "observedSpeakerMacroWER": null,
+          "plannedSpeechAttempts": 0,
+          "scoredAttempts": 0,
+          "scoredSpeakerClusters": 0,
+          "word": {
+            "completeErrorRate": null,
+            "edits": 0,
+            "observedErrorRate": null,
+            "plannedReferenceCount": 0,
+            "scoredReferenceCount": 0
+          }
+        },
+        "raw": {
+          "character": {
+            "completeErrorRate": null,
+            "edits": 0,
+            "observedErrorRate": null,
+            "plannedReferenceCount": 0,
+            "scoredReferenceCount": 0
+          },
+          "missingReason": null,
+          "missingScores": 0,
+          "observedSpeakerMacroWER": null,
+          "plannedSpeechAttempts": 0,
+          "scoredAttempts": 0,
+          "scoredSpeakerClusters": 0,
+          "word": {
+            "completeErrorRate": null,
+            "edits": 0,
+            "observedErrorRate": null,
+            "plannedReferenceCount": 0,
+            "scoredReferenceCount": 0
+          }
+        }
+      },
+      "stratum": "no-speech"
+    },
+    {
+      "split": "holdout",
+      "stages": {
+        "postRule": {
+          "character": {
+            "completeErrorRate": 0.5,
+            "edits": 8,
+            "observedErrorRate": 0.5,
+            "plannedReferenceCount": 16,
+            "scoredReferenceCount": 16
+          },
+          "missingReason": null,
+          "missingScores": 0,
+          "observedSpeakerMacroWER": 0.5,
+          "plannedSpeechAttempts": 2,
+          "scoredAttempts": 2,
+          "scoredSpeakerClusters": 1,
+          "word": {
+            "completeErrorRate": 0.5,
+            "edits": 3,
+            "observedErrorRate": 0.5,
+            "plannedReferenceCount": 6,
+            "scoredReferenceCount": 6
+          }
+        },
+        "raw": {
+          "character": {
+            "completeErrorRate": 0.5,
+            "edits": 8,
+            "observedErrorRate": 0.5,
+            "plannedReferenceCount": 16,
+            "scoredReferenceCount": 16
+          },
+          "missingReason": null,
+          "missingScores": 0,
+          "observedSpeakerMacroWER": 0.5,
+          "plannedSpeechAttempts": 2,
+          "scoredAttempts": 2,
+          "scoredSpeakerClusters": 1,
+          "word": {
+            "completeErrorRate": 0.5,
+            "edits": 3,
+            "observedErrorRate": 0.5,
+            "plannedReferenceCount": 6,
+            "scoredReferenceCount": 6
+          }
+        }
+      },
+      "stratum": "quiet-en"
+    },
+    {
+      "split": "holdout",
+      "stages": {
+        "postRule": {
+          "character": {
+            "completeErrorRate": 0.2,
+            "edits": 1,
+            "observedErrorRate": 0.2,
+            "plannedReferenceCount": 5,
+            "scoredReferenceCount": 5
+          },
+          "missingReason": null,
+          "missingScores": 0,
+          "observedSpeakerMacroWER": 0.5,
+          "plannedSpeechAttempts": 1,
+          "scoredAttempts": 1,
+          "scoredSpeakerClusters": 1,
+          "word": {
+            "completeErrorRate": 0.5,
+            "edits": 1,
+            "observedErrorRate": 0.5,
+            "plannedReferenceCount": 2,
+            "scoredReferenceCount": 2
+          }
+        },
+        "raw": {
+          "character": {
+            "completeErrorRate": 0.2,
+            "edits": 1,
+            "observedErrorRate": 0.2,
+            "plannedReferenceCount": 5,
+            "scoredReferenceCount": 5
+          },
+          "missingReason": null,
+          "missingScores": 0,
+          "observedSpeakerMacroWER": 0.5,
+          "plannedSpeechAttempts": 1,
+          "scoredAttempts": 1,
+          "scoredSpeakerClusters": 1,
+          "word": {
+            "completeErrorRate": 0.5,
+            "edits": 1,
+            "observedErrorRate": 0.5,
+            "plannedReferenceCount": 2,
+            "scoredReferenceCount": 2
+          }
+        }
+      },
+      "stratum": "quiet-es"
+    },
+    {
+      "split": "holdout",
+      "stages": {
+        "postRule": {
+          "character": {
+            "completeErrorRate": null,
+            "edits": 0,
+            "observedErrorRate": null,
+            "plannedReferenceCount": 7,
+            "scoredReferenceCount": 0
+          },
+          "missingReason": "missing-stage-scores",
+          "missingScores": 1,
+          "observedSpeakerMacroWER": null,
+          "plannedSpeechAttempts": 1,
+          "scoredAttempts": 0,
+          "scoredSpeakerClusters": 0,
+          "word": {
+            "completeErrorRate": null,
+            "edits": 0,
+            "observedErrorRate": null,
+            "plannedReferenceCount": 2,
+            "scoredReferenceCount": 0
+          }
+        },
+        "raw": {
+          "character": {
+            "completeErrorRate": null,
+            "edits": 0,
+            "observedErrorRate": null,
+            "plannedReferenceCount": 7,
+            "scoredReferenceCount": 0
+          },
+          "missingReason": "missing-stage-scores",
+          "missingScores": 1,
+          "observedSpeakerMacroWER": null,
+          "plannedSpeechAttempts": 1,
+          "scoredAttempts": 0,
+          "scoredSpeakerClusters": 0,
+          "word": {
+            "completeErrorRate": null,
+            "edits": 0,
+            "observedErrorRate": null,
+            "plannedReferenceCount": 2,
+            "scoredReferenceCount": 0
+          }
+        }
+      },
+      "stratum": "quiet-mixed"
+    }
+  ],
+  "safetyCounterexamples": {
+    "dispatchAfterCancel": 0,
+    "duplicateInsertion": 0,
+    "ineligibleDispatch": 0,
+    "nonSpeechInsertion": 0,
+    "wrongSelection": 0,
+    "wrongTarget": 0,
+    "wrongText": 0
+  },
+  "schemaVersion": 1,
+  "sourceCommit": "c881df8f5e2b99929d3402c3b6eaf41422d65c2d",
+  "uncertainty": {
+    "interval": null,
+    "method": "not-estimated",
+    "reason": "independent-population-evidence-not-admitted"
+  }
+}
