@@ -9,6 +9,12 @@ The D539 comparison preserved the 7.6% AMI DER at the 0.25-second collar and pas
 both batch and live two-speaker model paths. Dictation-only averages still cannot
 establish parity, and a future engine upgrade must repeat this evidence.
 
+External-audio import acquires the optional diarizer once after required
+transcription (D532). Preparation or inference failure produces honest
+unattributed segments; cancellation instead stops publication. The app keeps the
+same verified model and residency lease adapters. This does not evaluate model
+quality or change recording/refinement attribution.
+
 ## PyannoteDiarizer — `Sources/DiarizationKit/PyannoteDiarizer.swift`
 
 - pyannote community-1 (segmentation) + WeSpeaker v2 (embeddings) via FluidAudio; 10 sha256-pinned artifacts (~14 MB). `DiarizerModels.load(localSegmentationModel:localEmbeddingModel:)` loads from explicit paths and **never downloads** (unlike `AsrModels.load`).

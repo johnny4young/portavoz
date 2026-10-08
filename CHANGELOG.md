@@ -15,6 +15,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## October 8, 2026
+
+- **📥 Audio import queue** — import several files at once, follow each one’s progress in your language, cancel or retry without touching your originals, and keep the transcript even when speaker identification is unavailable.
+
 ## October 7, 2026
 
 - **🔑 Safer credential updates** — a failed API-key replacement keeps your previous working credential.

@@ -50,6 +50,10 @@ CASES = {
     "testAppModalDialogChoiceIsObservable": {"modal-choice", "typed"},
     "testSynchronousAppModalDialogInterruption": set(),
     "testAsynchronousAppModalDialogInterruption": set(),
+    "testExpectedNativePickerChoiceIsObservable": {"file-choice"},
+    "testUnexpectedNativePickerRejectsTraversal": set(),
+    "testNativePickerRejectsBackgroundAnchor": set(),
+    "testNativePickerRejectsAncestorAnchor": set(),
 }
 NO_OVERLAY_CASES = {
     "testUninterruptedActionAndTeardown", "testUninterruptedKeyboardInputAndTeardown",
@@ -57,6 +61,8 @@ NO_OVERLAY_CASES = {
     "testAsynchronousSameApplicationModalInterruption", "testSameApplicationModalRejectsBackgroundAnchor",
     "testAppModalDialogChoiceIsObservable", "testSynchronousAppModalDialogInterruption",
     "testAsynchronousAppModalDialogInterruption",
+    "testExpectedNativePickerChoiceIsObservable", "testUnexpectedNativePickerRejectsTraversal",
+    "testNativePickerRejectsBackgroundAnchor", "testNativePickerRejectsAncestorAnchor",
 }
 # Each negative control must stop through the exact refusal path it targets:
 # a pointer interruption enters the monitor, a foreign overlay removes keyboard
@@ -73,6 +79,9 @@ STOP_REASONS = {
     "testSameApplicationModalRejectsBackgroundAnchor": "modal-context",
     "testSynchronousAppModalDialogInterruption": "modal-context",
     "testAsynchronousAppModalDialogInterruption": "modal-context",
+    "testUnexpectedNativePickerRejectsTraversal": "modal-context",
+    "testNativePickerRejectsBackgroundAnchor": "modal-context",
+    "testNativePickerRejectsAncestorAnchor": "modal-context",
 }
 KEYBOARD_REFUSAL_PREFIX = b"PORTAVOZ_UI_KEYBOARD_REFUSAL"
 # A missing/ambiguous fixture receiver is not evidence that the foreign overlay

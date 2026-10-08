@@ -2631,16 +2631,6 @@
         }
       }
     },
-    "Choose an audio file to transcribe, or a .portavoz meeting file": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Elige un archivo de audio para transcribir, o un archivo de reunión .portavoz"
-          }
-        }
-      }
-    },
     "Choose an existing person or keep this as a separate person. Portavoz never merges people automatically.": {
       "localizations": {
         "es": {
@@ -11769,6 +11759,16 @@
         }
       }
     },
+    "Retry": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reintentar"
+          }
+        }
+      }
+    },
     "Retry available — attempt %d of %d": {
       "localizations": {
         "es": {
@@ -15611,12 +15611,12 @@
         }
       }
     },
-    "Transcribing audio (Whisper)…": {
+    "Transcribing…": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Transcribiendo audio (Whisper)…"
+            "value": "Transcribiendo…"
           }
         }
       }
@@ -17493,6 +17493,266 @@
           "stringUnit": {
             "state": "translated",
             "value": "El selector de aplicaciones necesita una ventana de Ajustes. Abre Ajustes e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "%lld imports · %lld unfinished": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld importaciones · %lld sin terminar"
+          }
+        }
+      }
+    },
+    "Another audio operation is finishing. Retry shortly.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otra operación de audio está terminando. Reintenta en un momento."
+          }
+        }
+      }
+    },
+    "Cancelled — import the file again to continue": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelado: vuelve a importar el archivo para continuar"
+          }
+        }
+      }
+    },
+    "The original is unavailable. Reconnect its drive, then import it again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El original no está disponible. Reconecta su unidad y vuelve a importarlo."
+          }
+        }
+      }
+    },
+    "The original could not be copied. Import it again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo copiar el original. Vuelve a importarlo."
+          }
+        }
+      }
+    },
+    "Audio imports": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importaciones de audio"
+          }
+        }
+      }
+    },
+    "Audio imports · %lld unfinished": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importaciones de audio · %lld sin terminar"
+          }
+        }
+      }
+    },
+    "Audio work is still finishing. Try again shortly.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El trabajo de audio aún está terminando. Vuelve a intentarlo en un momento."
+          }
+        }
+      }
+    },
+    "Cancelled — retry when you are ready": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelado: reintenta cuando quieras"
+          }
+        }
+      }
+    },
+    "Checking and copying audio…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificando y copiando el audio…"
+          }
+        }
+      }
+    },
+    "Choose audio files to transcribe, or one .portavoz meeting file": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige archivos de audio para transcribir o un archivo de reunión .portavoz"
+          }
+        }
+      }
+    },
+    "Choose between 1 and 1,000 audio files to import.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige entre 1 y 1.000 archivos de audio para importar."
+          }
+        }
+      }
+    },
+    "Downloading Whisper %@… %lld%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando Whisper %@… %lld%%"
+          }
+        }
+      }
+    },
+    "Import a meeting bundle on its own, or choose multiple audio files.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importa un archivo de reunión por separado o elige varios archivos de audio."
+          }
+        }
+      }
+    },
+    "Imports continue when you close this panel. Your original files stay unchanged.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las importaciones continúan al cerrar este panel. Tus archivos originales no se modifican."
+          }
+        }
+      }
+    },
+    "Next": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siguiente"
+          }
+        }
+      }
+    },
+    "No audio imports": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay importaciones de audio"
+          }
+        }
+      }
+    },
+    "Previous": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anterior"
+          }
+        }
+      }
+    },
+    "Processing failed. Check model readiness and available storage, then retry.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El procesamiento falló. Comprueba que los modelos estén listos y haya espacio disponible, y reintenta."
+          }
+        }
+      }
+    },
+    "Ready": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listo"
+          }
+        }
+      }
+    },
+    "The import queue could not be updated. Your original files have not been changed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo actualizar la cola de importaciones. Tus archivos originales no se han modificado."
+          }
+        }
+      }
+    },
+    "The meeting was deleted, but some audio files could not be removed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reunión se eliminó, pero no se pudieron borrar algunos archivos de audio."
+          }
+        }
+      }
+    },
+    "The original changed. Import it again as a new file.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El original cambió. Impórtalo de nuevo como un archivo nuevo."
+          }
+        }
+      }
+    },
+    "The original is unavailable. Reconnect its drive, then retry.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El original no está disponible. Reconecta su unidad y reintenta."
+          }
+        }
+      }
+    },
+    "The retained copy could not be verified. Import the original again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo verificar la copia conservada. Importa de nuevo el original."
+          }
+        }
+      }
+    },
+    "Waiting to import": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En espera de importación"
           }
         }
       }

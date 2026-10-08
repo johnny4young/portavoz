@@ -204,7 +204,7 @@ hidden stage. A main-file or WAL size/modification change across the private
 copy also fails closed rather than publishing a mixed point in time. The source is never opened through `MeetingStore`, so no
 migration/configuration write can occur, and it is never renamed or deleted.
 
-### Schema (`v1`–`v51` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v52` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -1968,3 +1968,84 @@ version bump is needed. File-backed tests open populated v50 through
 meeting, check integrity and foreign keys, reject new oversized insert/update
 operations, and reopen. A separate fixture proves successful earlier v51
 databases remain compatible. This does not certify private-library upgrades.
+
+### Durable audio-import admission (schema v52, D522)
+
+`enqueueAudioImports` atomically admits distinct selected-file identities, their
+incomplete meeting rows and existing owner-leased `audio-import` jobs. It refuses
+changed input under an existing identity and rolls back a batch if a later file
+conflicts. `audioImportInput` requires the current lease; `cancelAudioImport`
+retires queued or running ownership without making an incomplete import ready.
+The additive input table binds job and meeting together through a composite
+foreign key. Input is private and bounded to 1 MiB per file and 16 MiB per
+selection, with at most 1,000 distinct files; admission rejects instead of
+truncating. It includes the once-sampled
+recognition/output policies, a reserved copy UUID and an opaque local source
+bookmark. The incomplete meeting's `audioDirectory` is reserved at admission,
+as for capture; only copied-digest/bookmark retirement certifies acquisition.
+The bookmark is
+the explicit D522 exception, not an absolute `audioDirectory` or portable source.
+No bundle, sync, MCP or support projection includes the table; raw local database
+backups do include it.
+
+`publishAudioImportCopy` accepts only an immutable
+`Audio/<meeting UUID>/Imports/<reserved copy UUID>` directory and canonical SHA-256.
+The caller must finish and verify the actual file first. The transaction checks
+the unchanged reserved directory on the incomplete meeting and replaces the external
+bookmark with owned-copy metadata. Repeating the same publication is inert;
+replacing the published copy is rejected. The original admission fingerprint
+remains the job identity, while a separate digest checks the current bounded
+payload. These checks detect inconsistent records; they do not authenticate a
+database against an attacker who can rewrite both payload and digest.
+
+`completeAudioImport` reuses transcript validation and publication machinery,
+requires revision zero, empty prior cast/transcript, matching copy digest, live
+meeting and current lease, and commits content, revision and job success together.
+It preserves intervening title edits. Silent imports may retain owned audio with
+an empty transcript; existing non-import artifact validators still require text.
+`retryAudioImport` resets only failed/cancelled work under explicit user intent,
+retaining job identity and copied audio. It cannot steal a live lease or replay
+success. Expired work uses the existing processing-job recovery policy. Because
+the lease ignores tombstones, the worker re-reads the live job after each
+heartbeat and suspends (refunds) an attempt whose meeting was trashed instead of
+finishing model work that publication must reject.
+
+The external bookmark does not outlive an import that can no longer use it.
+`cancelAudioImport` retires it in the cancelling transaction when no owned copy
+was published, and the worker calls `retireFailedAudioImportSource` after a
+terminal failure (the store re-checks that the job is `failed` and uncopied, so a
+scheduled retry keeps its source). A retired input has neither a bookmark nor a
+copy (`canResume == false`); `retryAudioImport` rejects it, the queue page reports
+`canRetry == false`, and the UI asks for a fresh selection instead of offering
+Retry. A failure after publication keeps the owned copy and remains retryable.
+Acquisition contention (`import.copy.busy`) is not terminal: the worker fails the
+attempt with `retryAt` (5 s, then 10 s, … capped at 60 s) inside the job's
+bounded attempts, and the queue's scheduled wake resumes it automatically.
+
+File-backed reopen and injected child-write failures exercise these storage
+boundaries. `ProcessAudioImports` now consumes them through a native copy adapter
+and the existing model workflow through app-owned Library admission/supervision.
+Real-file tests complement storage tests without certifying real model output. The request reserves the acquisition directory
+before any file write. Under native acquisition exclusion, the worker reads its
+current input, validates the original and replaces only that unpublished stage.
+Rejected publication retains its durable staging identity; published input takes
+the verification path instead; like `RecordingsLocation.resolve`, verification
+falls back to the default recordings root for a copy published while the custom
+root was unavailable. Purge uses the same reserved location, so both
+unpublished staging and published audio participate in the existing trash policy.
+Native copy and acquisition bridges reject cancellation in the calling task
+before spawning detached work. Child-only cancellation checks are insufficient:
+an already-cancelled caller could otherwise reclaim its prior unpublished stage
+before the cancellation handler reaches the new task. Cancellation after launch
+still forwards to and joins that task; it does not promise to undo completed I/O.
+`deletedMeeting` is a single-row tombstone lookup, not aggregate hydration or a
+whole-trash scan per deletion. The app purger reads it under native acquisition
+exclusion shared with restoration; automatic expiry rechecks the strict cutoff
+against the current row before file removal. No second cleanup authority is added.
+
+`audioImportQueuePage` and its scoped observation join import input, job and live
+meeting rows without projecting bookmarks or transcript text. Limits are 1–50
+(default 20); negative offsets or invalid limits reject. Counts and the page are
+read in one transaction, with unfinished work first and deterministic creation/
+job-ID ordering. The presentation can page through completed imports without
+hydrating whole meeting aggregates.
