@@ -136,6 +136,7 @@ python3 -m unittest Tests.Tooling.test_ui_test_execution
 python3 -m unittest Tests.Tooling.test_ui_interruption_evidence_archive
 python3 -m unittest Tests.Tooling.test_ui_interruption_safety
 python3 -m unittest Tests.Tooling.test_app_payload_permissions
+python3 -m unittest Tests.Tooling.test_ui_bundle_metadata
 python3 -m unittest Tests.Tooling.test_ui_copy_policy
 python3 -m unittest Tests.Tooling.test_ui_test_verified_base
 python3 -m unittest Tests.Tooling.test_ui_test_verification_anchor
@@ -212,6 +213,7 @@ python3 scripts/live_assist_validation.py verify-public \
   --fixture Fixtures/LiveAssistValidation/public-bilingual-v1.json \
   --budget docs/evidence/live-assist-validation-budget.json
 python3 -m unittest Tests.Tooling.test_ui_test_scope
+python3 -m unittest Tests.Tooling.test_first_install_site
 python3 -m unittest Tests.Tooling.test_ui_test_runtime
 python3 -m unittest Tests.Tooling.test_run_ui_tests
 python3 -m unittest Tests.Tooling.test_ui_test_host_preflight

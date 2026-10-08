@@ -33,6 +33,11 @@ The system combines these patterns:
 - injected capability and platform adapters;
 - explicit, content-free policy records before meeting-content network egress.
 
+The onboarding view uses a bounded observable preparation state with closed,
+localized failure categories and explicit retry/continue actions. The view
+never owns model leases or cancels process-shared loads; existing AppServices
+readiness and audio-first capture remain the authority.
+
 Feature parity is a permanent constraint: audio and user-owned data remain
 discoverable when transcription, diarization, generation, indexing, sync, or an
 external integration fails.
@@ -153,6 +158,17 @@ text delivery, and no captured content or destination identity enters a receipt.
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners including recording-scoped proactive-assist state, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
 | `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
 
+### Audio export compatibility boundary
+
+`AudioPlaybackKit.AudioExportSession` owns the shared AAC export bridge used by
+both clip-export paths and compression. Composition, requested ranges, clear
+mixing, output replacement, rollback, verification and source deletion remain
+with their existing callers. Current systems retain AVFoundation's async export
+and native errors. The macOS 14/iOS 17 fallback waits for its callback and accepts
+only `.completed`, mapping failures through the caller's existing error family.
+Cancelling a legacy wait does not retire the export before that callback; this
+refactor adds no cancellation or filesystem owner.
+
 ### Parakeet job preparation
 
 Inside `TranscriptionKit`, each Parakeet transcription job receives a fresh native
@@ -210,7 +226,7 @@ data into a field qualification.
 `DictationController` owns the same session, coalescing, final text rules and
 cancellation path for production and disposable tests. Its session dependencies
 provide audio preparation, the existing `LiveTranscriptionRuntime` lease,
-permission/destination/insertion effects, preferences and the capture clock.
+permission, captured-destination and explicit-copy effects, preferences and the capture clock.
 Explicit combined speech/diarization readiness stays in the live-speech
 composition extension. Production composition acquires the shared live-speech
 token through a type-erased live-engine handle that ends it on completion.
@@ -233,10 +249,16 @@ A separate Xcode-only receiver builds no shipping product. An explicitly armed
 temporary app, not XCTest's sandboxed runner. It requires a UUID-named clipboard
 and the fixed receiver bundle; the receiver's native Paste action reads that
 board. The real event pair is directed to the receiver process so a focus change
-cannot route fixture Paste into another application. Production callers retain
-the general pasteboard and session-event defaults with unchanged change-count
-ownership protection; their global routing is not qualified by this fixture. The native journey requires real app
-Accessibility permission and must not bypass or silently grant it. Synthetic
+cannot route fixture Paste into another application. Production and fixture
+insertion both require an explicit captured process target; only production
+uses the general pasteboard. Change-count ownership protection remains shared.
+A separately flagged native-controller journey reuses the existing scripted
+microphone/recognizer through the production controller, captures the fixed
+receiver at session admission, and stops only after a real panel mode choice plus
+an acknowledged Stop on a distinct UUID control board. It neither activates the
+receiver nor registers global input. The native journeys require real app
+Accessibility and event-synthesis authorization. Their public preflights are
+quiet and must not bypass or silently grant permission. Synthetic
 controller coverage and an event-dispatched result are not ASR or native-delivery
 qualification; the receiver's actual value is the oracle.
 
@@ -276,6 +298,8 @@ The implemented application workflows include:
 - local summary-provider discovery, typed recommendation, and first-selection
   persistence without overwriting an existing choice;
 - external-audio import with required transcription and degradable derivation;
+  optional speaker-model preparation occurs once after recognition, within the
+  same cancellation-aware failure boundary as attribution;
 - relational `.portavoz` bundle import and read-consistent bundle export;
 - read-consistent staged whole-library Markdown backup with typed partial
   results and capture checkpoints;
@@ -1130,21 +1154,64 @@ the Accessibility permission flow. Invalid persisted button numbers normalize
 to disabled; CGEvent indices 0/1 (left/right) are never eligible.
 TranscriptionKit owns only the post-ASR text policy: optional bilingual filler
 removal followed by one non-cascading, longest-trigger-first replacement pass.
-The policy reads one canonicalized rule snapshot at delivery, never mutates a
-meeting transcript, and treats the first match against the original dictation
-as the user's authoritative spelling.
+The app resolves explicit Literal/Clean mode by session choice, captured bundle-ID
+profile, then global preference. The existing destination capture supplies identity;
+no profile recaptures focus or grants insertion authority. Missing preferences
+initialize before the first UI enable action: prior configured choices retain
+Clean, untouched preferences choose Literal. The app Settings model owns bounded
+profile persistence and explicit corruption recovery; Core owns only the mode and
+bundle-ID value. Native application selection saves no paths, titles or context.
+The controller admits one rule/filler snapshot at session start and freezes its
+session override at Stop request, before the capture tail drains. Literal bypasses
+optional cleaning while retaining recognition/assembly hygiene. Clean applies the
+snapshot only to final dictation, never a meeting transcript, and treats the first
+match against original dictation as the user's authoritative spelling. Completion
+or cancellation retires the snapshot; recovery does not transform or insert again.
+The app-local `CapturedDictationDestination` binds the display name and insertion
+capability once, before model preparation or panel presentation. The platform
+adapter retains the original `NSRunningApplication` and focused AX element:
+application equality, termination state and `CFEqual` on the focused element
+must still match. Names and bundle identifiers are never authority. Core and
+capability targets receive no AppKit or Accessibility dependency.
+
 The last-mile `TextInserter` returns a typed result. It waits for physical
-modifiers without swallowing cancellation, refuses a timed-out chord, performs
-a fail-closed Accessibility inspection immediately before clipboard mutation,
-posts a complete synthetic paste pair or restores synchronously, and later
-restores only captured pasteboard representations when its change count still
-owns the clipboard. Secure or uninspectable focus, unavailable clipboard or
-event delivery, and held modifiers become visible failures rather than false
-insertion success. Disposable native tests share the inserter but supply a named
-pasteboard and a process-addressed event target whose secure-field inspection
-reads that application's focus. This contains fixture input if
-focus changes without altering production session routing; it is not evidence
-of a production destination fence.
+modifiers, revalidates the captured destination before borrowing the clipboard
+and immediately before posting, and checks cancellation after synchronous AX
+inspection. A pinned destination posts only to the captured positive process
+identifier. An application that exposes no focused AX element at capture keeps
+the previous session-stream Paste, gated on the same frontmost application, a
+non-secure inspectable system-wide focused field, and no key Portavoz panel
+holding the keyboard stream. Delivery never activates an application. Rich clipboard snapshots
+are restored after refusal or a delay only while their change count still owns
+the board. A clipboard owner change during final inspection prevents dispatch.
+`DictationDeliveryOutcome` in Core separates verified observation, unverified
+dispatch and typed refusal without importing platform types. The app's narrow
+readback adapter observes only the expected inserted span and selection/count
+metadata, with per-object AX timeouts and a bounded polling window. Neither a
+whole external document nor an old selection enters the domain or storage.
+Unsupported or ambiguous readback remains dispatched and cannot authorize a
+retry. The controller expires only verified feedback through a separately owned
+dismissal task. Unverified dispatch retains complete output for explicit Copy or
+Discard, with no retry capability; it is non-modal, so the next dictation starts
+normally and replaces only that notice. Neither presentation
+retains the capture runtime lease; SwiftUI does not inspect Accessibility. Event dispatch is not an external editor
+acknowledgement, and even matching readback is not an atomic focus transaction.
+
+The controller retains a refused output in memory, independently of microphone
+and model lifetime. New input triggers reveal this recovery state instead of
+replacing it. Explicit Copy is a user Copy that replaces the clipboard without
+snapshot or rollback; the output stays available and selectable whether it
+succeeds or fails. Reinsert retries only
+the original captured destination without opening audio, and Discard retires
+the delivery identity and clears presentation copies. A destination that could
+not be captured permits Copy but not implicit retargeting. Retry tasks are
+cancellable and identity-fenced so a late result cannot revive discarded text
+or dismiss a later session. The SwiftUI recovery view owns no platform effect
+or storage write; quitting is not durable recovery. AppKit and hosted SwiftUI
+content share one bounded height authority so revealing retained work does not
+move the panel through conflicting intrinsic-size constraints. Discard uses
+native cancellation semantics for uncommitted work, not a deletion role or an
+application-wide first-click override.
 
 Live Apuntador keeps endpoint and semantic admission split across layers. The
 pure `TurnEndpointPolicy` in `IntelligenceKit` owns the remote-channel, noise,
@@ -1454,7 +1521,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 51. Its skill-identity write constraints preserve
+The current schema version is 52. Its skill-identity write constraints preserve
 historical denials rather than rejecting a populated library during upgrade.
 It includes:
 
@@ -5288,6 +5355,10 @@ content.
 constructed only by the app and CLI composition roots. `ApplicationKit` exposes
 asynchronous user-managed credential operations, so Settings credential and
 publishing-command paths do not block their actor on Security.framework calls.
+Credential replacement uses an injected synchronous Security boundary and atomic
+value-only updates. Missing-item creation and one duplicate-add retry preserve
+that boundary without deleting prior authority. Stored malformed bytes produce
+a content-free error; encrypted voice-store transaction ownership is unchanged.
 CLI publishing adapters resolve a credential lazily only after ApplicationKit
 has admitted the local document or pending work, preserving local errors and
 no-op behavior before any device-secret read.
@@ -5795,6 +5866,12 @@ nor answers the interrupting element. The execution classifier retains this as
 A separate permission-free fixture target compiles the same base and cleanup
 sources. Observable positive controls and synchronous/asynchronous negative
 controls qualify the callback without opening a system permission prompt.
+Keyboard admission treats a nested open-panel/Go to Folder hierarchy as one
+innermost active modal receiver. Only that receiver or its descendants can supply
+the explicit anchor; ancestor and background controls grant no authority. The
+existing non-hittable-dialog exclusion and unique frontmost-process check remain.
+After cleanup, the worker emits its refusal receipt and exits directly rather
+than reentering XCTest issue recording from the callback.
 The overlay's main-queue parent-exit callback emits a separate lifecycle
 acknowledgement before exiting; process absence without it is failed cleanup,
 not success. This closes the false-positive case where a main-actor callback
@@ -6353,6 +6430,48 @@ releases generation, then verifies the final answer and persisted citation.
 This changes only temporary-store fixture composition, not production latency.
 The handshake uses the launch-owned temporary directory and retains cancellation,
 cleanup and the original deadlines. No assertion or runtime budget is removed.
+
+### Pending external-audio import authority
+
+Durable import admission uses the existing meeting and owner-leased processing
+job authority. A local-only input BLOB holds a selected source capability and
+sampled import preferences; Core owns those typed values and ApplicationKit
+retains its existing import preference type alias. The opaque bookmark exception
+is explicitly scoped to unprocessed external input. Audio-directory strings
+remain relative and exported/synced meeting projections receive no bookmark.
+Cancellation retires an incomplete import without advertising it as ready.
+Admission reserves an immutable copy identity and its meeting-relative audio
+location before filesystem acquisition, as recording reservation already does.
+This location alone does not prove the existence or acceptance of bytes.
+Storage can atomically publish that exact copy reference while
+retiring its bookmark, then install required content and job success under the
+same live lease. Explicit retry retains logical identity and owned audio; the
+existing transcript writer and job retry reset are shared rather than copied.
+PlatformKit owns the native bookmark and bounded copy/verification adapter.
+A persistent, content-free native lock excludes concurrent acquisitions through
+fresh owner validation, exact unpublished-stage reclamation and publication.
+Published input is verified, never reclaimed; an expired database lease cannot
+by itself exclude a still-running native writer.
+ApplicationKit serializes durable import attempts, drains heartbeat and execution
+together, and reuses `ImportMeeting` for the model pipeline. Cancellation cleanup
+is independently uncancelled and joined so a cancelled database caller cannot
+leave its lease active. Installation returns the accepted transcript revision
+to summary provenance. Existing purge can therefore remove unpublished staging
+without another queue or database. It re-reads one current tombstone, shares
+native exclusion with restore, and revalidates the cutoff for automatic expiry.
+The native deletion adapter and lock share one sampled audio root. `AppServices` owns one `AudioImportQueueModel` independently of Library windows.
+It admits whole selections atomically, drains serially and schedules a single
+lease-expiry wake instead of polling. The Library renders a twenty-row scoped
+SQLite observation with stable meeting identities, per-file status, cancellation,
+retry and result navigation. Moving the recordings root excludes new admissions
+and requires an empty unfinished queue. A single meeting bundle retains its
+existing import workflow; mixed or multiple bundles reject before partial work.
+Mutation failures are visible and explicitly dismissible; purge no longer hides
+native-exclusion or storage errors.
+
+The audio-import supervisor keeps its owner task through idle-wake inspection.
+Processing completion does not discard a still-running storage lookup: suspension
+cancels and joins it, and new admission schedules one replacement owner.
 
 Dictation session completion and UI feedback have separate ownership.
 Recognizer EOF before an issued Stop is rejected before waiting for a live audio

@@ -10,9 +10,19 @@ final class DictationPanelController {
     private var panel: NSPanel?
 
     func show(controller: DictationController) {
-        guard panel == nil else { return }
+        let height = DictationPanelLayout.height(for: controller.phase)
+        if let panel {
+            let origin = panel.frame.origin
+            panel.setContentSize(NSSize(width: 520, height: height))
+            if let visible = panel.screen?.visibleFrame {
+                panel.setFrameOrigin(NSPoint(
+                    x: origin.x, y: max(visible.minY, min(origin.y, visible.maxY - panel.frame.height))))
+            }
+            panel.orderFrontRegardless()
+            return
+        }
         let panel = DictationPanelWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 96),
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: height),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false)
@@ -41,6 +51,17 @@ final class DictationPanelController {
     }
 }
 
+/// One height authority for AppKit and SwiftUI: a conflicting intrinsic size
+/// otherwise moves the panel again after every explicit re-show.
+private enum DictationPanelLayout {
+    static func height(for phase: DictationController.Phase) -> CGFloat {
+        switch phase {
+        case .recovery, .dispatched: 288
+        default: 96
+        }
+    }
+}
+
 private final class DictationPanelWindow: NSPanel {
     override var canBecomeKey: Bool { true }
 }
@@ -50,14 +71,18 @@ private struct DictationStripView: View {
 
     var body: some View {
         Group {
-            if case .inserted(let words) = controller.phase {
-                insertedView(words)
+            if case .recovery(let failure) = controller.phase {
+                DictationRecoveryView(controller: controller, failure: failure)
+            } else if case .verified(let words) = controller.phase {
+                verifiedDeliveryView(words)
+            } else if case .dispatched = controller.phase {
+                DictationUnverifiedDeliveryView(controller: controller)
             } else {
                 dictatingView
             }
         }
         .padding(12)
-        .frame(width: 520)
+        .frame(width: 520, height: DictationPanelLayout.height(for: controller.phase))
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
     }
 
@@ -75,6 +100,15 @@ private struct DictationStripView: View {
                     .foregroundStyle(.secondary)
                 if let target = controller.targetApp, controller.isActive {
                     targetChip(target)
+                }
+                if controller.isActive {
+                    DictationTextModePicker(
+                        identifier: "dictation-panel-text-mode", label: Text("Text mode"), selection: Binding(
+                        get: { controller.textMode }, set: { controller.selectTextMode($0) }))
+                        .labelsHidden()
+                        .controlSize(.mini)
+                        .frame(width: 80)
+                        .disabled(!controller.canChangeTextMode)
                 }
                 Spacer()
                 if controller.phase == .listening {
@@ -122,15 +156,17 @@ private struct DictationStripView: View {
 
     /// The brief confirmation after insertion: N words → the target app,
     /// and the honest reassurance that nothing was stored.
-    private func insertedView(_ words: Int) -> some View {
+    private func verifiedDeliveryView(_ words: Int) -> some View {
         HStack(spacing: 10) {
             Image(systemName: PVSymbol.success)
                 .foregroundStyle(.green)
                 .font(.title3)
             VStack(alignment: .leading, spacing: 1) {
                 Text(insertedTitle(words))
+                    .accessibilityIdentifier("dictation-panel-delivery-status")
                     .font(.callout.weight(.medium))
                 Text("Nothing was saved in Portavoz.")
+                    .accessibilityIdentifier("dictation-panel-delivery-detail")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -196,7 +232,7 @@ private struct DictationStripView: View {
             return L10n.text("Dictating")
         case .failed(let message):
             return message
-        case .idle, .inserted:
+        case .idle, .verified, .dispatched, .recovery:
             return ""
         }
     }

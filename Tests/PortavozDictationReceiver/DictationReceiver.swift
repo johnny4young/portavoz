@@ -6,6 +6,8 @@ import AppKit
 @MainActor
 final class DictationReceiver: NSObject, NSApplicationDelegate {
     private var window: NSWindow?
+    private var editor: NSTextView?
+    private var enableEditorButton: NSButton?
 
     static func main() {
         let app = NSApplication.shared
@@ -35,11 +37,29 @@ final class DictationReceiver: NSObject, NSApplicationDelegate {
         editor.isAutomaticDashSubstitutionEnabled = false
         editor.isAutomaticTextReplacementEnabled = false
         editor.isAutomaticSpellingCorrectionEnabled = false
+        let delaysEditor = ProcessInfo.processInfo.environment["PORTAVOZ_RECEIVER_DELAY_EDITOR"] == "1"
+        editor.isHidden = delaysEditor
         window.contentView?.addSubview(editor)
-        window.makeFirstResponder(editor)
+        if delaysEditor {
+            let enable = NSButton(title: "Enable editor", target: self, action: #selector(enableEditor))
+            enable.frame = NSRect(x: 20, y: 250, width: 180, height: 44)
+            enable.setAccessibilityIdentifier("dictation-receiver-enable-editor")
+            window.contentView?.addSubview(enable)
+            window.makeFirstResponder(enable)
+            enableEditorButton = enable
+        } else {
+            window.makeFirstResponder(editor)
+        }
+        self.editor = editor
         window.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
         self.window = window
+    }
+
+    @objc private func enableEditor() {
+        editor?.isHidden = false
+        enableEditorButton?.isHidden = true
+        window?.makeFirstResponder(editor)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }

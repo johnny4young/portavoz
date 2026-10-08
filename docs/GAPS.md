@@ -35,17 +35,65 @@ dropped relay yields revoke automatic delivery for their owning session;
 normal source or recognizer completion also requires the controller to have
 issued Stop, and cancelled terminal captions cannot overwrite a new session.
 These repairs do not provide durable recovery of interrupted dictation audio.
-The displayed application name is not yet a pinned delivery
-target; `.inserted` still denotes dispatched events rather than a verified
-external edit. These require call-site regressions and fixes before broad
-reliability claims. Model quality, Bluetooth transitions and the external-editor
+The destination is now pinned before preparation to a process
+and focused AX element, with refused output retained for explicit Copy or retry
+(D544). Deterministic tests exercise the controller and actual inserter, but
+native focus switches, process termination/relaunch and secure-field transitions
+still need receiver/device evidence. Accessibility validation and keyboard-event
+posting are not an atomic editor transaction. The result now distinguishes
+bounded matching readback from unverified dispatch and refusal; unsupported
+editors remain explicitly unverified. Deterministic controller/inserter coverage
+cannot qualify native AX observation. The dedicated receiver requires the
+verified result and actual text, but its existence does not establish a passed
+gate. Timeout setup is applied to each newly retrieved focused-field object before
+security inspection, not just its application or an equal captured object.
+That wiring follows the SDK contract; adversarial slow native AX servers remain
+unmeasured. Specific AX timeouts limit requested work, not arbitrary server allocation
+or later external edits. Unverified dispatch keeps the last complete output
+in RAM for explicit Copy or Discard, without enabling Reinsert or automatic
+replay. It does not block the next dictation: a new trigger starts normally and
+replaces only that non-modal notice. The user must check the destination before
+manually pasting: unsupported acknowledgement cannot distinguish a lost event
+from a late edit. This removes the expiring-copy gap, not native-delivery
+uncertainty or incomplete-capture loss.
+These failures and evidence boundaries prevent broad reliability claims. Recovery is RAM-only;
+quitting does not preserve the output. This recovery covers final text after
+completed recognition, not an incomplete capture/model failure: those failures
+still have no supported Copy or durable recovery of admitted partial captions.
+Recovery Copy is an explicit Copy that replaces the clipboard (including
+multiple items); the excerpt stays selectable. Ordered clipboard preservation
+for the paste path and snapshot size/materialization remain independent
+limitations. Applications without a pinnable focused field use the previous
+session-stream delivery and checks, not field pinning, and remain unverified.
+Model quality, Bluetooth transitions and the external-editor
 matrix require separate evidence; a synthetic caption fixture cannot establish
 those results. Missing Accessibility permission makes the separately selected
 native delivery gate unqualified, not proof that insertion works. Hosted
-unattended EN/ES UI qualification excludes exactly that TCC-owned receiver case
+unattended EN/ES UI qualification excludes the two TCC-owned receiver cases
 (D540); run `make test-ui-native-dictation` on an explicitly authorized
 disposable app and retain its actual receipt before claiming cross-process
 delivery.
+
+The shared native harness still has an open expected-modal positive-control
+counterexample. An attached synthetic alert accepted the exact Unicode text,
+but its choice click did not produce the required completion effect; XCTest
+reported a non-finite pointer rectangle. Owned cleanup completed and the
+validator refused qualification before the product catalogue ran. This does
+not establish a product defect, denied authorization, or the cause of the
+missing action. Diagnose native geometry and editing handoff at that call site;
+do not waive the control, replace its failed receipt with a retry, or infer
+complete local UI qualification from separate native dictation journeys.
+
+### Live dictation still lacks speech admission
+
+Independent public/synthetic controller observations have produced lexical
+proposals from silence and tone inputs. The delivery double refused native
+Paste, but reaching that boundary disproves the assumption that a lexical result
+necessarily contains speech. The live lane has no pre-transcription VAD gate.
+Diagnose and validate speech admission without an ad-hoc output-token/RMS filter
+or changes to the original meeting audio. This delivery-observation work does
+not resolve model quality or certify that a matching external edit was a
+faithful transcription.
 
 The installed-model controller lane writes complete per-run receipts rather
 than per-caption progress. The sequential matrix launcher now preserves each
@@ -55,6 +103,63 @@ no admitted partial cell count; a fresh process per cohort does not establish
 long single-process endurance or explain a backend stall. Complete matrix
 observation, quality acceptance, leak evidence and native delivery remain
 distinct requirements.
+
+### Recovery Reinsert for applications without a pinnable field
+
+For applications whose focused field cannot be pinned at capture (some
+Electron, Java and remote-desktop clients), delivery uses the session keyboard
+stream. Clicking Reinsert makes the non-activating recovery panel key while
+Portavoz stays inactive, so that stream would reach the panel instead of the
+destination. Delivery therefore refuses with `focusUnavailable` and the text
+stays in recovery: Copy works and nothing is lost, but Reinsert cannot succeed
+on this route. Choosing Literal or Clean in the panel during a session
+keys the panel the same way, so that session's delivery on this route is refused
+into recovery too. The likely fix is a panel that does not become key for a button
+click (for example `becomesKeyOnlyIfNeeded`), which needs native verification
+in Slack, VS Code, a Java editor and a remote-desktop client before it ships.
+
+### Cancel during unverified-delivery readback
+
+Delivery observes the destination for up to 750 ms after the paste is posted.
+Esc or a hotkey press inside that window cancels the session under the
+existing cancel-during-delivery contract: the posted paste may still land, but
+the verified or unverified notice and its Copy are discarded and the receipt
+records `cancelled`. Fencing input during readback would change that released
+contract and needs an explicit product decision plus native evidence.
+
+### Dictation text mode and settings transfer
+
+D558 keeps the dictation text mode and application profiles out of the
+portable-settings allowlist. A fresh installation initializes Literal at
+launch, so importing settings with filler removal and replacements from another
+Mac leaves them inactive until the user chooses Clean. Carrying the mode in
+settings transfer would widen the allowlist and needs an explicit decision.
+
+### Queued audio imports across a restart or remount
+
+Before copying, a queued import compares the source's `fileResourceIdentifier`
+with the one recorded at admission. Apple documents that identifier as not
+persistent across restarts, and it includes the volume device number, so a
+pending import from an external or remounted volume may fail as
+`sourceChanged` after a restart and require a fresh selection even though the
+file is unchanged. The original is never modified. A restart-stable identity
+(for example volume UUID plus file ID) needs verification on macOS with internal
+and external volumes before it replaces the current check.
+
+### Keychain replacement and the file-based keychain trust list
+
+Credential replacement now updates the existing item in place, so a failed
+write keeps the previous working credential. The store does not opt into the
+data-protection keychain, so on macOS items live in the file-based keychain,
+where the creating binary's trust list controls access. The stable app, the
+Dev app and the CLI share each item. The released delete-and-recreate made the
+saving binary the new owner. An in-place update keeps the old trust list and
+the accessibility class the item was created with, so a save from a
+differently signed binary may prompt, fail, or leave reads prompting. The
+duplicate-item retry also overwrites a contender's value, which matters for
+encryption keys only when a pre-D358 binary bypasses the voice-store lease.
+Native evidence on a signed release, a Dev build and the CLI is required
+before choosing between trust repair and failure safety.
 
 ### Live dictation can propose text without speech
 
@@ -111,7 +216,10 @@ preparation to manufacture successful delivery. Any policy change needs separate
 gesture/capture characterization and preservation of tap/hold behavior.
 Do not adopt another engine or promote proposed numerical budgets on the
 strength of the corpus count. The source and audio-manifest contract lives in
-`Fixtures/DictationValidation/README.md` and the quality specification.
+`Fixtures/DictationValidation/README.md` and the quality specification. A
+proposed, not yet accepted, natural-speaker qualification and comparison
+protocol lives in [DICTATION-QUALITY.md](DICTATION-QUALITY.md); its candidate
+targets are not release budgets.
 
 ### Live Parakeet still lacks reliable token-delivery ownership
 
@@ -245,6 +353,14 @@ desktop that preserves its interaction context; any lifecycle change must first
 reproduce the problem at the actual window attachment/presentation boundary.
 Hosted CI and a local interactive run remain distinct evidence.
 
+The native same-application sheet positive has also encountered an unattributed
+own-app `Other` surface while focusing its accessory editor. The guard completed
+cleanup without typing or choosing anything, so the native prerequisite failed
+before the product catalog started. A separately instrumented observation reached
+the expected editor and choice; that did not reproduce or identify the original
+surface and is not a fix. Preserve the failed control rather than weakening its
+effect checks or treating the later diagnostic as full qualification.
+
 ### Unexpected system interruptions invalidate UI qualification
 
 A retained real-app execution proved that XCTest's default interruption monitor
@@ -368,10 +484,12 @@ XCTest reactivated the app and wrote despite the overlay. A foreground-only
 check was then disproved by a synthetic same-app alert: a newline accepted its
 default choice without entering an interruption monitor.
 
-Process ownership plus an explicit sole-modal-contained anchor now covers
-sixteen native controls, including legitimate bilingual editing, foreign
-interruption, unexpected same-app sheet and app-modal dialog rejection, and
-background-anchor rejection. Two surfaces stay outside the rule: popovers, and
+Process ownership plus an explicit innermost-modal-contained anchor now covers
+twenty native controls, including legitimate bilingual editing, foreign
+interruption, unexpected same-app sheet and app-modal dialog rejection,
+background-anchor rejection, and actual nested open-panel selection. The picker
+controls prove exact Unicode file selection and refuse missing, background or
+ancestor anchors; they do not qualify unrelated application journeys. Two surfaces stay outside the rule: popovers, and
 a dialog nothing can click such as the floating Writing Tools affordance. An
 unexpected popover with a default button is therefore not refused, and an
 app-modal dialog whose hit point lies off-screen is not either. Real
@@ -382,6 +500,55 @@ is not attributed from its frame; completion preferences and unrelated apps are
 not changed. Public-API admission remains a point-in-time observation: a window
 change after observation cannot be claimed atomically excluded. Full bilingual
 and exact-head hosted qualification remain distinct from native controls.
+
+A later Spanish Background Work journey stopped during its first Settings-form
+scroll after the indicator had opened Your data and the exact owner counts were
+verified. XCTest reported an interrupting `Other` owned by the disposable app;
+the guard completed cleanup before dispatch. The interrupted recording did not
+finish, so neither the element's frame nor the remaining passing tests identifies
+the surface or qualifies the invocation. This deep link does not use the ordinary
+Settings search-editor handoff, but that omission alone does not establish the
+interruption's cause. Preserve the failed evidence and reproduce the actual
+entry boundary before applying a handoff or changing scroll admission. Do not
+attribute the interruption to another application or dismiss an unknown surface.
+
+A required native-controls invocation also stopped before its synchronous
+foreign-overlay counterexample was armed: the arm click was dispatched, but
+neither the armed status nor any overlay readiness/lifecycle effect appeared.
+Owned teardown completed; the first two positive controls had passed. This is
+unclassified fixture readiness, not a qualified negative control, an input-
+authority failure or a product regression. The real-app catalog was not reached.
+Diagnosis must distinguish an unobserved arm callback from a pending or failed
+native application launch without loosening effect validation, increasing waits
+or treating a later pass as attribution of this failure.
+
+A subsequent full app catalog reached the Skills recap proposal but did not
+observe its confirmation sheet after selecting the menu item. Retained owned-app
+accessibility snapshots contain the meeting window but no confirmation sheet;
+they do not establish whether the selection callback or preview completed.
+Later cases explicitly refused an unrelated window interruption. Those refusals
+do not retroactively explain the earlier missing sheet. Both failures remain
+unqualified; successful native controls and hosted runs cannot replace diagnosis
+of the missing presentation or full local bilingual evidence.
+
+### Native search submission and screenshot ownership remain unqualified
+
+Repeated real-app command-palette journeys retained the exact query and lexical
+hits but produced no answer or citation after Return. Failure hierarchies show
+an app-owned native completion window with zero results and keyboard focus.
+That observed state is not proof of causality: isolated controls have not
+reproduced it, and temporary composition uses a deterministic answerer rather
+than a Foundation Models session. Diagnose the native editor and submission
+call site; do not replace Return with another action, increase the timeout or
+change host-wide completion preferences to manufacture a passing test.
+
+An Audio Settings reachability failure also retained a target-window screenshot
+containing foreground pixels from an unrelated application. An accessibility
+query for the target window does not establish exclusive pixel ownership or
+visibility. That capture cannot prove a layout defect and must not become a
+public showcase asset. Keep diagnostics private, distinguish foreign occlusion
+from product failure, and qualify screenshot ownership separately from keyboard
+admission; point-in-time input checks do not certify a later capture.
 
 ### Unattributed asynchronous media-framework test crash
 
@@ -910,6 +1077,50 @@ Backend queue backpressure and exception-path cancellation draining remain
 unverified risks, not newly reproduced product defects. Preserve the failed
 receipt and unchanged stability thresholds; do not replace this gap with a
 retry-until-green candidate or a synthetic unit-test claim.
+
+### Multi-file audio import qualification
+
+The Library now admits multiple audio files into the same SQLite job authority,
+with app-owned serial supervision and a paged queue for progress, cancellation,
+retry and explicit result navigation. Storage/native/controller tests cover
+owner-fenced publication, preserved originals, cancellation, retry, and resuming
+a published copy without its source. These are not model-quality measurements.
+
+Real-app picker, pagination, cancellation and retry journeys are being qualified
+with synthetic PCM and a scripted recognition adapter gated by both temporary
+storage and its explicit fixture flag. Full hosted bilingual functional coverage
+has passed, but per-case and aggregate timing budgets have not been qualified.
+Native picker navigation, keyboard dispatch and accessibility queries before
+admission remain part of those unchanged journey budgets; total case duration
+is not an import-worker or ASR latency measurement. Consolidating queue queries
+does not establish a processing speedup or resolve these timing findings.
+Physical power loss, removable-volume TCC behavior and
+real-model throughput remain separate evidence. Required Whisper recognition
+is not replaced by live first-pass recovery; speaker preparation is optional
+under D532.
+
+A missing/changed original before copy publication leaves staged bytes intact
+but cannot certify their source. Only published audio resumes without the original.
+Purge and restore share native exclusion and fresh tombstone checks; filesystem
+removal and SQLite purge are still not one crash-atomic transaction.
+
+Native filesystem cancellation is cooperative, not a promise to interrupt a
+kernel call waiting for filesystem access or an OS permission decision. An accepted cancellation
+invalidates the file's durable publication authority immediately; the serial
+supervisor still joins native cleanup before starting another attempt. File-lock
+acquisition is nonblocking, but that does not make directory creation, bookmark
+resolution or file I/O nonblocking. Physical permission/removable-volume behavior
+remains separate from deterministic local-file tests.
+
+Shared real-app fixtures now use the explicit D523 scratch owner, and import
+fixtures retain its database/audio paths rather than assigning unowned temporary
+destinations. Sources use that owner too. Actual import teardown assertions check
+their removal after the app exits. Earlier full runs stopped by protected
+runner-container access remain invalid; a later ownership repair does not
+retroactively qualify them. Cumulative import qualification must retain the
+original functional and timing budgets, native picker, relaunch and storage
+assertions. A focused import success does not establish the separate compact
+correction interaction recorded elsewhere in this document.
 
 ## Lightweight model memory: remaining measurements (D526)
 

@@ -19715,6 +19715,106 @@ computed through an unobserved defaults read. Actual mounted-sidebar assertions
 must target the selected navigation button, not another pane's title; update
 labels in place rather than resetting Settings or discarding review state.
 
+## D522 — Audio import admission reuses the durable job authority
+
+**Decision.** A selected audio file is admitted atomically as an incomplete
+meeting, one `audio-import` processing job and its local input snapshot. Repeated
+admission with the same identity returns the original job; changed input cannot
+replace it. The existing owner lease controls source-capability reads. Cancelling
+queued or running import work invalidates that owner and leaves the incomplete
+meeting in `needsAttention`, not `ready`. Required import content must cross an
+artifact publication boundary, never generic control-plane completion.
+
+**Why.** The synchronous import path copies and transcribes before its first
+aggregate write. A loop around it cannot resume the unprocessed selection after
+relaunch. Existing generic job cancellation is intentionally degradable and can
+mark a meeting ready without an import transcript; import is required work.
+
+**Local capability exception.** D4's relative audio-directory invariant remains
+unchanged. Resuming a user-selected external file before it has been copied
+requires an explicit, narrow exception: an opaque source bookmark inside the
+bounded, local-only import-input BLOB. It is not an absolute audio-directory
+string or a portable file authority. It must not enter meeting bundles, sync,
+MCP, exports or support diagnostics. Local database backups still contain this
+private input; it must be retired after an owned durable copy is published.
+A second database or an independently authoritative preferences queue would
+introduce more recovery ambiguity than this explicit capability record.
+
+**Copy and completion.** Admission reserves one immutable copy UUID before file
+acquisition. A file adapter must publish a verified copy before retiring the
+bookmark. Admission stores the reserved relative location in `Meeting.audioDirectory`,
+just as recording reservation already does before capture starts. A location is
+not proof that audio exists or was accepted: the import payload's copied digest,
+retired bookmark and required artifact completion are independent authority.
+Storage binds only that exact reserved
+meeting-relative import directory; it cannot itself certify filesystem bytes.
+The current payload digest is distinct from the immutable admission identity.
+Required content and success then commit under that same live owner. A child
+write failure keeps the copy and rejects the whole content transaction. Explicit
+retry retains the logical job, never steals an active lease and never replays
+success. Silence still retains audio without invented transcript content.
+
+**Worker and native files.** PlatformKit resolves explicitly selected file
+bookmarks without prompting or mounting volumes, checks their resource identity
+and metadata, copies and hashes in 256 KiB chunks, synchronizes the destination,
+and verifies its bytes by reading it back. Reopening owned audio verifies the
+stored digest without needing the external source. Filename validation prevents
+path traversal; it is not a second codec allowlist. The existing decoder remains
+responsible for supported audio formats.
+
+A content-free, persistent root lock serializes acquisition across store values
+and processes. It is nonblocking, does not reserve the host, and is never unlinked
+on release. The worker re-reads its durable owner/input inside this exclusion and
+holds it until publication returns. Only unpublished input may replace its exact
+reserved stage; source identity/metadata validation happens before reclamation.
+Cancelled or rejected publication leaves a known stage, not a fresh orphan on
+each retry. A resumed published input instead verifies the accepted copy and
+never deletes it. An expired database lease alone is insufficient exclusion: an
+old native writer may still be completing an operation. Busy acquisition fails
+actionably rather than stealing that writer's files or looping until green.
+
+ApplicationKit drains this job kind serially with a fresh owner per attempt.
+Heartbeat and model execution share a structured cancellation lifetime. Required
+Whisper and D46's existing preparation/attribution behavior stay in `ImportMeeting`;
+owned adapters preserve already published audio on model failure. Installation
+returns the accepted transcript revision for summary provenance, rather than
+assuming legacy revision zero or reading a possibly newer revision afterward.
+Task cancellation retires its lease through an independently uncancelled cleanup
+task that is joined before return: otherwise GRDB cancels the cleanup itself.
+
+**Deletion.** Reuse ordinary trash/purge rather than introducing a second cleanup
+queue. The reserved meeting directory makes unpublished staging visible to that
+existing path. Purge reads one current tombstone inside native acquisition
+exclusion, removes its current directory, then purges its rows. Restore shares
+that exclusion in app composition. A busy writer cannot lose its durable input,
+and a stale trash-row snapshot cannot delete a restored meeting. Automatic
+expiry rechecks its strict cutoff after reading the current tombstone, including
+restore/re-delete interleavings. Lock and deletion use the same sampled root.
+Failure to acquire exclusion propagates before destructive work; once admitted,
+the released best-effort filesystem-removal policy still applies. Filesystem and
+SQLite writes are not crash-atomic, and uncoordinated low-level store mutations
+are not a certified multi-process restore interface.
+
+**Implementation boundary.** The native adapter and worker are tested with real
+temporary files and SQLite plus deterministic model doubles; this is not ASR or
+power-loss certification. App-owned supervision and a paged queue now connect
+the Library to this worker, preserving independent single-bundle import.
+Relaunch/retry and purge account for reserved unpublished staging. Real-app
+journeys must qualify the complete route before the feature ships; the isolated
+UI processor decodes synthetic PCM but scripts recognition, so it cannot certify
+ASR quality. Visible mutation errors do not disappear behind successful
+navigation. A missing/changed original
+before publication leaves staged bytes intact but cannot certify their source;
+only already published audio can resume without the original.
+
+Native filesystem cancellation is cooperative, not a promise to interrupt a
+kernel call waiting for filesystem access or an OS permission decision. An accepted cancellation
+invalidates the file's durable publication authority immediately; the serial
+supervisor still joins native cleanup before starting another attempt. File-lock
+acquisition is nonblocking, but that does not make directory creation, bookmark
+resolution or file I/O nonblocking. Physical permission/removable-volume behavior
+remains separate from deterministic local-file tests.
+
 ## D515 — Qualify dictation through its controller and an isolated receiver
 
 **Decision.** Inject session-scoped effects into the existing dictation controller
@@ -19803,6 +19903,15 @@ boundary rather than adding a compensating duration: a teardown with child
 activities, malformed child metadata, or subsequent top-level work retains the
 reported case duration. A normalized real activity tree and an adversarial CLI
 budget reproduce the false pass. No timeout, retry or budget is relaxed.
+
+The import fixture must keep this ownership at its real app-factory call site.
+Raw database/audio overrides completed the relaunch workflow but left both
+artifacts outside teardown; new post-teardown assertions reproduced that leak.
+Retain the factory's paths and allocate synthetic selection files through the
+same owner. Cleanup joins app exit before removing sources, including unexpected
+interruption exits where method-level defers do not run. All native picker,
+multi-file, cancellation, retry and missing-original assertions remain; shorter
+fixture paths are not evidence of faster ASR or import processing.
 
 
 ## D526 — Make lightweight memory explicit without changing model identity
@@ -20049,6 +20158,38 @@ shape, not a claim about undocumented macOS internals. Real compact correction
 journeys and fresh full bilingual/exact-head hosted qualification remain
 required; earlier failed invocations are never relabeled by later passing totals.
 
+
+## D532 — Keep optional speaker preparation out of required import recognition
+
+**Context:** the external-audio workflow still required a first diarizer load
+before transcription, then repeated that preparation best-effort afterward.
+The transcription spec and characterization tests preserved this legacy D46
+behavior, while broader app and architecture descriptions called attribution
+optional. A missing speaker model therefore failed admitted imports without
+attempting usable recognition. A real file/SQLite worker counterexample showed
+both English and Spanish jobs failed with empty transcripts despite an available
+recognizer. The old test count of two preparations per import froze the defect.
+
+**Decision:** replace that required-first contract. Prepare the required
+recognizer, transcribe, then acquire the optional diarizer exactly once. Failed
+optional preparation or attribution yields no speaker turns, preserving the
+recognized words and normal publication. Do not call an unprepared capability.
+Explicit or task cancellation in either optional phase still escapes before
+publication and joins the existing release/owned-audio cleanup path. Check task
+cancellation after each optional await as well as on error: a native capability
+can return normally after its task was cancelled. The real use-case adversary
+cancels the task inside each capability without throwing; thrown-error tests
+alone did not detect the late publication.
+
+**Consequences:** required recognition, independent language policies, atomic
+publication, immutable original audio, lease ownership, summary policy and
+macOS deployment floor remain unchanged. No model, network default, second ASR
+pass or fallback speaker identity is added. Existing call-site tests now cover
+missing preparation, both languages, silence and cancellation; the existing
+native multiple-import journey exercises the preparation fault rather than only
+an already prepared engine returning empty turns. Scripted recognition and
+synthetic files do not establish physical model quality or performance.
+
 ## D533 — Separate interruption containment from unqualified scroll calibration
 
 **Context:** measured wheel response and pending-input attribution did not
@@ -20283,6 +20424,27 @@ resource bundles as `Contents/Resources` bundles instead of flat directories;
 resolves resources through `Bundle`, which reads either. A future Xcode that
 removes the old label deletes the `#else` branch in one file. Decoding behavior is unchanged: greedy
 everywhere, same token caps.
+
+## D541 — Anchor native keyboard input to the innermost active modal
+
+An `NSOpenPanel` remains a hittable dialog in the accessibility tree while its
+Go to Folder sheet owns input. Counting both as independent receivers rejects a
+legitimate explicitly anchored edit. Three real import journeys reproduced that
+refusal before processing began; excluding non-hittable dialogs alone was not
+enough.
+
+Determine active modal surfaces using the existing sheet/alert and hittable-dialog
+rules, then discard only surfaces containing another active modal. Require one
+innermost receiver and an anchor belonging to it. Never let an ancestor panel,
+background editor or ambiguous independent modal authorize a key. The existing
+unique-process/frontmost fence and nonreturning cleanup remain unchanged.
+
+The native picker positive must return exactly the two selected public Unicode
+filenames. Missing, background and ancestor anchors are separate negative controls
+with no choice effect. All existing controls and full bilingual product journeys
+remain required: a picker success must not regress ordinary selection followed by
+a non-hittable Writing Tools affordance. These are point-in-time observations,
+not permission approval or an atomic input guarantee.
 
 ## D539 — Admit FluidAudio 0.15.8 only after matched product evidence
 
@@ -20613,6 +20775,65 @@ accuracy, latency, memory, native permissions, hardware routes, or a default
 engine change. Those require a separately measured, installed-model corpus
 and physical-host evidence.
 
+---
+
+## D544 — Bind dictation to its captured destination and retain refused output
+
+**Decision.** Capture the original application and focused AX element before
+presenting the panel or preparing a model. Carry the display name and insertion
+closure together. Compare retained `NSRunningApplication` objects with `isEqual`
+and focused elements with `CFEqual`, not a name, bundle ID or raw PID alone.
+Revalidate before clipboard mutation and immediately before process-addressed
+posting, checking cancellation after synchronous AX calls and clipboard
+ownership after the final call. Do not activate, refocus, retarget or post a
+global fallback. This supersedes D515's unchanged production session routing,
+not its disposable receiver, consent or evidence boundaries.
+
+**Why.** The previous display chip named one app while the delayed session-wide
+Paste could reach another. Losing the partial result after refusing a paste is
+also unacceptable. Capture and insertion are separate operations: completion
+of transcription does not authorize the current foreground app or a retry.
+Apple explicitly recommends application equality over PID comparison, while
+`launchDate` is supplied only for LaunchServices-launched applications. Requiring
+that date would silently remove compatibility rather than strengthen identity.
+See Apple's [process identity documentation](https://developer.apple.com/documentation/appkit/nsrunningapplication/processidentifier),
+[launch date contract](https://developer.apple.com/documentation/appkit/nsrunningapplication/launchdate),
+and [AX Core Foundation equality](https://developer.apple.com/documentation/applicationservices/axuielement_h).
+
+**Recovery.** Keep the final refused output in the existing controller's RAM,
+not a new history, file or meeting. Copy retains it, Reinsert requires the same
+captured destination, and Discard retires pending effects. A new trigger cannot
+silently replace it. Capture/model resources are not reacquired for retry.
+Missing initial focus offers Copy, not a guessed destination (see the
+amendment for unpinnable applications). Copy is an explicit user Copy whose
+effect the live composition provides; the amendment below defines its clipboard
+semantics. Presentation owns
+no pasteboard or pipeline work. Successful event dispatch still is not verified
+delivery, and cancellation after posting does not undo an edit.
+
+**Evidence boundary.** Adversarial call-site tests exercise destination changes
+across preparation, each insertion validation, new clipboard ownership,
+late cancellation, failed copy and discarded retries. Bilingual real-app
+recovery journeys use declared platform doubles and named clipboards. They do
+not prove native AX identity, arbitrary editor delivery or model quality; the
+permission-dependent receiver remains distinct. Real-app testing also exposed
+conflicting AppKit/SwiftUI heights and a Discard control that consumed the first
+click with deletion semantics. One height authority preserves the panel's frame;
+the existing Refine-discard pattern and Apple's [cancel role contract](https://developer.apple.com/documentation/swiftui/buttonrole/cancel)
+match abandoning this pending operation, including its loss of progress. The
+single-click and geometry assertions remain in the journeys. No global focus or
+first-click override is introduced. Post-event focus races and durable recovery
+are not claimed solved by this change.
+
+**Amendment (review follow-up).** Two refinements keep D544 from regressing
+released behavior. (1) An application that exposes no focused AX element at
+capture cannot be pinned; instead of refusing, its destination keeps the prior
+contract (same frontmost application, system-wide focused field inspectable and
+not secure at delivery, session-stream Paste). Pinned destinations keep
+process-addressed posting. (2) Recovery Copy is an explicit user Copy and
+replaces the clipboard, including multiple items, with no snapshot or rollback;
+the excerpt is scrollable and selectable so a failed Copy never strands the text.
+
 ## D547 — Capture integrity owns dictation delivery until the edit boundary
 
 **Date:** 2026-09-25
@@ -20750,3 +20971,106 @@ cold. Eviction or oversize graphs also remain cold, so speedup is conditional,
 not a CI SLA. Key-policy tests and fresh-checkout compiler/failing-test controls
 protect the boundary; cold/warm native and hosted timings, archive overhead and
 identical test totals must be reported separately from runner queue delays.
+
+## D555 — Observe dictation delivery without treating dispatch as success
+
+**Decision.** `DictationDeliveryOutcome` has distinct verified, dispatched and
+refused cases. After one process-addressed Paste, the optional native adapter
+may observe only the expected inserted span and selection/count metadata in
+the captured field. Exact UTF-16 bytes, expected count/caret and revalidated
+identity are required for a point-in-time verified result. There is no whole
+field read, surrounding-context capture, persistence or generative inference.
+
+**Why.** A successful `CGEvent.postToPid` supplies no editor acknowledgement.
+Converting that event into an inserted banner or a retryable failure is unsafe:
+unsupported editors can silently drop it, while slow editors can apply it after
+a timeout. Only failures before posting may enter the existing retry surface.
+An empty inserter input is refused before any clipboard or editor effect.
+
+**Bounds and compatibility.** macOS 14.4 remains supported. Optional observation
+uses existing public AX APIs, a 16,384-unit requested span, a 750 ms/30-poll
+window and 100 ms timeouts on individual AX objects, including each newly
+retrieved focused field before security inspection. The timeout on a captured
+field does not cover another locally distinct, CFEqual field object. Longer text is still sent
+in full. Unsupported or malformed attributes, changed metadata, cancellation
+and expired observations remain dispatched, never automatically repeated.
+Timeouts are not hard real-time guarantees; AX responses and later external
+edits cannot be made atomic. No process-global AX timeout is changed. See
+Apple's [per-object messaging timeout contract](https://developer.apple.com/documentation/applicationservices/1459345-axuielementsetmessagingtimeout)
+and [parameterized range attribute](https://developer.apple.com/documentation/applicationservices/kaxstringforrangeparameterizedattribute).
+
+**Presentation and evidence.** A verified edit retains the brief green banner;
+an independently owned dismissal task releases the capture lease before either
+banner ends. Unverified dispatch retains complete final output in RAM with
+explicit Copy and Discard. It has no Reinsert capability, no expiry and no
+implicit restart from another trigger. Copy reports failure without losing text,
+and a successful Copy still does not replay an editor event. Checking the
+destination before manually pasting remains necessary: a late editor may apply
+the original dispatch. Explicit Discard releases this pending result. The storage reassurance names only Portavoz, not an unprovable absence
+of traces in another editor or clipboard manager. Neither result automatically
+archives a successful delivery. Controller
+and inserter call-site tests are distinct from the permission-dependent native
+receiver, which must assert both verified status and actual Unicode content.
+The presence of those tests is not evidence that native qualification passed.
+
+**Amendment (review follow-up).** Unverified dispatch must not block the next
+dictation. In apps without exact AX readback most deliveries are unverified, so
+requiring Discard before every new dictation would regress the released
+workflow. The notice stays non-modal: the last unverified output remains
+available for Copy or Discard until the next dictation starts, which replaces
+the notice without re-sending the previous output. Refused (undelivered) output
+still blocks a new trigger and keeps its recovery panel.
+
+## D558 — Choose deterministic dictation policy without changing delivery authority
+
+Literal and Clean are explicit post-recognition choices, not generative modes.
+An absent preference is initialized before the UI's first enable action; otherwise
+that new toggle would falsely identify a fresh user as a migrated installation.
+Any prior dictation configuration, including false values, preserves its existing
+cleaning and replacements. Untouched preferences choose Literal. Neither choice
+auto-enables dictation, storage, network use or a new model.
+
+The bundle ID comes from the existing captured NSRunningApplication, alongside
+its guarded delivery capability. Names, paths and a second read of foreground
+state must not determine the profile. Application overrides use exact ID equality,
+never prefixes. Session choice outranks that profile, which outranks the global
+mode. Core carries those values; app composition/settings owns preferences and
+native chooser commands; TranscriptionKit retains the established text rules.
+
+Preferences are snapped at admission rather than reread after asynchronous ASR.
+Only the explicit panel mode can modify the admitted policy. The first controller
+regression showed that gating on native Stop issuance left the entire tail delay
+open to a late mode change. Gate on the owned Stop task as well, keeping the
+existing gesture/audio clocks and duration budgets unchanged. Completion,
+cancellation and restart release that override; persistence or explicit recovery
+must never trigger another paste.
+
+Profiles store only ID/mode and are bounded to 64 records / 32 KiB. Malformed or duplicate
+profiles fall back without deleting data; a visible Reset is the sole repair
+write. The real native picker is not replaced by a scripted selection: disposable
+composition may set only its owned initial fixture directory. The new choices do
+not silently widen the portable-settings allowlist. Synthetic recognition and UI
+journeys do not certify acoustic quality or every external editor.
+
+Native UI characterization also exposed a SwiftUI Picker identity hazard: its
+selected option's identifier replaced the popup identifier after selection.
+Use explicit native menu actions with a separately identified trigger, rather
+than letting selected label identity masquerade as control identity. Settings
+journeys reuse the existing bounded viewport reveal before clicking offscreen
+controls; neither a blind click nor an existence-only assertion proves reachability.
+
+The captured application identity survives an unavailable delivery capability.
+A secure or unreadable field does not authorize insertion or Retry, but must not
+change a Literal profile into global Clean during recovery. Controller tests use
+the production unavailable-destination factory; native AX checks remain a
+separate boundary. Native characterization also showed that the default disclosure
+label click did not expand the section. Use an explicitly identified full-row
+button with localized expanded/collapsed state, rather than compensating with
+arrow coordinates or longer waits.
+
+The initial async NSOpenPanel.begin call exposed a modeless Window, not the
+Dialog presumed by the first native journey. The owned hierarchy and SDK
+contract identified that mismatch. Present a window-modal sheet asynchronously
+from the requesting Settings window, preserving explicit modal input ownership
+without a blocking nested event loop or weakening the keyboard guard. Missing
+window admission reports a distinct actionable error and retires chooser state.

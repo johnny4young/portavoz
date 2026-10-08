@@ -681,6 +681,16 @@
         }
       }
     },
+    "Add application profile…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir perfil de aplicación…"
+          }
+        }
+      }
+    },
     "Add correction…": {
       "localizations": {
         "es": {
@@ -1261,6 +1271,26 @@
         }
       }
     },
+    "Application profiles": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perfiles por aplicación"
+          }
+        }
+      }
+    },
+    "Application profiles could not be read. Dictation uses the default mode until you reset them.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron leer los perfiles de aplicaciones. El dictado usa el modo predeterminado hasta que los restablezcas."
+          }
+        }
+      }
+    },
     "Apply": {
       "localizations": {
         "es": {
@@ -1697,6 +1727,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "La detección automática conserva el idioma de cada persona en reuniones mixtas. Fija un solo idioma únicamente cuando el audio bajo o ruidoso se haya detectado mal."
+          }
+        }
+      }
+    },
+    "Filler filtering and replacements apply only in Clean mode.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El filtro de muletillas y los reemplazos solo se aplican en modo Limpio."
           }
         }
       }
@@ -2381,6 +2421,16 @@
         }
       }
     },
+    "Check the destination before pasting again. Nothing was saved in Portavoz.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa el destino antes de volver a pegar. No se guardó nada en Portavoz."
+          }
+        }
+      }
+    },
     "Check the source before adding anything to your commitments.": {
       "localizations": {
         "es": {
@@ -2561,12 +2611,22 @@
         }
       }
     },
-    "Choose an audio file to transcribe, or a .portavoz meeting file": {
+    "Choose an application for its dictation text mode. Only its bundle identifier is saved.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Elige un archivo de audio para transcribir, o un archivo de reunión .portavoz"
+            "value": "Elige una app para su modo de texto del dictado. Solo se guarda su identificador de bundle."
+          }
+        }
+      }
+    },
+    "Choose an application with a valid bundle identifier. Profiles are limited to 64.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige una app con un identificador de bundle válido. Los perfiles tienen un límite de 64."
           }
         }
       }
@@ -2607,6 +2667,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Elige la carpeta donde Portavoz guardará tus grabaciones"
+          }
+        }
+      }
+    },
+    "Clean": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limpio"
           }
         }
       }
@@ -3133,6 +3203,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Convierte el audio a AAC para ahorrar espacio, sin pérdida audible en voz"
+          }
+        }
+      }
+    },
+    "Copied. You can paste the text yourself.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiado. Puedes pegar el texto manualmente."
           }
         }
       }
@@ -3707,6 +3787,16 @@
         }
       }
     },
+    "Couldn't copy. Your text is still here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo copiar. Tu texto sigue aquí."
+          }
+        }
+      }
+    },
     "Couldn’t complete": {
       "localizations": {
         "es": {
@@ -4123,6 +4213,16 @@
         }
       }
     },
+    "Default text mode": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modo de texto predeterminado"
+          }
+        }
+      }
+    },
     "Degraded result": {
       "localizations": {
         "es": {
@@ -4233,6 +4333,16 @@
         }
       }
     },
+    "Delivery didn't complete. Reinsert into the original field, or copy your text.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El envío no se completó. Reinserta en el campo original o copia el texto."
+          }
+        }
+      }
+    },
     "Destructive-risk failure": {
       "localizations": {
         "es": {
@@ -4319,26 +4429,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dictado"
-          }
-        }
-      }
-    },
-    "Dictation couldn't type into the focused app. Try again.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El dictado no pudo escribir en la app seleccionada. Inténtalo de nuevo."
-          }
-        }
-      }
-    },
-    "Dictation couldn't verify the focused field, so it didn't type anything.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El dictado no pudo verificar el campo seleccionado, así que no escribió nada."
           }
         }
       }
@@ -6609,6 +6699,16 @@
         }
       }
     },
+    "Kept only in memory. Copy it before quitting Portavoz.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo se conserva en memoria. Cópialo antes de cerrar Portavoz."
+          }
+        }
+      }
+    },
     "Key deleted. Apuntador goes back to answering only on-device.": {
       "localizations": {
         "es": {
@@ -6855,6 +6955,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Escuchando… %d s"
+          }
+        }
+      }
+    },
+    "Literal": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Literal"
+          }
+        }
+      }
+    },
+    "Literal keeps recognized words. Clean uses your filler filter and replacements. Neither rewrites.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Literal conserva las palabras reconocidas. Limpio usa tu filtro de muletillas y reemplazos. Ninguno reescribe."
           }
         }
       }
@@ -10179,6 +10299,16 @@
         }
       }
     },
+    "Profiles save bundle IDs, not window titles or web addresses. A session choice takes priority.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los perfiles guardan ID de apps, no títulos de ventanas ni direcciones web. La elección de esta sesión tiene prioridad."
+          }
+        }
+      }
+    },
     "Progress": {
       "localizations": {
         "es": {
@@ -11009,6 +11139,16 @@
         }
       }
     },
+    "Reinsert": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reinsertar"
+          }
+        }
+      }
+    },
     "Reinstall Portavoz to restore its bundled offline question detector.": {
       "localizations": {
         "es": {
@@ -11329,6 +11469,26 @@
         }
       }
     },
+    "Remove": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar"
+          }
+        }
+      }
+    },
+    "Remove application profile": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar perfil de aplicación"
+          }
+        }
+      }
+    },
     "Remove card": {
       "localizations": {
         "es": {
@@ -11519,6 +11679,16 @@
         }
       }
     },
+    "Reset application profiles": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restablecer perfiles de aplicaciones"
+          }
+        }
+      }
+    },
     "Restore": {
       "localizations": {
         "es": {
@@ -11585,6 +11755,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Retrospectiva"
+          }
+        }
+      }
+    },
+    "Retry": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reintentar"
           }
         }
       }
@@ -11681,6 +11861,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reintentar atajo"
+          }
+        }
+      }
+    },
+    "Return to %@ and the original field to reinsert, or copy your text.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelve a %@ y al campo original para reinsertar, o copia el texto."
           }
         }
       }
@@ -12557,6 +12747,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Envía solo la pregunta detectada, nunca audio ni texto de la reunión."
+          }
+        }
+      }
+    },
+    "Sent — insertion not verified": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviado — inserción sin verificar"
           }
         }
       }
@@ -13861,6 +14061,16 @@
         }
       }
     },
+    "Text mode": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modo de texto"
+          }
+        }
+      }
+    },
     "Text only — audio never enters the package.": {
       "localizations": {
         "es": {
@@ -13877,6 +14087,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reemplazos de texto"
+          }
+        }
+      }
+    },
+    "Text wasn't sent": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El texto no se envió"
           }
         }
       }
@@ -14161,6 +14381,16 @@
         }
       }
     },
+    "The destination changed. Copy your text to keep it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El destino cambió. Copia el texto para conservarlo."
+          }
+        }
+      }
+    },
     "The dictation session ended unexpectedly. Nothing was typed.": {
       "localizations": {
         "es": {
@@ -14367,6 +14597,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "El micrófono envió audio no válido. Revisa el dispositivo de entrada e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "The original field can't be verified. Your text is still available to copy.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede verificar el campo original. Tu texto sigue disponible para copiar."
           }
         }
       }
@@ -15371,12 +15611,12 @@
         }
       }
     },
-    "Transcribing audio (Whisper)…": {
+    "Transcribing…": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Transcribiendo audio (Whisper)…"
+            "value": "Transcribiendo…"
           }
         }
       }
@@ -17223,6 +17463,356 @@
           "stringUnit": {
             "state": "translated",
             "value": "→ Español"
+          }
+        }
+      }
+    },
+    "Expanded": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expandido"
+          }
+        }
+      }
+    },
+    "Collapsed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contraído"
+          }
+        }
+      }
+    },
+    "The application chooser needs a Settings window. Open Settings and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El selector de aplicaciones necesita una ventana de Ajustes. Abre Ajustes e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "%lld imports · %lld unfinished": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld importaciones · %lld sin terminar"
+          }
+        }
+      }
+    },
+    "Another audio operation is finishing. Retry shortly.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otra operación de audio está terminando. Reintenta en un momento."
+          }
+        }
+      }
+    },
+    "Cancelled — import the file again to continue": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelado: vuelve a importar el archivo para continuar"
+          }
+        }
+      }
+    },
+    "The original is unavailable. Reconnect its drive, then import it again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El original no está disponible. Reconecta su unidad y vuelve a importarlo."
+          }
+        }
+      }
+    },
+    "The original could not be copied. Import it again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo copiar el original. Vuelve a importarlo."
+          }
+        }
+      }
+    },
+    "Audio imports": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importaciones de audio"
+          }
+        }
+      }
+    },
+    "Audio imports · %lld unfinished": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importaciones de audio · %lld sin terminar"
+          }
+        }
+      }
+    },
+    "Audio work is still finishing. Try again shortly.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El trabajo de audio aún está terminando. Vuelve a intentarlo en un momento."
+          }
+        }
+      }
+    },
+    "Cancelled — retry when you are ready": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelado: reintenta cuando quieras"
+          }
+        }
+      }
+    },
+    "Checking and copying audio…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificando y copiando el audio…"
+          }
+        }
+      }
+    },
+    "Choose audio files to transcribe, or one .portavoz meeting file": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige archivos de audio para transcribir o un archivo de reunión .portavoz"
+          }
+        }
+      }
+    },
+    "Choose between 1 and 1,000 audio files to import.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige entre 1 y 1.000 archivos de audio para importar."
+          }
+        }
+      }
+    },
+    "Downloading Whisper %@… %lld%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando Whisper %@… %lld%%"
+          }
+        }
+      }
+    },
+    "Import a meeting bundle on its own, or choose multiple audio files.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importa un archivo de reunión por separado o elige varios archivos de audio."
+          }
+        }
+      }
+    },
+    "Imports continue when you close this panel. Your original files stay unchanged.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las importaciones continúan al cerrar este panel. Tus archivos originales no se modifican."
+          }
+        }
+      }
+    },
+    "Next": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siguiente"
+          }
+        }
+      }
+    },
+    "No audio imports": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay importaciones de audio"
+          }
+        }
+      }
+    },
+    "Previous": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anterior"
+          }
+        }
+      }
+    },
+    "Processing failed. Check model readiness and available storage, then retry.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El procesamiento falló. Comprueba que los modelos estén listos y haya espacio disponible, y reintenta."
+          }
+        }
+      }
+    },
+    "Ready": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listo"
+          }
+        }
+      }
+    },
+    "The import queue could not be updated. Your original files have not been changed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo actualizar la cola de importaciones. Tus archivos originales no se han modificado."
+          }
+        }
+      }
+    },
+    "The meeting was deleted, but some audio files could not be removed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reunión se eliminó, pero no se pudieron borrar algunos archivos de audio."
+          }
+        }
+      }
+    },
+    "The original changed. Import it again as a new file.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El original cambió. Impórtalo de nuevo como un archivo nuevo."
+          }
+        }
+      }
+    },
+    "The original is unavailable. Reconnect its drive, then retry.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El original no está disponible. Reconecta su unidad y reintenta."
+          }
+        }
+      }
+    },
+    "The retained copy could not be verified. Import the original again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo verificar la copia conservada. Importa de nuevo el original."
+          }
+        }
+      }
+    },
+    "Waiting to import": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En espera de importación"
+          }
+        }
+      }
+    },
+    "Continue without models": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuar sin modelos"
+          }
+        }
+      }
+    },
+    "Model preparation was interrupted. You can try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La preparación de los modelos se interrumpió. Puedes intentarlo de nuevo."
+          }
+        }
+      }
+    },
+    "Models could not be downloaded. Check your connection and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron descargar los modelos. Comprueba la conexión e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Models could not be prepared. Try again, or continue setup and download them later.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron preparar los modelos. Reinténtalo o continúa la configuración y descárgalos después."
+          }
+        }
+      }
+    },
+    "Models could not be saved. Check available disk space and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron guardar los modelos. Comprueba el espacio libre e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "You can still record audio. Transcription will be available after the models are ready.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puedes seguir grabando audio. La transcripción estará disponible cuando los modelos estén listos."
           }
         }
       }

@@ -79,19 +79,28 @@ extension AppServices: LibraryModelClient {
     }
 
     func deleteLibraryMeeting(_ id: MeetingID) async throws {
+        try await audioImportUITestFixture?.beforeLibraryDeletion()
         defer { requestSearchReconciliation() }
         try await meetingLifecycle.delete(id)
     }
 
     func restoreLibraryMeeting(_ id: MeetingID) async throws {
         defer { requestSearchReconciliation() }
-        try await meetingLifecycle.restore(id)
+        do {
+            try await meetingLifecycle.restore(id)
+        } catch AudioImportFileError.acquisitionBusy {
+            // Same localized contention copy as purge, never a raw enum description.
+            throw AudioImportQueueError.busy
+        }
+        audioImports.start()
     }
 
-    func purgeLibraryMeeting(_ entry: LibraryTrashItem) async {
-        await purgeMeeting(
-            meetingID: entry.meeting.id,
-            audioDirectory: entry.meeting.audioDirectory)
+    func purgeLibraryMeeting(_ entry: LibraryTrashItem) async throws {
+        try await purgeMeeting(meetingID: entry.meeting.id)
+    }
+
+    func enqueueLibraryAudio(_ urls: [URL]) async throws {
+        try await audioImports.admit(urls)
     }
 
     func importLibraryFile(
@@ -101,7 +110,7 @@ extension AppServices: LibraryModelClient {
         if url.pathExtension.lowercased() == MeetingBundle.fileExtension {
             return try await importBundle(from: url)
         }
-        return try await importMeeting(from: url, progress: progress)
+        throw AudioImportQueueError.selectionLimit
     }
 
     func libraryAgenda() -> LibraryModel.Agenda? {

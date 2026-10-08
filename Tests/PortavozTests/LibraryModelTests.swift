@@ -188,7 +188,7 @@ final class LibraryModelTests: XCTestCase {
         let fixture = LibraryModelFixture()
         let client = LibraryModelClientFake(fixture: fixture)
         let model = LibraryModel(client: client, searchDelay: .zero)
-        let url = URL(fileURLWithPath: "/tmp/meeting.m4a")
+        let url = URL(fileURLWithPath: "/tmp/meeting.portavoz")
 
         let effect = await model.send(.importFile(url))
 
@@ -206,6 +206,52 @@ final class LibraryModelTests: XCTestCase {
             LibraryModelFailure.importFile.localizedDescription)
         _ = await model.send(.dismissImportError)
         XCTAssertNil(model.state.importError)
+    }
+
+    func testBatchAudioAndSingleAudioReachQueueInsteadOfBundleImporter() async {
+        let client = LibraryModelClientFake(fixture: LibraryModelFixture())
+        let model = LibraryModel(client: client)
+        let urls = ["Reunión sin puntuación.wav", "Don’t send 2.M4A"].map {
+            URL(fileURLWithPath: "/tmp/" + $0)
+        }
+        let batch = await model.send(.importFiles(urls))
+        XCTAssertEqual(batch, .showImportQueue)
+        let single = await model.send(.importFile(urls[1]))
+        XCTAssertEqual(single, .showImportQueue)
+        XCTAssertEqual(client.calls, [.enqueue(urls), .enqueue([urls[1]])])
+        XCTAssertNil(model.state.importStatus)
+        client.failures = [.enqueue]
+        let rejected = await model.send(.importFiles(urls))
+        XCTAssertNil(rejected)
+        XCTAssertNotNil(model.state.importError)
+        XCTAssertNil(model.state.importStatus)
+    }
+
+    func testMixedBundlesAndEmptySelectionNeverPartiallyAdmit() async {
+        let fixture = LibraryModelFixture()
+        let client = LibraryModelClientFake(fixture: fixture)
+        let model = LibraryModel(client: client)
+        let bundle = URL(fileURLWithPath: "/tmp/a.PORTAVOZ")
+        let audio = URL(fileURLWithPath: "/tmp/b.wav")
+        for urls in [[], [bundle, audio], [bundle, bundle]] {
+            let effect = await model.send(.importFiles(urls))
+            XCTAssertNil(effect)
+            XCTAssertTrue(client.calls.isEmpty)
+        }
+        let effect = await model.send(.importFiles([bundle]))
+        XCTAssertEqual(effect, .openMeeting(fixture.importedID))
+        XCTAssertNil(model.state.importError)
+    }
+
+    func testPurgeFailureRemainsVisibleUntilExplicitDismissal() async {
+        let fixture = LibraryModelFixture()
+        let client = LibraryModelClientFake(fixture: fixture)
+        client.failures = [.purge]
+        let model = LibraryModel(client: client)
+        _ = await model.send(.purge(fixture.deleted))
+        XCTAssertEqual(model.state.lastActionError, LibraryModelFailure.purge.localizedDescription)
+        _ = await model.send(.dismissActionError)
+        XCTAssertNil(model.state.lastActionError)
     }
 
     func testCalendarAndBriefActionsStayInsideTheFeatureModel() async {
@@ -320,6 +366,8 @@ private enum LibraryModelFailure: String, Error, Hashable, LocalizedError, Senda
     case delete
     case restore
     case importFile
+    case enqueue
+    case purge
 
     var errorDescription: String? { "library-model-\(rawValue)" }
 }
@@ -334,6 +382,7 @@ private enum LibraryModelCall: Equatable {
     case restore(MeetingID)
     case purge(MeetingID)
     case importFile(URL)
+    case enqueue([URL])
     case requestCalendarAccess
     case brief(String)
 }
@@ -395,8 +444,14 @@ private final class LibraryModelClientFake: LibraryModelClient {
         try fail(.restore)
     }
 
-    func purgeLibraryMeeting(_ entry: LibraryTrashItem) {
+    func purgeLibraryMeeting(_ entry: LibraryTrashItem) throws {
         calls.append(.purge(entry.meeting.id))
+        try fail(.purge)
+    }
+
+    func enqueueLibraryAudio(_ urls: [URL]) throws {
+        calls.append(.enqueue(urls))
+        try fail(.enqueue)
     }
 
     func importLibraryFile(

@@ -8,7 +8,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 
 [![CI](https://github.com/johnny4young/portavoz/actions/workflows/ci.yml/badge.svg)](https://github.com/johnny4young/portavoz/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Platform](https://img.shields.io/badge/platform-macOS%2014.4%2B-lightgrey)
+![Platform](https://img.shields.io/badge/platform-macOS%2015%2B-lightgrey)
 ![Swift](https://img.shields.io/badge/Swift-6-orange)
 
 ![Today: the next meeting with its countdown, brief and linked recording, an Ask field with three ready questions, open to-dos beside the meetings to pick back up](assets/screenshots/today.png)
@@ -44,7 +44,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 
 ## Status
 
-**Current release: 1.1.0. Shipping and self-updating on macOS Sequoia and later.** Install with Homebrew or grab the notarized DMG from [Releases](https://github.com/johnny4young/portavoz/releases); updates arrive automatically via Sparkle:
+**Current release: 1.1.0. Shipping and self-updating on macOS Sequoia and later.** The source-build deployment target is macOS 14.4; that lower compiler target does not establish validation of the published app on Sonoma. Install with Homebrew or grab the notarized DMG from [Releases](https://github.com/johnny4young/portavoz/releases); updates arrive automatically via Sparkle:
 
 ```sh
 brew install --cask johnny4young/tap/portavoz

@@ -16,7 +16,8 @@ protocol LibraryModelClient: AnyObject {
     func setLibraryActionItem(_ id: UUID, done: Bool) async throws
     func deleteLibraryMeeting(_ id: MeetingID) async throws
     func restoreLibraryMeeting(_ id: MeetingID) async throws
-    func purgeLibraryMeeting(_ entry: LibraryTrashItem) async
+    func purgeLibraryMeeting(_ entry: LibraryTrashItem) async throws
+    func enqueueLibraryAudio(_ urls: [URL]) async throws
     func importLibraryFile(
         _ url: URL,
         progress: @escaping @MainActor (String) -> Void
@@ -98,7 +99,9 @@ final class LibraryModel {
         case restore(MeetingID)
         case purge(LibraryTrashItem)
         case importFile(URL)
+        case importFiles([URL])
         case dismissImportError
+        case dismissActionError
         case refreshAgenda
         case requestCalendarAccess
         case openBrief(UpcomingEvent)
@@ -108,6 +111,7 @@ final class LibraryModel {
     enum Effect: Equatable {
         case openMeeting(MeetingID)
         case deletedMeeting(MeetingID)
+        case showImportQueue
     }
 
     private(set) var state = State()
@@ -168,8 +172,9 @@ private extension LibraryModel {
         case .restore(let id):
             await restore(id)
         case .purge(let entry):
+            await recordAction { try await client.purgeLibraryMeeting(entry) }
+        case .dismissActionError:
             state.lastActionError = nil
-            await client.purgeLibraryMeeting(entry)
         case .dismissImportError:
             state.importError = nil
         default:
@@ -199,7 +204,9 @@ private extension LibraryModel {
             await delete(id)
             return .deletedMeeting(id)
         case .importFile(let url):
-            return await importFile(url)
+            return await importFiles([url])
+        case .importFiles(let urls):
+            return await importFiles(urls)
         default:
             return nil
         }
@@ -318,18 +325,22 @@ private extension LibraryModel {
         await recordAction { try await client.restoreLibraryMeeting(id) }
     }
 
-    func importFile(_ url: URL) async -> Effect? {
-        guard state.importStatus == nil else { return nil }
+    func importFiles(_ urls: [URL]) async -> Effect? {
+        guard state.importStatus == nil, !urls.isEmpty else { return nil }
         state.importError = nil
         state.importStatus = L10n.text("Preparing…")
+        defer { state.importStatus = nil }
         do {
-            let id = try await client.importLibraryFile(url) { [weak self] status in
-                self?.state.importStatus = status
+            if urls.contains(where: { $0.pathExtension.lowercased() == "portavoz" }) {
+                guard urls.count == 1, let url = urls.first else { throw AudioImportQueueError.mixedBundles }
+                let id = try await client.importLibraryFile(url) { [weak self] status in
+                    self?.state.importStatus = status
+                }
+                return .openMeeting(id)
             }
-            state.importStatus = nil
-            return .openMeeting(id)
+            try await client.enqueueLibraryAudio(urls)
+            return .showImportQueue
         } catch {
-            state.importStatus = nil
             state.importError = error.localizedDescription
             return nil
         }

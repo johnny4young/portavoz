@@ -166,6 +166,9 @@ final class EnglishSourceTests: XCTestCase {
         _ relative: String,
         line: String
     ) -> Bool {
+        if relative == "Sources/portavoz-app/AppServices+AudioImportUITestFixture.swift" {
+            return line.trimmingCharacters(in: .whitespaces) == "let text = \"No envíes 2. Don’t send 2.\""
+        }
         if relative == "Sources/portavoz-app/AppServices+DictationUITestFixture.swift" {
             // Only the fixed Unicode delta sequence is fixture data, not prose.
             return line.contains(#"[("Café", 8.0), ("C++", 8.2), (".", 8.4), ("Final", 16.0)]"#)

@@ -461,6 +461,16 @@ public final class MeetingStore: Sendable {
         }
     }
 
+    /// Fresh, single-row authority before destructive filesystem work. A stale
+    /// trash-row snapshot must not authorize deleting a restored meeting.
+    public func deletedMeeting(_ id: MeetingID) async throws -> DeletedMeeting? {
+        try await database.read { db in
+            guard let record = try MeetingRecord.fetchOne(db, key: id.rawValue.uuidString),
+                  let deletedAt = record.deletedAt else { return nil }
+            return DeletedMeeting(meeting: try record.meeting, deletedAt: deletedAt)
+        }
+    }
+
     static func fetchDeletedMeetings(in database: Database) throws -> [DeletedMeeting] {
         try MeetingRecord
             .filter(Column("deletedAt") != nil)

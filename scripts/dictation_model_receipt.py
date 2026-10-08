@@ -31,6 +31,10 @@ def validate_score(score):
         corpus.require(math.isclose(edits, rounded, rel_tol=0, abs_tol=1e-8)
                        and abs(reference - hypothesis) <= rounded <= max(reference, hypothesis),
                        'inconsistent model word edits')
+        # Words and characters come from one normalized string, so a zero rate is
+        # exact and shared: roundoff cannot hide an edit, and CER cannot disagree.
+        corpus.require((score['wordErrorRate'] == 0) == (rounded == 0) == (score['characterErrorRate'] == 0),
+                       'inconsistent zero-edit score')
         if hypothesis == 0:
             corpus.require(score['wordErrorRate'] == score['characterErrorRate'] == 1,
                            'empty speech output must retain all deletions')

@@ -9,6 +9,7 @@ public struct ProcessingJobKind: RawRepresentable, Codable, Hashable, Sendable {
         self.rawValue = rawValue
     }
 
+    public static let audioImport = ProcessingJobKind(rawValue: "audio-import")
     public static let transcription = ProcessingJobKind(rawValue: "transcription")
     public static let refine = ProcessingJobKind(rawValue: "refine")
     public static let diarization = ProcessingJobKind(rawValue: "diarization")

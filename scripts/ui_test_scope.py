@@ -68,6 +68,12 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testSeededMeetingsGroupByRecency"),
         test_id("LibraryUITests", "testActiveRecordingRemainsReachableAfterBrowsingTheLibrary"),
     ),
+    "audio-imports": (
+        test_id("AudioImportUITests", "testSingleMeetingBundleReachesDetailWithoutChangingTheOriginal"),
+        test_id("AudioImportUITests", "testMultipleAudioFilesReachPagedQueueAndOpenTheirMeeting"),
+        test_id("AudioImportUITests", "testCancelOneImportContinuesTheNextAndExplicitRetryReusesTheQueue"),
+        test_id("AudioImportUITests", "testRelaunchResumesPublishedAudioWithoutTheSelectedOriginals"),
+    ),
     "meeting-brief": (
         test_id("LibraryUITests", "testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment"),
     ),
@@ -135,22 +141,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "LibraryUITests",
             "testAskConfirmedMemoryLoadsPersonCommitmentsBlockersAndBothCitations",
         ),
-        test_id(
-            "LibraryUITests",
-            "testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence",
-        ),
-        test_id(
-            "LibraryUITests",
-            "testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence",
-        ),
-        test_id(
-            "LibraryUITests",
-            "testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence",
-        ),
-        test_id(
-            "LibraryUITests",
-            "testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence",
-        ),
+        test_id("LibraryUITests", "testAskConfirmedMemoryLoadsAllTopicJobsAndExactCitations"),
         test_id("LibraryUITests", "testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState"),
     ),
     "insights": (
@@ -198,6 +189,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "onboarding": (
         test_id("OnboardingUITests", "testAdvancesFromFirstListenToLocalVoiceEnrollment"),
+        test_id("OnboardingUITests", "testModelFailureCanContinueBackAndRetryWithoutDownloading"),
     ),
     "meeting-performance": (
         test_id("MeetingDetailUITests", "testFiveThousandSegmentDetailRendersFromDisposableScaleFixture"),
@@ -433,6 +425,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testIntelligencePaneCreatesACustomStructure"),
     ),
     "dictation": (
+        test_id("DictationTextModeUITests", "testApplicationProfileUsesNativePickerAndKeepsTheOriginal"),
+        test_id("DictationTextModeUITests", "testCorruptProfilesShowAnExplicitResetWithoutChangingTheDefault"),
+        test_id("DictationTextModeUITests", "testSessionModeOverrideCancelsAndRestartsWithoutChangingDefaults"),
+        test_id("DictationUITests", "testDeliveredDictationDistinguishesDispatchFromVerification"),
         test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
         test_id("SettingsUITests", "testAppleSpeechInspectionFailureOffersExplicitRetry"),
         test_id("DictationUITests", "testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart"),
@@ -442,6 +438,8 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("DictationUITests", "testMicrophoneDenialRemainsRecoverableWithoutOpeningAudio"),
         test_id("DictationUITests", "testMissingMicrophoneAudioShowsFallbackAndAllowsRestart"),
         test_id("DictationUITests", "testPreparingDictationCanCancelWithoutAListeningClaim"),
+        test_id("DictationUITests", "testUndeliveredTextCanBeCopiedAndExplicitlyRetried"),
+        test_id("DictationUITests", "testUndeliveredTextSurvivesAnotherTriggerUntilDiscarded"),
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
         test_id("SettingsUITests", "testDictationRecoversShortcutConflictAndRefreshesHelp"),
         test_id("SettingsUITests", "testDictationRepairsCorruptShortcutWithoutLeavingSettings"),
@@ -473,6 +471,7 @@ ALL_TESTS = tuple(dict.fromkeys(test for tests in FEATURE_TESTS.values() for tes
 # Needs a user-granted Accessibility decision; run only via test-ui-native-dictation.
 PERMISSION_GATED_TESTS = frozenset({
     test_id("DictationUITests", "testNativeInserterUsesDisposableReceiverAndClipboard"),
+    test_id("DictationUITests", "testNativeControllerModeChoicePreservesReceiverAndClipboard"),
 })
 ALL_FEATURES = frozenset(FEATURE_TESTS)
 MEETING_FEATURES = frozenset(
@@ -510,11 +509,13 @@ FULL_BILINGUAL_HARNESS_FILES = frozenset({
     "Sources/portavoz-app/UITestWindowPlacement.swift",
     "Sources/portavoz-app/SettingsSkillReceiptNavigation.swift",
     "Tests/PortavozUITests/UITestSupport.swift",
+    "Tests/PortavozUITests/UITestSnapshotSupport.swift",
     "Tests/PortavozUITests/PortavozUITestCase.swift",
     "Tests/PortavozUITests/UITestWaitSupport.swift",
     "Tests/PortavozUITests/UITestKeyboardSupport.swift",
     "Tests/PortavozUITests/UITestStorageSupport.swift",
     "Tests/Support/UITestScratch.swift",
+    "Tests/Support/UITestActionGeometry.swift",
 })
 
 # The native interruption controls compile and qualify only these owners. A
@@ -532,6 +533,7 @@ INTERRUPTION_CONTROL_FILES = frozenset({
     "Tests/PortavozUITests/UITestStorageSupport.swift",
     "Tests/PortavozUITests/UITestWaitSupport.swift",
     "Tests/Support/UITestScratch.swift",
+    "Tests/Support/UITestActionGeometry.swift",
 })
 INTERRUPTION_FIXTURE_PREFIX = "Tests/UIInterruptionFixtures/"
 
@@ -561,6 +563,10 @@ APUNTADOR_LEAK_UI_FEATURES = frozenset({
 })
 
 RETIRED_DUPLICATE_TESTS = frozenset({
+    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence"),
+    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence"),
+    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence"),
+    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence"),
     test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence"),
     test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence"),
     test_id("SkillsSettingsUITests", "testSkillActivityRefreshPreservesTheExpandedCurrentScope"),
@@ -587,6 +593,7 @@ FEATURE_SOURCE_SENTINELS: dict[str, str] = {
     "automation-entry": "Sources/portavoz-app/PortavozAppIntents.swift",
     "home": "Sources/portavoz-app/HomeView.swift",
     "library": "Sources/portavoz-app/LibraryView.swift",
+    "audio-imports": "Sources/portavoz-app/AudioImportQueueView.swift",
     "meeting-brief": "Sources/portavoz-app/MeetingBriefView.swift",
     "menu-bar-brief": "Sources/portavoz-app/MenuBarView.swift",
     "recording-recovery": "Sources/portavoz-app/RecordingView.swift",
@@ -718,6 +725,11 @@ def app_features(filename: str) -> set[str]:
         # Today composes the Library snapshot; its own journeys plus the
         # sidebar canary cover navigation from and back to it.
         return {"home", "library"}
+    if lowered in {
+        "audioimportqueuemodel.swift", "audioimportqueueview.swift", "audioimportqueuepresentation.swift",
+        "libraryimportstatusview.swift", "appservices+audioimportuitestfixture.swift",
+    }:
+        return {"audio-imports", "library"}
     if lowered == "librarynavigationcontrols.swift":
         return {"home", "library"}
     if lowered in {
@@ -942,6 +954,24 @@ def lower_layer_features(path: str) -> set[str]:
     }:
         return {"settings-transfer"}
     lowered = path.lower()
+    if lowered in {
+        "sources/applicationkit/processaudioimports+ownedadapters.swift",
+        "sources/applicationkit/processaudioimports.swift",
+        "sources/platformkit/audioimportfiletransfer.swift",
+        "sources/platformkit/localaudioimportfiles+acquisition.swift",
+        "sources/platformkit/localaudioimportfiles.swift",
+        "sources/portavozcore/audioimport.swift",
+        "sources/portavozcore/audioimportfiles.swift",
+        "sources/portavozcore/audioimportqueue.swift",
+        "sources/storagekit/meetingstore+audioimportpublication.swift",
+        "sources/storagekit/meetingstore+audioimportqueue.swift",
+        "sources/storagekit/meetingstore+audioimports.swift",
+        "sources/storagekit/records+audioimport.swift",
+        "sources/storagekit/schema+audioimport.swift",
+    }:
+        # These boundaries own durable import and Library lifecycle behavior,
+        # not playback or microphone preferences despite their "audio" names.
+        return {"audio-imports", "library"}
     exact_owners = {
         # Shared-store roots affect startup/model preparation, not every
         # feature that happens to consume the stores after composition.
