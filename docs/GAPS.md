@@ -219,7 +219,10 @@ strength of the corpus count. The source and audio-manifest contract lives in
 `Fixtures/DictationValidation/README.md` and the quality specification. A
 proposed, not yet accepted, natural-speaker qualification and comparison
 protocol lives in [DICTATION-QUALITY.md](DICTATION-QUALITY.md); its candidate
-targets are not release budgets.
+targets are not release budgets. The offline `dictation_benchmark.py` report
+adapter only scores declared, content-free counts and phases: existing
+model/controller receipts still need a reviewed collection adapter, and its
+reports never qualify a population, consent or a quality threshold.
 
 ### Live Parakeet still lacks reliable token-delivery ownership
 

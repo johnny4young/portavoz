@@ -45,8 +45,7 @@ surface inspired by [the proposed quality contract](https://github.com/johnny4yo
 It is not the proposal's complete `evaluation-config/1`, `attempt/1` or
 `evaluation-report/1` schema. Those names are intentionally not claimed here.
 The source helper from [receipt-admission #89](https://github.com/johnny4young/portavoz/pull/89)
-is reused to reject impossible word-error accounting. This branch is stacked on
-that change; it does not integrate the remaining dictation feature PRs.
+is reused to reject impossible word-error accounting.
 
 The adapter consumes **explicit integer edit counts produced by an identified
 scorer**, not raw references/hypotheses. It performs no second normalization and
@@ -88,7 +87,8 @@ adopted by this version.
   `not-attempted` and `missing` separately. This is a descriptive completion
   fraction, not an estimated population reliability or confidence lower bound
 - Safety: retain wrong-target, wrong-selection, wrong-text, duplicate insertion, no-speech
-  insertion and dispatch-after-cancel counterexamples as `fail`. Otherwise the
+  insertion, dispatch of a delivery-ineligible planned attempt and
+  dispatch-after-cancel counterexamples as `fail`. Otherwise the
   verdict remains `inconclusive`; no attempt receipts means `not-run`. Absence of
   an observed violation does not demonstrate safe delivery
 
@@ -173,12 +173,14 @@ Each planned row has `attemptID`, `caseID`, positive `repetition`, `conditionID`
 `selectionID`. Attempt IDs and `(caseID, repetition, conditionID)` keys are unique.
 Delivery eligibility and intended target/selection are declared before execution.
 A recognition failure cannot retroactively make an eligible attempt ineligible.
+No-speech cases are never delivery eligible: their correct outcome inserts nothing.
 
 Each supplied receipt has `attemptID`, `planDigest`, `status`, `failureReason`,
 `fedFrames`, `scores`, `phases`, `deliveryOutcome`, `preparedTextDigest`,
 `receiverProof`. Status is completed/cancelled/refused/failed/timed-out.
 Completed status requires null failureReason; cancelled requires user-cancelled;
-timed-out requires timeout; refused/failed require capture/model/delivery/safety. Completed status also requires all declared input frames; interrupted capture
+timed-out requires timeout; refused/failed require capture/model/delivery/safety.
+Cancelled status also requires the cancel phase. Completed status also requires all declared input frames; interrupted capture
 must retain a non-completed status. Missing receipts remain
 missing; duplicate receipts or an unknown planned ID are invalid. A resumed or
 rerun experiment gets a new generation; preserve original failed receipts.

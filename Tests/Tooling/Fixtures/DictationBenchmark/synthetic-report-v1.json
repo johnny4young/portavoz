@@ -365,6 +365,7 @@
   "safetyCounterexamples": {
     "dispatchAfterCancel": 0,
     "duplicateInsertion": 0,
+    "ineligibleDispatch": 0,
     "nonSpeechInsertion": 0,
     "wrongSelection": 0,
     "wrongTarget": 0,

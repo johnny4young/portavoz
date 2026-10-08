@@ -195,6 +195,31 @@ class DictationBenchmarkTests(unittest.TestCase):
         self.assertEqual(result['safetyCounterexamples']['nonSpeechInsertion'], 1)
         self.assertEqual(result['gate'], 'fail')
 
+    def test_dispatch_of_ineligible_attempt_is_a_safety_counterexample(self):
+        attempt = self.document['attempts'][2]
+        attempt.update(status='failed', failureReason='safety', deliveryOutcome='dispatched-unverified')
+        attempt['phases']['dispatch'] = 1350
+        result = self.report()
+        self.assertEqual(result['safetyCounterexamples']['ineligibleDispatch'], 1)
+        self.assertEqual(result['safetyCounterexamples']['nonSpeechInsertion'], 0)
+        self.assertEqual(result['gate'], 'fail')
+
+    def test_no_speech_attempt_cannot_be_delivery_eligible(self):
+        self.document['plan']['attempts'][2]['deliveryEligible'] = True
+        self.rebind()
+        with self.assertRaises(corpus.CorpusError):
+            self.report()
+
+    def test_cancelled_attempt_requires_cancel_phase(self):
+        self.document['attempts'][3]['phases']['cancel'] = None
+        with self.assertRaises(corpus.CorpusError):
+            self.report()
+
+    def test_unhashable_model_digest_is_a_closed_rejection(self):
+        self.document['configuration']['modelDigests'] = [{'digest': 'a' * 64}]
+        with self.assertRaises(corpus.CorpusError):
+            self.report()
+
     def test_plan_is_hashed_once_during_attempt_admission(self):
         plan, receipt = copy.deepcopy(self.document['plan']['attempts'][0]), copy.deepcopy(self.document['attempts'][0])
         self.document['plan']['attempts'] = []
