@@ -433,12 +433,21 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let allSkillsTitle = UITestLocale.environmentLocale == "es"
             ? "Todas las acciones"
             : "All actions"
-        XCTAssertTrue(try waitForLabel(skillFilter, toContain: allSkillsTitle))
         let anytimeTitle = UITestLocale.environmentLocale == "es"
             ? "Cualquier momento"
             : "Any time"
-        XCTAssertTrue(try waitForLabel(periodFilter, toContain: anytimeTitle))
-        XCTAssertFalse(clearFilters.exists)
+        let resetFilters = try skillsObservation(requiredIdentifiers: [
+            "settings-skills-receipt-skill-filter", "settings-skills-receipt-period-filter"
+        ], expectedText: [
+            "settings-skills-receipt-skill-filter": allSkillsTitle,
+            "settings-skills-receipt-period-filter": anytimeTitle
+        ], in: app)
+        XCTAssertTrue(uiSnapshotText(try uiSnapshotElement("settings-skills-receipt-skill-filter", in: resetFilters),
+                                     contains: allSkillsTitle))
+        XCTAssertTrue(uiSnapshotText(try uiSnapshotElement("settings-skills-receipt-period-filter", in: resetFilters),
+                                     contains: anytimeTitle))
+        XCTAssertTrue(uiSnapshotMatches({ $0.identifier == "settings-skills-receipt-clear-filters" },
+                                        in: resetFilters).isEmpty)
 
         try scrollToVisible(periodFilter, in: app, deltaY: 80)
         XCTAssertTrue(periodFilter.waitForHittable(timeout: 5))
@@ -1167,18 +1176,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     private func assertInitialCatalogueAndPause(in app: XCUIApplication) throws {
         let pause = app.control(
             withIdentifier: "settings-skills-pause-all")
-        let recap = app.control(
-            withIdentifier: "settings-skill-recap-draft-enabled")
         let export = app.control(
             withIdentifier: "settings-skill-meeting-package-export-enabled")
-        XCTAssertTrue(pause.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(recap.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(export.waitForExistenceFast(timeout: 5))
-        let availableToggles = app.descendants(matching: .any).matching(
-            NSPredicate(
-                format: "identifier BEGINSWITH %@ AND identifier ENDSWITH %@",
-                "settings-skill-",
-                "-enabled"))
         let expectedSkillIdentifiers: Set<String> = [
             "settings-skill-recap-draft-enabled",
             "settings-skill-meeting-package-export-enabled",
@@ -1188,19 +1187,19 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "settings-skill-secret-gist-publish-enabled",
             "settings-skill-github-issue-create-enabled"
         ]
-        XCTAssertTrue(
-            waitForCount(
-                availableToggles,
-                toEqual: expectedSkillIdentifiers.count,
-                timeout: 5),
-            "the live pane must expose the seven-action candidate catalogue")
-        XCTAssertEqual(
-            Set(availableToggles.allElementsBoundByIndex.map(\.identifier)),
-            expectedSkillIdentifiers,
-            "the live pane must expose exactly the reviewed Skill catalogue")
-        XCTAssertFalse(Self.isOn(pause))
-        XCTAssertTrue(Self.isOn(recap))
-        XCTAssertTrue(Self.isOn(export))
+        let catalogue = try skillsObservation(
+            requiredIdentifiers: expectedSkillIdentifiers.union(["settings-skills-pause-all"]), in: app)
+        let availableToggles = uiSnapshotMatches({
+            $0.identifier.hasPrefix("settings-skill-") && $0.identifier.hasSuffix("-enabled")
+        }, in: catalogue)
+        XCTAssertEqual(availableToggles.count, expectedSkillIdentifiers.count,
+                       "the live pane must expose the seven-action candidate catalogue")
+        XCTAssertEqual(Set(availableToggles.map(\.identifier)), expectedSkillIdentifiers,
+                       "the live pane must expose exactly the reviewed Skill catalogue")
+        XCTAssertFalse(try skillToggleIsOn("settings-skills-pause-all", in: catalogue))
+        for identifier in ["recap-draft", "meeting-package-export", "email-recap-draft"] {
+            XCTAssertTrue(try skillToggleIsOn("settings-skill-\(identifier)-enabled", in: catalogue))
+        }
         try assertDisclosure(
             skillID: "recap-draft",
             expectedText: UITestLocale.environmentLocale == "es"
@@ -1209,8 +1208,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             in: app)
         let email = app.control(
             withIdentifier: "settings-skill-email-recap-draft-enabled")
-        XCTAssertTrue(email.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(Self.isOn(email))
         XCTAssertTrue(try scrollToVisible(email, in: app))
         let emailDescription = UITestLocale.environmentLocale == "es"
             ? "Abre el recap exacto que revisaste en tu app de correo, sin destinatarios. Portavoz nunca lo envía."
@@ -1243,12 +1240,11 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         // The settings snapshot is durable across window reconstruction.
         let durablePause = app.control(
             withIdentifier: "settings-skills-pause-all")
-        let durableExport = app.control(
-            withIdentifier: "settings-skill-meeting-package-export-enabled")
-        XCTAssertTrue(durablePause.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(durableExport.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(Self.isOn(durablePause))
-        XCTAssertFalse(Self.isOn(durableExport))
+        let durable = try skillsObservation(requiredIdentifiers: [
+            "settings-skills-pause-all", "settings-skill-meeting-package-export-enabled"
+        ], in: app)
+        XCTAssertTrue(try skillToggleIsOn("settings-skills-pause-all", in: durable))
+        XCTAssertFalse(try skillToggleIsOn("settings-skill-meeting-package-export-enabled", in: durable))
         durablePause.click()
         XCTAssertTrue(try waitForToggle(durablePause, toBeOn: false))
     }
@@ -1290,25 +1286,22 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             withIdentifier: "settings-skill-meeting-package-export-enabled")))
         try scrollToVisible(receipt, in: app)
         receipt.click()
-        XCTAssertTrue(
-            app.control(withIdentifier: "skill-receipt-inspection")
-                .waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(
-            app.control(withIdentifier: "skill-receipt-inspection-privacy")
-                .waitForExistenceFast(timeout: 5),
-            "the inspector must disclose its content-free boundary")
-        let events = app.descendants(matching: .any).matching(NSPredicate(
-            format: "identifier BEGINSWITH 'skill-receipt-inspection-event-'"))
-        XCTAssertTrue(
-            waitForCount(events, toEqual: 3, timeout: 5),
-            "the confirmed run must expose its complete causal timeline")
-        let terminalEvent = app.control(
-            withIdentifier: "skill-receipt-inspection-event-3")
+        let inspection = app.control(withIdentifier: "skill-receipt-inspection")
+        XCTAssertTrue(inspection.waitForExistenceFast(timeout: 5))
+        // The anchor is the header Text, not a container for the timeline.
+        let inspectionOwner = app.windows.containing(.any, identifier: "skill-receipt-inspection").firstMatch
         let successTitle = UITestLocale.environmentLocale == "es"
             ? "El intento informó éxito"
             : "Attempt reported success"
+        let timeline = try skillsObservation(requiredIdentifiers: [
+            "skill-receipt-inspection-privacy", "skill-receipt-inspection-event-1",
+            "skill-receipt-inspection-event-2", "skill-receipt-inspection-event-3"
+        ], expectedText: ["skill-receipt-inspection-event-3": successTitle], owner: inspectionOwner)
+        let events = uiSnapshotMatches({ $0.identifier.hasPrefix("skill-receipt-inspection-event-") }, in: timeline)
+        XCTAssertEqual(events.count, 3, "the confirmed run must expose its complete causal timeline")
+        let terminalEvent = try uiSnapshotElement("skill-receipt-inspection-event-3", in: timeline)
         XCTAssertTrue(
-            try waitForLabel(terminalEvent, toContain: successTitle),
+            uiSnapshotText(terminalEvent, contains: successTitle),
             "the terminal event must expose the localized success state")
         attachScreenshot(of: app, named: "skills-control-recent-receipt")
         app.buttons["skill-receipt-inspection-close"].click()
@@ -1678,10 +1671,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         timeout: TimeInterval = 5
     ) throws -> Bool {
         try waitForUITestCondition(timeout: timeout) {
-            let value = try toggle.snapshot().value
-            guard let rawValue = value as? Int ?? (value as? String).flatMap(Int.init),
-                  rawValue == 0 || rawValue == 1 else { return false }
-            return (rawValue == 1) == expected
+            guard let bit = Self.toggleBit(try toggle.snapshot().value) else { return false }
+            return (bit == 1) == expected
         }
     }
 
@@ -1694,23 +1685,20 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let toggle = app.control(
             withIdentifier: "settings-skill-\(skillID)-enabled")
         try scrollToVisible(toggle, in: app)
-        let disclosure = app.control(
-            withIdentifier: "settings-skill-\(skillID)-boundary")
-        XCTAssertTrue(disclosure.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(
-            try waitForLabel(disclosure, toContain: expectedText),
-            "the disclosure must follow the executable capability boundary; "
-                + "label=\(disclosure.label) value=\(String(describing: disclosure.value))")
+        let disclosureID = "settings-skill-\(skillID)-boundary"
+        let confirmationID = "settings-skill-\(skillID)-confirmation"
         let approvalText = UITestLocale.environmentLocale == "es"
             ? "Requiere aprobación en cada ejecución"
             : "Approval required every time"
-        let confirmation = app.control(
-            withIdentifier: "settings-skill-\(skillID)-confirmation")
-        XCTAssertTrue(confirmation.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(
-            try waitForLabel(confirmation, toContain: approvalText),
-            "an enabled row must still disclose proposal-scoped approval; "
-                + "label=\(confirmation.label) value=\(String(describing: confirmation.value))")
+        let observation = try skillsObservation(
+            requiredIdentifiers: [disclosureID, confirmationID],
+            expectedText: [disclosureID: expectedText, confirmationID: approvalText], in: app)
+        let disclosure = try uiSnapshotElement(disclosureID, in: observation)
+        XCTAssertTrue(uiSnapshotText(disclosure, contains: expectedText),
+                      "the disclosure must follow the executable capability boundary")
+        let confirmation = try uiSnapshotElement(confirmationID, in: observation)
+        XCTAssertTrue(uiSnapshotText(confirmation, contains: approvalText),
+                      "an enabled row must still disclose proposal-scoped approval")
     }
 
     @MainActor
@@ -1769,10 +1757,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     ) throws -> Bool {
         try waitForUITestCondition(timeout: timeout) {
             guard element.exists else { return false }
-            let snapshot = try element.snapshot()
-            return [snapshot.label, snapshot.value as? String, snapshot.title]
-                .compactMap { $0 }
-                .contains { $0.contains(expectedText) }
+            return uiSnapshotText(try element.snapshot(), contains: expectedText)
         }
     }
 
@@ -1856,7 +1841,50 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     private static func isOn(_ toggle: XCUIElement) -> Bool {
-        let value = toggle.value
-        return (value as? Int) == 1 || (value as? String) == "1"
+        toggleBit(toggle.value) == 1
+    }
+}
+
+/// Observations are immutable data; native input still uses its ordinary guarded controls.
+private extension SkillsSettingsUITests {
+    @MainActor
+    func skillsObservation(
+        requiredIdentifiers: Set<String>, expectedText: [String: String] = [:], in app: XCUIApplication
+    ) throws -> any XCUIElementSnapshot {
+        // Anchor the owning window on an identifier this phase itself requires.
+        // A distant row (such as Pause all, at the top of the Form) is not a
+        // safe anchor once the pane has scrolled to Action history.
+        let anchor = try XCTUnwrap(
+            requiredIdentifiers.union(expectedText.keys).min(),
+            "A Skills observation must require at least one identifier")
+        let settings = app.windows.containing(.any, identifier: anchor).firstMatch
+        return try skillsObservation(
+            requiredIdentifiers: requiredIdentifiers, expectedText: expectedText, owner: settings)
+    }
+
+    @MainActor
+    func skillsObservation(
+        requiredIdentifiers: Set<String>, expectedText: [String: String] = [:],
+        owner: XCUIElement, timeout: TimeInterval = 5
+    ) throws -> any XCUIElementSnapshot {
+        // Like the former per-element label waits, readiness includes content.
+        try uiObservation(
+            of: owner,
+            requiring: requiredIdentifiers,
+            expectedText: expectedText,
+            timeout: timeout,
+            message: "The complete unique Skills phase must be observable together")
+    }
+
+    @MainActor
+    func skillToggleIsOn(_ identifier: String, in snapshot: any XCUIElementSnapshot) throws -> Bool {
+        let bit = Self.toggleBit(try uiSnapshotElement(identifier, in: snapshot).value)
+        return try XCTUnwrap(bit, "A rendered toggle must publish only 0 or 1") == 1
+    }
+
+    /// The one toggle-value parser: `0`/`1` as Int or String, else `nil`.
+    static func toggleBit(_ value: Any?) -> Int? {
+        let raw = value as? Int ?? (value as? String).flatMap(Int.init)
+        return raw.flatMap { $0 == 0 || $0 == 1 ? $0 : nil }
     }
 }

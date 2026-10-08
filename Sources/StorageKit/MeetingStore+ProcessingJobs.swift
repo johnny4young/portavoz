@@ -76,17 +76,13 @@ extension MeetingStore {
                 .fetchAll(db)
             var retried: [ProcessingJob] = []
             for var record in records {
-                record.state = ProcessingJobState.pending.rawValue
-                record.progress = 0
-                record.attempt = 0
-                record.notBefore = timestamp
-                record.leaseOwner = nil
-                record.leaseExpiresAt = nil
-                record.errorCode = nil
-                record.errorMessage = nil
-                record.startedAt = nil
-                record.finishedAt = nil
-                record.updatedAt = timestamp
+                // Same guard as `retryAudioImport`: a retired source needs reselection.
+                if record.kind == ProcessingJobKind.audioImport.rawValue {
+                    guard let input = try AudioImportInputRecord.fetchOne(db, key: key),
+                          input.jobID == record.id,
+                          (try? input.decoded())?.canResume == true else { continue }
+                }
+                record.resetForExplicitRetry(at: timestamp)
                 try record.update(db)
                 retried.append(try record.job)
             }
@@ -459,7 +455,7 @@ extension MeetingStore {
             .fetchOne(db)
     }
 
-    private static func ownedJob(
+    static func ownedJob(
         _ id: ProcessingJobID,
         owner: String,
         at timestamp: Date,
@@ -503,6 +499,11 @@ extension MeetingStore {
             .max(by: { $0.updatedAt < $1.updatedAt }) {
             meeting.lifecycleState = MeetingLifecycleState.needsAttention.rawValue
             meeting.lastProcessingError = failure.errorCode ?? "processing.failed"
+        } else if jobs.contains(where: {
+            $0.kind == ProcessingJobKind.audioImport.rawValue && $0.state == ProcessingJobState.cancelled.rawValue
+        }) {
+            meeting.lifecycleState = MeetingLifecycleState.needsAttention.rawValue
+            meeting.lastProcessingError = "import.cancelled"
         } else if pendingCaptureCount > 0 {
             meeting.lifecycleState = MeetingLifecycleState.needsAttention.rawValue
             meeting.lastProcessingError = "capture.publication.failed"
@@ -543,7 +544,8 @@ extension MeetingStore {
     }
 
     private static func requiresArtifactCommit(_ kind: String) -> Bool {
-        kind == ProcessingJobKind.transcription.rawValue
+        kind == ProcessingJobKind.audioImport.rawValue
+            || kind == ProcessingJobKind.transcription.rawValue
             || kind == ProcessingJobKind.refine.rawValue
             || kind == ProcessingJobKind.diarization.rawValue
             || kind == ProcessingJobKind.summary.rawValue
@@ -695,7 +697,7 @@ extension MeetingStore {
         }
     }
 
-    private static func succeed(
+    static func succeed(
         _ record: inout ProcessingJobRecord,
         at timestamp: Date,
         in db: Database

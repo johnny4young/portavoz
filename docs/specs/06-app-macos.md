@@ -2048,6 +2048,14 @@ keyed to the audio directory rather than review revisions, so cancellation by
 independent initial section updates cannot consume the only attempt. SwiftUI
 retains only transport controls, drawing, and the native save panel.
 
+Both `AudioClipExporter` overloads and `AudioTranscoder` use one internal
+`AudioExportSession` compatibility bridge. The native async path propagates its
+original errors unchanged; the callback fallback preserves clip/compression
+error families, localized reason or `unknown`, and callback completion ownership.
+Caller composition, clear-mix range, output replacement and cleanup stay local
+to the exporter; compression still verifies every output before removing sources.
+The bridge neither removes files nor changes the existing cancellation policy.
+
 SwiftPM and the XcodeGen UI-test project link `ApplicationKit`. It exposes the
 Sendable async `ApplicationUseCase<Request, Response>` contract and admits
 capability dependencies only with characterized vertical workflows.
@@ -2067,20 +2075,60 @@ versus visible provider and persistence outcomes (D62).
 
 Slice 2F moves external audio import through `ApplicationKit.ImportMeeting`.
 `AppServices` now only samples platform preferences, constructs private
-filesystem/model/provider adapters, localizes typed progress, requests
-Spotlight reconciliation after success, and returns the ID used by the existing
-Library navigation. The use case owns required transcription, degradable
+filesystem/model/provider adapters, provides typed progress and requests
+search reconciliation after each settled import and again when the queue
+drains, so long batches do not hide finished meetings from search. The Library opens a result only
+through the user's explicit queue action. The use case owns required transcription, degradable
 diarization and summary, independent transcript/summary languages, idle
 release, staged-audio rollback, and atomic meeting/cast/transcript installation.
 File copy and compensating deletion run at utility priority instead of on the
-MainActor. Its import-specific provider resolver exposes the configured
+MainActor. Optional diarizer preparation now occurs once after required
+recognition and shares the attribution failure boundary. A missing speaker model
+cannot prevent transcript publication; cancellation remains terminal (D532). Its import-specific provider resolver exposes the configured
 provider/model/revision without leaking engine construction into ApplicationKit.
 After the required aggregate commits, each real summary call records one
 content-free attempt. Success links run + immutable summary/actions atomically;
 provider failure, cancellation, or publish failure remains best effort and can
 never discard the meeting or copied audio. An unavailable provider creates no
-synthetic run. Existing progress, navigation, and idle-release timing stay
-unchanged (D46/D64).
+synthetic run. D46/D64 model behavior and independent lease release are retained; audio
+selection now uses the durable queue described below. A single `.portavoz`
+bundle still uses its existing progress and automatic result navigation.
+
+The separate `ProcessAudioImports` use case can consume admitted durable imports
+without presentation ownership. It claims a fresh owner per attempt, copies or
+verifies the retained source before creating model capabilities, and runs
+`ImportMeeting` with owned adapters. Lease heartbeat and execution are structured
+children; explicit cancellation rejects late output, while process interruption
+awaits uncancelled storage cleanup and returns work to pending. A failed source
+does not prepare models; a failed transcription keeps copied audio for retry and
+does not prevent the next queued file from running. Trashing a meeting while
+its import runs stops that attempt at the next heartbeat and returns it to
+pending without spending a retry; restoring the meeting resumes it. The app owns a shared supervisor for this worker, starts it after recording
+recovery, coalesces admissions and explicit retries, and wakes once for a future
+lease expiry. Closing the queue or a Library window does not cancel admitted
+work. Acquisition holds a native content-free lock through
+fresh ownership validation, reclamation of the admission's exact unpublished
+stage and publication. A busy native writer produces a distinct failure even if
+its database lease has expired. Admission reserves the meeting-relative audio
+location just like recording reservation, making even unpublished staging
+visible to the existing purge flow. Purge and restore share native exclusion;
+purge reads the current tombstone and automatic expiry rechecks the cutoff.
+The lock and deletion adapter use the same sampled root. Failed lock acquisition
+leaves the row intact; admitted filesystem-removal failures retain the existing
+best-effort policy. Library mutation errors render outside the selectable List and remain until
+dismissed or another mutation starts.
+
+The picker admits multiple audio files; drop admits every matching audio URL,
+not only the first. Mixed/multiple meeting bundles reject without partial
+admission. Audio selection opens the import queue rather than waiting for ASR
+or stealing navigation on completion. The queue projects twenty rows at a time,
+puts unfinished work first, excludes trash, uses stable meeting identifiers,
+and exposes Cancel, Retry, Open, paging and close controls. Current attempt
+phases are observational; no total progress percentage is invented. A failed
+file cannot suppress another file's result. Readiness and both paging controls
+use the same English/Spanish catalog as the rest of the queue. Original files remain read-only.
+Moving the recordings root rejects while an admission/drain/pending job exists;
+the model prevents a new selection from racing the subsequent root change.
 
 Slice 2G moves quality re-passes through `ApplicationKit.RefineMeeting` and
 `ApplyRefinedMeeting`. `AppServices` composes private audio, preference,
@@ -2514,7 +2562,7 @@ Font: `docs/design/ds/` (authored in Claude Design, pine project). (1) `PVDesign
 
 **Next question + talk balance (D134/D174, Jul 2026)**: `RecordingNextQuestionModel` is the exact catch-up sibling (`recording-next-question` button, `recording-next-question-panel` card): pull-based, `.interactive`, capability-honest, stale-fenced on every exit, dismissed synchronously at Stop; its prompt carries the still-open objectives so a suggestion can steer back to them, and `PromptFactory.nextQuestionInstructions` pins one-or-two grounded questions, no filler. The talk-balance cue (`recording-talk-balance`, next to the mic meter) is `LiveTalkTimePolicy` — pure channel math over closed rows in a five-minute window, no model call, so it does NOT ride the Apuntador opt-in; it evaluates at most 1,024 closed candidates before the time filter, renders only once closed captions exist, and shifts to amber emphasis only past 60 seconds of attributed speech and a two-thirds share, with the exact percentage in accessibility value and help.
 
-**Dictation 4b (pull DS 4 — Jul 11)**: the dictation strip gains the three traits of exploration 4b. (1) **Visible target chip**: `DictationController.targetApp` = `NSWorkspace.frontmostApplication.localizedName` captured in `start()` BEFORE showing non-activating panel (frontmost still is destination app); strip shows `✎ <app>` — never dictate «a ciegas». (2) **Partial in gray**: `confirmedText` in `.primary` + `partialText` in `.tertiary` concatenated (previously joined into one string) — volatility shown in gray and affirmed on confirmation. (3) **Inserted state**: new `Phase.inserted(Int)` — after `TextInserter.insert`, strip shows «N palabras insertadas en <app> — nada se guardó» for 1.6 s before closing (previously closed abruptly). Privacy ledger does NOT adopt the mock DS tile «0 B a la red»: would be an unmeasurable metric (no network log); real LedgerSection says what CAN go out (gists, external model, update check) — more honest («Measured, not promised»).
+**Dictation 4b (pull DS 4 — Jul 11)**: the dictation strip gains the three traits of exploration 4b. (1) **Visible target chip**: `DictationController.targetApp` comes from the captured destination in `start()` BEFORE showing the non-activating panel (frontmost still is destination app); strip shows `✎ <app>` — never dictate «a ciegas». (2) **Partial in gray**: `confirmedText` in `.primary` + `partialText` in `.tertiary` concatenated (previously joined into one string) — volatility shown in gray and affirmed on confirmation. (3) **Inserted state**: new `Phase.inserted(Int)` — after `TextInserter.insert`, strip shows «N palabras insertadas en <app> — nada se guardó» for 1.6 s before closing (previously closed abruptly). Privacy ledger does NOT adopt the mock DS tile «0 B a la red»: would be an unmeasurable metric (no network log); real LedgerSection says what CAN go out (gists, external model, update check) — more honest («Measured, not promised»).
 
 **Real DS features (Jul 12 — «construyelas»): chapters + only-my-voice + summary tabs + menu-bar pending.** (1) **Summary tabs** (MeetingDetailView): SummarySections (ApplicationKit, pure, 3 tests) splits markdown by headers `## ` (language-agnostic) → intro + sections with bullet count; tab bar Summary/«Heading·N»/«To-dos·done/total» (active tab indigo filters). (2) **✦ Chapters** (chaptersSection): ChapterExtractor (ApplicationKit, pure, 6 tests) derives chapters LOCAL from transcript — boundary by pause ≥10s (with minimum spacing of 120s to avoid over-segmenting spaced seeds) or length ≥300s; label = first real sentence of chapter, with fallback search limited to that same chapter; ≤1 chapter → hidden rail. Rendered after MeetingHealth, click seeks+plays (disabled without audio). (3) **Only my voice** (MeetingPlayer + MeetingPlayerBar): `onlyMyVoice` + `nonVoiceRanges` — time-observer skips non-voice ranges like skipSilence; PlaybackRanges.complement (ApplicationKit, pure, 6 tests) computes complement of .microphone channel ranges within [0,duration] (merge with padding 0.25s); amber-tinted toggle in player bar. (4) **Pending menu bar**: recent shows «✦ N» = openActionItems grouped by meetingID. **2-column layout of detail (Jul 12)**: DONE. loadedBody: header + speakers + refineStatus full-width, then HStack(alignment:.top) — left VStack (summaryOrGenerate + transcriptSection with player, maxWidth infinity) + `detailRail` right (width 260: MeetingHealthView + chaptersSection + Apuntador persisted). Rail has own scroll and is HIDDEN entirely if no content (doesn't leave 260pt gap). maxWidth of content bumped to 1060. Matches MeetingDetail.jsx from DS.
 
@@ -2663,6 +2711,53 @@ creating an evidence package; it does not certify an unobserved real-world check
 
 ## Global dictation (Jul 2026)
 
+**Explicit deterministic text modes.** PortavozCore owns Literal/Clean and the
+bundle-ID profile value; the app owns preference resolution and presentation.
+The Settings model initializes a missing `dictationTextMode` before UI can write
+its first enable toggle. Previously configured dictation keys, including a saved
+false toggle or filler choice, retain implicit Clean and existing replacements;
+untouched preferences initialize Literal. A corrupt mode falls back to that same
+legacy-aware policy without erasing the stored choices or enabling dictation.
+
+Literal keeps the admitted recognized words without optional filler filtering or
+replacements; it is not a promise of acoustic verbatim recognition and retains
+existing caption hygiene/assembly. Clean applies the existing TranscriptionKit
+filler setting and one non-cascading replacement pass. Neither requires a
+translation/provider/model beyond recognition. Rules and filler choices remain
+configured while Literal is selected. Settings keeps those controls visible but
+disables them, with a "Clean mode only" note, unless the default or at least one
+readable application profile uses Clean (`DictationTextSettingsModel.cleanModeInUse`).
+
+Resolution is session override, then exact captured bundle-ID profile, then
+global mode. The destination's existing NSRunningApplication capture supplies
+its bundle ID even when the captured field is secure or focus cannot be read;
+profile lookup never recaptures focus or authorizes delivery. Insertion capability
+and application identity are independent: unavailable delivery keeps the selected
+text policy for explicit recovery, without allowing Retry.
+One immutable preference snapshot is admitted before preparation. A panel choice
+changes only its mode; subsequent Settings edits affect later sessions. Stop
+request, not the delayed native Stop issuance, freezes the mode; once delivery
+has prepared its text the panel choice stays disabled while insertion settles,
+even though Stop bookkeeping has already retired. Cancellation,
+completion and restart retire the override and rule snapshot; recovery retains
+the processed output, never silently reprocesses or repeats insertion.
+
+Application profiles are explicit Settings choices through a native application
+chooser attached asynchronously to the requesting Settings window. A missing
+owned window reports an actionable error instead of opening an unowned panel.
+A full-row button expands the section with a localized accessibility
+state; expansion does not require locating a small disclosure-arrow hit target. Only bundle ID and mode are saved, never app paths, window titles, web
+addresses or surrounding text. The chosen app is not launched or registered.
+The bounded codec accepts at most 64 unique IDs (1–255 ASCII identifier bytes)
+and 32 KiB JSON, rejects duplicate/invalid records as a whole, and never salvages an
+ambiguous winner. Invalid profiles remain intact and visible until an explicit
+Reset; dictation safely falls back to the global mode. Choosing an application
+that already has a profile keeps its saved mode; only a new profile starts from
+the global mode. Per-row mode and Remove
+controls retain bundle-ID identity. The existing portable-settings allowlist is
+unchanged; these new choices are not implicitly exported or imported.
+
+
 **Microphone preparation (D543).** Dictation resolves microphone permission
 through the existing PlatformKit client before constructing a capture source or
 loading a model. A pending permission or cold model is **Preparing**, never
@@ -2727,7 +2822,32 @@ never registers a global keyboard or mouse trigger. `-seed-dictation` is inert
 outside that composition; without an explicit fixture temporary dictation refuses
 admission. The menu-bar Dictate action and panel expose stable identifiers for
 restart/cancellation journeys. This is not a change to the production trigger,
-recognition, capture-loss or delivery-success policies documented below.
+recognition or capture-loss policies. Destination recovery is specified below.
+An additional explicitly armed `-seed-dictation-native-controller` mode requires
+the native fixture, scripted recognition and English-caption flags together;
+it cannot fall back to direct insertion if its controller is unavailable. It
+reuses the scripted microphone/runtime but replaces only the native platform
+ports, preserving production admission, destination capture, mode policy,
+minimum-capture duration and Stop. The fixture waits for an actual Clean choice
+in the nonactivating panel and a separate Stop acknowledgement on a second,
+distinct UUID-named control board. XCTest publishes that acknowledgement only
+after its pointer gesture returns; selection alone must not dispatch Paste while
+automation is still injecting the click. Neither stage reactivates the receiver.
+Its separately bounded ten-second phases (choice, Stop acknowledgement,
+completion) end the admitted fixture session; an already active controller is
+rejected without being cancelled. The driver is isolated from global input and
+does not qualify a concurrent manual cancel-and-restart during its gesture.
+Cancellation cannot undo an
+already-dispatched paste. No trust prompt, real microphone or ASR model is used.
+Both native fixture paths quietly check public event-synthesis authorization
+before arming, separately from AX inspection. A denial reports
+`event-posting-required-for-app`, creates no receiver-waiting task and starts no
+controller session. This diagnostic neither requests authorization nor changes
+production event posting; a passing preflight is still not editor acknowledgement.
+
+The disposable main-window menu fixture is top-aligned, as the real menu is,
+so its trigger remains separate from the bottom-anchored recovery panel even
+on a compact display. The production menu and panel placement are unchanged.
 
 **Incremental transcript projection (D545).** The actual stream consumer retains
 closed text instead of mapping and joining the entire caption history for each
@@ -2777,9 +2897,17 @@ focus change. A process target that does not name a running application fails
 before clipboard mutation, its secure-field inspection reads that application's
 focused element, and it never falls back to session routing. The receiver establishes its own first
 responder; the test asserts actual Unicode content rather than clicking through
-desktop overlays. Production session routing remains unchanged and is not
-qualified by this fixture. It does not read the user's clipboard. Actual
+desktop overlays. The fixture and pinned production destinations use a captured process and
+focused-element capability; only production applications without a pinnable
+focused field keep session-stream delivery (below). This one receiver does not
+qualify the complete external-editor matrix. It does not read the user's clipboard. Actual
 Accessibility permission is required; tests do not grant it or dismiss prompts.
+The native fixture additionally requires valid bounded selection/count metadata
+from this known receiver before spending its single insertion. A foreground
+application or a regular focused button is not editor readiness. These read-only
+probes can repeat within the existing preparation deadline; an event never does.
+This is fixture preparation, not a new production-editor eligibility restriction,
+a longer acknowledgement window or a guarantee against later focus changes.
 A local certificate-backed UI build can use the explicit signer/team inputs in
 spec 08 so rebuilding does not necessarily change its designated requirement.
 The app remains a disposable test identity, not the installed release or Dev app.
@@ -2810,13 +2938,105 @@ fixture exercises failed registration and recovery with an inert registrar.
 
 Surface validated by MacParakeet: global hotkey → speak → hotkey again → text written where cursor is. `GlobalHotkey` uses Carbon `RegisterEventHotKey` — the only API consuming the keystroke without Accessibility permission — and is registered from app initialization so it survives without a window. `DictationController` owns one process-scoped, UUID-fenced session: mic → the selected live engine (Parakeet by default) → the shared `CaptionCoalescer`; no meeting, database row, or audio file is created. The non-activating `DictationPanel` shows live text and offers explicit cancellation.
 
-`TextInserter` implements the fail-closed delivery boundary. It waits up to one second for all physical modifiers to lift and refuses delivery rather than posting a combined shortcut when they remain held or cancellation arrives. It then inspects the focused Accessibility element immediately before touching the clipboard: `AXSecureTextField`, lost trust, missing role, malformed values, and transient inspection errors all block insertion with localized feedback; an explicitly absent/unsupported subrole on an otherwise valid ordinary text control remains admissible. Only after that check does it snapshot every pasteboard representation it can actually capture, write the dictation, and post a complete layout-aware ⌘V pair. Borrowed Text Input Source properties are promoted while their owning source remains alive, must match their declared Core Foundation runtime type, and must contain a complete keyboard-layout header; a missing, wrong-typed, or truncated value falls back to the standard QWERTY shortcut instead of reaching typed Carbon translation. Clipboard-write or event-construction failure restores immediately. Successful delivery restores captured representations after 1.5 seconds only if `changeCount` still identifies Portavoz's write, preserving rich content without overwriting a clipboard manager.
+**Captured destination and explicit recovery (D544).** Before presenting the
+panel or acquiring a model, the controller captures the original application
+and focused AX element as one insertion capability. The chip is its display
+name, not a bundle/name-based authorization. `NSRunningApplication.isEqual`
+protects process identity; the original application must not be terminated,
+and `CFEqual` must match the current focused element. `launchDate` is not a
+requirement because macOS does not supply it for every application.
 
-Capture timing starts at the first admitted nonempty microphone buffer, not when the stream opens, model preparation or the panel starts. A finish before readiness or before 0.75 seconds have elapsed after first PCM admission cancels silently; one owned 250 ms tail task preserves the last phoneme and suppresses duplicate finish gestures. Session cancellation closes the transcription feed immediately, stops local resources, fences stale state, and prevents later insertion. Audio feeding and peak calculation run off the main actor; only the meter mutation crosses back. A single cancellable failure-dismiss task prevents an older error from closing a restarted session. `DictationAssembler` joins confirmed plus partial text and requires lexical content, so punctuation-only noise never pastes. A pre-transcription VAD is deliberately absent because live Parakeet silence yields no segment; the batch-Whisper hallucination class is handled elsewhere. The Settings toggle remains off by default. Verified E2E: the hotkey triggers with the app in the background, the panel transcribes live audio, and final insertion works in the field.
+`TextInserter` waits up to one second for physical modifiers to lift. Cancellation,
+held modifiers, missing trust, secure/uninspectable focus and a changed original
+target all refuse delivery. It validates before borrowing the clipboard and
+again after writing, immediately before constructing/posting the event pair;
+cancellation is checked after each synchronous inspection. It then posts only
+to the captured positive PID and never activates or refocuses an application.
+An application that exposes no focused AX element at capture (some Electron,
+Java and remote-desktop clients) cannot be pinned. Rather than refusing where
+the previous delivery worked, its destination keeps that contract: the same
+application must still be frontmost, the system-wide focused field must be
+inspectable and not secure at delivery, and the shortcut uses the session event
+stream. Because clicking Reinsert keys the non-activating panel without
+activating Portavoz, that route also refuses (`.focusUnavailable`, text kept)
+while an inactive Portavoz holds a key window: the session stream would paste
+into the panel and report a dispatch that never reached the destination. A fixture that names its receiver still waits for a pinnable field. If final inspection serviced a new clipboard owner,
+no event is posted and that owner's content is not restored over.
+
+The existing layout-aware shortcut and captured rich clipboard representations
+remain shared. Borrowed Text Input Source properties are promoted while their
+owner remains alive, checked for runtime type and a complete layout header;
+invalid values fall back to the QWERTY shortcut. Clipboard-write or event
+construction failure restores immediately while still owned. Dispatched events
+schedule restoration after 1.5 seconds, only while the same change count owns
+the board. The result distinguishes `verified`, `dispatched` and `refused`;
+no automatic repeat is safe after dispatch, including cancellation or failed
+readback. Empty inserter input refuses before borrowing the clipboard.
+
+**Bounded delivery observation (D555).** When the captured field supports AX selection,
+character count and string-for-range, insertion snapshots only selection/count
+immediately before borrowing the clipboard. A changed selection or unavailable
+previously readable metadata during final validation refuses the attempt. After
+posting once, a bounded observer requires
+the expected character-count delta, collapsed caret, exact inserted UTF-16 span,
+unchanged destination and matching metadata after the read. Destination identity
+is checked again after the final metadata read, which can itself service a
+focus change. It never reads the old selection, full field value, title, URL or
+screen. Comparing code units does
+not silently accept smart quotes, canonical normalization or other changes.
+
+The requested span is limited to 16,384 UTF-16 units; longer output is still sent
+in full but not read back. The observer uses a 750 ms window, at most 30 polls
+and a 25 ms asynchronous pause only while the field remains unchanged. Specific
+application/field AX objects use 100 ms messaging timeouts, never a global
+system-wide timeout. AX IPC and third-party server allocations are not a hard
+real-time or memory guarantee. Missing, malformed, delayed or changed observations
+return `dispatched`, not a retryable failure. An editor whose AX offsets do not
+follow Cocoa UTF-16 conventions cannot be qualified by this observer. This is a point-in-time observation,
+not proof against a later user edit or an atomic editor transaction.
+
+The delivery banner has its own cancelled-on-restart, identity-fenced dismissal
+task; waiting for presentation never holds the capture runtime lease. The brief
+banner is green only for verified insertion (1.6 seconds). Dispatch without
+verification keeps an amber send status and the complete final output in RAM
+until explicit Discard or the next dictation. Copy is available with visible
+failure/success feedback; it does not post another Paste or close the result.
+The notice is non-modal: the text was already sent, so another global trigger
+starts a new dictation and replaces only this notice, never re-sending the old
+output. Reinsert is absent because
+a late editor may still apply the original event. The user must check the
+destination before manually pasting; Discard is a single-action exit. Neither result writes history or archives a
+successful delivery. The storage reassurance is limited to Portavoz, not a
+promise that the destination or a clipboard manager leaves no trace. Refused
+output alone enters the explicit recovery below.
+
+A refused insertion releases capture resources and leaves the complete processed
+output in controller-owned RAM. The persistent recovery panel displays an
+excerpt and three individually identified actions: Copy, Reinsert and Discard.
+Copy writes the complete output, reports failure without erasing it, and does
+not close recovery. Copy is an explicit user Copy command: like any Copy it
+replaces whatever the clipboard held, including several items, without reading,
+snapshotting or restoring the previous contents. The excerpt scrolls inside the
+bounded panel and is selectable, so the complete output stays reachable even if
+the clipboard write fails. Reinsert requires the
+original capture and revalidates it
+without acquiring audio/model resources; users must first return to that app
+and field. An unavailable initial capture disables Reinsert and explains the
+Copy fallback. No title, URL, surrounding text or target is stored on disk.
+A new keyboard, mouse or menu trigger reveals existing recovery rather than
+replacing it. Discard cancels pending delivery and clears the retained output
+and presentation copies. Late callbacks cannot revive it; quitting loses this
+memory-only recovery. Cancel after posting cannot undo an external edit.
+The AppKit panel and hosted content use the same bounded height, preventing
+repeated reveals from moving a self-sizing panel. Discard is a native cancel
+operation, consistent with discarding an unapplied Refine draft; it requires
+one explicit click and does not delete a saved library item.
+
+Capture timing starts at the first admitted nonempty microphone buffer, not when the stream opens, model preparation or the panel starts. A finish before readiness or before 0.75 seconds have elapsed after first PCM admission cancels silently; one owned 250 ms tail task preserves the last phoneme and suppresses duplicate finish gestures. Session cancellation closes the transcription feed immediately, stops local resources, fences stale state, and prevents later insertion. Audio feeding and peak calculation run off the main actor; only the meter mutation crosses back. A single cancellable failure-dismiss task prevents an older error from closing a restarted session. `DictationAssembler` joins confirmed plus partial text and requires lexical content, so punctuation-only noise never pastes. There is no pre-transcription speech-admission gate in live dictation. Public/synthetic controller observations have produced lexical proposals from silence and tones; this remains an explicit GAPS limitation, not proof of speech. The Settings toggle remains off by default. Native cross-process paste and exact-span readback remain separate permission-dependent qualification; deterministic controller coverage does not certify them.
 
 **Mouse-button push-to-talk (Jul 2026)**: `MouseButtonPTT` owns one session `CGEventTap` over `otherMouseDown`/`otherMouseUp` that CONSUMES the configured button (the app under the cursor never sees the click) and passes every other button through; a tap disabled by timeout is always re-armed. CGEvent index 2+ is eligible — vendor-facing Button 3+ means middle click or an additional button — while indices 0/1 (left/right) can never become a trigger. Invalid persisted values normalize to Off. The tap needs the same Accessibility trust as the paste path: choosing a button prompts once, a denied/pending prompt leaves the keyboard trigger working, and returning from System Settings retries registration. Rebinding first cancels any mouse-owned capture so its consumed release cannot strand the session. `MousePTTGesture` (app input boundary, pure, 3 tests) is the decision table: press starts when idle and finishes a listening session whoever started it; release delivers only when the button itself started the session, so a stray release can never double-finish a hotkey session. There is no tap-vs-hold discriminator on the mouse — the capture minimum already cancels an accidental click. `MouseButtonRecorder` in Settings captures the next middle/additional-button click (`settings-dictation-mouse-recorder`; Esc cancels) with an explicit clear control; both mouse and keyboard recorders remove their local monitors when their Settings row disappears.
 
-**Two-tier dictionary and filler filter (Jul 2026)**: `DictationTextRules` (TranscriptionKit, pure, 10 tests) is the deterministic tier — one non-cascading pass of user-defined whole-word, case-insensitive replacements applied longest-trigger-first with punctuation-aware lookaround boundaries (regex-metacharacter triggers like "c++" match literally; replacement strings including `$` and `\` stay literal). Matching is computed against the original text, so a preferred spelling can never become input to a later rule. The codec trims triggers, drops empty rules, and keeps the newest case-insensitive duplicate before the Settings list or matcher consumes it. A conservative bilingual hesitation-filler pass (only tokens meaningless in BOTH languages: um/uh/er/hmm/eh/ehm…, on by default via `dictationFillerFilter`) runs first and repairs seams (collapsed spaces, no space stranded before closing punctuation). The other tier is the existing vocabulary prompt (`customVocabulary`), which the dictation controller forwards as `hints.vocabulary`: WhisperEngine turns it into `promptTokens` and the optional live Apple Speech engine into `contextualStrings`; default live Parakeet still does not read it (FluidAudio 0.15.8 offers `configureVocabularyBoosting` only with the extra `parakeet-ctc-110m` model, which is not in the pinned model catalog). Deterministic replacement remains the only dictionary tier that changes default Parakeet dictation; no unmeasured quality claim is made for the optional Apple route. Rules persist as one JSON string (`dictationReplacements`, codec in the same type) edited by `DictationDictionaryEditor` in Settings (quick-add row `settings-dictation-dict-add`; re-adding a trigger updates it instead of stacking an unreachable duplicate). Both passes run in `deliver` on the final dictation text only — meeting transcripts stay verbatim records.
+**Two-tier dictionary and filler filter (Jul 2026)**: `DictationTextRules` (TranscriptionKit, pure, 10 tests) is the deterministic tier — one non-cascading pass of user-defined whole-word, case-insensitive replacements applied longest-trigger-first with punctuation-aware lookaround boundaries (regex-metacharacter triggers like "c++" match literally; replacement strings including `$` and `\` stay literal). Matching is computed against the original text, so a preferred spelling can never become input to a later rule. The codec trims triggers, drops empty rules, and keeps the newest case-insensitive duplicate before the Settings list or matcher consumes it. A conservative bilingual hesitation-filler pass (only tokens meaningless in BOTH languages: um/uh/er/hmm/eh/ehm…, on by default via `dictationFillerFilter`) runs first and repairs seams (collapsed spaces, no space stranded before closing punctuation). The other tier is the existing vocabulary prompt (`customVocabulary`), which the dictation controller forwards as `hints.vocabulary`: WhisperEngine turns it into `promptTokens` and the optional live Apple Speech engine into `contextualStrings`; default live Parakeet still does not read it (FluidAudio 0.15.8 offers `configureVocabularyBoosting` only with the extra `parakeet-ctc-110m` model, which is not in the pinned model catalog). Deterministic replacement remains the only dictionary tier that changes default Parakeet dictation; no unmeasured quality claim is made for the optional Apple route. Rules persist as one JSON string (`dictationReplacements`, codec in the same type) edited by `DictationDictionaryEditor` in Settings (quick-add row `settings-dictation-dict-add`; re-adding a trigger updates it instead of stacking an unreachable duplicate). The admitted session snapshot applies both passes in `deliver` on the final dictation text only — meeting transcripts stay verbatim records.
 
 **Dictation language preference:** `dictationLanguage` accepts {es, en}; other
 stored values mean automatic. The picker retains these preference values and
@@ -4194,6 +4414,12 @@ remain available. Compact is still a disk-saving option: there is no measured
 RAM advantage that would justify silently choosing it for an existing or new
 installation. A profile choice never starts a model download.
 
+The import supervisor retains its drain task through the asynchronous idle-wake
+lookup, even after model processing ends. Admission during that read queues one
+replacement owner; suspension cancels and joins the read before returning. A late
+lookup error from a retired generation cannot restore an obsolete queue warning.
+The suspension method is an internal lifecycle seam, not a user-facing pause-all control.
+
 ### Dictation completion and feedback ownership (D550)
 
 A recognizer can end while capture is still live. Such EOF fails before joining
@@ -4204,6 +4430,11 @@ before checking capture integrity. A dependency's CancellationError is a visible
 "ended unexpectedly" failure unless the owning task was cancelled or replaced;
 like capture interruptions and preparation permission/no-audio failures, it
 stays until dismissed because nothing was typed.
+
+Successful explicit recovery retries use the same generation-scoped feedback
+timer as first delivery. The delivery attempt and model lease finish before
+that cosmetic deadline; dismissing its own feedback clears the retained target
+and dependencies. A cancelled late deadline cannot clear the next session.
 
 Success and failure feedback have generation-scoped timers, independent of the
 capture task. New capture or Cancel revokes the old timer even when its wait

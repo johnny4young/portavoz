@@ -69,6 +69,15 @@ targets:
           - CFBundleURLName: app.portavoz.mac.uitest-host
             CFBundleURLSchemes:
               - portavoz
+        # Picker parity without making the disposable host a document handler.
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: app.portavoz.meeting-bundle
+            UTTypeDescription: Portavoz meeting
+            UTTypeConformsTo:
+              - public.json
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - portavoz
         LSApplicationCategoryType: public.app-category.productivity
         NSMicrophoneUsageDescription: "Portavoz records your microphone to transcribe your side of the meeting. Audio never leaves your Mac."
         NSAudioCaptureUsageDescription: "Portavoz captures system audio to transcribe other meeting participants. Audio never leaves your Mac."
@@ -121,6 +130,10 @@ targets:
     dependencies:
       - target: Portavoz
       - target: PortavozDictationReceiver
+      - package: Portavoz
+        products:
+          - PortavozCore
+          - IntegrationsKit
 
 schemes:
   Portavoz:

@@ -183,6 +183,51 @@ final class AudioClipExporterTests: XCTestCase {
         XCTAssertEqual(duration, 15, accuracy: 0.5, "the clip must be ~15 s long")
     }
 
+    func testRoleAwareClipPathsKeepRangeAndOriginalAudio() async throws {
+        let source = try writeWAV(seconds: 2)
+        defer { try? FileManager.default.removeItem(at: source) }
+        let original = try Data(contentsOf: source)
+        var lateRMS: [Bool: Float] = [:]
+        for clearPlayback in [false, true] {
+            let output = FileManager.default.temporaryDirectory
+                .appendingPathComponent("clip-role-\(UUID().uuidString).m4a")
+            defer { try? FileManager.default.removeItem(at: output) }
+            try await AudioClipExporter.export(
+                systemFile: source,
+                microphoneFile: source,
+                microphoneAudibleRanges: [0.5...1.0],
+                clearPlayback: clearPlayback,
+                range: 0.5...1.5,
+                to: output)
+            let duration = try await AVURLAsset(url: output).load(.duration).seconds
+            XCTAssertEqual(duration, 1, accuracy: 0.1)
+            XCTAssertEqual(try Data(contentsOf: source), original)
+            XCTAssertGreaterThan(try Data(contentsOf: output).count, 0)
+            // Source 1.22-1.45 s lies after the microphone's release ramp.
+            lateRMS[clearPlayback] = try rms(of: output, from: 0.72, to: 0.95)
+        }
+        let clear = try XCTUnwrap(lateRMS[true])
+        let unmixed = try XCTUnwrap(lateRMS[false])
+        XCTAssertLessThan(clear, unmixed * 0.75,
+                          "clear playback must mute the microphone outside local turns")
+    }
+
+    private func rms(of url: URL, from start: Double, to end: Double) throws -> Float {
+        let file = try AVAudioFile(forReading: url)
+        let rate = file.processingFormat.sampleRate
+        let count = AVAudioFrameCount((end - start) * rate)
+        file.framePosition = AVAudioFramePosition(start * rate)
+        let buffer = try XCTUnwrap(
+            AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: count))
+        try file.read(into: buffer, frameCount: count)
+        let samples = try XCTUnwrap(buffer.floatChannelData)[0]
+        let frames = Int(buffer.frameLength)
+        XCTAssertGreaterThan(frames, 0)
+        var sum: Float = 0
+        for index in 0..<frames { sum += samples[index] * samples[index] }
+        return (sum / Float(max(frames, 1))).squareRoot()
+    }
+
     func testRejectsInvalidRangeAndMissingAudio() async {
         let out = FileManager.default.temporaryDirectory.appendingPathComponent("x.m4a")
         do {

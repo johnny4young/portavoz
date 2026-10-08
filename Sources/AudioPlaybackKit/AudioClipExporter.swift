@@ -59,18 +59,10 @@ public enum AudioClipExporter {
                 asset: composition, presetName: AVAssetExportPresetAppleM4A)
         else { throw ClipError.exportFailed("no export session") }
 
-        if #available(macOS 15.0, iOS 18.0, *) {
-            try await session.export(to: output, as: .m4a)
-        } else {
-            session.outputURL = output
-            session.outputFileType = .m4a
-            await withCheckedContinuation { continuation in
-                session.exportAsynchronously { continuation.resume() }
-            }
-            guard session.status == .completed else {
-                throw ClipError.exportFailed(session.error?.localizedDescription ?? "unknown")
-            }
-        }
+        try await AudioExportSession.export(
+            session,
+            to: output,
+            legacyFailure: ClipError.exportFailed)
     }
 
     /// Clear-channel export matching the default player. The complete
@@ -108,18 +100,9 @@ public enum AudioClipExporter {
             session.audioMix = mixed.cleanAudioMix
         }
 
-        if #available(macOS 15.0, iOS 18.0, *) {
-            try await session.export(to: output, as: .m4a)
-        } else {
-            session.outputURL = output
-            session.outputFileType = .m4a
-            await withCheckedContinuation { continuation in
-                session.exportAsynchronously { continuation.resume() }
-            }
-            guard session.status == .completed else {
-                throw ClipError.exportFailed(
-                    session.error?.localizedDescription ?? "unknown")
-            }
-        }
+        try await AudioExportSession.export(
+            session,
+            to: output,
+            legacyFailure: ClipError.exportFailed)
     }
 }
