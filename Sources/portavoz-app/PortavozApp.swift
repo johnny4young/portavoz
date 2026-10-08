@@ -123,6 +123,11 @@ private struct AppLaunchRootView: View {
             if presentsMenuBarUITestFixture {
                 MenuBarContent(model: services.makeMenuBarModel())
                     .environment(services)
+                    // Recovery needs a separate hit region; other menu fixtures
+                    // keep their existing intrinsic-size presentation.
+                    .frame(
+                        maxHeight: services.dictationUITestFixture?.presentsRecoveryControls == true ? .infinity : nil,
+                        alignment: .top)
                     .task { await services.seedDemoIfRequested() }
             } else {
                 ContentView(services: services)

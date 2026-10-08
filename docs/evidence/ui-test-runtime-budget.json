@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 131
+    "expectedCaseCount": 138
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -24,6 +24,10 @@
   },
   "schemaVersion": 1,
   "testBudgetsSeconds": {
+    "AudioImportUITests/testCancelOneImportContinuesTheNextAndExplicitRetryReusesTheQueue()": 30.0,
+    "AudioImportUITests/testMultipleAudioFilesReachPagedQueueAndOpenTheirMeeting()": 30.0,
+    "AudioImportUITests/testRelaunchResumesPublishedAudioWithoutTheSelectedOriginals()": 30.0,
+    "AudioImportUITests/testSingleMeetingBundleReachesDetailWithoutChangingTheOriginal()": 20.0,
     "AutomationUITests/testAppEntitiesOpenExactVisibleDestinations()": 20.0,
     "AutomationUITests/testRecordingAutomationRoutesStartAndStopThroughVisibleApp()": 20.0,
     "BackgroundWorkUITests/testBackgroundWorkCenterShowsAllOwnersAndRecoversExactFailures()": 25.0,
@@ -33,6 +37,9 @@
     "CommitmentRadarUITests/testReminderAlertOpensCommitmentRadar()": 20.0,
     "CommitmentRadarUITests/testReminderDraftRequiresExplicitAccessAndLeavesDurableReceipt()": 20.0,
     "CommitmentRadarUITests/testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence()": 20.0,
+    "DictationTextModeUITests/testApplicationProfileUsesNativePickerAndKeepsTheOriginal()": 40.0,
+    "DictationTextModeUITests/testCorruptProfilesShowAnExplicitResetWithoutChangingTheDefault()": 20.0,
+    "DictationTextModeUITests/testSessionModeOverrideCancelsAndRestartsWithoutChangingDefaults()": 20.0,
     "DictationUITests/testDictationCaptureFailureIsVisibleAndCanBeDismissed()": 20.0,
     "DictationUITests/testDictationPanelCancelsAndRestartsWithoutGlobalInput()": 20.0,
     "DictationUITests/testDictationSourceEOFBeforeStopIsVisibleAndCanRestart()": 20.0,
@@ -45,10 +52,7 @@
     "InterviewAssistUITests/testInterviewAssistGroundsTheCurrentQuestionInExactEvidence()": 25.0,
     "LibraryUITests/testActiveRecordingRemainsReachableAfterBrowsingTheLibrary()": 20.0,
     "LibraryUITests/testAskConfirmedMemoryLoadsPersonCommitmentsBlockersAndBothCitations()": 20.0,
-    "LibraryUITests/testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence()": 20.0,
-    "LibraryUITests/testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence()": 20.0,
-    "LibraryUITests/testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence()": 20.0,
-    "LibraryUITests/testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence()": 20.0,
+    "LibraryUITests/testAskConfirmedMemoryLoadsAllTopicJobsAndExactCitations()": 32.0,
     "LibraryUITests/testAskConversationAnswersAndSeeksToExactCitation()": 25.105,
     "LibraryUITests/testCaptureFailureSurvivesStopAndRelaunchWithPlayablePrefix()": 30.0,
     "LibraryUITests/testColdRecordingStartsLiveCaptionsWhenModelBecomesReady()": 20.0,
@@ -154,7 +158,9 @@
     "SkillsSettingsUITests/testWaitingReceiptIgnoresUnavailablePolicyAndReviewsSourceWithoutRunning()": 24.924,
     "SkillsSettingsUITests/testWaitingSkillApprovalCanBeRevokedBeforeHandoff()": 24.508,
     "UITestStorageUITests/testSharedScratchProtectsOwnershipAndRoundTripsAppFixtures()": 15.0,
-    "DictationUITests/testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart()": 20.0
-
+    "DictationUITests/testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart()": 20.0,
+    "DictationUITests/testUndeliveredTextCanBeCopiedAndExplicitlyRetried()": 20.0,
+    "DictationUITests/testUndeliveredTextSurvivesAnotherTriggerUntilDiscarded()": 20.0,
+    "DictationUITests/testDeliveredDictationDistinguishesDispatchFromVerification()": 25.0
   }
 }

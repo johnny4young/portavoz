@@ -262,6 +262,18 @@ class UITestScopeTests(unittest.TestCase):
                 path,
             )
 
+    def test_audio_import_sources_reach_the_queue_instead_of_playback_settings(self):
+        expected = set(FEATURE_TESTS["audio-imports"]) | set(FEATURE_TESTS["library"])
+        paths = sorted(ROOT.glob("Sources/**/*AudioImport*.swift"))
+        self.assertTrue(paths)
+        for source in paths:
+            path = source.relative_to(ROOT).as_posix()
+            with self.subTest(path=path):
+                selection = select_paths([path])
+                self.assertEqual(set(selection.tests), expected)
+                self.assertEqual(selection.locales, ("en",))
+                self.assertFalse(selection.interruption_controls)
+
     def test_detail_secondary_sections_select_only_owned_journeys(self):
         expected = {
             "Sources/portavoz-app/MeetingDetailActionSection.swift": (
@@ -861,29 +873,35 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(set(selection.tests), set(FEATURE_TESTS["dictation"]))
         self.assertEqual(selection.locales, ("en",))
 
-    def test_native_delivery_is_one_discoverable_explicit_gate_not_a_hosted_pass(self):
+    def test_native_delivery_journeys_are_discoverable_explicit_gates_not_hosted_passes(self):
         native = ui_scope.test_id(
             "DictationUITests", "testNativeInserterUsesDisposableReceiverAndClipboard"
         )
-        self.assertEqual(PERMISSION_GATED_TESTS, frozenset({native}))
-        self.assertNotIn(native, ALL_TESTS)
-        self.assertNotIn(native, FEATURE_TESTS["dictation"])
-        self.assertIn(native, ui_scope.discovered_test_catalog(ROOT))
+        controller = ui_scope.test_id(
+            "DictationUITests", "testNativeControllerModeChoicePreservesReceiverAndClipboard"
+        )
+        self.assertEqual(PERMISSION_GATED_TESTS, frozenset({native, controller}))
+        for selector in (native, controller):
+            self.assertNotIn(selector, ALL_TESTS)
+            self.assertNotIn(selector, FEATURE_TESTS["dictation"])
+            self.assertIn(selector, ui_scope.discovered_test_catalog(ROOT))
         budget = json.loads((
             ROOT / "docs/evidence/ui-test-native-dictation-runtime-budget.json"
         ).read_text(encoding="utf-8"))
-        self.assertEqual(budget["catalog"]["expectedCaseCount"], 1)
+        self.assertEqual(budget["catalog"]["expectedCaseCount"], 2)
         self.assertEqual(
             budget["testBudgetsSeconds"],
-            {"DictationUITests/testNativeInserterUsesDisposableReceiverAndClipboard()": 20.0},
+            {"DictationUITests/testNativeInserterUsesDisposableReceiverAndClipboard()": 20.0,
+             "DictationUITests/testNativeControllerModeChoicePreservesReceiverAndClipboard()": 20.0},
         )
         self.assertEqual(budget["fullSuite"], {
             "maximumP95Seconds": 20.0,
-            "maximumTestDurationSecondsPerLocale": 20.0,
+            "maximumTestDurationSecondsPerLocale": 40.0,
         })
         makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
         native_target = makefile.split("test-ui-native-dictation:", 1)[1].split("\n\n", 1)[0]
         self.assertIn(native, native_target)
+        self.assertIn(controller, native_target)
         self.assertIn("ui-test-native-dictation-runtime-budget.json", native_target)
         validate_catalog(ROOT)
 
@@ -927,6 +945,12 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertEqual(len(selection.tests), 2, path)
 
+    def test_atomic_snapshot_helper_requires_both_locales_without_neighboring_changes(self):
+        path = "Tests/PortavozUITests/UITestSnapshotSupport.swift"
+        selection = select_paths([path])
+        self.assertEqual(selection.tests, HARNESS_TESTS)
+        self.assertEqual(selection.locales, ("en", "es"))
+
     def test_shared_fixture_build_sources_and_permission_require_full_bilingual(self):
         for path in (
             "Package.swift",
@@ -959,7 +983,8 @@ class UITestScopeTests(unittest.TestCase):
         # Includes five distinct assist journeys: layout, identity/reentry,
         # manual requests, coalesced arrivals and unsubmitted drafts, plus four
         # durable-input journeys: recovery, retry, removal and held-write Stop.
-        self.assertEqual(len(expected), 20)
+        # Topic jobs share one owner without dropping their four result/citation paths.
+        self.assertEqual(len(expected), 17)
         self.assertTrue(ui_scope.APUNTADOR_LEAK_EVIDENCE_FILES.isdisjoint(
             ui_scope.FULL_BILINGUAL_HARNESS_FILES
         ))
@@ -1230,6 +1255,10 @@ class UITestScopeTests(unittest.TestCase):
         for test_class, method in (
             ("SkillsSettingsUITests", "testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest"),
             ("SkillsSettingsUITests", "testSkillActivityRefreshPreservesTheExpandedCurrentScope"),
+            ("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence"),
+            ("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence"),
+            ("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence"),
+            ("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence"),
             ("LibraryUITests", "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence"),
             ("LibraryUITests", "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence"),
         ):
