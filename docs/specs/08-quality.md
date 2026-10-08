@@ -1,5 +1,19 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
+`test_site_interactions` executes the shipped website inline JavaScript with
+Node.js built-ins and explicit DOM, storage, clipboard and timer doubles. It
+checks a throwing `localStorage` accessor, denied storage reads/writes,
+saved-language admission, clipboard pending and duplicate-click behavior (the
+button stays enabled so keyboard focus survives; `aria-busy` holds the live
+announcement until the outcome), success, rejection, missing API, synchronous
+failure and retry. The runner exits non-zero unless every case completes, so a
+case stuck on a never-settling promise fails instead of passing silently. It
+reads exactly one bare inline `<script>` from `site/index.html`, resolved from
+its own location. These are deterministic capability/lifecycle checks, not
+a browser-rendering, native clipboard-permission or accessibility qualification.
+The repository hygiene runner requires Node.js in addition to Python; hosted
+Ubuntu runners provide it. No npm packages or network requests are needed.
+
 Confirmed Topic memory has one real-app journey for current decisions, first
 discussion, decision conflicts and changes since a selected meeting. It retains
 each exact result, source label, screenshot and playback seek assertion, but

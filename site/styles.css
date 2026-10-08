@@ -203,6 +203,8 @@ a { color: inherit; }
 .brew:hover { border-color: var(--amber); }
 
 .brew code {
+  -webkit-user-select: text;
+  user-select: text;
   min-width: 0;
   overflow-wrap: anywhere;
   font-family: "IBM Plex Mono", monospace;
