@@ -41,4 +41,44 @@ final class OnboardingUITests: PortavozUITestCase {
         XCTAssertTrue(app.control(withIdentifier: "onboarding-skip").exists)
         attachScreenshot(of: app, named: "onboarding-local-voice-enrollment")
     }
+
+    @MainActor
+    func testModelFailureCanContinueBackAndRetryWithoutDownloading() throws {
+        let app = try XCUIApplication.portavoz(showOnboarding: true)
+        app.launchArguments.append("-simulate-onboarding-model-recovery")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.control(withIdentifier: "onboarding-first-listen").waitForExistenceFast(timeout: 15))
+        for _ in 0..<3 {
+            app.control(withIdentifier: "onboarding-continue").click()
+        }
+        app.control(withIdentifier: "onboarding-models-download").click()
+        let failure = app.control(withIdentifier: "onboarding-models-error")
+        XCTAssertTrue(failure.waitForExistenceFast(timeout: 5))
+        let expectedFailure = UITestLocale.environmentLocale == "es"
+            ? "No se pudieron descargar los modelos. Comprueba la conexión e inténtalo de nuevo."
+            : "Models could not be downloaded. Check your connection and try again."
+        XCTAssertEqual(renderedText(of: failure), expectedFailure)
+        XCTAssertTrue(app.control(withIdentifier: "onboarding-models-retry").exists)
+        XCTAssertTrue(app.control(withIdentifier: "onboarding-skip").exists)
+        attachScreenshot(of: app, named: "onboarding-model-recovery")
+
+        app.control(withIdentifier: "onboarding-models-continue-without").click()
+        XCTAssertTrue(app.control(withIdentifier: "onboarding-voice-enroll").waitForExistenceFast(timeout: 5))
+        app.control(withIdentifier: "onboarding-back").click()
+        XCTAssertTrue(failure.waitForExistenceFast(timeout: 5))
+        app.control(withIdentifier: "onboarding-models-retry").click()
+        XCTAssertTrue(app.control(withIdentifier: "onboarding-models-ready").waitForExistenceFast(timeout: 5))
+        XCTAssertFalse(failure.exists)
+        XCTAssertFalse(app.control(withIdentifier: "onboarding-models-download").exists)
+        app.control(withIdentifier: "onboarding-back").click()
+        app.control(withIdentifier: "onboarding-continue").click()
+        XCTAssertTrue(app.control(withIdentifier: "onboarding-models-ready").waitForExistenceFast(timeout: 5))
+        app.control(withIdentifier: "onboarding-continue").click()
+        XCTAssertTrue(app.control(withIdentifier: "onboarding-voice-enroll").waitForExistenceFast(timeout: 5))
+        app.control(withIdentifier: "onboarding-skip").click()
+        XCTAssertTrue(app.control(withIdentifier: "onboarding-skip").waitForDisappearance(timeout: 5))
+    }
+
 }

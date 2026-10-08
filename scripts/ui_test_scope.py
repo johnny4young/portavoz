@@ -189,6 +189,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "onboarding": (
         test_id("OnboardingUITests", "testAdvancesFromFirstListenToLocalVoiceEnrollment"),
+        test_id("OnboardingUITests", "testModelFailureCanContinueBackAndRetryWithoutDownloading"),
     ),
     "meeting-performance": (
         test_id("MeetingDetailUITests", "testFiveThousandSegmentDetailRendersFromDisposableScaleFixture"),
