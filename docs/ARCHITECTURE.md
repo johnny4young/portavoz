@@ -33,6 +33,11 @@ The system combines these patterns:
 - injected capability and platform adapters;
 - explicit, content-free policy records before meeting-content network egress.
 
+The onboarding view uses a bounded observable preparation state with closed,
+localized failure categories and explicit retry/continue actions. The view
+never owns model leases or cancels process-shared loads; existing AppServices
+readiness and audio-first capture remain the authority.
+
 Feature parity is a permanent constraint: audio and user-owned data remain
 discoverable when transcription, diarization, generation, indexing, sync, or an
 external integration fails.
@@ -152,6 +157,17 @@ text delivery, and no captured content or destination identity enters a receipt.
 | `IntegrationsKit` | Canonical Markdown/PDF, identity-preserving diarized SRT/WebVTT, and issue exports; meeting bundles; EventKit mapping; MCP protocol handling; policy-checked HTTP transport and direct public-page Web retrieval; deterministic sync envelopes; protected CloudKit record/state adapters; and sync lifecycle policy. The current signed-entitlement capability probe is a macOS composition and fails closed on iOS until a signed iOS app adapter exists. |
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners including recording-scoped proactive-assist state, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
 | `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
+
+### Audio export compatibility boundary
+
+`AudioPlaybackKit.AudioExportSession` owns the shared AAC export bridge used by
+both clip-export paths and compression. Composition, requested ranges, clear
+mixing, output replacement, rollback, verification and source deletion remain
+with their existing callers. Current systems retain AVFoundation's async export
+and native errors. The macOS 14/iOS 17 fallback waits for its callback and accepts
+only `.completed`, mapping failures through the caller's existing error family.
+Cancelling a legacy wait does not retire the export before that callback; this
+refactor adds no cancellation or filesystem owner.
 
 ### Parakeet job preparation
 
@@ -282,6 +298,8 @@ The implemented application workflows include:
 - local summary-provider discovery, typed recommendation, and first-selection
   persistence without overwriting an existing choice;
 - external-audio import with required transcription and degradable derivation;
+  optional speaker-model preparation occurs once after recognition, within the
+  same cancellation-aware failure boundary as attribution;
 - relational `.portavoz` bundle import and read-consistent bundle export;
 - read-consistent staged whole-library Markdown backup with typed partial
   results and capture checkpoints;
@@ -1510,7 +1528,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 51. Its skill-identity write constraints preserve
+The current schema version is 52. Its skill-identity write constraints preserve
 historical denials rather than rejecting a populated library during upgrade.
 It includes:
 
@@ -5344,6 +5362,10 @@ content.
 constructed only by the app and CLI composition roots. `ApplicationKit` exposes
 asynchronous user-managed credential operations, so Settings credential and
 publishing-command paths do not block their actor on Security.framework calls.
+Credential replacement uses an injected synchronous Security boundary and atomic
+value-only updates. Missing-item creation and one duplicate-add retry preserve
+that boundary without deleting prior authority. Stored malformed bytes produce
+a content-free error; encrypted voice-store transaction ownership is unchanged.
 CLI publishing adapters resolve a credential lazily only after ApplicationKit
 has admitted the local document or pending work, preserving local errors and
 no-op behavior before any device-secret read.
@@ -5851,6 +5873,12 @@ nor answers the interrupting element. The execution classifier retains this as
 A separate permission-free fixture target compiles the same base and cleanup
 sources. Observable positive controls and synchronous/asynchronous negative
 controls qualify the callback without opening a system permission prompt.
+Keyboard admission treats a nested open-panel/Go to Folder hierarchy as one
+innermost active modal receiver. Only that receiver or its descendants can supply
+the explicit anchor; ancestor and background controls grant no authority. The
+existing non-hittable-dialog exclusion and unique frontmost-process check remain.
+After cleanup, the worker emits its refusal receipt and exits directly rather
+than reentering XCTest issue recording from the callback.
 The overlay's main-queue parent-exit callback emits a separate lifecycle
 acknowledgement before exiting; process absence without it is failed cleanup,
 not success. This closes the false-positive case where a main-actor callback
@@ -6409,6 +6437,48 @@ releases generation, then verifies the final answer and persisted citation.
 This changes only temporary-store fixture composition, not production latency.
 The handshake uses the launch-owned temporary directory and retains cancellation,
 cleanup and the original deadlines. No assertion or runtime budget is removed.
+
+### Pending external-audio import authority
+
+Durable import admission uses the existing meeting and owner-leased processing
+job authority. A local-only input BLOB holds a selected source capability and
+sampled import preferences; Core owns those typed values and ApplicationKit
+retains its existing import preference type alias. The opaque bookmark exception
+is explicitly scoped to unprocessed external input. Audio-directory strings
+remain relative and exported/synced meeting projections receive no bookmark.
+Cancellation retires an incomplete import without advertising it as ready.
+Admission reserves an immutable copy identity and its meeting-relative audio
+location before filesystem acquisition, as recording reservation already does.
+This location alone does not prove the existence or acceptance of bytes.
+Storage can atomically publish that exact copy reference while
+retiring its bookmark, then install required content and job success under the
+same live lease. Explicit retry retains logical identity and owned audio; the
+existing transcript writer and job retry reset are shared rather than copied.
+PlatformKit owns the native bookmark and bounded copy/verification adapter.
+A persistent, content-free native lock excludes concurrent acquisitions through
+fresh owner validation, exact unpublished-stage reclamation and publication.
+Published input is verified, never reclaimed; an expired database lease cannot
+by itself exclude a still-running native writer.
+ApplicationKit serializes durable import attempts, drains heartbeat and execution
+together, and reuses `ImportMeeting` for the model pipeline. Cancellation cleanup
+is independently uncancelled and joined so a cancelled database caller cannot
+leave its lease active. Installation returns the accepted transcript revision
+to summary provenance. Existing purge can therefore remove unpublished staging
+without another queue or database. It re-reads one current tombstone, shares
+native exclusion with restore, and revalidates the cutoff for automatic expiry.
+The native deletion adapter and lock share one sampled audio root. `AppServices` owns one `AudioImportQueueModel` independently of Library windows.
+It admits whole selections atomically, drains serially and schedules a single
+lease-expiry wake instead of polling. The Library renders a twenty-row scoped
+SQLite observation with stable meeting identities, per-file status, cancellation,
+retry and result navigation. Moving the recordings root excludes new admissions
+and requires an empty unfinished queue. A single meeting bundle retains its
+existing import workflow; mixed or multiple bundles reject before partial work.
+Mutation failures are visible and explicitly dismissible; purge no longer hides
+native-exclusion or storage errors.
+
+The audio-import supervisor keeps its owner task through idle-wake inspection.
+Processing completion does not discard a still-running storage lookup: suspension
+cancels and joins it, and new admission schedules one replacement owner.
 
 Dictation session completion and UI feedback have separate ownership.
 Recognizer EOF before an issued Stop is rejected before waiting for a live audio

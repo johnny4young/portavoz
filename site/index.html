@@ -55,22 +55,26 @@
         <span class="en">Records, transcribes and tells apart every voice in the meeting — local by default, with no bots or accounts. The constellation is your room: every dot a voice, the amber one is you.</span>
       </p>
       <div class="cta-row">
+        <a class="download-primary" href="https://github.com/johnny4young/portavoz/releases/latest">
+          <span class="es">Descargar DMG notarizado</span><span class="en">Download notarized DMG</span>
+        </a>
         <button type="button" class="brew" id="brew" aria-live="polite">
           <code>brew install --cask johnny4young/tap/portavoz</code>
           <span class="brew-hint"><span class="es">copiar</span><span class="en">copy</span></span>
         </button>
-        <a class="ghost" href="https://github.com/johnny4young/portavoz/releases/latest">
-          <span class="es">Descargar DMG notarizado</span><span class="en">Download notarized DMG</span>
-        </a>
       </div>
+      <p class="install-hint">
+        <span class="es">Abre el DMG y arrastra Portavoz a Aplicaciones. Si prefieres la terminal, usa Homebrew.</span>
+        <span class="en">Open the DMG and drag Portavoz to Applications. Prefer the terminal? Use Homebrew.</span>
+      </p>
       <div class="stats">
         <span><b>0.68 s</b> <span class="es">lag p95</span><span class="en">p95 lag</span></span>
         <span><b>7.6%</b> DER</span>
         <span><b>0</b> <span class="es">subidas silenciosas</span><span class="en">silent uploads</span></span>
       </div>
       <p class="platform">
-        <span class="es">macOS 14.4+ · Apple Silicon · código abierto MIT</span>
-        <span class="en">macOS 14.4+ · Apple Silicon · MIT open source</span>
+        <span class="es">macOS Sequoia (15)+ · Apple Silicon · código abierto MIT</span>
+        <span class="en">macOS Sequoia (15)+ · Apple Silicon · MIT open source</span>
       </p>
     </div>
 
@@ -241,7 +245,9 @@
   // hiding via [data-lang]); persisted so a reload keeps your choice.
   (function () {
     var root = document.documentElement;
-    var saved = localStorage.getItem("portavoz-lang");
+    // Persistence is optional: restricted storage must not disable the page.
+    var saved;
+    try { saved = localStorage.getItem("portavoz-lang"); } catch (e) {}
     if (saved === "en" || saved === "es") {
       root.setAttribute("data-lang", saved);
       root.setAttribute("lang", saved);
@@ -251,26 +257,41 @@
         var lang = btn.getAttribute("data-lang-val");
         root.setAttribute("data-lang", lang);
         root.setAttribute("lang", lang);
-        localStorage.setItem("portavoz-lang", lang);
+        try { localStorage.setItem("portavoz-lang", lang); } catch (e) {}
       });
     });
 
     // Copy the brew command with "copiado ✓ / copied ✓" feedback (1.6 s).
     var brew = document.getElementById("brew");
     var hint = brew.querySelector(".brew-hint");
-    brew.addEventListener("click", function () {
+    // Repeat clicks coalesce through the flag rather than `disabled`, which
+    // would drop keyboard focus from the button mid-copy. aria-busy holds the
+    // live region's announcement until the final outcome is in place.
+    var copying = false;
+    brew.addEventListener("click", async function () {
+      if (copying) return;
+      copying = true;
+      brew.setAttribute("aria-busy", "true");
+      clearTimeout(brew._t);
+      brew.classList.remove("copied");
+      hint.innerHTML = '<span class="es">copiando…</span><span class="en">copying…</span>';
       try {
-        navigator.clipboard.writeText(
+        await navigator.clipboard.writeText(
           "brew install --cask johnny4young/tap/portavoz"
         );
-      } catch (e) {}
-      hint.innerHTML = '<span class="es">copiado ✓</span><span class="en">copied ✓</span>';
-      brew.classList.add("copied");
-      clearTimeout(brew._t);
-      brew._t = setTimeout(function () {
-        hint.innerHTML = '<span class="es">copiar</span><span class="en">copy</span>';
-        brew.classList.remove("copied");
-      }, 1600);
+        hint.innerHTML = '<span class="es">copiado ✓</span><span class="en">copied ✓</span>';
+        brew.classList.add("copied");
+        brew._t = setTimeout(function () {
+          hint.innerHTML = '<span class="es">copiar</span><span class="en">copy</span>';
+          brew.classList.remove("copied");
+        }, 1600);
+      } catch (e) {
+        // Keep the command visible and selectable for manual copying.
+        hint.innerHTML = '<span class="es">copia manualmente</span><span class="en">copy manually</span>';
+      } finally {
+        copying = false;
+        brew.setAttribute("aria-busy", "false");
+      }
     });
 
     // Screenshot lightbox — click a thumbnail to open the full image; close

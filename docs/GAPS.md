@@ -150,6 +150,32 @@ launch, so importing settings with filler removal and replacements from another
 Mac leaves them inactive until the user chooses Clean. Carrying the mode in
 settings transfer would widen the allowlist and needs an explicit decision.
 
+### Queued audio imports across a restart or remount
+
+Before copying, a queued import compares the source's `fileResourceIdentifier`
+with the one recorded at admission. Apple documents that identifier as not
+persistent across restarts, and it includes the volume device number, so a
+pending import from an external or remounted volume may fail as
+`sourceChanged` after a restart and require a fresh selection even though the
+file is unchanged. The original is never modified. A restart-stable identity
+(for example volume UUID plus file ID) needs verification on macOS with internal
+and external volumes before it replaces the current check.
+
+### Keychain replacement and the file-based keychain trust list
+
+Credential replacement now updates the existing item in place, so a failed
+write keeps the previous working credential. The store does not opt into the
+data-protection keychain, so on macOS items live in the file-based keychain,
+where the creating binary's trust list controls access. The stable app, the
+Dev app and the CLI share each item. The released delete-and-recreate made the
+saving binary the new owner. An in-place update keeps the old trust list and
+the accessibility class the item was created with, so a save from a
+differently signed binary may prompt, fail, or leave reads prompting. The
+duplicate-item retry also overwrites a contender's value, which matters for
+encryption keys only when a pre-D358 binary bypasses the voice-store lease.
+Native evidence on a signed release, a Dev build and the CLI is required
+before choosing between trust repair and failure safety.
+
 ### Live dictation can propose text without speech
 
 **Open, reproduced in the public controller corpus.** The first complete
@@ -208,7 +234,10 @@ strength of the corpus count. The source and audio-manifest contract lives in
 `Fixtures/DictationValidation/README.md` and the quality specification. A
 proposed, not yet accepted, natural-speaker qualification and comparison
 protocol lives in [DICTATION-QUALITY.md](DICTATION-QUALITY.md); its candidate
-targets are not release budgets.
+targets are not release budgets. The offline `dictation_benchmark.py` report
+adapter only scores declared, content-free counts and phases: existing
+model/controller receipts still need a reviewed collection adapter, and its
+reports never qualify a population, consent or a quality threshold.
 
 ### Live Parakeet still lacks reliable token-delivery ownership
 
@@ -342,6 +371,14 @@ desktop that preserves its interaction context; any lifecycle change must first
 reproduce the problem at the actual window attachment/presentation boundary.
 Hosted CI and a local interactive run remain distinct evidence.
 
+The native same-application sheet positive has also encountered an unattributed
+own-app `Other` surface while focusing its accessory editor. The guard completed
+cleanup without typing or choosing anything, so the native prerequisite failed
+before the product catalog started. A separately instrumented observation reached
+the expected editor and choice; that did not reproduce or identify the original
+surface and is not a fix. Preserve the failed control rather than weakening its
+effect checks or treating the later diagnostic as full qualification.
+
 ### Unexpected system interruptions invalidate UI qualification
 
 A retained real-app execution proved that XCTest's default interruption monitor
@@ -465,10 +502,12 @@ XCTest reactivated the app and wrote despite the overlay. A foreground-only
 check was then disproved by a synthetic same-app alert: a newline accepted its
 default choice without entering an interruption monitor.
 
-Process ownership plus an explicit sole-modal-contained anchor now covers
-sixteen native controls, including legitimate bilingual editing, foreign
-interruption, unexpected same-app sheet and app-modal dialog rejection, and
-background-anchor rejection. Two surfaces stay outside the rule: popovers, and
+Process ownership plus an explicit innermost-modal-contained anchor now covers
+twenty native controls, including legitimate bilingual editing, foreign
+interruption, unexpected same-app sheet and app-modal dialog rejection,
+background-anchor rejection, and actual nested open-panel selection. The picker
+controls prove exact Unicode file selection and refuse missing, background or
+ancestor anchors; they do not qualify unrelated application journeys. Two surfaces stay outside the rule: popovers, and
 a dialog nothing can click such as the floating Writing Tools affordance. An
 unexpected popover with a default button is therefore not refused, and an
 app-modal dialog whose hit point lies off-screen is not either. Real
@@ -479,6 +518,55 @@ is not attributed from its frame; completion preferences and unrelated apps are
 not changed. Public-API admission remains a point-in-time observation: a window
 change after observation cannot be claimed atomically excluded. Full bilingual
 and exact-head hosted qualification remain distinct from native controls.
+
+A later Spanish Background Work journey stopped during its first Settings-form
+scroll after the indicator had opened Your data and the exact owner counts were
+verified. XCTest reported an interrupting `Other` owned by the disposable app;
+the guard completed cleanup before dispatch. The interrupted recording did not
+finish, so neither the element's frame nor the remaining passing tests identifies
+the surface or qualifies the invocation. This deep link does not use the ordinary
+Settings search-editor handoff, but that omission alone does not establish the
+interruption's cause. Preserve the failed evidence and reproduce the actual
+entry boundary before applying a handoff or changing scroll admission. Do not
+attribute the interruption to another application or dismiss an unknown surface.
+
+A required native-controls invocation also stopped before its synchronous
+foreign-overlay counterexample was armed: the arm click was dispatched, but
+neither the armed status nor any overlay readiness/lifecycle effect appeared.
+Owned teardown completed; the first two positive controls had passed. This is
+unclassified fixture readiness, not a qualified negative control, an input-
+authority failure or a product regression. The real-app catalog was not reached.
+Diagnosis must distinguish an unobserved arm callback from a pending or failed
+native application launch without loosening effect validation, increasing waits
+or treating a later pass as attribution of this failure.
+
+A subsequent full app catalog reached the Skills recap proposal but did not
+observe its confirmation sheet after selecting the menu item. Retained owned-app
+accessibility snapshots contain the meeting window but no confirmation sheet;
+they do not establish whether the selection callback or preview completed.
+Later cases explicitly refused an unrelated window interruption. Those refusals
+do not retroactively explain the earlier missing sheet. Both failures remain
+unqualified; successful native controls and hosted runs cannot replace diagnosis
+of the missing presentation or full local bilingual evidence.
+
+### Native search submission and screenshot ownership remain unqualified
+
+Repeated real-app command-palette journeys retained the exact query and lexical
+hits but produced no answer or citation after Return. Failure hierarchies show
+an app-owned native completion window with zero results and keyboard focus.
+That observed state is not proof of causality: isolated controls have not
+reproduced it, and temporary composition uses a deterministic answerer rather
+than a Foundation Models session. Diagnose the native editor and submission
+call site; do not replace Return with another action, increase the timeout or
+change host-wide completion preferences to manufacture a passing test.
+
+An Audio Settings reachability failure also retained a target-window screenshot
+containing foreground pixels from an unrelated application. An accessibility
+query for the target window does not establish exclusive pixel ownership or
+visibility. That capture cannot prove a layout defect and must not become a
+public showcase asset. Keep diagnostics private, distinguish foreign occlusion
+from product failure, and qualify screenshot ownership separately from keyboard
+admission; point-in-time input checks do not certify a later capture.
 
 ### Unattributed asynchronous media-framework test crash
 
@@ -1007,6 +1095,50 @@ Backend queue backpressure and exception-path cancellation draining remain
 unverified risks, not newly reproduced product defects. Preserve the failed
 receipt and unchanged stability thresholds; do not replace this gap with a
 retry-until-green candidate or a synthetic unit-test claim.
+
+### Multi-file audio import qualification
+
+The Library now admits multiple audio files into the same SQLite job authority,
+with app-owned serial supervision and a paged queue for progress, cancellation,
+retry and explicit result navigation. Storage/native/controller tests cover
+owner-fenced publication, preserved originals, cancellation, retry, and resuming
+a published copy without its source. These are not model-quality measurements.
+
+Real-app picker, pagination, cancellation and retry journeys are being qualified
+with synthetic PCM and a scripted recognition adapter gated by both temporary
+storage and its explicit fixture flag. Full hosted bilingual functional coverage
+has passed, but per-case and aggregate timing budgets have not been qualified.
+Native picker navigation, keyboard dispatch and accessibility queries before
+admission remain part of those unchanged journey budgets; total case duration
+is not an import-worker or ASR latency measurement. Consolidating queue queries
+does not establish a processing speedup or resolve these timing findings.
+Physical power loss, removable-volume TCC behavior and
+real-model throughput remain separate evidence. Required Whisper recognition
+is not replaced by live first-pass recovery; speaker preparation is optional
+under D532.
+
+A missing/changed original before copy publication leaves staged bytes intact
+but cannot certify their source. Only published audio resumes without the original.
+Purge and restore share native exclusion and fresh tombstone checks; filesystem
+removal and SQLite purge are still not one crash-atomic transaction.
+
+Native filesystem cancellation is cooperative, not a promise to interrupt a
+kernel call waiting for filesystem access or an OS permission decision. An accepted cancellation
+invalidates the file's durable publication authority immediately; the serial
+supervisor still joins native cleanup before starting another attempt. File-lock
+acquisition is nonblocking, but that does not make directory creation, bookmark
+resolution or file I/O nonblocking. Physical permission/removable-volume behavior
+remains separate from deterministic local-file tests.
+
+Shared real-app fixtures now use the explicit D523 scratch owner, and import
+fixtures retain its database/audio paths rather than assigning unowned temporary
+destinations. Sources use that owner too. Actual import teardown assertions check
+their removal after the app exits. Earlier full runs stopped by protected
+runner-container access remain invalid; a later ownership repair does not
+retroactively qualify them. Cumulative import qualification must retain the
+original functional and timing budgets, native picker, relaunch and storage
+assertions. A focused import success does not establish the separate compact
+correction interaction recorded elsewhere in this document.
 
 ## Lightweight model memory: remaining measurements (D526)
 

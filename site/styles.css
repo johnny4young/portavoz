@@ -166,7 +166,29 @@ a { color: inherit; }
   gap: 16px;
 }
 
+.download-primary {
+  display: inline-block;
+  padding: 15px 22px;
+  border: 1px solid var(--amber);
+  border-radius: var(--radius);
+  background: var(--amber);
+  color: var(--ground-0);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.download-primary:hover { filter: brightness(1.08); }
+.download-primary:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+
+.install-hint {
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--ink-dim);
+}
+
 .brew {
+  max-width: 100%;
+  text-align: left;
   display: flex;
   align-items: baseline;
   gap: 14px;
@@ -181,6 +203,10 @@ a { color: inherit; }
 .brew:hover { border-color: var(--amber); }
 
 .brew code {
+  -webkit-user-select: text;
+  user-select: text;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-family: "IBM Plex Mono", monospace;
   font-size: 16.5px;
   color: var(--amber);
@@ -192,17 +218,6 @@ a { color: inherit; }
   text-transform: uppercase;
   color: var(--ink-dim);
 }
-
-.ghost {
-  padding: 15px 22px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  font-weight: 500;
-  text-decoration: none;
-  transition: border-color 0.15s ease;
-}
-
-.ghost:hover { border-color: var(--ink); }
 
 .stats {
   display: flex;

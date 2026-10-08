@@ -3,6 +3,20 @@ import GRDB
 import PortavozCore
 
 struct ProcessingJobRecord: Codable, FetchableRecord, PersistableRecord {
+    mutating func resetForExplicitRetry(at timestamp: Date) {
+        state = ProcessingJobState.pending.rawValue
+        progress = 0
+        attempt = 0
+        notBefore = timestamp
+        leaseOwner = nil
+        leaseExpiresAt = nil
+        errorCode = nil
+        errorMessage = nil
+        startedAt = nil
+        finishedAt = nil
+        updatedAt = timestamp
+    }
+
     static let databaseTableName = "processingJob"
 
     var id: String

@@ -1953,6 +1953,20 @@ renders unavailable only for that tile, while a measured zero remains zero.
 Its network tile states explicit-action/opt-in policy rather than claiming an
 unmeasured byte count.
 
+Onboarding's explicit model preparation has one presentation state: idle,
+preparing, ready, or a closed failure category. Network, disk-space and
+interruption failures offer a localized recovery message; a `ModelStore`
+transfer failure is network even though the store stringifies its cause, and
+disk-space detection follows POSIX `ENOSPC`/`EDQUOT` through underlying errors;
+unknown failures
+never display raw paths, URLs or error descriptions. Retry admits one load at a
+time. Continue without models and Skip remain available, and Back retains the
+observed result for this presentation. Dismissing or moving between steps does
+not cancel the AppServices-owned shared model task or change its lease/release
+policy. Model failure does not mark setup ineligible or remove audio-first
+recording. A disposable-store-only fixture supplies a first failure and then
+success without downloading models.
+
 First Listen owns a separate generation-fenced microphone/caption session.
 On Tahoe it resolves the optional SpeechAnalyzer asset before microphone start;
 on Sequoia the caption capability resolves unavailable without changing the
@@ -2048,6 +2062,14 @@ keyed to the audio directory rather than review revisions, so cancellation by
 independent initial section updates cannot consume the only attempt. SwiftUI
 retains only transport controls, drawing, and the native save panel.
 
+Both `AudioClipExporter` overloads and `AudioTranscoder` use one internal
+`AudioExportSession` compatibility bridge. The native async path propagates its
+original errors unchanged; the callback fallback preserves clip/compression
+error families, localized reason or `unknown`, and callback completion ownership.
+Caller composition, clear-mix range, output replacement and cleanup stay local
+to the exporter; compression still verifies every output before removing sources.
+The bridge neither removes files nor changes the existing cancellation policy.
+
 SwiftPM and the XcodeGen UI-test project link `ApplicationKit`. It exposes the
 Sendable async `ApplicationUseCase<Request, Response>` contract and admits
 capability dependencies only with characterized vertical workflows.
@@ -2067,20 +2089,60 @@ versus visible provider and persistence outcomes (D62).
 
 Slice 2F moves external audio import through `ApplicationKit.ImportMeeting`.
 `AppServices` now only samples platform preferences, constructs private
-filesystem/model/provider adapters, localizes typed progress, requests
-Spotlight reconciliation after success, and returns the ID used by the existing
-Library navigation. The use case owns required transcription, degradable
+filesystem/model/provider adapters, provides typed progress and requests
+search reconciliation after each settled import and again when the queue
+drains, so long batches do not hide finished meetings from search. The Library opens a result only
+through the user's explicit queue action. The use case owns required transcription, degradable
 diarization and summary, independent transcript/summary languages, idle
 release, staged-audio rollback, and atomic meeting/cast/transcript installation.
 File copy and compensating deletion run at utility priority instead of on the
-MainActor. Its import-specific provider resolver exposes the configured
+MainActor. Optional diarizer preparation now occurs once after required
+recognition and shares the attribution failure boundary. A missing speaker model
+cannot prevent transcript publication; cancellation remains terminal (D532). Its import-specific provider resolver exposes the configured
 provider/model/revision without leaking engine construction into ApplicationKit.
 After the required aggregate commits, each real summary call records one
 content-free attempt. Success links run + immutable summary/actions atomically;
 provider failure, cancellation, or publish failure remains best effort and can
 never discard the meeting or copied audio. An unavailable provider creates no
-synthetic run. Existing progress, navigation, and idle-release timing stay
-unchanged (D46/D64).
+synthetic run. D46/D64 model behavior and independent lease release are retained; audio
+selection now uses the durable queue described below. A single `.portavoz`
+bundle still uses its existing progress and automatic result navigation.
+
+The separate `ProcessAudioImports` use case can consume admitted durable imports
+without presentation ownership. It claims a fresh owner per attempt, copies or
+verifies the retained source before creating model capabilities, and runs
+`ImportMeeting` with owned adapters. Lease heartbeat and execution are structured
+children; explicit cancellation rejects late output, while process interruption
+awaits uncancelled storage cleanup and returns work to pending. A failed source
+does not prepare models; a failed transcription keeps copied audio for retry and
+does not prevent the next queued file from running. Trashing a meeting while
+its import runs stops that attempt at the next heartbeat and returns it to
+pending without spending a retry; restoring the meeting resumes it. The app owns a shared supervisor for this worker, starts it after recording
+recovery, coalesces admissions and explicit retries, and wakes once for a future
+lease expiry. Closing the queue or a Library window does not cancel admitted
+work. Acquisition holds a native content-free lock through
+fresh ownership validation, reclamation of the admission's exact unpublished
+stage and publication. A busy native writer produces a distinct failure even if
+its database lease has expired. Admission reserves the meeting-relative audio
+location just like recording reservation, making even unpublished staging
+visible to the existing purge flow. Purge and restore share native exclusion;
+purge reads the current tombstone and automatic expiry rechecks the cutoff.
+The lock and deletion adapter use the same sampled root. Failed lock acquisition
+leaves the row intact; admitted filesystem-removal failures retain the existing
+best-effort policy. Library mutation errors render outside the selectable List and remain until
+dismissed or another mutation starts.
+
+The picker admits multiple audio files; drop admits every matching audio URL,
+not only the first. Mixed/multiple meeting bundles reject without partial
+admission. Audio selection opens the import queue rather than waiting for ASR
+or stealing navigation on completion. The queue projects twenty rows at a time,
+puts unfinished work first, excludes trash, uses stable meeting identifiers,
+and exposes Cancel, Retry, Open, paging and close controls. Current attempt
+phases are observational; no total progress percentage is invented. A failed
+file cannot suppress another file's result. Readiness and both paging controls
+use the same English/Spanish catalog as the rest of the queue. Original files remain read-only.
+Moving the recordings root rejects while an admission/drain/pending job exists;
+the model prevents a new selection from racing the subsequent root change.
 
 Slice 2G moves quality re-passes through `ApplicationKit.RefineMeeting` and
 `ApplyRefinedMeeting`. `AppServices` composes private audio, preference,
@@ -4390,6 +4452,12 @@ below-guidance Macs receive advice, not an admission ban. Both variant choices
 remain available. Compact is still a disk-saving option: there is no measured
 RAM advantage that would justify silently choosing it for an existing or new
 installation. A profile choice never starts a model download.
+
+The import supervisor retains its drain task through the asynchronous idle-wake
+lookup, even after model processing ends. Admission during that read queues one
+replacement owner; suspension cancels and joins the read before returning. A late
+lookup error from a retired generation cannot restore an obsolete queue warning.
+The suspension method is an internal lifecycle seam, not a user-facing pause-all control.
 
 ### Dictation completion and feedback ownership (D550)
 

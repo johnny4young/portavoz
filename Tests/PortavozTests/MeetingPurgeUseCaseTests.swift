@@ -8,13 +8,13 @@ final class MeetingPurgeUseCaseTests: XCTestCase {
     func testPurgeDelegatesAudioAndStorageRemoval() async throws {
         let meetingID = MeetingID()
         let trace = PurgeOperationTrace()
-        let store = MeetingPurgeStoreSpy(trace: trace)
+        let store = MeetingPurgeStoreSpy(candidates: [.init(meetingID: meetingID, audioDirectory: "Audio/meeting",
+                                                          deletedAt: Date())], trace: trace)
         let files = MeetingAudioFilesSpy(trace: trace)
 
         let result = try await PurgeMeeting(store: store, audioFiles: files)(
             PurgeMeetingRequest(
-                meetingID: meetingID,
-                audioDirectory: "Audio/meeting"))
+                meetingID: meetingID))
 
         let recordedPaths = await files.recordedPaths()
         let recordedPurges = await store.recordedPurges()
@@ -27,27 +27,29 @@ final class MeetingPurgeUseCaseTests: XCTestCase {
 
     func testPurgeContinuesPastAudioFailureAndPropagatesStorageFailure() async throws {
         let audioFailureID = MeetingID()
-        let audioFailureStore = MeetingPurgeStoreSpy()
+        let audioFailureStore = MeetingPurgeStoreSpy(candidates: [
+            .init(meetingID: audioFailureID, audioDirectory: "Audio/unreadable", deletedAt: Date())
+        ])
         let failingFiles = MeetingAudioFilesSpy(failingPaths: ["Audio/unreadable"])
 
         let result = try await PurgeMeeting(
             store: audioFailureStore, audioFiles: failingFiles)(
                 PurgeMeetingRequest(
-                    meetingID: audioFailureID,
-                    audioDirectory: "Audio/unreadable"))
+                    meetingID: audioFailureID))
 
         let audioFailurePurges = await audioFailureStore.recordedPurges()
         XCTAssertFalse(result.audioRemovalSucceeded)
         XCTAssertEqual(audioFailurePurges, [audioFailureID])
 
         let storageFailureID = MeetingID()
-        let failingStore = MeetingPurgeStoreSpy(failingIDs: [storageFailureID])
+        let failingStore = MeetingPurgeStoreSpy(candidates: [
+            .init(meetingID: storageFailureID, audioDirectory: "Audio/removed-first", deletedAt: Date())
+        ], failingIDs: [storageFailureID])
         let successfulFiles = MeetingAudioFilesSpy()
         do {
             _ = try await PurgeMeeting(store: failingStore, audioFiles: successfulFiles)(
                 PurgeMeetingRequest(
-                    meetingID: storageFailureID,
-                    audioDirectory: "Audio/removed-first"))
+                    meetingID: storageFailureID))
             XCTFail("storage purge failures must propagate")
         } catch is MeetingPurgeStoreSpy.Failure {
             // Expected: the presentation layer retains its best-effort policy.
@@ -99,8 +101,7 @@ final class MeetingPurgeUseCaseTests: XCTestCase {
         let result = try await PurgeMeeting(
             store: store, audioFiles: RootedMeetingAudioFiles(root: root))(
                 PurgeMeetingRequest(
-                    meetingID: meeting.id,
-                    audioDirectory: relativePath))
+                    meetingID: meeting.id))
 
         let allMeetings = try await store.meetings(includeDeleted: true)
         XCTAssertTrue(result.audioRemovalSucceeded)
@@ -131,6 +132,10 @@ private actor MeetingPurgeStoreSpy: MeetingPurgeStore {
         await trace?.record(.storage)
         purgedIDs.append(id)
         if failingIDs.contains(id) { throw Failure() }
+    }
+
+    func meetingPurgeCandidate(_ id: MeetingID) -> MeetingPurgeCandidate? {
+        candidates.first { $0.meetingID == id }
     }
 
     func meetingPurgeCandidates() -> [MeetingPurgeCandidate] {

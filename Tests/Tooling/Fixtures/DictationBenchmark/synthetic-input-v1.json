@@ -1,0 +1,332 @@
+{
+  "attempts": [
+    {
+      "attemptID": "attempt-0",
+      "deliveryOutcome": "verified",
+      "failureReason": null,
+      "fedFrames": 16000,
+      "phases": {
+        "cancel": null,
+        "dispatch": 1300,
+        "firstRenderedPartial": 250,
+        "prepared": 1200,
+        "ready": 20,
+        "receiver": 1400,
+        "speechEnd": 900,
+        "speechOnset": 100,
+        "stop": 1000
+      },
+      "planDigest": "3a6550de79a22901060a39cff412ff5a4e1628715ef9c9a13743b4edfa2ff5c5",
+      "preparedTextDigest": "0fb09537ef3c9281e10d73af728db6cd4f231d02680fa7c38782286233d204df",
+      "receiverProof": {
+        "acknowledgementMs": 1400,
+        "attemptID": "attempt-0",
+        "generationID": "synthetic-generation-v1",
+        "insertionCount": 1,
+        "selectionID": "scratch-selection",
+        "targetID": "scratch-target",
+        "textDigest": "0fb09537ef3c9281e10d73af728db6cd4f231d02680fa7c38782286233d204df"
+      },
+      "scores": {
+        "postRule": {
+          "characterDeletions": 0,
+          "characterInsertions": 0,
+          "characterSubstitutions": 1,
+          "hypothesisCharacters": 5,
+          "hypothesisWords": 2,
+          "wordDeletions": 0,
+          "wordInsertions": 0,
+          "wordSubstitutions": 1
+        },
+        "raw": {
+          "characterDeletions": 0,
+          "characterInsertions": 0,
+          "characterSubstitutions": 1,
+          "hypothesisCharacters": 5,
+          "hypothesisWords": 2,
+          "wordDeletions": 0,
+          "wordInsertions": 0,
+          "wordSubstitutions": 1
+        }
+      },
+      "status": "completed"
+    },
+    {
+      "attemptID": "attempt-1",
+      "deliveryOutcome": "dispatched-unverified",
+      "failureReason": null,
+      "fedFrames": 16000,
+      "phases": {
+        "cancel": null,
+        "dispatch": 2600,
+        "firstRenderedPartial": 1300,
+        "prepared": 2500,
+        "ready": 1000,
+        "receiver": null,
+        "speechEnd": 2000,
+        "speechOnset": 1100,
+        "stop": 2000
+      },
+      "planDigest": "3a6550de79a22901060a39cff412ff5a4e1628715ef9c9a13743b4edfa2ff5c5",
+      "preparedTextDigest": "6b592b9bedd14fdf719ffadfaff5972e4f05fbc0cd918b1e4bf2d60391de332b",
+      "receiverProof": null,
+      "scores": {
+        "postRule": {
+          "characterDeletions": 0,
+          "characterInsertions": 0,
+          "characterSubstitutions": 0,
+          "hypothesisCharacters": 8,
+          "hypothesisWords": 3,
+          "wordDeletions": 0,
+          "wordInsertions": 0,
+          "wordSubstitutions": 0
+        },
+        "raw": {
+          "characterDeletions": 0,
+          "characterInsertions": 0,
+          "characterSubstitutions": 0,
+          "hypothesisCharacters": 8,
+          "hypothesisWords": 3,
+          "wordDeletions": 0,
+          "wordInsertions": 0,
+          "wordSubstitutions": 0
+        }
+      },
+      "status": "completed"
+    },
+    {
+      "attemptID": "attempt-2",
+      "deliveryOutcome": "not-attempted",
+      "failureReason": null,
+      "fedFrames": 16000,
+      "phases": {
+        "cancel": null,
+        "dispatch": null,
+        "firstRenderedPartial": null,
+        "prepared": 1300,
+        "ready": 20,
+        "receiver": null,
+        "speechEnd": null,
+        "speechOnset": null,
+        "stop": 1000
+      },
+      "planDigest": "3a6550de79a22901060a39cff412ff5a4e1628715ef9c9a13743b4edfa2ff5c5",
+      "preparedTextDigest": "ac78d7f0f76b688ed9152e3247346580d50db8ab78e05a1958835ae90915b586",
+      "receiverProof": null,
+      "scores": {
+        "postRule": {
+          "characterDeletions": 0,
+          "characterInsertions": 6,
+          "characterSubstitutions": 0,
+          "hypothesisCharacters": 6,
+          "hypothesisWords": 2,
+          "wordDeletions": 0,
+          "wordInsertions": 2,
+          "wordSubstitutions": 0
+        },
+        "raw": {
+          "characterDeletions": 0,
+          "characterInsertions": 6,
+          "characterSubstitutions": 0,
+          "hypothesisCharacters": 6,
+          "hypothesisWords": 2,
+          "wordDeletions": 0,
+          "wordInsertions": 2,
+          "wordSubstitutions": 0
+        }
+      },
+      "status": "completed"
+    },
+    {
+      "attemptID": "attempt-3",
+      "deliveryOutcome": "not-attempted",
+      "failureReason": "user-cancelled",
+      "fedFrames": 16000,
+      "phases": {
+        "cancel": 1000,
+        "dispatch": null,
+        "firstRenderedPartial": null,
+        "prepared": null,
+        "ready": 20,
+        "receiver": null,
+        "speechEnd": null,
+        "speechOnset": null,
+        "stop": 1000
+      },
+      "planDigest": "3a6550de79a22901060a39cff412ff5a4e1628715ef9c9a13743b4edfa2ff5c5",
+      "preparedTextDigest": null,
+      "receiverProof": null,
+      "scores": {
+        "postRule": {
+          "characterDeletions": 8,
+          "characterInsertions": 0,
+          "characterSubstitutions": 0,
+          "hypothesisCharacters": 0,
+          "hypothesisWords": 0,
+          "wordDeletions": 3,
+          "wordInsertions": 0,
+          "wordSubstitutions": 0
+        },
+        "raw": {
+          "characterDeletions": 8,
+          "characterInsertions": 0,
+          "characterSubstitutions": 0,
+          "hypothesisCharacters": 0,
+          "hypothesisWords": 0,
+          "wordDeletions": 3,
+          "wordInsertions": 0,
+          "wordSubstitutions": 0
+        }
+      },
+      "status": "cancelled"
+    }
+  ],
+  "configuration": {
+    "binaryDigest": "4d7c4c7f562116fc23efac1d0aca249308eb2f451dbe6fe560278efbbe066030",
+    "clockCalibrationDigest": "bb4dfa432ce7f5be52946f6812d7cb4b5fcd965b2ab488bde3a03332659959b5",
+    "clockUnit": "monotonic-ms",
+    "dependencyDigest": "6051f8862c7a27fabd8026fe4a7bb0235b1d908dfab27a97b0130f395ae505cb",
+    "dictionaryDigest": "16c00165901fa0d86ea4af85726c67141691199295e212bc1c08896412b2b9b7",
+    "hostDigest": "de158184ff00c64545aeadb2b82070941e9b8eb0084a46fd7a350ed3439aa1cc",
+    "modelDigests": [
+      "6bd8f29788b203c2c450e1f34c8de0bd01b55eb7f05d55d24672b070251e1d64"
+    ],
+    "networkPolicy": "local-only",
+    "normalizerDigest": "239b79c3b2f0950798893f1b7c8b84374c456b62bab647e5c55421681b281f95",
+    "profileID": "synthetic-counts",
+    "protocolDigest": "a72dcffc701fb8d1b9f8acf8896a13bc7a8e9f1cfc981124516c28f324fa1fb0",
+    "runtimeDigest": "c549686636b7dbdc442305301fc13f7d19802047d0a29de743ad4ab478e6c3b0",
+    "sourceCommit": "c881df8f5e2b99929d3402c3b6eaf41422d65c2d",
+    "treeClean": true
+  },
+  "dataset": {
+    "cases": [
+      {
+        "audioDigest": "158592da450f4f2c121835a3c98bd2e3cfe2a7364a01e48bb601da6bc9a83832",
+        "caseID": "case-0",
+        "familyID": "d963534ad9a72b2eb04771405ed86f4abea564993832c1b24c483a026c52d325",
+        "frames": 16000,
+        "referenceCharacters": 5,
+        "referenceDigest": "4207e0341943eeadfada347d9d72dee9ad64729aecb5f18f46aadf7d3e71ecca",
+        "referenceWords": 2,
+        "sampleRate": 16000,
+        "sessionID": "37b132f81d161ffaba65eb56fda232fdfc7c267f858f9365374f8b7bf4330e42",
+        "speakerClusterID": "bfbd52756a68de55db84323e392f149102d95823e9e372e34ba3994190468e66",
+        "speechExpected": true,
+        "split": "holdout",
+        "stratum": "quiet-es"
+      },
+      {
+        "audioDigest": "214892cf15840de8231f6be9bcc7ec32860d20a50f300fd7eee94a2602840566",
+        "caseID": "case-1",
+        "familyID": "617d511719c426a0326022a1be742a462286a5f9e223683f966233aa72d3d2f2",
+        "frames": 16000,
+        "referenceCharacters": 8,
+        "referenceDigest": "b2998fd47e0d82495d0b87310876ab38cac69335486e9de2ab82255af39879b4",
+        "referenceWords": 3,
+        "sampleRate": 16000,
+        "sessionID": "0ab8b1f11d349fd593ae72b0ce3c09cfdbcb22ce51066bfe29f09bf90437146f",
+        "speakerClusterID": "9e58365d919a2320e6e5a564bb8c10ee8cf705660ff7016049a1e7f0dbe5c61e",
+        "speechExpected": true,
+        "split": "holdout",
+        "stratum": "quiet-en"
+      },
+      {
+        "audioDigest": "ee33454bcf7ff3bb661fb843bcc92a78badd44327fcb8ea442685ccc7a3676f5",
+        "caseID": "case-2",
+        "familyID": "ff67f12ef1d31b584cf6c465aed354fd3db18224fd10cfac35cfa75a22e13210",
+        "frames": 16000,
+        "referenceCharacters": 0,
+        "referenceDigest": "b9b23264fddb0981a65ba96a37bd050fb7870dc9a5a839afb19b386b3e40a73a",
+        "referenceWords": 0,
+        "sampleRate": 16000,
+        "sessionID": "0e2ea7d0b8e924a112e5b4d0e65df3144120d2ac1b40fab1aec4158063568d63",
+        "speakerClusterID": "5b3d8b2666e8eae571ba459e8a8ed0ddbce14ba3124189e31044f5e7b347c27f",
+        "speechExpected": false,
+        "split": "holdout",
+        "stratum": "no-speech"
+      },
+      {
+        "audioDigest": "56c8d2a8c8b1e28ea43a9890534e3eb15a59d5d50a6224d6a53db032dd70f2a6",
+        "caseID": "case-3",
+        "familyID": "f0b1008e64f3dd56bdce4a4d8580b8a4a51b3321a2a3e3c601c8d7e2f8b93ad9",
+        "frames": 16000,
+        "referenceCharacters": 7,
+        "referenceDigest": "0e2f29aaf076409f47129f0868444c05fcbad768c329cfe2c9b17ac38920d683",
+        "referenceWords": 2,
+        "sampleRate": 16000,
+        "sessionID": "efd8a0dab5379f00a48d828fb4a86b7303754bcfbc2f81ba71eb2673cfe73717",
+        "speakerClusterID": "36d3d714c07e869450eccf9e7de4112b5d4b3064d76e3e4e1a297da2649692b2",
+        "speechExpected": true,
+        "split": "holdout",
+        "stratum": "quiet-mixed"
+      }
+    ],
+    "consentPolicyID": null,
+    "datasetID": "synthetic-counts-v1",
+    "licenseReviewID": "original-mit-fixture",
+    "provenance": "synthetic-fixture"
+  },
+  "evidenceClass": "synthetic-fixture",
+  "kind": "dictation-benchmark-input",
+  "plan": {
+    "attempts": [
+      {
+        "attemptID": "attempt-0",
+        "caseID": "case-0",
+        "conditionID": "synthetic",
+        "deliveryEligible": true,
+        "repetition": 1,
+        "selectionID": "scratch-selection",
+        "targetID": "scratch-target",
+        "temperature": "warm"
+      },
+      {
+        "attemptID": "attempt-1",
+        "caseID": "case-1",
+        "conditionID": "synthetic",
+        "deliveryEligible": true,
+        "repetition": 1,
+        "selectionID": "scratch-selection",
+        "targetID": "scratch-target",
+        "temperature": "process-cold"
+      },
+      {
+        "attemptID": "attempt-2",
+        "caseID": "case-2",
+        "conditionID": "synthetic",
+        "deliveryEligible": false,
+        "repetition": 1,
+        "selectionID": "scratch-selection",
+        "targetID": "scratch-target",
+        "temperature": "warm"
+      },
+      {
+        "attemptID": "attempt-3",
+        "caseID": "case-1",
+        "conditionID": "synthetic",
+        "deliveryEligible": true,
+        "repetition": 2,
+        "selectionID": "scratch-selection",
+        "targetID": "scratch-target",
+        "temperature": "warm"
+      },
+      {
+        "attemptID": "attempt-4",
+        "caseID": "case-3",
+        "conditionID": "synthetic",
+        "deliveryEligible": true,
+        "repetition": 1,
+        "selectionID": "scratch-selection",
+        "targetID": "scratch-target",
+        "temperature": "warm"
+      }
+    ],
+    "configurationDigest": "cdd48865c2579c7faedec8ae1fc7ae16875f12ce54e913090383256885c79aa4",
+    "datasetDigest": "9559cf4e0a23a3c1469582deece3c5e835fc933ab72332551612ce8ccecfe441",
+    "generationID": "synthetic-generation-v1",
+    "metricRegistryDigest": "ee866d3f0b03302d3e434ff1f56d727db4f0a8f3dbe77a9862641e41104821c1",
+    "seed": 17
+  },
+  "schemaVersion": 1
+}

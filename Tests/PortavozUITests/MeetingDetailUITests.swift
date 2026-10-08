@@ -138,10 +138,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
     ) throws -> Bool {
         try waitForUITestCondition(timeout: 5) {
             let snapshot = try app.windows["main-AppWindow-1"].snapshot()
-            let rows = snapshotMatches({
+            let rows = uiSnapshotMatches({
                 $0.identifier == "transcript-segment-B5B00000-0000-4000-8000-000000000002"
             }, in: snapshot)
-            let clocks = snapshotMatches({ $0.identifier == "player-current-time" }, in: snapshot)
+            let clocks = uiSnapshotMatches({ $0.identifier == "player-current-time" }, in: snapshot)
             guard rows.count == 1, clocks.count == 1,
                   let time = clocks[0].value as? String, !time.isEmpty else { return false }
             return rows[0].isSelected == selected && ((time == "0:03") == selected)
@@ -1466,13 +1466,13 @@ final class MeetingDetailUITests: PortavozUITestCase {
             format: "identifier IN %@", receiptIDs as NSArray))
         XCTAssertTrue(waitForUITestCondition(timeout: 10) { receipts.count == receiptIDs.count })
         let ledger = try activity.snapshot()
-        let gistReceipts = snapshotMatches({ $0.identifier == receiptIDs[0] }, in: ledger)
+        let gistReceipts = uiSnapshotMatches({ $0.identifier == receiptIDs[0] }, in: ledger)
         XCTAssertEqual(gistReceipts.count, 1)
         let expectedGist = UITestLocale.environmentLocale == "es" ? "publicado" : "published"
         XCTAssertTrue(try XCTUnwrap(gistReceipts.first).label.localizedCaseInsensitiveContains(expectedGist))
         let expectedIssue = UITestLocale.environmentLocale == "es" ? "Issue de GitHub — creado" : "GitHub issue — created"
         XCTAssertTrue(try accessibleText(receiptIDs[1], in: ledger).localizedCaseInsensitiveContains(expectedIssue))
-        let remoteRows = snapshotMatches({
+        let remoteRows = uiSnapshotMatches({
             $0.elementType == .staticText && $0.identifier.hasPrefix("privacy-remote-event-")
         }, in: ledger)
         let remoteTexts = remoteRows.map {
@@ -1525,25 +1525,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    private func snapshotMatches(
-        _ matches: (any XCUIElementSnapshot) -> Bool,
-        in snapshot: any XCUIElementSnapshot
-    ) -> [any XCUIElementSnapshot] {
-        var pending = [snapshot]
-        var result: [any XCUIElementSnapshot] = []
-        while let node = pending.popLast() {
-            if matches(node) { result.append(node) }
-            pending.append(contentsOf: node.children)
-        }
-        return result
-    }
-
-    @MainActor
     private func accessibleText(
         _ identifier: String,
         in snapshot: any XCUIElementSnapshot
     ) throws -> String {
-        let matches = snapshotMatches({ $0.identifier == identifier }, in: snapshot)
+        let matches = uiSnapshotMatches({ $0.identifier == identifier }, in: snapshot)
         XCTAssertEqual(matches.count, 1, "expected exactly one \(identifier) in this observation")
         let element = try XCTUnwrap(matches.first)
         return [element.label, element.value as? String]

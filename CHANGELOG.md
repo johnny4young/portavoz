@@ -15,9 +15,21 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
-## October 7, 2026
+## October 8, 2026
 
 - **📋 Safer dictation paste** — keeps every clipboard item and format, protects newer copies, and keeps your text ready to copy when the clipboard can't be borrowed safely.
+
+- **🌐 Reliable website controls** — language and screenshots keep working when browser storage is blocked, and copy feedback confirms success only after the clipboard accepts the install command.
+
+- **🔄 Clear model setup recovery** — see a safe explanation when model preparation fails, retry, or continue setup without models.
+
+- **📦 Easier first install** — the website leads with the DMG and states the published release's macOS requirements beside the download.
+
+- **📥 Audio import queue** — import several files at once, follow each one’s progress in your language, cancel or retry without touching your originals, and keep the transcript even when speaker identification is unavailable.
+
+## October 7, 2026
+
+- **🔑 Safer credential updates** — a failed API-key replacement keeps your previous working credential.
 
 - **🎛️ Dictation your way** — choose Literal or Clean, save a mode for each application, and override it for one session without changing your defaults.
 
