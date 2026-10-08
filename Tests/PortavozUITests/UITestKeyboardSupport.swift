@@ -148,6 +148,15 @@ extension XCUIApplication {
     /// selection as a non-hittable dialog, and it never receives the keys.
     @MainActor
     private func ownsModalContext(anchor: String?) -> Bool {
+        // One fresh observation proves the common no-modal state. An exposed
+        // dialog still takes the existing hittability/anchor path below,
+        // including Writing Tools affordances that do not capture input.
+        let contexts = descendants(matching: .any).matching(NSPredicate(
+            format: "elementType == %lu OR elementType == %lu OR elementType == %lu",
+            XCUIElement.ElementType.sheet.rawValue,
+            XCUIElement.ElementType.alert.rawValue,
+            XCUIElement.ElementType.dialog.rawValue))
+        guard contexts.count > 0 else { return anchor == nil }
         // An open panel remains in the tree while its Go to Folder sheet owns
         // input. Count independent innermost receivers, not their ancestors.
         let surfaces = activeModalSurfaces(in: self)

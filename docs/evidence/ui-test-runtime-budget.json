@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 141
+    "expectedCaseCount": 138
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -52,10 +52,7 @@
     "InterviewAssistUITests/testInterviewAssistGroundsTheCurrentQuestionInExactEvidence()": 25.0,
     "LibraryUITests/testActiveRecordingRemainsReachableAfterBrowsingTheLibrary()": 20.0,
     "LibraryUITests/testAskConfirmedMemoryLoadsPersonCommitmentsBlockersAndBothCitations()": 20.0,
-    "LibraryUITests/testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence()": 20.0,
-    "LibraryUITests/testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence()": 20.0,
-    "LibraryUITests/testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence()": 20.0,
-    "LibraryUITests/testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence()": 20.0,
+    "LibraryUITests/testAskConfirmedMemoryLoadsAllTopicJobsAndExactCitations()": 32.0,
     "LibraryUITests/testAskConversationAnswersAndSeeksToExactCitation()": 25.105,
     "LibraryUITests/testCaptureFailureSurvivesStopAndRelaunchWithPlayablePrefix()": 30.0,
     "LibraryUITests/testColdRecordingStartsLiveCaptionsWhenModelBecomesReady()": 20.0,

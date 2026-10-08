@@ -141,22 +141,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "LibraryUITests",
             "testAskConfirmedMemoryLoadsPersonCommitmentsBlockersAndBothCitations",
         ),
-        test_id(
-            "LibraryUITests",
-            "testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence",
-        ),
-        test_id(
-            "LibraryUITests",
-            "testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence",
-        ),
-        test_id(
-            "LibraryUITests",
-            "testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence",
-        ),
-        test_id(
-            "LibraryUITests",
-            "testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence",
-        ),
+        test_id("LibraryUITests", "testAskConfirmedMemoryLoadsAllTopicJobsAndExactCitations"),
         test_id("LibraryUITests", "testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState"),
     ),
     "insights": (
@@ -523,11 +508,13 @@ FULL_BILINGUAL_HARNESS_FILES = frozenset({
     "Sources/portavoz-app/UITestWindowPlacement.swift",
     "Sources/portavoz-app/SettingsSkillReceiptNavigation.swift",
     "Tests/PortavozUITests/UITestSupport.swift",
+    "Tests/PortavozUITests/UITestSnapshotSupport.swift",
     "Tests/PortavozUITests/PortavozUITestCase.swift",
     "Tests/PortavozUITests/UITestWaitSupport.swift",
     "Tests/PortavozUITests/UITestKeyboardSupport.swift",
     "Tests/PortavozUITests/UITestStorageSupport.swift",
     "Tests/Support/UITestScratch.swift",
+    "Tests/Support/UITestActionGeometry.swift",
 })
 
 # The native interruption controls compile and qualify only these owners. A
@@ -545,6 +532,7 @@ INTERRUPTION_CONTROL_FILES = frozenset({
     "Tests/PortavozUITests/UITestStorageSupport.swift",
     "Tests/PortavozUITests/UITestWaitSupport.swift",
     "Tests/Support/UITestScratch.swift",
+    "Tests/Support/UITestActionGeometry.swift",
 })
 INTERRUPTION_FIXTURE_PREFIX = "Tests/UIInterruptionFixtures/"
 
@@ -574,6 +562,10 @@ APUNTADOR_LEAK_UI_FEATURES = frozenset({
 })
 
 RETIRED_DUPLICATE_TESTS = frozenset({
+    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence"),
+    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence"),
+    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence"),
+    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence"),
     test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence"),
     test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence"),
     test_id("SkillsSettingsUITests", "testSkillActivityRefreshPreservesTheExpandedCurrentScope"),

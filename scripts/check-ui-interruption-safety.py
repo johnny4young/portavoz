@@ -31,6 +31,7 @@ SOURCE_PATHS = (
     "Tests/PortavozUITests/UITestWaitSupport.swift",
     "Tests/PortavozUITests/UITestKeyboardSupport.swift",
     "Tests/Support/UITestScratch.swift",
+    "Tests/Support/UITestActionGeometry.swift",
 )
 CASES = {
     "testUninterruptedActionAndTeardown": {"target"},

@@ -5350,6 +5350,10 @@ content.
 constructed only by the app and CLI composition roots. `ApplicationKit` exposes
 asynchronous user-managed credential operations, so Settings credential and
 publishing-command paths do not block their actor on Security.framework calls.
+Credential replacement uses an injected synchronous Security boundary and atomic
+value-only updates. Missing-item creation and one duplicate-add retry preserve
+that boundary without deleting prior authority. Stored malformed bytes produce
+a content-free error; encrypted voice-store transaction ownership is unchanged.
 CLI publishing adapters resolve a credential lazily only after ApplicationKit
 has admitted the local document or pending work, preserving local errors and
 no-op behavior before any device-secret read.

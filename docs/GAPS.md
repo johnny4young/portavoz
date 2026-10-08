@@ -146,6 +146,21 @@ file is unchanged. The original is never modified. A restart-stable identity
 (for example volume UUID plus file ID) needs verification on macOS with internal
 and external volumes before it replaces the current check.
 
+### Keychain replacement and the file-based keychain trust list
+
+Credential replacement now updates the existing item in place, so a failed
+write keeps the previous working credential. The store does not opt into the
+data-protection keychain, so on macOS items live in the file-based keychain,
+where the creating binary's trust list controls access. The stable app, the
+Dev app and the CLI share each item. The released delete-and-recreate made the
+saving binary the new owner. An in-place update keeps the old trust list and
+the accessibility class the item was created with, so a save from a
+differently signed binary may prompt, fail, or leave reads prompting. The
+duplicate-item retry also overwrites a contender's value, which matters for
+encryption keys only when a pre-D358 binary bypasses the voice-store lease.
+Native evidence on a signed release, a Dev build and the CLI is required
+before choosing between trust repair and failure safety.
+
 ### Live dictation can propose text without speech
 
 **Open, reproduced in the public controller corpus.** The first complete
@@ -496,6 +511,44 @@ Settings search-editor handoff, but that omission alone does not establish the
 interruption's cause. Preserve the failed evidence and reproduce the actual
 entry boundary before applying a handoff or changing scroll admission. Do not
 attribute the interruption to another application or dismiss an unknown surface.
+
+A required native-controls invocation also stopped before its synchronous
+foreign-overlay counterexample was armed: the arm click was dispatched, but
+neither the armed status nor any overlay readiness/lifecycle effect appeared.
+Owned teardown completed; the first two positive controls had passed. This is
+unclassified fixture readiness, not a qualified negative control, an input-
+authority failure or a product regression. The real-app catalog was not reached.
+Diagnosis must distinguish an unobserved arm callback from a pending or failed
+native application launch without loosening effect validation, increasing waits
+or treating a later pass as attribution of this failure.
+
+A subsequent full app catalog reached the Skills recap proposal but did not
+observe its confirmation sheet after selecting the menu item. Retained owned-app
+accessibility snapshots contain the meeting window but no confirmation sheet;
+they do not establish whether the selection callback or preview completed.
+Later cases explicitly refused an unrelated window interruption. Those refusals
+do not retroactively explain the earlier missing sheet. Both failures remain
+unqualified; successful native controls and hosted runs cannot replace diagnosis
+of the missing presentation or full local bilingual evidence.
+
+### Native search submission and screenshot ownership remain unqualified
+
+Repeated real-app command-palette journeys retained the exact query and lexical
+hits but produced no answer or citation after Return. Failure hierarchies show
+an app-owned native completion window with zero results and keyboard focus.
+That observed state is not proof of causality: isolated controls have not
+reproduced it, and temporary composition uses a deterministic answerer rather
+than a Foundation Models session. Diagnose the native editor and submission
+call site; do not replace Return with another action, increase the timeout or
+change host-wide completion preferences to manufacture a passing test.
+
+An Audio Settings reachability failure also retained a target-window screenshot
+containing foreground pixels from an unrelated application. An accessibility
+query for the target window does not establish exclusive pixel ownership or
+visibility. That capture cannot prove a layout defect and must not become a
+public showcase asset. Keep diagnostics private, distinguish foreign occlusion
+from product failure, and qualify screenshot ownership separately from keyboard
+admission; point-in-time input checks do not certify a later capture.
 
 ### Unattributed asynchronous media-framework test crash
 
