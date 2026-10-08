@@ -62,6 +62,12 @@ final class InterruptionSafetyTests: PortavozUITestCase {
         let field = app.textFields["proof-input"]
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.click()
+        // A caller cannot invent an owned modal when the app has none. Reach
+        // the actual input boundary and prove refusal left the editor empty.
+        XCTAssertEqual(app.typeTextIfOwned(
+            "must not arrive", bundleIdentifier: keyboardReceiverBundleIdentifier,
+            modalAnchor: "proof-missing-modal"), .modalContextMismatch)
+        XCTAssertEqual(field.value as? String, "")
         typeText("The owner's plan", in: app)
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { field.value as? String == "The owner's plan" })
         typeKey("a", modifierFlags: .command, in: app)

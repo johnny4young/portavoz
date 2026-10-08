@@ -933,6 +933,12 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertEqual(len(selection.tests), 2, path)
 
+    def test_atomic_snapshot_helper_requires_both_locales_without_neighboring_changes(self):
+        path = "Tests/PortavozUITests/UITestSnapshotSupport.swift"
+        selection = select_paths([path])
+        self.assertEqual(selection.tests, HARNESS_TESTS)
+        self.assertEqual(selection.locales, ("en", "es"))
+
     def test_shared_fixture_build_sources_and_permission_require_full_bilingual(self):
         for path in (
             "Package.swift",
@@ -965,7 +971,8 @@ class UITestScopeTests(unittest.TestCase):
         # Includes five distinct assist journeys: layout, identity/reentry,
         # manual requests, coalesced arrivals and unsubmitted drafts, plus four
         # durable-input journeys: recovery, retry, removal and held-write Stop.
-        self.assertEqual(len(expected), 20)
+        # Topic jobs share one owner without dropping their four result/citation paths.
+        self.assertEqual(len(expected), 17)
         self.assertTrue(ui_scope.APUNTADOR_LEAK_EVIDENCE_FILES.isdisjoint(
             ui_scope.FULL_BILINGUAL_HARNESS_FILES
         ))
@@ -1236,6 +1243,10 @@ class UITestScopeTests(unittest.TestCase):
         for test_class, method in (
             ("SkillsSettingsUITests", "testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest"),
             ("SkillsSettingsUITests", "testSkillActivityRefreshPreservesTheExpandedCurrentScope"),
+            ("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence"),
+            ("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence"),
+            ("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence"),
+            ("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence"),
             ("LibraryUITests", "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence"),
             ("LibraryUITests", "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence"),
         ):

@@ -1,5 +1,31 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
+Confirmed Topic memory has one real-app journey for current decisions, first
+discussion, decision conflicts and changes since a selected meeting. It retains
+each exact result, source label, screenshot and playback seek assertion, but
+seeds and launches once. Between citation visits it re-enters Ask through the
+sidebar and requires the original selected topic. Every job change must first
+observe the preceding result after re-entry and then prove it is removed before
+Load; separate fresh-app tests could not exercise that transition. Catalog policy rejects reintroducing the four retired journeys.
+Its 32-second candidate budget replaces four 20-second budgets; the aggregate
+1,300-second and p95 limits are unchanged. A smaller case count is not itself a
+performance result; paired actual receipts are required before claiming savings.
+
+Conflict and changes-since assertions read one fresh main-window observation per
+result phase after the primary result appears. A bounded predicate requires the
+complete text and exact button group together, indexing each observation in
+one traversal; extraction rejects missing or duplicate identifiers and retains
+value-first text semantics. The Topic and Skills phases share this bounded
+observation helper. Citation clicks
+and exact playback seeks still use live elements, and no snapshot crosses a
+user action. A change to the shared snapshot helper alone requires the complete
+bilingual catalog; neighboring changes cannot supply its missing locale scope.
+The existing iterative snapshot traversal is shared with detail
+evidence and publication-receipt tests without changing those assertions. This
+reduces repeated cross-process observations, not launches, jobs, screenshots,
+coverage or runtime ceilings. Compiler or tooling tests do not establish a
+latency benefit; matching native before/after receipts remain necessary.
+
 `test_dev_install` executes the real Makefile installation recipe in a Unicode,
 space-containing scratch directory with inert external-command adapters. It
 checks re-sign → distribution verification → Dev-only copy → installed verification
@@ -240,8 +266,8 @@ are unchanged. Functional and timing qualification still require actual runs.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 133 UI cases after consolidating one pair of
-confirmed-person journeys, including portable-settings, shortcut-recovery, the
+The unattended catalog contains 134 UI cases after consolidating one pair of
+confirmed-person journeys and four Topic job journeys, including portable-settings, shortcut-recovery, the
 real dictation-panel, three microphone-preparation/recovery, capture-failure
 recovery, two Apple Speech Settings, and the compact Meeting Detail correction
 journeys. The compact journey checks the actual post-restoration AppKit frame at two short heights,
@@ -562,7 +588,7 @@ gate passed. No general clipboard, real meeting, model download or microphone
 participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 137 unattended cases;
+`make test-ui-bilingual` and scoped hosted runs select the 134 unattended cases;
 `make test-ui-native-dictation` selects two real receiver cases in EN and ES.
 The second enters the production controller with scripted audio/recognition,
 chooses Clean from the actual nonactivating panel, explicitly acknowledges Stop
@@ -2749,10 +2775,11 @@ architecture ratchet pins the catalog/application/storage boundary, exact
 `TopicID`, absence of model inference, stable accessibility identifiers, real
 confirmation fixture, honest docs, and remaining product/field gaps.
 
-One real-app XCUITest per locale launches a temporary store, saves the fixed
-summary observation, confirms it about the exact `model rollout` topic through
-`ConfirmDecisionAboutTopic`, projects the disposable graph, opens **By topic**,
-loads the current decision, and follows its exact evidence to 00:03. It uses no
+The first phase of the shared real-app Topic journey (one XCUITest per locale)
+launches a temporary store, saves the fixed summary observation, confirms it
+about the exact `model rollout` topic through `ConfirmDecisionAboutTopic`,
+projects the disposable graph, opens **By topic**, loads the current decision,
+and follows its exact evidence to 00:03. It uses no
 user library, network, or Foundation Models. This proves the executable
 localized Sequoia/Tahoe-compatible code path, not physical VoiceOver,
 clean-install Sequoia, separate-hardware Tahoe, private-corpus quality, or
@@ -2771,10 +2798,9 @@ window non-retention. One architecture ratchet pins production composition,
 job-specific completeness validation, stable accessibility identifiers,
 fixture reuse, bilingual XCUITest, and honest remaining gaps.
 
-One additional real-app XCUITest per locale launches the temporary store,
-confirms and projects the same exact `model rollout` topic evidence, opens **By
-topic**, switches to **First confirmed discussion**, and follows its only exact
-source to 00:03. It uses no user library, network, Foundation Models, or Tahoe-
+The second phase of that shared journey re-enters Ask with the same selected
+`model rollout` topic, switches to **First confirmed discussion**, and follows
+its only exact source to 00:03. It uses no user library, network, Foundation Models, or Tahoe-
 only API. This is executable bilingual regression evidence on the local host,
 not physical VoiceOver, clean-install Sequoia, separate-hardware Tahoe, private-
 corpus quality, or accepted supported-host graph performance evidence.
@@ -2794,8 +2820,8 @@ contracts load-bearing.
 One architecture ratchet pins the existing ApplicationKit/StorageKit query,
 exact topic-only app composition, two-source presentation boundary, stable
 accessibility identities, real confirmed-relationship fixture, UI-impact scope,
-tracked documentation, and remaining gaps. One additional real-app XCUITest per
-locale opens **By topic**, selects **Decision changes**, verifies the successor
+tracked documentation, and remaining gaps. The third phase of the shared Topic
+journey re-enters **By topic**, selects **Decision changes**, verifies the successor
 and replaced Spanish statements plus both exact evidence actions, and follows
 the successor source to 00:03. It uses a disposable temporary store, no network,
 no user library, no Foundation Models, and no Tahoe-only API. This is local
@@ -2845,7 +2871,7 @@ relationship validation, native radio-group UX, unique speakable accessibility
 labels, stable leaf identifiers, temporary-store fixture, UI-impact scope,
 tracked documentation, and honest remaining broader product/field gaps.
 
-One additional real-app XCUITest per locale opens **By topic**, selects
+The fourth phase of the shared Topic journey re-enters **By topic**, selects
 **Changes since**, searches and selects the exact **Planning baseline** meeting,
 verifies both Spanish decision statements and both exact source actions, and
 follows the successor source to 00:03. It uses a disposable store, no network,
@@ -7673,6 +7699,21 @@ capture, requires semantic and memory-graph work to wait, closes Settings,
 stops through the real recording control, and requires both owners to resume
 until the indicator disappears.
 
+The Background Work recovery journey uses the actual Settings form height as
+its maximum vertical reveal step. Unlike transformed transcript rows, these
+fixed owner actions need no small row-sized travel cap. The existing helper
+still derives wheel travel from target/viewport geometry with its existing
+insets and minimum nudge, caps it at that height, retains its finite attempt
+budget, and requires a contained, stable, hittable target before input.
+Both processing and memory-graph recovery actions use this same call-site
+policy. All five owner rows, exact localized aggregate counts, failure category,
+scheduled retry, and owner-specific recovery assertions remain; the recording
+priority/resume journey is unchanged. This is a scoped test-driver change, not a
+shipping UI change or a catalog-wide performance claim. Bilingual execution and
+activity evidence are required to distinguish fewer reveal events from an
+unrelated faster host. Runtime ceilings, selectors, waits, and assertions are
+not relaxed.
+
 Both journeys use stable `background-work-*` identifiers and one content-free
 seed admitted only with disposable storage. English and Spanish reuse one
 build, use exact localized assertions where text is the contract, contain no
@@ -8347,6 +8388,23 @@ attempts to restore either retired receipt journey with an otherwise valid scope
 and confirms that the actual duplicate policy rejects it.
 
 
+Skills catalogue membership, initial on/off values and reconstructed-window
+choices are observed together from the Settings window that owns an
+identifier the phase itself requires, never from a distant row that a lazily
+materialized Form may omit after scrolling. Disclosures
+retain both their capability text and per-run approval text; filter resets retain
+both localized selections and the missing Clear action. Receipt inspection
+observes its privacy control, exactly three causal events and localized terminal
+state in one owner-window snapshot (the inspection identifier labels header
+text, not the timeline container). Every required identifier must be unique, malformed
+toggle values cannot silently become Off, and a transient snapshot error retries
+within the same deadline; on expiry the failure names the unmet identifiers and
+reports a snapshot error only when one ended the final poll.
+These observations never supply click targets or input authority, are never reused
+across gestures, and leave all scrolling, handshakes, transient loading assertions,
+screenshots, case inventory and runtime budgets intact.
+
+
 ### Permission-free interruption controls
 
 The local-data ledger journey opens Settings from the seeded main window through
@@ -8887,3 +8945,18 @@ energy only in the clear mix; existing raw clip and compression
 rollback/verification tests remain. Hosted Sequoia/current-SDK tests exercise the
 modern AVFoundation branch. Physical macOS 14 callback-export qualification and
 acoustic/performance measurements remain distinct and are not inferred from mocks.
+
+### Keyboard admission without a modal
+
+The keyboard admission helper observes sheets, alerts and dialogs together for
+the common no-modal case. An empty observation admits only an absent modal
+anchor; an explicitly named but nonexistent modal is refused before typing.
+Any exposed candidate falls through to the existing attached-modal, dialog
+hittability and exact-anchor checks, including noninteractive Writing Tools
+affordances. Foreground process identity and interruption checks remain live
+for every input; no observation is cached across actions. The uninterrupted
+native control reaches this boundary with a missing anchor and verifies both
+the typed refusal and unchanged empty editor before its ordinary bilingual
+input. All modal/foreign-owner negative controls remain required. This removes
+one redundant AX enumeration only when no candidate exists; complete runtime
+receipts, not fewer queries alone, establish budget qualification.
