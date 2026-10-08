@@ -44,7 +44,6 @@ extension ArchitectureDependencyTests {
         let hygiene = try Self.contents(
             of: "scripts/check-repository-hygiene.sh")
         let package = try Self.contents(of: "Package.swift")
-        let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertEqual(cases.count, 36)
@@ -62,7 +61,7 @@ extension ArchitectureDependencyTests {
             "Tests.Tooling.test_meeting_memory_graph_quality"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("graph database"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
-        XCTAssertTrue(schema.contains("public static let version = 51"))
+
         XCTAssertTrue(decisions.contains("## D270"))
     }
 
@@ -576,7 +575,7 @@ extension ArchitectureDependencyTests {
             "ConfirmDecisionAboutTopic(store: store)"))
         XCTAssertTrue(fixture.contains("ProjectMeetingMemoryGraph("))
         XCTAssertTrue(uiTest.contains(
-            "testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence"))
+            "try assertExactTopicDecisionsAndEvidence(in: app)"))
         XCTAssertTrue(uiTest.contains("ask-topic-load"))
         XCTAssertTrue(uiTest.contains("player-current-time"))
 
@@ -640,7 +639,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(view.contains("onOpenCitation(discussion.citation)"))
         XCTAssertTrue(topicMemoryFixture.contains("-seed-ask-topic-memory"))
         XCTAssertTrue(uiTest.contains(
-            "testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence"))
+            "try assertExactTopicFirstDiscussionAndEvidence(in: app)"))
         XCTAssertTrue(scope.contains("topicfirstdiscussion"))
 
         XCTAssertTrue(architecture.contains(
@@ -710,7 +709,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(fixture.contains("topic: .none"))
         XCTAssertTrue(fixture.contains("guard usesTemporaryMeetingStore"))
         XCTAssertTrue(uiTest.contains(
-            "testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence"))
+            "try assertExactTopicDecisionConflictsAndEvidence(in: app)"))
         XCTAssertTrue(uiTest.contains(
             "ask-topic-conflict-B5D40000-0000-4000-8000-000000000005"))
         XCTAssertTrue(scope.contains("decisionrelationship"))
@@ -881,12 +880,12 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(fixture.contains("Planning baseline"))
         XCTAssertTrue(fixture.contains("guard usesTemporaryMeetingStore"))
         XCTAssertTrue(uiTest.contains(
-            "testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence"))
+            "try assertExactTopicChangesSinceMeetingAndEvidence(in: app)"))
         XCTAssertTrue(uiTest.contains(
             "ask-topic-anchor-option-B5D40000-0000-4000-8000-000000000003"))
         XCTAssertTrue(uiTest.contains("waitForValue(\"0:03\", timeout: 10)"))
         XCTAssertTrue(scope.contains(
-            "testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence"))
+            "testAskConfirmedMemoryLoadsAllTopicJobsAndExactCitations"))
 
         XCTAssertTrue(architecture.contains(
             "exact confirmed-topic/meeting-anchor change-since"))

@@ -75,7 +75,7 @@ final class LocalizationTests: XCTestCase {
         ].map { try NSRegularExpression(pattern: $0) }
         let shortVisible = Set([
             "Add", "Apply", "Audio", "Cancel", "Delete", "Discard", "English", "Español",
-            "GitHub", "Language", "Model", "OK", "Portavoz", "Recordings", "Reset", "Save",
+            "GitHub", "Language", "Model", "OK", "Portavoz", "Recordings", "Reset", "Retry", "Save",
             "Summary", "Transcript", "Vocabulary"
         ])
 

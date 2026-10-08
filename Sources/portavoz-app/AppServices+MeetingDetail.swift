@@ -132,6 +132,8 @@ extension AppServices: MeetingDetailModelClient {
     func retryMeetingDetailProcessing(_ meetingID: MeetingID) async throws {
         let jobs = try await store.retryFailedProcessingJobs(for: meetingID)
         guard !jobs.isEmpty else { return }
+        // Import work has its own serial owner; the post-capture worker never claims it.
+        if jobs.contains(where: { $0.kind == .audioImport }) { audioImports.start() }
         kickPostCaptureProcessing()
     }
 }

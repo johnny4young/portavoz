@@ -21,10 +21,13 @@ MAX_RECEIPT_BYTES = 4 * 1024 * 1024
 
 
 def inputs(root: Path) -> dict[str, Path]:
+    # CSQLiteVecResearch includes vendored C and headers directly. Their
+    # freshness belongs to the same verified build-input inventory as Sources.
     names = subprocess.check_output(
-        ['git', 'ls-files', '-z', '--', 'Sources', 'Tests', 'Package.swift', 'Package.resolved'],
+        ['git', 'ls-files', '-z', '--', 'Sources', 'Tests', 'Vendor', 'Package.swift', 'Package.resolved'],
         cwd=root, timeout=30,
     )
+    checkout = root.resolve()
     result = {}
     for raw in names.split(b'\0'):
         if not raw:
@@ -32,7 +35,7 @@ def inputs(root: Path) -> dict[str, Path]:
         name = os.fsdecode(raw)
         path = root / name
         # Never change a symlink or anything outside the current checkout.
-        if path.is_symlink() or not path.is_file() or not path.resolve().is_relative_to(root.resolve()):
+        if path.is_symlink() or not path.is_file() or not path.resolve().is_relative_to(checkout):
             continue
         result[name] = path
     return result
