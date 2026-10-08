@@ -492,9 +492,11 @@ private extension OnboardingView {
         case .preparing:
             HStack(spacing: 10) {
                 ProgressView().controlSize(.small)
+                // On the text, not the container: a container identifier
+                // stamps every descendant on macOS.
                 Text(modelsStatus).font(.callout).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("onboarding-models-preparing")
             }
-            .accessibilityIdentifier("onboarding-models-preparing")
         case .failed(let failure):
             VStack(alignment: .leading, spacing: 10) {
                 Text(failure.message)

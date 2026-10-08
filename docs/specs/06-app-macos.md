@@ -1955,7 +1955,10 @@ unmeasured byte count.
 
 Onboarding's explicit model preparation has one presentation state: idle,
 preparing, ready, or a closed failure category. Network, disk-space and
-interruption failures offer a localized recovery message; unknown failures
+interruption failures offer a localized recovery message; a `ModelStore`
+transfer failure is network even though the store stringifies its cause, and
+disk-space detection follows POSIX `ENOSPC`/`EDQUOT` through underlying errors;
+unknown failures
 never display raw paths, URLs or error descriptions. Retry admits one load at a
 time. Continue without models and Skip remain available, and Back retains the
 observed result for this presentation. Dismissing or moving between steps does

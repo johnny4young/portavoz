@@ -1,4 +1,5 @@
 import Foundation
+import ModelStoreKit
 import Observation
 
 /// Presentation-only state for explicit onboarding preparation. AppServices
@@ -27,25 +28,39 @@ final class OnboardingModelPreparation {
 
         static func classify(_ error: any Error) -> Self {
             if error is CancellationError { return .cancelled }
+            // ModelStore wraps every transfer failure with a stringified
+            // cause, so the URLError never reaches this classifier in production.
+            if let storeError = error as? ModelStore.ModelStoreError,
+               case .downloadFailed = storeError {
+                return .network
+            }
             if let error = error as? URLError {
                 switch error.code {
                 case .cancelled:
                     return .cancelled
                 case .timedOut, .cannotFindHost, .cannotConnectToHost,
                      .networkConnectionLost, .dnsLookupFailed, .notConnectedToInternet,
-                     .secureConnectionFailed:
+                     .secureConnectionFailed, .dataNotAllowed, .internationalRoamingOff:
                     return .network
                 default:
                     return .unavailable
                 }
             }
-            let cocoa = error as NSError
-            if cocoa.domain == NSCocoaErrorDomain,
-               cocoa.code == NSFileWriteOutOfSpaceError {
-                return .storage
-            }
+            if isOutOfSpace(error as NSError) { return .storage }
             // Never render arbitrary error descriptions, model paths or URLs.
             return .unavailable
+        }
+
+        private static func isOutOfSpace(_ error: NSError) -> Bool {
+            if error.domain == NSCocoaErrorDomain, error.code == NSFileWriteOutOfSpaceError {
+                return true
+            }
+            if error.domain == NSPOSIXErrorDomain,
+               error.code == Int(ENOSPC) || error.code == Int(EDQUOT) {
+                return true
+            }
+            guard let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError else { return false }
+            return isOutOfSpace(underlying)
         }
     }
 

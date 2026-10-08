@@ -1,4 +1,5 @@
 import Foundation
+import ModelStoreKit
 import XCTest
 
 @testable import portavoz_app
@@ -37,7 +38,16 @@ final class OnboardingModelPreparationTests: XCTestCase {
             (URLError(.cannotWriteToFile), .unavailable),
             (URLError(.cancelled), .cancelled),
             (CancellationError(), .cancelled),
+            (ModelStore.ModelStoreError.downloadFailed(
+                path: "private/model.bin",
+                underlying: String(describing: URLError(.notConnectedToInternet))), .network),
+            (ModelStore.ModelStoreError.checksumMismatch(
+                path: "private/model.bin", expected: "a", actual: "b"), .unavailable),
             (NSError(domain: NSCocoaErrorDomain, code: NSFileWriteOutOfSpaceError), .storage),
+            (NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC)), .storage),
+            (NSError(domain: NSCocoaErrorDomain, code: NSFileWriteUnknownError, userInfo: [
+                NSUnderlyingErrorKey: NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC))
+            ]), .storage),
             (NSError(domain: "private.invalid", code: 7, userInfo: [
                 NSLocalizedDescriptionKey: "secret-token /private/model/path https://private.invalid"
             ]), .unavailable)
