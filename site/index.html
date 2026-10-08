@@ -260,11 +260,14 @@
     // Copy the brew command with "copiado ✓ / copied ✓" feedback (1.6 s).
     var brew = document.getElementById("brew");
     var hint = brew.querySelector(".brew-hint");
+    // Repeat clicks coalesce through the flag rather than `disabled`, which
+    // would drop keyboard focus from the button mid-copy. aria-busy holds the
+    // live region's announcement until the final outcome is in place.
     var copying = false;
     brew.addEventListener("click", async function () {
       if (copying) return;
       copying = true;
-      brew.disabled = true;
+      brew.setAttribute("aria-busy", "true");
       clearTimeout(brew._t);
       brew.classList.remove("copied");
       hint.innerHTML = '<span class="es">copiando…</span><span class="en">copying…</span>';
@@ -283,7 +286,7 @@
         hint.innerHTML = '<span class="es">copia manualmente</span><span class="en">copy manually</span>';
       } finally {
         copying = false;
-        brew.disabled = false;
+        brew.setAttribute("aria-busy", "false");
       }
     });
 

@@ -1,4 +1,5 @@
 """Execute the shipped site's script against explicit browser capability doubles."""
+import shutil
 import subprocess
 from pathlib import Path
 import unittest
@@ -8,6 +9,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class SiteInteractionTests(unittest.TestCase):
     def test_browser_capability_failures_and_copy_lifecycle(self):
+        # Fail with a clear reason instead of skipping: CI must run this gate.
+        self.assertIsNotNone(shutil.which("node"), "Node.js is required to run the site interaction tests")
         result = subprocess.run(
             ["node", "Tests/Tooling/site_interactions_test.cjs"],
             cwd=ROOT, capture_output=True, text=True, timeout=20,
