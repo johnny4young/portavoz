@@ -102,9 +102,9 @@ def validate_controller(value, score, input_seconds, timeout, complete):
             if terminal in phases:
                 corpus.require(phases[point] <= phases[terminal], 'first observation follows stream termination')
     if 'textPrepared' in phases:
-        corpus.require({'inputEnded', 'transcriptionEnded'} <= phases.keys()
-                       and max(phases['inputEnded'], phases['transcriptionEnded']) <= phases['textPrepared'],
-                       'final text precedes stream termination')
+        corpus.require({'stopRequested', 'inputEnded', 'transcriptionEnded'} <= phases.keys()
+                       and max(phases['stopRequested'], phases['inputEnded'], phases['transcriptionEnded'])
+                       <= phases['textPrepared'], 'final text lacks ordered Stop and stream termination')
     if value['outcome'] == 'deliveryRejected':
         required = {'firstCaptionHandled', 'textPrepared', 'deliveryStarted', 'deliveryReturned'}
         corpus.require(required <= phases.keys() and score['hypothesisWords'] > 0

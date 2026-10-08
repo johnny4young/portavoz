@@ -19,6 +19,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 - **🌐 Reliable website controls** — language and screenshots keep working when browser storage is blocked, and copy feedback confirms success only after the clipboard accepts the install command.
 
+- **🔄 Clear model setup recovery** — see a safe explanation when model preparation fails, retry, or continue setup without models.
+
+- **📦 Easier first install** — the website leads with the DMG and states the published release's macOS requirements beside the download.
+
 - **📥 Audio import queue** — import several files at once, follow each one’s progress in your language, cancel or retry without touching your originals, and keep the transcript even when speaker identification is unavailable.
 
 ## October 7, 2026

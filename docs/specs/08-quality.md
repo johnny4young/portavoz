@@ -221,10 +221,35 @@ metadata, ordered phases and conserved frames/chunks are required, not merely
 `qualityMeasured: true`. Unknown content-bearing fields are rejected. Empty
 outputs may omit a first-update time; nonempty outputs may not. Large WER/CER
 values remain valid observations of bad quality, not reasons to censor a run.
+Score admission also checks the unit-cost word-edit count implied by WER:
+it must be integral within floating-point roundoff and fall between the word-count
+difference and the larger word count. Words and characters derive from one
+normalized string, so zero WER, zero implied word edits and zero CER must
+coincide exactly. An empty hypothesis for nonempty speech
+must retain full word/character deletions, including cancelled attempts. The
+existing Swift producer's empty-reference 0/1 sentinel remains admitted for
+compatibility; it is not a defined no-speech WER. No-speech evaluation requires
+lexical-output incidence and exposure denominators, not aggregation of that
+sentinel. Controller prepared-text evidence requires an explicit Stop timestamp
+at or before preparation, even on incomplete input. Missing phases are not zero
+latency. These content-free checks reject impossible receipts; they cannot
+verify transcript/reference truth, native delivery or natural-speaker quality.
+
 Executable bytes and file identity are checked before and after the child; a
 concurrent replacement cannot retain a prelaunch digest as admitted evidence.
 Binary identity remains separate from source/commit qualification. Commands and limitations
 live in the corpus README.
+
+The separately versioned offline `dictation_benchmark.py` adapter validates a
+frozen configuration/dataset/run plan and explicit content-free edit counts,
+phase offsets and receiver declarations. It reports per-split/stratum micro and
+speaker-macro precision, success-conditional warm/cold latency, all-planned
+eligible delivery fractions, missing evidence and safety counterexamples.
+[Its schema and synthetic golden](../../Tests/Tooling/Fixtures/DictationBenchmark/README.md)
+reuse existing score admission and owner-only atomic JSON publication; existing
+collector receipts are unchanged and need a separately reviewed adapter before
+use. Consent IDs remain assertions, no raw audio is inspected, and no population
+confidence bound or quality threshold is qualified by this report tool.
 
 The September 21 complete controller observation re-rendered the pinned public
 corpus using the declared installed tuning/holdout voices, then measured all 480
@@ -295,7 +320,7 @@ are unchanged. Functional and timing qualification still require actual runs.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 138 UI cases after consolidating one pair of
+The unattended catalog contains 139 UI cases after consolidating one pair of
 confirmed-person journeys and four Topic job journeys, including portable-settings,
 shortcut-recovery, the three audio-import, real dictation-panel, three
 microphone-preparation/recovery, capture-failure recovery, two Apple Speech
@@ -636,7 +661,7 @@ gate passed. No general clipboard, real meeting, model download or microphone
 participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 138 unattended cases;
+`make test-ui-bilingual` and scoped hosted runs select the 139 unattended cases;
 `make test-ui-native-dictation` selects two real receiver cases in EN and ES.
 The second enters the production controller with scripted audio/recognition,
 chooses Clean from the actual nonactivating panel, explicitly acknowledges Stop
