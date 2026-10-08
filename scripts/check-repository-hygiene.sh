@@ -212,6 +212,7 @@ python3 scripts/live_assist_validation.py verify-public \
   --fixture Fixtures/LiveAssistValidation/public-bilingual-v1.json \
   --budget docs/evidence/live-assist-validation-budget.json
 python3 -m unittest Tests.Tooling.test_ui_test_scope
+python3 -m unittest Tests.Tooling.test_first_install_site
 python3 -m unittest Tests.Tooling.test_ui_test_runtime
 python3 -m unittest Tests.Tooling.test_run_ui_tests
 python3 -m unittest Tests.Tooling.test_ui_test_host_preflight

@@ -281,7 +281,7 @@ are unchanged. Functional and timing qualification still require actual runs.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 138 UI cases after consolidating one pair of
+The unattended catalog contains 139 UI cases after consolidating one pair of
 confirmed-person journeys and four Topic job journeys, including portable-settings,
 shortcut-recovery, the three audio-import, real dictation-panel, three
 microphone-preparation/recovery, capture-failure recovery, two Apple Speech
@@ -622,7 +622,7 @@ gate passed. No general clipboard, real meeting, model download or microphone
 participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 138 unattended cases;
+`make test-ui-bilingual` and scoped hosted runs select the 139 unattended cases;
 `make test-ui-native-dictation` selects two real receiver cases in EN and ES.
 The second enters the production controller with scripted audio/recognition,
 chooses Clean from the actual nonactivating panel, explicitly acknowledges Stop

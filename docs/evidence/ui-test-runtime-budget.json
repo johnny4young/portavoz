@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 138
+    "expectedCaseCount": 139
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -161,6 +161,7 @@
     "DictationUITests/testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart()": 20.0,
     "DictationUITests/testUndeliveredTextCanBeCopiedAndExplicitlyRetried()": 20.0,
     "DictationUITests/testUndeliveredTextSurvivesAnotherTriggerUntilDiscarded()": 20.0,
-    "DictationUITests/testDeliveredDictationDistinguishesDispatchFromVerification()": 25.0
+    "DictationUITests/testDeliveredDictationDistinguishesDispatchFromVerification()": 25.0,
+    "OnboardingUITests/testModelFailureCanContinueBackAndRetryWithoutDownloading()": 35.0
   }
 }
