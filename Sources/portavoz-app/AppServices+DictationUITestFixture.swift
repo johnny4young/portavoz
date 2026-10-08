@@ -23,6 +23,8 @@ final class DictationUITestFixture {
     let text: String
     let recoversDestination: Bool
     let deliveryOutcome: DictationDeliveryOutcome?
+    /// Real clipboard borrowing on a named board, with inert native effects.
+    let exerciseClipboard: Bool
     var presentsRecoveryControls: Bool { recoversDestination || deliveryOutcome == .dispatched }
     let streamsDeltas: Bool
     let deniesMicrophoneOnce: Bool
@@ -45,6 +47,7 @@ final class DictationUITestFixture {
         missesAudioOnce = arguments.contains("-seed-dictation-microphone-no-audio")
         holdsPermission = arguments.contains("-seed-dictation-preparation-held")
         captureFailure = arguments.contains("-seed-dictation-capture-failure")
+        exerciseClipboard = arguments.contains("-seed-dictation-clipboard")
         text = arguments.contains("-seed-dictation-english")
             ? "Don't delete these notes."
             : "No borres estas notas."
@@ -59,7 +62,6 @@ final class DictationUITestFixture {
             environment[DictationNativeUITestFixture.environmentKey])
         var deliveryAttempts = 0
         var copyAttempts = 0
-        var clockTick = 0.0
         return DictationSessionDependencies(
             authorizeMicrophone: {
                 guard let fixture else { return false }
@@ -93,6 +95,11 @@ final class DictationUITestFixture {
             },
             canInsert: { fixture != nil },
             captureDestination: {
+                if fixture?.exerciseClipboard == true {
+                    return CapturedDictationDestination(name: "Dictation test receiver", canRetry: true) { text in
+                        await clipboardInsertion(text, boardName: boardName)
+                    }
+                }
                 // No native events. The separate receiver journey owns those.
                 let name = fixture?.recoversDestination == true
                     ? String(repeating: "Dictation receiver — / ", count: 12)
@@ -111,12 +118,29 @@ final class DictationUITestFixture {
                 return TextInserter.copy(text, to: NSPasteboard(name: .init(boardName)))
             },
             defaults: .standard,
-            now: {
-                guard fixture?.recoversDestination == true || fixture?.deliveryOutcome != nil else { return Date() }
-                defer { clockTick += 1 }
-                return Date(timeIntervalSince1970: clockTick)
-            },
+            now: fixtureClock(fixture),
             beginCapture: beginCapture)
+    }
+
+    /// Recovery and delivery journeys use a deterministic clock; others use real time.
+    private static func fixtureClock(_ fixture: DictationUITestFixture?) -> () -> Date {
+        var clockTick = 0.0
+        return {
+            guard fixture?.recoversDestination == true || fixture?.deliveryOutcome != nil else { return Date() }
+            defer { clockTick += 1 }
+            return Date(timeIntervalSince1970: clockTick)
+        }
+    }
+
+    /// The production inserter and clipboard loan on a UUID-named board only;
+    /// the paste event is never posted, so the borrowed clipboard is restored.
+    @MainActor
+    private static func clipboardInsertion(_ text: String, boardName: String?) async -> DictationDeliveryOutcome {
+        guard let boardName else { return .refused(.clipboardUnavailable) }
+        let target = TextInserter.Target(processID: ProcessInfo.processInfo.processIdentifier, validate: { nil })
+        return await TextInserter.insert(
+            text, into: target, pasteboard: NSPasteboard(name: .init(boardName)),
+            effects: .init(waitForModifiers: { true }, post: { _ in false }))
     }
 
     private func triggerCaptureFailure() async {

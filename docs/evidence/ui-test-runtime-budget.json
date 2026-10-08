@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 139
+    "expectedCaseCount": 140
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -40,6 +40,7 @@
     "DictationTextModeUITests/testApplicationProfileUsesNativePickerAndKeepsTheOriginal()": 40.0,
     "DictationTextModeUITests/testCorruptProfilesShowAnExplicitResetWithoutChangingTheDefault()": 20.0,
     "DictationTextModeUITests/testSessionModeOverrideCancelsAndRestartsWithoutChangingDefaults()": 20.0,
+    "DictationUITests/testClipboardBorrowRestoresRichPrivateContentAndKeepsTextInRecovery()": 20.0,
     "DictationUITests/testDictationCaptureFailureIsVisibleAndCanBeDismissed()": 20.0,
     "DictationUITests/testDictationPanelCancelsAndRestartsWithoutGlobalInput()": 20.0,
     "DictationUITests/testDictationSourceEOFBeforeStopIsVisibleAndCanRestart()": 20.0,

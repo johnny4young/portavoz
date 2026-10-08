@@ -320,10 +320,10 @@ are unchanged. Functional and timing qualification still require actual runs.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 139 UI cases after consolidating one pair of
+The unattended catalog contains 140 UI cases after consolidating one pair of
 confirmed-person journeys and four Topic job journeys, including portable-settings,
-shortcut-recovery, the three audio-import, real dictation-panel, three
-microphone-preparation/recovery, capture-failure recovery, two Apple Speech
+shortcut-recovery, the three audio-import, real dictation-panel and clipboard-borrow,
+three microphone-preparation/recovery, capture-failure recovery, two Apple Speech
 Settings, and the compact Meeting Detail correction journeys. The compact journey
 checks the actual post-restoration AppKit frame at two short heights,
 opens both reading panes, retains the player, and reaches the existing
@@ -587,6 +587,29 @@ correction, job, Skills-storage, and search owner splits rather than blanket
 suppressions. Existing inherent exceptions remain suppressed inline with their
 local justification.
 
+## Clipboard preservation at the insertion boundary
+
+`DictationClipboardInsertionTests` enters `TextInserter.insert` with real named
+pasteboards and inert platform effects. It covers ordered rich items, private
+lazy representations borrowed as opaque bytes and restored, missing
+representations, deferred readers across overlapping pastes, same-text foreign
+owners, provider-triggered cancellation/security transitions, and foreign writes
+at final validation. `DictationClipboardBoundaryTests` checks private/legacy types
+up to the inclusive item and retained-byte bounds and rejects unsafe fixture
+namespaces. The controller regression reaches the same inserter with an
+unreadable representation and verifies the refusal keeps the output in recovery,
+posts nothing and leaves the clipboard unchanged.
+
+The explicit `-seed-dictation-clipboard` journey also requires `-seed-dictation`,
+temporary composition and the native fixture's UUID pasteboard namespace. The
+production Dictate action borrows the named board, is refused at the inert post
+effect into the recovery panel, restores every rich/private representation and
+exits through Discard. Its platform event effects are inert; this qualifies the
+controller/clipboard/UI path, not AX permission or native editor delivery. The native receiver journey remains
+mandatory and distinct. Existing runtime budgets are unchanged; the new journey
+has a 20-second budget. AppKit providers remain synchronous, so tests prove
+retained-byte admission, not an allocation/latency ceiling on a foreign provider.
+
 ## Dictation controller and native delivery coverage
 
 `DictationControllerTests` enters the real controller with disposable effects:
@@ -661,7 +684,7 @@ gate passed. No general clipboard, real meeting, model download or microphone
 participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 139 unattended cases;
+`make test-ui-bilingual` and scoped hosted runs select the 140 unattended cases;
 `make test-ui-native-dictation` selects two real receiver cases in EN and ES.
 The second enters the production controller with scripted audio/recognition,
 chooses Clean from the actual nonactivating panel, explicitly acknowledges Stop
@@ -731,6 +754,16 @@ the repository. Certificate-backed designated requirements can remain stable
 across builds, unlike an ad-hoc code-hash requirement. Inspect the actual built
 app's requirement and authorize that disposable app through macOS; signing does
 not itself grant Accessibility, qualify native insertion, or authorize release.
+An earlier ad-hoc permission entry can retain a code-hash requirement that rejects
+a valid certificate-backed replacement at the same path and bundle identifier.
+An enabled switch alone therefore does not establish trust. If the native app
+reports missing trust, inspect its actual launched path and designated requirement;
+a TCC code-requirement mismatch is a signing-identity admission failure, not
+failed text insertion. Replacing only that disposable application's stale entry
+through System Settings is a human permission operation, not a runner reset or
+an automated TCC database edit. Preserve the denied native receipt and obtain a
+new actual receiver result after authorization changes. Never add a private TCC
+entitlement in response to system diagnostic recommendations.
 CI without those explicit inputs keeps the existing signing policy. The runner's
 command-boundary tests cover absent, exact, partial, oversized and injected
 values; the real signed build remains separate evidence.

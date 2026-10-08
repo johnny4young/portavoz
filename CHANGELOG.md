@@ -17,6 +17,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 8, 2026
 
+- **📋 Safer dictation paste** — keeps every clipboard item and format, protects newer copies, and keeps your text ready to copy when the clipboard can't be borrowed safely.
+
 - **🌐 Reliable website controls** — language and screenshots keep working when browser storage is blocked, and copy feedback confirms success only after the clipboard accepts the install command.
 
 - **🔄 Clear model setup recovery** — see a safe explanation when model preparation fails, retry, or continue setup without models.

@@ -59,6 +59,41 @@ final class DictationControllerTests: XCTestCase {
         }
     }
 
+    func testUncapturableClipboardKeepsTextInRecoveryWithoutDispatching() async {
+        for text in ["Don't delete these notes.", "No borres estas notas."] {
+            let harness = DictationControllerHarness(text: text)
+            let board = NSPasteboard(name: .init("app.portavoz.clipboard-controller." + UUID().uuidString))
+            defer { harness.controller.cancel(); board.releaseGlobally() }
+            // A representation that cannot be read cannot be restored, so the
+            // clipboard is not borrowed; the output stays in recovery instead.
+            let item = NSPasteboardItem()
+            item.setString("Private original", forType: .string)
+            item.setDataProvider(UnreadableClipboardProvider(), forTypes: [.rtf])
+            board.writeObjects([item])
+            let generation = board.changeCount
+            var posts = 0
+            var dependencies = harness.dependencies
+            dependencies.captureDestination = {
+                let target = TextInserter.Target(processID: ProcessInfo.processInfo.processIdentifier, validate: { nil })
+                return CapturedDictationDestination(name: "Clipboard fixture", canRetry: true) { output in
+                    await TextInserter.insert(output, into: target, pasteboard: board,
+                        effects: .init(waitForModifiers: { true }, post: { _ in posts += 1; return false }))
+                }
+            }
+            harness.controller.toggle(using: dependencies)
+            let listening = await awaitEventually { harness.controller.partialText == text }
+            XCTAssertTrue(listening)
+            harness.now = harness.now.addingTimeInterval(1)
+            harness.controller.toggle(using: dependencies)
+            let refused = await awaitEventually { harness.controller.phase == .recovery(.clipboardUnavailable) }
+            XCTAssertTrue(refused, "An uncapturable clipboard must not claim insertion or lose the text")
+            XCTAssertEqual(harness.controller.recoveryText, text)
+            XCTAssertEqual(posts, 0)
+            XCTAssertEqual(board.changeCount, generation)
+            XCTAssertEqual(board.string(forType: .string), "Private original")
+        }
+    }
+
     func testPermissionDenialDoesNotPrepareAudioOrModels() async {
         let harness = DictationControllerHarness(text: "No borres estas notas.")
         var dependencies = harness.dependencies
@@ -648,4 +683,10 @@ final class PreparationGate {
         continuation?.resume()
         continuation = nil
     }
+}
+
+/// Advertises a representation it never supplies, like a provider that failed.
+private final class UnreadableClipboardProvider: NSObject, NSPasteboardItemDataProvider {
+    func pasteboard(_ pasteboard: NSPasteboard?, item: NSPasteboardItem,
+                    provideDataForType type: NSPasteboard.PasteboardType) {}
 }

@@ -104,6 +104,21 @@ long single-process endurance or explain a backend stall. Complete matrix
 observation, quality acceptance, leak evidence and native delivery remain
 distinct requirements.
 
+### Clipboard preservation boundaries
+
+Ordered bounded snapshots and exclusive paste loans now protect rich-item identity
+and prevent overlapping dictations from borrowing an earlier temporary paste (D551).
+Every advertised representation, including private and legacy types, is borrowed
+as opaque bytes within a 32 MiB bound; an unreadable or oversized clipboard is not
+borrowed and the output stays in recovery. Lazy providers are therefore read.
+AppKit does not expose a size-limited or timeout-bounded data-provider read, so the
+retained-byte limits do not certify peak allocation or a hung known-type provider.
+There is no cross-process compare-and-swap: a foreign app can still write between
+native calls. Restoration is in memory, best-effort after app/server loss, and
+cannot recover across a crash. Cooperative privacy markers do not bind external
+readers. Destination fencing, readback and refused-text recovery remain separate
+from this clipboard mechanism; native receiver evidence is still required.
+
 ### Recovery Reinsert for applications without a pinnable field
 
 For applications whose focused field cannot be pinned at capture (some

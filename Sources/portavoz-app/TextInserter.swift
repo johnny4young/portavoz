@@ -108,48 +108,49 @@ enum TextInserter {
     @MainActor
     static func insert(
         _ text: String, into target: Target, pasteboard: NSPasteboard = .general,
-        effects: Effects = .live
+        effects: Effects = .live, clipboard: DictationClipboard = .shared
     ) async -> DictationDeliveryOutcome {
         guard !text.isEmpty else { return .refused(.emptyText) }
         guard target.processID > 0, effects.isProcessLive(target.processID) else {
             return .refused(.eventUnavailable)
         }
+        // A posted event may not have read the clipboard yet. Do not replace it
+        // for this dictation until the earlier restoration window has ended.
+        guard await clipboard.waitForRestoration(on: pasteboard) else { return .refused(.cancelled) }
         if let failure = await failureAfterModifiers(to: target, effects: effects) { return .refused(failure) }
 
         let baseline = target.readback?.baseline(for: text)
         guard !Task.isCancelled else { return .refused(.cancelled) }
-        // AX can service a new clipboard owner. Snapshot after that inspection,
-        // not before it, so refusing this attempt restores the latest owner.
-        let snapshot = PasteboardSnapshot(of: pasteboard)
-        guard !Task.isCancelled else { return .refused(.cancelled) }
-        pasteboard.declareTypes([.string], owner: nil)
-        guard pasteboard.setString(text, forType: .string) else {
-            restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: pasteboard.changeCount)
-            return .refused(.clipboardUnavailable)
+        // AX can service a new clipboard owner. Borrow after that inspection,
+        // so refusing this attempt restores the latest owner. A clipboard that
+        // cannot be captured completely is never replaced: the refusal keeps
+        // the output in recovery and leaves the clipboard untouched.
+        guard let loan = clipboard.borrow(text, on: pasteboard) else {
+            return .refused(Task.isCancelled ? .cancelled : .clipboardUnavailable)
         }
-        let ourChangeCount = pasteboard.changeCount
 
         if let failure = failureBeforePosting(to: target, baseline: baseline) {
-            restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
+            clipboard.restore(loan, on: pasteboard)
             return .refused(failure)
         }
         // AX IPC can let another clipboard owner publish during validation.
-        // Never send that owner's text as if it were this dictation.
-        guard pasteboard.changeCount == ourChangeCount else { return .refused(.clipboardUnavailable) }
+        // Never send that owner's text as if it were this dictation; retiring
+        // the loan never writes over that newer owner.
+        guard clipboard.isCurrent(loan, on: pasteboard) else {
+            clipboard.restore(loan, on: pasteboard)
+            return .refused(.clipboardUnavailable)
+        }
         guard effects.isProcessLive(target.processID) else {
-            restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
+            clipboard.restore(loan, on: pasteboard)
             return .refused(.eventUnavailable)
         }
         let posted = target.route == .session ? effects.postToSession() : effects.post(target.processID)
         guard posted else {
-            restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
+            clipboard.restore(loan, on: pasteboard)
             return .refused(.eventUnavailable)
         }
 
-        Task {
-            try? await Task.sleep(for: restoreDelay)
-            restoreIfStillOurs(snapshot, pasteboard: pasteboard, expectedChangeCount: ourChangeCount)
-        }
+        clipboard.restoreLater(loan, on: pasteboard, after: restoreDelay)
         // Beyond post, no observation failure can make retry safe.
         guard let baseline, let readback = target.readback else { return .dispatched }
         return await readback.verify(text, from: baseline, target: target) ? .verified : .dispatched
@@ -207,25 +208,6 @@ enum TextInserter {
                 },
                 postToSession: TextInserter.postSessionCommandV)
         }
-    }
-
-    /// Restore only when the pasteboard still holds our dictation: a changed
-    /// `changeCount` means the user or a clipboard manager took over, and
-    /// restoring would clobber their data. Value comparison cannot detect
-    /// that — an identical string written by a manager still advances the
-    /// count, and rich content never compares as `String`.
-    @MainActor
-    private static func restoreIfStillOurs(
-        _ snapshot: PasteboardSnapshot?,
-        pasteboard: NSPasteboard,
-        expectedChangeCount: Int
-    ) {
-        guard pasteboard.changeCount == expectedChangeCount else { return }
-        guard let snapshot else {
-            pasteboard.clearContents()
-            return
-        }
-        snapshot.restore(to: pasteboard)
     }
 
     /// Bounded wait for every physical modifier to be released. The dictation
@@ -396,50 +378,4 @@ extension TextInserter.BorrowedCFPropertyType where Value == AXValue {
 }
 extension TextInserter.BorrowedCFPropertyType where Value == AXUIElement {
     static var accessibilityElement: Self { Self(typeID: AXUIElementGetTypeID()) }
-}
-
-/// Full multi-type snapshot of the pasteboard. Saving only the plain string
-/// (the previous behavior) silently destroyed rich content — an image, file
-/// URLs, styled text — the moment a dictation landed.
-struct PasteboardSnapshot {
-    private let types: [NSPasteboard.PasteboardType]
-    private let values: [NSPasteboard.PasteboardType: Value]
-
-    private enum Value {
-        case data(Data)
-        case string(String)
-        case propertyList(Any)
-    }
-
-    init?(of pasteboard: NSPasteboard) {
-        let types = pasteboard.types ?? []
-        var capturedTypes: [NSPasteboard.PasteboardType] = []
-        var values: [NSPasteboard.PasteboardType: Value] = [:]
-        for type in types {
-            if let data = pasteboard.data(forType: type) {
-                values[type] = .data(data)
-            } else if let string = pasteboard.string(forType: type) {
-                values[type] = .string(string)
-            } else if let list = pasteboard.propertyList(forType: type) {
-                values[type] = .propertyList(list)
-            } else {
-                continue
-            }
-            capturedTypes.append(type)
-        }
-        guard !values.isEmpty else { return nil }
-        self.types = capturedTypes
-        self.values = values
-    }
-
-    func restore(to pasteboard: NSPasteboard) {
-        pasteboard.declareTypes(types, owner: nil)
-        for (type, value) in values {
-            switch value {
-            case .data(let data): pasteboard.setData(data, forType: type)
-            case .string(let string): pasteboard.setString(string, forType: type)
-            case .propertyList(let list): pasteboard.setPropertyList(list, forType: type)
-            }
-        }
-    }
 }
