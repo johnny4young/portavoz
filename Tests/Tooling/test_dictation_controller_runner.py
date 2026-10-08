@@ -172,6 +172,33 @@ class DictationControllerRunnerTests(unittest.TestCase):
                 self.assertEqual(self.run_observation(self.mutated(reverse))['outcome'], 'invalid-observation')
             self.reset_run()
 
+    def test_prepared_text_requires_stop_and_nonnegative_finishing_interval(self):
+        for missing in (False, True):
+            def corrupt(document):
+                row = document['cells'][0]
+                phases = row['controller']['elapsedSeconds']
+                if missing:
+                    # Even an incomplete input must not fabricate prepared output without Stop.
+                    row.update(inputCompleted=False, pipelineCompleted=False)
+                    del phases['stopRequested']
+                else:
+                    phases['stopRequested'] = phases['textPrepared'] + 0.001
+            with self.subTest(missing=missing):
+                self.assertEqual(self.run_observation(self.mutated(corrupt))['outcome'],
+                                 'invalid-observation')
+            self.reset_run()
+
+    def test_cancelled_empty_speech_cannot_claim_zero_deletions(self):
+        def corrupt(document):
+            row = document['cells'][0]
+            row.update(pipelineCompleted=False)
+            row['controller'].update(outcome='cancelled', elapsedSeconds={'runtimeReady': 0.002})
+            row['work'][0].update(outcome='cancelled')
+            row['proposedOutputScore'].update(wordErrorRate=0, characterErrorRate=0,
+                                              hypothesisWords=0, exactReferenceMatch=False)
+        self.assertEqual(self.run_observation(self.mutated(corrupt))['outcome'],
+                         'invalid-observation')
+
     def test_timed_out_controller_process_is_not_observed(self):
         def timeout(*args, **kwargs):
             raise subprocess.TimeoutExpired('owned-controller-observer', kwargs['timeout'])

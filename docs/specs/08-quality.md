@@ -207,6 +207,20 @@ metadata, ordered phases and conserved frames/chunks are required, not merely
 `qualityMeasured: true`. Unknown content-bearing fields are rejected. Empty
 outputs may omit a first-update time; nonempty outputs may not. Large WER/CER
 values remain valid observations of bad quality, not reasons to censor a run.
+Score admission also checks the unit-cost word-edit count implied by WER:
+it must be integral within floating-point roundoff and fall between the word-count
+difference and the larger word count. Words and characters derive from one
+normalized string, so zero WER, zero implied word edits and zero CER must
+coincide exactly. An empty hypothesis for nonempty speech
+must retain full word/character deletions, including cancelled attempts. The
+existing Swift producer's empty-reference 0/1 sentinel remains admitted for
+compatibility; it is not a defined no-speech WER. No-speech evaluation requires
+lexical-output incidence and exposure denominators, not aggregation of that
+sentinel. Controller prepared-text evidence requires an explicit Stop timestamp
+at or before preparation, even on incomplete input. Missing phases are not zero
+latency. These content-free checks reject impossible receipts; they cannot
+verify transcript/reference truth, native delivery or natural-speaker quality.
+
 Executable bytes and file identity are checked before and after the child; a
 concurrent replacement cannot retain a prelaunch digest as admitted evidence.
 Binary identity remains separate from source/commit qualification. Commands and limitations
