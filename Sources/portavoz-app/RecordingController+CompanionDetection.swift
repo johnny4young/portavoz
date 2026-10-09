@@ -26,9 +26,11 @@ extension RecordingController {
         armTurnEndpointDeadline()
     }
 
-    /// The coalescer only ever grows the NEWEST row; when the newest row's
-    /// id changes, the previous one closed for good — that's the moment a
-    /// caption becomes a companion candidate. The D138 turn endpointer may
+    /// When the newest row's id changes, the previous row becomes a
+    /// companion candidate if it still exists. Microphone-echo replacement
+    /// can instead remove that row and reopen its predecessor; this identity
+    /// cursor does not establish revision-safe detection for that case.
+    /// The D138 turn endpointer may
     /// have already detected the same row during the silence before this
     /// close; an unchanged text then adds nothing.
     func detectClosedRow() {

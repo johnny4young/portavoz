@@ -11,6 +11,7 @@ struct MeetingSyncLocalState {
     let portableSummariesByID: [String: MeetingSyncSummary]
     let cardsByID: [String: CompanionCardRecord]
     let correctionsByID: [UUID: TranscriptCorrectionEvent]
+    let reviewDecisions: [CommitmentReviewDecisionRecord]
 }
 
 extension MeetingStore {
@@ -182,6 +183,15 @@ extension MeetingStore {
         try insertRemoteSpeakers(aggregate.speakers, local: local, in: db)
         try insertRemoteSegments(aggregate.segments, local: local, in: db)
         try insertRemoteSummaries(aggregate.summaries, local: local, in: db)
+        // These decisions are device-local, but replacing their FK parents
+        // cascades them away. Restore only identities in surviving, validated
+        // immutable summaries; a new summary cannot inherit an old dismissal.
+        let survivingReviewIDs = Set(aggregate.summaries
+            .filter { local.portableSummariesByID[$0.id.uuidString] != nil }
+            .flatMap { $0.actionItems.map { $0.value.id.uuidString } })
+        for decision in local.reviewDecisions where survivingReviewIDs.contains(decision.actionItemID) {
+            try decision.insert(db)
+        }
         try insertRemoteContextItems(aggregate.contextItems, in: db)
         try insertRemoteCompanionCards(
             aggregate.companionCards,
@@ -250,7 +260,15 @@ extension MeetingStore {
             correctionsByID: Dictionary(uniqueKeysWithValues:
                 try fetchTranscriptCorrectionHistory(
                     meetingID: meetingID,
-                    in: db).map { ($0.id, $0) }))
+                    in: db).map { ($0.id, $0) }),
+            reviewDecisions: CommitmentReviewDecisionRecord.fetchAll(
+                db,
+                sql: """
+                    SELECT review.* FROM commitmentReviewDecision AS review
+                    JOIN actionItem AS item ON item.id = review.actionItemID
+                    WHERE item.meetingID = ?
+                    """,
+                arguments: [meetingKey]))
     }
 
     static func dictionary<Record: FetchableRecord & TableRecord>(

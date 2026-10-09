@@ -1622,8 +1622,9 @@ enter three capability-neutral ApplicationKit workflows (D109). Microphone
 enumeration exposes stable UIDs and display names while the app adapter retains
 `AudioDeviceCatalog`. Recording-root inspection and updates expose current and
 default locations plus ordered progress while the adapter retains
-`RecordingsLocation`, resumable filesystem migration, and marker publication
-only after success. Remembered-voice management exposes summaries without
+`RecordingsLocation`. Its `migrateRoot` operation owns filesystem migration
+and marker publication together; a failed marker write/reset compensates the
+moves before the adapter returns an error. Remembered-voice management exposes summaries without
 embeddings while the adapter retains encrypted `VoiceGallery` access on a
 utility executor. Every mutation first reads the authoritative gallery and
 propagates key, authentication, and decoding failures before any overwrite.
@@ -4483,3 +4484,10 @@ released before any audio cancels, never passes the minimum-audio threshold.
 A second press can recover lost key-up; a prior key-up cannot finish a newer
 menu-started capture. Gesture elapsed time and actual first-buffer time remain
 separate clocks.
+
+Recording start and Settings root migration share the MainActor-owned storage-move
+admission fence. The mover sets it before its first suspension and retains it
+through commit or rollback; recording start checks it before publishing
+`preparing`, with no suspension between those steps. If capture wins admission
+first, the existing migration activity gate rejects its preparing/recording/
+processing phase. This is a process-local fence, not an interprocess file lock.

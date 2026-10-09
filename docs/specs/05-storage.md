@@ -716,6 +716,11 @@ deduplicate legacy rows: no product confirmation surface existed before v21,
 so an impossible duplicate fails migration rather than being guessed away.
 Review feedback is not yet part of bundles, the meeting CloudKit aggregate,
 CLI, MCP, or any user-facing import/export contract.
+Meeting replay preserves local dismissed, deferred and cleared review records
+inside its replacement transaction when their immutable summary and action
+identities survive. Deleted summaries/actions do not regain feedback, and a new
+summary cannot inherit it by reusing an action ID. This preservation changes no
+transport payload or confirmation authority.
 
 Schema v22 adds `assigneeKind` to the current commitment projection and its
 assignment events. Legacy rows with an exact person become `person`; all other
@@ -1567,17 +1572,20 @@ latest-summary-only `openActionItems(limit:)` query.
 
 - User-selectable root; persists as a plain absolute path in `recordings-root.txt` NEXT TO THE DB (file, not UserDefaults → the CLI honors the same folder). No security-scoped bookmark: the app has hardened runtime but is NOT sandboxed; TCC prompts once for protected folders (usage strings in Info.plist, including external drives).
 - `currentRoot()` falls back to the default if the marker points to a missing folder (disconnected drive). `resolve(relative)` tries the current root → default (an interrupted migration remains fully readable).
-- `migrateAudio(from:to:progress:)` is resumable: one meeting directory (immutable UUID) at a time; cross-volume copies to `.partial-<n>` and publishes with an atomic rename; existing destination = already migrated (skips and cleans the source). A destination that resolves to the current root, including a symlink alias, is a no-op so it can never trigger the resume cleanup against its own source.
-- **A failure puts back what that run moved (D304).** The caller persists the new root only once the migration returns, so a throw part way through left recordings under the destination while the root still pointed at the origin — and `resolve` only ever looks at the current and default roots, making them reachable from neither. Every directory the failed run moved is restored, and the failing entry's hidden `.partial-<name>` temp is removed, so a thrown error really does mean nothing happened. Restoration puts the destination copy back *over* a source that still exists rather than deleting it: the resume branch drops its source with `try?`, so a present source may be a partial leftover and trusting it would destroy audio. `putBack` renames the existing origin aside to a hidden `.superseded-<name>` inside the source folder — a rename needs no permission to delete children, and `contentsOfDirectory` skips hidden entries, so no later migration mistakes it for a meeting — then moves the copy back. Deliberately not `FileManager.replaceItemAt`, which cannot cross volumes (EXDEV, the very case the copy path exists for) and on one volume can throw *after* swapping, leaving the stale contents under the destination's real name where the next resume reads them as a finished migration and drops the restored source. When a restore itself fails, the error becomes `RecordingsMigrationError.stranded`, carrying a count and the folder — enough to find them, without naming meetings in an error message. `AppRecordingStorageManager` translates it to `ManageRecordingStorageError.recordingsStranded`, which Settings renders with its own message instead of the "Nothing was lost" text every other failure earns.
-- `skipping` names directories whose writers are still live; `ManageRecordingStorage` refuses outright while capture is active, and this is the last line of defence behind it. 12 tests.
+- `migrateAudio(from:to:progress:)` moves one meeting directory at a time. A same-name destination is adopted only after recursively comparing every directory entry (including hidden children) and every regular file's bytes. Symlinks, different entry types, missing/extra children and different bytes are refused without deleting either copy. Verified duplicates retain their source through success and failure; rollback never moves a pre-existing destination back over the source.
+- `migrateRoot(to:skipping:progress:)` owns movement and marker publication together. A failed marker write or reset restores directories moved in this run, including custom-root-to-custom-root and custom-root-to-default moves. Marker reset propagates filesystem failures and refuses non-regular marker entries instead of recursively deleting them. An empty chosen root is created before its marker becomes authoritative.
+- A failed migration restores only its own moved directories and cleans only its own unique hidden `.partial-<name>-<UUID>` staging entry. Movement always uses an owned staged copy and same-directory publication before source removal, so a partial source-removal failure includes that entry in rollback. This requires temporary disk headroom and extra I/O even for same-volume moves. Restoration copies through a source-volume stage and preserves any recreated or partially removed origin under a unique hidden `.superseded-<name>-<UUID>` recovery name; these recovery copies are not automatically deleted. Destination cleanup is best-effort after complete original-path publication; if undo also fails, `RecordingsMigrationError.stranded` carries a count and folder without meeting names. The app translates this to `ManageRecordingStorageError.recordingsStranded`, avoiding a false generic recovery claim.
+- Canonically equal roots, including symlink aliases, do not move audio. `skipping` leaves reserved live directories untouched in audio-only moves. Root changes refuse a live reservation (`RecordingsMigrationError.recordingsInUse`, which the app adapter translates to `ManageRecordingStorageError.recordingInProgress`) so a custom-root writer remains reachable. The ApplicationKit activity gate remains required before root migration; the adapter samples the live reservation again before file work.
 
 The macOS Settings surface enters `ApplicationKit.ManageRecordingStorage` to
 inspect or change the root. SwiftUI retains the native folder panel and
-localized progress only. The private app adapter drains migration progress in
-order, waits for migration completion, and updates `recordings-root.txt` only
-after success. A failure leaves the marker unchanged; already moved directories
-remain at the destination, and retry resumes the remaining source directories
-before publishing the marker.
+localized progress only. The app adapter calls the StorageKit-owned
+`migrateRoot` operation and drains ordered progress before returning its result.
+It does not publish the marker in a separate post-migration step. Native
+regressions cover collisions, rollback, marker failures, reset, empty roots,
+verified duplicates and cross-volume rollback when a scratch volume is available.
+Abrupt process termination and physical-device failure remain separate from
+caught-error compensation and require field qualification.
 
 ## Audio layout — `MeetingAudioLayout`
 
@@ -2049,3 +2057,10 @@ meeting rows without projecting bookmarks or transcript text. Limits are 1–50
 read in one transaction, with unfinished work first and deterministic creation/
 job-ID ordering. The presentation can page through completed imports without
 hydrating whole meeting aggregates.
+
+Recording start and Settings root migration share the MainActor-owned storage-move
+admission fence. The mover sets it before its first suspension and retains it
+through commit or rollback; recording start checks it before publishing
+`preparing`, with no suspension between those steps. If capture wins admission
+first, the existing migration activity gate rejects its preparing/recording/
+processing phase. This is a process-local fence, not an interprocess file lock.

@@ -5,6 +5,22 @@ import XCTest
 
 @MainActor
 final class RecordingSpeechPreviewTests: XCTestCase {
+    func testStorageMoveFenceRefusesCaptureBeforeAnyPreparation() async throws {
+        let services = try AppServices(arguments: ["-use-temp-store"], environment: [:])
+        let controller = services.recording
+        for _ in 0..<2 {
+            try services.audioImports.beginStorageMove()
+            await controller.start(services: services)
+            XCTAssertEqual(controller.phase, .idle)
+            XCTAssertTrue(controller.reservedAudioDirectoryNames.isEmpty)
+            services.audioImports.endStorageMove()
+            XCTAssertFalse(services.audioImports.storageMoveActive)
+            // Releasing the fence kicks the queue even when it is empty.
+            // Join that owner before exercising the next migration admission.
+            await services.audioImports.suspend()
+        }
+    }
+
     func testAppleRangeRevisionStaysOutOfMeetingEvidenceUntilFinalENAndES() async {
         for (volatile, revised, final) in [
             ("We have two items", "We had two items", "We had two items"),

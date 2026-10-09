@@ -209,6 +209,99 @@ final class MeetingSyncAggregateTests: XCTestCase {
         XCTAssertTrue(pending.isEmpty)
     }
 
+    func testRemoteRenamePreservesLocalDismissalAndDeferral() async throws {
+        for disposition in [CommitmentReviewDisposition.dismissed, .deferred] {
+            let source = try MeetingStore.inMemory()
+            let seed = try await seedMeeting(in: source)
+            let destination = try MeetingStore.inMemory()
+            _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
+            let action = try await activeReviewAction(in: destination, for: seed.meeting.id)
+            let now = Date(timeIntervalSince1970: 1_791_552_000)
+            let revisitAt = disposition == .deferred ? now.addingTimeInterval(3_600) : nil
+            try await destination.setCommitmentReviewDecision(
+                disposition, for: action.id, meetingID: seed.meeting.id,
+                revisitAt: revisitAt, at: now)
+            let before = try await destination.commitmentReviewStates(for: seed.meeting.id)
+
+            var renamed = seed.meeting
+            renamed.title = "An unrelated remote rename"
+            try await source.save(renamed)
+            _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
+
+            let after = try await destination.commitmentReviewStates(for: seed.meeting.id)
+            XCTAssertEqual(after, before, "A remote rename cannot undo local review choices")
+            let state = try XCTUnwrap(after.first)
+            XCTAssertEqual(state.decision?.disposition, disposition)
+            XCTAssertEqual(state.decision?.revisitAt, revisitAt)
+            XCTAssertFalse(CommitmentReviewPolicy.isPending(state, at: now))
+            let pending = try await destination.pendingMeetingSyncChanges()
+            XCTAssertTrue(pending.isEmpty, "Local review preservation must not create a sync echo")
+        }
+    }
+
+    func testRemoteRenamePreservesClearedLocalReviewTombstone() async throws {
+        let source = try MeetingStore.inMemory()
+        let seed = try await seedMeeting(in: source)
+        let destination = try MeetingStore.inMemory()
+        _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
+        let action = try await activeReviewAction(in: destination, for: seed.meeting.id)
+        let now = Date(timeIntervalSince1970: 1_791_552_000)
+        try await destination.setCommitmentReviewDecision(
+            .dismissed, for: action.id, meetingID: seed.meeting.id, at: now)
+        try await destination.setCommitmentReviewDecision(
+            nil, for: action.id, meetingID: seed.meeting.id, at: now.addingTimeInterval(1))
+
+        var renamed = seed.meeting
+        renamed.title = "Another unrelated remote rename"
+        try await source.save(renamed)
+        _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
+
+        let record = try await destination.database.read { db in
+            try CommitmentReviewDecisionRecord.fetchOne(db, key: action.id.uuidString)
+        }
+        XCTAssertEqual(try XCTUnwrap(record).deletedAt, now.addingTimeInterval(1))
+        let states = try await destination.commitmentReviewStates(for: seed.meeting.id)
+        XCTAssertTrue(CommitmentReviewPolicy.isPending(try XCTUnwrap(states.first), at: now))
+    }
+
+    func testRemoteRemovalCannotRestoreReviewOntoMissingOrReusedSource() async throws {
+        for reuseActionID in [false, true] {
+            let source = try MeetingStore.inMemory()
+            let seed = try await seedMeeting(in: source)
+            let destination = try MeetingStore.inMemory()
+            _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
+            let action = try await activeReviewAction(in: destination, for: seed.meeting.id)
+            try await destination.setCommitmentReviewDecision(
+                .dismissed, for: action.id, meetingID: seed.meeting.id)
+            try await source.database.write { db in
+                try db.execute(sql: "DELETE FROM summary WHERE meetingID = ?",
+                    arguments: [seed.meeting.id.rawValue.uuidString])
+            }
+            if reuseActionID {
+                _ = try await source.saveSummary(SummaryDraft(
+                    meetingID: seed.meeting.id, recipeID: Recipe.general.id,
+                    language: "en", markdown: "A different summary identity",
+                    actionItems: [action]))
+            }
+            var renamed = seed.meeting
+            renamed.title = "Source summary replaced"
+            try await source.save(renamed)
+            _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
+
+            let decision = try await destination.database.read { db in
+                try CommitmentReviewDecisionRecord.fetchOne(db, key: action.id.uuidString)
+            }
+            XCTAssertNil(decision, "Only the same immutable source may retain feedback")
+            let states = try await destination.commitmentReviewStates(for: seed.meeting.id)
+            if reuseActionID {
+                XCTAssertTrue(CommitmentReviewPolicy.isPending(
+                    try XCTUnwrap(states.first), at: Date()))
+            } else {
+                XCTAssertTrue(states.isEmpty)
+            }
+        }
+    }
+
     func testCorrectionHistoryRoundTripsAndTombstoneConverges() async throws {
         let source = try MeetingStore.inMemory()
         let seed = try await seedMeeting(in: source)
@@ -705,6 +798,17 @@ final class MeetingSyncAggregateTests: XCTestCase {
         let detail = try await destination.detail(seed.meeting.id)
         XCTAssertEqual(text, "Locally corrupted child identity")
         XCTAssertEqual(detail?.meeting.title, "Portable")
+    }
+
+    /// The shared fixture deliberately ties summary timestamps. Read the
+    /// review API's active identity, rather than borrowing another projection's
+    /// independent tie-breaker, so the mutation is valid before replay.
+    private func activeReviewAction(in store: MeetingStore, for meetingID: MeetingID) async throws -> ActionItem {
+        let states = try await store.commitmentReviewStates(for: meetingID)
+        let actionID = try XCTUnwrap(states.first).actionItemID
+        return try await store.database.read { db in
+            try XCTUnwrap(ActionItemRecord.fetchOne(db, key: actionID.uuidString)).actionItem
+        }
     }
 
     private let deviceID = UUID(

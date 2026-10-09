@@ -265,6 +265,11 @@ final class RecordingController {
     /// sources and live transcription feeds stay behind its private runtime;
     /// this controller receives only callbacks and a typed active session.
     func start(services: AppServices, event: UpcomingEvent? = nil) async {
+        // The root mover raises this MainActor-owned admission fence before
+        // its first await and holds it through commit/rollback. There is no
+        // suspension between this check and publishing `.preparing` below,
+        // which the mover's activity gate rejects in the opposite ordering.
+        guard !services.audioImports.storageMoveActive else { return }
         // A finished session must never block a hotkey/menu-bar start while
         // its previous detail remains open.
         if case .done = phase { phase = .idle }
