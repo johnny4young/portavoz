@@ -15,6 +15,9 @@ final class RecordingSpeechPreviewTests: XCTestCase {
             XCTAssertTrue(controller.reservedAudioDirectoryNames.isEmpty)
             services.audioImports.endStorageMove()
             XCTAssertFalse(services.audioImports.storageMoveActive)
+            // Releasing the fence kicks the queue even when it is empty.
+            // Join that owner before exercising the next migration admission.
+            await services.audioImports.suspend()
         }
     }
 

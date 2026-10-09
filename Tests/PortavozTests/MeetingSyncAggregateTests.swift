@@ -215,8 +215,7 @@ final class MeetingSyncAggregateTests: XCTestCase {
             let seed = try await seedMeeting(in: source)
             let destination = try MeetingStore.inMemory()
             _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
-            let snapshot = try await destination.summary(seed.meeting.id)
-            let action = try XCTUnwrap(snapshot?.draft.actionItems.first)
+            let action = try await activeReviewAction(in: destination, for: seed.meeting.id)
             let now = Date(timeIntervalSince1970: 1_791_552_000)
             let revisitAt = disposition == .deferred ? now.addingTimeInterval(3_600) : nil
             try await destination.setCommitmentReviewDecision(
@@ -245,8 +244,7 @@ final class MeetingSyncAggregateTests: XCTestCase {
         let seed = try await seedMeeting(in: source)
         let destination = try MeetingStore.inMemory()
         _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
-        let snapshot = try await destination.summary(seed.meeting.id)
-        let action = try XCTUnwrap(snapshot?.draft.actionItems.first)
+        let action = try await activeReviewAction(in: destination, for: seed.meeting.id)
         let now = Date(timeIntervalSince1970: 1_791_552_000)
         try await destination.setCommitmentReviewDecision(
             .dismissed, for: action.id, meetingID: seed.meeting.id, at: now)
@@ -272,8 +270,7 @@ final class MeetingSyncAggregateTests: XCTestCase {
             let seed = try await seedMeeting(in: source)
             let destination = try MeetingStore.inMemory()
             _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
-            let snapshot = try await destination.summary(seed.meeting.id)
-            let action = try XCTUnwrap(snapshot?.draft.actionItems.first)
+            let action = try await activeReviewAction(in: destination, for: seed.meeting.id)
             try await destination.setCommitmentReviewDecision(
                 .dismissed, for: action.id, meetingID: seed.meeting.id)
             try await source.database.write { db in
@@ -801,6 +798,17 @@ final class MeetingSyncAggregateTests: XCTestCase {
         let detail = try await destination.detail(seed.meeting.id)
         XCTAssertEqual(text, "Locally corrupted child identity")
         XCTAssertEqual(detail?.meeting.title, "Portable")
+    }
+
+    /// The shared fixture deliberately ties summary timestamps. Read the
+    /// review API's active identity, rather than borrowing another projection's
+    /// independent tie-breaker, so the mutation is valid before replay.
+    private func activeReviewAction(in store: MeetingStore, for meetingID: MeetingID) async throws -> ActionItem {
+        let states = try await store.commitmentReviewStates(for: meetingID)
+        let actionID = try XCTUnwrap(states.first).actionItemID
+        return try await store.database.read { db in
+            try XCTUnwrap(ActionItemRecord.fetchOne(db, key: actionID.uuidString)).actionItem
+        }
     }
 
     private let deviceID = UUID(

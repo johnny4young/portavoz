@@ -6504,4 +6504,4 @@ admission fence. The mover sets it before its first suspension and retains it
 through commit or rollback; recording start checks it before publishing
 `preparing`, with no suspension between those steps. If capture wins admission
 first, the existing migration activity gate rejects its preparing/recording/
-processing phase. This is a process-local fence, not an interprocess file lock.
+processing state. This is a process-local fence, not an interprocess file lock.

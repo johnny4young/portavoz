@@ -95,7 +95,7 @@ final class RecordingMigrationSafetyTests: XCTestCase {
             XCTAssertThrowsError(try location.performMigration(
                 from: origin, to: destination, commitRoot: { throw MarkerFailure.failed }))
             XCTAssertEqual(try Data(contentsOf: location.markerURL), markerBefore)
-            XCTAssertEqual(location.currentRoot(), origin)
+            XCTAssertEqual(location.currentRoot().path, origin.path)
             for name in ["A", "B"] {
                 XCTAssertEqual(try Data(contentsOf: location.resolve("Audio/\(name)/microphone.wav")), Data("audio".utf8))
             }
@@ -115,10 +115,10 @@ final class RecordingMigrationSafetyTests: XCTestCase {
         _ = try recording("A", under: origin)
         let location = RecordingsLocation(defaultRoot: origin, markerURL: origin.appendingPathComponent("root.txt"))
         XCTAssertEqual(try location.migrateRoot(to: destination), 1)
-        XCTAssertEqual(location.currentRoot(), destination)
+        XCTAssertEqual(location.currentRoot().path, destination.path)
         XCTAssertEqual(try Data(contentsOf: location.resolve("Audio/A/microphone.wav")), Data("audio".utf8))
         XCTAssertEqual(try location.migrateRoot(to: nil), 1)
-        XCTAssertEqual(location.currentRoot(), origin)
+        XCTAssertEqual(location.currentRoot().path, origin.path)
         XCTAssertFalse(manager.fileExists(atPath: location.markerURL.path))
         XCTAssertEqual(try Data(contentsOf: location.resolve("Audio/A/microphone.wav")), Data("audio".utf8))
     }
@@ -141,7 +141,7 @@ final class RecordingMigrationSafetyTests: XCTestCase {
         let location = RecordingsLocation(defaultRoot: workspace, markerURL: workspace.appendingPathComponent("root.txt"))
         let destination = workspace.appendingPathComponent("empty")
         XCTAssertEqual(try location.migrateRoot(to: destination), 0)
-        XCTAssertEqual(location.currentRoot(), destination)
+        XCTAssertEqual(location.currentRoot().path, destination.path)
     }
 
     func testAudioDirectoryAliasNeverDeletesTheOnlyCopy() throws {
@@ -175,7 +175,7 @@ final class RecordingMigrationSafetyTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: origin.appendingPathComponent("Audio/A/microphone.wav")), Data("audio".utf8))
         XCTAssertEqual(try Data(contentsOf: target), Data("changed".utf8))
         XCTAssertEqual(try Data(contentsOf: location.resolve("Audio/B/microphone.wav")), Data("audio".utf8))
-        XCTAssertEqual(location.currentRoot(), origin)
+        XCTAssertEqual(location.currentRoot().path, origin.path)
     }
 
     func testReservedRecordingPreventsCustomRootPublication() throws {
@@ -186,7 +186,7 @@ final class RecordingMigrationSafetyTests: XCTestCase {
         let location = RecordingsLocation(defaultRoot: workspace, markerURL: workspace.appendingPathComponent("root.txt"))
         try location.setRoot(origin)
         XCTAssertThrowsError(try location.migrateRoot(to: nil, skipping: ["live"]))
-        XCTAssertEqual(location.currentRoot(), origin)
+        XCTAssertEqual(location.currentRoot().path, origin.path)
         XCTAssertEqual(try Data(contentsOf: location.resolve("Audio/live/microphone.wav")), Data("audio".utf8))
     }
 
