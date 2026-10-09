@@ -177,6 +177,9 @@ private struct AppRecordingStorageManager: RecordingStorageManaging {
                     count: count,
                     path: at.path)
             }
+            if case RecordingsMigrationError.recordingsInUse = error {
+                throw ManageRecordingStorageError.recordingInProgress
+            }
             throw error
         }
     }

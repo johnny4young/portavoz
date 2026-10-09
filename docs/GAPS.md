@@ -33,6 +33,13 @@ case the existing stranded-recordings error must retain its recovery location.
 Owned staging adds temporary disk-space/I/O cost on same-volume moves. Retained
 pre-existing duplicates and hidden superseded recovery copies intentionally need
 manual reconciliation; automatic cleanup requires stronger ownership evidence.
+Two termination shapes remain unrecovered: a process exit after publishing a
+destination but during source removal leaves a partial origin beside a complete
+destination, and every retry to that folder fails closed as a conflict until the
+copies are reconciled by hand; an exit during staging leaves a uniquely named
+hidden `.partial-` copy that later runs never reuse or remove. Finder metadata
+written into only one copy of an otherwise identical recording also counts as a
+conflict. A resumable reconcile step needs its own ownership design and tests.
 
 ### Device-local action review across meeting sync
 

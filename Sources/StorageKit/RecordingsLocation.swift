@@ -102,7 +102,6 @@ public struct RecordingsLocation: Sendable {
         return try performMigration(
             from: currentRoot(),
             to: destination ?? defaultRoot,
-            skipping: reservedDirectoryNames,
             commitRoot: { try setRoot(destination) },
             progress: progress)
     }
