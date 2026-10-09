@@ -61,7 +61,17 @@ public struct RecordingsLocation: Sendable {
     /// Persists a new root; nil returns to the default.
     public func setRoot(_ url: URL?) throws {
         guard let url else {
-            try? FileManager.default.removeItem(at: markerURL)
+            let manager = FileManager.default
+            do {
+                let attributes = try manager.attributesOfItem(atPath: markerURL.path)
+                guard attributes[.type] as? FileAttributeType == .typeRegular else {
+                    throw CocoaError(.fileWriteUnknown)
+                }
+                try manager.removeItem(at: markerURL)
+            } catch let error as CocoaError
+                where error.code == .fileNoSuchFile || error.code == .fileReadNoSuchFile {
+                // Resetting an already-default location is idempotent.
+            }
             return
         }
         try url.path.write(to: markerURL, atomically: true, encoding: .utf8)
@@ -78,109 +88,170 @@ public struct RecordingsLocation: Sendable {
         return preferred
     }
 
-    /// Moves the `Audio/` tree from `origin` to `destination`, one meeting
-    /// directory at a time. Interruption-safe and resumable: a directory
-    /// already complete at the destination is skipped (its leftover source
-    /// is cleaned up), and when a plain rename can't work (cross-volume)
-    /// the copy lands under a hidden temp name and only an atomic rename
-    /// publishes it — the source is removed last.
+    /// Moves audio and publishes the selected root as one recoverable operation.
+    /// A marker-write/reset failure rolls back only directories moved by this run.
     @discardableResult
-    /// Moves every meeting directory to a new root.
-    ///
-    /// `skipping` names directories that must be left where they are because
-    /// something still holds their files open. The cross-volume branch below
-    /// copies and then deletes the source, so migrating a directory whose
-    /// writers are live unlinks it underneath them and silently truncates the
-    /// recording. `ManageRecordingStorage` refuses a move while capture is
-    /// busy, but that phase is sampled once; the app samples the live
-    /// directory again immediately before the first rename and passes it here,
-    /// so a capture that starts between those two points is still left alone.
+    public func migrateRoot(
+        to destination: URL?,
+        skipping reservedDirectoryNames: Set<String> = [],
+        progress: ((Int, Int) -> Void)? = nil
+    ) throws -> Int {
+        guard reservedDirectoryNames.isEmpty else {
+            throw RecordingsMigrationError.recordingsInUse
+        }
+        return try performMigration(
+            from: currentRoot(),
+            to: destination ?? defaultRoot,
+            skipping: reservedDirectoryNames,
+            commitRoot: { try setRoot(destination) },
+            progress: progress)
+    }
+
+    /// Moves audio without changing the marker. Existing destinations are only
+    /// adopted when their complete directory trees and file bytes match exactly.
+    /// Live writer directories must be reserved by the caller.
+    @discardableResult
     public func migrateAudio(
         from origin: URL,
         to destination: URL,
         skipping reservedDirectoryNames: Set<String> = [],
         progress: ((Int, Int) -> Void)? = nil
     ) throws -> Int {
-        let canonicalOrigin = origin.standardizedFileURL.resolvingSymlinksInPath()
-        let canonicalDestination = destination.standardizedFileURL.resolvingSymlinksInPath()
-        guard canonicalOrigin != canonicalDestination else {
-            return 0
-        }
+        try performMigration(
+            from: origin, to: destination, skipping: reservedDirectoryNames,
+            commitRoot: {}, progress: progress)
+    }
+
+    /// Internal commit seam exercises marker failures without relying on host
+    /// permissions. Production always supplies `setRoot` from `migrateRoot`.
+    func performMigration(
+        from origin: URL,
+        to destination: URL,
+        skipping reservedDirectoryNames: Set<String> = [],
+        commitRoot: () throws -> Void,
+        removeSource: (URL) throws -> Void = { try FileManager.default.removeItem(at: $0) },
+        progress: ((Int, Int) -> Void)? = nil
+    ) throws -> Int {
         let manager = FileManager.default
         let sourceAudio = origin.appendingPathComponent("Audio", isDirectory: true)
         let targetAudio = destination.appendingPathComponent("Audio", isDirectory: true)
-        guard manager.fileExists(atPath: sourceAudio.path) else { return 0 }
-        try manager.createDirectory(at: targetAudio, withIntermediateDirectories: true)
-
+        guard try prepareMigration(from: sourceAudio, to: targetAudio, using: manager) else {
+            try commitRoot()
+            return 0
+        }
         let entries = try manager.contentsOfDirectory(
             at: sourceAudio, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]
         ).sorted { $0.lastPathComponent < $1.lastPathComponent }
-
         var movedNames: [String] = []
-        for (index, entry) in entries.enumerated() {
-            progress?(index + 1, entries.count)
-            guard !reservedDirectoryNames.contains(entry.lastPathComponent) else {
-                continue
-            }
-            let target = targetAudio.appendingPathComponent(entry.lastPathComponent)
-            if manager.fileExists(atPath: target.path) {
-                // Already migrated on a previous, interrupted run. Meeting
-                // dirs are immutable UUID-named recordings: same name IS the
-                // same content, so finish the move by dropping the source.
-                try? manager.removeItem(at: entry)
-                movedNames.append(entry.lastPathComponent)
-                continue
-            }
-            do {
-                do {
-                    try manager.moveItem(at: entry, to: target)
-                } catch {
-                    let temp = targetAudio.appendingPathComponent(
-                        ".partial-" + entry.lastPathComponent)
-                    try? manager.removeItem(at: temp)
-                    try manager.copyItem(at: entry, to: temp)
-                    try manager.moveItem(at: temp, to: target)
-                    try manager.removeItem(at: entry)
+        var duplicates: [URL] = []
+        do {
+            for (index, entry) in entries.enumerated() {
+                progress?(index + 1, entries.count)
+                guard !reservedDirectoryNames.contains(entry.lastPathComponent) else { continue }
+                let target = targetAudio.appendingPathComponent(entry.lastPathComponent)
+                if (try? manager.attributesOfItem(atPath: target.path)) != nil {
+                    guard try identicalRecording(entry, target, using: manager) else {
+                        throw RecordingsMigrationError.conflictingDestination(at: targetAudio)
+                    }
+                    // A pre-existing copy is not ours to move or clean up.
+                    // Keep both originals through success and failure.
+                    duplicates.append(entry)
+                } else {
+                    try moveRecording(entry, to: target, movedNames: &movedNames,
+                                      using: manager, removeSource: removeSource)
                 }
-            } catch {
-                // The caller only persists the new root after this returns, so
-                // a throw here would leave the root pointing at `origin` while
-                // some recordings already sit under `destination` — reachable
-                // from neither root, since `resolve` only ever looks at the
-                // current and default roots. Put back what this run moved so a
-                // failure really does mean nothing happened.
-                throw restore(
-                    movedNames,
-                    failing: entry.lastPathComponent,
-                    from: targetAudio,
-                    to: sourceAudio,
-                    after: error,
-                    using: manager)
             }
-            movedNames.append(entry.lastPathComponent)
+            for entry in duplicates {
+                let target = targetAudio.appendingPathComponent(entry.lastPathComponent)
+                guard try identicalRecording(entry, target, using: manager) else {
+                    throw RecordingsMigrationError.conflictingDestination(at: targetAudio)
+                }
+            }
+            try commitRoot()
+        } catch {
+            throw restore(movedNames, from: targetAudio,
+                          to: sourceAudio, after: error, using: manager)
         }
-        return movedNames.count
+        // A pre-existing destination is not owned by this transaction. Keep
+        // its original even after commit: matching bytes do not fence later
+        // external changes to either copy.
+        return movedNames.count + duplicates.count
+    }
+
+    private func prepareMigration(
+        from sourceAudio: URL,
+        to targetAudio: URL,
+        using manager: FileManager
+    ) throws -> Bool {
+        let source = sourceAudio.standardizedFileURL.resolvingSymlinksInPath()
+        let target = targetAudio.standardizedFileURL.resolvingSymlinksInPath()
+        guard source != target else { return false }
+        guard !target.path.hasPrefix(source.path + "/"),
+              !source.path.hasPrefix(target.path + "/") else {
+            throw RecordingsMigrationError.conflictingDestination(at: targetAudio)
+        }
+        // An empty selected root must exist before its marker is authoritative.
+        try manager.createDirectory(at: targetAudio.deletingLastPathComponent(), withIntermediateDirectories: true)
+        guard manager.fileExists(atPath: sourceAudio.path) else { return false }
+        try manager.createDirectory(at: targetAudio, withIntermediateDirectories: true)
+        return true
+    }
+
+    private func moveRecording(
+        _ entry: URL,
+        to target: URL,
+        movedNames: inout [String],
+        using manager: FileManager,
+        removeSource: (URL) throws -> Void
+    ) throws {
+        // FileManager.moveItem can copy/delete across volumes and throw after
+        // publication. Own those phases explicitly, including on one volume.
+        let temp = target.deletingLastPathComponent().appendingPathComponent(
+            ".partial-" + entry.lastPathComponent + "-" + UUID().uuidString)
+        defer { try? manager.removeItem(at: temp) }
+        try manager.copyItem(at: entry, to: temp)
+        try manager.moveItem(at: temp, to: target)
+        movedNames.append(entry.lastPathComponent)
+        try removeSource(entry)
+    }
+
+    /// Do not follow symlinks or equate a file with a recording directory.
+    /// Include hidden children and compare file contents without loading whole
+    /// recordings into memory. The activity gate excludes active writers.
+    private func identicalRecording(_ source: URL, _ target: URL, using manager: FileManager) throws -> Bool {
+        let sourceType = try manager.attributesOfItem(atPath: source.path)[.type] as? FileAttributeType
+        let targetType = try manager.attributesOfItem(atPath: target.path)[.type] as? FileAttributeType
+        guard sourceType == .typeDirectory, targetType == .typeDirectory else { return false }
+        let sourceNames = try manager.contentsOfDirectory(atPath: source.path).sorted()
+        let targetNames = try manager.contentsOfDirectory(atPath: target.path).sorted()
+        guard sourceNames == targetNames else { return false }
+        for name in sourceNames {
+            let left = source.appendingPathComponent(name)
+            let right = target.appendingPathComponent(name)
+            let leftType = try manager.attributesOfItem(atPath: left.path)[.type] as? FileAttributeType
+            let rightType = try manager.attributesOfItem(atPath: right.path)[.type] as? FileAttributeType
+            guard leftType == rightType else { return false }
+            switch leftType {
+            case .typeDirectory:
+                guard try identicalRecording(left, right, using: manager) else { return false }
+            case .typeRegular:
+                guard manager.contentsEqual(atPath: left.path, andPath: right.path) else { return false }
+            default:
+                return false
+            }
+        }
+        return true
     }
 
     /// Returns the error to throw: the original cause when every directory made
     /// it back, or a stranding report naming what did not.
-    ///
-    /// `failing` is the entry that threw. Its hidden cross-volume temp may hold
-    /// a complete copy of that meeting's audio, and leaving it behind would
-    /// contradict "nothing happened" — a later resume would find it and could
-    /// not tell it from a finished directory.
     private func restore(
         _ names: [String],
-        failing: String?,
         from targetAudio: URL,
         to sourceAudio: URL,
         after cause: Error,
         using manager: FileManager
     ) -> Error {
-        if let failing {
-            try? manager.removeItem(at: targetAudio.appendingPathComponent(
-                ".partial-" + failing))
-        }
         var stranded: [String] = []
         for name in names {
             let target = targetAudio.appendingPathComponent(name)
@@ -206,21 +277,10 @@ public struct RecordingsLocation: Sendable {
         return cause
     }
 
-    /// Moves one directory back over whatever is at its origin, and either
-    /// succeeds completely or leaves the origin exactly as it found it.
-    ///
-    /// Deliberately not `replaceItemAt`, which fails this job twice. It cannot
-    /// cross volumes at all (EXDEV) — and crossing volumes is the only reason
-    /// the migration has a copy path — so on an external drive it would strand
-    /// every directory it was supposed to restore. Worse, on one volume it can
-    /// throw *after* it has already swapped: the good copy lands correctly, but
-    /// the old contents are left at the destination's real name and the caller
-    /// is told the entry was stranded. A later resume then finds that name,
-    /// treats it as a finished migration, and drops the restored source —
-    /// destroying the audio.
-    ///
-    /// A rename inside one directory needs no permission to delete children, so
-    /// quarantining the existing origin works even when removing it does not.
+    /// Restore through a source-volume staging copy. Never overwrite or delete
+    /// an origin recreated by another writer: retain it under a unique recovery
+    /// name even when publication succeeds. Destination cleanup is best-effort
+    /// only after the full recording is available again at the original path.
     private func putBack(
         _ target: URL,
         over source: URL,
@@ -228,29 +288,30 @@ public struct RecordingsLocation: Sendable {
         in sourceAudio: URL,
         using manager: FileManager
     ) throws {
-        guard manager.fileExists(atPath: source.path) else {
-            try manager.moveItem(at: target, to: source)
-            return
-        }
-        // Hidden and inside the *source* folder, never at the destination's
-        // real name. `contentsOfDirectory` skips hidden entries, so a leftover
-        // can never be mistaken for a meeting directory by a later migration.
-        let quarantine = sourceAudio.appendingPathComponent(".superseded-" + name)
-        try? manager.removeItem(at: quarantine)
-        try manager.moveItem(at: source, to: quarantine)
+        let suffix = name + "-" + UUID().uuidString
+        let temp = sourceAudio.appendingPathComponent(".restore-" + suffix)
+        let quarantine = sourceAudio.appendingPathComponent(".superseded-" + suffix)
+        defer { try? manager.removeItem(at: temp) }
+        try manager.copyItem(at: target, to: temp)
+        let hadSource = (try? manager.attributesOfItem(atPath: source.path)) != nil
+        if hadSource { try manager.moveItem(at: source, to: quarantine) }
         do {
-            try manager.moveItem(at: target, to: source)
+            try manager.moveItem(at: temp, to: source)
         } catch {
-            // Put the origin back so a failed restore leaves it no worse.
-            try? manager.moveItem(at: quarantine, to: source)
+            if hadSource { try? manager.moveItem(at: quarantine, to: source) }
             throw error
         }
-        try? manager.removeItem(at: quarantine)
+        try? manager.removeItem(at: target)
     }
 }
 
 /// A migration that could neither finish nor fully undo itself.
 public enum RecordingsMigrationError: LocalizedError {
+    case recordingsInUse
+
+    /// A same-name destination is not proof of a completed copy.
+    case conflictingDestination(at: URL)
+
     /// Recordings that reached the destination but could not be put back. The
     /// count and folder are enough for the user to find them; naming the
     /// meetings would put library content into an error message.
@@ -261,6 +322,11 @@ public enum RecordingsMigrationError: LocalizedError {
     /// drop the only two facts the user needs.
     public var errorDescription: String? {
         switch self {
+        case .recordingsInUse:
+            return "Recordings are still in use. Wait for recording to finish before changing the folder."
+        case .conflictingDestination(let at):
+            return "A recording already exists with different or unverifiable contents in \(at.path). "
+                + "Both copies were preserved. Choose another folder or reconcile the copies before retrying."
         case .stranded(let count, let at, let cause):
             return """
                 \(count) recording(s) were moved to \(at.path) and could not be \

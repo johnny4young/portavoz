@@ -51,6 +51,13 @@ constructor requires the capture-admission callback in both live and disposable
 composition so a new caller cannot silently omit ownership. Neither SwiftUI nor
 the realtime audio callback coordinates this ownership.
 
+Recording-root migration is owned by `StorageKit.RecordingsLocation.migrateRoot`.
+Filesystem movement and root-marker publication share one compensation boundary;
+marker failure restores this run's moves. Existing destination names require exact
+recursive tree/byte equality, and symlinks or divergent copies fail closed.
+Verified duplicates retain their original source even after commit; pre-existing
+copies are never treated as transaction-owned cleanup. The app adapter owns progress delivery and error translation.
+
 ## Current module graph
 
 `portavoz-app` and `portavoz-cli` are the current composition roots. They link
@@ -141,6 +148,11 @@ stop at the outcome boundary; event dispatch is never represented as verified
 text delivery, and no captured content or destination identity enters a receipt.
 
 ## Module responsibilities
+
+Meeting aggregate replay snapshots device-local action review decisions before
+replacing portable rows and restores them transactionally only for surviving
+validated immutable summary/action identities. Review feedback remains local;
+remote replacement cannot silently undo a dismissal or deferral.
 
 | Module | Implemented responsibility |
 |---|---|
@@ -6486,3 +6498,10 @@ producer. Delivery waits for both its producer and its native Stop task; cosmeti
 feedback uses an independently fenced identity and never retains the runtime
 lease. Hotkey release belongs to the exact session that admitted its press,
 including permission/model preparation, without moving the first-buffer clock.
+
+Recording start and Settings root migration share the MainActor-owned storage-move
+admission fence. The mover sets it before its first suspension and retains it
+through commit or rollback; recording start checks it before publishing
+`preparing`, with no suspension between those steps. If capture wins admission
+first, the existing migration activity gate rejects its preparing/recording/
+processing phase. This is a process-local fence, not an interprocess file lock.

@@ -258,24 +258,3 @@ private func fuseLibrarySearch(
     for hit in lexical { hits[hit.segmentID] = hit }
     return orderedIDs.compactMap { hits[$0] }
 }
-
-private func mapStream<Input: Sendable, Output: Sendable>(
-    _ source: AsyncThrowingStream<Input, Error>,
-    transform: @escaping @Sendable (Input) -> Output
-) -> AsyncThrowingStream<Output, Error> {
-    AsyncThrowingStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
-        let task = Task {
-            do {
-                for try await value in source {
-                    continuation.yield(transform(value))
-                }
-                continuation.finish()
-            } catch is CancellationError {
-                continuation.finish()
-            } catch {
-                continuation.finish(throwing: error)
-            }
-        }
-        continuation.onTermination = { _ in task.cancel() }
-    }
-}

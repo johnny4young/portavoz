@@ -5,6 +5,19 @@ import XCTest
 
 @MainActor
 final class RecordingSpeechPreviewTests: XCTestCase {
+    func testStorageMoveFenceRefusesCaptureBeforeAnyPreparation() async throws {
+        let services = try AppServices(arguments: ["-use-temp-store"], environment: [:])
+        let controller = services.recording
+        for _ in 0..<2 {
+            try services.audioImports.beginStorageMove()
+            await controller.start(services: services)
+            XCTAssertEqual(controller.phase, .idle)
+            XCTAssertTrue(controller.reservedAudioDirectoryNames.isEmpty)
+            services.audioImports.endStorageMove()
+            XCTAssertFalse(services.audioImports.storageMoveActive)
+        }
+    }
+
     func testAppleRangeRevisionStaysOutOfMeetingEvidenceUntilFinalENAndES() async {
         for (volatile, revised, final) in [
             ("We have two items", "We had two items", "We had two items"),

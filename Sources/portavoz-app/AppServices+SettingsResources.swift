@@ -144,8 +144,6 @@ private struct AppRecordingStorageManager: RecordingStorageManaging {
         to destination: URL?,
         progress: @escaping RecordingStorageProgressHandler
     ) async throws -> Int {
-        let origin = location.currentRoot()
-        let resolvedDestination = destination ?? location.defaultRoot
         let reserved = await reservedDirectoryNames()
         let (updates, continuation) = AsyncStream<RecordingStorageProgress>.makeStream()
         let progressTask = Task {
@@ -155,9 +153,8 @@ private struct AppRecordingStorageManager: RecordingStorageManaging {
         }
         do {
             let moved = try await Task.detached(priority: .userInitiated) {
-                try location.migrateAudio(
-                    from: origin,
-                    to: resolvedDestination,
+                try location.migrateRoot(
+                    to: destination,
                     skipping: reserved
                 ) { completed, total in
                     continuation.yield(RecordingStorageProgress(
@@ -167,7 +164,6 @@ private struct AppRecordingStorageManager: RecordingStorageManaging {
             }.value
             continuation.finish()
             await progressTask.value
-            try location.setRoot(destination)
             return moved
         } catch {
             continuation.finish()
