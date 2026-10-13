@@ -182,13 +182,16 @@ public struct PreparedMeetingPlayback: Sendable {
 /// and configures skip-silence and only-my-voice ranges as one workflow.
 public struct PrepareMeetingPlayback: ApplicationUseCase {
     private let resolver: any MeetingAudioChannelResolving
+    private let compressionAdmission: any MeetingAudioCompressionChecking
     private let telemetry: ResourceWorkloadTelemetry
 
     public init(
         resolver: any MeetingAudioChannelResolving,
+        compressionAdmission: any MeetingAudioCompressionChecking,
         telemetry: ResourceWorkloadTelemetry = .disabled
     ) {
         self.resolver = resolver
+        self.compressionAdmission = compressionAdmission
         self.telemetry = telemetry
     }
 
@@ -201,6 +204,16 @@ public struct PrepareMeetingPlayback: ApplicationUseCase {
         guard !relative.isEmpty else { return nil }
         let channels = try resolver.resolve(relativeAudioDirectory: relative)
         guard !channels.files.isEmpty else { return nil }
+        // Failure to read mutation authority never hides healthy playback.
+        let canCompress: Bool
+        do {
+            canCompress = try await compressionAdmission.canCompressMeetingAudio(relativeAudioDirectory: relative)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            canCompress = false
+        }
+        try Task.checkCancellation()
         let localVoiceRanges = PlaybackRanges.merge(
             request.segments
                 .filter { $0.channel == .microphone && $0.endTime > $0.startTime }
@@ -242,7 +255,7 @@ public struct PrepareMeetingPlayback: ApplicationUseCase {
                         amplitude: $0.amplitude,
                         microphoneDominant: $0.micDominant)
                 },
-                canCompressAudio: channels.containsRawAudio)
+                canCompressAudio: channels.containsRawAudio && canCompress)
         } catch {
             await player.invalidate()
             throw error
@@ -278,15 +291,18 @@ public protocol MeetingAudioCompressing: Sendable {
 public struct CompressMeetingAudio: ApplicationUseCase {
     private let resolver: any MeetingAudioChannelResolving
     private let compressor: any MeetingAudioCompressing
+    private let compressionAdmission: any MeetingAudioCompressionChecking
     private let telemetry: ResourceWorkloadTelemetry
 
     public init(
         resolver: any MeetingAudioChannelResolving,
         compressor: any MeetingAudioCompressing,
+        compressionAdmission: any MeetingAudioCompressionChecking,
         telemetry: ResourceWorkloadTelemetry = .disabled
     ) {
         self.resolver = resolver
         self.compressor = compressor
+        self.compressionAdmission = compressionAdmission
         self.telemetry = telemetry
     }
 
@@ -299,6 +315,10 @@ public struct CompressMeetingAudio: ApplicationUseCase {
         let raw = channels.files.filter { $0.pathExtension.lowercased() != "m4a" }
         guard !raw.isEmpty else { return MeetingAudioCompressionResult(bytesFreed: 0) }
         let before = compressor.totalBytes(of: channels.files)
+        let allowed = try await compressionAdmission.canCompressMeetingAudio(
+            relativeAudioDirectory: request.relativeAudioDirectory)
+        try Task.checkCancellation()
+        guard allowed else { throw MeetingAudioCompressionError.unavailable }
         let replacements = try await telemetry.measure(
             ResourceWorkloadDescriptor(
                 workloadClass: .userInitiated,

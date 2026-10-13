@@ -21,7 +21,7 @@ final class MeetingAudioWorkflowTests: XCTestCase {
             waveformBucketCount: 32)
 
         let prepared = try await PrepareMeetingPlayback(
-            resolver: fixture.resolver).execute(request)
+            resolver: fixture.resolver, compressionAdmission: AllowAudioCompression()).execute(request)
 
         let playback = try XCTUnwrap(prepared)
         XCTAssertEqual(playback.waveform.count, 32)
@@ -47,7 +47,7 @@ final class MeetingAudioWorkflowTests: XCTestCase {
             system: nil,
             microphone: fixture.resolver.channels.microphone))
 
-        let prepared = try await PrepareMeetingPlayback(resolver: resolver).execute(
+        let prepared = try await PrepareMeetingPlayback(resolver: resolver, compressionAdmission: AllowAudioCompression()).execute(
             PrepareMeetingPlaybackRequest(
                 relativeAudioDirectory: "Audio/meeting",
                 segments: []))
@@ -64,7 +64,7 @@ final class MeetingAudioWorkflowTests: XCTestCase {
         defer { fixture.remove() }
 
         let prepared = try await PrepareMeetingPlayback(
-            resolver: fixture.resolver).execute(
+            resolver: fixture.resolver, compressionAdmission: AllowAudioCompression()).execute(
                 PrepareMeetingPlaybackRequest(
                     relativeAudioDirectory: "Audio/meeting",
                     segments: [],
@@ -88,6 +88,7 @@ final class MeetingAudioWorkflowTests: XCTestCase {
         let result = try await CompressMeetingAudio(
             resolver: fixture.resolver,
             compressor: MeetingAudioCompressorFake(),
+            compressionAdmission: AllowAudioCompression(),
             telemetry: ResourceWorkloadTelemetry(receiver: recorder.receive)
         ).execute(CompressMeetingAudioRequest(relativeAudioDirectory: "Audio/meeting"))
 
@@ -110,7 +111,7 @@ final class MeetingAudioWorkflowTests: XCTestCase {
             system: nil,
             microphone: nil))
 
-        let prepared = try await PrepareMeetingPlayback(resolver: resolver).execute(
+        let prepared = try await PrepareMeetingPlayback(resolver: resolver, compressionAdmission: AllowAudioCompression()).execute(
             PrepareMeetingPlaybackRequest(
                 relativeAudioDirectory: "Audio/missing",
                 segments: []))
@@ -204,4 +205,8 @@ private struct MeetingAudioCompressorFake: MeetingAudioCompressing {
             return output
         }
     }
+}
+
+private struct AllowAudioCompression: MeetingAudioCompressionChecking {
+    func canCompressMeetingAudio(relativeAudioDirectory: String) -> Bool { true }
 }

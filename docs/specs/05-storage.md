@@ -204,13 +204,14 @@ hidden stage. A main-file or WAL size/modification change across the private
 copy also fails closed rather than publishing a mixed point in time. The source is never opened through `MeetingStore`, so no
 migration/configuration write can occur, and it is never renamed or deleted.
 
-### Schema (`v1`–`v52` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v53` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
 | Table | Key columns |
 |---|---|
 | `meeting` | id (UUID TEXT PK), title, startedAt, endedAt, language, audioDirectory (RELATIVE), retention, visibility (reserved), **lifecycleState**, **transcriptRevision**, **lastProcessingError** (v6), createdAt/updatedAt/deletedAt |
+| `meeting_on_audioDirectory` (v53) | nonunique `(audioDirectory)` index for exact compression-directory ownership; duplicate rows remain valid evidence, and admission reads at most two matching owners before refusing ambiguity |
 | `speaker` | id, meetingID (FK CASCADE), label (S1/Me…), displayName, isMe, personID? (v8, FK SET NULL), tombstone |
 | `segment` | id, meetingID, speakerID?, channel, text, language?, startTime/endTime, confidence?, isFinal, **embedding BLOB** (v2), **embeddingFingerprint** (v17), generationRunID? (v6), tombstone |
 | `summary` | id, meetingID, recipeID, language, markdown, **version** (UNIQUE meetingID+recipeID+version — immutable snapshots), **fingerprint** (v4, D25 — language-independent material identity; NULL in old snapshots = never match), generationRunID? (v6) |
@@ -1566,7 +1567,12 @@ latest-summary-only `openActionItems(limit:)` query.
 
 ## `.portavoz` bundle (M15 L0)
 
-`MeetingBundle` preserves `formatVersion = 1` and evolves only with optional/additive fields. It exports the transcript, cast, latest summary, typed overview/decision/action-item evidence and current overview feedback, notes, Apuntador cards with optional role-separated evidence, and, if the user requests it, audio. Import remaps meeting, speaker, segment, claim, decision, action-item, action-evidence, note, card, and card-evidence IDs so that two imports are independent; evidence follows fresh segments and its typed task/card identity, feedback follows its fresh overview claim, foreign source revisions are cleared, and Storage stamps the imported meeting revision. Malformed Apuntador evidence is dropped without legitimizing a foreign card target or losing the card. An older v1 bundle without claims, decisions, action evidence, feedback, Apuntador evidence, `companionCards`, or v6 meeting lifecycle fields still decodes; absent lifecycle data means `ready` at revision zero. Local paths and canonical person IDs never travel. The imported remapped aggregate crosses ApplicationKit only after attachment metadata is reduced to unique canonical system/microphone channels with m4a/caf/wav extensions; StorageKit then publishes all relational content together (D51/D87/D88/D89/D90/D91). Export crosses the symmetric ApplicationKit boundary from one `meetingExportSnapshot`, clears the local directory before encoding, and preserves the newest summary across recipes with its evidence/feedback/notes/cards from the same database moment (D52).
+`MeetingBundle` preserves `formatVersion = 1` and evolves only with optional/additive fields. It exports the transcript, cast, latest summary, typed overview/decision/action-item evidence and current overview feedback, notes, Apuntador cards with optional role-separated evidence, and, if the user requests it, audio. Import remaps meeting, speaker, segment, claim, decision, action-item, action-evidence, note, card, and card-evidence IDs so that two imports are independent; evidence follows fresh segments and its typed task/card identity, feedback follows its fresh overview claim, foreign source revisions are cleared, and Storage stamps the imported meeting revision. Malformed Apuntador evidence is dropped without legitimizing a foreign card target or losing the card. An older v1 bundle without claims, decisions, action evidence, feedback, Apuntador evidence, `companionCards`, or v6 meeting lifecycle fields still decodes; absent lifecycle data means `ready` at revision zero. Local paths and canonical person IDs never travel. The imported remapped aggregate crosses ApplicationKit only after attachment metadata is reduced to unique canonical system/microphone channels with the closed extensions in `MeetingAudioLayout.channelExtensions`; StorageKit then publishes all relational content together (D51/D87/D88/D89/D90/D91). Export crosses the symmetric ApplicationKit boundary from one `meetingExportSnapshot`, clears the local directory before encoding, and preserves the newest summary across recipes with its evidence/feedback/notes/cards from the same database moment (D52).
+
+Existing m4a/caf/wav bundles retain their format-v1 compatibility. Older app
+versions whose attachment allowlist accepts only those three extensions can
+reject a bundle carrying newly preserved mp3/aac/aiff/aif/m4b attachments;
+format-v1 framing alone does not establish decoder or reader compatibility.
 
 ## Recordings folder — `RecordingsLocation`
 
@@ -1589,7 +1595,7 @@ caught-error compensation and require field qualification.
 
 ## Audio layout — `MeetingAudioLayout`
 
-`channelFile(named:in:)` locates audio by channel inside `Audio/<uuid>/`: prefers `.m4a` after user-requested compression, then `.caf` (current capture, crash-safe), then `.wav` (pre-Jul-2026 meetings). Staging `.partial.caf` files are intentionally invisible. All readers (refine CLI and app) pass through this layout.
+`channelFile(named:in:)` locates audio by channel inside `Audio/<uuid>/`: prefers `.m4a` after user-requested compression, then `.caf` (current capture, crash-safe), then `.wav` (pre-Jul-2026 meetings), followed by the preserved external formats `.mp3`, `.aac`, `.aiff`, `.aif` and `.m4b`. The closed `channelExtensions` catalog also validates both meeting-bundle attachment directions, so these imports keep their original audio through export/reimport. Staging names such as `system.partial.caf` or `system.partial.mp3` remain invisible. All readers (playback, Refine, clips, voice memory, bundles and CLI) pass through this layout.
 
 ## Secrets — Core port and PlatformKit adapter
 
@@ -2017,6 +2023,20 @@ success. Expired work uses the existing processing-job recovery policy. Because
 the lease ignores tombstones, the worker re-reads the live job after each
 heartbeat and suspends (refunds) an attempt whose meeting was trashed instead of
 finishing model work that publication must reject.
+
+Destructive audio compression reads `canCompressMeetingAudio` from one database
+snapshot. The request must name one live canonical meeting directory. Import
+directories require matching, validated input and job identities, a published
+copy and successful job completion; pending, running, failed, cancelled,
+tombstoned or inconsistent imports remain protected. Missing authority inside
+the reserved Imports namespace cannot become ordinary-recording permission.
+Existing non-import recordings and completed imports keep compression behavior;
+compression never rewrites input authority or substitutes a lossy Retry source.
+Schema v53 adds the nonunique `meeting_on_audioDirectory` index to this exact
+owner lookup. The upgrade accepts existing duplicate paths; the same two-row
+admission query still rejects them. Query-plan regression uses the production
+request and requires indexed search rather than a full Library scan. This is
+access-path evidence, not a measured UI latency claim.
 
 The external bookmark does not outlive an import that can no longer use it.
 `cancelAudioImport` retires it in the cancelling transaction when no owned copy

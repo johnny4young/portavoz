@@ -2338,9 +2338,9 @@ requests Spotlight reconciliation only after success, and returns the fresh ID;
 Library and app-delegate callers preserve their existing navigation order.
 The private document adapter reads, decodes, and remaps through IntegrationsKit
 on a detached utility task. Before files are created, ApplicationKit accepts
-only unique canonical system/microphone attachments and m4a/caf/wav
-extensions, clears any incoming machine-local directory, and coordinates a
-staged audio directory with one full Store commit. The private file adapter
+only unique canonical system/microphone attachments and the closed extensions
+in `MeetingAudioLayout.channelExtensions`, clears any incoming machine-local
+directory, and coordinates a staged audio directory with one full Store commit. The private file adapter
 constructs only `Audio/<fresh-id>/<channel>.<extension>`, cleans partial writes,
 and compensates a persistence failure without masking it. No interactive UI
 control or localized copy changed (D51).
@@ -2351,7 +2351,7 @@ meeting ID and audio opt-in, then maps returned bytes to its existing
 `ExportDocument`. The use case owns a read-consistent aggregate, clears the
 machine-local path, and assembles a format-neutral document. Private app
 adapters resolve the configured/fallback recordings root, load only available
-system/microphone m4a/caf/wav channels, and map to IntegrationsKit format v1.
+system/microphone channels in that same extension catalog, and map to IntegrationsKit format v1.
 Complete audio reads and JSON/base64 encoding run in detached utility tasks.
 The native file exporter, title-based filename, UTI, dismissal state, and
 localized failure alert are unchanged (D52).
@@ -3507,8 +3507,16 @@ analysis, AAC encoding, and mixed-range export. SwiftUI owns the transport
 controls, waveform drawing, and native save panel only. Compression operates
 on every raw channel as one failure-safe batch: existing canonical outputs are
 never replaced, generated outputs are removed on failure or cancellation, and
-no original is removed until all outputs verify. A successful conversion
-invalidates and rebuilds the session from current files. Without readable
+no original is removed until all outputs verify. The shared compression-admission
+port keeps durable import copies protected until successful import completion,
+including failed/cancelled Retry sources and trash/restore. Its Store read fails
+closed for missing, inconsistent or aliased authority. Playback stays available
+while compression is hidden; core/job updates refresh permission without
+replacing the session or waveform, and the backend rechecks before codec work.
+The directory-owner query is indexed. The observation consumer still awaits
+each permission refresh inline, so a slow read can delay later review sections;
+generation fencing discards stale results without coalescing queued updates.
+A successful conversion invalidates and rebuilds the session from current files. Without readable
 audio, the healthy transcript remains a normal text-only list. The same
 carousel also runs during live recording, but D129 gives it a separate visual
 policy and reader-owned follow state: direct user scroll disables automatic

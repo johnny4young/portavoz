@@ -50,6 +50,17 @@ without widening transport. Native replay regressions for dismissal, deferral,
 cleared feedback, removed sources and confirmation still require execution before
 this item closes.
 
+### Meeting Detail compression permission delivery
+
+Compression admission uses an indexed exact directory-owner query and retains
+generation, session and directory fences. Its permission refresh is still
+awaited inline after core/job observations; the combined review stream has no
+bounded pending-event policy. A slow read can delay later review sections.
+Coalescing requires one retained worker, one replaceable pending request and
+explicit cancellation/invalidation while preserving awaitable preparation.
+Scale and burst behavior still need native qualification; query-plan evidence
+does not establish UI latency or explain a full-suite duration limit.
+
 ### Global dictation capture and delivery qualification
 
 Microphone preparation now checks authorization before graph/model work, shares
@@ -385,6 +396,25 @@ merely to obtain green results. A valid full run needs an automation-capable
 desktop that preserves its interaction context; any lifecycle change must first
 reproduce the problem at the actual window attachment/presentation boundary.
 Hosted CI and a local interactive run remain distinct evidence.
+
+The current unattended catalogue contains 140 journeys with 140 individual
+ceilings. The budget's retained 109-case historical and 105-case D382 comparison
+summaries are historical calibration, not a matched qualification of that
+catalogue. The 1,300-second total and 30-second p95 remain blocking by default
+for local/stable-Mac integration and release runs; the hosted workflow explicitly
+makes wall-clock drift advisory after complete functional success. A green
+hosted result therefore does not certify those local timing gates.
+
+A complete hosted run of the immediate main ancestor already exceeded those
+unchanged ceilings with the same 140-case catalogue and runtime parser. This
+establishes prior hosted drift, not stable overhead in local main or a cause in
+a later product change. Local main comparisons interrupted by a guard and
+focused/partial runs cannot establish that baseline. Qualification still needs
+one clean complete main control and the candidate in the same isolated desktop,
+OS, Xcode, fixture and measurement policy. Preserve source/selector identities,
+all input and interruption guards, and every threshold; stop on interruption
+rather than retrying until a result passes. Toolchain differences require a
+controlled comparison, not a presumed correction factor.
 
 The native same-application sheet positive has also encountered an unattributed
 own-app `Other` surface while focusing its accessory editor. The guard completed

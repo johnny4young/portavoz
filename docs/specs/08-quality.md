@@ -7651,6 +7651,17 @@ every functional case passed. The same unchanged budget file remains enforced
 by default for local/stable-Mac integration and release runs; only the hosted
 workflow opts out of hard wall-clock enforcement.
 
+The runtime budget now inventories 140 exact journey identifiers and 140
+individual ceilings. Its retained historical 109-case and qualified-candidate
+105-case aggregates describe the D382 calibration above; they are not a
+contemporary complete-main baseline for 140 cases. All reachable budget changes
+retain the 1,300-second and 30-second ceilings. The parser has no hardware or
+Xcode normalization and does not automatically reclassify a local run as hosted
+advisory. A source-qualified full hosted receipt can establish prior hosted
+wall-clock drift, while a local product-regression claim needs matched complete
+main/candidate receipts on the same isolated host and toolchain. Incomplete or
+interrupted controls and passing focused subsets cannot supply that comparison.
+
 An execution receipt marked `evidence-failure` is well-formed refusal evidence,
 not an assertion that output files are absent. A stopped XCTest worker can
 leave a result bundle and runtime receipt, then restart with exit zero; a
@@ -9182,6 +9193,31 @@ implications of a port result. This prepared receiver does not qualify slow,
 unsupported or arbitrary third-party AX servers.
 
 ### Audio export bridge characterization
+
+`ImportedAudioReuseTests` checks both canonical channels across the eight
+explicit Library import extensions, bundle attachment admission, preserved
+m4a/caf/wav preference order, and invisible partial/unsupported filenames.
+A native synthetic AIFF passes durable selection/copy/publication with a
+scripted processor, then the actual bundle codec and fresh-identity remapping;
+the exported/reimported bytes match the unchanged original and AVAudioFile
+can read both owned copies. This proves format reuse and codec conservation,
+not model quality, native-panel interaction or every host decoder format.
+
+`AudioImportCompressionAdmissionTests` enters real Store/native-copy/workflow
+boundaries for failed WAV/AIFF refusal, digest-preserved explicit Retry and
+success-only compression. State, trash/restore, missing/corrupt authority,
+canonical-path aliases and ordinary recordings have independent controls.
+The codec double uses the existing native publication/verification/deletion
+seam, not a claim of host AAC availability. `MeetingDetailCompressionPermissionTests`
+holds the same player/waveform across pending-to-success permission refresh and
+read failure, without a timing sleep or navigation restart.
+
+`AudioCompressionDirectoryIndexTests` upgrades a v52 database that already has
+two owners of the same audio directory. The nonunique v53 index preserves those
+rows, and `EXPLAIN QUERY PLAN` over the production admission request changes
+from a table scan to indexed search. Existing duplicate-owner refusal controls
+remain separate. These checks do not measure native UI duration or qualify
+permission-refresh behavior under a sustained observation burst.
 
 `AudioExportSessionTests` drives the real internal callback bridge with immediate
 and held fake completions, including caller cancellation before/after start. It

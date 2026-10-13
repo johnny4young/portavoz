@@ -172,6 +172,25 @@ remote replacement cannot silently undo a dismissal or deferral.
 
 ### Audio export compatibility boundary
 
+`StorageKit.MeetingAudioLayout.channelExtensions` is the shared closed catalog
+for channel lookup and ApplicationKit meeting-bundle attachments: m4a, caf,
+wav, mp3, aac, aiff, aif and m4b. Existing compressed/captured precedence stays
+first; selected external audio retains its original bytes and extension.
+Playback, Refine, clips and with-audio bundles therefore resolve those imports
+through the same channel contract. Partial staging names remain invisible,
+and attachment metadata still rejects unsupported extensions and path shapes.
+
+Audio compression has an explicit ApplicationKit admission port. StorageKit
+admits only one live canonical directory owner; an import requires matching,
+validated input/job authority and immutable job success before destructive
+replacement. Missing or inconsistent import authority fails closed. Playback
+stays available when compression is denied. Meeting Detail refreshes this
+permission from core/job observations while retaining its current player and
+waveform; the compression workflow rechecks authority before invoking the codec.
+The directory-owner lookup uses a nonunique index while retaining the two-owner
+refusal. Permission reads remain awaited within the review observation consumer;
+they do not write storage or recreate the player.
+
 `AudioPlaybackKit.AudioExportSession` owns the shared AAC export bridge used by
 both clip-export paths and compression. Composition, requested ranges, clear
 mixing, output replacement, rollback, verification and source deletion remain
@@ -1540,7 +1559,9 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 52. Its skill-identity write constraints preserve
+The current schema version is 53. A nonunique meeting-directory index serves
+compression admission without rejecting historical duplicate owners. Its
+skill-identity write constraints preserve
 historical denials rather than rejecting a populated library during upgrade.
 It includes:
 

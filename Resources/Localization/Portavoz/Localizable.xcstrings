@@ -1731,6 +1731,16 @@
         }
       }
     },
+    "Complete the audio import before compressing it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completa la importación de audio antes de comprimirlo."
+          }
+        }
+      }
+    },
     "Filler filtering and replacements apply only in Clean mode.": {
       "localizations": {
         "es": {

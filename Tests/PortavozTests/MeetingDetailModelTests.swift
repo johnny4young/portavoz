@@ -1,7 +1,9 @@
+import AVFoundation
 import ApplicationKit
 import Foundation
 import PortavozCore
 import XCTest
+import Testing
 
 @testable import portavoz_app
 
@@ -1079,7 +1081,7 @@ private struct MeetingDetailModelFixture {
 
 @MainActor
 private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
-    let updates: [MeetingReviewUpdate]
+    var updates: [MeetingReviewUpdate]
     var calls: [MeetingDetailModelCall] = []
     var failures: Set<MeetingDetailModelFailure> = []
     var searchReindexRequests = 0
@@ -1090,6 +1092,9 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     var metadataCancellationsRemaining = 0
     var playbackCancellationsRemaining = 0
     var preparedPlaybackResult: PreparedMeetingPlayback?
+    var audioCompressionAllowed = true
+    var audioCompressionCheckFailure = false
+    var audioCompressionCheckOverride: (() async throws -> Bool)?
     var compressionResult = MeetingAudioCompressionResult(bytesFreed: 1_024)
     var skillFailuresRemaining = 0
     var skillExecutionResult: MeetingDetailSkillExecutionResult?
@@ -1404,6 +1409,12 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
         return compressionResult
     }
 
+    func canCompressMeetingDetailAudio(relativeAudioDirectory: String) async throws -> Bool {
+        if let audioCompressionCheckOverride { return try await audioCompressionCheckOverride() }
+        if audioCompressionCheckFailure { throw MeetingAudioCompressionError.unavailable }
+        return audioCompressionAllowed
+    }
+
     func exportMeetingDetailAudioClip(
         _ request: ExportMeetingAudioClipRequest
     ) throws {
@@ -1439,6 +1450,130 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     private func fail(_ failure: MeetingDetailModelFailure) throws {
         if failures.contains(failure) { throw failure }
     }
+}
+
+@MainActor
+struct MeetingDetailCompressionPermissionTests {
+    @Test(.timeLimit(.minutes(1)), arguments: [false, true])
+    func stalePermissionCannotOverrideTheLatestDenialOrReadFailure(newestReadFails: Bool) async throws {
+        let fixture = MeetingDetailModelFixture()
+        var meeting = fixture.meeting
+        meeting.audioDirectory = "Audio/imported"
+        meeting.lifecycleState = .processing
+        let client = MeetingDetailModelClientFake(updates: [
+            .core(MeetingReviewCore(meeting: meeting, speakers: [], segments: [])), .processingJobs([])
+        ])
+        let (prepared, file) = try await makePreparedPlayback()
+        defer { prepared.session.invalidate(); try? FileManager.default.removeItem(at: file) }
+        client.preparedPlaybackResult = prepared
+        let started = AsyncStream<Void>.makeStream()
+        let held = AsyncStream<Bool>.makeStream()
+        client.audioCompressionCheckOverride = {
+            started.continuation.yield(())
+            started.continuation.finish()
+            var values = held.stream.makeAsyncIterator()
+            return await values.next() ?? false
+        }
+        let model = MeetingDetailModel(meetingID: meeting.id, client: client)
+        await model.observe()
+        let preparation = Task { await model.send(.loadPlayback) }
+        defer { held.continuation.finish(); preparation.cancel() }
+        var signals = started.stream.makeAsyncIterator()
+        try #require(await signals.next() != nil)
+        client.audioCompressionCheckOverride = {
+            if newestReadFails { throw MeetingAudioCompressionError.unavailable }
+            return false
+        }
+        await model.observe()
+        #expect(model.state.playback?.canCompressAudio == false)
+        held.continuation.yield(true)
+        held.continuation.finish()
+        _ = await preparation.value
+        #expect(model.state.playback?.canCompressAudio == false)
+        #expect(model.state.playback?.session === prepared.session)
+        #expect(model.state.playback?.waveform == prepared.waveform)
+        #expect(client.calls.filter { if case .preparePlayback = $0 { return true }; return false }.count == 1)
+    }
+
+    @Test func sameDirectoryImportCompletionRefreshesCompressionWithoutReplacingPlayback() async throws {
+        let fixture = MeetingDetailModelFixture()
+        var meeting = fixture.meeting
+        meeting.audioDirectory = "Audio/imported"
+        meeting.lifecycleState = .processing
+        let job = ProcessingJob(meetingID: meeting.id, kind: .audioImport, inputFingerprint: "fixture")
+        let client = MeetingDetailModelClientFake(updates: [
+            .core(MeetingReviewCore(meeting: meeting, speakers: [], segments: [])), .processingJobs([job])
+        ])
+        client.audioCompressionAllowed = false
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("permission-\(UUID().uuidString).wav")
+        defer { try? FileManager.default.removeItem(at: file) }
+        do {
+            let format = try #require(AVAudioFormat(standardFormatWithSampleRate: 16_000, channels: 1))
+            let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 3_200))
+            buffer.frameLength = buffer.frameCapacity
+            let samples = try #require(buffer.floatChannelData?[0])
+            for index in 0..<Int(buffer.frameLength) { samples[index] = 0.1 }
+            let writer = try AVAudioFile(forWriting: file, settings: format.settings)
+            try writer.write(from: buffer)
+        }
+        let prepared = try #require(try await PrepareMeetingPlayback(
+            resolver: PermissionAudioResolver(file: file), compressionAdmission: DenyAudioCompression()).execute(
+                PrepareMeetingPlaybackRequest(relativeAudioDirectory: "Audio/imported", segments: [])))
+        defer { prepared.session.invalidate() }
+        client.preparedPlaybackResult = prepared
+        let model = MeetingDetailModel(meetingID: meeting.id, client: client)
+        await model.observe()
+        await model.send(.loadPlayback)
+        #expect(model.state.playback?.canCompressAudio == false)
+        #expect(model.state.playback?.session === prepared.session)
+
+        meeting.lifecycleState = .ready
+        client.audioCompressionAllowed = true
+        client.updates = [.core(MeetingReviewCore(meeting: meeting, speakers: [], segments: [])),
+                          .processingJobs([ProcessingJob(id: job.id, meetingID: meeting.id, kind: .audioImport,
+                                                         inputFingerprint: "fixture", state: .succeeded)])]
+        await model.observe()
+        #expect(model.state.playback?.canCompressAudio == true)
+        #expect(model.state.playback?.session === prepared.session)
+        #expect(model.state.playback?.waveform == prepared.waveform)
+        #expect(client.calls.filter { if case .preparePlayback = $0 { return true }; return false }.count == 1)
+
+        client.audioCompressionCheckFailure = true
+        client.updates = [.failed(.processing)]
+        await model.observe()
+        #expect(model.state.playback?.canCompressAudio == false)
+        #expect(model.state.playback?.session === prepared.session)
+        client.audioCompressionCheckFailure = false
+        await model.observe()
+        #expect(model.state.playback?.canCompressAudio == true)
+        #expect(model.state.playback?.session === prepared.session)
+    }
+
+    private func makePreparedPlayback() async throws -> (PreparedMeetingPlayback, URL) {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("permission-\(UUID().uuidString).wav")
+        do {
+            let format = try #require(AVAudioFormat(standardFormatWithSampleRate: 16_000, channels: 1))
+            let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 3_200))
+            buffer.frameLength = buffer.frameCapacity
+            let samples = try #require(buffer.floatChannelData?[0])
+            for index in 0..<Int(buffer.frameLength) { samples[index] = 0.1 }
+            let writer = try AVAudioFile(forWriting: file, settings: format.settings)
+            try writer.write(from: buffer)
+        }
+        let prepared = try #require(try await PrepareMeetingPlayback(
+            resolver: PermissionAudioResolver(file: file), compressionAdmission: DenyAudioCompression()).execute(
+                PrepareMeetingPlaybackRequest(relativeAudioDirectory: "Audio/imported", segments: [])))
+        return (prepared, file)
+    }
+}
+
+private struct PermissionAudioResolver: MeetingAudioChannelResolving {
+    let file: URL
+    func resolve(relativeAudioDirectory: String) -> MeetingAudioChannels { .init(system: file, microphone: nil) }
+}
+
+private struct DenyAudioCompression: MeetingAudioCompressionChecking {
+    func canCompressMeetingAudio(relativeAudioDirectory: String) -> Bool { false }
 }
 
 private enum MeetingDetailModelFailure: String, CaseIterable, Error, LocalizedError {

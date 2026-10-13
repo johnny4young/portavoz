@@ -4,11 +4,17 @@ import Foundation
 import StorageKit
 
 extension AppServices {
+    func canCompressMeetingDetailAudio(relativeAudioDirectory: String) async throws -> Bool {
+        try await CheckMeetingAudioCompression(
+            resolver: AppMeetingAudioChannelResolver(), admission: store).execute(relativeAudioDirectory)
+    }
+
     func prepareMeetingDetailPlayback(
         _ request: PrepareMeetingPlaybackRequest
     ) async throws -> PreparedMeetingPlayback? {
         try await PrepareMeetingPlayback(
             resolver: AppMeetingAudioChannelResolver(),
+            compressionAdmission: store,
             telemetry: workloadTelemetry).execute(request)
     }
 
@@ -18,6 +24,7 @@ extension AppServices {
         try await CompressMeetingAudio(
             resolver: AppMeetingAudioChannelResolver(),
             compressor: AppMeetingAudioCompressor(),
+            compressionAdmission: store,
             telemetry: workloadTelemetry).execute(request)
     }
 
