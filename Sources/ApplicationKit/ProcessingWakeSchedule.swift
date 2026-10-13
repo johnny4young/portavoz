@@ -2,6 +2,8 @@ import Foundation
 
 /// Keeps durable deadline recovery from spinning while a drain cannot claim work.
 public enum ProcessingWakeSchedule {
+    static let failedDrainBackoff: TimeInterval = 5
+
     public static func nextDate(
         scheduled: Date?,
         afterDrainFailure: Bool,
@@ -9,6 +11,6 @@ public enum ProcessingWakeSchedule {
     ) -> Date? {
         guard let scheduled else { return nil }
         guard afterDrainFailure else { return scheduled }
-        return max(scheduled, timestamp.addingTimeInterval(5))
+        return max(scheduled, timestamp.addingTimeInterval(failedDrainBackoff))
     }
 }

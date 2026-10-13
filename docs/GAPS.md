@@ -23,8 +23,9 @@ GRDB's cancellation-aware write: the job retains its running lease and claim
 attempt. An independent cleanup task whose handle is retained and awaited can
 persist suspension, while the real owner fence still rejects cleanup after
 another worker takes over. This is a latent workflow cleanup boundary, not a
-confirmed reachable product failure: the current application supervisor never
-cancels its private drain task, and a provider throwing `CancellationError`
+confirmed reachable product failure: the post-capture supervisor never
+cancels its private drain task (the audio-import owner does, and retires its
+lease from a detached task), and a provider throwing `CancellationError`
 does not itself cancel the caller. The existing workflow fixture covers that
 thrown-error case. Real task cancellation of the complete use case, cancelled
 generation provenance, and supervisor wake rescheduling remain unverified;

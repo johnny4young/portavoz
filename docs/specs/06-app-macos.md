@@ -3243,7 +3243,8 @@ claim failure, an existing deadline waits at least five seconds; a later date
 is preserved and no deadline still means no timer. The audio-import queue uses
 the same policy after a non-cancellation drain failure. Both owners keep their
 existing generation fences, wake cancellation and coalescing, without idle
-polling or changing intentional suspension. Optional initial summary-provider discovery runs only after recovery
+polling or changing intentional suspension. Optional initial summary-provider
+discovery runs only after recovery
 and durable workflow resume, so a local Ollama probe cannot delay finalized
 audio or transcript recovery. The user's post-meeting Shortcut runs after terminal
 derived work, including
