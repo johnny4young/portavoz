@@ -298,27 +298,41 @@
     // by clicking the backdrop / the ✕ / Escape.
     var lb = document.getElementById("lightbox");
     var lbImg = document.getElementById("lbImg");
-    function openLb(src, alt) {
+    var lbClose = document.getElementById("lbClose");
+    var lbLauncher;
+    function openLb(src, alt, launcher) {
+      lbLauncher = launcher;
       lbImg.setAttribute("src", src);
       lbImg.setAttribute("alt", alt || "");
       lb.hidden = false;
       document.body.style.overflow = "hidden";
+      lbClose.focus();
     }
     function closeLb() {
+      if (lb.hidden) return;
       lb.hidden = true;
       lbImg.setAttribute("src", "");
       document.body.style.overflow = "";
+      lbLauncher.focus();
+      lbLauncher = null;
     }
     document.querySelectorAll(".thumb").forEach(function (t) {
       t.addEventListener("click", function () {
-        openLb(t.getAttribute("data-full"), t.querySelector("img").getAttribute("alt"));
+        openLb(t.getAttribute("data-full"), t.querySelector("img").getAttribute("alt"), t);
       });
     });
     lb.addEventListener("click", function (e) {
       if (e.target !== lbImg) closeLb();
     });
     document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && !lb.hidden) closeLb();
+      if (lb.hidden) return;
+      if (e.key === "Escape" || e.key === "Tab") {
+        e.preventDefault();
+        e.stopPropagation();
+        // The close button is the dialog's only interactive control.
+        if (e.key === "Tab") lbClose.focus();
+        else closeLb();
+      }
     });
   })();
 </script>
