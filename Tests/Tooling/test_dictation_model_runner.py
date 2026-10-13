@@ -129,8 +129,10 @@ class DictationModelRunnerTests(unittest.TestCase):
         # A complete schema double, not fabricated ASR or public-text scoring evidence.
         frames = entry['frames'] * repetitions
         duration = frames / 16_000
-        score = {'wordErrorRate': 0, 'characterErrorRate': 0, 'referenceWords': 1, 'hypothesisWords': 1,
-                 'exactReferenceMatch': True, 'legacyCleanupChangedText': False}
+        speech = family['audioKind'] == 'speech'
+        score = {'wordErrorRate': int(not speech), 'characterErrorRate': int(not speech),
+                 'referenceWords': int(speech), 'hypothesisWords': 1,
+                 'exactReferenceMatch': speech, 'legacyCleanupChangedText': False}
         return {'caseID': case, 'pass': attempt, 'repetitions': repetitions, 'audioSHA256': entry['audioSHA256'],
                 **{key: family[key] for key in ('group', 'cohort', 'shape', 'split', 'critical')},
                 'inputSeconds': duration, 'inputEndSeconds': duration + 0.001, 'completionSeconds': duration + 0.02,
@@ -210,7 +212,7 @@ class DictationModelRunnerTests(unittest.TestCase):
     def attribution(self):
         score = {'wordErrorRate': 0, 'characterErrorRate': 0, 'referenceWords': 1, 'hypothesisWords': 1,
                  'exactReferenceMatch': True, 'legacyCleanupChangedText': False}
-        return {'vendorFinal': score, 'mappedAndCoalesced': score, 'matchesProductionText': False,
+        return {'vendorFinal': dict(score), 'mappedAndCoalesced': dict(score), 'matchesProductionText': False,
                 'updateCount': 1, 'timingCount': 1, 'rejectedAtBoundary': 0,
                 'rejectedBeforeBoundary': 0, 'mappedSegmentCount': 1}
 
@@ -406,6 +408,71 @@ class DictationModelRunnerTests(unittest.TestCase):
             self.assertEqual(result['outcome'], 'observed')
             self.assertFalse(result['verifiedDeliveryMeasured'])
             self.assertFalse(result['sourceCommitQualified'])
+
+    def test_every_model_stage_rejects_a_reference_from_the_wrong_public_audio_kind(self):
+        for speech, cases in ((True, self.cases), (False, ['non-speech-silence.clean'])):
+            for index, stage in enumerate(('score', 'adapterDeltas', 'vendorFinal', 'mappedAndCoalesced')):
+                attribute_live = stage in ('vendorFinal', 'mappedAndCoalesced')
+
+                def invoke(arguments, **options):
+                    result = self.successful_double(arguments, **options)
+                    path = Path(options['env']['PORTAVOZ_DICTATION_BASELINE_OUTPUT'])
+                    document = json.loads(path.read_text())
+                    if attribute_live:
+                        for row in document['cells']:
+                            row['stageAttribution'] = self.attribution()
+                            for score in (row['stageAttribution']['vendorFinal'],
+                                          row['stageAttribution']['mappedAndCoalesced']):
+                                score.update(referenceWords=int(speech), wordErrorRate=int(not speech),
+                                             characterErrorRate=int(not speech), exactReferenceMatch=speech)
+                    row = document['cells'][0]
+                    score = row['stageAttribution'][stage] if attribute_live else row[stage]
+                    # Both corruptions are internally valid: the known source
+                    # alone proves that the declared reference is impossible.
+                    score.update(referenceWords=int(not speech), hypothesisWords=int(not speech),
+                                 wordErrorRate=0, characterErrorRate=0, exactReferenceMatch=True)
+                    path.write_text(json.dumps(document))
+                    return result
+
+                with self.subTest(speech=speech, stage=stage):
+                    self.cases = cases
+                    result = runner.run(self.audio, cases, self.bundle,
+                                        self.root / f'reference-{speech}-{index}', self.launcher,
+                                        attribute_live=attribute_live, invoke=invoke)
+                    self.assertEqual(result['outcome'], 'invalid-observation')
+                    self.assertFalse(result['sourceCommitQualified'])
+                    self.assertFalse(result['verifiedDeliveryMeasured'])
+
+    def test_valid_speech_deletions_and_no_speech_sentinels_survive_every_model_stage(self):
+        for speech, cases in ((True, self.cases), (False, ['non-speech-silence.clean'])):
+            for hypothesis in (0, 3):
+                def invoke(arguments, **options):
+                    result = self.successful_double(arguments, **options)
+                    path = Path(options['env']['PORTAVOZ_DICTATION_BASELINE_OUTPUT'])
+                    document = json.loads(path.read_text())
+                    for row in document['cells']:
+                        row['stageAttribution'] = self.attribution()
+                        for score in (row['score'], row['adapterDeltas'],
+                                      row['stageAttribution']['vendorFinal'],
+                                      row['stageAttribution']['mappedAndCoalesced']):
+                            score.update(referenceWords=int(speech), hypothesisWords=hypothesis,
+                                         wordErrorRate=(1 if hypothesis == 0 else 2) if speech else 1,
+                                         characterErrorRate=1, exactReferenceMatch=False)
+                            if not speech and hypothesis == 0:
+                                score.update(wordErrorRate=0, characterErrorRate=0, exactReferenceMatch=True)
+                        if hypothesis == 0:
+                            del row['firstUpdateSeconds']
+                    path.write_text(json.dumps(document))
+                    return result
+
+                with self.subTest(speech=speech, hypothesis=hypothesis):
+                    self.cases = cases
+                    result = runner.run(self.audio, cases, self.bundle,
+                                        self.root / f'reference-control-{speech}-{hypothesis}', self.launcher,
+                                        attribute_live=True, invoke=invoke)
+                    self.assertEqual(result['outcome'], 'observed')
+                    self.assertFalse(result['sourceCommitQualified'])
+                    self.assertFalse(result['verifiedDeliveryMeasured'])
 
     def test_word_edit_roundoff_preserves_legitimate_rates_and_empty_speech(self):
         for reference, hypothesis, edits in ((3, 2, 1), (999983, 999979, 333329),

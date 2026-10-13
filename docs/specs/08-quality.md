@@ -228,7 +228,15 @@ normalized string, so zero WER, zero implied word edits and zero CER must
 coincide exactly. An empty hypothesis for nonempty speech
 must retain full word/character deletions, including cancelled attempts. The
 existing Swift producer's empty-reference 0/1 sentinel remains admitted for
-compatibility; it is not a defined no-speech WER. No-speech evaluation requires
+compatibility; it is not a defined no-speech WER. Every public-family-bound score
+also requires a positive reference word count for speech and zero for non-speech:
+the model output, adapter deltas, vendor/mapped attribution and controller output
+cannot replace a known speech reference with an empty one, or invent a lexical
+reference for silence/noise. Launch-boundary regressions corrupt one stage at a
+time and retain valid full speech deletions plus empty/lexical no-speech sentinels.
+The generic offline benchmark score validator retains its separate caller-owned
+reference contract. This scope check does not recompute normalized reference
+lengths or attest to transcript truth. No-speech evaluation requires
 lexical-output incidence and exposure denominators, not aggregation of that
 sentinel. Controller prepared-text evidence requires an explicit Stop timestamp
 at or before preparation, even on incomplete input. Missing phases are not zero
