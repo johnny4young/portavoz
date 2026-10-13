@@ -16,6 +16,20 @@ protocols and full-certification scorecard preserve those missing results.
 Code readiness does not authorize publication or establish notarization,
 production sync reliability, universal hardware support or real-world quality.
 
+### Durable processing cancellation qualification
+
+A genuinely cancelled Swift task cannot persist `suspendProcessingJob` through
+GRDB's cancellation-aware write: the job retains its running lease and claim
+attempt. An independent cleanup task whose handle is retained and awaited can
+persist suspension, while the real owner fence still rejects cleanup after
+another worker takes over. This is a latent workflow cleanup boundary, not a
+confirmed reachable product failure: the current application supervisor never
+cancels its private drain task, and a provider throwing `CancellationError`
+does not itself cancel the caller. The existing workflow fixture covers that
+thrown-error case. Real task cancellation of the complete use case, cancelled
+generation provenance, and supervisor wake rescheduling remain unverified;
+retained work must also be distinguished from delayed lease-based recovery.
+
 ### Recording migration safety
 
 The implementation now rejects divergent or unverifiable same-name destinations,
@@ -385,6 +399,25 @@ merely to obtain green results. A valid full run needs an automation-capable
 desktop that preserves its interaction context; any lifecycle change must first
 reproduce the problem at the actual window attachment/presentation boundary.
 Hosted CI and a local interactive run remain distinct evidence.
+
+The current unattended catalogue contains 140 journeys with 140 individual
+ceilings. The budget's retained 109-case historical and 105-case D382 comparison
+summaries are historical calibration, not a matched qualification of that
+catalogue. The 1,300-second total and 30-second p95 remain blocking by default
+for local/stable-Mac integration and release runs; the hosted workflow explicitly
+makes wall-clock drift advisory after complete functional success. A green
+hosted result therefore does not certify those local timing gates.
+
+A complete hosted run of the immediate main ancestor already exceeded those
+unchanged ceilings with the same 140-case catalogue and runtime parser. This
+establishes prior hosted drift, not stable overhead in local main or a cause in
+a later product change. Local main comparisons interrupted by a guard and
+focused/partial runs cannot establish that baseline. Qualification still needs
+one clean complete main control and the candidate in the same isolated desktop,
+OS, Xcode, fixture and measurement policy. Preserve source/selector identities,
+all input and interruption guards, and every threshold; stop on interruption
+rather than retrying until a result passes. Toolchain differences require a
+controlled comparison, not a presumed correction factor.
 
 The native same-application sheet positive has also encountered an unattributed
 own-app `Other` surface while focusing its accessory editor. The guard completed

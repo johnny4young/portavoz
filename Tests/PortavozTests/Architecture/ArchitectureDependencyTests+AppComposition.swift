@@ -776,7 +776,7 @@ extension ArchitectureDependencyTests {
 
         for wakePolicy in [
             "public func nextScheduledProcessingDate",
-            "SELECT MIN(wakeAt)",
+            "SELECT MAX(MIN(wakeAt), ?)",
             "SELECT notBefore AS wakeAt",
             "SELECT leaseExpiresAt AS wakeAt"
         ] {

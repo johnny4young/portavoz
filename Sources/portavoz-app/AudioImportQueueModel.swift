@@ -144,6 +144,7 @@ final class AudioImportQueueModel {
         rerun = false
         isDraining = true
         drain = Task { [weak self] in
+            var failed = false
             do {
                 _ = try await worker.execute(.init(started: { [weak self] id in
                     await self?.started(id, revision: revision)
@@ -154,10 +155,11 @@ final class AudioImportQueueModel {
                 }))
             } catch {
                 if !(error is CancellationError), !Task.isCancelled {
+                    failed = true
                     self?.error = AudioImportQueueError.storage.localizedDescription
                 }
             }
-            await self?.finished(revision: revision)
+            await self?.finished(revision: revision, afterDrainFailure: failed)
         }
     }
 
@@ -177,7 +179,7 @@ final class AudioImportQueueModel {
         client?.audioImportCompleted(id)
     }
 
-    private func finished(revision: Int) async {
+    private func finished(revision: Int, afterDrainFailure: Bool) async {
         guard generation == revision else { return }
         isDraining = false
         currentID = nil
@@ -189,7 +191,10 @@ final class AudioImportQueueModel {
         // rather than abandoning the read while another drain starts.
         let next: Date?
         do {
-            next = try await client?.nextAudioImportWake()
+            next = ProcessingWakeSchedule.nextDate(
+                scheduled: try await client?.nextAudioImportWake(),
+                afterDrainFailure: afterDrainFailure,
+                at: Date())
         } catch {
             guard generation == revision, !Task.isCancelled else { return }
             self.error = AudioImportQueueError.storage.localizedDescription

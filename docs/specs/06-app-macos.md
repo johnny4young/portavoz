@@ -3237,8 +3237,13 @@ without adding a poll. `AppPostCaptureProcessingCapabilities` retains
 recording-path resolution, filesystem checks, concrete Parakeet/pyannote and
 summary-provider construction, language/vocabulary preferences, Shortcut
 invocation, and idle engine release. The supervisor only coalesces kicks,
-schedules the returned wake without polling, and maps content-free events to
-telemetry. Optional initial summary-provider discovery runs only after recovery
+maps content-free events to telemetry, and schedules the ApplicationKit wake
+policy's date. Healthy overdue deadlines request immediate recovery. After a
+claim failure, an existing deadline waits at least five seconds; a later date
+is preserved and no deadline still means no timer. The audio-import queue uses
+the same policy after a non-cancellation drain failure. Both owners keep their
+existing generation fences, wake cancellation and coalescing, without idle
+polling or changing intentional suspension. Optional initial summary-provider discovery runs only after recovery
 and durable workflow resume, so a local Ollama probe cannot delay finalized
 audio or transcript recovery. The user's post-meeting Shortcut runs after terminal
 derived work, including

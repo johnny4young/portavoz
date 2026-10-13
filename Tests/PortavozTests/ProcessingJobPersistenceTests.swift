@@ -923,8 +923,8 @@ final class ProcessingJobPersistenceTests: XCTestCase {
         let unsupportedWake = try await store.nextScheduledProcessingDate(
             kinds: [.index], after: now)
 
-        XCTAssertEqual(summaryWake, summaryDate)
-        XCTAssertEqual(anyWake, diarizationDate)
+        XCTAssertEqual(summaryWake, now)
+        XCTAssertEqual(anyWake, now)
         XCTAssertNil(unsupportedWake)
     }
 
