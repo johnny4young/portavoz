@@ -170,6 +170,9 @@ public actor ModelStore {
         do {
             (temporary, _) = try await session.download(from: source)
         } catch {
+            // URLSession also writes its temporary download to disk. Retain
+            // an out-of-space cause so callers can offer storage recovery.
+            if Self.isOutOfSpace(error as NSError) { throw error }
             throw ModelStoreError.downloadFailed(
                 path: artifact.path, underlying: String(describing: error))
         }
@@ -212,6 +215,18 @@ public actor ModelStore {
         } else {
             try FileManager.default.moveItem(at: staged, to: destination)
         }
+    }
+
+    private static func isOutOfSpace(_ error: NSError) -> Bool {
+        if error.domain == NSCocoaErrorDomain, error.code == NSFileWriteOutOfSpaceError {
+            return true
+        }
+        if error.domain == NSPOSIXErrorDomain,
+           error.code == Int(ENOSPC) || error.code == Int(EDQUOT) {
+            return true
+        }
+        guard let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError else { return false }
+        return isOutOfSpace(underlying)
     }
 
     /// Streaming SHA-256 (1 MiB reads) so a 445 MB weight file never has to
