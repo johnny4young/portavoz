@@ -2062,6 +2062,12 @@ state, player reconstruction, and typed export effects. Its playback task is
 keyed to the audio directory rather than review revisions, so cancellation by
 independent initial section updates cannot consume the only attempt. SwiftUI
 retains only transport controls, drawing, and the native save panel.
+After preparation publishes the player and waveform, that same view-owned task
+delivers pending seeks before awaiting the coordinator's explicit optional
+compression-permission refresh. Cancellation or invalidation prevents a late
+refresh from enabling compression or resurrecting an invalidated session.
+The model's read-only skill-preview request lives in a focused extension and
+uses the existing explicit action-error mutation on failure.
 
 Both `AudioClipExporter` overloads and `AudioTranscoder` use one internal
 `AudioExportSession` compatibility bridge. The native async path propagates its
@@ -3513,6 +3519,10 @@ including failed/cancelled Retry sources and trash/restore. Its Store read fails
 closed for missing, inconsistent or aliased authority. Playback stays available
 while compression is hidden; core/job updates refresh permission without
 replacing the session or waveform, and the backend rechecks before codec work.
+Playback preparation itself does not await the optional post-publication
+refresh. The existing directory-keyed view task first delivers incoming citation
+and transcript seeks, then awaits the explicit refresh with the same model
+cancellation, generation, directory and session fences. No new task is retained.
 The directory-owner query is indexed. The observation consumer still awaits
 each permission refresh inline, so a slow read can delay later review sections;
 generation fencing discards stale results without coalescing queued updates.

@@ -17,6 +17,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 13, 2026
 
+- **🎯 Ready-to-play citations** — jump to a cited moment as soon as its audio is ready while optional compression checks finish.
+
 - **🎧 Keep imported audio within reach** — replay, refine and share imported MP3, AAC, AIFF and M4B recordings, with retry copies protected until importing finishes.
 
 ## October 9, 2026

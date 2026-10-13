@@ -191,6 +191,19 @@ The directory-owner lookup uses a nonunique index while retaining the two-owner
 refusal. Permission reads remain awaited within the review observation consumer;
 they do not write storage or recreate the player.
 
+Playback preparation returns when its session and waveform are published. The
+route's existing directory-keyed SwiftUI task delivers pending citation seeks
+before awaiting a separate optional compression-permission action through the
+coordinator. That refresh retains the model's cancellation, generation,
+directory and session fences; it adds no task owner and cannot replace a healthy
+player. The initial application admission read and the backend's destructive
+compression check retain their existing authority boundaries.
+
+The model's focused skill-preview extension retains the existing read-only
+client request and routes preview failure through its explicit error mutation.
+This keeps the root model within its existing source-size limit without
+broadening state setters or changing skill confirmation ownership.
+
 `AudioPlaybackKit.AudioExportSession` owns the shared AAC export bridge used by
 both clip-export paths and compression. Composition, requested ranges, clear
 mixing, output replacement, rollback, verification and source deletion remain

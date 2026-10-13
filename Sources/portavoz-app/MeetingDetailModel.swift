@@ -233,6 +233,10 @@ final class MeetingDetailModel {
         case .loadPlayback:
             await loadPlayback()
             return nil
+        case .refreshCompressionPermission:
+            guard !Task.isCancelled else { return nil }
+            await refreshAudioCompressionAdmission()
+            return nil
         case .compressAudio:
             return await compressAudio()
         case .exportAudioClip(let range, let destination):
@@ -676,7 +680,8 @@ private extension MeetingDetailModel {
                 return
             }
             state.playback = prepared
-            await refreshAudioCompressionAdmission()
+            // The route delivers its pending seek before the optional
+            // permission refresh can suspend this playback task.
         } catch is CancellationError {
             playbackDirectoryAttempt = nil
         } catch {
@@ -754,22 +759,6 @@ private extension MeetingDetailModel {
             return .operationFailed(L10n.format(
                 "Could not remember the voice: %@",
                 UseCaseErrorMessages.describe(error)))
-        }
-    }
-}
-
-extension MeetingDetailModel {
-    /// The exact artifact one offer would produce — read-only, computed for
-    /// the confirmation sheet before anything durable exists.
-    func skillPreview(_ offer: MeetingSkillOffer, destination: String?) async -> MeetingSkillPreview? {
-        do {
-            return try await client.meetingDetailSkillPreview(
-                offer,
-                destination: destination)
-        } catch {
-            state.lastActionError = L10n.text(
-                "Could not build this action's preview.")
-            return nil
         }
     }
 }

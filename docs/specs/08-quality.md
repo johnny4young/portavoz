@@ -9211,6 +9211,12 @@ The codec double uses the existing native publication/verification/deletion
 seam, not a claim of host AAC availability. `MeetingDetailCompressionPermissionTests`
 holds the same player/waveform across pending-to-success permission refresh and
 read failure, without a timing sleep or navigation restart.
+An event-ordered characterization installs a controlled admission provider and
+requires playback preparation to return before it is consulted, preserving session, waveform and
+seek behavior. Independent cancellation and invalidation controls release a
+non-cooperative late permit and require it to remain unpublished. These model
+checks establish ordering and stale-result fencing, not a SwiftUI layout cause
+or native UI-latency qualification.
 
 `AudioCompressionDirectoryIndexTests` upgrades a v52 database that already has
 two owners of the same audio directory. The nonunique v53 index preserves those

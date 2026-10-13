@@ -1454,6 +1454,44 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
 
 @MainActor
 struct MeetingDetailCompressionPermissionTests {
+    @Test(.timeLimit(.minutes(1)))
+    func playbackPreparationFinishesBeforeOptionalPermissionRefresh() async throws {
+        enum Event: Equatable, Sendable { case permissionReadStarted, playbackReturned }
+        let fixture = MeetingDetailModelFixture()
+        var meeting = fixture.meeting
+        meeting.audioDirectory = "Audio/imported"
+        let client = MeetingDetailModelClientFake(updates: [
+            .core(MeetingReviewCore(meeting: meeting, speakers: [], segments: []))
+        ])
+        let (prepared, file) = try await makePreparedPlayback()
+        defer { prepared.session.invalidate(); try? FileManager.default.removeItem(at: file) }
+        client.preparedPlaybackResult = prepared
+        let events = AsyncStream<Event>.makeStream()
+        let permission = AsyncStream<Bool>.makeStream()
+        client.audioCompressionCheckOverride = {
+            events.continuation.yield(.permissionReadStarted)
+            var values = permission.stream.makeAsyncIterator()
+            return await values.next() ?? false
+        }
+        let model = MeetingDetailModel(meetingID: meeting.id, client: client)
+        await model.observe()
+        let preparation = Task {
+            await model.send(.loadPlayback)
+            events.continuation.yield(.playbackReturned)
+        }
+        defer { permission.continuation.finish(); events.continuation.finish(); preparation.cancel() }
+        var signals = events.stream.makeAsyncIterator()
+        let first = try #require(await signals.next())
+        #expect(first == .playbackReturned, "pending seeks must not wait for an optional permission read")
+        #expect(model.state.playback?.session === prepared.session)
+        #expect(model.state.playback?.waveform == prepared.waveform)
+        model.state.playback?.session.seek(to: 0.1)
+        #expect(model.state.playback?.session.currentTime == 0.1)
+        permission.continuation.yield(false)
+        permission.continuation.finish()
+        _ = await preparation.value
+    }
+
     @Test(.timeLimit(.minutes(1)), arguments: [false, true])
     func stalePermissionCannotOverrideTheLatestDenialOrReadFailure(newestReadFails: Bool) async throws {
         let fixture = MeetingDetailModelFixture()
@@ -1476,7 +1514,10 @@ struct MeetingDetailCompressionPermissionTests {
         }
         let model = MeetingDetailModel(meetingID: meeting.id, client: client)
         await model.observe()
-        let preparation = Task { await model.send(.loadPlayback) }
+        let preparation = Task {
+            await model.send(.loadPlayback)
+            await model.send(.refreshAudioCompressionPermission)
+        }
         defer { held.continuation.finish(); preparation.cancel() }
         var signals = started.stream.makeAsyncIterator()
         try #require(await signals.next() != nil)
@@ -1549,6 +1590,45 @@ struct MeetingDetailCompressionPermissionTests {
         #expect(model.state.playback?.session === prepared.session)
     }
 
+    @Test(.timeLimit(.minutes(1)), arguments: [false, true])
+    func canceledOrInvalidatedPermissionRefreshCannotPublishLateResult(invalidate: Bool) async throws {
+        let fixture = MeetingDetailModelFixture()
+        var meeting = fixture.meeting
+        meeting.audioDirectory = "Audio/imported"
+        let client = MeetingDetailModelClientFake(updates: [
+            .core(MeetingReviewCore(meeting: meeting, speakers: [], segments: []))
+        ])
+        let (prepared, file) = try await makePreparedPlayback()
+        defer { prepared.session.invalidate(); try? FileManager.default.removeItem(at: file) }
+        client.preparedPlaybackResult = prepared
+        let permission = HeldMeetingCompressionPermissionRead()
+        client.audioCompressionCheckOverride = { await permission.read() }
+        let model = MeetingDetailModel(meetingID: meeting.id, client: client)
+        await model.observe()
+        await model.send(.loadPlayback)
+        let refresh = Task { await model.send(.refreshAudioCompressionPermission) }
+        defer { permission.complete(false); refresh.cancel() }
+        var signals = permission.started.stream.makeAsyncIterator()
+        try #require(await signals.next() != nil)
+        #expect(model.state.playback?.session === prepared.session)
+        #expect(model.state.playback?.waveform == prepared.waveform)
+        model.state.playback?.session.seek(to: 0.1)
+        #expect(model.state.playback?.session.currentTime == 0.1)
+        if invalidate {
+            model.invalidatePlayback()
+        } else {
+            refresh.cancel()
+        }
+        permission.complete(true)
+        _ = await refresh.value
+        if invalidate {
+            #expect(model.state.playback == nil)
+        } else {
+            #expect(model.state.playback?.canCompressAudio == false)
+            #expect(model.state.playback?.session === prepared.session)
+        }
+    }
+
     private func makePreparedPlayback() async throws -> (PreparedMeetingPlayback, URL) {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("permission-\(UUID().uuidString).wav")
         do {
@@ -1564,6 +1644,25 @@ struct MeetingDetailCompressionPermissionTests {
             resolver: PermissionAudioResolver(file: file), compressionAdmission: DenyAudioCompression()).execute(
                 PrepareMeetingPlaybackRequest(relativeAudioDirectory: "Audio/imported", segments: [])))
         return (prepared, file)
+    }
+}
+
+@MainActor
+private final class HeldMeetingCompressionPermissionRead {
+    let started = AsyncStream<Void>.makeStream()
+    private var completion: CheckedContinuation<Bool, Never>?
+
+    func read() async -> Bool {
+        await withCheckedContinuation { continuation in
+            completion = continuation
+            started.continuation.yield(())
+            started.continuation.finish()
+        }
+    }
+
+    func complete(_ allowed: Bool) {
+        completion?.resume(returning: allowed)
+        completion = nil
     }
 }
 
