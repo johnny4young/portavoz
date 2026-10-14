@@ -10411,6 +10411,22 @@ against the same bounded retry budget. A tombstoned meeting's lease wakes
 nobody. Two deterministic tests fail against the previous implementation and
 pass against this one.
 
+**October 13, 2026 clarification:** a retry or lease deadline that crosses
+between the final empty claim and scheduling read must remain discoverable.
+Scheduling now takes the earliest non-null deadline and clamps it to the read
+timestamp. Unscheduled pending work, including intentional suspension, stays
+signal-driven; an exhausted pending attempt is excluded, while the final
+running lease still wakes to publish exhaustion.
+
+An unavailable SQLite writer can make a claim fail without changing that
+deadline. ApplicationKit therefore owns one pure failed-drain wake policy:
+preserve a healthy deadline, but after a failed claim/drain use the later of
+the persisted date and five seconds from the scheduling decision. Both the
+post-capture and audio-import owners apply it. No persisted date creates no
+timer, so this does not add idle polling, change owner/revision fences, or
+reinterpret cancellation. Explicit-timestamp regressions and real temporary
+SQLite contention cover recovery, backoff and successful claim after release.
+
 ## D297 — Never migrate the recordings root over a live capture (Aug 2026)
 
 **Context:** `migrateAudio` enumerates every meeting directory under the

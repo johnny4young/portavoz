@@ -68,8 +68,12 @@ final class PostCaptureProcessingSupervisor {
 
         let generation = kickGeneration
         do {
-            let next = try await services.processPostCaptureJobs.nextScheduledDate()
+            let scheduled = try await services.processPostCaptureJobs.nextScheduledDate()
             guard generation == kickGeneration, drainTask == nil else { return }
+            let next = ProcessingWakeSchedule.nextDate(
+                scheduled: scheduled,
+                afterDrainFailure: result.issues.contains { $0.stage == .claim },
+                at: Date())
             backgroundWork?.finishProcessingDrain(
                 token,
                 result: result,

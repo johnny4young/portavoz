@@ -1139,10 +1139,14 @@ The first 1D-b2b control-plane unit adds owner-leased cancellation and scheduled
 wake discovery. Cancellation records a terminal reason without claiming an
 artifact exists; because it represents intentionally degradable or superseded
 work, it does not make the aggregate fail. `nextScheduledProcessingDate`
-returns the earliest future wake across pending `notBefore` retry dates and
-running `leaseExpiresAt` deadlines for explicit worker capabilities. It
-excludes deleted meetings and exhausted pending attempts, allowing workers to
-sleep without polling. The focused scheduling owner also performs repeat-safe
+returns the earliest wake across pending `notBefore` retry dates and running
+`leaseExpiresAt` deadlines for explicit worker capabilities. A deadline equal
+to or earlier than the scheduling timestamp returns that timestamp, closing
+the gap when work becomes due after the final empty claim. It excludes deleted
+meetings, exhausted pending attempts, and pending work with no retry date;
+intentional suspension therefore waits for a new signal instead of looping on
+an immediate wake. A running final attempt remains eligible so expiration can
+publish exhaustion. The focused scheduling owner also performs repeat-safe
 expired-lease recovery; claim invokes that recovery in its own write before
 selecting due work, so a lease that expired after launch is still reclaimed.
 

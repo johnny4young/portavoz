@@ -912,7 +912,7 @@ final class ProcessingJobPersistenceTests: XCTestCase {
             requests: [ProcessingJobRequest(
                 kind: .summary,
                 inputFingerprint: "summary:deleted",
-                notBefore: now.addingTimeInterval(1))],
+                notBefore: now.addingTimeInterval(-2))],
             at: now)
         try await store.delete(deleted.id)
 
@@ -922,10 +922,17 @@ final class ProcessingJobPersistenceTests: XCTestCase {
             kinds: [.summary, .diarization], after: now)
         let unsupportedWake = try await store.nextScheduledProcessingDate(
             kinds: [.index], after: now)
+        let earlier = now.addingTimeInterval(-5)
+        let liveSummaryWake = try await store.nextScheduledProcessingDate(
+            kinds: [.summary], after: earlier)
+        let diarizationWake = try await store.nextScheduledProcessingDate(
+            kinds: [.diarization], after: earlier)
 
-        XCTAssertEqual(summaryWake, summaryDate)
-        XCTAssertEqual(anyWake, diarizationDate)
+        XCTAssertEqual(summaryWake, now)
+        XCTAssertEqual(anyWake, now)
         XCTAssertNil(unsupportedWake)
+        XCTAssertEqual(liveSummaryWake, now.addingTimeInterval(-1))
+        XCTAssertEqual(diarizationWake, diarizationDate)
     }
 
     func testExpiredLeaseRecoveryIsRepeatSafeAndExhaustsAttempts() async throws {
