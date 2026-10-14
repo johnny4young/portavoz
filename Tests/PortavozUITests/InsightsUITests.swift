@@ -10,12 +10,11 @@ final class InsightsUITests: PortavozUITestCase {
         // Keep the retained evidence independent of the user's persisted picker choice.
         app.launchArguments += ["-insightsScope", "week"]
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(
             app.waitForSeededLibraryToSettle(),
             "the seeded library must settle before navigating away")
-        let insights = app.buttons.identified("library-insights-button")
+        let insights = app.buttons["library-insights-button"]
         XCTAssertTrue(insights.waitForExistenceFast(timeout: 15), "the library must offer Insights")
         insights.click()
 

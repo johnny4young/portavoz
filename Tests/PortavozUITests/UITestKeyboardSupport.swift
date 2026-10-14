@@ -59,6 +59,30 @@ enum UITestTextFieldEditingHandoff: Equatable, Sendable {
     }
 }
 
+/// Native application equality identifies a process; the captured positive PID
+/// additionally fences a later automatically relaunched generation. Optional
+/// launch dates are not identity: non-LaunchServices apps need not expose one.
+@MainActor
+struct UITestProcessIdentity {
+    let application: NSRunningApplication
+    let processIdentifier: pid_t
+
+    init?(_ application: NSRunningApplication) {
+        let processIdentifier = application.processIdentifier
+        guard processIdentifier > 0, !application.isTerminated else { return nil }
+        self.application = application
+        self.processIdentifier = processIdentifier
+    }
+
+    var isTerminated: Bool { application.isTerminated }
+
+    func matches(_ candidate: NSRunningApplication) -> Bool {
+        !application.isTerminated && !candidate.isTerminated
+            && application.isEqual(candidate)
+            && candidate.processIdentifier == processIdentifier
+    }
+}
+
 extension XCUIElement {
     /// XCTest publishes no macOS focus attribute, so read the snapshot key the
     /// automation daemon already reports. A toolchain that stops publishing it
@@ -94,10 +118,22 @@ extension XCUIApplication {
         _ key: XCUIKeyboardKey,
         modifierFlags: XCUIElement.KeyModifierFlags,
         bundleIdentifier: String,
-        modalAnchor: String? = nil
+        modalAnchor: String? = nil,
+        expectedProcess: UITestProcessIdentity? = nil
     ) -> UITestKeyboardAdmission {
         let admission = keyboardAdmission(bundleIdentifier: bundleIdentifier, modalAnchor: modalAnchor)
         guard admission == .admitted else { return admission }
+        // Final disposal may name one captured launch in addition to the
+        // ordinary bundle/frontmost/modal checks. Re-observe it immediately
+        // before dispatch; a stale same-bundle proxy has no Quit authority.
+        if let expectedProcess {
+            let candidates = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier)
+            guard candidates.count == 1,
+                  expectedProcess.matches(candidates[0]),
+                  let frontmost = NSWorkspace.shared.frontmostApplication,
+                  expectedProcess.matches(frontmost)
+            else { return .keyboardNotOwned }
+        }
         typeKey(key, modifierFlags: modifierFlags)
         return admission
     }

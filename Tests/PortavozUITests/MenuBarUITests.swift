@@ -11,16 +11,15 @@ final class MenuBarUITests: PortavozUITestCase {
             seedBrief: true,
             showMenuBarContent: true)
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeedFixtureReady())
         XCTAssertTrue(app.prepareForInteraction())
         let card = app.control(withIdentifier: "menu-bar-next-meeting")
-        let prepare = app.buttons.identified("menu-bar-brief-prepare")
+        let prepare = app.buttons["menu-bar-brief-prepare"]
         XCTAssertTrue(card.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(prepare.waitForStableFrame(timeout: 10))
-        XCTAssertTrue(app.buttons.identified("menu-bar-brief-dismiss").exists)
-        XCTAssertTrue(app.buttons.identified("menu-bar-record-next").exists)
+        XCTAssertTrue(app.buttons["menu-bar-brief-dismiss"].exists)
+        XCTAssertTrue(app.buttons["menu-bar-record-next"].exists)
         prepare.click()
 
         let confirmation = app.control(
@@ -45,9 +44,9 @@ final class MenuBarUITests: PortavozUITestCase {
         let openItemIdentifier = openItem.identifier
         XCTAssertTrue(app.staticTexts["Test meeting"].exists)
         XCTAssertTrue(app.staticTexts["Prepare the rollout"].exists)
-        XCTAssertTrue(app.buttons.identified("menu-bar-brief-confirm-cancel").exists)
+        XCTAssertTrue(app.buttons["menu-bar-brief-confirm-cancel"].exists)
 
-        let confirm = app.buttons.identified("menu-bar-brief-confirm-submit")
+        let confirm = app.buttons["menu-bar-brief-confirm-submit"]
         XCTAssertTrue(app.prepareForInteraction())
         XCTAssertTrue(confirm.waitForStableFrame(timeout: 5))
         confirm.click()
@@ -58,8 +57,8 @@ final class MenuBarUITests: PortavozUITestCase {
         XCTAssertTrue(app.staticTexts["Presupuesto rollout"].exists)
         XCTAssertTrue(app.control(withIdentifier: relatedIdentifier).exists)
         XCTAssertTrue(app.control(withIdentifier: openItemIdentifier).exists)
-        XCTAssertTrue(app.buttons.identified("menu-bar-brief-result-record").exists)
-        app.buttons.identified("menu-bar-brief-result-close").click()
+        XCTAssertTrue(app.buttons["menu-bar-brief-result-record"].exists)
+        app.buttons["menu-bar-brief-result-close"].click()
         XCTAssertTrue(
             app.control(withIdentifier: "menu-bar-brief-prepared")
                 .waitForExistenceFast(timeout: 5))

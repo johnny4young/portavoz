@@ -8,7 +8,6 @@ final class CommitmentRadarUITests: PortavozUITestCase {
             seedCommitmentRadar: true)
         app.launchArguments.append("-simulate-reminder-open")
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         XCTAssertTrue(
@@ -24,10 +23,9 @@ final class CommitmentRadarUITests: PortavozUITestCase {
             seedDemo: true,
             seedCommitmentRadar: true)
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        let radar = app.buttons.identified("library-commitment-radar-button")
+        let radar = app.buttons["library-commitment-radar-button"]
         XCTAssertTrue(radar.waitForExistenceFast(timeout: 10))
         radar.click()
 
@@ -58,7 +56,7 @@ final class CommitmentRadarUITests: PortavozUITestCase {
         let owner = app.control(withIdentifier: "commitment-radar-owner-filter")
         XCTAssertTrue(owner.waitForExistenceFast(timeout: 5))
         owner.click()
-        let mine = app.menuItems.identified("commitment-radar-owner-mine")
+        let mine = app.menuItems["commitment-radar-owner-mine"]
         XCTAssertTrue(mine.waitForExistenceFast(timeout: 5))
         mine.click()
 
@@ -113,10 +111,9 @@ final class CommitmentRadarUITests: PortavozUITestCase {
             seedDemo: true,
             seedCommitmentRadar: true)
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        let radar = app.buttons.identified("library-commitment-radar-button")
+        let radar = app.buttons["library-commitment-radar-button"]
         XCTAssertTrue(radar.waitForExistenceFast(timeout: 10))
         radar.click()
 
@@ -188,10 +185,9 @@ final class CommitmentRadarUITests: PortavozUITestCase {
             seedDemo: true,
             seedCommitmentRadar: true)
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        let radar = app.buttons.identified("library-commitment-radar-button")
+        let radar = app.buttons["library-commitment-radar-button"]
         XCTAssertTrue(radar.waitForExistenceFast(timeout: 10))
         radar.click()
 
@@ -240,10 +236,9 @@ final class CommitmentRadarUITests: PortavozUITestCase {
             seedDemo: true,
             seedCommitmentRadar: true)
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        let radar = app.buttons.identified("library-commitment-radar-button")
+        let radar = app.buttons["library-commitment-radar-button"]
         XCTAssertTrue(radar.waitForExistenceFast(timeout: 10))
         radar.click()
 

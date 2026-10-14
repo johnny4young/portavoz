@@ -9,7 +9,6 @@ final class OnboardingUITests: PortavozUITestCase {
     func testAdvancesFromFirstListenToLocalVoiceEnrollment() throws {
         let app = try XCUIApplication.portavoz(showOnboarding: true)
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(
             app.control(withIdentifier: "onboarding-first-listen").waitForExistenceFast(timeout: 15),
@@ -47,7 +46,6 @@ final class OnboardingUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(showOnboarding: true)
         app.launchArguments.append("-simulate-onboarding-model-recovery")
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.control(withIdentifier: "onboarding-first-listen").waitForExistenceFast(timeout: 15))
         for _ in 0..<3 {

@@ -5,9 +5,8 @@ final class BackgroundWorkUITests: PortavozUITestCase {
     func testBackgroundWorkCenterShowsAllOwnersAndRecoversExactFailures() throws {
         let app = try XCUIApplication.portavoz(seedBackgroundWork: true)
         app.launchPortavoz()
-        defer { app.terminate() }
 
-        let indicator = app.buttons.identified("background-work-indicator")
+        let indicator = app.buttons["background-work-indicator"]
         XCTAssertTrue(
             indicator.waitForHittable(timeout: 15),
             "attention in a background owner must expose one compact app-level route")
@@ -18,52 +17,33 @@ final class BackgroundWorkUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 10),
             "the compact indicator must expose the exact Settings category")
         XCTAssertTrue(
-            app.staticTexts.identified("background-work-overview").waitForExistenceFast(timeout: 5),
+            app.staticTexts["background-work-overview"].waitForExistenceFast(timeout: 5),
             "the compact indicator must deep-link to the Background Work pane")
 
-        for owner in [
-            "recovery", "processing", "spotlight", "semantic-index", "memory-graph",
-        ] {
-            XCTAssertTrue(
-                app.control(withIdentifier: "background-work-row-\(owner)")
-                    .waitForExistenceFast(timeout: 5),
-                "missing owner row: \(owner)")
+        let spanish = UITestLocale.environmentLocale == "es"
+        let expectedDetails = [
+            "background-work-detail-recovery": spanish
+                ? "Reconciliadas: 2 · concesiones recuperadas: 1 · diferidas: 0 · atención: 0"
+                : "Reconciled: 2 · leases recovered: 1 · deferred: 0 · attention: 0",
+            "background-work-detail-semantic-index": spanish
+                ? "Indexados: 12 · excluidos: 3 · omitidos: 0"
+                : "Indexed: 12 · excluded: 3 · skipped: 0",
+            "background-work-attempt-processing": spanish ? "Intento: 2" : "Attempt: 2",
+            "background-work-failure-processing": spanish ? "Motivo: Procesamiento" : "Reason: Processing"
+        ]
+        let owners = try uiObservation(
+            of: app,
+            requiring: Set(["recovery", "processing", "spotlight", "semantic-index", "memory-graph"]
+                .map { "background-work-row-\($0)" })
+                .union(["background-work-retry-processing"]),
+            types: Dictionary(uniqueKeysWithValues: expectedDetails.keys.map { ($0, .staticText) }),
+            expectedText: expectedDetails,
+            timeout: 5,
+            message: "Every owner must publish exact counts, attempt, retry wake and closed failure category")
+        for (identifier, expected) in expectedDetails {
+            let detail = try uiSnapshotElement(identifier, type: .staticText, in: owners)
+            XCTAssertTrue(detail.label == expected || detail.value as? String == expected)
         }
-
-        let recoveryDetail = UITestLocale.environmentLocale == "es"
-            ? "Reconciliadas: 2 · concesiones recuperadas: 1 · diferidas: 0 · atención: 0"
-            : "Reconciled: 2 · leases recovered: 1 · deferred: 0 · attention: 0"
-        XCTAssertTrue(
-            app.staticTexts.identified("background-work-detail-recovery")
-                .waitForLabelOrValue(recoveryDetail, timeout: 5),
-            "recovery must publish exact content-free aggregate counts")
-
-        let semanticDetail = UITestLocale.environmentLocale == "es"
-            ? "Indexados: 12 · excluidos: 3 · omitidos: 0"
-            : "Indexed: 12 · excluded: 3 · skipped: 0"
-        XCTAssertTrue(
-            app.staticTexts.identified("background-work-detail-semantic-index")
-                .waitForLabelOrValue(semanticDetail, timeout: 5),
-            "semantic indexing must publish exact content-free aggregate counts")
-
-        let processingAttempt = UITestLocale.environmentLocale == "es"
-            ? "Intento: 2"
-            : "Attempt: 2"
-        XCTAssertTrue(
-            app.staticTexts.identified("background-work-attempt-processing")
-                .waitForLabelOrValue(processingAttempt, timeout: 5))
-        XCTAssertTrue(
-            app.staticTexts.identified("background-work-retry-processing")
-                .waitForExistenceFast(timeout: 5),
-            "retrying owners must disclose their exact scheduled wake")
-        let processingFailure = UITestLocale.environmentLocale == "es"
-            ? "Motivo: Procesamiento"
-            : "Reason: Processing"
-        XCTAssertTrue(
-            app.staticTexts.identified("background-work-failure-processing")
-                .waitForLabelOrValue(processingFailure, timeout: 5),
-            "attention states must expose only a closed localized category")
-
         let idle = UITestLocale.environmentLocale == "es" ? "Inactivo" : "Idle"
         let settingsWindow = app.windows.containing(
             .any,
@@ -73,7 +53,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
         // Scale the reveal to the actual form, not the shared conservative
         // 48-point transcript-row default. The helper still limits travel to
         // the missing distance and proves contained, stable hittability.
-        let processingRetry = app.buttons.identified("background-work-action-processing")
+        let processingRetry = app.buttons["background-work-action-processing"]
         XCTAssertTrue(
             processingRetry.revealVertically(
                 in: settingsForm,
@@ -82,11 +62,11 @@ final class BackgroundWorkUITests: PortavozUITestCase {
         XCTAssertTrue(processingRetry.waitForHittable(timeout: 5))
         processingRetry.click()
         XCTAssertTrue(
-            app.staticTexts.identified("background-work-status-processing")
+            app.staticTexts["background-work-status-processing"]
                 .waitForLabelOrValue(idle, timeout: 5),
             "processing retry must route only to its owner and publish the new safe state")
 
-        let graphRetry = app.buttons.identified("background-work-action-memory-graph")
+        let graphRetry = app.buttons["background-work-action-memory-graph"]
         XCTAssertTrue(
             graphRetry.revealVertically(
                 in: settingsForm,
@@ -94,7 +74,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
             "the graph recovery action must be reachable in the bounded Settings form")
         graphRetry.click()
         XCTAssertTrue(
-            app.staticTexts.identified("background-work-status-memory-graph")
+            app.staticTexts["background-work-status-memory-graph"]
                 .waitForLabelOrValue(idle, timeout: 5),
             "graph retry must clear only the graph attention state")
         attachScreenshot(of: app, named: "background-work-center")
@@ -106,13 +86,12 @@ final class BackgroundWorkUITests: PortavozUITestCase {
             enableBackgroundWorkFixture: true,
             simulateSystemCaptureStall: true)
         app.launchPortavoz()
-        defer { app.terminate() }
 
-        let record = app.buttons.identified("library-new-recording-button")
+        let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForHittable(timeout: 15))
         record.click()
 
-        let indicator = app.buttons.identified("background-work-indicator")
+        let indicator = app.buttons["background-work-indicator"]
         XCTAssertTrue(
             indicator.waitForHittable(timeout: 10),
             "a protected recording must reveal derived work waiting behind it")
@@ -130,7 +109,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
 
         typeKey("w", modifierFlags: .command, in: app)
         XCTAssertTrue(app.prepareForInteraction())
-        let stop = app.buttons.identified("recording-stop-after-remote-outage")
+        let stop = app.buttons["recording-stop-after-remote-outage"]
         XCTAssertTrue(stop.waitForHittable(timeout: 10))
         stop.click()
 

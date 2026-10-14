@@ -16,7 +16,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     func testSuggestedActionsExplainReviewFirstSafety() throws {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(
             app.openSettingsCategory(
@@ -31,13 +30,12 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-control-unavailable")
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(
             app.openSettingsCategory(
                 "settings-category-skills",
                 revealing: "settings-skills-load-error"))
-        let retry = app.buttons.identified("settings-skills-retry")
+        let retry = app.buttons["settings-skills-retry"]
         XCTAssertTrue(retry.waitForExistenceFast(timeout: 5))
         XCTAssertFalse(
             app.control(withIdentifier: "settings-skills-pause-all").exists,
@@ -56,7 +54,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         app.launchArguments.append(
             "-simulate-skill-control-mutation-unavailable")
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(
             app.openSettingsCategory(
@@ -76,7 +73,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "an unverified response must not look committed before a durable read")
         XCTAssertFalse(pause.isEnabled)
 
-        let reload = app.buttons.identified("settings-skills-stale-retry")
+        let reload = app.buttons["settings-skills-stale-retry"]
         XCTAssertTrue(reload.waitForStableFrame(timeout: 5))
         reload.click()
 
@@ -98,7 +95,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-receipt-scope-unavailable")
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(
             app.openSettingsCategory(
@@ -122,7 +118,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertFalse(
             app.control(withIdentifier: "settings-skills-stale-error").exists,
             "receipt failure must not claim a policy mutation was unverified")
-        let retry = app.buttons.identified("settings-skills-receipt-scope-retry")
+        let retry = app.buttons["settings-skills-receipt-scope-retry"]
         XCTAssertTrue(retry.waitForExistenceFast(timeout: 5))
         retry.click()
         XCTAssertTrue(
@@ -140,7 +136,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         configureSkillReceiptRefreshHandshake(on: app)
         configureSkillProposalRefreshHandshake(on: app)
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSeededMeeting(in: app)
@@ -213,13 +208,13 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "skill-receipt-inspection")
                 .waitForExistenceFast(timeout: 5))
-        let revoke = app.buttons.identified("skill-receipt-revoke-action")
+        let revoke = app.buttons["skill-receipt-revoke-action"]
         XCTAssertTrue(revoke.waitForStableFrame(timeout: 5))
         revoke.click()
         XCTAssertTrue(
             app.control(withIdentifier: "skill-receipt-inspection-event-2")
                 .waitForExistenceFast(timeout: 5))
-        app.buttons.identified("skill-receipt-inspection-close").click()
+        app.buttons["skill-receipt-inspection-close"].click()
 
         XCTAssertTrue(
             loading.waitForExistenceFast(timeout: 2),
@@ -246,7 +241,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-duplicate-skill-proposals")
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSeededMeeting(in: app)
@@ -263,7 +257,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-skill-exact-page-history")
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
@@ -278,7 +271,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             withIdentifier: "settings-skills-receipt-history-limit")
         XCTAssertTrue(limit.waitForExistenceFast(timeout: 5))
         XCTAssertFalse(
-            app.buttons.identified("settings-skills-receipt-show-more").exists,
+            app.buttons["settings-skills-receipt-show-more"].exists,
             "an exact 20-row result must not promise a nonexistent successor")
         attachScreenshot(of: app, named: "skills-activity-exact-page")
     }
@@ -292,7 +285,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         ])
         configureSkillReceiptRefreshHandshake(on: app)
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
@@ -352,7 +344,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         XCTAssertTrue(waitForCount(receiptRows, toEqual: 25, timeout: 10))
 
-        let refresh = app.buttons.identified("settings-skills-receipt-refresh")
+        let refresh = app.buttons["settings-skills-receipt-refresh"]
         try scrollToVisible(refresh, in: app, deltaY: 120)
         XCTAssertTrue(refresh.waitForHittable(timeout: 5))
         refresh.click()
@@ -513,7 +505,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-proposal-unavailable")
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(
             app.openSettingsCategory(
@@ -533,7 +524,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
                 format: "identifier BEGINSWITH 'settings-skill-proposal-'"
             )).firstMatch.exists,
             "an unverified authority must never invent an offer row")
-        let retry = app.buttons.identified("settings-skills-proposals-retry")
+        let retry = app.buttons["settings-skills-proposals-retry"]
         XCTAssertTrue(retry.waitForExistenceFast(timeout: 5))
         retry.click()
         XCTAssertTrue(error.waitForExistenceFast(timeout: 5))
@@ -544,7 +535,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     func testProposedSkillReviewReturnsToItsMeetingWithoutRunning() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSeededMeeting(in: app)
@@ -583,7 +573,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "navigation alone must never confirm or execute a Skill")
         offerMenu.click()
         XCTAssertTrue(
-            app.menuItems.identified("skill-offer-email-recap-draft")
+            app.menuItems["skill-offer-email-recap-draft"]
                 .waitForExistenceFast(timeout: 5),
             "the original offer must still require its exact preview")
         typeKey(.escape, modifierFlags: [], in: app)
@@ -596,7 +586,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         app.launchArguments.append(
             "-simulate-skill-proposal-review-unavailable")
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSeededMeeting(in: app)
@@ -648,7 +637,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     func testProposedSkillDismissalRetiresTheDurableOfferEverywhere() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSeededMeeting(in: app)
@@ -689,7 +677,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         app.launchArguments.append(
             "-simulate-skill-proposal-dismiss-unavailable")
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSeededMeeting(in: app)
@@ -739,13 +726,12 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-skill-waiting")
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
         let receipt = try openWaitingReceipt(in: app)
 
-        let revoke = app.buttons.identified("skill-receipt-revoke-action")
+        let revoke = app.buttons["skill-receipt-revoke-action"]
         XCTAssertTrue(revoke.waitForStableFrame(timeout: 5))
         revoke.click()
 
@@ -759,7 +745,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertFalse(revoke.exists)
         attachScreenshot(of: app, named: "skills-waiting-approval-revoked")
 
-        app.buttons.identified("skill-receipt-inspection-close").click()
+        app.buttons["skill-receipt-inspection-close"].click()
         XCTAssertTrue(
             app.control(withIdentifier: "settings-skills-empty-receipts-waiting")
                 .waitForExistenceFast(timeout: 5),
@@ -775,18 +761,17 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "-simulate-skill-receipt-revoke-unavailable"
         ])
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
         let receipt = try openWaitingReceipt(in: app)
 
-        let revoke = app.buttons.identified("skill-receipt-revoke-action")
+        let revoke = app.buttons["skill-receipt-revoke-action"]
         XCTAssertTrue(revoke.waitForStableFrame(timeout: 5))
         revoke.click()
         let error = app.control(withIdentifier: "skill-receipt-revoke-error")
         XCTAssertTrue(error.waitForExistenceFast(timeout: 5))
-        let retry = app.buttons.identified("skill-receipt-revoke-retry")
+        let retry = app.buttons["skill-receipt-revoke-retry"]
         XCTAssertTrue(retry.waitForStableFrame(timeout: 5))
         XCTAssertFalse(revoke.exists)
         XCTAssertFalse(
@@ -796,7 +781,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(error.waitForExistenceFast(timeout: 5))
         attachScreenshot(of: app, named: "skills-waiting-revocation-failure")
 
-        app.buttons.identified("skill-receipt-inspection-close").click()
+        app.buttons["skill-receipt-inspection-close"].click()
         XCTAssertTrue(receipt.waitForExistenceFast(timeout: 5))
     }
 
@@ -805,13 +790,12 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-skill-failed-recoverable")
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
         _ = try openFailedReceipt(in: app)
 
-        let recovery = app.buttons.identified("skill-receipt-recovery-action")
+        let recovery = app.buttons["skill-receipt-recovery-action"]
         XCTAssertTrue(recovery.waitForHittable(timeout: 5))
         XCTAssertGreaterThan(
             app.windows.count,
@@ -837,7 +821,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "recovery navigation must never confirm or run the failed Skill")
         offerMenu.click()
         XCTAssertTrue(
-            app.menuItems.identified("skill-offer-recap-draft")
+            app.menuItems["skill-offer-recap-draft"]
                 .waitForExistenceFast(timeout: 5),
             "the original surface must rebuild a fresh reviewable proposal")
         typeKey(.escape, modifierFlags: [], in: app)
@@ -852,19 +836,18 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "-simulate-skill-receipt-recovery-unavailable"
         ])
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
         let receipt = try openFailedReceipt(in: app)
 
-        let recovery = app.buttons.identified("skill-receipt-recovery-action")
+        let recovery = app.buttons["skill-receipt-recovery-action"]
         XCTAssertTrue(recovery.waitForStableFrame(timeout: 5))
         recovery.click()
         let error = app.control(
             withIdentifier: "skill-receipt-recovery-error")
         XCTAssertTrue(error.waitForExistenceFast(timeout: 5))
-        let retry = app.buttons.identified("skill-receipt-recovery-retry")
+        let retry = app.buttons["skill-receipt-recovery-retry"]
         XCTAssertTrue(retry.waitForStableFrame(timeout: 5))
         XCTAssertFalse(recovery.exists)
         XCTAssertTrue(receipt.exists)
@@ -888,16 +871,15 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "-simulate-skill-receipt-policy-unavailable"
         ])
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
         _ = try openWaitingReceipt(in: app)
 
-        let review = app.buttons.identified("skill-receipt-context-action")
+        let review = app.buttons["skill-receipt-context-action"]
         XCTAssertTrue(review.waitForStableFrame(timeout: 5))
         XCTAssertTrue(
-            app.buttons.identified("skill-receipt-revoke-action").exists,
+            app.buttons["skill-receipt-revoke-action"].exists,
             "audit-only inspection must preserve its independent Waiting action")
         XCTAssertGreaterThan(
             app.windows.count,
@@ -926,18 +908,17 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "-simulate-skill-receipt-context-unavailable"
         ])
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
         let receipt = try openWaitingReceipt(in: app)
 
-        let review = app.buttons.identified("skill-receipt-context-action")
+        let review = app.buttons["skill-receipt-context-action"]
         XCTAssertTrue(review.waitForStableFrame(timeout: 5))
         review.click()
         let error = app.control(withIdentifier: "skill-receipt-context-error")
         XCTAssertTrue(error.waitForExistenceFast(timeout: 5))
-        let retry = app.buttons.identified("skill-receipt-context-retry")
+        let retry = app.buttons["skill-receipt-context-retry"]
         XCTAssertTrue(retry.waitForStableFrame(timeout: 5))
         XCTAssertTrue(receipt.exists)
         XCTAssertTrue(
@@ -945,7 +926,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
                 .exists,
             "an unverified route must retain the causal confirmation evidence")
         XCTAssertTrue(
-            app.buttons.identified("skill-receipt-revoke-action").exists,
+            app.buttons["skill-receipt-revoke-action"].exists,
             "source resolution failure must not remove the independent revoke action")
         XCTAssertTrue(
             app.control(withIdentifier: "settings-category-skills").exists,
@@ -960,7 +941,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-skill-waiting")
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
@@ -990,7 +970,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     func testSkillsPaneControlsOffersAndShowsTheConfirmedReceipt() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
@@ -1023,12 +1002,11 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         app.launchArguments.append(
             "-simulate-standing-reconciliation-cancellation-once")
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
 
-        let create = app.buttons.identified("settings-standing-create")
+        let create = app.buttons["settings-standing-create"]
         XCTAssertTrue(try scrollToVisible(create, in: app))
         XCTAssertTrue(create.waitForHittable(timeout: 5))
         create.click()
@@ -1042,7 +1020,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             create.isEnabled,
             "stale automatic-action controls must not accept another mutation")
 
-        let reload = app.buttons.identified("settings-standing-mutation-reload")
+        let reload = app.buttons["settings-standing-mutation-reload"]
         XCTAssertTrue(try scrollToVisible(reload, in: app))
         XCTAssertTrue(reload.waitForHittable(timeout: 5))
         reload.click()
@@ -1067,7 +1045,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             seedBrief: true)
         app.launchArguments.append("-simulate-standing-brief-failure-once")
         app.launchPortavoz()
-        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
@@ -1077,7 +1054,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(try scrollToVisible(preview, in: app))
         XCTAssertTrue(preview.waitForExistenceFast(timeout: 5))
 
-        let create = app.buttons.identified("settings-standing-create")
+        let create = app.buttons["settings-standing-create"]
         XCTAssertTrue(try scrollToVisible(create, in: app))
         XCTAssertTrue(create.waitForHittable(timeout: 5))
         create.click()
@@ -1121,7 +1098,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "standing-brief-privacy")
                 .waitForExistenceFast(timeout: 5))
-        app.buttons.identified("standing-brief-close").click()
+        app.buttons["standing-brief-close"].click()
         XCTAssertTrue(
             waitForDisappearance(
                 briefSheet))
@@ -1133,7 +1110,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         pause.click()
         XCTAssertTrue(try waitForToggle(pause, toBeOn: true))
 
-        let standingStatus = app.staticTexts.identified("settings-standing-status")
+        let standingStatus = app.staticTexts["settings-standing-status"]
         XCTAssertTrue(try scrollToVisible(standingStatus, in: app))
         let pausedStatus = UITestLocale.environmentLocale == "es"
             ? "En pausa junto con todas las acciones"
@@ -1153,11 +1130,11 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         enabled.click()
         XCTAssertTrue(try waitForToggle(enabled, toBeOn: true))
 
-        let delete = app.buttons.identified("settings-standing-delete")
+        let delete = app.buttons["settings-standing-delete"]
         XCTAssertTrue(try scrollToVisible(delete, in: app))
         XCTAssertTrue(delete.waitForHittable(timeout: 5))
         delete.click()
-        let confirm = app.buttons.identified("settings-standing-delete-confirm")
+        let confirm = app.buttons["settings-standing-delete-confirm"]
         XCTAssertTrue(confirm.waitForHittable(timeout: 5))
         confirm.click()
 
@@ -1230,7 +1207,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         pause.click()
         XCTAssertTrue(try waitForToggle(pause, toBeOn: true))
         XCTAssertTrue(
-            app.staticTexts.identified("settings-skills-paused-status")
+            app.staticTexts["settings-skills-paused-status"]
                 .waitForExistenceFast(timeout: 5))
         attachScreenshot(of: app, named: "skills-control-paused")
     }
@@ -1256,12 +1233,12 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(menu.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(menu.waitForStableFrame(timeout: 10))
         menu.click()
-        let recapOffer = app.menuItems.identified("skill-offer-recap-draft")
+        let recapOffer = app.menuItems["skill-offer-recap-draft"]
         XCTAssertTrue(recapOffer.waitForExistenceFast(timeout: 5))
-        XCTAssertFalse(app.menuItems.identified("skill-offer-package-export").exists)
+        XCTAssertFalse(app.menuItems["skill-offer-package-export"].exists)
         recapOffer.click()
 
-        let submit = app.buttons.identified("skill-confirm-submit")
+        let submit = app.buttons["skill-confirm-submit"]
         XCTAssertTrue(submit.waitForStableFrame(timeout: 5))
         submit.click()
         _ = app.openMeetingActivity()
@@ -1304,7 +1281,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             uiSnapshotText(terminalEvent, contains: successTitle),
             "the terminal event must expose the localized success state")
         attachScreenshot(of: app, named: "skills-control-recent-receipt")
-        app.buttons.identified("skill-receipt-inspection-close").click()
+        app.buttons["skill-receipt-inspection-close"].click()
         XCTAssertTrue(receipt.waitForExistenceFast(timeout: 5))
     }
 
@@ -1492,7 +1469,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(menu.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(menu.waitForStableFrame(timeout: 10))
         menu.click()
-        let email = app.menuItems.identified("skill-offer-email-recap-draft")
+        let email = app.menuItems["skill-offer-email-recap-draft"]
         if isPresent {
             XCTAssertTrue(
                 email.waitForExistenceFast(timeout: 5),
@@ -1502,7 +1479,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
                 email.waitForExistenceFast(timeout: 1),
                 "the durable dismissal must hide the offer after re-observation")
             XCTAssertTrue(
-                app.menuItems.identified("skill-offer-recap-draft")
+                app.menuItems["skill-offer-recap-draft"]
                     .waitForExistenceFast(timeout: 5),
                 "dismissing email must not retire an unrelated recap offer")
         }
