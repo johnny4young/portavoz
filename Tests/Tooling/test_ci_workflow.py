@@ -52,7 +52,12 @@ class CIWorkflowTests(unittest.TestCase):
             "DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer",
             workflow,
         )
-        self.assertIn("scripts/verify-ci-toolchain.sh 15 26.3", workflow)
+        self.assertIn("scripts/verify-ci-toolchain.sh 15 26.3 6.3.3", workflow)
+        self.assertEqual(workflow.count("run: scripts/install-ci-swift-toolchain.sh"), 1)
+        sequoia = workflow.split("  sequoia-compatibility:\n", 1)[1].split("  ios-portability:", 1)[0]
+        self.assertIn("timeout-minutes: 30", sequoia)
+        self.assertLess(sequoia.index("Install fixed standalone Swift compiler"),
+                        sequoia.index("Identify compatible Swift build state"))
         self.assertIn("scripts/run-swift-tests.sh", workflow)
 
     def test_ios_portability_is_isolated_without_fake_runtime_evidence(self):

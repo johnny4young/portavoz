@@ -5565,7 +5565,7 @@ thermal or battery behavior, physical devices, or two-device convergence.
 - Compiler-dense deterministic collections, including operation fingerprints
   and high-cardinality characterization fixtures, are assembled in explicitly
   typed steps. This preserves order and coverage while keeping the supported
-  Sequoia Swift 6.2 compiler path bounded.
+  Sequoia compiler path bounded.
 - Cancellation is explicit and cannot convert partial success into false
   completion.
 - StorageKit adapts GRDB observations as pull-through structured streams. The
@@ -5607,8 +5607,16 @@ the main actor capture `self` weakly at their outermost boundary. Hosted
 CI uses the
 explicit macos-26/Xcode 26.6 pair for that lane and macos-15/Xcode 26.3 for the
 oldest supported runtime lane; `DEVELOPER_DIR` is verified instead of selecting
-the newest installed Xcode. Each lane owns one complete test invocation so its
-compiler flags cannot trigger a second differently configured package build.
+the newest installed Xcode. The Sequoia lane retains Xcode 26.3 for its SDK,
+XCTest and Metal tools, and selects the official standalone Swift 6.3.3 compiler
+required by MLX. Its installer is fixed by SHA-256 and the Swift Open Source
+Developer ID signature, installs only in the disposable runner's home, and
+exports one exact toolchain identifier and executable path. Verification rejects
+mismatches between the selector, bundle identity, shell compiler and `xcrun`.
+This does not install a compiler on developer Macs, change app deployment targets,
+or substitute a compile-only check for the complete suite on Sequoia. Each lane
+owns one complete test invocation so its compiler flags cannot trigger a second
+differently configured package build.
 SwiftLint 0.65.0 and XcodeGen 2.46.0 come from official release archives with
 fixed SHA-256 digests instead of floating Homebrew state.
 Third-party GitHub Actions are pinned to immutable full commit SHAs with their

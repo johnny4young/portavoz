@@ -96,8 +96,12 @@ jobs:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Xcode 26.4+ cannot run on Sequoia. Keep the supported SDK owner and
+      # install only the checksum/signature-pinned compiler required by MLX.
+      - name: Install fixed standalone Swift compiler
+        run: scripts/install-ci-swift-toolchain.sh
       - name: Verify fixed Sequoia toolchain
-        run: scripts/verify-ci-toolchain.sh 15 26.3
+        run: scripts/verify-ci-toolchain.sh 15 26.3 6.3.3
       - name: Identify compatible Swift build state
         id: swift_cache_key
         run: python3 scripts/ci_swift_cache_key.py --lane sequoia-compatibility >> "$GITHUB_OUTPUT"
