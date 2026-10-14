@@ -10,7 +10,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"companionEnabled":true}"#
         app.launchArguments.append("-seed-live-companion-ui")
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         app.buttons["library-new-recording-button"].click()
         XCTAssertTrue(app.waitForLiveTranscriptFrontier())
@@ -61,7 +61,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
     func testLatestManualAssistRequestOwnsTheFocusSlot() throws {
         let app = try XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         record.click()
@@ -86,12 +86,12 @@ final class RecordingAssistUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
         app.launchArguments += ["-seed-live-companion-ui", "-seed-live-assist-arrivals-ui"]
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         record.click()
         XCTAssertTrue(app.waitForLiveTranscriptFrontier())
-        app.openAssistTab("objectives")
+        try app.openAssistTab("objectives")
         XCTAssertTrue(app.resumeLiveTranscriptFixture())
         XCTAssertTrue(app.waitForLiveTranscriptFixtureToFinish())
         let objective = app.descendants(matching: .any).matching(NSPredicate(
@@ -106,7 +106,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         XCTAssertTrue(waitForUITestCondition(timeout: 3) {
             companion.label.hasSuffix("1")
         }, "a replacement is unread even when the number of cards stays unchanged")
-        app.openAssistTab("companion")
+        try app.openAssistTab("companion")
         XCTAssertTrue(companionCard(in: app, question: "Seeded live question 6? Please.").exists)
         XCTAssertNil(companion.label.rangeOfCharacter(from: .decimalDigits))
     }
@@ -117,25 +117,25 @@ final class RecordingAssistUITests: PortavozUITestCase {
             seedDemo: true, simulateSequoiaCapabilities: true,
             simulateLiveTranscriptBrowsing: true)
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         app.buttons["library-new-recording-button"].click()
         XCTAssertTrue(app.waitForLiveTranscriptFrontier())
         let noteText = "Confirmar responsable del informe"
         let objectiveText = "Check deployment readiness"
-        app.openAssistTab("notes")
+        try app.openAssistTab("notes")
         let note = app.control(withIdentifier: "recording-note-field")
         note.click()
         typeText(noteText, in: app)
         XCTAssertTrue(note.waitForLabelOrValue(noteText, timeout: 3))
-        app.openAssistTab("objectives")
+        try app.openAssistTab("objectives")
         let objective = app.control(withIdentifier: "recording-objective-field")
         objective.click()
         typeText(objectiveText, in: app)
         XCTAssertTrue(objective.waitForLabelOrValue(objectiveText, timeout: 3))
-        app.openAssistTab("notes")
+        try app.openAssistTab("notes")
         XCTAssertTrue(note.waitForLabelOrValue(noteText, timeout: 3))
-        app.openAssistTab("objectives")
+        try app.openAssistTab("objectives")
         XCTAssertTrue(objective.waitForLabelOrValue(objectiveText, timeout: 3),
                       "changing tabs must not discard an unsubmitted objective")
         let meeting = app.descendants(matching: .any)
@@ -146,10 +146,10 @@ final class RecordingAssistUITests: PortavozUITestCase {
         meeting.click()
         XCTAssertTrue(app.control(withIdentifier: "detail-transcript-title").waitForExistenceFast(timeout: 8))
         app.buttons["library-return-to-recording"].click()
-        app.openAssistTab("objectives")
+        try app.openAssistTab("objectives")
         XCTAssertTrue(objective.waitForLabelOrValue(objectiveText, timeout: 3),
                       "library browsing must not discard the objective draft")
-        app.openAssistTab("notes")
+        try app.openAssistTab("notes")
         let restored = note.waitForLabelOrValue(noteText, timeout: 3)
         XCTAssertTrue(restored, "library browsing must not discard the note draft")
         guard restored else { return }
@@ -180,7 +180,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
             #"{"companionEnabled":true}"#
         app.launchArguments.append("-seed-live-companion-ui")
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
@@ -259,7 +259,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
 
 
         // One panel at a time: the Companion list leaves when Notes opens.
-        app.openAssistTab("notes")
+        try app.openAssistTab("notes")
         XCTAssertFalse(
             app.control(withIdentifier: "recording-companion-card-\(newestID)")
                 .waitForExistenceFast(timeout: 2),
@@ -271,7 +271,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         // Back on Companion the card folded earlier is still folded: what the
         // user opened and closed is held by the panel, not by the list, so a
         // tab switch cannot reset it.
-        app.openAssistTab("companion")
+        try app.openAssistTab("companion")
         XCTAssertTrue(
             app.control(withIdentifier: "recording-companion-folded-\(newestID)")
                 .waitForExistenceFast(timeout: 5))

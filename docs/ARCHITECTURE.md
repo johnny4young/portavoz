@@ -6046,22 +6046,28 @@ to this dedicated fixture base while retaining its sandbox. Neither production
 entitlements nor system privacy grants change. The same test-only allocator
 source is compiled into package tests and XCUITest, not a product target.
 
-Healthy UI journeys can ask their exact disposable Debug host to terminate
-itself through AppKit, without keyboard input, Apple events or process signals.
-This seam is compiled out of Release and requires the exact UI-host bundle,
-`-use-temp-store`, an explicit exit flag and a per-launch UUID. A directory-event
-source accepts only a direct, same-user, private regular single-link request
-whose bytes match that UUID and the current PID. The runner first verifies the
-app-written launch acknowledgement, captures native process identity, and
-revalidates it before publication. Relaunches rotate the UUID; ended captures
-do not authorize control of a later process reached through an old XCTest proxy.
-Final disposal preserves defer ordering, including before named pasteboards are
-released. An app-owned modal session or attached sheet acknowledges refusal,
-without dismissal; the runner then retains official termination immediately.
-Missing authority, failed journeys, interruption cleanup and deliberate
-mid-journey crashes retain official XCTest termination. Exit/inventory and
-scratch-identity fences remain unchanged; cleanup time remains inside the
-original test-duration accounting and budgets.
+The recap Skill's two real-app clipboard journeys allocate independent UUID-named
+native pasteboards, then terminate the app before releasing their board. Only
+temporary-store composition with an explicit fixture flag and validated
+`app.portavoz.recap-test.<UUID>` name can select that destination. Normal
+composition retains the general pasteboard. The first-failure adapter and its
+retry share the same real writer; exact approved text, original proposal,
+receipt and offer assertions remain unchanged. This isolates the user's shared
+clipboard from test effects and external writers without substituting a mock.
+The recording-input fixture proves the actual record button's hittability and
+stable frame before clicking and requires its original live frontier before
+attempting text input; a failed start cannot cascade into unrelated field actions.
+Foreground preparation observes both XCTest's state and the declared native
+receiver within its original deadline, rather than treating an activation
+request alone as acknowledgement. The synthetic interruption fixture also
+requires that acknowledgement and a hittable arm control before creating its
+owned overlay; preparation failure remains an unqualified control, not an
+expected negative outcome. Keyboard dispatch retains its separate modal guard.
+Assist-tab traversal similarly requires a stable native target and acknowledged
+selection before callers may address its fields; failures throw instead of
+continuing into a missing control. Dynamic Skill-menu journeys explicitly close
+only an observed owned menu before reopening it after a dismissal, retaining
+all exact remaining-offer and final-retirement assertions.
 
 Visual-only screenshot
 assertions use visible-frame intersection rather than conflating visibility

@@ -20,25 +20,10 @@ class PortavozUITestCase: XCTestCase {
         // visible inside Tear Down. Runtime attribution then retains that work
         // instead of treating an apparently empty teardown as harness noise.
         let cleanup = XCTContext.runActivity(named: "Finish owned UI test cleanup") { _ in
-            Result { try UITestStorage.end(ownerID: storageOwnerID, allowOwnedExit: hasHealthyTestRun) }
+            Result { try UITestStorage.end(ownerID: storageOwnerID) }
         }
         try await super.tearDown()
         _ = try cleanup.get()
-    }
-
-    private var hasHealthyTestRun: Bool {
-        testRun.map { run in
-            run.failureCount == 0 && run.unexpectedExceptionCount == 0
-        } == true
-    }
-
-    /// Final disposal only. Recovery/crash exercises continue to call the
-    /// official XCTest termination API at their original journey boundary.
-    @discardableResult
-    func finishUITestApplication(_ application: XCUIApplication) -> UITestStorage.FinishOutcome {
-        let outcome = UITestStorage.finish(application, allowOwnedExit: hasHealthyTestRun)
-        XCTAssertNotEqual(outcome, .identityLost, "Final cleanup lost its captured launch identity")
-        return outcome
     }
 
     var keyboardReceiverBundleIdentifier: String { XCUIApplication.portavozUITestHostBundleIdentifier }

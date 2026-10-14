@@ -10,7 +10,7 @@ final class InsightsUITests: PortavozUITestCase {
         // Keep the retained evidence independent of the user's persisted picker choice.
         app.launchArguments += ["-insightsScope", "week"]
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
 
         XCTAssertTrue(
             app.waitForSeededLibraryToSettle(),

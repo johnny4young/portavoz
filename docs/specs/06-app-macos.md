@@ -3765,6 +3765,15 @@ preview → confirm → clipboard artifact → receipt → offer retirement →
 durable dismissal. D321 adds a second bilingual journey that refuses the first
 pasteboard handoff, retries the unchanged preview, and requires the successful
 receipt plus byte-for-byte clipboard artifact.
+The two real-app recap clipboard journeys use an independently allocated
+UUID-named native pasteboard instead of the user's shared general board. The
+composition accepts this destination only for a temporary store, the explicit
+`-uitest-recap-pasteboard` flag, and a validated `app.portavoz.recap-test.<UUID>`
+name. Production keeps the general board. The fail-once adapter and successful
+retry share the same native writer; the app exits before the test releases its
+board. This preserves the exact approved artifact and receipt assertions while
+removing shared-host clipboard coupling; it does not claim general-board privacy
+permission or delivery into an external application's editor.
 
 ## Review-first email recap handoff (D327, Aug 2026)
 
@@ -4525,20 +4534,3 @@ through commit or rollback; recording start checks it before publishing
 `preparing`, with no suspension between those steps. If capture wins admission
 first, the existing migration activity gate rejects its preparing/recording/
 processing phase. This is a process-local fence, not an interprocess file lock.
-
-### Disposable UI-host final exit
-
-The Debug-only `UITestOwnedExit` lifecycle seam is unavailable to the shipping
-bundle and normal Dev launches. Only the exact UI-test host with temporary
-storage, an explicit flag and a per-launch UUID installs its main-queue directory
-event source. An owner-private regular single-link file must carry the exact
-UUID and current PID before the app calls `NSApp.terminate(nil)` on its own
-executor. The app publishes readiness only after arming the source. No URL
-routing, input dispatch, external process signalling, entitlement or privacy
-permission participates. The test runner captures and revalidates native launch
-identity, rotates the UUID on relaunch, and requests this path only for healthy
-final disposal. App-owned modal sessions and attached sheets acknowledge refusal
-without dismissal so the runner retains official termination immediately.
-Deliberate crash/recovery exercises and interruption/failure
-cleanup retain XCTest's termination API. Original exit/inventory deadlines,
-scratch ownership checks, case coverage and runtime accounting remain intact.

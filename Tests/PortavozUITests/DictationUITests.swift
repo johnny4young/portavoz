@@ -18,7 +18,7 @@ final class DictationUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DICTATION_PASTEBOARD"] = name
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
         let dictate = app.buttons["menu-bar-dictate"]
         XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
         dictate.click()
@@ -60,7 +60,7 @@ final class DictationUITests: PortavozUITestCase {
         app.launchArguments += ["-seed-dictation", "-seed-dictation-capture-failure"]
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
         let message = UITestLocale.environmentLocale == "es"
             ? "Se interrumpió la captura de audio. No se insertó nada. Vuelve a dictar."
             : "Audio capture was interrupted. Nothing was inserted. Try dictating again."
@@ -87,7 +87,7 @@ final class DictationUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
             #"{"globalDictationEnabled":true,"dictationMouseButton":2}"#
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
 
         for _ in 0..<2 {
             XCTAssertTrue(app.prepareForInteraction())
@@ -118,7 +118,7 @@ final class DictationUITests: PortavozUITestCase {
         app.launchArguments += ["-seed-dictation", "-seed-dictation-streaming"]
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
         XCTAssertTrue(app.prepareForInteraction())
         let dictate = app.buttons["menu-bar-dictate"]
         let expected = "No borres estas notas. Café C++. Final"
@@ -140,7 +140,7 @@ final class DictationUITests: PortavozUITestCase {
         app.launchArguments += ["-seed-dictation", "-seed-dictation-microphone-denied"]
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
         let dictate = app.buttons["menu-bar-dictate"]
         XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
         dictate.click()
@@ -171,7 +171,7 @@ final class DictationUITests: PortavozUITestCase {
         app.launchArguments += ["-seed-dictation", "-seed-dictation-microphone-no-audio"]
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
         let dictate = app.buttons["menu-bar-dictate"]
         XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
         dictate.click()
@@ -204,7 +204,7 @@ final class DictationUITests: PortavozUITestCase {
         app.launchArguments += ["-seed-dictation", "-seed-dictation-preparation-held"]
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
         let dictate = app.buttons["menu-bar-dictate"]
         XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
         dictate.click()
@@ -231,7 +231,7 @@ final class DictationUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DICTATION_PASTEBOARD"] = name
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
         enterDestinationRecovery(app)
         let text = app.descendants(matching: .any)["dictation-recovery-text"]
         XCTAssertTrue(renderedText(of: text).contains(recoveryFixtureText))
@@ -264,7 +264,7 @@ final class DictationUITests: PortavozUITestCase {
         if UITestLocale.environmentLocale == "en" { app.launchArguments.append("-seed-dictation-english") }
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
         enterDestinationRecovery(app)
         let text = app.descendants(matching: .any)["dictation-recovery-text"]
         let original = renderedText(of: text)
@@ -310,7 +310,7 @@ final class DictationUITests: PortavozUITestCase {
             if UITestLocale.environmentLocale == "en" { app.launchArguments.append("-seed-dictation-english") }
             if verified { app.launchArguments.append("-seed-dictation-verified") }
             app.launchPortavoz()
-            defer { finishUITestApplication(app) }
+            defer { app.terminate() }
             enterDestinationDelivery(app)
             let status = app.staticTexts["dictation-panel-delivery-status"]
             let title = renderedText(of: status)
@@ -340,7 +340,7 @@ final class DictationUITests: PortavozUITestCase {
         if english { app.launchArguments.append("-seed-dictation-english") }
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
         let expectedText = english ? "Don't delete these notes." : "No borres estas notas."
         let expectedFailure = english
             ? "Audio capture was interrupted. Nothing was inserted. Try dictating again."
@@ -388,7 +388,7 @@ final class DictationUITests: PortavozUITestCase {
         app.launchArguments.append("-seed-dictation-native")
         app.launchEnvironment["PORTAVOZ_UI_TEST_DICTATION_PASTEBOARD"] = name
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
         let start = app.buttons["dictation-native-start"]
         guard start.waitForStableFrame(timeout: 5) else {
             return XCTFail("The isolated native insertion fixture must be explicitly armed")
@@ -451,7 +451,7 @@ final class DictationUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
             #"{"globalDictationEnabled":true,"dictationTextMode":"literal","dictationApplicationTextProfiles":"[]","dictationReplacements":"[{\"trigger\":\"notes\",\"replacement\":\"documents\"}]"}"#
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
         let start = app.buttons["dictation-native-start"]
         XCTAssertTrue(start.waitForStableFrame(timeout: 5))
         start.click()

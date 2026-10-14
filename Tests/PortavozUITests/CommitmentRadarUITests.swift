@@ -8,7 +8,7 @@ final class CommitmentRadarUITests: PortavozUITestCase {
             seedCommitmentRadar: true)
         app.launchArguments.append("-simulate-reminder-open")
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         XCTAssertTrue(
@@ -24,7 +24,7 @@ final class CommitmentRadarUITests: PortavozUITestCase {
             seedDemo: true,
             seedCommitmentRadar: true)
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         let radar = app.buttons["library-commitment-radar-button"]
@@ -113,7 +113,7 @@ final class CommitmentRadarUITests: PortavozUITestCase {
             seedDemo: true,
             seedCommitmentRadar: true)
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         let radar = app.buttons["library-commitment-radar-button"]
@@ -188,7 +188,7 @@ final class CommitmentRadarUITests: PortavozUITestCase {
             seedDemo: true,
             seedCommitmentRadar: true)
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         let radar = app.buttons["library-commitment-radar-button"]
@@ -240,7 +240,7 @@ final class CommitmentRadarUITests: PortavozUITestCase {
             seedDemo: true,
             seedCommitmentRadar: true)
         app.launchPortavoz()
-        defer { finishUITestApplication(app) }
+        defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         let radar = app.buttons["library-commitment-radar-button"]
