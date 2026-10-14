@@ -11,12 +11,12 @@ final class HomeUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        let title = app.staticTexts["home-title"]
+        let title = app.staticTexts.identified("home-title")
         XCTAssertTrue(title.waitForExistenceFast(timeout: 10))
         if let locale = UITestLocale.environmentLocale {
             XCTAssertEqual(renderedText(of: title), locale == "es" ? "Hoy" : "Today")
         }
-        XCTAssertTrue(app.buttons["library-home-button"].isSelected)
+        XCTAssertTrue(app.buttons.identified("library-home-button").isSelected)
 
         // Every Today surface is visible inside the window without scrolling.
         let window = app.windows.firstMatch.frame
@@ -32,7 +32,7 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertTrue(recent.waitForExistenceFast(timeout: 10))
         let askField = app.control(withIdentifier: "home-ask-field")
         XCTAssertTrue(askField.waitForExistenceFast(timeout: 5), "Ask is one field on Today")
-        for element in [upcoming, todo, recent, app.buttons["home-ask-chip-0"], askField] {
+        for element in [upcoming, todo, recent, app.buttons.identified("home-ask-chip-0"), askField] {
             XCTAssertTrue(element.exists, "\(element) must render")
             XCTAssertTrue(window.contains(element.frame), "\(element) must sit above the fold")
         }
@@ -56,7 +56,7 @@ final class HomeUITests: PortavozUITestCase {
         recent.click()
         XCTAssertTrue(app.staticTexts["Test meeting"].waitForExistenceFast(timeout: 10))
         XCTAssertTrue(app.control(withIdentifier: "player-clear-playback").waitForExistenceFast(timeout: 10))
-        let home = app.buttons["library-home-button"]
+        let home = app.buttons.identified("library-home-button")
         XCTAssertTrue(home.waitForStableFrame(timeout: 5))
         home.click()
         XCTAssertTrue(title.waitForExistenceFast(timeout: 10))
@@ -72,10 +72,10 @@ final class HomeUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        XCTAssertTrue(app.staticTexts["home-title"].waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(app.staticTexts.identified("home-title").waitForExistenceFast(timeout: 10))
 
         // A suggested question reaches Ask already submitted.
-        let chip = app.buttons["home-ask-chip-0"]
+        let chip = app.buttons.identified("home-ask-chip-0")
         XCTAssertTrue(chip.waitForStableFrame(timeout: 5))
         chip.click()
         XCTAssertTrue(app.control(withIdentifier: "ask-question-field").waitForExistenceFast(timeout: 10))
@@ -87,27 +87,27 @@ final class HomeUITests: PortavozUITestCase {
                         .firstMatch.exists
             },
             "the chip must submit its question, not only prefill it")
-        XCTAssertTrue(app.buttons["library-ask-button"].isSelected)
+        XCTAssertTrue(app.buttons.identified("library-ask-button").isSelected)
 
         // Back on Today, the agenda offers a brief and a linked recording.
-        let home = app.buttons["library-home-button"]
+        let home = app.buttons.identified("library-home-button")
         XCTAssertTrue(home.waitForStableFrame(timeout: 5))
         home.click()
-        let brief = app.buttons["home-upcoming-brief-ui-test-upcoming-rollout"]
+        let brief = app.buttons.identified("home-upcoming-brief-ui-test-upcoming-rollout")
         XCTAssertTrue(brief.waitForStableFrame(timeout: 10))
         brief.click()
         XCTAssertTrue(app.control(withIdentifier: "brief-title").waitForExistenceFast(timeout: 10))
         XCTAssertTrue(app.staticTexts["Presupuesto rollout"].exists)
-        let close = app.buttons["brief-close-button"]
+        let close = app.buttons.identified("brief-close-button")
         XCTAssertTrue(close.waitForStableFrame(timeout: 5))
         close.click()
 
-        let record = app.buttons["home-upcoming-record-ui-test-upcoming-rollout"]
+        let record = app.buttons.identified("home-upcoming-record-ui-test-upcoming-rollout")
         XCTAssertTrue(record.waitForStableFrame(timeout: 10))
         record.click()
         // The event-linked recording starts like the brief's own Record action;
         // the real title is assigned when the meeting is saved at Stop.
         XCTAssertTrue(app.control(withIdentifier: "recording-live-transcript").waitForExistenceFast(timeout: 10))
-        XCTAssertTrue(app.buttons["library-return-to-recording"].waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(app.buttons.identified("library-return-to-recording").waitForExistenceFast(timeout: 5))
     }
 }

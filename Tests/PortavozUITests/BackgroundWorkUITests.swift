@@ -7,7 +7,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let indicator = app.buttons["background-work-indicator"]
+        let indicator = app.buttons.identified("background-work-indicator")
         XCTAssertTrue(
             indicator.waitForHittable(timeout: 15),
             "attention in a background owner must expose one compact app-level route")
@@ -18,7 +18,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 10),
             "the compact indicator must expose the exact Settings category")
         XCTAssertTrue(
-            app.staticTexts["background-work-overview"].waitForExistenceFast(timeout: 5),
+            app.staticTexts.identified("background-work-overview").waitForExistenceFast(timeout: 5),
             "the compact indicator must deep-link to the Background Work pane")
 
         for owner in [
@@ -34,7 +34,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
             ? "Reconciliadas: 2 · concesiones recuperadas: 1 · diferidas: 0 · atención: 0"
             : "Reconciled: 2 · leases recovered: 1 · deferred: 0 · attention: 0"
         XCTAssertTrue(
-            app.staticTexts["background-work-detail-recovery"]
+            app.staticTexts.identified("background-work-detail-recovery")
                 .waitForLabelOrValue(recoveryDetail, timeout: 5),
             "recovery must publish exact content-free aggregate counts")
 
@@ -42,7 +42,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
             ? "Indexados: 12 · excluidos: 3 · omitidos: 0"
             : "Indexed: 12 · excluded: 3 · skipped: 0"
         XCTAssertTrue(
-            app.staticTexts["background-work-detail-semantic-index"]
+            app.staticTexts.identified("background-work-detail-semantic-index")
                 .waitForLabelOrValue(semanticDetail, timeout: 5),
             "semantic indexing must publish exact content-free aggregate counts")
 
@@ -50,17 +50,17 @@ final class BackgroundWorkUITests: PortavozUITestCase {
             ? "Intento: 2"
             : "Attempt: 2"
         XCTAssertTrue(
-            app.staticTexts["background-work-attempt-processing"]
+            app.staticTexts.identified("background-work-attempt-processing")
                 .waitForLabelOrValue(processingAttempt, timeout: 5))
         XCTAssertTrue(
-            app.staticTexts["background-work-retry-processing"]
+            app.staticTexts.identified("background-work-retry-processing")
                 .waitForExistenceFast(timeout: 5),
             "retrying owners must disclose their exact scheduled wake")
         let processingFailure = UITestLocale.environmentLocale == "es"
             ? "Motivo: Procesamiento"
             : "Reason: Processing"
         XCTAssertTrue(
-            app.staticTexts["background-work-failure-processing"]
+            app.staticTexts.identified("background-work-failure-processing")
                 .waitForLabelOrValue(processingFailure, timeout: 5),
             "attention states must expose only a closed localized category")
 
@@ -73,7 +73,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
         // Scale the reveal to the actual form, not the shared conservative
         // 48-point transcript-row default. The helper still limits travel to
         // the missing distance and proves contained, stable hittability.
-        let processingRetry = app.buttons["background-work-action-processing"]
+        let processingRetry = app.buttons.identified("background-work-action-processing")
         XCTAssertTrue(
             processingRetry.revealVertically(
                 in: settingsForm,
@@ -82,11 +82,11 @@ final class BackgroundWorkUITests: PortavozUITestCase {
         XCTAssertTrue(processingRetry.waitForHittable(timeout: 5))
         processingRetry.click()
         XCTAssertTrue(
-            app.staticTexts["background-work-status-processing"]
+            app.staticTexts.identified("background-work-status-processing")
                 .waitForLabelOrValue(idle, timeout: 5),
             "processing retry must route only to its owner and publish the new safe state")
 
-        let graphRetry = app.buttons["background-work-action-memory-graph"]
+        let graphRetry = app.buttons.identified("background-work-action-memory-graph")
         XCTAssertTrue(
             graphRetry.revealVertically(
                 in: settingsForm,
@@ -94,7 +94,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
             "the graph recovery action must be reachable in the bounded Settings form")
         graphRetry.click()
         XCTAssertTrue(
-            app.staticTexts["background-work-status-memory-graph"]
+            app.staticTexts.identified("background-work-status-memory-graph")
                 .waitForLabelOrValue(idle, timeout: 5),
             "graph retry must clear only the graph attention state")
         attachScreenshot(of: app, named: "background-work-center")
@@ -108,11 +108,11 @@ final class BackgroundWorkUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let record = app.buttons["library-new-recording-button"]
+        let record = app.buttons.identified("library-new-recording-button")
         XCTAssertTrue(record.waitForHittable(timeout: 15))
         record.click()
 
-        let indicator = app.buttons["background-work-indicator"]
+        let indicator = app.buttons.identified("background-work-indicator")
         XCTAssertTrue(
             indicator.waitForHittable(timeout: 10),
             "a protected recording must reveal derived work waiting behind it")
@@ -130,7 +130,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
 
         typeKey("w", modifierFlags: .command, in: app)
         XCTAssertTrue(app.prepareForInteraction())
-        let stop = app.buttons["recording-stop-after-remote-outage"]
+        let stop = app.buttons.identified("recording-stop-after-remote-outage")
         XCTAssertTrue(stop.waitForHittable(timeout: 10))
         stop.click()
 

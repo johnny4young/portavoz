@@ -35,6 +35,14 @@ final class UITestStorageUITests: PortavozUITestCase {
         }
         app.launchPortavoz()
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        let record = app.buttons.identified("library-new-recording-button")
+        XCTAssertTrue(record.exists)
+        XCTAssertEqual(record.identifier, "library-new-recording-button")
+        let renderedLabel = record.label
+        XCTAssertFalse(renderedLabel.isEmpty)
+        XCTAssertTrue(app.buttons[renderedLabel].exists, "the legacy query also admits visible labels")
+        XCTAssertFalse(app.buttons.identified(renderedLabel).exists,
+                       "a label must not masquerade as a declared accessibility identifier")
         // Library readiness already consumes the app-written one-shot marker.
         let readyPath = try XCTUnwrap(app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"])
         XCTAssertFalse(FileManager.default.fileExists(atPath: readyPath))

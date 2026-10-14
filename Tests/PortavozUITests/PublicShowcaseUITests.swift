@@ -24,17 +24,17 @@ final class PublicShowcaseUITests: PortavozUITestCase {
             app.staticTexts["2026-07-10 Sprint Demo · Zephyr"]
                 .waitForExistenceFast(timeout: 10))
         XCTAssertTrue(
-            app.buttons["detail-title-suggestion-dismiss"]
+            app.buttons.identified("detail-title-suggestion-dismiss")
                 .waitForExistenceFast(timeout: 10))
         XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
         XCTAssertTrue(
-            app.buttons["detail-recipe-suggestion-dismiss"]
+            app.buttons.identified("detail-recipe-suggestion-dismiss")
                 .waitForExistenceFast(timeout: 10))
         let suggestNames = app.control(withIdentifier: "detail-suggest-names")
         XCTAssertTrue(suggestNames.waitForExistenceFast(timeout: 5))
         suggestNames.click()
         XCTAssertTrue(
-            app.buttons["detail-name-suggestion-dismiss-S3"]
+            app.buttons.identified("detail-name-suggestion-dismiss-S3")
                 .waitForExistenceFast(timeout: 10))
         XCTAssertTrue(
             app.control(withIdentifier: "player-clear-playback")
@@ -52,7 +52,7 @@ final class PublicShowcaseUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        let record = app.buttons["library-new-recording-button"]
+        let record = app.buttons.identified("library-new-recording-button")
         XCTAssertTrue(record.waitForExistenceFast(timeout: 10))
         record.click()
 
@@ -86,7 +86,7 @@ final class PublicShowcaseUITests: PortavozUITestCase {
         // surface rather than on a sidebar row the agenda may push down.
         XCTAssertTrue(app.waitForSeedFixtureReady())
         XCTAssertTrue(app.prepareForInteraction())
-        XCTAssertTrue(app.staticTexts["home-title"].waitForExistenceFast(timeout: 20))
+        XCTAssertTrue(app.staticTexts.identified("home-title").waitForExistenceFast(timeout: 20))
         XCTAssertTrue(
             app.control(withIdentifier: "home-upcoming-showcase-sync-qvtl")
                 .waitForExistenceFast(timeout: 10))
@@ -109,7 +109,7 @@ final class PublicShowcaseUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        let insights = app.buttons["library-insights-button"]
+        let insights = app.buttons.identified("library-insights-button")
         XCTAssertTrue(insights.waitForExistenceFast(timeout: 10))
         insights.click()
 
@@ -119,7 +119,7 @@ final class PublicShowcaseUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "insights-participant-Marta")
                 .waitForExistenceFast(timeout: 10))
-        let meetingCount = app.buttons["library-new-recording-button"].label == "Nueva grabación"
+        let meetingCount = app.buttons.identified("library-new-recording-button").label == "Nueva grabación"
             ? "1 reunión · 1 min"
             : "1 meeting · 1 min"
         XCTAssertTrue(

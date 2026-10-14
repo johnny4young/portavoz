@@ -14,12 +14,12 @@ final class SettingsUITests: PortavozUITestCase {
         defer { app.terminate() }
         openCategory("settings-category-audio",
                      revealing: "settings-dictation-live-engine", in: app)
-        let retry = app.buttons["settings-dictation-live-apple-retry"]
+        let retry = app.buttons.identified("settings-dictation-live-apple-retry")
         XCTAssertTrue(retry.waitForExistenceFast(timeout: 5))
-        XCTAssertFalse(app.buttons["settings-dictation-live-apple-prepare"].exists,
+        XCTAssertFalse(app.buttons.identified("settings-dictation-live-apple-prepare").exists,
                        "a failed read must not assume that an asset download is needed")
         retry.click()
-        XCTAssertTrue(app.buttons["settings-dictation-live-apple-prepare"]
+        XCTAssertTrue(app.buttons.identified("settings-dictation-live-apple-prepare")
             .waitForExistenceFast(timeout: 5))
         XCTAssertFalse(retry.exists)
     }
@@ -35,26 +35,26 @@ final class SettingsUITests: PortavozUITestCase {
 
         openCategory("settings-category-audio",
                      revealing: "settings-dictation-live-engine", in: app)
-        XCTAssertTrue(app.staticTexts["settings-dictation-live-apple-status"]
+        XCTAssertTrue(app.staticTexts.identified("settings-dictation-live-apple-status")
             .waitForExistenceFast(timeout: 5))
-        let dictationPrepare = app.buttons["settings-dictation-live-apple-prepare"]
+        let dictationPrepare = app.buttons.identified("settings-dictation-live-apple-prepare")
         XCTAssertTrue(dictationPrepare.waitForExistenceFast(timeout: 5))
         dictationPrepare.click()
         XCTAssertTrue(dictationPrepare.waitForDisappearance(timeout: 5))
         let readyText = UITestLocale.environmentLocale == "es"
             ? "Apple Speech está listo para este idioma en este Mac."
             : "Apple Speech is ready for this language on this Mac."
-        let dictationStatus = app.staticTexts["settings-dictation-live-apple-status"]
+        let dictationStatus = app.staticTexts.identified("settings-dictation-live-apple-status")
         XCTAssertTrue(waitForUITestCondition(timeout: 5) {
             renderedText(of: dictationStatus) == readyText
         }, "the real Settings row must announce the localized ready status")
 
         openCategory("settings-category-intelligence",
                      revealing: "settings-meeting-live-engine", in: app)
-        let meetingPrepare = app.buttons["settings-meeting-live-apple-prepare"]
+        let meetingPrepare = app.buttons.identified("settings-meeting-live-apple-prepare")
         XCTAssertTrue(meetingPrepare.waitForExistenceFast(timeout: 5),
                       "preparing English must not silently install Spanish")
-        XCTAssertTrue(app.staticTexts["settings-meeting-live-apple-status"].exists)
+        XCTAssertTrue(app.staticTexts.identified("settings-meeting-live-apple-status").exists)
     }
 
     @MainActor
@@ -70,18 +70,18 @@ final class SettingsUITests: PortavozUITestCase {
             revealing: "settings-semantic-search-status-needs-preparation",
             in: app)
 
-        let prepare = app.buttons["settings-semantic-search-prepare"]
+        let prepare = app.buttons.identified("settings-semantic-search-prepare")
         XCTAssertTrue(
             prepare.waitForExistenceFast(timeout: 5),
             "missing OS assets must stay an explicit user action")
         prepare.click()
 
         XCTAssertTrue(
-            app.staticTexts["settings-semantic-search-status-ready"]
+            app.staticTexts.identified("settings-semantic-search-status-ready")
                 .waitForExistenceFast(timeout: 10),
             "the explicit action must publish ready only after preparation")
         XCTAssertFalse(
-            app.buttons["settings-semantic-search-prepare"].exists,
+            app.buttons.identified("settings-semantic-search-prepare").exists,
             "ready assets must not keep offering a redundant download action")
         openCategory(
             "settings-category-audio",
@@ -92,7 +92,7 @@ final class SettingsUITests: PortavozUITestCase {
             revealing: "settings-semantic-search-status-ready",
             in: app)
         XCTAssertFalse(
-            app.buttons["settings-semantic-search-prepare"].exists,
+            app.buttons.identified("settings-semantic-search-prepare").exists,
             "reentering Settings must inspect shared readiness without reopening preparation")
         attachScreenshot(of: app, named: "semantic-search-preparation")
     }
@@ -107,7 +107,7 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.openSettingsWindow(),
             "opening Settings must finish initial search editing before sidebar scrolling")
-        XCTAssertEqual(app.textFields["settings-search-field"].value as? String, "")
+        XCTAssertEqual(app.textFields.identified("settings-search-field").value as? String, "")
         openCategory(
             "settings-category-data",
             revealing: "settings-ledger-meetings",
@@ -153,12 +153,12 @@ final class SettingsUITests: PortavozUITestCase {
         let wasLightweight = Self.isOn(lightweight)
         lightweight.click()
         XCTAssertEqual(Self.isOn(lightweight), !wasLightweight)
-        let memoryHelp = app.staticTexts["settings-model-memory-help"]
+        let memoryHelp = app.staticTexts.identified("settings-model-memory-help")
         XCTAssertTrue(memoryHelp.exists)
         let memoryCopy = (memoryHelp.value as? String) ?? memoryHelp.label
         XCTAssertTrue(memoryCopy.contains(UITestLocale.environmentLocale == "es"
             ? "Los modelos en uso" : "Models in use"))
-        XCTAssertTrue(app.staticTexts["settings-model-memory-recommendation"].exists)
+        XCTAssertTrue(app.staticTexts.identified("settings-model-memory-recommendation").exists)
         lightweight.click()
         XCTAssertEqual(Self.isOn(lightweight), wasLightweight)
         guard memoryHelp.revealVertically(in: memoryForm, maximumStep: 240) else {
@@ -166,10 +166,10 @@ final class SettingsUITests: PortavozUITestCase {
             return
         }
         attachScreenshot(of: app, named: "model-memory-profile")
-        XCTAssertTrue(app.textFields["settings-search-field"].exists)
-        XCTAssertTrue(app.buttons["settings-category-intelligence"].isSelected)
-        XCTAssertFalse(app.buttons["settings-category-general"].isSelected)
-        let providerHelp = app.staticTexts["settings-summary-provider-help"]
+        XCTAssertTrue(app.textFields.identified("settings-search-field").exists)
+        XCTAssertTrue(app.buttons.identified("settings-category-intelligence").isSelected)
+        XCTAssertFalse(app.buttons.identified("settings-category-general").isSelected)
+        let providerHelp = app.staticTexts.identified("settings-summary-provider-help")
         XCTAssertTrue(providerHelp.exists)
         let providerCopy = (providerHelp.value as? String) ?? providerHelp.label
         let spanish = UITestLocale.environmentLocale == "es"
@@ -242,10 +242,10 @@ final class SettingsUITests: PortavozUITestCase {
             revealing: "settings-export-all-button",
             in: app)
         XCTAssertTrue(
-            app.buttons["settings-export-all-button"].waitForExistenceFast(timeout: 5),
+            app.buttons.identified("settings-export-all-button").waitForExistenceFast(timeout: 5),
             "the Your-data pane must show the export-all action")
         XCTAssertTrue(
-            app.buttons["settings-recordings-change"].waitForExistenceFast(timeout: 5),
+            app.buttons.identified("settings-recordings-change").waitForExistenceFast(timeout: 5),
             "recording storage must load through the application boundary")
         attachScreenshot(of: app, named: "settings-recording-storage")
     }
@@ -262,24 +262,24 @@ final class SettingsUITests: PortavozUITestCase {
             in: app)
 
         XCTAssertTrue(
-            app.staticTexts["settings-sync-status"].waitForExistenceFast(timeout: 5),
+            app.staticTexts.identified("settings-sync-status").waitForExistenceFast(timeout: 5),
             "the sync pane must show truthful local-only status before opt-in")
-        let enable = app.buttons["settings-sync-enable"]
+        let enable = app.buttons.identified("settings-sync-enable")
         XCTAssertTrue(
             enable.waitForExistenceFast(timeout: 5),
             "a local-only library must require an explicit Enable action")
-        XCTAssertFalse(app.buttons["settings-sync-seed"].exists)
+        XCTAssertFalse(app.buttons.identified("settings-sync-seed").exists)
 
         enable.click()
 
         XCTAssertTrue(
-            app.buttons["settings-sync-now"].waitForExistenceFast(timeout: 5),
+            app.buttons.identified("settings-sync-now").waitForExistenceFast(timeout: 5),
             "enablement must reveal a manual sync action")
         XCTAssertTrue(
-            app.buttons["settings-sync-seed"].waitForExistenceFast(timeout: 5),
+            app.buttons.identified("settings-sync-seed").waitForExistenceFast(timeout: 5),
             "existing meetings must remain a separate explicit action")
-        XCTAssertTrue(app.buttons["settings-sync-pause"].exists)
-        XCTAssertTrue(app.buttons["settings-sync-remove"].exists)
+        XCTAssertTrue(app.buttons.identified("settings-sync-pause").exists)
+        XCTAssertTrue(app.buttons.identified("settings-sync-remove").exists)
         attachScreenshot(of: app, named: "band-6c-cloud-sync")
     }
 
@@ -296,14 +296,14 @@ final class SettingsUITests: PortavozUITestCase {
             revealing: "settings-export-diagnostics",
             in: app)
 
-        let export = app.buttons["settings-export-diagnostics"]
+        let export = app.buttons.identified("settings-export-diagnostics")
         XCTAssertTrue(
             export.waitForExistenceFast(timeout: 5),
             "the Your-data pane must offer an explicit redacted support export")
-        XCTAssertTrue(app.staticTexts["settings-diagnostics-host-disclosure"].exists)
+        XCTAssertTrue(app.staticTexts.identified("settings-diagnostics-host-disclosure").exists)
         export.click()
         XCTAssertTrue(
-            app.staticTexts["settings-diagnostics-status"].waitForExistenceFast(timeout: 10),
+            app.staticTexts.identified("settings-diagnostics-status").waitForExistenceFast(timeout: 10),
             "the export must confirm that no meeting content was included")
         XCTAssertTrue(FileManager.default.fileExists(atPath: destination.path))
         let text = try String(contentsOf: destination, encoding: .utf8)
@@ -337,10 +337,10 @@ final class SettingsUITests: PortavozUITestCase {
             revealing: "settings-export-all-button",
             in: app)
 
-        let export = app.buttons["settings-export-all-button"]
+        let export = app.buttons.identified("settings-export-all-button")
         XCTAssertTrue(export.waitForExistenceFast(timeout: 5))
         export.click()
-        let status = app.staticTexts["settings-backup-status"]
+        let status = app.staticTexts.identified("settings-backup-status")
         XCTAssertTrue(
             status.waitForExistenceFast(timeout: 15),
             "the backup must finish with a visible result")
@@ -377,14 +377,14 @@ final class SettingsUITests: PortavozUITestCase {
             revealing: "settings-add-structure",
             in: app)
 
-        let add = app.buttons["settings-add-structure"]
+        let add = app.buttons.identified("settings-add-structure")
         XCTAssertTrue(
             add.waitForExistenceFast(timeout: 5),
             "the Intelligence pane must offer the custom-structure creator")
         add.click()
 
         XCTAssertTrue(
-            app.textFields["structure-name"].waitForExistenceFast(timeout: 5),
+            app.textFields.identified("structure-name").waitForExistenceFast(timeout: 5),
             "Add structure must open the editor sheet with a name field")
     }
 
@@ -415,7 +415,7 @@ final class SettingsUITests: PortavozUITestCase {
         // Reopen the real scene: restoration must not undo the placement
         // established on first presentation, and receipt routing still owns it.
         typeKey("w", modifierFlags: .command, in: app)
-        XCTAssertTrue(app.buttons["settings-category-general"].waitForDisappearance(timeout: 5))
+        XCTAssertTrue(app.buttons.identified("settings-category-general").waitForDisappearance(timeout: 5))
         XCTAssertTrue(app.openSettingsWindow())
         let reopenedGeneral = app.control(withIdentifier: "settings-category-general")
         XCTAssertGreaterThanOrEqual(reopenedGeneral.frame.minX, 0)
@@ -468,7 +468,7 @@ final class SettingsUITests: PortavozUITestCase {
             app.control(withIdentifier: "settings-dictation-language")
                 .waitForExistenceFast(timeout: 5),
             "enabling dictation must reveal the language preference picker")
-        let languageSupport = app.staticTexts["settings-dictation-language-support"]
+        let languageSupport = app.staticTexts.identified("settings-dictation-language-support")
         XCTAssertTrue(languageSupport.waitForExistenceFast(timeout: 5))
         let expectedSupport = UITestLocale.environmentLocale == "es"
             ? "El español y el inglés pueden seguir mezclándose. Este ajuste sobre todo evita otros sistemas de escritura."
@@ -504,23 +504,23 @@ final class SettingsUITests: PortavozUITestCase {
 
         let unavailable = app.control(withIdentifier: "settings-dictation-shortcut-unavailable")
         XCTAssertTrue(unavailable.exists)
-        let retry = app.buttons["settings-dictation-shortcut-retry"]
+        let retry = app.buttons.identified("settings-dictation-shortcut-retry")
         XCTAssertTrue(retry.exists)
         retry.click()
-        let help = app.staticTexts["settings-dictation-shortcut-help"]
+        let help = app.staticTexts.identified("settings-dictation-shortcut-help")
         XCTAssertTrue(help.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(renderedText(of: help).contains("⌥⌘M"))
         XCTAssertFalse(unavailable.exists)
         XCTAssertFalse(retry.exists, "retry must not leave a stale failure surface")
 
-        let recorder = app.buttons["settings-dictation-hotkey-recorder"]
+        let recorder = app.buttons.identified("settings-dictation-hotkey-recorder")
         XCTAssertTrue(recorder.waitForStableFrame())
         recorder.click()
         typeKey("n", modifierFlags: [.control, .option, .command], in: app)
         XCTAssertTrue(waitForUITestCondition(timeout: 5) {
             renderedText(of: help).contains("⌃⌥⌘N") && recorder.label.contains("⌃⌥⌘N")
         }, "the recorder and help must observe the new registration rather than their initial label")
-        let useDefault = app.buttons["settings-dictation-shortcut-default"]
+        let useDefault = app.buttons.identified("settings-dictation-shortcut-default")
         XCTAssertTrue(useDefault.exists)
         useDefault.click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: help).contains("⌥⌘D") })
@@ -540,16 +540,16 @@ final class SettingsUITests: PortavozUITestCase {
         defer { app.terminate() }
         openCategory("settings-category-audio", revealing: "settings-dictation-shortcut-default", in: app)
 
-        let recovered = app.staticTexts["settings-dictation-shortcut-recovered"]
+        let recovered = app.staticTexts.identified("settings-dictation-shortcut-recovered")
         XCTAssertTrue(recovered.exists, "malformed startup settings must reach a recoverable app, not a trap")
         XCTAssertTrue(renderedText(of: recovered).contains("⌥⌘D"))
-        let useDefault = app.buttons["settings-dictation-shortcut-default"]
+        let useDefault = app.buttons.identified("settings-dictation-shortcut-default")
         XCTAssertTrue(useDefault.exists)
         useDefault.click()
         XCTAssertTrue(recovered.waitForDisappearance(timeout: 5), "explicit repair must supersede the corrupt override")
         XCTAssertFalse(useDefault.exists)
         XCTAssertFalse(app.control(withIdentifier: "settings-dictation-shortcut-unavailable").exists)
-        let help = app.staticTexts["settings-dictation-shortcut-help"]
+        let help = app.staticTexts.identified("settings-dictation-shortcut-help")
         XCTAssertTrue(help.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(renderedText(of: help).contains("⌥⌘D"))
         openCategory("settings-category-general", revealing: "settings-language-system-toggle", in: app)
@@ -592,27 +592,27 @@ final class SettingsUITests: PortavozUITestCase {
             "settings-category-intelligence",
             revealing: "settings-voice-storage-error",
             in: app)
-        XCTAssertTrue(app.staticTexts["settings-voice-storage-error"].exists)
-        XCTAssertTrue(app.buttons["settings-voice-storage-retry"].exists)
-        XCTAssertTrue(app.buttons["settings-voice-storage-reset"].exists)
+        XCTAssertTrue(app.staticTexts.identified("settings-voice-storage-error").exists)
+        XCTAssertTrue(app.buttons.identified("settings-voice-storage-retry").exists)
+        XCTAssertTrue(app.buttons.identified("settings-voice-storage-reset").exists)
 
         XCTAssertTrue(app.openSettingsCategory(
             "settings-category-intelligence",
             revealing: "settings-remembered-voices-error"))
-        XCTAssertTrue(app.staticTexts["settings-remembered-voices-error"].exists)
-        XCTAssertTrue(app.buttons["settings-remembered-voices-retry"].exists)
-        XCTAssertTrue(app.buttons["settings-remembered-voices-delete-all"].exists)
+        XCTAssertTrue(app.staticTexts.identified("settings-remembered-voices-error").exists)
+        XCTAssertTrue(app.buttons.identified("settings-remembered-voices-retry").exists)
+        XCTAssertTrue(app.buttons.identified("settings-remembered-voices-delete-all").exists)
         attachScreenshot(of: app, named: "voice-storage-recovery")
 
-        app.buttons["settings-remembered-voices-delete-all"].click()
+        app.buttons.identified("settings-remembered-voices-delete-all").click()
         XCTAssertTrue(
-            app.staticTexts["settings-remembered-voices-error"]
+            app.staticTexts.identified("settings-remembered-voices-error")
                 .waitForDisappearance(timeout: 5))
         openCategory(
             "settings-category-intelligence",
             revealing: "settings-voice-storage-reset",
             in: app)
-        app.buttons["settings-voice-storage-reset"].click()
+        app.buttons.identified("settings-voice-storage-reset").click()
         XCTAssertTrue(
             app.control(withIdentifier: "settings-voice-enroll")
                 .waitForExistenceFast(timeout: 5))

@@ -13,9 +13,9 @@ final class SettingsTransferUITests: PortavozUITestCase {
         defer { app.terminate() }
         XCTAssertTrue(app.openSettingsCategory("settings-category-data", revealing: "settings-export-preferences"))
 
-        let dataCategory = app.buttons["settings-category-data"]
+        let dataCategory = app.buttons.identified("settings-category-data")
         XCTAssertEqual(dataCategory.label, target == "es" ? "Your data" : "Tus datos")
-        let export = app.buttons["settings-export-preferences"]
+        let export = app.buttons.identified("settings-export-preferences")
         XCTAssertTrue(export.exists)
         export.click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { FileManager.default.fileExists(atPath: output.path) })
@@ -23,17 +23,17 @@ final class SettingsTransferUITests: PortavozUITestCase {
         XCTAssertEqual(before["vocabulary"] as? String, "Existing")
         XCTAssertEqual(Set(before.keys), ["interfaceLanguage", "recognitionLanguage", "summaryLanguage",
             "menuBarVisible", "titleTemplate", "vocabulary", "dictationLanguage", "removeFillers", "replacements"])
-        let importButton = app.buttons["settings-import-preferences"]
+        let importButton = app.buttons.identified("settings-import-preferences")
         XCTAssertTrue(importButton.isEnabled)
         importButton.click()
-        let review = app.staticTexts["settings-preferences-review"]
+        let review = app.staticTexts.identified("settings-preferences-review")
         XCTAssertTrue(review.waitForExistenceFast(timeout: 5))
-        XCTAssertEqual(renderedText(of: app.staticTexts["settings-preferences-change-interfaceLanguage"]), target)
-        XCTAssertEqual(renderedText(of: app.staticTexts["settings-preferences-change-vocabulary"]),
+        XCTAssertEqual(renderedText(of: app.staticTexts.identified("settings-preferences-change-interfaceLanguage")), target)
+        XCTAssertEqual(renderedText(of: app.staticTexts.identified("settings-preferences-change-vocabulary")),
                        "Existing, Cóndor, Don’t, C++")
-        let cancel = app.buttons["settings-preferences-cancel"]
+        let cancel = app.buttons.identified("settings-preferences-cancel")
         XCTAssertTrue(cancel.exists)
-        XCTAssertTrue(app.buttons["settings-preferences-apply"].exists)
+        XCTAssertTrue(app.buttons.identified("settings-preferences-apply").exists)
         cancel.click()
         XCTAssertTrue(review.waitForDisappearance(timeout: 5))
         try FileManager.default.removeItem(at: output)
@@ -43,9 +43,9 @@ final class SettingsTransferUITests: PortavozUITestCase {
 
         importButton.click()
         XCTAssertTrue(review.waitForExistenceFast(timeout: 5))
-        app.buttons["settings-preferences-apply"].click()
+        app.buttons.identified("settings-preferences-apply").click()
         XCTAssertTrue(review.waitForDisappearance(timeout: 5))
-        XCTAssertTrue(app.staticTexts["settings-preferences-status"].waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(app.staticTexts.identified("settings-preferences-status").waitForExistenceFast(timeout: 5))
         // The sidebar is already mounted. Reading a fresh export alone cannot
         // prove that existing @AppStorage observers received the actual import.
         let translatedCategory = target == "es" ? "Tus datos" : "Your data"
@@ -53,7 +53,7 @@ final class SettingsTransferUITests: PortavozUITestCase {
         XCTAssertTrue(dataCategory.isSelected, "language changes must preserve the current pane")
         let audioTitle = target == "es" ? "Audio y dictado" : "Audio & dictation"
         XCTAssertTrue(waitForUITestCondition(timeout: 5) {
-            app.buttons["settings-category-audio"].label == audioTitle
+            app.buttons.identified("settings-category-audio").label == audioTitle
         }, "the mounted Audio category must also follow the imported language")
         try FileManager.default.removeItem(at: output)
         export.click()
@@ -80,11 +80,11 @@ final class SettingsTransferUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
         XCTAssertTrue(app.openSettingsCategory("settings-category-data", revealing: "settings-import-preferences"))
-        let importButton = app.buttons["settings-import-preferences"]
+        let importButton = app.buttons.identified("settings-import-preferences")
         importButton.click()
-        XCTAssertTrue(app.staticTexts["settings-preferences-status"].waitForExistenceFast(timeout: 5))
-        XCTAssertFalse(app.buttons["settings-preferences-apply"].exists)
-        app.buttons["settings-export-preferences"].click()
+        XCTAssertTrue(app.staticTexts.identified("settings-preferences-status").waitForExistenceFast(timeout: 5))
+        XCTAssertFalse(app.buttons.identified("settings-preferences-apply").exists)
+        app.buttons.identified("settings-export-preferences").click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { FileManager.default.fileExists(atPath: output.path) })
         XCTAssertEqual(try settings(at: output)["vocabulary"] as? String, "Existing")
         XCTAssertNil(try settings(at: output)["globalDictationEnabled"])
@@ -96,20 +96,20 @@ final class SettingsTransferUITests: PortavozUITestCase {
             ? "No hay ajustes por cambiar. Tus preferencias actuales no han cambiado."
             : "No settings to change. Your current preferences are unchanged."
         XCTAssertTrue(waitForUITestCondition(timeout: 5) {
-            renderedText(of: app.staticTexts["settings-preferences-status"]) == unchanged
+            renderedText(of: app.staticTexts.identified("settings-preferences-status")) == unchanged
         })
-        XCTAssertFalse(app.buttons["settings-preferences-apply"].exists)
+        XCTAssertFalse(app.buttons.identified("settings-preferences-apply").exists)
 
         try writeSettings(["vocabulary": "Recovered"], to: input)
         XCTAssertTrue(importButton.isEnabled)
         importButton.click()
-        let review = app.staticTexts["settings-preferences-review"]
+        let review = app.staticTexts.identified("settings-preferences-review")
         XCTAssertTrue(review.waitForExistenceFast(timeout: 5))
-        XCTAssertEqual(renderedText(of: app.staticTexts["settings-preferences-change-vocabulary"]), "Existing, Recovered")
+        XCTAssertEqual(renderedText(of: app.staticTexts.identified("settings-preferences-change-vocabulary")), "Existing, Recovered")
         typeKey(.escape, modifierFlags: [], in: app, modalAnchor: "settings-preferences-review")
         XCTAssertTrue(review.waitForDisappearance(timeout: 5))
         try FileManager.default.removeItem(at: output)
-        app.buttons["settings-export-preferences"].click()
+        app.buttons.identified("settings-export-preferences").click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { FileManager.default.fileExists(atPath: output.path) })
         XCTAssertEqual(try settings(at: output)["vocabulary"] as? String, "Existing")
         XCTAssertEqual(try settings(at: output)["replacements"] as? String, legacy)

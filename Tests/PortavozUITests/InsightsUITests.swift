@@ -15,7 +15,7 @@ final class InsightsUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.waitForSeededLibraryToSettle(),
             "the seeded library must settle before navigating away")
-        let insights = app.buttons["library-insights-button"]
+        let insights = app.buttons.identified("library-insights-button")
         XCTAssertTrue(insights.waitForExistenceFast(timeout: 15), "the library must offer Insights")
         insights.click()
 

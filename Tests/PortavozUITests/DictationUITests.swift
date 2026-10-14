@@ -19,10 +19,10 @@ final class DictationUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
         app.launchPortavoz()
         defer { app.terminate() }
-        let dictate = app.buttons["menu-bar-dictate"]
+        let dictate = app.buttons.identified("menu-bar-dictate")
         XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
         dictate.click()
-        let transcript = app.staticTexts["dictation-panel-transcript"]
+        let transcript = app.staticTexts.identified("dictation-panel-transcript")
         XCTAssertTrue(transcript.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(waitForUITestCondition(timeout: 5) {
             renderedText(of: transcript).contains("No borres estas notas.")
@@ -48,7 +48,7 @@ final class DictationUITests: PortavozUITestCase {
         XCTAssertNotEqual(board.changeCount, generation, "The clipboard was borrowed and restored, not skipped")
         let text = app.descendants(matching: .any)["dictation-recovery-text"]
         XCTAssertTrue(renderedText(of: text).contains("No borres estas notas."))
-        let discard = app.buttons["dictation-recovery-discard"]
+        let discard = app.buttons.identified("dictation-recovery-discard")
         XCTAssertTrue(discard.waitForStableFrame(timeout: 5))
         discard.click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { !discard.exists })
@@ -67,13 +67,13 @@ final class DictationUITests: PortavozUITestCase {
 
         for _ in 0..<2 {
             XCTAssertTrue(app.prepareForInteraction())
-            let dictate = app.buttons["menu-bar-dictate"]
+            let dictate = app.buttons.identified("menu-bar-dictate")
             XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
             dictate.click()
-            let state = app.staticTexts["dictation-panel-state"]
+            let state = app.staticTexts.identified("dictation-panel-state")
             XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: state) == message })
             XCTAssertFalse(app.descendants(matching: .any)["dictation-panel-meter"].exists)
-            let cancel = app.buttons["dictation-panel-cancel"]
+            let cancel = app.buttons.identified("dictation-panel-cancel")
             XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
             cancel.click()
             XCTAssertTrue(waitForUITestCondition(timeout: 5) { !cancel.exists })
@@ -91,10 +91,10 @@ final class DictationUITests: PortavozUITestCase {
 
         for _ in 0..<2 {
             XCTAssertTrue(app.prepareForInteraction())
-            let dictate = app.buttons["menu-bar-dictate"]
+            let dictate = app.buttons.identified("menu-bar-dictate")
             XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
             dictate.click()
-            let transcript = app.staticTexts["dictation-panel-transcript"]
+            let transcript = app.staticTexts.identified("dictation-panel-transcript")
             guard transcript.waitForExistenceFast(timeout: 5) else {
                 XCTFail("The running dictation must expose its transcript independently of the panel container.")
                 return
@@ -105,7 +105,7 @@ final class DictationUITests: PortavozUITestCase {
             for identifier in ["dictation-panel-state", "dictation-panel-target", "dictation-panel-meter"] {
                 XCTAssertEqual(app.descendants(matching: .any).matching(identifier: identifier).count, 1)
             }
-            let cancel = app.buttons["dictation-panel-cancel"]
+            let cancel = app.buttons.identified("dictation-panel-cancel")
             XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
             cancel.click()
             XCTAssertTrue(waitForUITestCondition(timeout: 5) { !cancel.exists })
@@ -120,14 +120,14 @@ final class DictationUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
         XCTAssertTrue(app.prepareForInteraction())
-        let dictate = app.buttons["menu-bar-dictate"]
+        let dictate = app.buttons.identified("menu-bar-dictate")
         let expected = "No borres estas notas. Café C++. Final"
         for _ in 0..<2 {
             XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
             dictate.click()
-            let transcript = app.staticTexts["dictation-panel-transcript"]
+            let transcript = app.staticTexts.identified("dictation-panel-transcript")
             XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: transcript) == expected })
-            let cancel = app.buttons["dictation-panel-cancel"]
+            let cancel = app.buttons.identified("dictation-panel-cancel")
             XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
             cancel.click()
             XCTAssertTrue(waitForUITestCondition(timeout: 5) { !transcript.exists })
@@ -141,22 +141,22 @@ final class DictationUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
         app.launchPortavoz()
         defer { app.terminate() }
-        let dictate = app.buttons["menu-bar-dictate"]
+        let dictate = app.buttons.identified("menu-bar-dictate")
         XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
         dictate.click()
-        let state = app.staticTexts["dictation-panel-state"]
+        let state = app.staticTexts.identified("dictation-panel-state")
         let message = UITestLocale.environmentLocale == "es"
             ? "Permite el acceso al micrófono en Ajustes del Sistema y vuelve a intentar el dictado."
             : "Allow microphone access in System Settings, then try dictation again."
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: state) == message })
         XCTAssertFalse(app.descendants(matching: .any)["dictation-panel-meter"].exists)
-        let cancel = app.buttons["dictation-panel-cancel"]
+        let cancel = app.buttons.identified("dictation-panel-cancel")
         XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
         cancel.click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { !cancel.exists })
         XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
         dictate.click()
-        let transcript = app.staticTexts["dictation-panel-transcript"]
+        let transcript = app.staticTexts.identified("dictation-panel-transcript")
         XCTAssertTrue(waitForUITestCondition(timeout: 5) {
             renderedText(of: transcript).contains("No borres estas notas.")
         })
@@ -172,24 +172,24 @@ final class DictationUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
         app.launchPortavoz()
         defer { app.terminate() }
-        let dictate = app.buttons["menu-bar-dictate"]
+        let dictate = app.buttons.identified("menu-bar-dictate")
         XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
         dictate.click()
-        let state = app.staticTexts["dictation-panel-state"]
+        let state = app.staticTexts.identified("dictation-panel-state")
         let message = UITestLocale.environmentLocale == "es"
             ? "No llegó audio del micrófono. Revisa el micrófono en los ajustes de Audio e inténtalo de nuevo."
             : "No microphone audio arrived. Check the microphone in Audio settings and try again."
         XCTAssertTrue(waitForUITestCondition(timeout: 10) { renderedText(of: state) == message })
-        let notice = app.staticTexts["dictation-panel-microphone-notice"]
+        let notice = app.staticTexts.identified("dictation-panel-microphone-notice")
         XCTAssertTrue(notice.exists)
-        XCTAssertFalse(app.staticTexts["dictation-panel-transcript"].exists)
-        let cancel = app.buttons["dictation-panel-cancel"]
+        XCTAssertFalse(app.staticTexts.identified("dictation-panel-transcript").exists)
+        let cancel = app.buttons.identified("dictation-panel-cancel")
         XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
         cancel.click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { !cancel.exists })
         XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
         dictate.click()
-        let transcript = app.staticTexts["dictation-panel-transcript"]
+        let transcript = app.staticTexts.identified("dictation-panel-transcript")
         XCTAssertTrue(waitForUITestCondition(timeout: 5) {
             renderedText(of: transcript).contains("No borres estas notas.")
         })
@@ -205,15 +205,15 @@ final class DictationUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
         app.launchPortavoz()
         defer { app.terminate() }
-        let dictate = app.buttons["menu-bar-dictate"]
+        let dictate = app.buttons.identified("menu-bar-dictate")
         XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
         dictate.click()
-        let state = app.staticTexts["dictation-panel-state"]
+        let state = app.staticTexts.identified("dictation-panel-state")
         let title = UITestLocale.environmentLocale == "es" ? "Preparando el dictado…" : "Preparing dictation…"
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: state) == title })
         XCTAssertFalse(app.descendants(matching: .any)["dictation-panel-meter"].exists)
-        XCTAssertFalse(app.staticTexts["dictation-panel-transcript"].exists)
-        let cancel = app.buttons["dictation-panel-cancel"]
+        XCTAssertFalse(app.staticTexts.identified("dictation-panel-transcript").exists)
+        let cancel = app.buttons.identified("dictation-panel-cancel")
         XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
         cancel.click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { !cancel.exists })
@@ -235,25 +235,25 @@ final class DictationUITests: PortavozUITestCase {
         enterDestinationRecovery(app)
         let text = app.descendants(matching: .any)["dictation-recovery-text"]
         XCTAssertTrue(renderedText(of: text).contains(recoveryFixtureText))
-        let status = app.staticTexts["dictation-recovery-copy-status"]
+        let status = app.staticTexts.identified("dictation-recovery-copy-status")
         let initial = renderedText(of: status)
         for identifier in ["dictation-recovery-copy", "dictation-recovery-reinsert", "dictation-recovery-discard"] {
-            let button = app.buttons[identifier]
+            let button = app.buttons.identified(identifier)
             XCTAssertTrue(button.waitForStableFrame(timeout: 5))
             XCTAssertFalse(button.label.isEmpty)
             XCTAssertEqual(app.buttons.matching(identifier: identifier).count, 1)
             XCTAssertTrue(app.dialogs["dictation-panel"].frame.contains(button.frame),
                           "Long destination names must not push recovery actions outside the panel")
         }
-        app.buttons["dictation-recovery-copy"].click()
+        app.buttons.identified("dictation-recovery-copy").click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: status) != initial })
         XCTAssertEqual(board.string(forType: .string), "Original recovery clipboard")
         XCTAssertTrue(text.exists, "A failed copy must retain the output")
-        app.buttons["dictation-recovery-copy"].click()
+        app.buttons.identified("dictation-recovery-copy").click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { board.string(forType: .string) == recoveryFixtureText })
         XCTAssertTrue(text.exists, "Copy does not discard the user's recovery option")
-        app.buttons["dictation-recovery-reinsert"].click()
-        XCTAssertTrue(app.staticTexts["dictation-panel-delivery-status"].waitForExistenceFast(timeout: 5))
+        app.buttons.identified("dictation-recovery-reinsert").click()
+        XCTAssertTrue(app.staticTexts.identified("dictation-panel-delivery-status").waitForExistenceFast(timeout: 5))
         XCTAssertFalse(text.exists)
     }
 
@@ -269,18 +269,18 @@ final class DictationUITests: PortavozUITestCase {
         let text = app.descendants(matching: .any)["dictation-recovery-text"]
         let original = renderedText(of: text)
         let originalFrame = app.dialogs["dictation-panel"].frame
-        let dictate = app.buttons["menu-bar-dictate"]
+        let dictate = app.buttons.identified("menu-bar-dictate")
         XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
         guard !originalFrame.intersects(dictate.frame) else {
             return XCTFail("The menu fixture must not place Dictate beneath the recovery panel")
         }
         dictate.click()
-        XCTAssertTrue(app.buttons["dictation-recovery-discard"].waitForStableFrame(timeout: 5))
+        XCTAssertTrue(app.buttons.identified("dictation-recovery-discard").waitForStableFrame(timeout: 5))
         XCTAssertEqual(renderedText(of: text), original)
         XCTAssertEqual(app.dialogs["dictation-panel"].frame, originalFrame,
                        "Revealing retained text must not move a self-sizing panel")
         app.activate()
-        let discard = app.buttons["dictation-recovery-discard"]
+        let discard = app.buttons.identified("dictation-recovery-discard")
         guard discard.isHittable else {
             return XCTFail("Activating the disposable menu window must not occlude recovery")
         }
@@ -289,8 +289,8 @@ final class DictationUITests: PortavozUITestCase {
                       "Discard must close the whole panel before another global trigger")
         XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
         dictate.click()
-        XCTAssertTrue(app.staticTexts["dictation-panel-transcript"].waitForExistenceFast(timeout: 5))
-        let cancel = app.buttons["dictation-panel-cancel"]
+        XCTAssertTrue(app.staticTexts.identified("dictation-panel-transcript").waitForExistenceFast(timeout: 5))
+        let cancel = app.buttons.identified("dictation-panel-cancel")
         XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
         cancel.click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { !cancel.exists })
@@ -312,17 +312,17 @@ final class DictationUITests: PortavozUITestCase {
             app.launchPortavoz()
             defer { app.terminate() }
             enterDestinationDelivery(app)
-            let status = app.staticTexts["dictation-panel-delivery-status"]
+            let status = app.staticTexts.identified("dictation-panel-delivery-status")
             let title = renderedText(of: status)
-            let detail = app.staticTexts["dictation-panel-delivery-detail"]
+            let detail = app.staticTexts.identified("dictation-panel-delivery-detail")
             XCTAssertTrue(detail.exists)
-            XCTAssertFalse(app.buttons["dictation-recovery-reinsert"].exists,
+            XCTAssertFalse(app.buttons.identified("dictation-recovery-reinsert").exists,
                            "An unacknowledged event is not an automatically retryable refusal")
             if verified {
                 XCTAssertTrue(title.contains("inserted") || title.contains("insertadas"), title)
                 XCTAssertTrue(["Nothing was saved in Portavoz.", "No se guardó nada en Portavoz."]
                     .contains(renderedText(of: detail)))
-                XCTAssertFalse(app.buttons["dictation-unverified-copy"].exists)
+                XCTAssertFalse(app.buttons.identified("dictation-unverified-copy").exists)
                 XCTAssertTrue(waitForUITestCondition(timeout: 5) { !status.exists })
             } else {
                 XCTAssertTrue(["Sent — insertion not verified", "Enviado — inserción sin verificar"]
@@ -348,21 +348,21 @@ final class DictationUITests: PortavozUITestCase {
 
         for attempt in 0..<2 {
             XCTAssertTrue(app.prepareForInteraction())
-            let dictate = app.buttons["menu-bar-dictate"]
+            let dictate = app.buttons.identified("menu-bar-dictate")
             XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
             dictate.click()
-            let state = app.staticTexts["dictation-panel-state"]
+            let state = app.staticTexts.identified("dictation-panel-state")
             let expectedState = attempt == 0 ? expectedFailure : (english ? "Dictating" : "Dictando")
             XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: state) == expectedState })
             if attempt == 0 {
                 XCTAssertFalse(app.descendants(matching: .any)["dictation-panel-meter"].exists)
             } else {
-                let transcript = app.staticTexts["dictation-panel-transcript"]
+                let transcript = app.staticTexts.identified("dictation-panel-transcript")
                 XCTAssertTrue(waitForUITestCondition(timeout: 5) {
                     renderedText(of: transcript).contains(expectedText)
                 })
             }
-            let cancel = app.buttons["dictation-panel-cancel"]
+            let cancel = app.buttons.identified("dictation-panel-cancel")
             XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
             cancel.click()
             XCTAssertTrue(waitForUITestCondition(timeout: 5) { !cancel.exists })
@@ -389,7 +389,7 @@ final class DictationUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DICTATION_PASTEBOARD"] = name
         app.launchPortavoz()
         defer { app.terminate() }
-        let start = app.buttons["dictation-native-start"]
+        let start = app.buttons.identified("dictation-native-start")
         guard start.waitForStableFrame(timeout: 5) else {
             return XCTFail("The isolated native insertion fixture must be explicitly armed")
         }
@@ -400,11 +400,11 @@ final class DictationUITests: PortavozUITestCase {
         receiver.launchEnvironment["PORTAVOZ_RECEIVER_DELAY_EDITOR"] = "1"
         receiver.launch()
         defer { receiver.terminate() }
-        let editor = receiver.textViews["dictation-receiver-editor"]
-        let enableEditor = receiver.buttons["dictation-receiver-enable-editor"]
+        let editor = receiver.textViews.identified("dictation-receiver-editor")
+        let enableEditor = receiver.buttons.identified("dictation-receiver-enable-editor")
         XCTAssertTrue(enableEditor.waitForStableFrame(timeout: 5))
         XCTAssertFalse(editor.exists, "A foreground receiver is not necessarily an editable destination")
-        let status = app.staticTexts["dictation-native-status"]
+        let status = app.staticTexts.identified("dictation-native-status")
         XCTAssertEqual(renderedText(of: status), "waiting-for-receiver",
                        "Read-only readiness must not spend the single paste on a non-editor responder")
         enableEditor.click()
@@ -452,10 +452,10 @@ final class DictationUITests: PortavozUITestCase {
             #"{"globalDictationEnabled":true,"dictationTextMode":"literal","dictationApplicationTextProfiles":"[]","dictationReplacements":"[{\"trigger\":\"notes\",\"replacement\":\"documents\"}]"}"#
         app.launchPortavoz()
         defer { app.terminate() }
-        let start = app.buttons["dictation-native-start"]
+        let start = app.buttons.identified("dictation-native-start")
         XCTAssertTrue(start.waitForStableFrame(timeout: 5))
         start.click()
-        let status = app.staticTexts["dictation-native-status"]
+        let status = app.staticTexts.identified("dictation-native-status")
         guard renderedText(of: status) == "waiting-for-receiver" else {
             XCTFail("Native controller fixture did not arm: \(renderedText(of: status))")
             return
@@ -464,9 +464,9 @@ final class DictationUITests: PortavozUITestCase {
         receiver.launchEnvironment["PORTAVOZ_RECEIVER_PASTEBOARD"] = name
         receiver.launch()
         defer { receiver.terminate() }
-        let editor = receiver.textViews["dictation-receiver-editor"]
+        let editor = receiver.textViews.identified("dictation-receiver-editor")
         XCTAssertTrue(editor.waitForExistenceFast(timeout: 5))
-        let transcript = app.staticTexts["dictation-panel-transcript"]
+        let transcript = app.staticTexts.identified("dictation-panel-transcript")
         guard waitForUITestCondition(timeout: 5, {
             renderedText(of: transcript).contains("Don't delete these notes.")
         }) else {
@@ -476,7 +476,7 @@ final class DictationUITests: PortavozUITestCase {
         let mode = app.menuButtons["dictation-panel-text-mode"]
         XCTAssertTrue(renderedText(of: mode).contains("Literal"))
         try clickNonactivatingControl(mode, from: receiver)
-        let clean = app.menuItems["dictation-panel-text-mode-clean"]
+        let clean = app.menuItems.identified("dictation-panel-text-mode-clean")
         // The gesture helper already waits for an actionable stable control;
         // a separate existence probe would repeat the same remote admission.
         try clickNonactivatingControl(clean, from: receiver)
@@ -533,55 +533,55 @@ private extension DictationUITests {
     @MainActor
     func enterDestinationRecovery(_ app: XCUIApplication) {
         XCTAssertTrue(app.prepareForInteraction())
-        let dictate = app.buttons["menu-bar-dictate"]
+        let dictate = app.buttons.identified("menu-bar-dictate")
         XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
         dictate.click()
-        XCTAssertTrue(app.staticTexts["dictation-panel-transcript"].waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(app.staticTexts.identified("dictation-panel-transcript").waitForExistenceFast(timeout: 5))
         XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
         dictate.click()
-        XCTAssertTrue(app.staticTexts["dictation-recovery-title"].waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(app.staticTexts.identified("dictation-recovery-title").waitForExistenceFast(timeout: 5))
     }
 
     @MainActor
     func enterDestinationDelivery(_ app: XCUIApplication) {
         XCTAssertTrue(app.prepareForInteraction())
-        let dictate = app.buttons["menu-bar-dictate"]
+        let dictate = app.buttons.identified("menu-bar-dictate")
         XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
         dictate.click()
-        XCTAssertTrue(app.staticTexts["dictation-panel-transcript"].waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(app.staticTexts.identified("dictation-panel-transcript").waitForExistenceFast(timeout: 5))
         dictate.click()
-        XCTAssertTrue(app.staticTexts["dictation-panel-delivery-status"].waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(app.staticTexts.identified("dictation-panel-delivery-status").waitForExistenceFast(timeout: 5))
     }
 
     @MainActor
     func assertUnverifiedRecovery(_ app: XCUIApplication, board: NSPasteboard) {
-        let text = app.staticTexts["dictation-unverified-text"]
+        let text = app.staticTexts.identified("dictation-unverified-text")
         XCTAssertEqual(renderedText(of: text), recoveryFixtureText)
-        let status = app.staticTexts["dictation-unverified-copy-status"]
+        let status = app.staticTexts.identified("dictation-unverified-copy-status")
         let originalStatus = renderedText(of: status)
         let panel = app.dialogs["dictation-panel"]
         let originalFrame = panel.frame
         for identifier in ["dictation-unverified-copy", "dictation-unverified-discard"] {
-            let button = app.buttons[identifier]
+            let button = app.buttons.identified(identifier)
             XCTAssertTrue(button.waitForStableFrame(timeout: 5))
             XCTAssertFalse(button.label.isEmpty)
             XCTAssertEqual(app.buttons.matching(identifier: identifier).count, 1)
             XCTAssertTrue(originalFrame.contains(button.frame))
         }
-        let copy = app.buttons["dictation-unverified-copy"]
+        let copy = app.buttons.identified("dictation-unverified-copy")
         copy.click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: status) != originalStatus })
         XCTAssertEqual(board.string(forType: .string), "Original delivery clipboard")
         XCTAssertTrue(text.exists, "Failed Copy must preserve output")
         copy.click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { board.string(forType: .string) == recoveryFixtureText })
-        let dictate = app.buttons["menu-bar-dictate"]
+        let dictate = app.buttons.identified("menu-bar-dictate")
         XCTAssertFalse(originalFrame.intersects(dictate.frame))
         dictate.click()
         // An unverified notice is non-modal: the next dictation starts and
         // replaces it, and the previous output is not sent again.
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { !text.exists }, "Another trigger starts a new capture")
-        let cancel = app.buttons["dictation-panel-cancel"]
+        let cancel = app.buttons.identified("dictation-panel-cancel")
         XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
         XCTAssertEqual(board.string(forType: .string), recoveryFixtureText, "A new capture never re-sends output")
         app.activate()

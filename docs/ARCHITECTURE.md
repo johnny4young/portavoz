@@ -6444,6 +6444,12 @@ reliability evidence retained from 9 Aug, is:
   more inward reveal and completed the workflow. The helper now continues its
   existing bounded attempt budget toward the viewport center until containment
   is also stably hittable; it adds no retry, sleep, or assertion exception;
+- test control locators resolve declared accessibility identifiers with an
+  exact `identifier` predicate and XCTest's unique `element` resolution. They
+  neither fall back to visible labels or propagated aliases nor choose a
+  `firstMatch`. Seed-content and localized-copy assertions retain their explicit
+  text queries; a native journey proves that a visible label cannot impersonate
+  an identifier. Waits, geometry, keyboard ownership and cleanup remain separate;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;
 - measured scale fixtures cover 5,000-segment detail, 100,000-segment search,
