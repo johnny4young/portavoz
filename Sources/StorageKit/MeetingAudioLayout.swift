@@ -10,6 +10,9 @@ public enum MeetingAudioLayout {
     /// Canonical channel extensions shared with meeting-bundle admission.
     /// Keep captured/compressed precedence; imported files retain their bytes.
     public static let channelExtensions = ["m4a", "caf", "wav", "mp3", "aac", "aiff", "aif", "m4b"]
+    /// Only lossless channels may be compressed; re-encoding lossy audio
+    /// would discard quality and the imported original.
+    public static let losslessChannelExtensions: Set<String> = ["caf", "wav", "aiff", "aif"]
 
     public static func channelFile(named channel: String, in directory: URL) -> URL? {
         for ext in channelExtensions {

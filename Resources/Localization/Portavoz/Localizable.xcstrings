@@ -17627,6 +17627,16 @@
         }
       }
     },
+    "Choose M4A, CAF, WAV, MP3, AAC, AIFF or M4B audio files to import.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige archivos de audio M4A, CAF, WAV, MP3, AAC, AIFF o M4B para importar."
+          }
+        }
+      }
+    },
     "Downloading Whisper %@… %lld%%": {
       "localizations": {
         "es": {

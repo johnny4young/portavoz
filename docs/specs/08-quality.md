@@ -9218,6 +9218,10 @@ scripted processor, then the actual bundle codec and fresh-identity remapping;
 the exported/reimported bytes match the unchanged original and AVAudioFile
 can read both owned copies. This proves format reuse and codec conservation,
 not model quality, native-panel interaction or every host decoder format.
+`AudioImportAdmissionTests` rejects a batch containing a format playback cannot
+locate without creating any meeting. `MeetingAudioWorkflowTests` pins that only
+lossless channels are compressible and that a mixed MP3/WAV meeting keeps the
+MP3 bytes while counting it on both sides of the savings.
 
 `AudioImportCompressionAdmissionTests` enters real Store/native-copy/workflow
 boundaries for failed WAV/AIFF refusal, digest-preserved explicit Retry and

@@ -25,7 +25,8 @@ struct LibraryView: View {
     private let briefTimer = Timer.publish(every: 300, on: .main, in: .common).autoconnect()
 
     /// Audio the importer accepts (drag-drop or the Import button).
-    private static let importTypes: [UTType] = [.audio, .mpeg4Audio, .wav, .mp3, .meetingBundle]
+    private static let importTypes: [UTType] =
+        AudioImportFormats.fileExtensions.compactMap { UTType(filenameExtension: $0) } + [.meetingBundle]
 
     private var state: LibraryModel.State { model.state }
 
@@ -283,8 +284,7 @@ struct LibraryView: View {
     }
 
     private func isAudio(_ url: URL) -> Bool {
-        ["m4a", "wav", "mp3", "aac", "aiff", "aif", "caf", "m4b"]
-            .contains(url.pathExtension.lowercased())
+        AudioImportFormats.admits(url.pathExtension)
     }
 
     private func chooseAudioToImport() {

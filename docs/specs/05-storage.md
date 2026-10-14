@@ -1992,7 +1992,8 @@ databases remain compatible. This does not certify private-library upgrades.
 `enqueueAudioImports` atomically admits distinct selected-file identities, their
 incomplete meeting rows and existing owner-leased `audio-import` jobs. It refuses
 changed input under an existing identity and rolls back a batch if a later file
-conflicts. `audioImportInput` requires the current lease; `cancelAudioImport`
+conflicts. A file extension outside `MeetingAudioLayout.channelExtensions`
+rejects the whole batch, because playback could not locate its copy. `audioImportInput` requires the current lease; `cancelAudioImport`
 retires queued or running ownership without making an incomplete import ready.
 The additive input table binds job and meeting together through a composite
 foreign key. Input is private and bounded to 1 MiB per file and 16 MiB per
@@ -2034,8 +2035,10 @@ directories require matching, validated input and job identities, a published
 copy and successful job completion; pending, running, failed, cancelled,
 tombstoned or inconsistent imports remain protected. Missing authority inside
 the reserved Imports namespace cannot become ordinary-recording permission.
-Existing non-import recordings and completed imports keep compression behavior;
-compression never rewrites input authority or substitutes a lossy Retry source.
+Existing non-import recordings and completed imports keep compression behavior
+for lossless channels (`MeetingAudioLayout.losslessChannelExtensions`: CAF, WAV,
+AIFF, AIF); imported MP3, AAC and M4B are never re-encoded. Compression never
+rewrites input authority or substitutes a lossy Retry source.
 Schema v53 adds the nonunique `meeting_on_audioDirectory` index to this exact
 owner lookup. The upgrade accepts existing duplicate paths; the same two-row
 admission query still rejects them. Query-plan regression uses the production

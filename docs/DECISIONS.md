@@ -19885,6 +19885,15 @@ D540 narrows the unattended selector claim: this permission-owned native case
 remains an explicit failing gate, not a hosted-catalog success.
 
 
+**October 13, 2026 clarification:** import admission and the channel-lookup
+catalog are one contract. Library selection and drop offer only
+`MeetingAudioLayout.channelExtensions` through ApplicationKit's
+`AudioImportFormats`, and StorageKit admission rejects any other extension,
+so an import that transcribes is always reachable by playback, Refine and
+export. Compression accepts only lossless channels (CAF, WAV, AIFF, AIF):
+re-encoding imported MP3, AAC or M4B would lose quality, delete the original
+and free little space.
+
 ## D523 — UI fixtures own explicit cross-process scratch, not runner containers
 
 A real seeded launch blocked its main thread while creating synthetic audio.

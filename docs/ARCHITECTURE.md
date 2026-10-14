@@ -179,6 +179,11 @@ first; selected external audio retains its original bytes and extension.
 Playback, Refine, clips and with-audio bundles therefore resolve those imports
 through the same channel contract. Partial staging names remain invisible,
 and attachment metadata still rejects unsupported extensions and path shapes.
+ApplicationKit's `AudioImportFormats` exposes the same catalog to Library
+selection and drop, and StorageKit import admission rejects any other
+extension, so every admitted import remains resolvable. Compression accepts
+only lossless channels (caf, wav, aiff, aif); imported mp3, aac and m4b are
+never re-encoded.
 
 Audio compression has an explicit ApplicationKit admission port. StorageKit
 admits only one live canonical directory owner; an import requires matching,

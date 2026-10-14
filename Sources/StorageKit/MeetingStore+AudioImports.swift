@@ -12,6 +12,9 @@ extension MeetingStore {
               Set(inputs.map(\.meetingID)).count == inputs.count else {
             throw StorageError.invalidImportedMeeting("admission needs 1...1000 distinct files")
         }
+        guard inputs.allSatisfy({ MeetingAudioLayout.channelExtensions.contains($0.fileExtension) }) else {
+            throw StorageError.invalidImportedMeeting("admission needs a supported audio format")
+        }
         var budget = 16 * 1_048_576
         let encoded = try inputs.map { input in
             let record = try AudioImportInputRecord.admission(input)

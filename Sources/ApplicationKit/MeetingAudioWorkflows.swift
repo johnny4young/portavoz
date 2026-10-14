@@ -2,6 +2,7 @@ import AudioPlaybackKit
 import Foundation
 import Observation
 import PortavozCore
+import StorageKit
 
 /// Resolved audio assets for one meeting. The application workflow knows the
 /// channel roles while the outer adapter decides where those files live.
@@ -15,9 +16,10 @@ public struct MeetingAudioChannels: Equatable, Sendable {
     }
 
     public var files: [URL] { [system, microphone].compactMap { $0 } }
-    public var containsRawAudio: Bool {
-        files.contains { $0.pathExtension.lowercased() != "m4a" }
+    public var rawFiles: [URL] {
+        files.filter { MeetingAudioLayout.losslessChannelExtensions.contains($0.pathExtension.lowercased()) }
     }
+    public var containsRawAudio: Bool { !rawFiles.isEmpty }
 }
 
 /// Outer filesystem adapter used by playback, compression, and clip export.
@@ -312,7 +314,7 @@ public struct CompressMeetingAudio: ApplicationUseCase {
         try Task.checkCancellation()
         let channels = try resolver.resolve(
             relativeAudioDirectory: request.relativeAudioDirectory)
-        let raw = channels.files.filter { $0.pathExtension.lowercased() != "m4a" }
+        let raw = channels.rawFiles
         guard !raw.isEmpty else { return MeetingAudioCompressionResult(bytesFreed: 0) }
         let before = compressor.totalBytes(of: channels.files)
         let allowed = try await compressionAdmission.canCompressMeetingAudio(
@@ -331,7 +333,7 @@ public struct CompressMeetingAudio: ApplicationUseCase {
         // Cancellation must not turn a successful compression into a visible
         // failure or prevent the route from rebuilding with canonical files.
         let afterURLs = Array(Set(
-            channels.files.filter { $0.pathExtension.lowercased() == "m4a" }
+            channels.files.filter { !raw.contains($0) }
                 + replacements
                 + raw))
         let after = compressor.totalBytes(of: afterURLs)

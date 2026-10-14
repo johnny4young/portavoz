@@ -2052,7 +2052,7 @@ the microphone only around merged transcript-confirmed local turns. The toggle
 restores the original mix without rewriting audio; mic-only recordings never
 receive channel attenuation, and clip export follows the selected mix.
 Compression uses an injected codec
-port and treats every raw channel as one failure-safe batch: an existing AAC
+port and treats every lossless (CAF/WAV/AIFF/AIF) channel as one failure-safe batch: an existing AAC
 output fails closed, all generated files must verify before any original is
 removed, and failures or cancellation remove only generated work. Clip export
 re-resolves current files after compression. The private app adapter retains
@@ -2140,7 +2140,9 @@ best-effort policy. Library mutation errors render outside the selectable List a
 dismissed or another mutation starts.
 
 The picker admits multiple audio files; drop admits every matching audio URL,
-not only the first. Mixed/multiple meeting bundles reject without partial
+not only the first. Both offer only the `AudioImportFormats` catalog that
+playback resolves, and admission rejects any other format with a localized
+message before anything is queued. Mixed/multiple meeting bundles reject without partial
 admission. Audio selection opens the import queue rather than waiting for ASR
 or stealing navigation on completion. The queue projects twenty rows at a time,
 puts unfinished work first, excludes trash, uses stable meeting identifiers,
@@ -3517,9 +3519,10 @@ The app adapter owns the configured recording root and canonical channel-file
 lookup. `AudioPlaybackKit` retains AVFoundation playback, Accelerate waveform
 analysis, AAC encoding, and mixed-range export. SwiftUI owns the transport
 controls, waveform drawing, and native save panel only. Compression operates
-on every raw channel as one failure-safe batch: existing canonical outputs are
+on every lossless channel as one failure-safe batch: existing canonical outputs are
 never replaced, generated outputs are removed on failure or cancellation, and
-no original is removed until all outputs verify. The shared compression-admission
+no original is removed until all outputs verify. Already-compressed imports
+stay byte-identical and are not offered compression. The shared compression-admission
 port keeps durable import copies protected until successful import completion,
 including failed/cancelled Retry sources and trash/restore. Its Store read fails
 closed for missing, inconsistent or aliased authority. Playback stays available
