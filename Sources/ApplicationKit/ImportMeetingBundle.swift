@@ -44,7 +44,7 @@ public struct ImportedMeetingBundleAttachment: Equatable, Sendable {
         let normalizedExtension = fileExtension
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
-        guard ["m4a", "caf", "wav"].contains(normalizedExtension) else {
+        guard MeetingAudioLayout.channelExtensions.contains(normalizedExtension) else {
             throw ImportMeetingBundleError.unsupportedAudioExtension(fileExtension)
         }
         self.channel = channel

@@ -957,6 +957,7 @@ def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
     if lowered in {
         "sources/applicationkit/processaudioimports+ownedadapters.swift",
+        "sources/applicationkit/audioimportformats.swift",
         "sources/applicationkit/processaudioimports.swift",
         "sources/platformkit/audioimportfiletransfer.swift",
         "sources/platformkit/localaudioimportfiles+acquisition.swift",

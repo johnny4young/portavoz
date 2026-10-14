@@ -41,6 +41,7 @@ final class MeetingDetailModel {
     private var metadataSuggestionState = MeetingDetailMetadataSuggestionState()
     private var didLoadVoiceSuggestions = false
     private var playbackDirectoryAttempt: String?
+    private let audioCompressionAdmission = MeetingDetailAudioCompressionState()
 
     init(
         meetingID: MeetingID,
@@ -78,6 +79,7 @@ final class MeetingDetailModel {
     /// invalidates the application playback facade and allows a clean reload
     /// if this route instance appears again.
     func invalidatePlayback() {
+        audioCompressionAdmission.invalidate()
         state.playback?.session.invalidate()
         state.playback = nil
         playbackDirectoryAttempt = nil
@@ -92,6 +94,7 @@ final class MeetingDetailModel {
                 reviewAccumulator.accepts(observationID: currentID)
             else { return }
             publish(update)
+            if MeetingDetailAudioCompressionState.requiresRefresh(update) { await refreshAudioCompressionAdmission() }
         }
     }
 
@@ -229,6 +232,10 @@ final class MeetingDetailModel {
         switch action {
         case .loadPlayback:
             await loadPlayback()
+            return nil
+        case .refreshCompressionPermission:
+            guard !Task.isCancelled else { return nil }
+            await refreshAudioCompressionAdmission()
             return nil
         case .compressAudio:
             return await compressAudio()
@@ -673,6 +680,8 @@ private extension MeetingDetailModel {
                 return
             }
             state.playback = prepared
+            // The route delivers its pending seek before the optional
+            // permission refresh can suspend this playback task.
         } catch is CancellationError {
             playbackDirectoryAttempt = nil
         } catch {
@@ -681,35 +690,35 @@ private extension MeetingDetailModel {
         }
     }
 
+    func refreshAudioCompressionAdmission() async {
+        guard let refreshed = await audioCompressionAdmission.refresh(state: state, client: client),
+              MeetingDetailAudioCompressionState.isCurrent(refreshed, state: state) else { return }
+        if state.playback?.canCompressAudio != refreshed.playback.canCompressAudio {
+            state.playback = refreshed.playback
+        }
+    }
+
     func compressAudio() async -> Effect? {
-        guard !state.isCompressingAudio,
-            state.playback?.canCompressAudio == true,
-            let relative = state.readModel?.meeting.audioDirectory
-        else { return nil }
+        guard let request = MeetingDetailAudioCompressionState.compressionRequest(for: state) else { return nil }
         state.isCompressingAudio = true
         state.audioCompressionMessage = nil
         defer { state.isCompressingAudio = false }
 
         do {
-            let result = try await client.compressMeetingDetailAudio(
-                CompressMeetingAudioRequest(relativeAudioDirectory: relative))
+            let result = try await client.compressMeetingDetailAudio(request)
             let previous = state.playback
             state.playback = nil
             playbackDirectoryAttempt = nil
             previous?.session.invalidate()
             await loadPlayback()
-            let freed = ByteCountFormatter.string(
-                fromByteCount: result.bytesFreed,
-                countStyle: .file)
-            state.audioCompressionMessage = L10n.format(
-                "Audio compressed — %@ freed.",
-                freed)
+            state.audioCompressionMessage = MeetingDetailAudioCompressionState.message(bytesFreed: result.bytesFreed)
             return .audioCompressed(result.bytesFreed)
         } catch is CancellationError {
             return nil
         } catch {
-            state.audioCompressionMessage = error.localizedDescription
-            return .operationFailed(error.localizedDescription)
+            let message = UseCaseErrorMessages.describe(error)
+            state.audioCompressionMessage = message
+            return .operationFailed(message)
         }
     }
 
@@ -750,22 +759,6 @@ private extension MeetingDetailModel {
             return .operationFailed(L10n.format(
                 "Could not remember the voice: %@",
                 UseCaseErrorMessages.describe(error)))
-        }
-    }
-}
-
-extension MeetingDetailModel {
-    /// The exact artifact one offer would produce — read-only, computed for
-    /// the confirmation sheet before anything durable exists.
-    func skillPreview(_ offer: MeetingSkillOffer, destination: String?) async -> MeetingSkillPreview? {
-        do {
-            return try await client.meetingDetailSkillPreview(
-                offer,
-                destination: destination)
-        } catch {
-            state.lastActionError = L10n.text(
-                "Could not build this action's preview.")
-            return nil
         }
     }
 }

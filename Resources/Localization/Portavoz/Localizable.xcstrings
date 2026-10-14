@@ -1731,6 +1731,16 @@
         }
       }
     },
+    "Complete the audio import before compressing it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completa la importación de audio antes de comprimirlo."
+          }
+        }
+      }
+    },
     "Filler filtering and replacements apply only in Clean mode.": {
       "localizations": {
         "es": {
@@ -17613,6 +17623,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Elige entre 1 y 1.000 archivos de audio para importar."
+          }
+        }
+      }
+    },
+    "Choose M4A, CAF, WAV, MP3, AAC, AIFF or M4B audio files to import.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige archivos de audio M4A, CAF, WAV, MP3, AAC, AIFF o M4B para importar."
           }
         }
       }

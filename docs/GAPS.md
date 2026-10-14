@@ -65,6 +65,19 @@ without widening transport. Native replay regressions for dismissal, deferral,
 cleared feedback, removed sources and confirmation still require execution before
 this item closes.
 
+### Meeting Detail compression permission delivery
+
+Compression admission uses an indexed exact directory-owner query and retains
+generation, session and directory fences. Its permission refresh is still
+awaited inline after core/job observations; the combined review stream has no
+bounded pending-event policy. A slow read can delay later review sections.
+The separate playback task now delivers pending seeks before its optional
+post-publication refresh; this does not bound the observation consumer.
+Coalescing requires one retained worker, one replaceable pending request and
+explicit cancellation/invalidation while preserving awaitable preparation.
+Scale and burst behavior still need native qualification; query-plan evidence
+does not establish UI latency or explain a full-suite duration limit.
+
 ### Global dictation capture and delivery qualification
 
 Microphone preparation now checks authorization before graph/model work, shares
