@@ -402,7 +402,7 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(app.waitForLiveTranscriptFrontier())
         let preview = app.control(withIdentifier: "recording-live-preview-microphone")
         XCTAssertTrue(preview.waitForExistenceFast(timeout: 8))
-        XCTAssertEqual(preview.label.trimmingCharacters(in: .whitespacesAndNewlines), "anal")
+        XCTAssertEqual(renderedText(of: preview).trimmingCharacters(in: .whitespacesAndNewlines), "anal")
         XCTAssertTrue(app.staticTexts["Estamos"].exists)
         XCTAssertTrue(app.resumeLiveTranscriptFixture())
         XCTAssertTrue(app.waitForLiveTranscriptFixtureToFinish())
