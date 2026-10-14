@@ -21,7 +21,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 - **🎧 Keep imported audio within reach** — replay, refine and share imported MP3, AAC, AIFF and M4B recordings; retry copies stay protected until importing finishes, already-compressed audio is never re-encoded, and import only offers formats Portavoz can play.
 
-- **🔄 Processing recovery** — meetings no longer stay stuck when a retry becomes ready or an interrupted worker's wait ends.
+- **🔄 Processing recovery** — meetings no longer stay stuck when a retry becomes ready, an interrupted worker's wait ends, or the library is briefly busy.
 
 ## October 9, 2026
 
