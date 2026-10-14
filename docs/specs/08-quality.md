@@ -9210,6 +9210,41 @@ unsupported or arbitrary third-party AX servers.
 
 ### Audio export bridge characterization
 
+`ImportedAudioReuseTests` checks both canonical channels across the eight
+explicit Library import extensions, bundle attachment admission, preserved
+m4a/caf/wav preference order, and invisible partial/unsupported filenames.
+A native synthetic AIFF passes durable selection/copy/publication with a
+scripted processor, then the actual bundle codec and fresh-identity remapping;
+the exported/reimported bytes match the unchanged original and AVAudioFile
+can read both owned copies. This proves format reuse and codec conservation,
+not model quality, native-panel interaction or every host decoder format.
+`AudioImportAdmissionTests` rejects a batch containing a format playback cannot
+locate without creating any meeting. `MeetingAudioWorkflowTests` pins that only
+lossless channels are compressible and that a mixed MP3/WAV meeting keeps the
+MP3 bytes while counting it on both sides of the savings.
+
+`AudioImportCompressionAdmissionTests` enters real Store/native-copy/workflow
+boundaries for failed WAV/AIFF refusal, digest-preserved explicit Retry and
+success-only compression. State, trash/restore, missing/corrupt authority,
+canonical-path aliases and ordinary recordings have independent controls.
+The codec double uses the existing native publication/verification/deletion
+seam, not a claim of host AAC availability. `MeetingDetailCompressionPermissionTests`
+holds the same player/waveform across pending-to-success permission refresh and
+read failure, without a timing sleep or navigation restart.
+An event-ordered characterization installs a controlled admission provider and
+requires playback preparation to return before it is consulted, preserving session, waveform and
+seek behavior. Independent cancellation and invalidation controls release a
+non-cooperative late permit and require it to remain unpublished. These model
+checks establish ordering and stale-result fencing, not a SwiftUI layout cause
+or native UI-latency qualification.
+
+`AudioCompressionDirectoryIndexTests` upgrades a v52 database that already has
+two owners of the same audio directory. The nonunique v53 index preserves those
+rows, and `EXPLAIN QUERY PLAN` over the production admission request changes
+from a table scan to indexed search. Existing duplicate-owner refusal controls
+remain separate. These checks do not measure native UI duration or qualify
+permission-refresh behavior under a sustained observation burst.
+
 `AudioExportSessionTests` drives the real internal callback bridge with immediate
 and held fake completions, including caller cancellation before/after start. It
 checks every known non-completed status and both existing domain error families,

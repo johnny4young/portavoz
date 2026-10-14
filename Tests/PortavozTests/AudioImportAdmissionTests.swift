@@ -1,3 +1,4 @@
+import ApplicationKit
 import Foundation
 import GRDB
 import PortavozCore
@@ -18,6 +19,20 @@ final class AudioImportAdmissionTests: XCTestCase {
             preferences: ImportMeetingPreferencesSnapshot(
                 transcriptLanguage: .automatic, summaryLanguage: .fixed(.spanish),
                 summaryFallbackLanguage: .english, vocabulary: ["C++", "café", "Don’t"]))
+    }
+
+    func testAdmissionRejectsFormatsPlaybackCannotLocateWithoutCreatingMeetings() async throws {
+        let store = try MeetingStore.inMemory()
+        let supported = input()
+        let unsupported = input(fileExtension: "flac")
+        do {
+            _ = try await store.enqueueAudioImports([supported, unsupported], at: now)
+            XCTFail("An import playback cannot locate must not be admitted")
+        } catch StorageError.invalidImportedMeeting {}
+        let admitted = try await store.detail(supported.meetingID)
+        XCTAssertNil(admitted)
+        XCTAssertFalse(AudioImportFormats.admits("flac"))
+        XCTAssertTrue(AudioImportFormats.admits("MP3"))
     }
 
     func testPopulatedV51MigrationAndReopenRetainInputAndExistingMeeting() async throws {

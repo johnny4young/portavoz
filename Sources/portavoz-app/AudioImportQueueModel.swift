@@ -215,7 +215,7 @@ final class AudioImportQueueModel {
 }
 
 enum AudioImportQueueError: Error, LocalizedError {
-    case busy, storage, partialRemoval, selectionLimit, mixedBundles
+    case busy, storage, partialRemoval, selectionLimit, mixedBundles, unsupportedFormat
 
     var errorDescription: String? {
         switch self {
@@ -224,6 +224,7 @@ enum AudioImportQueueError: Error, LocalizedError {
         case .partialRemoval: L10n.text("The meeting was deleted, but some audio files could not be removed.")
         case .mixedBundles: L10n.text("Import a meeting bundle on its own, or choose multiple audio files.")
         case .selectionLimit: L10n.text("Choose between 1 and 1,000 audio files to import.")
+        case .unsupportedFormat: L10n.text("Choose M4A, CAF, WAV, MP3, AAC, AIFF or M4B audio files to import.")
         }
     }
 }

@@ -456,6 +456,8 @@ private extension MeetingDetailView {
         playbackNavigation.runPerformanceSeekIfRequested(
             profile: sceneValues.performanceProfile,
             player: player)
+        guard !Task.isCancelled else { return }
+        await coordinator.refreshAudioCompressionPermission()
     }
 
     private func seekAndPlay(_ seconds: TimeInterval) {

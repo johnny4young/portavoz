@@ -928,7 +928,10 @@ already identity-remapped document from a private IntegrationsKit app adapter.
 That adapter reads, decodes, and remaps on a utility task; ApplicationKit does
 not add an IntegrationsKit dependency. The boundary clears every incoming
 machine-local audio path and accepts only one canonical `system` and/or
-`microphone` attachment with a normalized `m4a`, `caf`, or `wav` extension.
+`microphone` attachment with a normalized extension in the shared closed
+`MeetingAudioLayout.channelExtensions` catalog. It includes the original
+m4a/caf/wav formats and selected external mp3/aac/aiff/aif/m4b audio so a bundle
+can preserve the same bytes playback and Refine resolve.
 An app filesystem adapter stages those attachments only as
 `Audio/<fresh-meeting-id>/<channel>.<extension>` and removes a partial
 directory if writing fails.
@@ -966,10 +969,10 @@ aggregate through an `ExportMeetingBundleStore` port. `MeetingStore` implements
 that port with one GRDB read of the live meeting, cast, ordered transcript,
 newest immutable summary across recipes, notes, and Companion cards. The use
 case captures the relative audio directory, clears it before document
-assembly, optionally requests only unique validated system/microphone m4a/caf/wav
-attachments, and sends the result to an external-document port. It does not
-import IntegrationsKit or receive SwiftUI, AppKit, absolute paths, or localized
-copy.
+assembly, optionally requests only unique validated system/microphone attachments
+from that shared channel-extension catalog, and sends the result to an external-document
+port. It does not import IntegrationsKit or receive SwiftUI, AppKit, absolute paths,
+or localized copy.
 
 Private app adapters retain `RecordingsLocation` fallback resolution,
 `MeetingAudioLayout` preference order, best-effort omission of missing or
@@ -19881,6 +19884,15 @@ disposable app lacks Accessibility trust. No signing credential is persisted.
 D540 narrows the unattended selector claim: this permission-owned native case
 remains an explicit failing gate, not a hosted-catalog success.
 
+
+**October 13, 2026 clarification:** import admission and the channel-lookup
+catalog are one contract. Library selection and drop offer only
+`MeetingAudioLayout.channelExtensions` through ApplicationKit's
+`AudioImportFormats`, and StorageKit admission rejects any other extension,
+so an import that transcribes is always reachable by playback, Refine and
+export. Compression accepts only lossless channels (CAF, WAV, AIFF, AIF):
+re-encoding imported MP3, AAC or M4B would lose quality, delete the original
+and free little space.
 
 ## D523 — UI fixtures own explicit cross-process scratch, not runner containers
 

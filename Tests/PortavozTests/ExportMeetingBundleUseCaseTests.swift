@@ -14,7 +14,7 @@ final class ExportMeetingBundleUseCaseTests: XCTestCase {
             data: Data()))
         XCTAssertNil(ExportMeetingBundleAttachment(
             channel: .system,
-            fileExtension: "mp3",
+            fileExtension: "zip",
             data: Data()))
 
         let attachment = try XCTUnwrap(ExportMeetingBundleAttachment(

@@ -2052,7 +2052,7 @@ the microphone only around merged transcript-confirmed local turns. The toggle
 restores the original mix without rewriting audio; mic-only recordings never
 receive channel attenuation, and clip export follows the selected mix.
 Compression uses an injected codec
-port and treats every raw channel as one failure-safe batch: an existing AAC
+port and treats every lossless (CAF/WAV/AIFF/AIF) channel as one failure-safe batch: an existing AAC
 output fails closed, all generated files must verify before any original is
 removed, and failures or cancellation remove only generated work. Clip export
 re-resolves current files after compression. The private app adapter retains
@@ -2062,6 +2062,12 @@ state, player reconstruction, and typed export effects. Its playback task is
 keyed to the audio directory rather than review revisions, so cancellation by
 independent initial section updates cannot consume the only attempt. SwiftUI
 retains only transport controls, drawing, and the native save panel.
+After preparation publishes the player and waveform, that same view-owned task
+delivers pending seeks before awaiting the coordinator's explicit optional
+compression-permission refresh. Cancellation or invalidation prevents a late
+refresh from enabling compression or resurrecting an invalidated session.
+The model's read-only skill-preview request lives in a focused extension and
+uses the existing explicit action-error mutation on failure.
 
 Both `AudioClipExporter` overloads and `AudioTranscoder` use one internal
 `AudioExportSession` compatibility bridge. The native async path propagates its
@@ -2134,7 +2140,9 @@ best-effort policy. Library mutation errors render outside the selectable List a
 dismissed or another mutation starts.
 
 The picker admits multiple audio files; drop admits every matching audio URL,
-not only the first. Mixed/multiple meeting bundles reject without partial
+not only the first. Both offer only the `AudioImportFormats` catalog that
+playback resolves, and admission rejects any other format with a localized
+message before anything is queued. Mixed/multiple meeting bundles reject without partial
 admission. Audio selection opens the import queue rather than waiting for ASR
 or stealing navigation on completion. The queue projects twenty rows at a time,
 puts unfinished work first, excludes trash, uses stable meeting identifiers,
@@ -2338,9 +2346,9 @@ requests Spotlight reconciliation only after success, and returns the fresh ID;
 Library and app-delegate callers preserve their existing navigation order.
 The private document adapter reads, decodes, and remaps through IntegrationsKit
 on a detached utility task. Before files are created, ApplicationKit accepts
-only unique canonical system/microphone attachments and m4a/caf/wav
-extensions, clears any incoming machine-local directory, and coordinates a
-staged audio directory with one full Store commit. The private file adapter
+only unique canonical system/microphone attachments and the closed extensions
+in `MeetingAudioLayout.channelExtensions`, clears any incoming machine-local
+directory, and coordinates a staged audio directory with one full Store commit. The private file adapter
 constructs only `Audio/<fresh-id>/<channel>.<extension>`, cleans partial writes,
 and compensates a persistence failure without masking it. No interactive UI
 control or localized copy changed (D51).
@@ -2351,7 +2359,7 @@ meeting ID and audio opt-in, then maps returned bytes to its existing
 `ExportDocument`. The use case owns a read-consistent aggregate, clears the
 machine-local path, and assembles a format-neutral document. Private app
 adapters resolve the configured/fallback recordings root, load only available
-system/microphone m4a/caf/wav channels, and map to IntegrationsKit format v1.
+system/microphone channels in that same extension catalog, and map to IntegrationsKit format v1.
 Complete audio reads and JSON/base64 encoding run in detached utility tasks.
 The native file exporter, title-based filename, UTI, dismissal state, and
 localized failure alert are unchanged (D52).
@@ -3511,10 +3519,23 @@ The app adapter owns the configured recording root and canonical channel-file
 lookup. `AudioPlaybackKit` retains AVFoundation playback, Accelerate waveform
 analysis, AAC encoding, and mixed-range export. SwiftUI owns the transport
 controls, waveform drawing, and native save panel only. Compression operates
-on every raw channel as one failure-safe batch: existing canonical outputs are
+on every lossless channel as one failure-safe batch: existing canonical outputs are
 never replaced, generated outputs are removed on failure or cancellation, and
-no original is removed until all outputs verify. A successful conversion
-invalidates and rebuilds the session from current files. Without readable
+no original is removed until all outputs verify. Already-compressed imports
+stay byte-identical and are not offered compression. The shared compression-admission
+port keeps durable import copies protected until successful import completion,
+including failed/cancelled Retry sources and trash/restore. Its Store read fails
+closed for missing, inconsistent or aliased authority. Playback stays available
+while compression is hidden; core/job updates refresh permission without
+replacing the session or waveform, and the backend rechecks before codec work.
+Playback preparation itself does not await the optional post-publication
+refresh. The existing directory-keyed view task first delivers incoming citation
+and transcript seeks, then awaits the explicit refresh with the same model
+cancellation, generation, directory and session fences. No new task is retained.
+The directory-owner query is indexed. The observation consumer still awaits
+each permission refresh inline, so a slow read can delay later review sections;
+generation fencing discards stale results without coalescing queued updates.
+A successful conversion invalidates and rebuilds the session from current files. Without readable
 audio, the healthy transcript remains a normal text-only list. The same
 carousel also runs during live recording, but D129 gives it a separate visual
 policy and reader-owned follow state: direct user scroll disables automatic
