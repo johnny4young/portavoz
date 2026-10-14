@@ -2009,13 +2009,25 @@ worker death or exhaust the retry budget; only an actually expired running
 lease enters launch recovery.
 
 StorageKit isolates durable processing scheduling from job mutation. Its
-scheduling owner chooses one future wake by taking the minimum across pending
+scheduling owner chooses one wake by taking the minimum across pending
 `notBefore` retry dates and running `leaseExpiresAt` deadlines, limited to the
-worker's supported kinds and live meetings. The same owner performs repeat-safe
+worker's supported kinds and live meetings. A deadline that became due after
+the final claim is clamped to the scheduling timestamp, so it still requests
+recovery. Pending work with no retry date remains signal-driven, including
+intentional suspension; exhausted pending attempts cannot wake the worker,
+while a final running lease still wakes to publish exhaustion. The same owner
+performs repeat-safe
 expired-lease recovery, while the claim transaction invokes that recovery
 inline before selecting due work. The supervisor can therefore sleep without
 polling and still reclaim a dead worker even when launch recovery ran before
 the lease expired.
+
+ApplicationKit's pure `ProcessingWakeSchedule` preserves that durable deadline
+after a successful drain. If a claim/drain fails while a deadline still exists,
+the post-capture and audio-import owners defer the next wake by at least five
+seconds, retaining any later persisted deadline. A failed drain with no durable
+deadline still yields no timer. This avoids immediate retry loops during SQLite
+writer contention without introducing idle polling or changing lease ownership.
 
 The private macOS filesystem adapter
 revalidates staged/final files and reconciles them with persisted lifecycle

@@ -21,6 +21,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 - **🎧 Keep imported audio within reach** — replay, refine and share imported MP3, AAC, AIFF and M4B recordings, with retry copies protected until importing finishes.
 
+- **🔄 Processing recovery** — meetings no longer stay stuck when a retry becomes ready or an interrupted worker's wait ends.
+
 ## October 9, 2026
 
 - **🛡️ Safer recording moves** — protects conflicting audio copies and restores moved recordings if the new folder setting cannot be saved.

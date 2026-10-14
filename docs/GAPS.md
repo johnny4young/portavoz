@@ -16,6 +16,21 @@ protocols and full-certification scorecard preserve those missing results.
 Code readiness does not authorize publication or establish notarization,
 production sync reliability, universal hardware support or real-world quality.
 
+### Durable processing cancellation qualification
+
+A genuinely cancelled Swift task cannot persist `suspendProcessingJob` through
+GRDB's cancellation-aware write: the job retains its running lease and claim
+attempt. An independent cleanup task whose handle is retained and awaited can
+persist suspension, while the real owner fence still rejects cleanup after
+another worker takes over. This is a latent workflow cleanup boundary, not a
+confirmed reachable product failure: the post-capture supervisor never
+cancels its private drain task (the audio-import owner does, and retires its
+lease from a detached task), and a provider throwing `CancellationError`
+does not itself cancel the caller. The existing workflow fixture covers that
+thrown-error case. Real task cancellation of the complete use case, cancelled
+generation provenance, and supervisor wake rescheduling remain unverified;
+retained work must also be distinguished from delayed lease-based recovery.
+
 ### Recording migration safety
 
 The implementation now rejects divergent or unverifiable same-name destinations,
