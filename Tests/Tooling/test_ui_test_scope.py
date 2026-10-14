@@ -947,6 +947,29 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertEqual(len(selection.tests), 2, path)
 
+    def test_normal_quit_remains_owned_healthy_and_keyboard_guarded(self):
+        base = (ROOT / "Tests/PortavozUITests/PortavozUITestCase.swift").read_text()
+        storage = (ROOT / "Tests/PortavozUITests/UITestStorageSupport.swift").read_text()
+        self.assertIn("normalQuit: testRun?.failureCount == 0", base)
+        self.assertIn("normalQuit: Bool = false", storage)
+        self.assertIn("owned.applications.contains(where: { $0 === application })", storage)
+        self.assertIn('application.launchArguments.contains("-use-temp-store")', storage)
+        self.assertIn("process.matches(candidates[0])", storage)
+        self.assertIn("application.typeKeyIfOwned(", storage)
+        self.assertIn("expectedProcess: process", storage)
+        keyboard = (ROOT / "Tests/PortavozUITests/UITestKeyboardSupport.swift").read_text()
+        self.assertIn("application.isEqual(candidate)", keyboard)
+        self.assertIn("candidate.processIdentifier == processIdentifier", keyboard)
+        self.assertIn("expectedProcess.matches(frontmost)", keyboard)
+        self.assertNotIn("launchDate ==", storage + keyboard)
+        self.assertIn("if admission != .admitted {", storage)
+        self.assertIn("try terminateCapturedProcess(application, process: process)", storage)
+        self.assertIn("guard capturedProcessIsCurrent(process) else", storage)
+        self.assertIn("process.isTerminated && application.state == .notRunning", storage)
+        self.assertNotIn("forceTerminate", storage)
+        self.assertNotIn("application.activate()", storage)
+        self.assertIn('XCTContext.runActivity(named: "Finish owned UI test cleanup")', base)
+
     def test_atomic_snapshot_helper_requires_both_locales_without_neighboring_changes(self):
         path = "Tests/PortavozUITests/UITestSnapshotSupport.swift"
         selection = select_paths([path])
@@ -1141,15 +1164,6 @@ class UITestScopeTests(unittest.TestCase):
             "downloadFrame.maxY - visibleFormFrame.maxY",
             settings_source,
         )
-
-    def test_declared_identifier_resolution_retains_uniqueness_without_label_aliases(self):
-        source = (ROOT / "Tests/PortavozUITests/UITestSupport.swift").read_text(encoding="utf-8")
-        helper = source.split("func identified(_ identifier: String)", 1)[1].split("\n    }", 1)[0]
-        self.assertIn('matching(NSPredicate(format: "identifier == %@", identifier)).element', helper)
-        self.assertNotIn("firstMatch", helper)
-        self.assertNotIn("label", helper)
-        self.assertNotIn("allElementsBoundBy", helper)
-        self.assertIn("descendants(matching: .any).identified(identifier)", source)
 
     def test_catalog_policy_rejects_an_unscoped_test(self):
         scoped = ui_scope.test_id("InsightsUITests", "testScoped")

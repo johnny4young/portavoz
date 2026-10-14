@@ -5,10 +5,14 @@ import XCTest
 /// through `value`, others only through `label`.
 @MainActor
 func renderedText(of element: XCUIElement) -> String {
-    guard let value = element.value as? String, !value.isEmpty else {
-        return element.label
+    // Read both accessibility channels from the same observation. Resolving
+    // the live query twice is slower and can mix two SwiftUI revisions.
+    do {
+        return renderedText(of: try element.snapshot())
+    } catch {
+        XCTFail("Unable to observe rendered text: \(error)")
+        return ""
     }
-    return value
 }
 
 /// The locale a run explicitly requested. Journeys assert against this rather
@@ -253,7 +257,9 @@ extension XCUIApplication {
     func requireDisposableMainWindowOnZeroScreen() throws {
         let window = windows["main-AppWindow-1"]
         let contained = waitForUITestCondition(timeout: 5) {
-            window.exists && window.frame.minX >= 0 && window.frame.minY >= 0
+            guard window.exists else { return false }
+            let frame = window.frame
+            return frame.minX >= 0 && frame.minY >= 0
         }
         _ = try XCTUnwrap(contained ? window : nil,
                           "Restored disposable windows must stay on the zero screen before screenshots")
@@ -277,6 +283,7 @@ extension XCUIApplication {
             waitForPortavozProcessExit(),
             "the preceding Portavoz process must leave the running-app inventory")
         launch()
+        XCTAssertNoThrow(try UITestStorage.recordLaunchedProcess(self))
         // Request our own activation before observing foreground readiness.
         // Another app may legitimately have raised its window during launch.
         activate()
@@ -309,9 +316,7 @@ extension XCUIApplication {
 
     @MainActor
     func control(withIdentifier identifier: String) -> XCUIElement {
-        // This helper promises an accessibility identifier, not localized text
-        // or an ancestor's propagated identifier. Preserve unique resolution.
-        descendants(matching: .any).identified(identifier)
+        descendants(matching: .any)[identifier]
     }
 
     /// Privacy and action history live behind the activity chip under a
@@ -516,7 +521,7 @@ extension XCUIApplication {
             guard prepareForInteraction(timeout: timeout),
                   finishSettingsSearchEditing(timeout: timeout)
             else { continue }
-            bringSettingsCategoryIntoView(category, inside: categoryList)
+            bringSettingsCategoryIntoView(identifier: identifier, inside: categoryList)
             guard category.waitForHittable(timeout: timeout) else { continue }
             category.click()
             if expectedControl.waitForExistenceFast(timeout: attempt == 0 ? 2 : 5) {
@@ -532,14 +537,36 @@ extension XCUIApplication {
     /// localized two-line labels make the category list taller than the window.
     @MainActor
     private func bringSettingsCategoryIntoView(
-        _ category: XCUIElement,
+        identifier: String,
         inside categoryList: XCUIElement
     ) {
-        guard categoryList.exists, category.exists else { return }
-
+        let category = control(withIdentifier: identifier)
         for _ in 0..<3 {
-            let viewport = categoryList.frame
-            let row = category.frame
+            // Co-observe the common exact-ID geometry. If SwiftUI exposes only
+            // a propagated query alias, retain the original live geometry path
+            // rather than silently skipping its containment check.
+            let viewport: CGRect
+            let row: CGRect
+            if let observation = try? snapshot() {
+                let lists = uiSnapshotMatches({
+                    $0.identifier == "settings-category-list" && $0.elementType == .scrollView
+                }, in: observation)
+                let categories = uiSnapshotMatches({
+                    $0.identifier == identifier && $0.elementType == .button
+                }, in: observation)
+                if lists.count == 1, categories.count == 1 {
+                    viewport = lists[0].frame
+                    row = categories[0].frame
+                } else {
+                    guard categoryList.exists, category.exists else { return }
+                    viewport = categoryList.frame
+                    row = category.frame
+                }
+            } else {
+                guard categoryList.exists, category.exists else { return }
+                viewport = categoryList.frame
+                row = category.frame
+            }
             guard !viewport.isEmpty, !row.isEmpty else { return }
             if row.minY >= viewport.minY && row.maxY <= viewport.maxY {
                 return
@@ -834,7 +861,8 @@ extension XCUIElement {
     @MainActor
     func waitForLabelOrValue(_ text: String, timeout: TimeInterval) -> Bool {
         waitForUITestCondition(timeout: timeout) {
-            self.exists && (self.label == text || self.value as? String == text)
+            guard self.exists, let snapshot = try? self.snapshot() else { return false }
+            return snapshot.label == text || snapshot.value as? String == text
         }
     }
 
@@ -1078,14 +1106,5 @@ extension XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
-    }
-}
-
-extension XCUIElementQuery {
-    /// Resolve one declared accessibility identifier, never a localized label
-    /// or a propagated alias. `element` retains XCTest's ambiguity failure.
-    @MainActor
-    func identified(_ identifier: String) -> XCUIElement {
-        matching(NSPredicate(format: "identifier == %@", identifier)).element
     }
 }

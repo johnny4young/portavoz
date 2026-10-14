@@ -5723,7 +5723,15 @@ diagnostic only and cannot satisfy the final gate or publish an anchor.
 The UI bundle uses one main-actor, run-loop-driven bounded predicate helper for
 accessibility state instead of XCTest's one-second first-poll floor or fixed
 sleeps. Negative and inequality waits require element existence so absence
-cannot become a false pass. Localized moving controls stabilize their hit frame
+cannot become a false pass. Exact label-or-value predicates retain a fast
+presence gate, then co-observe both text channels through one fresh snapshot of
+the original live query; transient snapshot failure never satisfies a predicate. Static assertion groups use one
+immutable observation with exact identifiers, roles and copy, discarded before
+any user action. Settings category containment co-observes the category and its
+scroll viewport; an unavailable or aliased observation falls back to the original
+live-query geometry checks rather than skipping containment. Live input ownership, hittability, stability intervals, scroll limits,
+native actions and pane postconditions remain separate and unchanged.
+Localized moving controls stabilize their hit frame
 before activation. The stability interval begins with the first valid,
 nonempty hittable frame and resets on every movement or loss of hittability;
 it does not require an extra identical sample before starting the unchanged
@@ -5777,10 +5785,30 @@ stale frame or hittability state, and it never retries that activation. A
 failed first pass is evidence to diagnose, never authorization for an
 unchanged green retry.
 
-The harness retains `XCUIApplication.terminate()` for ordinary teardown: a
-measured AppKit termination request still made XCTest account for the same
-clean process-exit interval and therefore was not adopted as a cosmetic
-optimization. Startup continues to fence both XCTest state and LaunchServices'
+The case teardown owns final app disposal and scratch removal together.
+Only a completed case with zero recorded XCTest failures requests normal Quit;
+a missing test-run outcome, failure or interruption retains abrupt
+`XCUIApplication.terminate()`. Normal Quit requires the exact registered proxy's
+captured native application identity plus its immutable positive PID,
+revalidated against the unique current process using `NSRunningApplication`
+equality, and passes through the existing foreground/modal keyboard guard without
+activation. Cleanup additionally revalidates the captured process identity
+inside the keyboard dispatcher immediately before the key; ordinary input
+retains its existing default guards. Any exposed modal or background process
+conservatively uses XCTest termination without attempting Quit. Refused keyboard
+admission also falls back to XCTest termination after fresh launch-identity
+validation, never by following a stale proxy to a replacement process; an
+admitted Quit that does not exit fails at the original ten-second deadline.
+Unrecorded native-control fixture launches also retain XCTest termination.
+Mid-journey crash/recovery calls, compact-fixture sub-journey disposal and
+named-pasteboard lifetime defers are unchanged. A completed older process is
+recognized by its captured launch identity rather than a stale proxy's
+bundle-wide XCTest state; the final inventory fence runs after all owned
+participants exit. Final disposal remains inside
+the named owned-cleanup activity, with both XCTest state and LaunchServices
+process-exit proof before scratch deletion. There is no runtime exclusion for
+this work and no external force-termination or sandbox Apple event.
+Startup continues to fence both XCTest state and LaunchServices'
 exact test-host process inventory. On macOS, `.runningForeground` does not
 prove that Portavoz owns the frontmost key window throughout a long catalogue;
 startup and `prepareForInteraction()` therefore keep explicit activation. The
@@ -6444,12 +6472,6 @@ reliability evidence retained from 9 Aug, is:
   more inward reveal and completed the workflow. The helper now continues its
   existing bounded attempt budget toward the viewport center until containment
   is also stably hittable; it adds no retry, sleep, or assertion exception;
-- test control locators resolve declared accessibility identifiers with an
-  exact `identifier` predicate and XCTest's unique `element` resolution. They
-  neither fall back to visible labels or propagated aliases nor choose a
-  `firstMatch`. Seed-content and localized-copy assertions retain their explicit
-  text queries; a native journey proves that a visible label cannot impersonate
-  an identifier. Waits, geometry, keyboard ownership and cleanup remain separate;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;
 - measured scale fixtures cover 5,000-segment detail, 100,000-segment search,

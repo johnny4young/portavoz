@@ -20,7 +20,13 @@ class PortavozUITestCase: XCTestCase {
         // visible inside Tear Down. Runtime attribution then retains that work
         // instead of treating an apparently empty teardown as harness noise.
         let cleanup = XCTContext.runActivity(named: "Finish owned UI test cleanup") { _ in
-            Result { try UITestStorage.end(ownerID: storageOwnerID) }
+            // XCTest has recorded thrown and assertion failures before this
+            // boundary. Nil is not evidence of a healthy completed case.
+            Result {
+                try UITestStorage.end(
+                    ownerID: storageOwnerID,
+                    normalQuit: testRun?.failureCount == 0)
+            }
         }
         try await super.tearDown()
         _ = try cleanup.get()

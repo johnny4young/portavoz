@@ -15,7 +15,6 @@ final class AutomationUITests: PortavozUITestCase {
         XCTAssertTrue(personApp.wait(for: .notRunning, timeout: 10))
 
         let commitmentApp = try launchEntityRoute(.commitment)
-        defer { commitmentApp.terminate() }
         assertCommitmentEntityRoute(in: commitmentApp)
         attachScreenshot(of: commitmentApp, named: "app-entity-commitment-route")
     }
@@ -78,11 +77,6 @@ final class AutomationUITests: PortavozUITestCase {
     func testRecordingAutomationRoutesStartAndStopThroughVisibleApp() async throws {
         let app = try XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
         app.launchPortavoz()
-        defer {
-            if app.state != .notRunning {
-                app.terminate()
-            }
-        }
 
         let process = try activeDisposablePortavozProcess(in: app)
         XCTAssertEqual(
@@ -130,7 +124,6 @@ final class AutomationUITests: PortavozUITestCase {
             simulateAppIntent: true,
             simulateStopAppIntent: true)
         stopIntentApp.launchPortavoz()
-        defer { stopIntentApp.terminate() }
 
         XCTAssertTrue(
             stopIntentApp.control(withIdentifier: "recording-failure")

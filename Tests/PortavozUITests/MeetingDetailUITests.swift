@@ -13,7 +13,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(
             seedScale: true,
             scaleSegmentCount: 5_000)
-        defer { app.terminate() }
         app.launchPortavoz()
         XCTAssertTrue(
             app.waitForSeedFixtureReady(timeout: 45),
@@ -49,7 +48,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
             name: "scale-summary-20000",
             readyEnvironmentKey: "PORTAVOZ_UI_TEST_SCALE_SUMMARY_READY_PATH",
             continueEnvironmentKey: "PORTAVOZ_UI_TEST_SCALE_SUMMARY_CONTINUE_PATH")
-        defer { app.terminate() }
         app.launchPortavoz()
         XCTAssertTrue(
             app.waitForSeedFixtureReady(timeout: 45),
@@ -232,7 +230,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testCorrectedTranscriptMarksDerivedArtifactsStale() throws {
         let app = try launchOnSeededMeeting(staleDerived: true)
-        defer { app.terminate() }
         XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
 
         XCTAssertTrue(
@@ -244,7 +241,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 5),
             "the stale summary must expose explicit on-demand regeneration")
         XCTAssertFalse(
-            app.buttons.identified("detail-thin-summary-suggestion").exists,
+            app.buttons["detail-thin-summary-suggestion"].exists,
             "a stale summary must not compete with an unrelated thin-summary suggestion")
         selectRailTab("apuntador", in: app)
         XCTAssertTrue(
@@ -254,7 +251,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 10),
             "an Apuntador answer generated before the correction must be labelled stale")
         XCTAssertTrue(
-            app.buttons.identified("detail-apuntador-refresh").waitForExistenceFast(timeout: 5),
+            app.buttons["detail-apuntador-refresh"].waitForExistenceFast(timeout: 5),
             "stale Apuntador answers must expose one explicit section refresh")
         XCTAssertFalse(
             app.control(
@@ -270,10 +267,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let app = try launchOnSeededMeeting(
             staleDerived: true,
             simulateApuntadorRefreshSuccess: true)
-        defer { app.terminate() }
 
         selectRailTab("apuntador", in: app)
-        let refresh = app.buttons.identified("detail-apuntador-refresh")
+        let refresh = app.buttons["detail-apuntador-refresh"]
         XCTAssertTrue(
             refresh.waitForExistenceFast(timeout: 10),
             "the stale Apuntador snapshot must offer explicit regeneration")
@@ -293,7 +289,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 .waitForDisappearance(timeout: 10),
             "the stale card must be replaced only after current publication succeeds")
         XCTAssertTrue(
-            app.buttons.identified("detail-apuntador-refresh").waitForDisappearance(timeout: 10),
+            app.buttons["detail-apuntador-refresh"].waitForDisappearance(timeout: 10),
             "the refresh control must disappear once every card matches current corrections")
         attachScreenshot(of: app, named: "meeting-detail-apuntador-refreshed")
     }
@@ -303,10 +299,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let app = try launchOnSeededMeeting(
             staleDerived: true,
             simulateSequoiaCapabilities: true)
-        defer { app.terminate() }
 
         selectRailTab("apuntador", in: app)
-        let refresh = app.buttons.identified("detail-apuntador-refresh")
+        let refresh = app.buttons["detail-apuntador-refresh"]
         XCTAssertTrue(
             refresh.waitForStableFrame(timeout: 10),
             "Sequoia must expose the explicit action without pretending it can run")
@@ -325,14 +320,13 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 .exists,
             "an unavailable provider must preserve the previous stale snapshot")
         XCTAssertTrue(
-            app.buttons.identified("detail-apuntador-refresh").exists,
+            app.buttons["detail-apuntador-refresh"].exists,
             "the explicit retry must remain available after an unavailable pass")
     }
 
     @MainActor
     func testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo() throws {
         let app = try launchOnSeededMeeting()
-        defer { app.terminate() }
 
         let correct = app.buttons[
             "transcript-correct-B5B00000-0000-4000-8000-000000000002"]
@@ -369,7 +363,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             acceptedEvidence.waitForExistenceFast(timeout: 5),
             "the accepted transcript must remain available as immutable evidence")
 
-        let textEditor = app.textViews.identified("transcript-correction-text")
+        let textEditor = app.textViews["transcript-correction-text"]
         XCTAssertTrue(textEditor.waitForExistenceFast(timeout: 5))
         textEditor.click()
         typeKey("a", modifierFlags: .command, in: app, modalAnchor: "transcript-correction-text")
@@ -385,7 +379,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "one focused edit must support speaker correction beside text")
         localSpeaker.click()
         attachScreenshot(of: app, named: "transcript-correction-original-evidence")
-        app.buttons.identified("transcript-correction-save").click()
+        app.buttons["transcript-correction-save"].click()
 
         let transcript = app.control(withIdentifier: "detail-transcript-section")
         let correctedReading = transcript.descendants(matching: .staticText)
@@ -402,7 +396,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             correct.revealVertically(in: transcriptScroll, maxScrolls: 4),
             "the corrected source action must remain visible before undo")
         correct.click()
-        let undo = app.buttons.identified("transcript-correction-undo")
+        let undo = app.buttons["transcript-correction-undo"]
         XCTAssertTrue(
             undo.waitForExistenceFast(timeout: 5),
             "an active correction must expose durable restore-based undo")
@@ -433,6 +427,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let app = try launchOnSeededMeeting(
             compactWindow: !minimumWindow,
             minimumWindow: minimumWindow)
+        // This helper owns a sub-journey, not final case disposal: each compact
+        // fixture must exit before the next one launches.
         defer { app.terminate() }
 
         let window = app.windows["main-AppWindow-1"]
@@ -441,21 +437,21 @@ final class MeetingDetailUITests: PortavozUITestCase {
             window.frame.height, 640,
             "the disposable fixture must actually use a compact window")
 
-        let transcriptPane = app.buttons.identified("detail-compact-transcript")
-        let summaryPane = app.buttons.identified("detail-compact-summary")
+        let transcriptPane = app.buttons["detail-compact-transcript"]
+        let summaryPane = app.buttons["detail-compact-summary"]
         guard transcriptPane.waitForExistenceFast(timeout: 10), summaryPane.exists else {
             attachScreenshot(of: app, named: "compact-pane-selector-absent")
             XCTFail("both compact reading panes must remain independently accessible")
             return window.frame.height
         }
-        XCTAssertTrue(app.buttons.identified("player-play-pause").exists)
+        XCTAssertTrue(app.buttons["player-play-pause"].exists)
 
         summaryPane.click()
         XCTAssertTrue(
             app.control(withIdentifier: "detail-generated-document")
                 .waitForExistenceFast(timeout: 5),
             "compact layout must keep the generated summary reachable")
-        XCTAssertTrue(app.buttons.identified("player-play-pause").exists)
+        XCTAssertTrue(app.buttons["player-play-pause"].exists)
         if !minimumWindow {
             let source = app.control(withIdentifier: "summary-evidence-0")
             let material = app.control(withIdentifier: "detail-artifacts-section")
@@ -508,7 +504,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence() throws {
         let app = try launchOnSeededMeeting()
-        defer { app.terminate() }
 
         let sourceID = "B5B00000-0000-4000-8000-000000000002"
         let neighborID = "B5F00000-0000-4000-8000-000000000001"
@@ -521,7 +516,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         }
         correct.click()
 
-        let split = app.buttons.identified("transcript-structure-split")
+        let split = app.buttons["transcript-structure-split"]
         XCTAssertTrue(
             split.waitForExistenceFast(timeout: 5),
             "one accepted line with spoken duration must offer an explicit split")
@@ -533,7 +528,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(app.control(
             withIdentifier: "transcript-structure-split-time").exists)
         attachScreenshot(of: app, named: "transcript-structural-split-evidence")
-        app.buttons.identified("transcript-structure-confirm").click()
+        app.buttons["transcript-structure-confirm"].click()
 
         XCTAssertTrue(
             app.staticTexts["El rollout del modelo"].waitForExistenceFast(timeout: 5))
@@ -548,7 +543,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             splitCorrection.revealVertically(in: transcriptScroll, maxScrolls: 4),
             "the split source action must be fully visible before restore")
         splitCorrection.click()
-        let splitUndo = app.buttons.identified("transcript-structure-undo")
+        let splitUndo = app.buttons["transcript-structure-undo"]
         XCTAssertTrue(splitUndo.waitForExistenceFast(timeout: 5))
         splitUndo.click()
         let correctionEditor = app.control(
@@ -576,7 +571,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(sheet.staticTexts["El rollout del modelo queda para el viernes."].exists)
         XCTAssertTrue(sheet.staticTexts["¿Cuándo es el rollout?"].exists)
         attachScreenshot(of: app, named: "transcript-structural-correction-evidence")
-        app.buttons.identified("transcript-structure-confirm").click()
+        app.buttons["transcript-structure-confirm"].click()
 
         XCTAssertTrue(
             app.staticTexts[
@@ -589,7 +584,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             correct.revealVertically(in: transcriptScroll, maxScrolls: 4),
             "the merged source action must be fully visible before restore")
         correct.click()
-        let undo = app.buttons.identified("transcript-structure-undo")
+        let undo = app.buttons["transcript-structure-undo"]
         XCTAssertTrue(
             undo.waitForExistenceFast(timeout: 5),
             "merged evidence must expose durable restore-based undo")
@@ -609,16 +604,16 @@ final class MeetingDetailUITests: PortavozUITestCase {
             correct.revealVertically(in: transcriptScroll, maxScrolls: 4),
             "the restored source action must be fully visible before hiding")
         correct.click()
-        let hide = app.buttons.identified("transcript-structure-suppress")
+        let hide = app.buttons["transcript-structure-suppress"]
         XCTAssertTrue(hide.waitForExistenceFast(timeout: 5))
         hide.click()
-        app.buttons.identified("transcript-structure-confirm").click()
+        app.buttons["transcript-structure-confirm"].click()
 
         XCTAssertTrue(
             restoredReading.waitForDisappearance(timeout: 10),
             "hiding must remove the accepted reading from the visible transcript")
 
-        let hiddenLines = app.buttons.identified("transcript-hidden-lines")
+        let hiddenLines = app.buttons["transcript-hidden-lines"]
         XCTAssertTrue(
             hiddenLines.waitForExistenceFast(timeout: 5),
             "suppressed speech must remain discoverable as hidden evidence")
@@ -642,7 +637,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testUnnamedSpeakerOffersExplicitNameSuggestions() throws {
         let app = try launchOnSeededMeeting(unnamedSpeaker: true)
-        defer { app.terminate() }
 
         XCTAssertTrue(
             app.control(withIdentifier: "detail-header-section")
@@ -667,26 +661,25 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let app = try launchOnSeededMeeting(
             unnamedSpeaker: true,
             aiSuggestions: true)
-        defer { app.terminate() }
 
-        let titleDismiss = app.buttons.identified("detail-title-suggestion-dismiss")
+        let titleDismiss = app.buttons["detail-title-suggestion-dismiss"]
         XCTAssertTrue(titleDismiss.waitForExistenceFast(timeout: 10))
         titleDismiss.click()
-        XCTAssertFalse(app.buttons.identified("detail-title-suggestion").exists)
+        XCTAssertFalse(app.buttons["detail-title-suggestion"].exists)
 
         XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
-        let recipeDismiss = app.buttons.identified("detail-recipe-suggestion-dismiss")
+        let recipeDismiss = app.buttons["detail-recipe-suggestion-dismiss"]
         XCTAssertTrue(recipeDismiss.waitForExistenceFast(timeout: 10))
         recipeDismiss.click()
-        XCTAssertFalse(app.buttons.identified("detail-recipe-suggestion").exists)
+        XCTAssertFalse(app.buttons["detail-recipe-suggestion"].exists)
 
         let suggestNames = app.control(withIdentifier: "detail-suggest-names")
         XCTAssertTrue(suggestNames.waitForExistenceFast(timeout: 5))
         suggestNames.click()
-        let nameDismiss = app.buttons.identified("detail-name-suggestion-dismiss-S1")
+        let nameDismiss = app.buttons["detail-name-suggestion-dismiss-S1"]
         XCTAssertTrue(nameDismiss.waitForExistenceFast(timeout: 10))
         nameDismiss.click()
-        XCTAssertFalse(app.buttons.identified("detail-name-suggestion-S1").exists)
+        XCTAssertFalse(app.buttons["detail-name-suggestion-S1"].exists)
 
         XCTAssertTrue(
             app.control(withIdentifier: "player-clear-playback")
@@ -698,7 +691,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testFailedDurableProcessingOffersOneRecoveryAction() throws {
         let app = try launchOnSeededMeeting(processingFailure: true)
-        defer { app.terminate() }
 
         XCTAssertTrue(
             app.control(withIdentifier: "detail-trust-section")
@@ -708,7 +700,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.control(withIdentifier: "detail-processing-status")
                 .waitForExistenceFast(timeout: 10),
             "a durable failure must be visible beside the meeting")
-        let retry = app.buttons.identified("detail-retry-processing")
+        let retry = app.buttons["detail-retry-processing"]
         XCTAssertTrue(
             retry.waitForExistenceFast(timeout: 5),
             "a terminal durable failure must expose one explicit retry action")
@@ -719,15 +711,14 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testAbandonedAutomaticSummarySaysSoBesideGeneration() throws {
         let app = try launchOnSeededMeeting(withoutSummary: true, abandonedSummary: true)
-        defer { app.terminate() }
         XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
 
-        let notice = app.staticTexts.identified("detail-summary-abandoned")
+        let notice = app.staticTexts["detail-summary-abandoned"]
         XCTAssertTrue(
             notice.waitForExistenceFast(timeout: 10),
             "a cancelled automatic summary must be visible, not silently absent")
         XCTAssertTrue(
-            app.buttons.identified("detail-generate-summary").waitForExistenceFast(timeout: 10),
+            app.buttons["detail-generate-summary"].waitForExistenceFast(timeout: 10),
             "the explicit generation route must stay available beside the notice")
         XCTAssertTrue(
             app.prepareForInteraction(),
@@ -741,16 +732,15 @@ final class MeetingDetailUITests: PortavozUITestCase {
             withoutSummary: true,
             simulateSequoiaCapabilities: true,
             summaryEngine: "appleOnDevice")
-        defer { app.terminate() }
         XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
 
-        let generate = app.buttons.identified("detail-generate-summary")
+        let generate = app.buttons["detail-generate-summary"]
         XCTAssertTrue(
             generate.waitForExistenceFast(timeout: 10),
             "a meeting without a summary must offer generation")
         generate.click()
 
-        let openSettings = app.buttons.identified("detail-summary-open-settings")
+        let openSettings = app.buttons["detail-summary-open-settings"]
         XCTAssertTrue(
             openSettings.waitForExistenceFast(timeout: 10),
             "an unavailable Apple engine must offer an actionable Settings route")
@@ -779,7 +769,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.finishSettingsSearchEditing(timeout: 5),
             "the recovery deep link must finish search editing without changing its destination")
-        XCTAssertEqual(app.textFields.identified("settings-search-field").value as? String, "")
+        XCTAssertEqual(app.textFields["settings-search-field"].value as? String, "")
 
         let status = app.control(withIdentifier: "settings-apuntador-status")
         XCTAssertTrue(
@@ -805,7 +795,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testMeetingReviewSurfacesRemainCompleteAndActionable() throws {
         let app = try launchOnSeededMeeting()
-        defer { app.terminate() }
         XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
 
         // One launch owns the static review surfaces for this exact seeded
@@ -837,7 +826,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 10),
             "the right rail must show meeting health")
         XCTAssertTrue(
-            app.buttons.identified("detail-privacy-receipt").waitForExistenceFast(timeout: 10),
+            app.buttons["detail-privacy-receipt"].waitForExistenceFast(timeout: 10),
             "the header must show the local privacy chip")
         let activity = openActivity(in: app)
         XCTAssertTrue(
@@ -952,7 +941,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testEvidenceSourcesJumpToTheirExactTranscriptAndAudio() throws {
         let app = try launchOnSeededMeeting()
-        defer { app.terminate() }
         XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
 
         let source = app.control(withIdentifier: "summary-evidence-0")
@@ -970,7 +958,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             source.waitForStableFrame(),
             "the localized source control must finish layout before activation")
         source.click()
-        let compactTranscript = app.buttons.identified("detail-compact-transcript")
+        let compactTranscript = app.buttons["detail-compact-transcript"]
         if compactTranscript.exists {
             XCTAssertTrue(
                 compactTranscript.waitForSelection(timeout: 5),
@@ -1065,7 +1053,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testDecisionCanBeConfirmedAboutATopic() throws {
         let app = try launchOnSeededMeeting()
-        defer { app.terminate() }
         XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
 
         let decisions = app.control(withIdentifier: "summary-tab-1")
@@ -1083,7 +1070,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let statement = app.control(withIdentifier: "decision-confirm-statement")
         XCTAssertTrue(statement.exists, "the sheet quotes the exact statement")
 
-        let field = app.textFields.identified("decision-confirm-topic-field")
+        let field = app.textFields["decision-confirm-topic-field"]
         XCTAssertTrue(field.waitForExistenceFast(timeout: 5))
         field.click()
         typeText("atlasrollout", in: app, modalAnchor: "decision-confirm-topic-field")
@@ -1132,7 +1119,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testSkillProposalJourneyFromBannerToReceipt() throws {
         let app = try launchOnSeededMeeting()
-        defer { app.terminate() }
 
         let menu = app.control(withIdentifier: "skill-offer-menu")
         XCTAssertTrue(
@@ -1145,7 +1131,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
         // 1 · Preview: the sheet shows the exact draft before any claim.
         menu.click()
-        let recapItem = app.menuItems.identified("skill-offer-recap-draft")
+        let recapItem = app.menuItems["skill-offer-recap-draft"]
         guard recapItem.waitForExistenceFast(timeout: 5) else {
             XCTFail("the open skill menu must expose the recap proposal")
             return
@@ -1153,7 +1139,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         recapItem.click()
         let sheet = app.control(withIdentifier: "skill-confirm-sheet")
         XCTAssertTrue(sheet.waitForExistenceFast(timeout: 5))
-        let cancel = app.buttons.identified("skill-confirm-cancel")
+        let cancel = app.buttons["skill-confirm-cancel"]
         XCTAssertTrue(cancel.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(cancel.isEnabled)
         let body = app.control(withIdentifier: "skill-confirm-preview-body")
@@ -1165,7 +1151,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
         // 2 · Confirm: the effect lands on the clipboard and the durable
         // receipt renders in the trust rail.
-        let submit = app.buttons.identified("skill-confirm-submit")
+        let submit = app.buttons["skill-confirm-submit"]
         XCTAssertTrue(
             submit.waitForStableFrame(timeout: 5),
             "the confirmation sheet must expose a stable submit button")
@@ -1196,7 +1182,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "skill-offer-dismiss-email-recap-draft"]
         let gistDismiss = app.menuItems[
             "skill-offer-dismiss-secret-gist-publish"]
-        let exportDismiss = app.menuItems.identified("skill-offer-dismiss-package-export")
+        let exportDismiss = app.menuItems["skill-offer-dismiss-package-export"]
 
         // AppKit can discard the first synthetic menu-open event while the
         // confirmed offer's view identity is being replaced. Re-resolve the
@@ -1220,7 +1206,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             gistDismiss.exists,
             "remote Gist publication remains an independent unperformed intent")
         XCTAssertFalse(
-            app.menuItems.identified("skill-offer-recap-draft").exists,
+            app.menuItems["skill-offer-recap-draft"].exists,
             "the draft exists — the offer must not ask again")
         emailDismiss.click()
 
@@ -1245,13 +1231,12 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testEmailRecapSkillPreviewsAndHandsOffWithoutSending() throws {
         let app = try launchOnSeededMeeting()
-        defer { app.terminate() }
 
         let menu = app.control(withIdentifier: "skill-offer-menu")
         XCTAssertTrue(menu.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(menu.waitForStableFrame(timeout: 10))
         menu.click()
-        let email = app.menuItems.identified("skill-offer-email-recap-draft")
+        let email = app.menuItems["skill-offer-email-recap-draft"]
         guard email.waitForExistenceFast(timeout: 5) else {
             XCTFail("the meeting must expose its review-first email draft")
             return
@@ -1294,7 +1279,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             boundaryText.contains(expectedBoundaryCopy),
             "expected email boundary in accessible text, got: \(boundaryText)")
 
-        let submit = app.buttons.identified("skill-confirm-submit")
+        let submit = app.buttons["skill-confirm-submit"]
         XCTAssertTrue(submit.waitForStableFrame(timeout: 5))
         let expectedSubmit = UITestLocale.environmentLocale == "es"
             ? "Abrir borrador de email"
@@ -1322,11 +1307,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
         menu.click()
         XCTAssertFalse(
-            app.menuItems.identified("skill-offer-email-recap-draft").exists,
+            app.menuItems["skill-offer-email-recap-draft"].exists,
             "a successful handoff retires only the email intent")
-        XCTAssertTrue(app.menuItems.identified("skill-offer-recap-draft").exists)
-        XCTAssertTrue(app.menuItems.identified("skill-offer-secret-gist-publish").exists)
-        XCTAssertTrue(app.menuItems.identified("skill-offer-package-export").exists)
+        XCTAssertTrue(app.menuItems["skill-offer-recap-draft"].exists)
+        XCTAssertTrue(app.menuItems["skill-offer-secret-gist-publish"].exists)
+        XCTAssertTrue(app.menuItems["skill-offer-package-export"].exists)
         attachScreenshot(of: app, named: "meeting-detail-email-recap-handoff")
     }
 
@@ -1337,14 +1322,13 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument() throws {
         let app = try launchOnSeededMeeting()
-        defer { app.terminate() }
 
         // The offer loads asynchronously; poll existence before requiring a stable frame.
         let menu = app.control(withIdentifier: "skill-offer-menu")
         XCTAssertTrue(menu.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(menu.waitForStableFrame(timeout: 10))
         menu.click()
-        let gist = app.menuItems.identified("skill-offer-secret-gist-publish")
+        let gist = app.menuItems["skill-offer-secret-gist-publish"]
         guard gist.waitForExistenceFast(timeout: 5) else {
             XCTFail("the meeting must expose one review-first Gist proposal")
             return
@@ -1372,7 +1356,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             try accessibleText("skill-confirm-gist-boundary", in: preview).contains(expectedBoundary),
             "the remote audience boundary must be explicit")
 
-        let submit = app.buttons.identified("skill-confirm-submit")
+        let submit = app.buttons["skill-confirm-submit"]
         XCTAssertTrue(submit.waitForStableFrame(timeout: 5))
         let expectedSubmit = UITestLocale.environmentLocale == "es"
             ? "Publicar Gist secreto"
@@ -1386,9 +1370,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "successful publication must return its transient provider URL")
         XCTAssertTrue(try accessibleText(of: resultURL).contains(
             "https://gist.github.com/portavoz/skill-preview"))
-        XCTAssertTrue(app.buttons.identified("gist-result-copy-link").exists)
-        XCTAssertTrue(app.buttons.identified("gist-result-open-link").exists)
-        let dismissResult = app.buttons.identified("gist-result-dismiss")
+        XCTAssertTrue(app.buttons["gist-result-copy-link"].exists)
+        XCTAssertTrue(app.buttons["gist-result-open-link"].exists)
+        let dismissResult = app.buttons["gist-result-dismiss"]
         XCTAssertTrue(dismissResult.exists)
         dismissResult.click()
 
@@ -1404,7 +1388,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         issueAction.click()
 
         let issueSheet = app.control(withIdentifier: "github-issue-sheet")
-        let repository = app.textFields.identified("github-issue-repository")
+        let repository = app.textFields["github-issue-repository"]
         XCTAssertTrue(repository.waitForHittable(timeout: 5))
         repository.click()
         // The click owns the native editor; its completion surface may cover
@@ -1418,7 +1402,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             XCTFail("the exact repository must survive native editor handoff before review")
             return
         }
-        let reviewIssue = app.buttons.identified("github-issue-review")
+        let reviewIssue = app.buttons["github-issue-review"]
         XCTAssertTrue(reviewIssue.waitForHittable(timeout: 5))
         reviewIssue.click()
 
@@ -1446,7 +1430,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             try accessibleText("github-issue-boundary", in: issuePreview)
                 .localizedCaseInsensitiveContains(expectedIssueBoundary))
 
-        let createIssue = app.buttons.identified("github-issue-confirm")
+        let createIssue = app.buttons["github-issue-confirm"]
         XCTAssertTrue(createIssue.waitForHittable(timeout: 5))
         let expectedCreateIssue = UITestLocale.environmentLocale == "es"
             ? "Crear un issue"
@@ -1458,7 +1442,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(issueResultURL.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(try accessibleText(of: issueResultURL).contains(
             "https://github.com/portavoz/demo/issues/42"))
-        app.buttons.identified("github-issue-result-dismiss").click()
+        app.buttons["github-issue-result-dismiss"].click()
 
         let activity = openActivity(in: app)
         let receiptIDs = ["skill-receipt-secret-gist-publish", "skill-receipt-github-issue-create"]
@@ -1544,18 +1528,17 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testFailedSkillEffectRetriesItsOriginalProposal() throws {
         let app = try launchOnSeededMeeting(simulateSkillEffectFailureOnce: true)
-        defer { app.terminate() }
 
         let menu = app.control(withIdentifier: "skill-offer-menu")
         XCTAssertTrue(menu.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(menu.waitForStableFrame(timeout: 10))
         menu.click()
-        let recap = app.menuItems.identified("skill-offer-recap-draft")
+        let recap = app.menuItems["skill-offer-recap-draft"]
         XCTAssertTrue(recap.waitForExistenceFast(timeout: 5))
         recap.click()
 
         let sheet = app.control(withIdentifier: "skill-confirm-sheet")
-        let submit = app.buttons.identified("skill-confirm-submit")
+        let submit = app.buttons["skill-confirm-submit"]
         guard sheet.waitForExistenceFast(timeout: 10) else {
             XCTFail("the recap preview sheet must survive asynchronous store reads")
             return
@@ -1600,7 +1583,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation() throws {
         let app = try launchOnSeededMeeting(commitmentInbox: true)
-        defer { app.terminate() }
         XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
 
         let candidateID = "B5E00000-0000-4000-8000-000000000001"
@@ -1643,7 +1625,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 modalAnchor: "commitment-editor-title"),
             "owner selection must start after the proposed wording finishes editing unchanged")
         XCTAssertEqual(
-            app.textFields.identified("commitment-editor-title").value as? String,
+            app.textFields["commitment-editor-title"].value as? String,
             "Prepare the rollout")
         let editor = app.control(withIdentifier: "commitment-editor")
         let ownerPickers = editor.descendants(matching: .popUpButton)
@@ -1656,7 +1638,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             ownerPicker.waitForExistenceFast(timeout: 5),
             "the editor's native owner picker must be reachable")
         ownerPicker.click()
-        let me = app.menuItems.identified("commitment-owner-me")
+        let me = app.menuItems["commitment-owner-me"]
         XCTAssertTrue(
             me.waitForExistenceFast(timeout: 5),
             "the local user must be distinct from an external person and an unassigned owner")
@@ -1670,7 +1652,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testSummaryFeedbackIsExplicitReversibleAndLocal() throws {
         let app = try launchOnSeededMeeting()
-        defer { app.terminate() }
         XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
 
         let unsupported = app.control(withIdentifier: "summary-feedback-unsupported")
@@ -1691,7 +1672,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             sheet.waitForExistenceFast(timeout: 5),
             "correction must use an explicit editor instead of rewriting generated text")
-        let editor = sheet.textViews.identified("summary-feedback-correction-text")
+        let editor = sheet.textViews["summary-feedback-correction-text"]
         XCTAssertTrue(editor.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(editor.waitForStableFrame(timeout: 5))
         editor.click()
@@ -1717,7 +1698,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testNamedSpeakerCanBeRememberedAsCanonicalPerson() throws {
         let app = try launchOnSeededMeeting()
-        defer { app.terminate() }
 
         let speaker = app.control(withIdentifier: "cast-speaker-S1")
         XCTAssertTrue(
@@ -1745,7 +1725,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         save.click()
         XCTAssertTrue(field.waitForDisappearance(timeout: 5))
 
-        let remember = app.buttons.identified("person-remember-offer")
+        let remember = app.buttons["person-remember-offer"]
         XCTAssertTrue(
             remember.waitForExistenceFast(timeout: 5),
             "a confirmed meeting-local name must offer explicit person memory")
@@ -1756,7 +1736,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             : "Linked to a remembered person"
         XCTAssertTrue(speaker.waitForValue(expectedValue, timeout: 5))
         XCTAssertFalse(
-            app.buttons.identified("person-remember-offer").exists,
+            app.buttons["person-remember-offer"].exists,
             "the explicit offer must clear after the atomic link succeeds")
         attachScreenshot(of: app, named: "meeting-detail-confirmed-person-memory")
     }
@@ -1764,7 +1744,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testMostRecentRecipeRemainsVisibleAfterReload() throws {
         let app = try launchOnSeededMeeting(latestRecipe: true)
-        defer { app.terminate() }
         XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
 
         let badge = app.control(withIdentifier: "summary-badge")
@@ -1784,7 +1763,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testFreshQualifyingMeetingShowsThePostMeetingMirror() throws {
         let app = try launchOnSeededMeeting(justRecorded: true)
-        defer { app.terminate() }
 
         XCTAssertTrue(
             app.control(withIdentifier: "mirror-card").waitForExistenceFast(timeout: 10),
@@ -1795,7 +1773,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testRunningRefineCanBeCanceledWithoutChangingTheTranscript() throws {
         let app = try launchOnSeededMeeting(refineRunning: true)
-        defer { app.terminate() }
 
         XCTAssertTrue(
             app.control(withIdentifier: "detail-actions").waitForExistenceFast(timeout: 10),
@@ -1816,9 +1793,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testPlayerExposesSkipAndOnlyMyVoice() throws {
         let app = try launchOnSeededMeeting()
-        defer { app.terminate() }
 
-        let play = app.buttons.identified("player-play-pause")
+        let play = app.buttons["player-play-pause"]
         XCTAssertTrue(
             play.waitForExistenceFast(timeout: 10),
             "the player transport must render for a meeting that has audio")
@@ -1845,7 +1821,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testExportMenuOffersSubtitleFormats() throws {
         let app = try launchOnSeededMeeting(staleDerived: true)
-        defer { app.terminate() }
 
         XCTAssertTrue(
             app.control(withIdentifier: "detail-actions").waitForExistenceFast(timeout: 10),
@@ -1856,12 +1831,12 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "the action row must offer the export menu")
         menu.click()
         XCTAssertTrue(
-            app.menuItems.identified("detail-export-srt").waitForExistenceFast(timeout: 5),
+            app.menuItems["detail-export-srt"].waitForExistenceFast(timeout: 5),
             "the diarized transcript must export as SRT")
         XCTAssertTrue(
-            app.menuItems.identified("detail-export-vtt").waitForExistenceFast(timeout: 5),
+            app.menuItems["detail-export-vtt"].waitForExistenceFast(timeout: 5),
             "the diarized transcript must export as VTT")
-        let provenance = app.menuItems.identified("detail-export-correction-provenance-off")
+        let provenance = app.menuItems["detail-export-correction-provenance-off"]
         XCTAssertTrue(
             provenance.waitForExistenceFast(timeout: 5),
             "the export menu must disclose the opt-in correction provenance control")
@@ -1869,7 +1844,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         provenance.click()
 
         menu.click()
-        let included = app.menuItems.identified("detail-export-correction-provenance-on")
+        let included = app.menuItems["detail-export-correction-provenance-on"]
         XCTAssertTrue(included.waitForExistenceFast(timeout: 5))
         attachScreenshot(of: app, named: "meeting-detail-correction-aware-export")
         // Close the menu without exporting — the save panel is native UI.
@@ -1881,12 +1856,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testRecapSheetDraftsFromTheSummaryWithoutTheTranscript() throws {
         let app = try launchOnSeededMeeting()
-        defer { app.terminate() }
 
         let menu = app.control(withIdentifier: "detail-export-menu")
         XCTAssertTrue(menu.waitForExistenceFast(timeout: 10))
         menu.click()
-        let recapItem = app.menuItems.identified("detail-share-recap")
+        let recapItem = app.menuItems["detail-share-recap"]
         XCTAssertTrue(
             recapItem.waitForExistenceFast(timeout: 5),
             "a summarized meeting must offer the recap")
@@ -1919,7 +1893,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testStructureMenuOffersSeededTemplates() throws {
         let app = try launchOnSeededMeeting()
-        defer { app.terminate() }
         XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
 
         let menu = app.control(withIdentifier: "detail-regenerate-menu")
@@ -1931,7 +1904,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             menu.waitForStableFrame(timeout: 5),
             "the localized regenerate menu must settle before opening")
         menu.click()
-        let structure = app.menuItems.identified("detail-structure-menu")
+        let structure = app.menuItems["detail-structure-menu"]
         guard structure.waitForExistenceFast(timeout: 5) else {
             XCTFail("the regenerate menu must offer the Structure submenu")
             return
@@ -1959,20 +1932,19 @@ final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testClipMarkingRevealsExport() throws {
         let app = try launchOnSeededMeeting()
-        defer { app.terminate() }
 
-        XCTAssertTrue(app.buttons.identified("player-play-pause").waitForExistenceFast(timeout: 15))
-        app.buttons.identified("player-play-pause").click()  // play → the playhead moves
-        app.buttons.identified("clip-mark-start").click()
+        XCTAssertTrue(app.buttons["player-play-pause"].waitForExistenceFast(timeout: 15))
+        app.buttons["player-play-pause"].click()  // play → the playhead moves
+        app.buttons["clip-mark-start"].click()
         let currentTime = app.control(withIdentifier: "player-current-time")
         let clipStartTime = String(describing: currentTime.value)
         XCTAssertTrue(
             currentTime.waitForValueChange(from: clipStartTime, timeout: 5),
             "the playhead must advance before marking a non-empty clip")
-        app.buttons.identified("clip-mark-end").click()  // end after start → valid range
+        app.buttons["clip-mark-end"].click()  // end after start → valid range
 
         XCTAssertTrue(
-            app.buttons.identified("clip-export").waitForExistenceFast(timeout: 5),
+            app.buttons["clip-export"].waitForExistenceFast(timeout: 5),
             "marking a valid in/out range must reveal the export button")
     }
 }
