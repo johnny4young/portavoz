@@ -307,6 +307,10 @@ final class InterruptionSafetyTests: PortavozUITestCase {
         let arm = app.buttons["proof-arm"]
         XCTAssertTrue(arm.waitForExistence(timeout: 5))
         app.activate()
+        _ = try XCTUnwrap(waitForUITestCondition(timeout: readinessTimeout) {
+            app.hasObservedNativeReceiver(bundleIdentifier: keyboardReceiverBundleIdentifier)
+                && arm.isHittable
+        } ? arm : nil, "the owned fixture receiver must acknowledge activation before arming")
         return app
     }
 

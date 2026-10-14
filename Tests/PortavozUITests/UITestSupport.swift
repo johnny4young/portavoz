@@ -278,7 +278,6 @@ extension XCUIApplication {
         XCTAssertTrue(
             waitForPortavozProcessExit(),
             "the preceding Portavoz process must leave the running-app inventory")
-        UITestStorage.prepareLaunch(self)
         launch()
         // Request our own activation before observing foreground readiness.
         // Another app may legitimately have raised its window during launch.
@@ -290,7 +289,6 @@ extension XCUIApplication {
         XCTAssertTrue(
             mainWindow.waitForHittable(timeout: 15),
             "the disposable main window must be actionable before UI assertions")
-        UITestStorage.recordLaunch(self)
         if shouldOpenSettings {
             // Command-comma targets the owned application, not the record
             // button. Prove the real Settings destination in openSettingsWindow.
@@ -400,13 +398,15 @@ extension XCUIApplication {
         timeout: TimeInterval = 8,
         file: StaticString = #filePath,
         line: UInt = #line
-    ) -> XCUIElement {
+    ) throws -> XCUIElement {
         let button = control(withIdentifier: "recording-assist-tab-\(tab)")
-        guard button.waitForExistenceFast(timeout: timeout) else {
-            XCTFail("the \(tab) assist tab never appeared", file: file, line: line)
-            return button
-        }
+        _ = try XCTUnwrap(prepareForInteraction(timeout: timeout) ? self : nil,
+                          "Portavoz must own the native receiver before assist-tab input", file: file, line: line)
+        _ = try XCTUnwrap(button.waitForStableFrame(timeout: timeout) ? button : nil,
+                          "the \(tab) assist tab must be hittable and settled", file: file, line: line)
         button.click()
+        _ = try XCTUnwrap(button.waitForSelection(timeout: timeout) ? button : nil,
+                          "the \(tab) assist tab must acknowledge selection before field input", file: file, line: line)
         return button
     }
 
@@ -419,8 +419,14 @@ extension XCUIApplication {
     /// arbitrary third-party windows.
     @MainActor
     func prepareForInteraction(timeout: TimeInterval = 10) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
         activate()
-        return wait(for: .runningForeground, timeout: timeout)
+        guard wait(for: .runningForeground, timeout: timeout) else { return false }
+        // Share the original deadline; a cached XCTest foreground state alone
+        // must not authorize a click before the native receiver acknowledges it.
+        return waitForUITestCondition(timeout: max(0, deadline.timeIntervalSinceNow)) {
+            hasObservedNativeReceiver(bundleIdentifier: Self.portavozUITestHostBundleIdentifier)
+        }
     }
 
     /// Ensures the production Settings window is open without dismissing or
