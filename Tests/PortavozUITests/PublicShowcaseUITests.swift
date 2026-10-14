@@ -9,6 +9,7 @@ final class PublicShowcaseUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(seedShowcase: true)
         app.launchArguments += ["-seed-ai-suggestions"]
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         // The hero meeting is the newest row and carries a fixed identity, so
@@ -48,6 +49,7 @@ final class PublicShowcaseUITests: PortavozUITestCase {
             simulateLiveTranscriptBrowsing: true)
         app.launchArguments.append("-seed-live-translation-ui")
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         let record = app.buttons["library-new-recording-button"]
@@ -78,6 +80,7 @@ final class PublicShowcaseUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(seedShowcase: true)
         app.launchArguments.append("-seed-showcase-agenda")
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         // Today renders in the detail pane, so this journey waits on its own
         // surface rather than on a sidebar row the agenda may push down.
@@ -103,6 +106,7 @@ final class PublicShowcaseUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(seedShowcase: true)
         app.launchArguments += ["-insightsScope", "month"]
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         let insights = app.buttons["library-insights-button"]

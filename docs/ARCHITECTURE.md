@@ -5723,16 +5723,17 @@ diagnostic only and cannot satisfy the final gate or publish an anchor.
 The UI bundle uses one main-actor, run-loop-driven bounded predicate helper for
 accessibility state instead of XCTest's one-second first-poll floor or fixed
 sleeps. Negative and inequality waits require element existence so absence
-cannot become a false pass. Exact label-or-value predicates retain a fast
-presence gate, then co-observe both text channels through one fresh snapshot of
-the original live query; transient snapshot failure never satisfies a predicate. Static assertion groups use one
-immutable observation with exact identifiers, roles and copy, discarded before
-any user action. Settings category containment co-observes the category and its
-scroll viewport; an unavailable or aliased observation falls back to the original
-live-query geometry checks rather than skipping containment. Live input ownership, hittability, stability intervals, scroll limits,
-native actions and pane postconditions remain separate and unchanged.
-Localized moving controls stabilize their hit frame
-before activation. The stability interval begins with the first valid,
+cannot become a false pass. Localized moving controls stabilize their hit frame
+before activation. A virtualized history row first proves presence before a
+hit-point query, avoiding XCTest's internal missing-element resolution retries;
+its bounded scroll count, direction and final live hittability proof are unchanged.
+Settings startup uses the owned production command and its stable General
+anchor rather than checking the geometry of an unrelated record button.
+Inactive search editors receive no event or value read; active editors retain
+an exact-value readback and recheck focus immediately before guarded Tab.
+Static assertion groups may co-observe one immutable hierarchy, discarded before
+any input; unavailable or aliased category geometry uses the original live path.
+The stability interval begins with the first valid,
 nonempty hittable frame and resets on every movement or loss of hittability;
 it does not require an extra identical sample before starting the unchanged
 interval. The contained-frame path uses that same declared interval as its
@@ -5785,30 +5786,10 @@ stale frame or hittability state, and it never retries that activation. A
 failed first pass is evidence to diagnose, never authorization for an
 unchanged green retry.
 
-The case teardown owns final app disposal and scratch removal together.
-Only a completed case with zero recorded XCTest failures requests normal Quit;
-a missing test-run outcome, failure or interruption retains abrupt
-`XCUIApplication.terminate()`. Normal Quit requires the exact registered proxy's
-captured native application identity plus its immutable positive PID,
-revalidated against the unique current process using `NSRunningApplication`
-equality, and passes through the existing foreground/modal keyboard guard without
-activation. Cleanup additionally revalidates the captured process identity
-inside the keyboard dispatcher immediately before the key; ordinary input
-retains its existing default guards. Any exposed modal or background process
-conservatively uses XCTest termination without attempting Quit. Refused keyboard
-admission also falls back to XCTest termination after fresh launch-identity
-validation, never by following a stale proxy to a replacement process; an
-admitted Quit that does not exit fails at the original ten-second deadline.
-Unrecorded native-control fixture launches also retain XCTest termination.
-Mid-journey crash/recovery calls, compact-fixture sub-journey disposal and
-named-pasteboard lifetime defers are unchanged. A completed older process is
-recognized by its captured launch identity rather than a stale proxy's
-bundle-wide XCTest state; the final inventory fence runs after all owned
-participants exit. Final disposal remains inside
-the named owned-cleanup activity, with both XCTest state and LaunchServices
-process-exit proof before scratch deletion. There is no runtime exclusion for
-this work and no external force-termination or sandbox Apple event.
-Startup continues to fence both XCTest state and LaunchServices'
+The harness retains `XCUIApplication.terminate()` for ordinary teardown: a
+measured AppKit termination request still made XCTest account for the same
+clean process-exit interval and therefore was not adopted as a cosmetic
+optimization. Startup continues to fence both XCTest state and LaunchServices'
 exact test-host process inventory. On macOS, `.runningForeground` does not
 prove that Portavoz owns the frontmost key window throughout a long catalogue;
 startup and `prepareForInteraction()` therefore keep explicit activation. The
@@ -6064,6 +6045,23 @@ cannot tear down the active owner. The runner alone declares read/write access
 to this dedicated fixture base while retaining its sandbox. Neither production
 entitlements nor system privacy grants change. The same test-only allocator
 source is compiled into package tests and XCUITest, not a product target.
+
+Healthy UI journeys can ask their exact disposable Debug host to terminate
+itself through AppKit, without keyboard input, Apple events or process signals.
+This seam is compiled out of Release and requires the exact UI-host bundle,
+`-use-temp-store`, an explicit exit flag and a per-launch UUID. A directory-event
+source accepts only a direct, same-user, private regular single-link request
+whose bytes match that UUID and the current PID. The runner first verifies the
+app-written launch acknowledgement, captures native process identity, and
+revalidates it before publication. Relaunches rotate the UUID; ended captures
+do not authorize control of a later process reached through an old XCTest proxy.
+Final disposal preserves defer ordering, including before named pasteboards are
+released. An app-owned modal session or attached sheet acknowledges refusal,
+without dismissal; the runner then retains official termination immediately.
+Missing authority, failed journeys, interruption cleanup and deliberate
+mid-journey crashes retain official XCTest termination. Exit/inventory and
+scratch-identity fences remain unchanged; cleanup time remains inside the
+original test-duration accounting and budgets.
 
 Visual-only screenshot
 assertions use visible-frame intersection rather than conflating visibility

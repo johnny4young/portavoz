@@ -11,6 +11,7 @@ final class MenuBarUITests: PortavozUITestCase {
             seedBrief: true,
             showMenuBarContent: true)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeedFixtureReady())
         XCTAssertTrue(app.prepareForInteraction())

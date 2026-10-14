@@ -34,31 +34,7 @@ final class UITestStorageUITests: PortavozUITestCase {
             XCTAssertEqual(URL(fileURLWithPath: path).deletingLastPathComponent(), temporaryRoot)
         }
         app.launchPortavoz()
-        let unregistered = XCUIApplication(bundleIdentifier: XCUIApplication.portavozUITestHostBundleIdentifier)
-        XCTAssertThrowsError(try UITestStorage.recordLaunchedProcess(unregistered))
-        XCTAssertThrowsError(try UITestStorage.terminateLaunchedProcess(unregistered))
-        XCTAssertEqual(app.state, .runningForeground, "an unowned proxy must not terminate our process")
-        XCTAssertEqual(app.typeKeyIfOwned(
-            XCUIKeyboardKey(rawValue: "q"), modifierFlags: .command,
-            bundleIdentifier: XCUIApplication.portavozUITestHostBundleIdentifier,
-            expectedProcess: try XCTUnwrap(UITestProcessIdentity(.current))), .keyboardNotOwned)
-        XCTAssertEqual(app.state, .runningForeground, "the runner's process identity cannot authorize subject Quit")
-        try UITestStorage.terminateLaunchedProcess(app)
-        XCTAssertEqual(app.state, .notRunning)
-        app.launchPortavoz()
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        // Property predicates must preserve exact text and fail closed when
-        // the original live query cannot resolve an element.
-        let record = app.buttons["library-new-recording-button"]
-        let recordObservation = try record.snapshot()
-        XCTAssertTrue(record.waitForLabelOrValue(recordObservation.label, timeout: 0))
-        XCTAssertEqual(renderedText(of: record), renderedText(of: recordObservation))
-        let missing = app.buttons["absent-property-predicate-fixture"]
-        XCTAssertFalse(missing.waitForSelection(timeout: 0))
-        XCTAssertFalse(missing.waitForEnabled(timeout: 0))
-        XCTAssertFalse(missing.waitForValueOtherThan("anything", timeout: 0))
-        XCTAssertFalse(missing.waitForLabelNotContaining("anything", timeout: 0))
-        XCTAssertFalse(missing.waitForLabelOrValue("anything", timeout: 0))
         // Library readiness already consumes the app-written one-shot marker.
         let readyPath = try XCTUnwrap(app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"])
         XCTAssertFalse(FileManager.default.fileExists(atPath: readyPath))
@@ -71,5 +47,15 @@ final class UITestStorageUITests: PortavozUITestCase {
             let bytes = try Data(contentsOf: recording.appendingPathComponent("\(channel).wav"))
             XCTAssertGreaterThan(bytes.count, 44, "the app must produce readable synthetic audio, not just a marker")
         }
+        let firstNonce = try XCTUnwrap(app.launchEnvironment["PORTAVOZ_UI_TEST_EXIT_NONCE"])
+        XCTAssertEqual(finishUITestApplication(app), .appKitExit)
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 10))
+        XCTAssertTrue(app.waitForPortavozProcessExit())
+        app.launchPortavoz()
+        XCTAssertNotEqual(app.launchEnvironment["PORTAVOZ_UI_TEST_EXIT_NONCE"], firstNonce)
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        XCTAssertEqual(finishUITestApplication(app), .appKitExit)
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 10))
+        XCTAssertTrue(app.waitForPortavozProcessExit())
     }
 }

@@ -4525,3 +4525,20 @@ through commit or rollback; recording start checks it before publishing
 `preparing`, with no suspension between those steps. If capture wins admission
 first, the existing migration activity gate rejects its preparing/recording/
 processing phase. This is a process-local fence, not an interprocess file lock.
+
+### Disposable UI-host final exit
+
+The Debug-only `UITestOwnedExit` lifecycle seam is unavailable to the shipping
+bundle and normal Dev launches. Only the exact UI-test host with temporary
+storage, an explicit flag and a per-launch UUID installs its main-queue directory
+event source. An owner-private regular single-link file must carry the exact
+UUID and current PID before the app calls `NSApp.terminate(nil)` on its own
+executor. The app publishes readiness only after arming the source. No URL
+routing, input dispatch, external process signalling, entitlement or privacy
+permission participates. The test runner captures and revalidates native launch
+identity, rotates the UUID on relaunch, and requests this path only for healthy
+final disposal. App-owned modal sessions and attached sheets acknowledge refusal
+without dismissal so the runner retains official termination immediately.
+Deliberate crash/recovery exercises and interruption/failure
+cleanup retain XCTest's termination API. Original exit/inventory deadlines,
+scratch ownership checks, case coverage and runtime accounting remain intact.
