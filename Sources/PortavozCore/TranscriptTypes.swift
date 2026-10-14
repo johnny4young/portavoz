@@ -1,10 +1,19 @@
 import Foundation
 
 /// Ephemeral live-stream semantics. Absent means the existing append-only
-/// delta contract; range revisions may update a preview but cannot become
+/// delta contract; owned tokens specify joining without text-based deduplication.
+/// Range revisions may update a preview but cannot become
 /// canonical transcript evidence until finalized.
 public enum LiveTranscriptUpdateMode: String, Codable, Sendable {
     case rangeRevision
+    /// Replaceable producer-owned suffix. Empty text explicitly clears it;
+    /// a leading space preserves its joining boundary without overlap guesses.
+    case tokenPreview
+    /// Tokens whose replay ownership was resolved by the producer. Textual
+    /// suffix/prefix matching must not delete an admitted spoken repetition.
+    case tokenDelta
+    /// The first owned token continues the preceding word (SentencePiece).
+    case tokenContinuation
 }
 
 /// A segment of transcribed speech, attributed to a speaker and a channel.

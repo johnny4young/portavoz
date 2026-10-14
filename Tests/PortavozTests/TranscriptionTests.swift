@@ -12,8 +12,8 @@ final class ModelCatalogTests: XCTestCase {
     func testParakeetDescriptorIsWellFormed() {
         let model = ModelCatalog.parakeetTdtV3
         XCTAssertEqual(model.artifacts.count, 21)
-        // Must be the folder FluidAudio's loader resolves (repo minus
-        // "-coreml") or it silently re-downloads the model unverified.
+        // Preserve the installed layout; the serving loader now reads only
+        // this exact verified directory without a vendor download fallback.
         XCTAssertEqual(model.folderName, "parakeet-tdt-0.6b-v3")
         XCTAssertTrue(model.tasks.contains(.liveTranscription))
         XCTAssertTrue(model.tasks.contains(.finalTranscription))
@@ -583,8 +583,9 @@ private actor CallCounter {
 final class ParakeetSegmentMapperTests: XCTestCase {
     private let meeting = MeetingID()
 
-    func testLiveUpdateBecomesSegmentWithAbsoluteTimes() {
-        let segment = ParakeetSegmentMapper.segment(
+    func testLiveUpdateBecomesSegmentWithAbsoluteTimes() throws {
+        var stream = ParakeetSegmentMapper.LiveStream()
+        let segment = try stream.segment(
             text: " hola mundo ",
             isConfirmed: true,
             confidence: 0.93,
@@ -594,8 +595,7 @@ final class ParakeetSegmentMapperTests: XCTestCase {
             ],
             meetingID: meeting,
             channel: .system,
-            language: "es",
-            fallbackTime: 0
+            language: "es"
         )
         XCTAssertNotNil(segment)
         XCTAssertEqual(segment?.text, "hola mundo")
@@ -607,24 +607,28 @@ final class ParakeetSegmentMapperTests: XCTestCase {
         XCTAssertEqual(segment!.confidence!, 0.93, accuracy: 0.0001)
     }
 
-    func testEmptyUpdateIsDropped() {
-        let segment = ParakeetSegmentMapper.segment(
+    func testEmptyUpdateIsDropped() throws {
+        var stream = ParakeetSegmentMapper.LiveStream()
+        let segment = try stream.segment(
             text: "   ",
             isConfirmed: false,
             confidence: 0.5,
             tokenTimings: [],
             meetingID: meeting,
             channel: .microphone,
-            language: nil,
-            fallbackTime: 10
+            language: nil
         )
         XCTAssertNil(segment)
     }
 
-    /// Sliding windows re-decode the left context on every update; tokens
-    /// at or before the last emitted edge must be cut, keeping the fresh tail.
-    func testOverlappingReDecodedTokensAreCut() {
-        let segment = ParakeetSegmentMapper.segment(
+    /// Previously owned emission positions must not replay with a new window.
+    func testOverlappingReDecodedTokensAreCut() throws {
+        var stream = ParakeetSegmentMapper.LiveStream()
+        _ = try stream.segment(
+            text: "texto viejo", isConfirmed: false, confidence: 1,
+            tokenTimings: [timing("▁texto", 10, 10.3), timing("▁viejo", 10.4, 10.8)],
+            meetingID: meeting, channel: .microphone, language: nil)
+        let segment = try stream.segment(
             text: "texto viejo repetido y algo nuevo",
             isConfirmed: true,
             confidence: 0.9,
@@ -635,42 +639,188 @@ final class ParakeetSegmentMapperTests: XCTestCase {
             ],
             meetingID: meeting,
             channel: .microphone,
-            language: nil,
-            fallbackTime: 11.0  // everything before this was already emitted
+            language: nil
         )
         XCTAssertEqual(segment?.text, "nuevo")
         XCTAssertEqual(segment?.startTime, 12.1)
         XCTAssertEqual(segment?.endTime, 12.6)
     }
 
-    func testPureReDecodeUpdateIsDropped() {
-        let segment = ParakeetSegmentMapper.segment(
+    func testPureReDecodeUpdateIsDropped() throws {
+        var stream = ParakeetSegmentMapper.LiveStream()
+        _ = try stream.segment(
+            text: "ya emitido", isConfirmed: false, confidence: 1,
+            tokenTimings: [timing("▁ya", 5, 5.4), timing("▁emitido", 5.5, 6)],
+            meetingID: meeting, channel: .microphone, language: nil)
+        let segment = try stream.segment(
             text: "todo esto ya se había emitido",
             isConfirmed: true,
             confidence: 0.95,
             tokenTimings: [timing("▁ya", 5.0, 5.4), timing("▁emitido", 5.5, 6.0)],
             meetingID: meeting,
             channel: .microphone,
-            language: nil,
-            fallbackTime: 6.0
+            language: nil
         )
         XCTAssertNil(segment)
     }
 
-    func testMissingTimingsFallBackToPreviousEdge() {
-        let segment = ParakeetSegmentMapper.segment(
-            text: "sin timings",
-            isConfirmed: false,
-            confidence: 0.7,
-            tokenTimings: [],
-            meetingID: meeting,
-            channel: .microphone,
-            language: nil,
-            fallbackTime: 42.5
-        )
-        XCTAssertEqual(segment?.startTime, 42.5)
-        XCTAssertEqual(segment?.endTime, 42.5)
-        XCTAssertEqual(segment?.isFinal, false)
+    func testMissingTimingsCannotClaimAudioOwnership() {
+        var stream = ParakeetSegmentMapper.LiveStream()
+        XCTAssertThrowsError(try stream.segment(
+            text: "sin timings", isConfirmed: false, confidence: 0.7,
+            tokenTimings: [], meetingID: meeting, channel: .microphone, language: nil))
+    }
+
+    func testEngineKeepsVendorHypothesisDiagnosticsOutOfConsole() {
+        _ = ParakeetEngine(
+            prepareLiveManager: { SlidingWindowAsrManager(config: $0) },
+            prepareBatchManager: { AsrManager(config: $0) })
+        XCTAssertFalse(AppLogger.mirrorsToConsole)
+        XCTAssertEqual(AppLogger.minimumLevel, .warning)
+    }
+
+    @MainActor
+    func testMalformedPCMThrowsInsteadOfBecomingSuccessfulSilence() async throws {
+        for (samples, rate) in [([Float.nan], 16_000.0), ([Float.infinity], 16_000), ([0], Double.nan), ([0], 0), ([0], -1)] {
+            let manager = SlidingWindowAsrManager()
+            let channel = ParakeetStreamChannel()
+            let audio = AsyncStream<AudioChunk> { input in
+                input.yield(AudioChunk(channel: .microphone, samples: samples, sampleRate: rate, timestamp: 0))
+                input.finish()
+            }
+            do {
+                try await ParakeetEngine.feed(audio, manager: manager, channelHolder: channel, probe: nil)
+                XCTFail("malformed PCM cannot be skipped as silence")
+            } catch ParakeetStreamChannel.Failure.invalidAudioChunk { }
+            let bound = await channel.current
+            XCTAssertNil(bound, "rejected PCM cannot acquire a capture channel")
+            await manager.cancel()
+        }
+    }
+
+    @MainActor
+    func testEmptyCallbackCannotBindOrFeedTheNativeJob() async throws {
+        let manager = SlidingWindowAsrManager()
+        let channel = ParakeetStreamChannel()
+        let audio = AsyncStream<AudioChunk> { input in
+            input.yield(AudioChunk(channel: .system, samples: [], sampleRate: 16_000, timestamp: 0))
+            input.finish()
+        }
+        try await ParakeetEngine.feed(audio, manager: manager, channelHolder: channel, probe: nil)
+        try await channel.set(.microphone)
+        // A late subscriber would be rejected if even one buffer had been fed.
+        let updates = await manager.tokenUpdates
+        _ = try await manager.finish()
+        var events = 0
+        for try await update in updates {
+            events += 1
+            XCTAssertTrue(update.revision.isTerminal)
+            XCTAssertTrue(update.tokens.isEmpty)
+        }
+        XCTAssertEqual(events, 1)
+    }
+
+    @MainActor
+    func testProducerFailureCannotBeRelabeledByOutputDrivenCancellation() async throws {
+        let channel = ParakeetStreamChannel()
+        let cancelled = await channel.outcome(for: CancellationError(), cancelled: true)
+        XCTAssertEqual(cancelled, .cancelled)
+        await channel.markProducerFailure()
+        let failed = await channel.outcome(for: CancellationError(), cancelled: true)
+        XCTAssertEqual(failed, .failed)
+    }
+
+    @MainActor
+    func testBufferedFinalDrainUsesTheSameReducerAndRetainsChannelAndConfirmation() async throws {
+        let channel = ParakeetStreamChannel()
+        try await channel.set(.system)
+        let jobID = UUID()
+        let updates = AsyncThrowingStream<SlidingWindowTokenUpdate, Error> { output in
+            output.yield(.init(tokens: [timing("▁muy", 0, 0.2)], revision: .init(
+                jobID: jobID, ordinal: 1, previousTokenCount: 0, retainedTokenCount: 0,
+                stableTokenCount: 0, window: 0..<38400, center: 0..<32000, isTerminal: false)))
+            output.yield(.init(tokens: [timing("▁muy", 0.2, 0.4), timing("▁bien", 0.4, 0.6)], revision: .init(
+                jobID: jobID, ordinal: 2, previousTokenCount: 1, retainedTokenCount: 1,
+                stableTokenCount: 2, window: 0..<38400, center: 0..<32000, isTerminal: false)))
+            output.yield(.init(tokens: [], revision: .init(
+                jobID: jobID, ordinal: 3, previousTokenCount: 3, retainedTokenCount: 3,
+                stableTokenCount: 3, window: 0..<38400, center: 0..<32000, isTerminal: true)))
+            output.finish()
+        }
+        let pair = AsyncThrowingStream<TranscriptSegment, Error>.makeStream()
+        try await ParakeetEngine.consume(
+            updates, hints: .init(language: "es", meetingID: meeting), channelHolder: channel,
+            continuation: pair.continuation, probe: nil)
+        pair.continuation.finish()
+        var rows: [TranscriptSegment] = []
+        var segments: [TranscriptSegment] = []
+        for try await segment in pair.stream {
+            segments.append(segment)
+            CaptionCoalescer().apply(segment, to: &rows)
+        }
+        XCTAssertEqual(segments.map(\.isFinal), [false, true, false, true, false])
+        XCTAssertEqual(segments.filter(\.isFinal).map(\.text), ["muy muy", "bien"])
+        XCTAssertEqual(segments.filter { !$0.isFinal }.map(\.text), [" muy", " bien", ""])
+        XCTAssertTrue(segments.allSatisfy { $0.channel == .system && $0.meetingID == meeting && $0.language == "es" })
+        XCTAssertEqual(rows.map(\.text), ["muy muy bien"])
+    }
+
+    @MainActor
+    func testCancelledConsumerDoesNotPublishBufferedUpdates() async throws {
+        let channel = ParakeetStreamChannel()
+        try await channel.set(.microphone)
+        let updates = AsyncThrowingStream<SlidingWindowTokenUpdate, Error> { output in
+            output.yield(.init(tokens: [timing("▁old", 0, 0.2)], revision: .init(
+                jobID: UUID(), ordinal: 1, previousTokenCount: 0, retainedTokenCount: 0,
+                stableTokenCount: 1, window: 0..<22400, center: 0..<16000, isTerminal: true)))
+            output.finish()
+        }
+        let pair = AsyncThrowingStream<TranscriptSegment, Error>.makeStream()
+        let task = Task {
+            try await ParakeetEngine.consume(
+                updates, hints: .init(meetingID: meeting), channelHolder: channel,
+                continuation: pair.continuation, probe: nil)
+        }
+        task.cancel()
+        do {
+            try await task.value
+            XCTFail("A cancelled consumer must not process buffered updates")
+        } catch is CancellationError { }
+        pair.continuation.finish()
+        var count = 0
+        for try await _ in pair.stream { count += 1 }
+        XCTAssertEqual(count, 0)
+    }
+
+    @MainActor
+    func testAJobCannotRelabelItsDecoderWithAnotherChannel() async throws {
+        let channel = ParakeetStreamChannel()
+        try await channel.set(.system)
+        try await channel.set(.system)
+        do {
+            try await channel.set(.microphone)
+            XCTFail("One native decoder cannot own two audio channels")
+        } catch is ParakeetStreamChannel.Failure { }
+        let current = await channel.current
+        XCTAssertEqual(current, .system)
+    }
+
+    func testMalformedUpdateCannotAdvanceOwnership() throws {
+        for tokens in [
+            [timing("▁bad", .nan, 1)],
+            [timing("▁bad", 1, 0)],
+            [timing("▁later", 1, 2), timing("▁earlier", 0, 1)]
+        ] {
+            var stream = ParakeetSegmentMapper.LiveStream()
+            XCTAssertThrowsError(try stream.segment(
+                text: "bad", isConfirmed: false, confidence: 1, tokenTimings: tokens,
+                meetingID: meeting, channel: .microphone, language: nil))
+            let valid = try stream.segment(
+                text: "valid", isConfirmed: true, confidence: 1,
+                tokenTimings: [timing("▁valid", 0, 0.2)],
+                meetingID: meeting, channel: .microphone, language: nil)
+            XCTAssertEqual(valid?.text, "valid")
+        }
     }
 
     func testBatchSplitsAtPauses() {
@@ -1141,5 +1291,21 @@ final class BoundedLiveAudioFeedsTests: XCTestCase {
 
         XCTAssertEqual(micTimes, [1])
         XCTAssertEqual(systemTimes, [2])
+    }
+}
+
+final class ParakeetVerifiedLoadTests: XCTestCase {
+    func testRejectsUnverifiedOptionalGraphBeforeLoading() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(
+            at: directory.appendingPathComponent(ModelNames.ASR.ctcHeadFile),
+            withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        do {
+            _ = try await ParakeetEngine.load(fromVerifiedDirectory: directory)
+            XCTFail("an unverified optional graph must not load")
+        } catch ParakeetEngine.VerifiedLoadFailure.unexpectedOptionalModel {
+            // Rejected before native compilation or a download-capable loader.
+        }
     }
 }

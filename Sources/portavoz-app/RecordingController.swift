@@ -369,33 +369,6 @@ final class RecordingController {
         failureContext = nil
     }
 
-    func receiveLiveCaption(_ segment: TranscriptSegment) {
-        meetingID = segment.meetingID
-        // Digital silence on a system tap can make a model invent speech.
-        if segment.channel == .system, systemAudioMissing {
-            speechVolatileByChannel.removeValue(forKey: .system)
-            return
-        }
-        // Barely used/far-field mic channels produce stray low-confidence text.
-        if segment.channel == .microphone,
-            TranscriptNoiseFilter.isLikelyNoise(
-                text: segment.text,
-                confidence: segment.confidence) {
-            speechVolatileByChannel.removeValue(forKey: .microphone)
-            return
-        }
-        if segment.liveUpdateMode == .rangeRevision,
-           !RecordingSpeechPreview.admit(segment, into: &speechVolatileByChannel) {
-            return
-        }
-        coalescer.apply(segment, to: &captions)
-        interviewAssist.observe(captions: captions)
-        services?.liveAssistUITestFixture?.receiveCaption(in: self)
-        detectClosedRow()
-        armTurnEndpointDeadline()
-        liveTranslationWakeHub.signal()
-    }
-
     private func applyStartRecordingResult(
         _ result: StartRecordingResult,
         diarizerStream: AsyncStream<AudioChunk>,
@@ -574,6 +547,48 @@ final class RecordingController {
 }
 
 extension RecordingController {
+    func receiveLiveCaption(_ segment: TranscriptSegment) {
+        meetingID = segment.meetingID
+        // Digital silence on a system tap can make a model invent speech.
+        if segment.channel == .system, systemAudioMissing {
+            speechVolatileByChannel.removeValue(forKey: .system)
+            return
+        }
+        if segment.liveUpdateMode == .tokenPreview, segment.text.isEmpty {
+            speechVolatileByChannel.removeValue(forKey: segment.channel)
+            return
+        }
+        if segment.liveUpdateMode == .tokenDelta || segment.liveUpdateMode == .tokenContinuation,
+           speechVolatileByChannel[segment.channel]?.liveUpdateMode == .tokenPreview {
+            speechVolatileByChannel.removeValue(forKey: segment.channel)
+        }
+        // Barely used/far-field mic channels produce stray low-confidence text.
+        if segment.channel == .microphone,
+            TranscriptNoiseFilter.isLikelyNoise(
+                text: segment.text,
+                confidence: segment.confidence,
+                allowsTokenFragments: segment.liveUpdateMode == .tokenDelta
+                    || segment.liveUpdateMode == .tokenContinuation
+                    || segment.liveUpdateMode == .tokenPreview) {
+            speechVolatileByChannel.removeValue(forKey: .microphone)
+            return
+        }
+        if segment.liveUpdateMode == .tokenPreview {
+            speechVolatileByChannel[segment.channel] = segment
+            return
+        }
+        if segment.liveUpdateMode == .rangeRevision,
+           !RecordingSpeechPreview.admit(segment, into: &speechVolatileByChannel) {
+            return
+        }
+        coalescer.apply(segment, to: &captions)
+        interviewAssist.observe(captions: captions)
+        services?.liveAssistUITestFixture?.receiveCaption(in: self)
+        detectClosedRow()
+        armTurnEndpointDeadline()
+        liveTranslationWakeHub.signal()
+    }
+
     var translationNeedsDownload: Bool { translationState == .needsDownload }
     var liveTranscriptDeferred: Bool { liveTranscriptState == .preparing }
 

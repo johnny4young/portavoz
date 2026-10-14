@@ -276,7 +276,8 @@ private struct LiveRecordingCaptionsView: View {
                 Text(segment.text)
                     .font(active ? .title3.weight(.medium) : .body)
                     .foregroundStyle(segment.isFinal ? .primary : .secondary)
-                    .accessibilityIdentifier(segment.liveUpdateMode == .rangeRevision
+                    .accessibilityIdentifier(
+                        (segment.liveUpdateMode == .rangeRevision || segment.liveUpdateMode == .tokenPreview)
                         ? "recording-live-preview-\(segment.channel.rawValue)"
                         : "recording-live-caption-\(segment.id.uuidString)")
                 if let translated = translation {

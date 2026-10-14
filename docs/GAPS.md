@@ -238,7 +238,7 @@ not alter the original meeting audio or claim native delivery qualification.
 
 The live lane still has no serving pre-transcription VAD gate. The distinct
 token-boundary defect and rejected passthrough repair are recorded below under
-**Live Parakeet still lacks reliable token-delivery ownership**. Neither issue
+**Live Parakeet token-delivery ownership needs field qualification**. Neither issue
 establishes the cause of every observed recognition error.
 
 The installed-model controller lane writes complete per-run receipts rather
@@ -282,31 +282,42 @@ adapter only scores declared, content-free counts and phases: existing
 model/controller receipts still need a reviewed collection adapter, and its
 reports never qualify a population, consent or a quality threshold.
 
-### Live Parakeet still lacks reliable token-delivery ownership
+### Live Parakeet token-delivery ownership needs field qualification
 
-The adapter's `token.startTime > previousSegment.endTime` filter can discard
-valid words at zero, at the prior end, or sharing time with another subword.
-Native boundary fixtures reproduce that loss. Short installed-model attribution
-also reproduces production output while showing additional word error at this
-mapper, rather than at caption composition.
+The earlier end-time filter lost origin/boundary/subword content; unfiltered
+passthrough then produced massive replay beyond left context. The rejected
+start-frontier candidate improved aggregate WER but retained words that the
+native decoder withdrew. On the declared repeated English sample, native final
+had 54 words/WER 0 while that adapter had 57 words/three insertions. Updating
+stock FluidAudio to the reviewed latest snapshot alone preserved all eight
+public-cell score objects, including the adapter damage. These adverse results
+remain evidence, not accepted quality.
 
-**Removing the filter is not a repair.** Although the resolved provider calls a
-deduplication routine before emitting updates, a separate repeated public-speech
-experiment extending beyond its left context produced massive context replay in
-English, Spanish and mixed speech. Unfiltered production and the independent
-experiment agreed; both were wrong. The ordinary short-cell lane cannot certify
-this shape. The passthrough candidate was rejected before commit, not retained
-behind green consumer tests or reclassified as a harmless model-only error.
+The current explicit producer contract (D559) exposes retained/stable token
+positions and terminal/error authority. Both consumers commit only stable
+positions and replace/clear the mutable preview. Deterministic tests cover
+retirement, equal-time subwords/repetition, empty clears, EOF/failure, cancellation
+and job/meeting/channel isolation. They do not establish model quality, native
+paste delivery, population accuracy or backend quiescence. Local matched
+installed-model checks establish literal native/production/dictation/meeting
+parity and preview cleanup on the declared eight observations. Current live/batch
+diarization and public AMI calibration also retain their bounded baseline. These
+checks cannot certify first-stable-commit/insertion latency, concurrent process
+resources, field review or exact-head hosted evidence; those remain separate
+gates, not borrowed from the prior SDK or a synthetic-green reducer.
 
-A repair must establish which tokens belong to each delivered audio region,
-preserve same-time subwords and legitimate repetition, and survive long context,
-final drain and both meeting/dictation consumers. Neither a timestamp epsilon
-nor unconditional trust in the upstream deduplication claim is demonstrated.
-The existing filter remains imperfect but cannot be removed without replacing
-its replay protection. Separately, `CaptionCoalescer.trimOverlap` can collapse
-literal repetitions and relies on a short-word allowlist; retiring that policy
-requires an explicit producer/boundary contract across supported live engines.
-No successful harness exit closes these unresolved product-quality defects.
+Native recognition errors also remain separate: latest stock native final on
+the declared repeated ES/mixed cells had 7.41%/14.81% WER, and silence emitted two
+words. Consumer parity must not relabel those errors as correct speech or hide
+them with suffix trimming. A separate twelve-repeat batch comparison keeps
+stock/fork text identical in the three declared speech cells, but its mixed
+code-switching cell still has 40.74% WER. Its inputs differ from the six-repeat
+live observations and cannot rank those lanes. The temporary fork remains a maintenance obligation
+until upstream can provide the same reviewed authority contract.
+
+Unmarked producers retain `CaptionCoalescer.trimOverlap` and its literal-repeat
+trade-off. Apple range previews keep their own authority; this contract does not
+silently change another engine, add speech admission or promise awaitable cleanup.
 
 ### Closed-row revision after microphone echo replacement
 
@@ -731,7 +742,7 @@ Physical/model latency and cancellation field evidence remain open.
 | T32 | ~~Database-open failure still terminates the app at launch~~ | **RESOLVED in code (D319):** `AppServices` now throws and opens the authority before constructing any other process owner. A root launch state keeps normal UI and background work absent on failure, offers retry, exports content-free mode-`0600` diagnostics, and creates a `quick_check`-verified read-only SQLite recovery copy through hidden mode-`0700` staging without overwriting, mutating, migrating, deleting, or silently recreating the source. Deterministic tests cover corrupt/missing sources, privacy, permissions, non-overwrite, retry, and source parity; bilingual XCUITest exercises the real disposable recovery journey. Automatic repair or restore-over-authority remains deliberately excluded. | ✅ |
 | T33 | ~~Unreadable or concurrently mutated encrypted voice identity can be hidden, overwritten, or split from its key~~ | **RESOLVED in code (D357–D358):** existing ciphertext forbids replacement-key creation; missing/corrupt keys and unreadable/authentication/decoding failures propagate before every save, remember, or remove; AES-GCM serialization is guarded; Settings keeps Retry plus explicit destructive reset visible; and one no-follow mode-`0600` BSD sidecar lease now serializes each complete ciphertext/Keychain transaction across store values and cooperating D358-capable stable/Dev/CLI processes. Deterministic contention tests preserve both concurrent gallery additions and prevent save/delete from stranding ciphertext. A temporary-store-only unavailable fixture and real-app XCUITest cover both stores without touching host biometric state. The advisory lock cannot constrain a still-running pre-D358 binary; a real Keychain-reset journey, abrupt multi-process termination, mixed-version exclusion, and physical VoiceOver remain field evidence, not data-recovery promises. | ✅ |
 | T34 | Live dictation vocabulary and same-alphabet language restriction remain limited | **PARTIAL (Sep 2026).** Dictation now forwards its supported language hint to the live Parakeet manager (meeting captions do not opt in), and Settings explains that Spanish and English can still mix because the filter works on writing systems. Segments still carry the requested hint rather than a detected-language classification. Default live Parakeet still never reads `hints.vocabulary`: `customVocabulary` biases batch Whisper and the optional fixed-locale Apple Speech live engine, without a measured recognition-quality claim. Streaming vocabulary boosting needs the unpinned `parakeet-ctc-110m` CTC model; on the default route, preferred spellings therefore still come only from the deterministic `DictationTextRules` tier (spec 06). | Evaluate a verified, consented CTC model and wire `configureVocabularyBoosting` only with call-site quality and resource evidence. Do not claim the existing language hint separates same-alphabet languages or improves recognition quality. |
-| T35 | ~~The reviewed speech-engine pin freezes Portavoz behind published upstream fixes~~ | **RESOLVED for published behavior through D539 (Sep 2026).** `Package.swift` now requires exact FluidAudio 0.15.8. A matched 0.15.6/0.15.7/0.15.8 public-synthetic call-site matrix found 0.15.7 production-identical and admitted 0.15.8 only after every speech cell improved, long-run latency stayed flat, three process observations preserved the memory ceiling, and AMI DER remained 7.6%. Silence hallucination did not improve and remains separate evidence. Stock 0.16.1 was rejected before tests because NemoTextProcessing 0.3.1 advertises `Headers` while packaging its module map under `Headers/CNemoTextProcessing`; its speech sources are byte-identical to 0.15.8. Keep the D516 exact-review rule. Reopen for a later release only with matched recognition, diarization, latency and memory evidence; never vendor-patch a malformed binary target merely to make an evaluation pass. | ✅ |
+| T35 | Reviewed speech-engine updates require qualification and temporary-fork maintenance | **PARTIAL (D559).** The immutable latest-based fork retains the reviewed upstream snapshot and adds explicit raw-token revision authority; unused TTS/NeMo are excluded with Swift 6.2 traits rather than repairing a vendor binary. D539 remains historical evidence for 0.15.8, not a receipt for the fork. Stock latest alone did not fix consumer retirement. Keep matched ASR, diarization, latency/memory and exact-head CI separate from source compatibility, and remove the temporary fork only after upstream exposes an equivalent reviewed contract. Models/defaults/deployment floors are unchanged. | Maintain the exact SHA and qualify each subsequent SDK change; no rolling branch or automatic model adoption. |
 | T36 | FluidAudio's macOS 14 diarizer advisory is unqualified on the deployment floor | **OPEN (Sep 2026).** Upstream documents a BNNS diarizer crash on macOS 14 (#878/#885), and Portavoz still deploys to macOS 14.4. The 0.15.8 comparison ran only on the current macOS host, so it neither confirms nor rules out that crash for batch or live diarization on the floor. | Run batch and live two-speaker diarization on a physical macOS 14.4 Mac before claiming the floor is diarization-safe, or raise the deployment floor. |
 | T37 | Silero voice activity is verified but not serving capture | **PARTIAL (D548):** a small MIT Core ML bundle is pinned by exact artifact hashes and a session-scoped TranscriptionKit adapter reaches FluidAudio's real 4,096-sample VAD inference after a verified local load. Missing model, PCM discontinuity, cancellation and concurrent producers fail closed. No app recording or dictation path constructs this adapter yet; no meeting talk-time, transcript gate or silence-based Stop is changed. | Add explicit consented model preparation and resource admission, then connect only off-callback bounded audio feeds. Qualify EN/ES speech and silence, small packets, device changes, drop/timeout/cancel, RAM/CPU/ANE contention, and full real-app journeys before any opt-in countdown or meeting metric replaces existing behavior. |
 
