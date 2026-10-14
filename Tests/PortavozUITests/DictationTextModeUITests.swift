@@ -11,6 +11,7 @@ final class DictationTextModeUITests: PortavozUITestCase {
         let original = try makeApplication(in: app)
         let originalBytes = try Data(contentsOf: original)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
         XCTAssertTrue(app.openSettingsCategory("settings-category-audio", revealing: "settings-dictation-text-mode"))
         let global = app.control(withIdentifier: "settings-dictation-text-mode")
         try select(.clean, prefix: "settings-dictation-text-mode", in: app)
@@ -54,6 +55,7 @@ final class DictationTextModeUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
             #"{"globalDictationEnabled":true,"dictationTextMode":"literal","dictationApplicationTextProfiles":"not json"}"#
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
         XCTAssertTrue(app.openSettingsCategory("settings-category-audio", revealing: "settings-dictation-text-mode"))
         try openProfiles(in: app)
         let warning = app.staticTexts["settings-dictation-profiles-invalid"]
@@ -80,6 +82,7 @@ final class DictationTextModeUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
             #"{"globalDictationEnabled":true,"dictationTextMode":"literal"}"#
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
         let dictate = app.buttons["menu-bar-dictate"]
         XCTAssertTrue(dictate.waitForHittable(timeout: 5))
         dictate.click()

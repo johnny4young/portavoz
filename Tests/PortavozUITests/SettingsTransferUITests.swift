@@ -10,6 +10,7 @@ final class SettingsTransferUITests: PortavozUITestCase {
         try writeSettings(["interfaceLanguage": target, "vocabulary": "Cóndor, Don’t, C++"], to: input)
         let app = try application(input: input, output: output)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
         XCTAssertTrue(app.openSettingsCategory("settings-category-data", revealing: "settings-export-preferences"))
 
         let dataCategory = app.buttons["settings-category-data"]
@@ -77,6 +78,7 @@ final class SettingsTransferUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = String(
             decoding: try JSONSerialization.data(withJSONObject: ["dictationReplacements": legacy]), as: UTF8.self)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
         XCTAssertTrue(app.openSettingsCategory("settings-category-data", revealing: "settings-import-preferences"))
         let importButton = app.buttons["settings-import-preferences"]
         importButton.click()

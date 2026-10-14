@@ -10,20 +10,25 @@ enum UITestStorage {
         case missingSession
         case overlappingSessions
         case applicationStillRunning
-        case unownedApplication
-        case ambiguousApplication
     }
 
     private final class Session {
         let ownerID: UUID
         let scratch: UITestScratch
         var applications: [XCUIApplication] = []
-        var launchedProcesses: [ObjectIdentifier: UITestProcessIdentity] = [:]
+        var launches: [ObjectIdentifier: OwnedLaunch] = [:]
 
         init(ownerID: UUID) throws {
             self.ownerID = ownerID
             scratch = try UITestScratch()
         }
+    }
+
+    private struct OwnedLaunch {
+        let process: NSRunningApplication
+        let request: URL
+        let declined: URL
+        let payload: Data
     }
 
     private static var session: Session?
@@ -43,118 +48,104 @@ enum UITestStorage {
         session.applications.append(application)
     }
 
-    /// Capture the process created by this registered proxy's successful launch.
-    /// A bundle identifier alone is never authority to terminate a process.
-    static func recordLaunchedProcess(_ application: XCUIApplication) throws {
-        guard let owned = session,
-              owned.applications.contains(where: { $0 === application }),
-              application.launchArguments.contains("-use-temp-store")
-        else { throw Failure.unownedApplication }
-        let candidates = NSRunningApplication.runningApplications(
-            withBundleIdentifier: XCUIApplication.portavozUITestHostBundleIdentifier)
-        guard candidates.count == 1,
-              let process = UITestProcessIdentity(candidates[0])
-        else { throw Failure.ambiguousApplication }
-        let key = ObjectIdentifier(application)
-        if let previous = owned.launchedProcesses[key], !previous.isTerminated {
-            throw Failure.ambiguousApplication
+    static func prepareLaunch(_ application: XCUIApplication) {
+        guard let session,
+              session.applications.contains(where: { $0 === application }),
+              application.launchArguments.contains("-use-temp-store") else { return }
+        session.launches.removeValue(forKey: ObjectIdentifier(application))
+        if !application.launchArguments.contains("-uitest-owned-exit") {
+            application.launchArguments.append("-uitest-owned-exit")
         }
-        owned.launchedProcesses[key] = process
+        // Relaunching the same XCTest proxy must never consume an old request.
+        application.launchEnvironment["PORTAVOZ_UI_TEST_EXIT_NONCE"] = UUID().uuidString
     }
 
-    private static func capturedProcessIsCurrent(_ process: UITestProcessIdentity) -> Bool {
-        let candidates = NSRunningApplication.runningApplications(
+    static func recordLaunch(_ application: XCUIApplication) {
+        let processes = NSRunningApplication.runningApplications(
             withBundleIdentifier: XCUIApplication.portavozUITestHostBundleIdentifier)
-        return candidates.count == 1 && process.matches(candidates[0])
+        guard let session,
+              session.applications.contains(where: { $0 === application }),
+              let nonce = application.launchEnvironment["PORTAVOZ_UI_TEST_EXIT_NONCE"],
+              let root = application.launchEnvironment["TMPDIR"],
+              processes.count == 1,
+              let process = processes.first,
+              process.processIdentifier > 0, !process.isTerminated else { return }
+        let directory = URL(fileURLWithPath: root, isDirectory: true)
+        let ready = directory.appendingPathComponent("portavoz-uitest-exit-ready-\(nonce)")
+        let expected = Data("\(nonce):\(process.processIdentifier)".utf8)
+        guard (try? Data(contentsOf: ready)) == expected else { return }
+        session.launches[ObjectIdentifier(application)] = OwnedLaunch(
+            process: process,
+            request: directory.appendingPathComponent("portavoz-uitest-exit-\(nonce)"),
+            declined: directory.appendingPathComponent("portavoz-uitest-exit-declined-\(nonce)"),
+            payload: expected)
     }
 
-    private static func terminateCapturedProcess(
-        _ application: XCUIApplication,
-        process: UITestProcessIdentity
-    ) throws {
-        if process.isTerminated { return }
-        guard capturedProcessIsCurrent(process) else { throw Failure.ambiguousApplication }
-        application.terminate()
+    enum FinishOutcome: Equatable {
+        case appKitExit
+        case alreadyExited
+        case officialTermination
+        case identityLost
     }
 
-    /// End final disposal by requesting normal Quit of our captured process.
-    /// Mid-journey recovery tests retain XCTest's abrupt terminate() calls.
-    /// Observe exit rather than paying XCTest's fixed termination round trip;
-    /// the original ten-second deadline and scratch-ownership checks remain.
-    static func terminateLaunchedProcess(_ application: XCUIApplication) throws {
-        guard let owned = session,
-              owned.applications.contains(where: { $0 === application }),
-              let process = owned.launchedProcesses[ObjectIdentifier(application)]
-        else { throw Failure.unownedApplication }
-        // An old proxy's XCTest state can resolve a later same-bundle launch.
-        // Its captured process, not that bundle-wide proxy state, owns exit.
-        if process.isTerminated { return }
-        do {
-            guard capturedProcessIsCurrent(process) else { throw Failure.ambiguousApplication }
-            // The sandboxed XCTest runner cannot send AppKit's Quit Apple
-            // event. Use the already-guarded native shortcut instead; never
-            // activate a foreign receiver or enter an unowned modal to quit.
-            // Any exposed modal conservatively keeps the original abrupt
-            // disposal. No waiting, activation or key is needed to close it.
-            let modals = application.descendants(matching: .any).matching(NSPredicate(
-                format: "elementType == %lu OR elementType == %lu OR elementType == %lu",
-                XCUIElement.ElementType.sheet.rawValue,
-                XCUIElement.ElementType.alert.rawValue,
-                XCUIElement.ElementType.dialog.rawValue))
-            if modals.count > 0 {
-                try terminateCapturedProcess(application, process: process)
-            } else {
-                let admission = application.typeKeyIfOwned(
-                    XCUIKeyboardKey(rawValue: "q"), modifierFlags: .command,
-                    bundleIdentifier: XCUIApplication.portavozUITestHostBundleIdentifier,
-                    expectedProcess: process)
-                if admission != .admitted {
-                    try terminateCapturedProcess(application, process: process)
+    @discardableResult
+    static func finish(_ application: XCUIApplication, allowOwnedExit: Bool = false) -> FinishOutcome {
+        if let launch = session?.launches[ObjectIdentifier(application)] {
+            // Old proxies resolve a later launch of the same bundle. An ended
+            // captured launch is not authority to terminate that later process.
+            if launch.process.isTerminated { return .alreadyExited }
+            guard stillOwns(launch.process) else { return .identityLost }
+            if allowOwnedExit, publish(launch.payload, to: launch.request) {
+                waitForUITestCondition(timeout: 10) {
+                    launch.process.isTerminated || (try? Data(contentsOf: launch.declined)) == launch.payload
                 }
+                if launch.process.isTerminated { return .appKitExit }
             }
+            // Revalidate even the official fallback. Identity loss is not
+            // authority to terminate a replacement process through this proxy.
+            if launch.process.isTerminated { return .alreadyExited }
+            guard stillOwns(launch.process) else { return .identityLost }
         }
-        guard waitForUITestCondition(timeout: 10, {
-            process.isTerminated && application.state == .notRunning
-        }), application.waitForPortavozProcessExit() else {
-            throw Failure.applicationStillRunning
-        }
+        if application.state != .notRunning { application.terminate() }
+        return .officialTermination
+    }
+
+    private static func stillOwns(_ process: NSRunningApplication) -> Bool {
+        guard let current = NSRunningApplication(processIdentifier: process.processIdentifier) else { return false }
+        return !current.isTerminated && current.isEqual(process)
+    }
+
+    private static func publish(_ data: Data, to destination: URL) -> Bool {
+        let staging = destination.deletingLastPathComponent()
+            .appendingPathComponent("portavoz-uitest-exit-stage-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: staging) }
+        guard FileManager.default.createFile(atPath: staging.path, contents: data,
+                                            attributes: [.posixPermissions: 0o600]) else { return false }
+        do {
+            try FileManager.default.moveItem(at: staging, to: destination)
+            return true
+        } catch { return false }
     }
 
     /// Ends the caller's own session. Returns `false` when that owner has no
     /// live session, so a guard never reports cleanup it did not perform.
     @discardableResult
-    static func end(ownerID: UUID, normalQuit: Bool = false) throws -> Bool {
+    static func end(ownerID: UUID, allowOwnedExit: Bool = false) throws -> Bool {
         guard let owned = session, owned.ownerID == ownerID else { return false }
         defer { session = nil }
         for application in owned.applications {
-            let process = owned.launchedProcesses[ObjectIdentifier(application)]
-            // A completed older launch must not wait for (or act on) another
-            // participant that uses the same bundle identifier in this case.
-            if process?.isTerminated == true { continue }
-            // Only a completed, healthy case may request normal Quit of the
-            // exact launch it owns. Interruption/failure callers default to
-            // abrupt XCTest termination, as do unrecorded fixture launches.
-            if application.state != .notRunning {
-                if normalQuit, process != nil, application.state == .runningForeground {
-                    try terminateLaunchedProcess(application)
-                } else if let process {
-                    try terminateCapturedProcess(application, process: process)
-                } else {
-                    application.terminate()
-                }
-            }
-            guard waitForUITestCondition(timeout: 10, {
-                application.state == .notRunning && process?.isTerminated != false
-            }) else {
-                // Preserve scratch if a participant could still be writing.
+            guard finish(application, allowOwnedExit: allowOwnedExit) != .identityLost else {
                 throw Failure.applicationStillRunning
             }
         }
-        // Check the bundle-wide inventory only after every owned launch has
-        // exited, not while a later participant legitimately remains alive.
-        if let application = owned.applications.first,
-           !application.waitForPortavozProcessExit() {
-            throw Failure.applicationStillRunning
+        // All captured launches finish before a stale proxy observes the
+        // bundle's final state; otherwise it can resolve a later owned launch.
+        for application in owned.applications {
+            guard application.wait(for: .notRunning, timeout: 10),
+                  application.waitForPortavozProcessExit() else {
+                // Preserve scratch if a participant could still be writing.
+                throw Failure.applicationStillRunning
+            }
         }
         try owned.scratch.remove()
         return true

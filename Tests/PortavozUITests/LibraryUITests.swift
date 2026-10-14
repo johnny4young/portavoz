@@ -23,6 +23,7 @@ final class LibraryUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_LAUNCH_DIAGNOSTICS_PATH"] =
             diagnosticsURL.path
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         let title = app.staticTexts["launch-recovery-title"]
         XCTAssertTrue(
@@ -97,6 +98,7 @@ final class LibraryUITests: PortavozUITestCase {
     func testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         let upcoming = app.descendants(matching: .any)
@@ -128,6 +130,7 @@ final class LibraryUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz()
         app.launchArguments += ["-AppleInterfaceStyle", "Light"]
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
@@ -176,6 +179,7 @@ final class LibraryUITests: PortavozUITestCase {
     func testPrivacyChipOpensTheActivityLogInYourData() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
 
         func openActivity() {
@@ -214,6 +218,7 @@ final class LibraryUITests: PortavozUITestCase {
     func testRecordingStartFailureOffersTypedRecovery() throws {
         let app = try XCUIApplication.portavoz(simulateRecordingStartFailure: true)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
@@ -249,6 +254,7 @@ final class LibraryUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] = directory.appendingPathComponent("audio").path
         app.launchArguments.append("-simulate-capture-prefix-failure")
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         record.click()
@@ -279,6 +285,7 @@ final class LibraryUITests: PortavozUITestCase {
     func testRecordingWarnsWhenRemoteAudioCallbacksStop() throws {
         let app = try XCUIApplication.portavoz(simulateSystemCaptureStall: true)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
@@ -324,6 +331,7 @@ final class LibraryUITests: PortavozUITestCase {
     func testRecordingWarnsWhenIncomingAudioClips() throws {
         let app = try XCUIApplication.portavoz(simulateSystemAudioClipping: true)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
@@ -350,6 +358,7 @@ final class LibraryUITests: PortavozUITestCase {
     func testColdRecordingStartsLiveCaptionsWhenModelBecomesReady() throws {
         let app = try XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
@@ -392,6 +401,7 @@ final class LibraryUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
         app.launchArguments.append("-simulate-owned-token-preview")
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         record.click()
@@ -410,6 +420,7 @@ final class LibraryUITests: PortavozUITestCase {
     func testLiveTranscriptYieldsFollowWhileReadingHistory() throws {
         let app = try XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
@@ -440,7 +451,9 @@ final class LibraryUITests: PortavozUITestCase {
         // A runner's wheel acceleration and window height change how far one
         // synthetic scroll travels. Keep scrolling in the same user direction
         // until the same deterministic history row is actually in view.
-        for _ in 0..<12 where !earlierRow.isHittable {
+        // A virtualized row has no AX node yet. Do not ask XCTest to resolve
+        // its hit point (with internal retries) until existence is observable.
+        for _ in 0..<12 where !(earlierRow.exists && earlierRow.isHittable) {
             transcript.scroll(byDeltaX: 0, deltaY: 8)
         }
         XCTAssertTrue(
@@ -489,6 +502,7 @@ final class LibraryUITests: PortavozUITestCase {
             #"{"companionEnabled":true}"#
         app.launchArguments.append("-seed-live-summary-ui")
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
@@ -605,6 +619,7 @@ final class LibraryUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
         app.launchArguments.append("-seed-live-translation-ui")
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
@@ -635,6 +650,7 @@ final class LibraryUITests: PortavozUITestCase {
             seedDemo: true,
             simulateLiveTranscriptBrowsing: true)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         let homeRecord = app.buttons["home-record"]
@@ -672,6 +688,7 @@ final class LibraryUITests: PortavozUITestCase {
     func testSeededMeetingsGroupByRecency() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         // The seeded meeting appears under a time-bucket section header, not
         // one flat "Meetings" list (design system timeline).
@@ -766,6 +783,7 @@ final class LibraryUITests: PortavozUITestCase {
             continueEnvironmentKey:
                 "PORTAVOZ_UI_TEST_ASK_ANSWER_CONTINUE_PATH")
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         app.buttons["library-ask-button"].click()
@@ -1002,6 +1020,7 @@ final class LibraryUITests: PortavozUITestCase {
             seedDemo: true,
             seedAskMemory: true)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         app.buttons["library-ask-button"].click()
@@ -1094,6 +1113,7 @@ final class LibraryUITests: PortavozUITestCase {
     func testAskConfirmedMemoryLoadsAllTopicJobsAndExactCitations() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true, seedAskTopicMemory: true)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         app.buttons["library-ask-button"].click()
 
@@ -1342,6 +1362,7 @@ final class LibraryUITests: PortavozUITestCase {
     func testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         // Keep the citation destination open before invoking the resident
@@ -1403,6 +1424,7 @@ final class LibraryUITests: PortavozUITestCase {
     func testLaunchRecoversInterruptedStagingAudio() throws {
         let app = try XCUIApplication.portavoz(seedRecovery: true)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(
             app.waitForSeededLibraryToSettle(timeout: 30),
@@ -1424,6 +1446,7 @@ final class LibraryUITests: PortavozUITestCase {
     func testLaunchResumesDurablePostCaptureProcessing() throws {
         let app = try XCUIApplication.portavoz(seedProcessing: true)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(
             app.staticTexts["Durable processing recovery"]

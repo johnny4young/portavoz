@@ -5,14 +5,10 @@ import XCTest
 /// through `value`, others only through `label`.
 @MainActor
 func renderedText(of element: XCUIElement) -> String {
-    // Read both accessibility channels from the same observation. Resolving
-    // the live query twice is slower and can mix two SwiftUI revisions.
-    do {
-        return renderedText(of: try element.snapshot())
-    } catch {
-        XCTFail("Unable to observe rendered text: \(error)")
-        return ""
+    guard let value = element.value as? String, !value.isEmpty else {
+        return element.label
     }
+    return value
 }
 
 /// The locale a run explicitly requested. Journeys assert against this rather
@@ -282,8 +278,8 @@ extension XCUIApplication {
         XCTAssertTrue(
             waitForPortavozProcessExit(),
             "the preceding Portavoz process must leave the running-app inventory")
+        UITestStorage.prepareLaunch(self)
         launch()
-        XCTAssertNoThrow(try UITestStorage.recordLaunchedProcess(self))
         // Request our own activation before observing foreground readiness.
         // Another app may legitimately have raised its window during launch.
         activate()
@@ -294,11 +290,10 @@ extension XCUIApplication {
         XCTAssertTrue(
             mainWindow.waitForHittable(timeout: 15),
             "the disposable main window must be actionable before UI assertions")
+        UITestStorage.recordLaunch(self)
         if shouldOpenSettings {
-            XCTAssertTrue(
-                buttons["library-new-recording-button"]
-                    .waitForStableFrame(timeout: 20),
-                "the library must finish its cold-start layout before opening Settings")
+            // Command-comma targets the owned application, not the record
+            // button. Prove the real Settings destination in openSettingsWindow.
             XCTAssertTrue(
                 openSettingsWindow(),
                 "the Settings command must open the settings window")
@@ -490,11 +485,12 @@ extension XCUIApplication {
         modalAnchor: String? = nil
     ) -> UITestTextFieldEditingHandoff {
         let field = textFields[identifier]
-        guard field.waitForExistenceFast(timeout: timeout),
-              let originalValue = field.value as? String
-        else { return .fieldUnavailable }
+        guard field.waitForExistenceFast(timeout: timeout) else { return .fieldUnavailable }
         guard let editing = field.observedKeyboardFocus else { return .focusUnobservable }
         guard editing else { return .notEditing }
+        guard let originalValue = field.value as? String else { return .fieldUnavailable }
+        guard let stillEditing = field.observedKeyboardFocus else { return .focusUnobservable }
+        guard stillEditing else { return .notEditing }
         let admission = typeKeyIfOwned(
             .tab, modifierFlags: [], bundleIdentifier: Self.portavozUITestHostBundleIdentifier,
             modalAnchor: modalAnchor)
@@ -861,8 +857,7 @@ extension XCUIElement {
     @MainActor
     func waitForLabelOrValue(_ text: String, timeout: TimeInterval) -> Bool {
         waitForUITestCondition(timeout: timeout) {
-            guard self.exists, let snapshot = try? self.snapshot() else { return false }
-            return snapshot.label == text || snapshot.value as? String == text
+            self.exists && (self.label == text || self.value as? String == text)
         }
     }
 

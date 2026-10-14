@@ -8,6 +8,7 @@ final class HomeUITests: PortavozUITestCase {
     func testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         let title = app.staticTexts["home-title"]
@@ -68,6 +69,7 @@ final class HomeUITests: PortavozUITestCase {
             seedBrief: true,
             simulateLiveTranscriptBrowsing: true)
         app.launchPortavoz()
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         XCTAssertTrue(app.staticTexts["home-title"].waitForExistenceFast(timeout: 10))
