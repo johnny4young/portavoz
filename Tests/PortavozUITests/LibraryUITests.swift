@@ -25,7 +25,7 @@ final class LibraryUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let title = app.staticTexts["launch-recovery-title"]
+        let title = app.staticTexts.identified("launch-recovery-title")
         XCTAssertTrue(
             title.waitForExistenceFast(timeout: 15),
             "a database-open failure must render recovery instead of terminating")
@@ -33,12 +33,12 @@ final class LibraryUITests: PortavozUITestCase {
             ? "No se pudo abrir tu biblioteca"
             : "Your library couldn't be opened"
         XCTAssertEqual(renderedText(of: title), expectedTitle)
-        XCTAssertFalse(app.buttons["library-new-recording-button"].exists)
+        XCTAssertFalse(app.buttons.identified("library-new-recording-button").exists)
         XCTAssertTrue(app.control(withIdentifier: "launch-recovery-file-evidence").exists)
-        XCTAssertTrue(app.buttons["launch-recovery-retry"].exists)
+        XCTAssertTrue(app.buttons.identified("launch-recovery-retry").exists)
 
         let originalDatabase = try Data(contentsOf: databaseURL)
-        app.buttons["launch-recovery-save-copy"].click()
+        app.buttons.identified("launch-recovery-save-copy").click()
         let copyStatus = app.control(withIdentifier: "launch-recovery-copy-status")
         XCTAssertTrue(copyStatus.waitForExistenceFast(timeout: 15))
         let expectedCopyStatus = UITestLocale.environmentLocale == "es"
@@ -69,7 +69,7 @@ final class LibraryUITests: PortavozUITestCase {
             atPath: recoveryCopy.appendingPathComponent("portavoz.sqlite").path))
         XCTAssertEqual(try Data(contentsOf: databaseURL), originalDatabase)
 
-        app.buttons["launch-recovery-export-diagnostics"].click()
+        app.buttons.identified("launch-recovery-export-diagnostics").click()
         let diagnosticsStatus = app.control(
             withIdentifier: "launch-recovery-diagnostics-status")
         XCTAssertTrue(diagnosticsStatus.waitForExistenceFast(timeout: 15))
@@ -85,11 +85,11 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertFalse(diagnostics.contains(databaseURL.lastPathComponent))
         XCTAssertTrue(diagnostics.contains(#""filePresent" : true"#))
 
-        app.buttons["launch-recovery-retry"].click()
+        app.buttons.identified("launch-recovery-retry").click()
         XCTAssertTrue(
             title.waitForExistenceFast(timeout: 15),
             "a repeated failure must return to the bounded recovery state")
-        XCTAssertFalse(app.buttons["library-new-recording-button"].exists)
+        XCTAssertFalse(app.buttons.identified("library-new-recording-button").exists)
         try app.requireDisposableMainWindowOnZeroScreen()
         attachScreenshot(of: app, named: "database-launch-recovery")
     }
@@ -121,7 +121,7 @@ final class LibraryUITests: PortavozUITestCase {
             .firstMatch
         XCTAssertTrue(commitment.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(app.staticTexts["Prepare the rollout"].exists)
-        XCTAssertTrue(app.buttons["brief-record-button"].exists)
+        XCTAssertTrue(app.buttons.identified("brief-record-button").exists)
         attachScreenshot(of: app, named: "meeting-preparation-brief")
     }
 
@@ -132,20 +132,20 @@ final class LibraryUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let record = app.buttons["library-new-recording-button"]
+        let record = app.buttons.identified("library-new-recording-button")
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         XCTAssertTrue(app.windows.firstMatch.frame.contains(record.frame),
                       "welcome content must not inflate the split view beyond the window")
         if let locale = UITestLocale.environmentLocale {
             XCTAssertEqual(record.label, locale == "es" ? "Nueva grabación" : "New recording")
         }
-        let title = app.staticTexts["home-title"]
+        let title = app.staticTexts.identified("home-title")
         XCTAssertTrue(title.waitForExistenceFast(timeout: 5))
         if let locale = UITestLocale.environmentLocale {
             XCTAssertEqual(renderedText(of: title), locale == "es" ? "Hoy" : "Today")
         }
-        XCTAssertTrue(app.buttons["home-record"].isHittable)
-        XCTAssertTrue(app.buttons["home-ask"].isHittable)
+        XCTAssertTrue(app.buttons.identified("home-record").isHittable)
+        XCTAssertTrue(app.buttons.identified("home-ask").isHittable)
         XCTAssertTrue(
             app.control(withIdentifier: "library-record-menu").exists,
             "Import lives behind the record button's menu, not in the navigation")
@@ -163,10 +163,10 @@ final class LibraryUITests: PortavozUITestCase {
         }
         attachScreenshot(of: app, named: "home-today-light")
 
-        app.buttons["home-ask"].click()
+        app.buttons.identified("home-ask").click()
         XCTAssertTrue(app.control(withIdentifier: "ask-question-field").waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(app.buttons["library-ask-button"].isSelected)
-        XCTAssertFalse(app.buttons["library-insights-button"].isSelected)
+        XCTAssertTrue(app.buttons.identified("library-ask-button").isSelected)
+        XCTAssertFalse(app.buttons.identified("library-insights-button").isSelected)
     }
 
     @MainActor
@@ -177,20 +177,20 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
 
         func openActivity() {
-            let chip = app.buttons["library-privacy-chip"]
+            let chip = app.buttons.identified("library-privacy-chip")
             XCTAssertTrue(chip.waitForExistenceFast(timeout: 10))
             XCTAssertTrue(chip.waitForStableFrame(timeout: 10))
             chip.click()
             XCTAssertTrue(
                 app.control(withIdentifier: "library-privacy-note").waitForExistenceFast(timeout: 5),
                 "the chip must open its short privacy note")
-            let seeActivity = app.buttons["library-privacy-activity"]
+            let seeActivity = app.buttons.identified("library-privacy-activity")
             XCTAssertTrue(seeActivity.waitForHittable(timeout: 5))
             seeActivity.click()
             XCTAssertTrue(
                 app.control(withIdentifier: "settings-ledger-audio").waitForExistenceFast(timeout: 10),
                 "See activity must land on Your data, where the activity log lives")
-            XCTAssertTrue(app.buttons["settings-category-data"].isSelected)
+            XCTAssertTrue(app.buttons.identified("settings-category-data").isSelected)
         }
 
         // A fresh Settings window.
@@ -200,10 +200,10 @@ final class LibraryUITests: PortavozUITestCase {
         // forward (⌘`) before reaching for the chip; Settings stays open.
         XCTAssertTrue(app.openSettingsCategory(
             "settings-category-general", revealing: "settings-category-list"))
-        XCTAssertTrue(app.buttons["settings-category-general"].isSelected)
+        XCTAssertTrue(app.buttons.identified("settings-category-general").isSelected)
         typeKey("`", modifierFlags: .command, in: app)
         XCTAssertTrue(
-            app.buttons["library-privacy-chip"].waitForHittable(timeout: 10),
+            app.buttons.identified("library-privacy-chip").waitForHittable(timeout: 10),
             "the main window must be in front before the chip is used again")
         openActivity()
     }
@@ -214,7 +214,7 @@ final class LibraryUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let record = app.buttons["library-new-recording-button"]
+        let record = app.buttons.identified("library-new-recording-button")
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         let isSpanish = record.label == "Nueva grabación"
         record.click()
@@ -249,12 +249,12 @@ final class LibraryUITests: PortavozUITestCase {
         app.launchArguments.append("-simulate-capture-prefix-failure")
         app.launchPortavoz()
         defer { app.terminate() }
-        let record = app.buttons["library-new-recording-button"]
+        let record = app.buttons.identified("library-new-recording-button")
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         record.click()
         XCTAssertTrue(app.control(withIdentifier: "recording-microphone-capture-failure")
             .waitForExistenceFast(timeout: 10))
-        let stop = app.buttons["recording-stop"]
+        let stop = app.buttons.identified("recording-stop")
         XCTAssertTrue(stop.waitForExistenceFast(timeout: 5))
         stop.click()
         XCTAssertTrue(app.control(withIdentifier: "detail-capture-failure-microphone")
@@ -281,7 +281,7 @@ final class LibraryUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let record = app.buttons["library-new-recording-button"]
+        let record = app.buttons.identified("library-new-recording-button")
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         let isSpanish = record.label == "Nueva grabación"
         record.click()
@@ -290,7 +290,7 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(
             warning.waitForExistenceFast(timeout: 10),
             "callback death must become visible while microphone capture continues")
-        let stop = app.buttons["recording-stop-after-remote-outage"]
+        let stop = app.buttons.identified("recording-stop-after-remote-outage")
         XCTAssertTrue(
             stop.waitForExistenceFast(timeout: 5),
             "a prolonged outage must make Stop explicit without ending capture automatically")
@@ -327,7 +327,7 @@ final class LibraryUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let record = app.buttons["library-new-recording-button"]
+        let record = app.buttons.identified("library-new-recording-button")
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         let isSpanish = record.label == "Nueva grabación"
         record.click()
@@ -342,7 +342,7 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(app.staticTexts[expected].exists)
         attachScreenshot(of: app, named: "recording-system-audio-clipping")
 
-        let dismiss = app.buttons["recording-system-audio-clipping-dismiss"]
+        let dismiss = app.buttons.identified("recording-system-audio-clipping-dismiss")
         XCTAssertTrue(dismiss.exists)
         dismiss.click()
         XCTAssertFalse(warning.exists)
@@ -354,7 +354,7 @@ final class LibraryUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let record = app.buttons["library-new-recording-button"]
+        let record = app.buttons.identified("library-new-recording-button")
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         let isSpanish = record.label == "Nueva grabación"
         record.click()
@@ -396,7 +396,7 @@ final class LibraryUITests: PortavozUITestCase {
         app.launchArguments.append("-simulate-owned-token-preview")
         app.launchPortavoz()
         defer { app.terminate() }
-        let record = app.buttons["library-new-recording-button"]
+        let record = app.buttons.identified("library-new-recording-button")
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         record.click()
         XCTAssertTrue(app.waitForLiveTranscriptFrontier())
@@ -416,7 +416,7 @@ final class LibraryUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let record = app.buttons["library-new-recording-button"]
+        let record = app.buttons.identified("library-new-recording-button")
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         record.click()
 
@@ -429,7 +429,7 @@ final class LibraryUITests: PortavozUITestCase {
             app.staticTexts["History row 18 remains readable during live updates."]
                 .waitForExistenceFast(timeout: 8))
 
-        let jumpToLive = app.buttons["recording-jump-to-live"]
+        let jumpToLive = app.buttons.identified("recording-jump-to-live")
         // Hosted runners occasionally coalesce the first synthetic wheel
         // event. Retry the same user gesture until SwiftUI reports reader
         // ownership instead of turning one dropped event into a false failure.
@@ -496,7 +496,7 @@ final class LibraryUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let record = app.buttons["library-new-recording-button"]
+        let record = app.buttons.identified("library-new-recording-button")
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         let isSpanish = record.label == "Nueva grabación"
         record.click()
@@ -613,7 +613,7 @@ final class LibraryUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let record = app.buttons["library-new-recording-button"]
+        let record = app.buttons.identified("library-new-recording-button")
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         let isSpanish = record.label == "Nueva grabación"
         record.click()
@@ -645,7 +645,7 @@ final class LibraryUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        let homeRecord = app.buttons["home-record"]
+        let homeRecord = app.buttons.identified("home-record")
         XCTAssertTrue(homeRecord.waitForStableFrame(timeout: 5))
         homeRecord.click()
         XCTAssertTrue(
@@ -665,7 +665,7 @@ final class LibraryUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 10),
             "the historical meeting must replace the live route before returning")
 
-        let returnToRecording = app.buttons["library-return-to-recording"]
+        let returnToRecording = app.buttons.identified("library-return-to-recording")
         XCTAssertTrue(
             returnToRecording.waitForExistenceFast(timeout: 5),
             "an active capture must remain reachable from every library route")
@@ -696,7 +696,7 @@ final class LibraryUITests: PortavozUITestCase {
 
         // Search crosses the SwiftUI binding, feature-model debounce, and
         // real FTS projection before publishing a new Library snapshot.
-        let search = app.textFields["library-search-field"]
+        let search = app.textFields.identified("library-search-field")
         XCTAssertTrue(search.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(app.finishTextFieldEditing(identifier: "library-search-field", timeout: 5))
         // Prove the row is already visible before focusing search: the click can
@@ -736,7 +736,7 @@ final class LibraryUITests: PortavozUITestCase {
             "the search result must expose the meeting and exact hit timestamp")
         XCTAssertTrue(hit.waitForHittable(timeout: 5))
         hit.click()
-        let currentTime = app.staticTexts["player-current-time"]
+        let currentTime = app.staticTexts.identified("player-current-time")
         XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
         attachScreenshot(of: app, named: "band-4c-fast-local-search")
@@ -778,8 +778,8 @@ final class LibraryUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        app.buttons["library-ask-button"].click()
-        let field = app.textFields["ask-question-field"]
+        app.buttons.identified("library-ask-button").click()
+        let field = app.textFields.identified("ask-question-field")
         XCTAssertTrue(field.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(
             app.descendants(matching: .any)["ask-source-status-library"]
@@ -800,21 +800,21 @@ final class LibraryUITests: PortavozUITestCase {
         field.click()
         typeText(webQuestion, in: app)
         XCTAssertTrue(field.waitForValue(webQuestion, timeout: 5))
-        let webSourceField = app.textFields["ask-web-source-field"]
+        let webSourceField = app.textFields.identified("ask-web-source-field")
         XCTAssertTrue(webSourceField.waitForExistenceFast(timeout: 5))
         webSourceField.click()
         let webURL = try XCTUnwrap(
             URL(string: webPath, relativeTo: webFixture.baseURL)?.absoluteURL)
         typeText(webURL.absoluteString, in: app)
         XCTAssertTrue(webSourceField.waitForValue(webURL.absoluteString, timeout: 5))
-        let consent = app.checkBoxes["ask-web-consent"]
+        let consent = app.checkBoxes.identified("ask-web-consent")
         XCTAssertTrue(consent.waitForEnabled(timeout: 5))
         XCTAssertFalse(
-            app.buttons["ask-submit"].isEnabled,
+            app.buttons.identified("ask-submit").isEnabled,
             "Web must remain blocked before one-request consent")
         consent.click()
-        XCTAssertTrue(app.buttons["ask-submit"].waitForEnabled(timeout: 5))
-        app.buttons["ask-submit"].click()
+        XCTAssertTrue(app.buttons.identified("ask-submit").waitForEnabled(timeout: 5))
+        app.buttons.identified("ask-submit").click()
         XCTAssertTrue(
             app.descendants(matching: .any)["ask-pending-source-web"]
                 .waitForExistenceFast(timeout: 5))
@@ -860,7 +860,7 @@ final class LibraryUITests: PortavozUITestCase {
         field.click()
         typeText("budget Q3", in: app)
         XCTAssertTrue(field.waitForValue("budget Q3", timeout: 5))
-        app.buttons["ask-submit"].click()
+        app.buttons.identified("ask-submit").click()
         XCTAssertTrue(
             app.descendants(matching: .any)["ask-pending-source-notes"]
                 .waitForExistenceFast(timeout: 5))
@@ -920,8 +920,8 @@ final class LibraryUITests: PortavozUITestCase {
         field.click()
         typeText("sinresultado", in: app)
         XCTAssertTrue(field.waitForValue("sinresultado", timeout: 5))
-        XCTAssertTrue(app.buttons["ask-submit"].isEnabled)
-        app.buttons["ask-submit"].click()
+        XCTAssertTrue(app.buttons.identified("ask-submit").isEnabled)
+        app.buttons.identified("ask-submit").click()
         XCTAssertTrue(
             app.waitForFeatureUITestHandshakeReady(
                 readyEnvironmentKey:
@@ -937,7 +937,7 @@ final class LibraryUITests: PortavozUITestCase {
         field.click()
         typeText("viernes", in: app)
         XCTAssertTrue(field.waitForValue("viernes", timeout: 5))
-        app.buttons["ask-submit"].click()
+        app.buttons.identified("ask-submit").click()
         XCTAssertTrue(
             app.waitForFeatureUITestHandshakeRelease(
                 readyEnvironmentKey:
@@ -971,7 +971,7 @@ final class LibraryUITests: PortavozUITestCase {
             app.descendants(matching: .any)["ask-progress-generating"]
                 .waitForExistenceFast(timeout: 5),
             "Ask must expose answer generation after the evidence set is fenced")
-        let pendingAnswer = app.staticTexts["ask-pending-answer"]
+        let pendingAnswer = app.staticTexts.identified("ask-pending-answer")
         XCTAssertTrue(
             pendingAnswer.waitForExistenceFast(timeout: 5),
             "the local answer must become readable before generation completes")
@@ -1001,7 +1001,7 @@ final class LibraryUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "band-6c5-full-ask-answer")
 
         citation.click()
-        let currentTime = app.staticTexts["player-current-time"]
+        let currentTime = app.staticTexts.identified("player-current-time")
         XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
     }
@@ -1015,7 +1015,7 @@ final class LibraryUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        app.buttons["library-ask-button"].click()
+        app.buttons.identified("library-ask-button").click()
 
         let memorySurface = app.descendants(matching: .any)[
             "ask-surface-person-commitments"]
@@ -1041,7 +1041,7 @@ final class LibraryUITests: PortavozUITestCase {
             "ask-memory-selected-person"]
         XCTAssertTrue(selected.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(renderedText(of: selected).contains("Ana"))
-        app.buttons["ask-memory-load"].click()
+        app.buttons.identified("ask-memory-load").click()
 
         let commitment = app.descendants(matching: .any)[
             "ask-memory-commitment-B5D10000-0000-4000-8000-000000000005"]
@@ -1054,7 +1054,7 @@ final class LibraryUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "ask-confirmed-person-commitments")
 
         evidence.click()
-        let currentTime = app.staticTexts["player-current-time"]
+        let currentTime = app.staticTexts.identified("player-current-time")
         XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
         let header = app.descendants(matching: .any)["detail-header-section"]
@@ -1062,7 +1062,7 @@ final class LibraryUITests: PortavozUITestCase {
 
         // Keep both exact citation routes in one launch. Re-enter Ask through
         // the real sidebar; do not assume a citation leaves this surface open.
-        let ask = app.buttons["library-ask-button"]
+        let ask = app.buttons.identified("library-ask-button")
         XCTAssertTrue(ask.waitForStableFrame(timeout: 5))
         ask.click()
         XCTAssertTrue(selected.waitForExistenceFast(timeout: 5))
@@ -1107,7 +1107,7 @@ final class LibraryUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        app.buttons["library-ask-button"].click()
+        app.buttons.identified("library-ask-button").click()
 
         try XCTContext.runActivity(named: "Current decisions and exact citation") { _ in
             try assertExactTopicDecisionsAndEvidence(in: app)
@@ -1130,7 +1130,7 @@ final class LibraryUITests: PortavozUITestCase {
     /// the same selected topic, rather than reseeding or reconstructing it.
     @MainActor
     private func returnToSelectedTopic(in app: XCUIApplication) throws {
-        let ask = app.buttons["library-ask-button"]
+        let ask = app.buttons.identified("library-ask-button")
         try requireTopicStep(ask.waitForStableFrame(timeout: 5), "Ask must be reachable after a citation")
         ask.click()
         let selected = app.control(withIdentifier: "ask-topic-selected")
@@ -1171,7 +1171,7 @@ final class LibraryUITests: PortavozUITestCase {
         let selected = app.descendants(matching: .any)["ask-topic-selected"]
         XCTAssertTrue(selected.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(renderedText(of: selected).contains("model rollout"))
-        app.buttons["ask-topic-load"].click()
+        app.buttons.identified("ask-topic-load").click()
 
         let decision = app.descendants(matching: .any).matching(
             NSPredicate(format: "identifier BEGINSWITH 'ask-topic-decision-'"))
@@ -1188,7 +1188,7 @@ final class LibraryUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "ask-confirmed-topic-decisions")
 
         evidence.click()
-        let currentTime = app.staticTexts["player-current-time"]
+        let currentTime = app.staticTexts.identified("player-current-time")
         XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
     }
@@ -1198,7 +1198,7 @@ final class LibraryUITests: PortavozUITestCase {
         try selectTopicJob(
             "ask-topic-job-first-discussion",
             retiringResultsWithPrefix: "ask-topic-decision-", in: app)
-        app.buttons["ask-topic-load"].click()
+        app.buttons.identified("ask-topic-load").click()
 
         let discussion = app.descendants(matching: .any).matching(
             NSPredicate(
@@ -1217,7 +1217,7 @@ final class LibraryUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "ask-confirmed-topic-first-discussion")
 
         evidence.click()
-        let currentTime = app.staticTexts["player-current-time"]
+        let currentTime = app.staticTexts.identified("player-current-time")
         XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
     }
@@ -1227,7 +1227,7 @@ final class LibraryUITests: PortavozUITestCase {
         try selectTopicJob(
             "ask-topic-job-decision-conflicts",
             retiringResultsWithPrefix: "ask-topic-first-discussion-", in: app)
-        app.buttons["ask-topic-load"].click()
+        app.buttons.identified("ask-topic-load").click()
 
         let conflictID = "ask-topic-conflict-B5D40000-0000-4000-8000-000000000005"
         XCTAssertTrue(app.descendants(matching: .any)[conflictID].waitForExistenceFast(timeout: 10))
@@ -1245,8 +1245,8 @@ final class LibraryUITests: PortavozUITestCase {
             ], in: app)
         attachScreenshot(of: app, named: "ask-confirmed-topic-decision-conflicts")
 
-        app.buttons[currentEvidenceID].click()
-        let currentTime = app.staticTexts["player-current-time"]
+        app.buttons.identified(currentEvidenceID).click()
+        let currentTime = app.staticTexts.identified("player-current-time")
         XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
     }
@@ -1257,7 +1257,7 @@ final class LibraryUITests: PortavozUITestCase {
             "ask-topic-job-changes-since",
             retiringResultsWithPrefix: "ask-topic-conflict-", in: app)
 
-        let anchorSearch = app.textFields["ask-topic-anchor-search"]
+        let anchorSearch = app.textFields.identified("ask-topic-anchor-search")
         XCTAssertTrue(anchorSearch.waitForExistenceFast(timeout: 5))
         anchorSearch.click()
         typeText("Planning", in: app)
@@ -1274,7 +1274,7 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(selectedAnchor.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(renderedText(of: selectedAnchor).contains(
             "Planning baseline"))
-        let load = app.buttons["ask-topic-load"]
+        let load = app.buttons.identified("ask-topic-load")
         XCTAssertTrue(load.isEnabled)
         load.click()
 
@@ -1295,8 +1295,8 @@ final class LibraryUITests: PortavozUITestCase {
             ], in: app)
         attachScreenshot(of: app, named: "ask-confirmed-topic-changes-since")
 
-        app.buttons[currentEvidenceID].click()
-        let currentTime = app.staticTexts["player-current-time"]
+        app.buttons.identified(currentEvidenceID).click()
+        let currentTime = app.staticTexts.identified("player-current-time")
         XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
     }
@@ -1367,7 +1367,7 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "player-current-time").waitForExistenceFast(timeout: 10))
         typeKey("k", modifierFlags: .command, in: app)
-        let field = app.textFields["palette-query-field"]
+        let field = app.textFields.identified("palette-query-field")
         XCTAssertTrue(field.waitForExistenceFast(timeout: 10))
         let source = app.descendants(matching: .any)["palette-source-library"]
         XCTAssertTrue(source.waitForExistenceFast(timeout: 5))
@@ -1380,7 +1380,7 @@ final class LibraryUITests: PortavozUITestCase {
         typeText("viernes", in: app)
         XCTAssertTrue(field.waitForValue("viernes", timeout: 5))
         XCTAssertTrue(
-            app.buttons["palette-hit-0"].waitForExistenceFast(timeout: 10),
+            app.buttons.identified("palette-hit-0").waitForExistenceFast(timeout: 10),
             "the palette must publish instant local FTS results")
         typeKey(.return, modifierFlags: [], in: app)
         // `palette-answer` renders only from `state.answer`, which nothing but
@@ -1394,10 +1394,10 @@ final class LibraryUITests: PortavozUITestCase {
         // Pinning the generated sentence made this gate fail about half the
         // time for a reason that was never a regression.
         XCTAssertTrue(
-            app.staticTexts["palette-answer"].waitForExistenceFast(timeout: 20),
+            app.staticTexts.identified("palette-answer").waitForExistenceFast(timeout: 20),
             "Enter must use the same full Ask workflow")
-        XCTAssertTrue(app.buttons["palette-copy-answer"].exists)
-        let citation = app.buttons["palette-citation-0"]
+        XCTAssertTrue(app.buttons.identified("palette-copy-answer").exists)
+        let citation = app.buttons.identified("palette-citation-0")
         XCTAssertTrue(citation.exists)
         XCTAssertTrue(citation.label.contains("Test meeting · 00:03"))
         let paletteWindow = app.windows["command-palette-window"]
@@ -1407,7 +1407,7 @@ final class LibraryUITests: PortavozUITestCase {
         attachElementScreenshot(of: paletteWindow, named: "band-6c5-command-palette-answer")
 
         citation.click()
-        let currentTime = app.staticTexts["player-current-time"]
+        let currentTime = app.staticTexts.identified("player-current-time")
         XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
     }

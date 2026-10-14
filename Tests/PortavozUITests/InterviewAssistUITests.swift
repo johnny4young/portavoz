@@ -11,7 +11,7 @@ final class InterviewAssistUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let record = app.buttons["library-new-recording-button"]
+        let record = app.buttons.identified("library-new-recording-button")
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         let isSpanish = record.label == "Nueva grabación"
         record.click()

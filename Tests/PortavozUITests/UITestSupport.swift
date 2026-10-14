@@ -309,7 +309,9 @@ extension XCUIApplication {
 
     @MainActor
     func control(withIdentifier identifier: String) -> XCUIElement {
-        descendants(matching: .any)[identifier]
+        // This helper promises an accessibility identifier, not localized text
+        // or an ancestor's propagated identifier. Preserve unique resolution.
+        descendants(matching: .any).identified(identifier)
     }
 
     /// Privacy and action history live behind the activity chip under a
@@ -1076,5 +1078,14 @@ extension XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+}
+
+extension XCUIElementQuery {
+    /// Resolve one declared accessibility identifier, never a localized label
+    /// or a propagated alias. `element` retains XCTest's ambiguity failure.
+    @MainActor
+    func identified(_ identifier: String) -> XCUIElement {
+        matching(NSPredicate(format: "identifier == %@", identifier)).element
     }
 }

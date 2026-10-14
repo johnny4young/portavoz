@@ -57,8 +57,8 @@ final class AudioImportUITests: PortavozUITestCase {
         let finished = queueCount(expected, in: panel)
         XCTAssertTrue(waitForUITestCondition(timeout: 30, pollInterval: 1) { finished.exists })
         let completed = panel.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "import-queue-open-"))
-        let next = panel.buttons["import-queue-next"]
-        let previous = panel.buttons["import-queue-previous"]
+        let next = panel.buttons.identified("import-queue-next")
+        let previous = panel.buttons.identified("import-queue-previous")
         try assertReadyPage(panel, count: 20, previousEnabled: false, nextEnabled: true)
         next.click()
         XCTAssertTrue(previous.waitForEnabled(timeout: 5))
@@ -66,8 +66,8 @@ final class AudioImportUITests: PortavozUITestCase {
         previous.click()
         XCTAssertTrue(next.waitForEnabled(timeout: 5))
         try assertReadyPage(panel, count: 20, previousEnabled: false, nextEnabled: true)
-        panel.buttons["import-queue-close"].click()
-        app.buttons["library-import-queue-open"].click()
+        panel.buttons.identified("import-queue-close").click()
+        app.buttons.identified("library-import-queue-open").click()
         let open = completed.firstMatch
         XCTAssertTrue(open.waitForExistenceFast(timeout: 5))
         open.click()
@@ -94,10 +94,10 @@ final class AudioImportUITests: PortavozUITestCase {
         let id = String(state.identifier.dropFirst("import-queue-state-".count))
         let cancel = panel.buttons["import-queue-cancel-\(id)"]
         cancel.click()
-        let error = panel.staticTexts["import-queue-error"]
+        let error = panel.staticTexts.identified("import-queue-error")
         XCTAssertTrue(error.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(cancel.exists, "a rejected cancel must not retire the active job")
-        panel.buttons["import-queue-error-dismiss"].click()
+        panel.buttons.identified("import-queue-error-dismiss").click()
         XCTAssertTrue(error.waitForDisappearance(timeout: 3))
         cancel.click()
         let retry = panel.buttons["import-queue-retry-\(id)"]
@@ -108,7 +108,7 @@ final class AudioImportUITests: PortavozUITestCase {
         retry.click()
         XCTAssertTrue(panel.buttons["import-queue-open-\(id)"].waitForExistenceFast(timeout: 15))
         try assertReadyPage(panel, count: 2, previousEnabled: false, nextEnabled: false)
-        panel.buttons["import-queue-close"].click()
+        panel.buttons.identified("import-queue-close").click()
         verifyRejectedLibraryDeletion(id: id, app: app)
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(
             atPath: folder.appendingPathComponent("selection").path).count, 2)
@@ -135,7 +135,7 @@ final class AudioImportUITests: PortavozUITestCase {
         try FileManager.default.removeItem(at: folder.appendingPathComponent("selection"))
         app.launchArguments.removeAll { $0 == "-audio-import-hold-first" }
         app.launchPortavoz()
-        let queue = app.buttons["library-import-queue-open"]
+        let queue = app.buttons.identified("library-import-queue-open")
         XCTAssertTrue(queue.waitForExistenceFast(timeout: 10))
         queue.click()
         let open = panel.buttons["import-queue-open-\(id)"]
@@ -143,7 +143,7 @@ final class AudioImportUITests: PortavozUITestCase {
         open.click()
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "Don’t send 2.")).firstMatch
             .waitForExistenceFast(timeout: 10))
-        app.buttons["library-import-queue-open"].click()
+        app.buttons.identified("library-import-queue-open").click()
         let expected = UITestLocale.environmentLocale == "es"
             ? "1 importaciones · 0 sin terminar" : "1 imports · 0 unfinished"
         XCTAssertTrue(queueCount(expected, in: panel).waitForExistenceFast(timeout: 5))
@@ -208,10 +208,10 @@ final class AudioImportUITests: PortavozUITestCase {
         let delete = "library-meeting-delete-\(id)"
         row.rightClick()
         app.menuItems[delete].click()
-        let error = app.staticTexts["library-action-error"]
+        let error = app.staticTexts.identified("library-action-error")
         XCTAssertTrue(error.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(row.exists)
-        app.buttons["library-action-error-dismiss"].click()
+        app.buttons.identified("library-action-error-dismiss").click()
         XCTAssertTrue(error.waitForDisappearance(timeout: 3))
         row.rightClick()
         app.menuItems[delete].click()
@@ -237,7 +237,7 @@ final class AudioImportUITests: PortavozUITestCase {
             return false
         }
         menu.click()
-        let action = app.menuItems["library-import-audio-button"]
+        let action = app.menuItems.identified("library-import-audio-button")
         guard action.waitForExistenceFast(timeout: 5) else {
             XCTFail("The import action must be available in the record menu")
             return false

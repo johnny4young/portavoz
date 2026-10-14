@@ -12,7 +12,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        app.buttons["library-new-recording-button"].click()
+        app.buttons.identified("library-new-recording-button").click()
         XCTAssertTrue(app.waitForLiveTranscriptFrontier())
 
         let retainedQuestion = "Seeded live question 5?"
@@ -38,8 +38,8 @@ final class RecordingAssistUITests: PortavozUITestCase {
         XCTAssertTrue(meeting.waitForStableFrame(timeout: 5))
         meeting.click()
         XCTAssertTrue(app.control(withIdentifier: "detail-transcript-title").waitForExistenceFast(timeout: 8))
-        app.buttons["library-return-to-recording"].click()
-        let companion = app.buttons["recording-assist-tab-companion"]
+        app.buttons.identified("library-return-to-recording").click()
+        let companion = app.buttons.identified("recording-assist-tab-companion")
         XCTAssertTrue(companion.waitForExistenceFast(timeout: 8))
         XCTAssertNil(
             companion.label.rangeOfCharacter(from: .decimalDigits),
@@ -62,21 +62,21 @@ final class RecordingAssistUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
         app.launchPortavoz()
         defer { app.terminate() }
-        let record = app.buttons["library-new-recording-button"]
+        let record = app.buttons.identified("library-new-recording-button")
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         record.click()
         XCTAssertTrue(app.waitForLiveTranscriptionAttachPreparing())
         let catchUp = app.control(withIdentifier: "recording-catch-up-panel")
         let nextQuestion = app.control(withIdentifier: "recording-next-question-panel")
-        app.buttons["recording-catch-up"].click()
+        app.buttons.identified("recording-catch-up").click()
         XCTAssertTrue(catchUp.waitForExistenceFast(timeout: 3))
         app.recordingMoreItem("recording-next-question").click()
         XCTAssertTrue(nextQuestion.waitForExistenceFast(timeout: 3))
         XCTAssertFalse(catchUp.exists, "the previous request cannot occupy the only render site")
-        app.buttons["recording-catch-up"].click()
+        app.buttons.identified("recording-catch-up").click()
         XCTAssertTrue(catchUp.waitForExistenceFast(timeout: 3))
         XCTAssertFalse(nextQuestion.exists)
-        app.buttons["recording-catch-up-dismiss"].click()
+        app.buttons.identified("recording-catch-up-dismiss").click()
         XCTAssertFalse(catchUp.exists)
         XCTAssertFalse(nextQuestion.exists, "dismissal must not resurrect a superseded request")
     }
@@ -87,7 +87,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         app.launchArguments += ["-seed-live-companion-ui", "-seed-live-assist-arrivals-ui"]
         app.launchPortavoz()
         defer { app.terminate() }
-        let record = app.buttons["library-new-recording-button"]
+        let record = app.buttons.identified("library-new-recording-button")
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         record.click()
         XCTAssertTrue(app.waitForLiveTranscriptFrontier())
@@ -102,7 +102,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         XCTAssertTrue(objective.revealVertically(
             in: app.control(withIdentifier: "recording-assist-panel"), maxScrolls: 0),
             "the last of two additions in one callback must appear without test-owned scrolling")
-        let companion = app.buttons["recording-assist-tab-companion"]
+        let companion = app.buttons.identified("recording-assist-tab-companion")
         XCTAssertTrue(waitForUITestCondition(timeout: 3) {
             companion.label.hasSuffix("1")
         }, "a replacement is unread even when the number of cards stays unchanged")
@@ -119,7 +119,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        app.buttons["library-new-recording-button"].click()
+        app.buttons.identified("library-new-recording-button").click()
         XCTAssertTrue(app.waitForLiveTranscriptFrontier())
         let noteText = "Confirmar responsable del informe"
         let objectiveText = "Check deployment readiness"
@@ -145,7 +145,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         XCTAssertTrue(meeting.waitForStableFrame(timeout: 5))
         meeting.click()
         XCTAssertTrue(app.control(withIdentifier: "detail-transcript-title").waitForExistenceFast(timeout: 8))
-        app.buttons["library-return-to-recording"].click()
+        app.buttons.identified("library-return-to-recording").click()
         app.openAssistTab("objectives")
         XCTAssertTrue(objective.waitForLabelOrValue(objectiveText, timeout: 3),
                       "library browsing must not discard the objective draft")
@@ -153,7 +153,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         let restored = note.waitForLabelOrValue(noteText, timeout: 3)
         XCTAssertTrue(restored, "library browsing must not discard the note draft")
         guard restored else { return }
-        app.buttons["recording-note-add"].click()
+        app.buttons.identified("recording-note-add").click()
         let saved = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'recording-note-'"))
             .containing(.staticText, identifier: noteText).firstMatch
@@ -182,7 +182,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let record = app.buttons["library-new-recording-button"]
+        let record = app.buttons.identified("library-new-recording-button")
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         record.click()
         XCTAssertTrue(
@@ -227,7 +227,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
 
         // Reaching back for an older card folds the oldest recency-open one,
         // so the panel keeps its size instead of growing.
-        let list = app.scrollViews["recording-companion-list"]
+        let list = app.scrollViews.identified("recording-companion-list")
         guard folded.revealVertically(in: list, maximumStep: list.frame.height) else {
             return XCTFail(
                 "Older Companion card was not reachable: control=\(folded.frame), "

@@ -1142,6 +1142,15 @@ class UITestScopeTests(unittest.TestCase):
             settings_source,
         )
 
+    def test_declared_identifier_resolution_retains_uniqueness_without_label_aliases(self):
+        source = (ROOT / "Tests/PortavozUITests/UITestSupport.swift").read_text(encoding="utf-8")
+        helper = source.split("func identified(_ identifier: String)", 1)[1].split("\n    }", 1)[0]
+        self.assertIn('matching(NSPredicate(format: "identifier == %@", identifier)).element', helper)
+        self.assertNotIn("firstMatch", helper)
+        self.assertNotIn("label", helper)
+        self.assertNotIn("allElementsBoundBy", helper)
+        self.assertIn("descendants(matching: .any).identified(identifier)", source)
+
     def test_catalog_policy_rejects_an_unscoped_test(self):
         scoped = ui_scope.test_id("InsightsUITests", "testScoped")
         temporary, root = self.minimal_catalog_root("testScoped", "testUnscoped")
