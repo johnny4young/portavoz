@@ -54,11 +54,11 @@ struct ProcessingWakeScheduleTests {
     }
 
     @Test
-    func failedDrainWithoutDurableDeadlineDoesNotCreateTimer() {
+    func failedDrainWithoutDurableDeadlineRetriesAfterBackoff() {
         let wake = ProcessingWakeSchedule.nextDate(
             scheduled: nil, afterDrainFailure: true, at: now)
 
-        #expect(wake == nil)
+        #expect(wake == now.addingTimeInterval(5))
     }
 
     @Test

@@ -17,7 +17,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 13, 2026
 
-- **🔄 Processing recovery** — meetings no longer stay stuck when a retry becomes ready or an interrupted worker's wait ends.
+- **🔄 Processing recovery** — meetings no longer stay stuck when a retry becomes ready, an interrupted worker's wait ends, or the library is briefly busy.
 
 ## October 9, 2026
 

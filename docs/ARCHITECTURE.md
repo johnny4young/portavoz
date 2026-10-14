@@ -1992,8 +1992,10 @@ ApplicationKit's pure `ProcessingWakeSchedule` preserves that durable deadline
 after a successful drain. If a claim/drain fails while a deadline still exists,
 the post-capture and audio-import owners defer the next wake by at least five
 seconds, retaining any later persisted deadline. A failed drain with no durable
-deadline still yields no timer. This avoids immediate retry loops during SQLite
-writer contention without introducing idle polling or changing lease ownership.
+deadline also retries after five seconds, because freshly admitted or suspended
+pending work carries no retry date; the next drain that claims successfully and
+finds nothing ends the timer. This avoids immediate retry loops and dormant work
+during SQLite writer contention without idle polling or changing lease ownership.
 
 The private macOS filesystem adapter
 revalidates staged/final files and reconciles them with persisted lifecycle
