@@ -125,7 +125,9 @@ jobs:
             rm -rf .build
           fi
       - name: Build and test on Sequoia
-        run: scripts/run-swift-tests.sh
+        # Apple toolchains enable SDK cross-import overlays by default; the
+        # standalone compiler must opt in to preserve Translation + SwiftUI.
+        run: scripts/run-swift-tests.sh -Xswiftc -Xfrontend -Xswiftc -enable-cross-import-overlays
       # Bound storage and save only after the complete suite succeeds. Oversize
       # graphs stay cold; do not increase the repository's paid cache allowance.
       - name: Record successful source fingerprints

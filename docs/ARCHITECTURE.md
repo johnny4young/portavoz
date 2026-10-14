@@ -5613,6 +5613,8 @@ required by MLX. Its installer is fixed by SHA-256 and the Swift Open Source
 Developer ID signature, installs only in the disposable runner's home, and
 exports one exact toolchain identifier and executable path. Verification rejects
 mismatches between the selector, bundle identity, shell compiler and `xcrun`.
+The standalone compiler explicitly enables SDK cross-import overlays, matching
+the Apple compiler default and retaining Translation's public SwiftUI modifier.
 This does not install a compiler on developer Macs, change app deployment targets,
 or substitute a compile-only check for the complete suite on Sequoia. Each lane
 owns one complete test invocation so its compiler flags cannot trigger a second
