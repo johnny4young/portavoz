@@ -98,7 +98,7 @@ extension TextInserter {
     /// focused element at capture: same application still frontmost, then the
     /// system-wide focused field must be inspectable and not secure at delivery.
     @MainActor
-    private static func sessionDestination(
+    static func sessionDestination(
         for application: NSRunningApplication, pasteboard: NSPasteboard
     ) -> CapturedDictationDestination {
         let target = Target(processID: application.processIdentifier, validate: {
@@ -118,8 +118,9 @@ extension TextInserter {
             case .unavailable: return .focusUnavailable
             }
         }, route: .session)
+        // A Reinsert click keys the panel, which this route then always refuses.
         return CapturedDictationDestination(
-            name: application.localizedName, bundleIdentifier: application.bundleIdentifier, canRetry: true) { text in
+            name: application.localizedName, bundleIdentifier: application.bundleIdentifier, canRetry: false) { text in
             await insert(text, into: target, pasteboard: pasteboard)
         }
     }

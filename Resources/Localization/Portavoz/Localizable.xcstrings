@@ -17846,6 +17846,16 @@
           }
         }
       }
+    },
+    "Delivery didn't complete. Copy your text to keep it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La entrega no se completó. Copia el texto para conservarlo."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
