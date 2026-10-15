@@ -181,7 +181,12 @@ through the same channel contract. Partial staging names remain invisible,
 and attachment metadata still rejects unsupported extensions and path shapes.
 ApplicationKit's `AudioImportFormats` exposes the same catalog to Library
 selection and drop, and StorageKit import admission rejects any other
-extension, so every admitted import remains resolvable. Compression accepts
+extension, so every admitted import remains resolvable. Library reserves one
+native chooser before dispatching its application-modal presentation to the next
+main-queue turn, outside menu tracking. Only an accepted response admits selected
+URLs; cancellation and aborted presentation release the reservation without an
+import. The panel remains app-modal rather than becoming a modeless window.
+Compression accepts
 only lossless channels (caf, wav, aiff, aif); imported mp3, aac and m4b are
 never re-encoded.
 
@@ -5731,8 +5736,19 @@ Settings startup uses the owned production command and its stable General
 anchor rather than checking the geometry of an unrelated record button.
 Inactive search editors receive no event or value read; active editors retain
 an exact-value readback and recheck focus immediately before guarded Tab.
-Static assertion groups may co-observe one immutable hierarchy, discarded before
-any input; unavailable or aliased category geometry uses the original live path.
+Known Settings-category and recording-assist actions use their declared Button
+role with framework identifier matching; generic field and absence queries retain
+their original alias behavior. Read-only General position checks share one fresh
+frame, never reused for input. Scale-fixture transcript-title probes use the
+Text node's declared StaticText role. Static assertion groups may co-observe one
+immutable hierarchy, discarded before any input; unavailable or aliased category
+geometry uses the live framework-identifier lookup.
+The runner classifies each owned journey as user-initiated work, allowing idle
+system sleep, from scratch admission through cleanup and tear-down. A function-wide
+defer releases its process activity even when cleanup throws. This classification
+never establishes native receiver ownership, authorizes input, disables display or
+system sleep, or changes a runtime ceiling. OS preferences may override it; it is
+not evidence that energy management caused any measured slowdown.
 The stability interval begins with the first valid,
 nonempty hittable frame and resets on every movement or loss of hittability;
 it does not require an extra identical sample before starting the unchanged

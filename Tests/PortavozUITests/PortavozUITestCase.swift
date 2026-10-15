@@ -6,16 +6,30 @@ import XCTest
 @MainActor
 class PortavozUITestCase: XCTestCase {
     private let storageOwnerID = UUID()
+    private var runnerActivity: (any NSObjectProtocol)?
+
+    var hasActiveUITestRunnerActivity: Bool { runnerActivity != nil }
 
     override func setUp() async throws {
         try await super.setUp()
         try UITestStorage.begin(ownerID: storageOwnerID)
+        // Classify only this runner's owned work; this neither grants input
+        // authority nor prevents the user's Mac from sleeping on idle.
+        runnerActivity = ProcessInfo.processInfo.beginActivity(
+            options: .userInitiatedAllowingIdleSystemSleep,
+            reason: "Running an owned Portavoz UI journey")
         addUIInterruptionMonitor(withDescription: "Stop without answering an unexpected interruption") { _ in
             self.stopForUnexpectedInterruption(reason: "interruption")
         }
     }
 
     override func tearDown() async throws {
+        defer {
+            if let runnerActivity {
+                ProcessInfo.processInfo.endActivity(runnerActivity)
+                self.runnerActivity = nil
+            }
+        }
         // A named child activity makes owned app exit and scratch removal
         // visible inside Tear Down. Runtime attribution then retains that work
         // instead of treating an apparently empty teardown as harness noise.
