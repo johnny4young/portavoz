@@ -17,6 +17,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 15, 2026
 
+- **⚡ Lighter chapter preparation** — reuses corrected rows instead of rebuilding the transcript for each review update.
+
 - **⚡ Smoother meeting review** — keeps transcript corrections ready while summaries, notes and playback update.
 
 - **📂 Quicker audio import** — opens the native file chooser without holding up the menu, and lets you cancel and try again safely.

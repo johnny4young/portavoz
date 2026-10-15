@@ -92,8 +92,9 @@ final class MeetingDetailReviewAccumulatorTests: XCTestCase {
         let fixture = MeetingDetailAccumulatorFixture()
         var state = MeetingDetailMetadataSuggestionState()
         let review = fixture.readModel(title: "2026-08-09 Meeting")
+        let content = review.transcriptContent()
 
-        let first = state.begin(review: review, titledChapterStarts: [])
+        let first = state.begin(review: review, content: content, titledChapterStarts: [])
         XCTAssertEqual(first?.suggestsMeetingTitle, true)
         XCTAssertEqual(first?.suggestsRecipe, true)
         XCTAssertEqual(first?.request.suggestMeetingTitle, true)
@@ -103,16 +104,16 @@ final class MeetingDetailReviewAccumulatorTests: XCTestCase {
         state.invalidate(correctionRevisionChanged: false)
         XCTAssertEqual(first.map(state.accepts), false)
         let sameRevisionRetry = state.begin(
-            review: review,
+            review: review, content: content,
             titledChapterStarts: [0])
         XCTAssertEqual(sameRevisionRetry?.suggestsMeetingTitle, true)
         XCTAssertEqual(sameRevisionRetry?.suggestsRecipe, true)
 
         if let sameRevisionRetry { state.complete(sameRevisionRetry) }
-        XCTAssertNil(state.begin(review: review, titledChapterStarts: [0]))
+        XCTAssertNil(state.begin(review: review, content: content, titledChapterStarts: [0]))
 
         state.invalidate(correctionRevisionChanged: true)
-        let retry = state.begin(review: review, titledChapterStarts: [0])
+        let retry = state.begin(review: review, content: content, titledChapterStarts: [0])
         XCTAssertEqual(retry?.suggestsMeetingTitle, true)
         XCTAssertEqual(retry?.suggestsRecipe, true)
     }

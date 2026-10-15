@@ -69,10 +69,24 @@ public struct MeetingTranscriptGenerationMaterial: Sendable {
 public extension MeetingReviewReadModel {
     func transcriptGenerationMaterial() -> MeetingTranscriptGenerationMaterial {
         let content = transcriptContent()
-        let generated = content.rows.map { row in
+        return MeetingTranscriptGenerationMaterial(
+            segments: content.generationSegments(meetingID: meeting.id),
+            sourceSegmentIDsByGeneratedID: Dictionary(
+                uniqueKeysWithValues: content.rows.map { ($0.id, $0.sourceSegmentIDs) }),
+            baseTranscriptRevision: meeting.transcriptRevision,
+            correctionRevision: correctionRevision)
+    }
+}
+
+public extension MeetingTranscriptContent {
+    /// Ephemeral generation rows in this reading's canonical order. Callers
+    /// retain the reading's correction/fallback policy and immutable evidence;
+    /// this mapping neither composes corrections nor changes accepted rows.
+    func generationSegments(meetingID: MeetingID) -> [TranscriptSegment] {
+        rows.map { row in
             TranscriptSegment(
                 id: row.id,
-                meetingID: meeting.id,
+                meetingID: meetingID,
                 speakerID: row.speakerID,
                 channel: row.channel,
                 text: row.text,
@@ -82,11 +96,5 @@ public extension MeetingReviewReadModel {
                 confidence: row.confidence,
                 isFinal: row.isFinal)
         }
-        return MeetingTranscriptGenerationMaterial(
-            segments: generated,
-            sourceSegmentIDsByGeneratedID: Dictionary(
-                uniqueKeysWithValues: content.rows.map { ($0.id, $0.sourceSegmentIDs) }),
-            baseTranscriptRevision: meeting.transcriptRevision,
-            correctionRevision: correctionRevision)
     }
 }

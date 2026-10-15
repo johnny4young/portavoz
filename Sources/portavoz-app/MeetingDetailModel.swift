@@ -631,9 +631,9 @@ private extension MeetingDetailModel {
     }
 
     func loadMetadataSuggestions() async {
-        guard let detail = state.readModel,
+        guard let detail = state.readModel, let presentation = state.transcriptPresentation,
             let attempt = metadataSuggestionState.begin(
-                review: detail,
+                review: detail, content: presentation.current,
                 titledChapterStarts: Set(state.chapterTitles.keys))
         else { return }
 
