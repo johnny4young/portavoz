@@ -244,12 +244,15 @@ final class TextReadbackHarness {
     var onValidate: ((Int) -> Void)?
     var positionOverride: (() -> DictationTextReadback.Position?)?
     var readOverride: ((NSRange) -> String?)?
+    /// Off by default so verification tests see only the inserted span.
+    var providesPreceding = false
+    var precedingSpans: [NSRange] = []
     var clock = ContinuousClock.now
 
     init() { board.setString("Original clipboard", forType: .string) }
 
     func insert(_ text: String) async -> DictationDeliveryOutcome {
-        let readback = DictationTextReadback(position: { [self] in
+        var readback = DictationTextReadback(position: { [self] in
             if let positionOverride { return positionOverride() }
             return .init(selection: selection, characterCount: document.utf16.count)
         }, string: { [self] span in
@@ -257,6 +260,12 @@ final class TextReadbackHarness {
             if let readOverride { return readOverride(span) }
             return (document as NSString).substring(with: span)
         }, now: { [self] in clock }, pause: { [self] in clock = clock.advanced(by: .milliseconds(25)) })
+        if providesPreceding {
+            readback.preceding = { [self] span in
+                precedingSpans.append(span)
+                return (document as NSString).substring(with: span)
+            }
+        }
         let target = TextInserter.Target(processID: 101, readback: readbackAvailable ? readback : nil) { [self] in
             validations += 1
             onValidate?(validations)
@@ -266,8 +275,10 @@ final class TextReadbackHarness {
             effects: .init(waitForModifiers: { true }, post: { [self] _ in
                 posts += 1
                 if appliesPaste {
-                    document = (document as NSString).replacingCharacters(in: selection, with: text)
-                    selection = NSRange(location: selection.location + text.utf16.count, length: 0)
+                    // A paste applies the borrowed clipboard, which may be a spaced output.
+                    let pasted = board.string(forType: .string) ?? text
+                    document = (document as NSString).replacingCharacters(in: selection, with: pasted)
+                    selection = NSRange(location: selection.location + pasted.utf16.count, length: 0)
                 }
                 afterPost?()
                 return true

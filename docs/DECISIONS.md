@@ -21132,3 +21132,21 @@ contract identified that mismatch. Present a window-modal sheet asynchronously
 from the requesting Settings window, preserving explicit modal input ownership
 without a blocking nested event loop or weakening the keyboard guard. Missing
 window admission reports a distinct actionable error and retires chooser state.
+
+## D560 — Read one character before the caret to space dictated text
+
+Dictated output is trimmed, so text dictated after "Hola." landed as "Hola.Mundo".
+Spacing it correctly needs to know what precedes the caret, which widens the
+readback contract from "only the inserted span". The widening is kept minimal:
+at most two UTF-16 units (one character, surrogate pair or combining sequence)
+immediately before the selection start, requested only after the field is
+revalidated as the captured, non-secure target, and never retained, logged or
+stored. Offset zero requests nothing.
+
+Only a separator is added. Capitalization is deliberately unchanged: lowering
+an initial capital mid-sentence would corrupt proper nouns ("Juan", "Bogotá")
+without a model of names, so it needs its own decision and evidence. Spacing
+applies to Literal and Clean alike because it changes no dictated word. The
+joined output is borrowed, posted and verified as one exact string, so readback
+still compares code units. Applications without a pinnable field have no
+readback and keep the previous unjoined output rather than guessing.

@@ -6,7 +6,16 @@ extension DictationTextReadback {
         // Timeout applies to this exact AX object, not equal instances or all
         // clients. Do not change the process-global system-wide timeout.
         guard AXUIElementSetMessagingTimeout(element, 0.1) == .success else { return nil }
-        return Self(position: {
+        let read: (NSRange) -> String? = { span in
+            var range = CFRange(location: span.location, length: span.length)
+            guard let parameter = AXValueCreate(.cfRange, &range) else { return nil }
+            var value: CFTypeRef?
+            guard AXUIElementCopyParameterizedAttributeValue(
+                element, kAXStringForRangeParameterizedAttribute as CFString, parameter, &value) == .success,
+                  let value, CFGetTypeID(value) == CFStringGetTypeID() else { return nil }
+            return value as? String
+        }
+        var readback = Self(position: {
             guard let rangeValue = attribute(kAXSelectedTextRangeAttribute, of: element),
                   let range = TextInserter.checkedCFValue(rangeValue, as: .accessibilityValue),
                   AXValueGetType(range) == .cfRange,
@@ -16,15 +25,9 @@ extension DictationTextReadback {
             guard AXValueGetValue(range, .cfRange, &selection) else { return nil }
             return Position(selection: NSRange(location: selection.location, length: selection.length),
                             characterCount: count)
-        }, string: { span in
-            var range = CFRange(location: span.location, length: span.length)
-            guard let parameter = AXValueCreate(.cfRange, &range) else { return nil }
-            var value: CFTypeRef?
-            guard AXUIElementCopyParameterizedAttributeValue(
-                element, kAXStringForRangeParameterizedAttribute as CFString, parameter, &value) == .success,
-                  let value, CFGetTypeID(value) == CFStringGetTypeID() else { return nil }
-            return value as? String
-        })
+        }, string: read)
+        readback.preceding = read
+        return readback
     }
 
     static func characterCount(_ value: CFTypeRef) -> Int? {
