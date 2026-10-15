@@ -3801,6 +3801,19 @@ requested item's hittability, not an additional ignored container wait; the same
 immediate proof can assert availability without another round trip. These test
 observations never replace live target resolution for a click or keyboard input.
 
+The Background Work indicator's direct Settings route also requires the exact
+destination, native receiver and canonical search-editor handoff before outside
+scrolling. Its route observations and handoff share the original ten-second
+entry deadline, and failed or late readiness throws before the wheel helper.
+The existing helper traverses only a known active editor and verifies its exact
+value; an already inactive editor receives no key. This guards observed editor
+state, not an unclassified interruption's identity or a general popover.
+The recording/deferred-work journey similarly reasserts the native receiver,
+proves the actual record target stably hittable, and rechecks native ownership
+within its original fifteen-second entry deadline before clicking. It does not
+claim to atomically exclude a later foreground change; the existing interruption
+guard remains authoritative and does not dismiss another application's window.
+
 ## Review-first email recap handoff (D327, Aug 2026)
 
 The first external Skill is deliberately a draft handoff, not an email sender.

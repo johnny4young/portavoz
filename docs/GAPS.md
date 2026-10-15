@@ -595,13 +595,19 @@ and exact-head hosted qualification remain distinct from native controls.
 A later Spanish Background Work journey stopped during its first Settings-form
 scroll after the indicator had opened Your data and the exact owner counts were
 verified. XCTest reported an interrupting `Other` owned by the disposable app;
-the guard completed cleanup before dispatch. The interrupted recording did not
+the guard completed cleanup before dispatch. The interrupted test did not
 finish, so neither the element's frame nor the remaining passing tests identifies
-the surface or qualifies the invocation. This deep link does not use the ordinary
-Settings search-editor handoff, but that omission alone does not establish the
-interruption's cause. Preserve the failed evidence and reproduce the actual
-entry boundary before applying a handoff or changing scroll admission. Do not
-attribute the interruption to another application or dismiss an unknown surface.
+the surface or qualifies the invocation. The same boundary can recur in an
+English first-case invocation; predecessor activity and locale therefore do not
+identify its cause. That route bypassed the ordinary Settings editor handoff,
+but the omission and surface geometry alone do not attribute the interruption.
+Subsequent read-only bilingual observations found the native search editor still
+active before the wheel. The journey now guards that known editor state through
+the existing value-preserving handoff within its original entry deadline; native
+characterization observed successful handoff and released focus in both locales.
+The original `Other` remains unidentified, and scoped success does not qualify
+an interrupted catalog or prove that surface's cause is repaired. Preserve the
+failed evidence; do not blame another application or dismiss an unknown surface.
 
 A required native-controls invocation also stopped before its synchronous
 foreign-overlay counterexample was armed: the arm click was dispatched, but

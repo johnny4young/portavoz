@@ -352,6 +352,51 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(stableFrameBody.contains(
             "candidateFrame = nil\n                stableSince = nil"))
 
+        let backgroundUI = try Self.contents(of: "Tests/PortavozUITests/BackgroundWorkUITests.swift")
+        let backgroundStart = try XCTUnwrap(backgroundUI.range(
+            of: "func testBackgroundWorkCenterShowsAllOwnersAndRecoversExactFailures"))
+        let backgroundEnd = try XCTUnwrap(backgroundUI.range(
+            of: "func testRecordingDefersDerivedWorkAndStopResumesIt",
+            range: backgroundStart.upperBound..<backgroundUI.endIndex))
+        let backgroundEntry = backgroundUI[backgroundStart.lowerBound..<backgroundEnd.lowerBound]
+        for required in [
+            "let settingsEntryDeadline = Date().addingTimeInterval(10)",
+            "settingsCategoryReady && backgroundPaneReady && Date() <= settingsEntryDeadline",
+            "nativeReady && Date() <= settingsEntryDeadline",
+            "identifier: \"settings-search-field\"",
+            "editingHandoff.succeeded && Date() <= settingsEntryDeadline",
+            "timeout: min(5, max(0, settingsEntryDeadline.timeIntervalSinceNow))",
+            "maximumStep: settingsForm.frame.height"
+        ] {
+            XCTAssertTrue(backgroundEntry.contains(required))
+        }
+        let backgroundOwner = try XCTUnwrap(backgroundEntry.range(of: "app.prepareForInteraction("))
+        let backgroundEditor = try XCTUnwrap(backgroundEntry.range(of: "app.handOffTextFieldEditing("))
+        let backgroundAdmission = try XCTUnwrap(backgroundEntry.range(of: "editingHandoff.succeeded"))
+        let backgroundWheel = try XCTUnwrap(backgroundEntry.range(of: "processingRetry.revealVertically("))
+        XCTAssertLessThan(backgroundOwner.lowerBound, backgroundEditor.lowerBound)
+        XCTAssertLessThan(backgroundEditor.lowerBound, backgroundAdmission.lowerBound)
+        XCTAssertLessThan(backgroundAdmission.lowerBound, backgroundWheel.lowerBound)
+        XCTAssertFalse(backgroundEntry.contains("BACKGROUND_EDITOR_HANDOFF"))
+        XCTAssertFalse(backgroundEntry.contains("BACKGROUND_ENTRY_PROBE"))
+        let backgroundRecording = backgroundUI[backgroundEnd.lowerBound..<backgroundUI.endIndex]
+        for required in [
+            "let recordEntryDeadline = Date().addingTimeInterval(15)",
+            "nativeRecordOwner && Date() <= recordEntryDeadline",
+            "record.waitForStableFrame(timeout: max(0, recordEntryDeadline.timeIntervalSinceNow))",
+            "app.hasObservedNativeReceiver(bundleIdentifier: keyboardReceiverBundleIdentifier)",
+            "&& Date() <= recordEntryDeadline ? record : nil"
+        ] {
+            XCTAssertTrue(backgroundRecording.contains(required))
+        }
+        let recordOwner = try XCTUnwrap(backgroundRecording.range(of: "app.prepareForInteraction("))
+        let recordStable = try XCTUnwrap(backgroundRecording.range(of: "record.waitForStableFrame("))
+        let recordReceiver = try XCTUnwrap(backgroundRecording.range(of: "app.hasObservedNativeReceiver("))
+        let recordClick = try XCTUnwrap(backgroundRecording.range(of: "record.click()"))
+        XCTAssertLessThan(recordOwner.lowerBound, recordStable.lowerBound)
+        XCTAssertLessThan(recordStable.lowerBound, recordReceiver.lowerBound)
+        XCTAssertLessThan(recordReceiver.lowerBound, recordClick.lowerBound)
+
         let launchStart = try XCTUnwrap(support.range(
             of: "func launchPortavoz()"))
         let nextHelperStart = try XCTUnwrap(support.range(

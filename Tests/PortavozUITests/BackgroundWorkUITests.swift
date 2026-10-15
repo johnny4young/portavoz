@@ -12,14 +12,16 @@ final class BackgroundWorkUITests: PortavozUITestCase {
             indicator.waitForHittable(timeout: 15),
             "attention in a background owner must expose one compact app-level route")
         indicator.click()
+        let settingsEntryDeadline = Date().addingTimeInterval(10)
 
-        XCTAssertTrue(
-            app.control(withIdentifier: "settings-category-data")
-                .waitForExistenceFast(timeout: 10),
-            "the compact indicator must expose the exact Settings category")
-        XCTAssertTrue(
-            app.staticTexts["background-work-overview"].waitForExistenceFast(timeout: 5),
-            "the compact indicator must deep-link to the Background Work pane")
+        let settingsCategoryReady = app.control(withIdentifier: "settings-category-data")
+            .waitForExistenceFast(timeout: max(0, settingsEntryDeadline.timeIntervalSinceNow))
+        XCTAssertTrue(settingsCategoryReady,
+                      "the compact indicator must expose the exact Settings category")
+        let backgroundPaneReady = app.staticTexts["background-work-overview"].waitForExistenceFast(
+            timeout: min(5, max(0, settingsEntryDeadline.timeIntervalSinceNow)))
+        XCTAssertTrue(backgroundPaneReady,
+                      "the compact indicator must deep-link to the Background Work pane")
 
         let spanish = UITestLocale.environmentLocale == "es"
         let expectedDetails = [
@@ -39,7 +41,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
                 .union(["background-work-retry-processing"]),
             types: Dictionary(uniqueKeysWithValues: expectedDetails.keys.map { ($0, .staticText) }),
             expectedText: expectedDetails,
-            timeout: 5,
+            timeout: min(5, max(0, settingsEntryDeadline.timeIntervalSinceNow)),
             message: "Every owner must publish exact counts, attempt, retry wake and closed failure category")
         for (identifier, expected) in expectedDetails {
             let detail = try uiSnapshotElement(identifier, type: .staticText, in: owners)
@@ -51,6 +53,23 @@ final class BackgroundWorkUITests: PortavozUITestCase {
             identifier: "background-work-overview"
         ).firstMatch
         let settingsForm = settingsWindow.scrollViews.element(boundBy: 1)
+        // A direct Settings route bypasses openSettingsWindow's editor
+        // handoff. Observe the native owner and finish only the known search
+        // editor before outside input; never dismiss an unknown interruption.
+        _ = try XCTUnwrap(
+            settingsCategoryReady && backgroundPaneReady && Date() <= settingsEntryDeadline ? app : nil,
+            "the exact Settings destination must be ready within its original entry deadline")
+        let nativeReady = app.prepareForInteraction(
+            timeout: max(0, settingsEntryDeadline.timeIntervalSinceNow))
+        _ = try XCTUnwrap(
+            nativeReady && Date() <= settingsEntryDeadline ? app : nil,
+            "the Settings route must own the native receiver within its original entry deadline")
+        let editingHandoff = app.handOffTextFieldEditing(
+            identifier: "settings-search-field",
+            timeout: max(0, settingsEntryDeadline.timeIntervalSinceNow))
+        _ = try XCTUnwrap(
+            editingHandoff.succeeded && Date() <= settingsEntryDeadline ? app : nil,
+            "the known Settings search editor must hand off before outside scrolling: \(editingHandoff.diagnosis)")
         // Scale the reveal to the actual form, not the shared conservative
         // 48-point transcript-row default. The helper still limits travel to
         // the missing distance and proves contained, stable hittability.
@@ -90,7 +109,21 @@ final class BackgroundWorkUITests: PortavozUITestCase {
         defer { finishUITestApplication(app) }
 
         let record = app.buttons["library-new-recording-button"]
-        XCTAssertTrue(record.waitForHittable(timeout: 15))
+        let recordEntryDeadline = Date().addingTimeInterval(15)
+        let nativeRecordOwner = app.prepareForInteraction(
+            timeout: max(0, recordEntryDeadline.timeIntervalSinceNow))
+        _ = try XCTUnwrap(
+            nativeRecordOwner && Date() <= recordEntryDeadline ? app : nil,
+            "recording preparation must acknowledge the native receiver within its original deadline")
+        let recordReady = record.waitForHittable(
+            timeout: max(0, recordEntryDeadline.timeIntervalSinceNow))
+        XCTAssertTrue(recordReady)
+        _ = try XCTUnwrap(
+            recordReady
+                && record.waitForStableFrame(timeout: max(0, recordEntryDeadline.timeIntervalSinceNow))
+                && app.hasObservedNativeReceiver(bundleIdentifier: keyboardReceiverBundleIdentifier)
+                && Date() <= recordEntryDeadline ? record : nil,
+            "the record target must be settled and the native receiver still owned before input")
         record.click()
 
         let indicator = app.buttons["background-work-indicator"]
