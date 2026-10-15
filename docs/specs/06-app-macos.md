@@ -3788,6 +3788,19 @@ The runner's official/owned diagnostic modes reuse the same built products and
 journeys; the storage proof checks actual exit outcomes and per-launch nonces.
 No cleanup work is excluded from runtime measurement.
 
+Recording UI fixtures preserve the requested target-stability duration and all
+input guards while polling fresh geometry more frequently to account for native
+attribute-read latency. Assist-tab selection is read from a fresh resolved
+target snapshot; an unresolved target throws before later field input. The
+negative selection proof performs no input. Related read-only recording
+assertions can share one coherent app observation, charging that read to the
+original first deadline and retaining exact live fallbacks. A record action's
+presence and actual localized label likewise share one target observation within
+its original readiness deadline. More-popover readiness is proved by the actual
+requested item's hittability, not an additional ignored container wait; the same
+immediate proof can assert availability without another round trip. These test
+observations never replace live target resolution for a click or keyboard input.
+
 ## Review-first email recap handoff (D327, Aug 2026)
 
 The first external Skill is deliberately a draft handoff, not an email sender.

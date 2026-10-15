@@ -6082,7 +6082,18 @@ remains an unqualified control, not an
 expected negative outcome. Keyboard dispatch retains its separate modal guard.
 Assist-tab traversal similarly requires a stable native target and acknowledged
 selection before callers may address its fields; failures throw instead of
-continuing into a missing control. Dynamic Skill-menu journeys explicitly close
+continuing into a missing control. A fresh target snapshot proves resolution
+and selection in one observation; the missing-target error path is exercised
+without input. Stability sampling accounts for native attribute round trips
+without changing the requested elapsed-duration floor, hittability checks or
+frame-identity resets. Consecutive read-only recording assertions may share a
+fresh app observation, with their original live fallbacks and first deadlines;
+no observation supplies geometry or authority for a later action. The More
+popover waits for the actual requested target's hittability, which already
+proves container presence, rather than spending a second ignored readiness
+wait on its parent. An immediately consumed target-readiness proof can also
+serve a read-only availability assertion, while clicks still resolve the live
+element. Dynamic Skill-menu journeys explicitly close
 only an observed owned menu before reopening it after a dismissal, retaining
 all exact remaining-offer and final-retirement assertions.
 

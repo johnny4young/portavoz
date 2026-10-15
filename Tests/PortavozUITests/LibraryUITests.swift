@@ -504,9 +504,38 @@ final class LibraryUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
 
+        // Read-only groups share one coherent observation. A not-yet-ready
+        // group falls back to every original bounded live assertion. These
+        // snapshots never provide geometry or authority for an input action.
+        func contains(_ identifier: String, in snapshot: any XCUIElementSnapshot) -> Bool {
+            !uiSnapshotMatches({ $0.identifier == identifier }, in: snapshot).isEmpty
+        }
+        func containsText(_ text: String, in snapshot: any XCUIElementSnapshot) -> Bool {
+            let matches = uiSnapshotMatches({
+                $0.elementType == .staticText && ($0.label == text || $0.value as? String == text)
+            }, in: snapshot)
+            return matches.count == 1
+        }
+        func statusMatches(_ text: String, in snapshot: any XCUIElementSnapshot) -> Bool {
+            let matches = uiSnapshotMatches({ $0.identifier == "recording-proactive-status" }, in: snapshot)
+            return matches.count == 1 && (matches[0].label == text || matches[0].value as? String == text)
+        }
+
         let record = app.buttons["library-new-recording-button"]
-        XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
-        let isSpanish = record.label == "Nueva grabación"
+        let recordDeadline = Date().addingTimeInterval(15)
+        let recordObservation = try { () throws -> any XCUIElementSnapshot in
+            do { return try record.snapshot() }
+            catch {
+                _ = try XCTUnwrap(record.waitForExistenceFast(
+                    timeout: max(0, recordDeadline.timeIntervalSinceNow)) ? record : nil,
+                    "the recording action must resolve inside its original readiness deadline")
+                return try record.snapshot()
+            }
+        }()
+        _ = try XCTUnwrap(Date() <= recordDeadline ? recordObservation : nil,
+                          "the recording action must not be admitted after its original deadline")
+        XCTAssertTrue(recordObservation.elementType == .button)
+        let isSpanish = recordObservation.label == "Nueva grabación"
         record.click()
 
         XCTAssertTrue(
@@ -515,28 +544,43 @@ final class LibraryUITests: PortavozUITestCase {
         let expectedQuestion = UITestLocale.environmentLocale == "es"
             ? "¿Puedes explicar por qué el despliegue pasó al viernes?"
             : "Could you explain why the rollout moved to Friday?"
-        XCTAssertTrue(
-            app.staticTexts[expectedQuestion].waitForExistenceFast(timeout: 10),
-            "the real bundled detector must surface the frozen bilingual question")
         let questionOnlyStatus = UITestLocale.environmentLocale == "es"
             ? "pregunta detectada"
             : "question detected"
-        XCTAssertTrue(
-            app.staticTexts[questionOnlyStatus].waitForExistenceFast(timeout: 5),
-            "without an answer engine Sequoia must show an honest question-only card")
         let transcript = app.control(withIdentifier: "recording-live-transcript")
-        XCTAssertTrue(transcript.waitForExistenceFast(timeout: 8))
+        do {
+            let deadline = Date().addingTimeInterval(10)
+            let observation = try app.snapshot()
+            let questionVisible = containsText(expectedQuestion, in: observation)
+            let statusVisible = containsText(questionOnlyStatus, in: observation)
+            let transcriptVisible = contains("recording-live-transcript", in: observation)
+            let ready = questionVisible && statusVisible && transcriptVisible
+            XCTAssertTrue(ready ? questionVisible : app.staticTexts[expectedQuestion]
+                .waitForExistenceFast(timeout: max(0, deadline.timeIntervalSinceNow)),
+                "the real bundled detector must surface the frozen bilingual question")
+            XCTAssertTrue(ready ? statusVisible : app.staticTexts[questionOnlyStatus]
+                .waitForExistenceFast(timeout: 5),
+                "without an answer engine Sequoia must show an honest question-only card")
+            XCTAssertTrue(ready ? transcriptVisible : transcript.waitForExistenceFast(timeout: 8))
+        }
         try app.openAssistTab("summary")
         let liveSummary = app.control(withIdentifier: "recording-live-summary")
-        XCTAssertTrue(
-            liveSummary.waitForExistenceFast(timeout: 8),
-            "Sequoia must render the deterministic rolling-summary checkpoint")
         let expectedLiveHighlights = UITestLocale.environmentLocale == "es"
             ? "Puntos clave en vivo"
             : "Live highlights"
-        XCTAssertTrue(
-            app.staticTexts[expectedLiveHighlights].waitForExistenceFast(timeout: 5),
-            "the model-free checkpoint must disclose its extractive live highlights")
+        do {
+            let deadline = Date().addingTimeInterval(8)
+            let observation = try app.snapshot()
+            let summaryVisible = contains("recording-live-summary", in: observation)
+            let highlightsVisible = containsText(expectedLiveHighlights, in: observation)
+            let ready = summaryVisible && highlightsVisible
+            XCTAssertTrue(ready ? summaryVisible : liveSummary.waitForExistenceFast(
+                timeout: max(0, deadline.timeIntervalSinceNow)),
+                "Sequoia must render the deterministic rolling-summary checkpoint")
+            XCTAssertTrue(ready ? highlightsVisible : app.staticTexts[expectedLiveHighlights]
+                .waitForExistenceFast(timeout: 5),
+                "the model-free checkpoint must disclose its extractive live highlights")
+        }
 
         try app.openAssistTab("objectives")
         let panel = app.control(withIdentifier: "recording-objectives-panel")
@@ -548,22 +592,28 @@ final class LibraryUITests: PortavozUITestCase {
         field.click()
         typeText("Cerrar el presupuesto del trimestre", in: app)
         app.control(withIdentifier: "recording-objective-add").click()
-        XCTAssertTrue(
-            app.staticTexts["Cerrar el presupuesto del trimestre"]
-                .waitForExistenceFast(timeout: 5),
-            "an added objective must appear in the checklist")
+        do {
+            let deadline = Date().addingTimeInterval(5)
+            let observation = try app.snapshot()
+            let objectiveVisible = containsText("Cerrar el presupuesto del trimestre", in: observation)
+            let balanceVisible = contains("recording-talk-balance", in: observation)
+            let ready = objectiveVisible && balanceVisible
+            XCTAssertTrue(
+                ready ? objectiveVisible : app.staticTexts["Cerrar el presupuesto del trimestre"]
+                    .waitForExistenceFast(timeout: max(0, deadline.timeIntervalSinceNow)),
+                "an added objective must appear in the checklist")
+            XCTAssertTrue(ready ? contains("recording-translation-picker", in: observation)
+                : app.control(withIdentifier: "recording-translation-picker").exists)
+            XCTAssertTrue(ready ? balanceVisible
+                : app.control(withIdentifier: "recording-talk-balance").waitForExistenceFast(timeout: 8),
+                "closed captions must surface the talk-balance cue")
+            XCTAssertFalse(ready ? contains("recording-assist-tab-proactive", in: observation)
+                : app.control(withIdentifier: "recording-assist-tab-proactive").exists,
+                "proactive help must be off until this recording explicitly opts in")
+        }
 
-        XCTAssertTrue(app.control(withIdentifier: "recording-translation-picker").exists)
-        XCTAssertTrue(
-            app.control(withIdentifier: "recording-talk-balance")
-                .waitForExistenceFast(timeout: 8),
-            "closed captions must surface the talk-balance cue")
-        XCTAssertFalse(
-            app.control(withIdentifier: "recording-assist-tab-proactive").exists,
-            "proactive help must be off until this recording explicitly opts in")
-
-        XCTAssertTrue(
-            app.recordingMoreItem("recording-next-question").exists,
+        let nextQuestion = app.recordingMoreItemReadiness("recording-next-question")
+        XCTAssertTrue(nextQuestion.isHittable,
             "the More menu must offer the next-question action")
         XCTAssertTrue(app.control(withIdentifier: "recording-hud").exists)
         app.recordingMoreItem("recording-proactive-assist").click()
@@ -573,31 +623,53 @@ final class LibraryUITests: PortavozUITestCase {
         // Suggestions only becomes a tab once this recording opts in.
         try app.openAssistTab("proactive")
         let proactivePanel = app.control(withIdentifier: "recording-proactive-panel")
-        XCTAssertTrue(proactivePanel.waitForExistenceFast(timeout: 5))
         let objectiveSuggestion = app.control(
             withIdentifier: "recording-proactive-suggestion-open-objective")
-        XCTAssertTrue(
-            objectiveSuggestion.waitForExistenceFast(timeout: 5),
-            "an open objective after sufficient finalized conversation must produce one inert card")
-        XCTAssertTrue(app.staticTexts["Cerrar el presupuesto del trimestre"].exists)
         let expectedSource = isSpanish
             ? "Fuente: tu objetivo abierto + 16 turnos cerrados · 00:40–05:45"
             : "Source: your open objective + 16 closed turns · 00:40–05:45"
-        XCTAssertTrue(
-            app.staticTexts[expectedSource].exists,
-            "the suggestion must disclose its exact objective and bounded caption window")
-
         let pause = app.control(withIdentifier: "recording-proactive-pause")
-        XCTAssertTrue(pause.exists)
+        do {
+            let deadline = Date().addingTimeInterval(5)
+            let observation = try app.snapshot()
+            let panelVisible = contains("recording-proactive-panel", in: observation)
+            let suggestionVisible = contains("recording-proactive-suggestion-open-objective", in: observation)
+            let ready = panelVisible && suggestionVisible
+                && containsText("Cerrar el presupuesto del trimestre", in: observation)
+                && containsText(expectedSource, in: observation)
+            XCTAssertTrue(ready ? panelVisible : proactivePanel.waitForExistenceFast(
+                timeout: max(0, deadline.timeIntervalSinceNow)))
+            XCTAssertTrue(ready ? suggestionVisible : objectiveSuggestion.waitForExistenceFast(timeout: 5),
+                "an open objective after sufficient finalized conversation must produce one inert card")
+            XCTAssertTrue(ready ? containsText("Cerrar el presupuesto del trimestre", in: observation)
+                : app.staticTexts["Cerrar el presupuesto del trimestre"].exists)
+            XCTAssertTrue(ready ? containsText(expectedSource, in: observation)
+                : app.staticTexts[expectedSource].exists,
+                "the suggestion must disclose its exact objective and bounded caption window")
+            XCTAssertTrue(ready ? contains("recording-proactive-pause", in: observation) : pause.exists)
+        }
         let proactiveStatus = app.control(
             withIdentifier: "recording-proactive-status")
         pause.click()
         let paused = isSpanish ? "En pausa" : "Paused"
-        XCTAssertTrue(proactiveStatus.waitForLabelOrValue(paused, timeout: 3))
-        XCTAssertTrue(objectiveSuggestion.exists, "pause must preserve visible evidence")
+        do {
+            let deadline = Date().addingTimeInterval(3)
+            let observation = try app.snapshot()
+            let pausedMatches = statusMatches(paused, in: observation)
+            XCTAssertTrue(pausedMatches || proactiveStatus.waitForLabelOrValue(
+                paused, timeout: max(0, deadline.timeIntervalSinceNow)))
+            XCTAssertTrue(pausedMatches
+                ? contains("recording-proactive-suggestion-open-objective", in: observation)
+                : objectiveSuggestion.exists, "pause must preserve visible evidence")
+        }
         pause.click()
         let running = isSpanish ? "Observando señales locales" : "Watching local signals"
-        XCTAssertTrue(proactiveStatus.waitForLabelOrValue(running, timeout: 3))
+        do {
+            let deadline = Date().addingTimeInterval(3)
+            let observation = try app.snapshot()
+            XCTAssertTrue(statusMatches(running, in: observation)
+                || proactiveStatus.waitForLabelOrValue(running, timeout: max(0, deadline.timeIntervalSinceNow)))
+        }
 
         // One panel open for both flips: the switch stays put while the
         // suggestions panel below it disappears and returns.
