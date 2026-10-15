@@ -47,5 +47,22 @@ final class UITestStorageUITests: PortavozUITestCase {
             let bytes = try Data(contentsOf: recording.appendingPathComponent("\(channel).wav"))
             XCTAssertGreaterThan(bytes.count, 44, "the app must produce readable synthetic audio, not just a marker")
         }
+        let firstNonce = app.launchEnvironment["PORTAVOZ_UI_TEST_EXIT_NONCE"]
+        XCTAssertEqual(firstNonce != nil, UITestStorage.usesOwnedExit)
+        let expectedExit: UITestStorage.FinishOutcome = UITestStorage.usesOwnedExit
+            ? .appKitExit : .officialTermination
+        XCTAssertEqual(finishUITestApplication(app), expectedExit)
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 10))
+        XCTAssertTrue(app.waitForPortavozProcessExit())
+        app.launchPortavoz()
+        if UITestStorage.usesOwnedExit {
+            XCTAssertNotEqual(app.launchEnvironment["PORTAVOZ_UI_TEST_EXIT_NONCE"], firstNonce)
+        } else {
+            XCTAssertNil(app.launchEnvironment["PORTAVOZ_UI_TEST_EXIT_NONCE"])
+        }
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        XCTAssertEqual(finishUITestApplication(app), expectedExit)
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 10))
+        XCTAssertTrue(app.waitForPortavozProcessExit())
     }
 }

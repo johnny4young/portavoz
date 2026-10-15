@@ -11,7 +11,7 @@ final class SettingsUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
             #"{"globalDictationEnabled":true,"dictationLanguage":"en","dictationLiveSpeechEngine":"appleSpeech"}"#
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
         openCategory("settings-category-audio",
                      revealing: "settings-dictation-live-engine", in: app)
         let retry = app.buttons["settings-dictation-live-apple-retry"]
@@ -31,7 +31,7 @@ final class SettingsUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
             #"{"globalDictationEnabled":true,"dictationLanguage":"en","dictationLiveSpeechEngine":"appleSpeech","transcriptionLanguage":"es","meetingLiveSpeechEngine":"appleSpeech"}"#
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory("settings-category-audio",
                      revealing: "settings-dictation-live-engine", in: app)
@@ -63,7 +63,7 @@ final class SettingsUITests: PortavozUITestCase {
             simulateSemanticAssetsMissing: true,
             openSettings: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-intelligence",
@@ -101,7 +101,7 @@ final class SettingsUITests: PortavozUITestCase {
     func testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         XCTAssertTrue(
@@ -134,7 +134,7 @@ final class SettingsUITests: PortavozUITestCase {
     func testCategoryNavigationRevealsEachPane() throws {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         // The nav renders every category…
         openCategory(
@@ -247,7 +247,7 @@ final class SettingsUITests: PortavozUITestCase {
     func testSyncPaneKeepsOptInAndExistingLibrarySeparate() throws {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-data",
@@ -283,7 +283,7 @@ final class SettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(seedDemo: true, openSettings: true)
         app.launchEnvironment["PORTAVOZ_UI_TEST_DIAGNOSTICS_PATH"] = destination.path
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-data",
@@ -324,7 +324,7 @@ final class SettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(seedDemo: true, openSettings: true)
         app.launchEnvironment["PORTAVOZ_UI_TEST_BACKUP_FOLDER"] = directory.path
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-data",
@@ -364,7 +364,7 @@ final class SettingsUITests: PortavozUITestCase {
         // "Add structure" opens the editor sheet with a name field.
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-intelligence",
@@ -389,7 +389,7 @@ final class SettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":false}"#
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-audio",
@@ -437,7 +437,7 @@ final class SettingsUITests: PortavozUITestCase {
             + #"\"replacement\":\"Codex Fixture\"}]"}"#
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = dictationDefaults
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-audio",
@@ -481,7 +481,7 @@ final class SettingsUITests: PortavozUITestCase {
             #"{"globalDictationEnabled":true,"dictationMouseButton":0,"dictationHotkeyKeyCode":46,"#
             + #""dictationHotkeyModifiers":2304,"dictationHotkeyLabel":"⌥⌘M"}"#
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
         openCategory("settings-category-audio", revealing: "settings-dictation-shortcut-retry", in: app)
 
         let unavailable = app.control(withIdentifier: "settings-dictation-shortcut-unavailable")
@@ -519,7 +519,7 @@ final class SettingsUITests: PortavozUITestCase {
             #"{"globalDictationEnabled":true,"dictationMouseButton":0,"dictationHotkeyKeyCode":-1,"#
             + #""dictationHotkeyModifiers":-1,"dictationHotkeyLabel":"invalid"}"#
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
         openCategory("settings-category-audio", revealing: "settings-dictation-shortcut-default", in: app)
 
         let recovered = app.staticTexts["settings-dictation-shortcut-recovered"]
@@ -546,7 +546,7 @@ final class SettingsUITests: PortavozUITestCase {
         // switch lives in the "My voice & Apuntador" pane.
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-intelligence",
@@ -568,7 +568,7 @@ final class SettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-voice-storage-unavailable")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-intelligence",
@@ -608,7 +608,7 @@ final class SettingsUITests: PortavozUITestCase {
             openSettings: true,
             launchLocale: "en")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         let systemToggle = app.control(withIdentifier: "settings-language-system-toggle")
         XCTAssertTrue(systemToggle.waitForExistenceFast(timeout: 10))

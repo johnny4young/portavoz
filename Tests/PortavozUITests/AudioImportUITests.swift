@@ -24,7 +24,7 @@ final class AudioImportUITests: PortavozUITestCase {
         let source = try makeBundleSelection(title: title, texts: texts, app: app)
         let original = try Data(contentsOf: source)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
         guard chooseFiles(app: app, firstFilename: source.lastPathComponent) else { return }
         XCTAssertTrue(app.control(withIdentifier: "detail-transcript-title").waitForExistenceFast(timeout: 10))
         XCTAssertTrue(app.staticTexts[title].waitForExistenceFast(timeout: 5))
@@ -45,7 +45,7 @@ final class AudioImportUITests: PortavozUITestCase {
         // fails, not merely when an already prepared diarizer returns no turns.
         app.launchArguments.append("-audio-import-diarizer-unavailable")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
         guard chooseFiles(app: app) else { return }
         let panel = app.control(withIdentifier: "import-queue-panel")
         XCTAssertTrue(panel.waitForExistenceFast(timeout: 15))
@@ -83,7 +83,7 @@ final class AudioImportUITests: PortavozUITestCase {
         let folder = try makeAudioSelection(count: 2, app: app)
         app.launchArguments.append("-audio-import-fail-mutations-once")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
         guard chooseFiles(app: app) else { return }
         let panel = app.control(withIdentifier: "import-queue-panel")
         XCTAssertTrue(panel.waitForExistenceFast(timeout: 15))
@@ -119,7 +119,7 @@ final class AudioImportUITests: PortavozUITestCase {
         let app = try fixtureApp(holdFirst: true)
         let folder = try makeAudioSelection(count: 1, app: app)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
         guard chooseFiles(app: app) else { return }
         let panel = app.control(withIdentifier: "import-queue-panel")
         XCTAssertTrue(panel.waitForExistenceFast(timeout: 15))

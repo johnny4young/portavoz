@@ -278,6 +278,7 @@ extension XCUIApplication {
         XCTAssertTrue(
             waitForPortavozProcessExit(),
             "the preceding Portavoz process must leave the running-app inventory")
+        UITestStorage.prepareLaunch(self)
         launch()
         // Request our own activation before observing foreground readiness.
         // Another app may legitimately have raised its window during launch.
@@ -289,6 +290,7 @@ extension XCUIApplication {
         XCTAssertTrue(
             mainWindow.waitForHittable(timeout: 15),
             "the disposable main window must be actionable before UI assertions")
+        UITestStorage.recordLaunch(self)
         if shouldOpenSettings {
             // Command-comma targets the owned application, not the record
             // button. Prove the real Settings destination in openSettingsWindow.

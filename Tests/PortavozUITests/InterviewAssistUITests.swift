@@ -9,7 +9,7 @@ final class InterviewAssistUITests: PortavozUITestCase {
     func testInterviewAssistGroundsTheCurrentQuestionInExactEvidence() throws {
         let app = try XCUIApplication.portavoz(simulateInterviewAssist: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))

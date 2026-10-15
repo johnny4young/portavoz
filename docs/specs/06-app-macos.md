@@ -3775,6 +3775,19 @@ board. This preserves the exact approved artifact and receipt assertions while
 removing shared-host clipboard coupling; it does not claim general-board privacy
 permission or delivery into an external application's editor.
 
+The disposable Debug UI host also supports an explicitly requested, per-launch
+owned exit for healthy final test disposal. The production and ordinary Debug
+bundle identifiers reject it. The app watches its owner-private temporary
+directory and accepts only a private regular request containing its exact launch
+UUID and PID, then calls `NSApp.terminate(nil)`. An attached sheet or app-modal
+window instead publishes refusal without choosing or dismissing anything. The
+runner revalidates the captured native launch before official fallback and
+retains process-exit and scratch-identity fences. Failed tests, interruption
+cleanup and intentional abrupt-recovery steps retain official XCTest termination.
+The runner's official/owned diagnostic modes reuse the same built products and
+journeys; the storage proof checks actual exit outcomes and per-launch nonces.
+No cleanup work is excluded from runtime measurement.
+
 ## Review-first email recap handoff (D327, Aug 2026)
 
 The first external Skill is deliberately a draft handoff, not an email sender.

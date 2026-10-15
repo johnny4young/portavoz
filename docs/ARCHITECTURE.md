@@ -6046,6 +6046,20 @@ to this dedicated fixture base while retaining its sandbox. Neither production
 entitlements nor system privacy grants change. The same test-only allocator
 source is compiled into package tests and XCUITest, not a product target.
 
+Healthy final disposal can ask the captured disposable Debug UI host to end
+itself through AppKit. This seam requires the exact UI-host bundle identifier,
+temporary-store mode, an explicit launch argument and a fresh launch UUID. A
+mode-0700 owner directory carries a mode-0600, non-symlink, single-link request
+whose exact payload includes that UUID and the process ID. A modal refusal is
+acknowledged without dismissing it. The runner retains the native launch object,
+revalidates its identity before official fallback, and waits for process exit
+before deleting scratch. Failed/interrupted journeys and deliberate recovery
+termination retain the official XCTest API; release and ordinary Debug apps
+cannot enable the seam. A runner-only diagnostic mode selects official disposal
+for same-built-product comparisons; unknown modes fail closed to that path.
+The storage journey asserts the actual selected outcome and fresh launch identity
+on relaunch. Cleanup remains part of the measured test duration.
+
 The recap Skill's two real-app clipboard journeys allocate independent UUID-named
 native pasteboards, then terminate the app before releasing their board. Only
 temporary-store composition with an explicit fixture flag and validated
@@ -6061,7 +6075,10 @@ Foreground preparation observes both XCTest's state and the declared native
 receiver within its original deadline, rather than treating an activation
 request alone as acknowledgement. The synthetic interruption fixture also
 requires that acknowledgement and a hittable arm control before creating its
-owned overlay; preparation failure remains an unqualified control, not an
+owned overlay. The second synthetic receiver must also acknowledge activation
+and expose its original window within the existing readiness deadline; a ready
+file alone is not proof of native foreground ownership. Preparation failure
+remains an unqualified control, not an
 expected negative outcome. Keyboard dispatch retains its separate modal guard.
 Assist-tab traversal similarly requires a stable native target and acknowledged
 selection before callers may address its fields; failures throw instead of
