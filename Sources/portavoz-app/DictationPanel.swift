@@ -101,7 +101,7 @@ private struct DictationStripView: View {
                 if let target = controller.targetApp, controller.isActive {
                     targetChip(target)
                 }
-                if controller.isActive {
+                if controller.isActive, controller.phase != .delivering {
                     DictationTextModePicker(
                         identifier: "dictation-panel-text-mode", label: Text("Text mode"), selection: Binding(
                         get: { controller.textMode }, set: { controller.selectTextMode($0) }))
@@ -122,6 +122,8 @@ private struct DictationStripView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                // A posted paste cannot be recalled; cancelling would only hide its outcome.
+                .disabled(controller.phase == .delivering)
                 .accessibilityLabel(L10n.text("Cancel dictation"))
                 .accessibilityIdentifier("dictation-panel-cancel")
             }
@@ -230,6 +232,8 @@ private struct DictationStripView: View {
             return L10n.text("Preparing dictation…")
         case .listening:
             return L10n.text("Dictating")
+        case .delivering:
+            return L10n.text("Inserting…")
         case .failed(let message):
             return message
         case .idle, .verified, .dispatched, .recovery:

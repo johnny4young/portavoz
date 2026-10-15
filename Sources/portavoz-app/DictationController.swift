@@ -66,6 +66,8 @@ final class DictationController {
         case idle
         case preparing
         case listening
+        /// The paste is in flight: a second trigger can neither cancel nor restart it.
+        case delivering
         case verified(Int)
         case dispatched(Int)
         case failed(String)
@@ -81,7 +83,7 @@ final class DictationController {
     private(set) var micLevel: Float = 0
     private(set) var microphoneNotice: String?
 
-    var isActive: Bool { phase == .preparing || phase == .listening }
+    var isActive: Bool { phase == .preparing || phase == .listening || phase == .delivering }
     /// The app that was frontmost when dictation started — where the text
     /// will land. The strip shows it so you never dictate "blind" (4b).
     private(set) var targetApp: String?
@@ -222,6 +224,8 @@ final class DictationController {
             cancel()
         case .listening:
             finishAndInsert()
+        case .delivering:
+            break
         case .recovery:
             showPanel()
         }
@@ -236,6 +240,7 @@ final class DictationController {
         // An unverified dispatch was already sent: its notice is non-modal and
         // a new dictation replaces it (never re-sending the old output).
         if case .recovery = phase { showPanel(); return }
+        guard phase != .delivering else { return }
         retryDeliveryTask?.cancel()
         retryDeliveryTask = nil
         deliveryID = nil
@@ -381,7 +386,7 @@ final class DictationController {
 
     /// Second hotkey press: stop the mic; the drained stream delivers.
     private func finishAndInsert() {
-        guard isActive else { return }
+        guard isActive, phase != .delivering else { return }
         guard stopTask == nil else { return }
         measurement?.record(.stopRequested)
         guard DictationCapturePolicy.finishDecision(
@@ -472,6 +477,8 @@ final class DictationController {
             return
         }
         measurement?.record(.deliveryStarted)
+        phase = .delivering
+        showPanel()
         let result = await destination.insert(text)
         measurement?.finishDelivery(result)
         guard activeSessionID == sessionID else { return }
@@ -542,7 +549,7 @@ final class DictationController {
 extension DictationController {
     /// Re-register the configured hotkey after either Settings value changes.
     func syncHotkey(services: AppServices) {
-        if !UserDefaults.standard.bool(forKey: Self.defaultsKey), isActive {
+        if !UserDefaults.standard.bool(forKey: Self.defaultsKey), isActive, phase != .delivering {
             cancel()
         }
         shortcut.sync(

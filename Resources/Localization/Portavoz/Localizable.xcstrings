@@ -17836,6 +17836,16 @@
           }
         }
       }
+    },
+    "Inserting…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insertando…"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
