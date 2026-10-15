@@ -592,6 +592,16 @@ not changed. Public-API admission remains a point-in-time observation: a window
 change after observation cannot be claimed atomically excluded. Full bilingual
 and exact-head hosted qualification remain distinct from native controls.
 
+An independent complete English catalogue passed every functional assertion but
+still exceeded the unchanged runtime budget. Its capture-recovery journey spent
+thirty seconds in final SDK `notRunning` observation after the body completed,
+despite requesting ten seconds. The exact native state before that old delay was
+not logged. Healthy final cleanup now polls the same public state predicate under
+an absolute ten-second deadline after its captured native launch is known ended,
+retaining the independent native inventory and scratch fences. A matched bilingual
+comparison did not reproduce the rare delay or measure material aggregate savings;
+it cannot qualify the earlier failed receipt or close the full-catalog budget.
+
 A separate Background Work recording journey read both expected Settings statuses,
 then an application-wide close shortcut closed the recording instead of Settings.
 Its native video shows Settings behind the recording before the shortcut and still

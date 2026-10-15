@@ -6068,6 +6068,13 @@ composition retains the general pasteboard. The first-failure adapter and its
 retry share the same real writer; exact approved text, original proposal,
 receipt and offer assertions remain unchanged. This isolates the user's shared
 clipboard from test effects and external writers without substituting a mock.
+Healthy final cleanup may poll the same public XCTest `notRunning` state under
+its original ten-second absolute deadline only after the exact captured native
+launch is terminated. Late state observations refuse scratch removal; the
+bundle-wide native exit fence remains mandatory. Failed, unrecorded and still-
+live captured launches retain the original SDK wait and official termination.
+This changes neither intentional abrupt recovery nor explicit native-state
+assertions in the storage journey.
 Recording-entry journeys prove the actual record button's hittability and
 stable frame before clicking. The deferred-work journey also reasserts the native
 receiver and rechecks it after target stability within its original fifteen-second
