@@ -5,7 +5,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
     func testBackgroundWorkCenterShowsAllOwnersAndRecoversExactFailures() throws {
         let app = try XCUIApplication.portavoz(seedBackgroundWork: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         let indicator = app.buttons["background-work-indicator"]
         XCTAssertTrue(
@@ -87,7 +87,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
             enableBackgroundWorkFixture: true,
             simulateSystemCaptureStall: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForHittable(timeout: 15))

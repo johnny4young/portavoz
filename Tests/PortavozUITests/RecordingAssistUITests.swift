@@ -10,7 +10,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"companionEnabled":true}"#
         app.launchArguments.append("-seed-live-companion-ui")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         app.buttons["library-new-recording-button"].click()
         XCTAssertTrue(app.waitForLiveTranscriptFrontier())
@@ -61,7 +61,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
     func testLatestManualAssistRequestOwnsTheFocusSlot() throws {
         let app = try XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         record.click()
@@ -86,7 +86,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
         app.launchArguments += ["-seed-live-companion-ui", "-seed-live-assist-arrivals-ui"]
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         record.click()
@@ -117,7 +117,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
             seedDemo: true, simulateSequoiaCapabilities: true,
             simulateLiveTranscriptBrowsing: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         app.buttons["library-new-recording-button"].click()
         XCTAssertTrue(app.waitForLiveTranscriptFrontier())
@@ -180,7 +180,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
             #"{"companionEnabled":true}"#
         app.launchArguments.append("-seed-live-companion-ui")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
