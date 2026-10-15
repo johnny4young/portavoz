@@ -38,6 +38,20 @@ final class UITestStorageUITests: PortavozUITestCase {
         XCTAssertThrowsError(try app.buttons["portavoz-missing-selection-proof"]
             .waitForResolvedSelection(timeout: 1),
             "An unresolved selection target must throw, never authorize subsequent input")
+        XCTAssertFalse(try app.textFields["portavoz-missing-text-proof"]
+            .waitForLabelOrValue("", timeout: 0),
+            "an absent text target must remain false, even for an empty expected value")
+        let recordLabel = UITestLocale.environmentLocale == "es" ? "Nueva grabación" : "New recording"
+        XCTAssertTrue(try app.buttons["library-new-recording-button"]
+            .waitForLabelOrValue(recordLabel, timeout: 0),
+            "an already-present localized label must not need a polling delay")
+        let search = app.textFields["library-search-field"]
+        // SwiftUI may publish an empty label as well as an empty field value.
+        // Verify the value explicitly without inventing a placeholder label.
+        XCTAssertEqual(try search.snapshot().value as? String, "",
+                       "the settled native search field must publish its empty value")
+        XCTAssertTrue(try search.waitForLabelOrValue("", timeout: 0),
+                      "an already-present empty field value must remain observable")
         // Library readiness already consumes the app-written one-shot marker.
         let readyPath = try XCTUnwrap(app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"])
         XCTAssertFalse(FileManager.default.fileExists(atPath: readyPath))

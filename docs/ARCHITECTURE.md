@@ -6075,6 +6075,12 @@ admission deadline. These are point-in-time observations; the interruption guard
 still refuses a receiver change after admission. The recording-input fixture
 requires its original live frontier before attempting text input; a failed start
 cannot cascade into unrelated field actions.
+The deferred-work journey closes the unique Settings window containing the
+expected data category through its standard native close button. Readable status
+rows do not prove that Settings is the key window, so an application-wide close
+shortcut cannot supply that intent. Native ownership, target stability and the
+return to recording share the original ten-second preparation deadline; a missing
+Stop target throws before further input.
 Foreground preparation observes both XCTest's state and the declared native
 receiver within its original deadline, rather than treating an activation
 request alone as acknowledgement. The synthetic interruption fixture also
@@ -6094,7 +6100,10 @@ Assist-tab traversal similarly requires a stable native target and acknowledged
 selection before callers may address its fields; failures throw instead of
 continuing into a missing control. A fresh target snapshot proves resolution
 and selection in one observation; the missing-target error path is exercised
-without input. Stability sampling accounts for native attribute round trips
+without input. Text readiness preserves the asynchronous absence check, then
+reads label and value from one fresh fallible target snapshot; resolution errors
+propagate. Native tests cover absent targets, localized labels and empty values
+without introducing a polling delay for already-present state. Stability sampling accounts for native attribute round trips
 without changing the requested elapsed-duration floor, hittability checks or
 frame-identity resets. Consecutive read-only recording assertions may share a
 fresh app observation, with their original live fallbacks and first deadlines;

@@ -45,7 +45,7 @@ final class LibraryUITests: PortavozUITestCase {
             ? "Copia de recuperación guardada"
             : "Recovery copy saved"
         XCTAssertTrue(
-            copyStatus.waitForLabelOrValue(expectedCopyStatus, timeout: 15))
+            try copyStatus.waitForLabelOrValue(expectedCopyStatus, timeout: 15))
         let destinationArtifacts = try FileManager.default.contentsOfDirectory(
             at: recoveryRoot,
             includingPropertiesForKeys: nil)
@@ -77,7 +77,7 @@ final class LibraryUITests: PortavozUITestCase {
             ? "Diagnósticos de inicio guardados"
             : "Launch diagnostics saved"
         XCTAssertTrue(
-            diagnosticsStatus.waitForLabelOrValue(
+            try diagnosticsStatus.waitForLabelOrValue(
                 expectedDiagnosticsStatus,
                 timeout: 15))
         let diagnostics = try String(contentsOf: diagnosticsURL, encoding: .utf8)
@@ -656,7 +656,7 @@ final class LibraryUITests: PortavozUITestCase {
             let deadline = Date().addingTimeInterval(3)
             let observation = try app.snapshot()
             let pausedMatches = statusMatches(paused, in: observation)
-            XCTAssertTrue(pausedMatches || proactiveStatus.waitForLabelOrValue(
+            XCTAssertTrue(try pausedMatches || proactiveStatus.waitForLabelOrValue(
                 paused, timeout: max(0, deadline.timeIntervalSinceNow)))
             XCTAssertTrue(pausedMatches
                 ? contains("recording-proactive-suggestion-open-objective", in: observation)
@@ -667,7 +667,7 @@ final class LibraryUITests: PortavozUITestCase {
         do {
             let deadline = Date().addingTimeInterval(3)
             let observation = try app.snapshot()
-            XCTAssertTrue(statusMatches(running, in: observation)
+            XCTAssertTrue(try statusMatches(running, in: observation)
                 || proactiveStatus.waitForLabelOrValue(running, timeout: max(0, deadline.timeIntervalSinceNow)))
         }
 
@@ -1024,7 +1024,7 @@ final class LibraryUITests: PortavozUITestCase {
                     "PORTAVOZ_UI_TEST_ASK_EMPTY_READY_PATH"),
             "replacement must cancel and clean the preceding retrieval")
         XCTAssertTrue(
-            pendingQuestion.waitForLabelOrValue("viernes", timeout: 5),
+            try pendingQuestion.waitForLabelOrValue("viernes", timeout: 5),
             "a new Ask submission must replace pending work")
 
         let progressiveEvidence = app.buttons.matching(
@@ -1454,7 +1454,7 @@ final class LibraryUITests: PortavozUITestCase {
         let expectedSource = UITestLocale.environmentLocale == "es"
             ? "Fuente de la respuesta: Biblioteca"
             : "Answer source: Library"
-        XCTAssertTrue(source.waitForLabelOrValue(expectedSource, timeout: 5))
+        XCTAssertTrue(try source.waitForLabelOrValue(expectedSource, timeout: 5))
         XCTAssertTrue(field.isHittable, "the palette must stay above the main window")
         field.click()
         typeText("viernes", in: app)

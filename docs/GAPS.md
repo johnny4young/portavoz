@@ -592,6 +592,14 @@ not changed. Public-API admission remains a point-in-time observation: a window
 change after observation cannot be claimed atomically excluded. Full bilingual
 and exact-head hosted qualification remain distinct from native controls.
 
+A separate Background Work recording journey read both expected Settings statuses,
+then an application-wide close shortcut closed the recording instead of Settings.
+Its native video shows Settings behind the recording before the shortcut and still
+open afterward; it does not identify what reordered the windows. The journey now
+targets the unique Settings window's standard close button under native ownership
+and stability checks. This does not qualify the earlier failed invocation or claim
+that foreground changes are atomically excluded.
+
 A later Spanish Background Work journey stopped during its first Settings-form
 scroll after the indicator had opened Your data and the exact owner counts were
 verified. XCTest reported an interrupting `Other` owned by the disposable app;

@@ -82,7 +82,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
         XCTAssertTrue(processingRetry.waitForHittable(timeout: 5))
         processingRetry.click()
         XCTAssertTrue(
-            app.staticTexts["background-work-status-processing"]
+            try app.staticTexts["background-work-status-processing"]
                 .waitForLabelOrValue(idle, timeout: 5),
             "processing retry must route only to its owner and publish the new safe state")
 
@@ -94,7 +94,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
             "the graph recovery action must be reachable in the bounded Settings form")
         graphRetry.click()
         XCTAssertTrue(
-            app.staticTexts["background-work-status-memory-graph"]
+            try app.staticTexts["background-work-status-memory-graph"]
                 .waitForLabelOrValue(idle, timeout: 5),
             "graph retry must clear only the graph attention state")
         attachScreenshot(of: app, named: "background-work-center")
@@ -137,15 +137,35 @@ final class BackgroundWorkUITests: PortavozUITestCase {
             : "Waiting for capture to end"
         for owner in ["semantic-index", "memory-graph"] {
             XCTAssertTrue(
-                app.staticTexts["background-work-status-\(owner)"]
+                try app.staticTexts["background-work-status-\(owner)"]
                     .waitForLabelOrValue(waiting, timeout: 10),
                 "\(owner) must not run through protected capture")
         }
 
-        typeKey("w", modifierFlags: .command, in: app)
-        XCTAssertTrue(app.prepareForInteraction())
+        // Readable status rows do not prove Settings is the key window.
+        // Close that exact destination rather than sending Command-W to an
+        // independently reordered recording window.
+        let closeDeadline = Date().addingTimeInterval(10)
+        let settings = app.windows.containing(.button, identifier: "settings-category-data").element
+        let closeSettings = settings.buttons["_XCUI:CloseWindow"]
+        _ = try XCTUnwrap(
+            app.prepareForInteraction(timeout: max(0, closeDeadline.timeIntervalSinceNow))
+                && closeSettings.waitForStableFrame(timeout: max(0, closeDeadline.timeIntervalSinceNow))
+                && app.hasObservedNativeReceiver(bundleIdentifier: keyboardReceiverBundleIdentifier)
+                && Date() <= closeDeadline ? closeSettings : nil,
+            "the exact Settings close target must be stable and natively owned before input")
+        closeSettings.click()
+        let returnedToRecording = app.prepareForInteraction(
+            timeout: max(0, closeDeadline.timeIntervalSinceNow))
+        XCTAssertTrue(returnedToRecording)
+        _ = try XCTUnwrap(
+            returnedToRecording && Date() <= closeDeadline ? app : nil,
+            "returning from the exact Settings window must retain the original preparation deadline")
         let stop = app.buttons["recording-stop-after-remote-outage"]
-        XCTAssertTrue(stop.waitForHittable(timeout: 10))
+        let stopReady = stop.waitForHittable(timeout: 10)
+        XCTAssertTrue(stopReady)
+        _ = try XCTUnwrap(stopReady ? stop : nil,
+                          "a missing outage Stop must refuse input after Settings closes")
         stop.click()
 
         XCTAssertTrue(

@@ -709,6 +709,47 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(decisions.contains("## D424"))
     }
 
+    func testXCUITestTextObservationsAndSettingsClosureStayFailClosed() throws {
+        let support = try Self.contents(of: "Tests/PortavozUITests/UITestSupport.swift")
+        let textStart = try XCTUnwrap(support.range(of: "func waitForLabelOrValue("))
+        let textEnd = try XCTUnwrap(support.range(
+            of: "/// Localized and asynchronously populated", range: textStart.upperBound..<support.endIndex))
+        let text = support[textStart.lowerBound..<textEnd.lowerBound]
+        XCTAssertTrue(text.contains("throws -> Bool"))
+        let presence = try XCTUnwrap(text.range(of: "guard self.exists else { return false }"))
+        let snapshot = try XCTUnwrap(text.range(of: "let observation = try self.snapshot()"))
+        XCTAssertLessThan(presence.lowerBound, snapshot.lowerBound)
+        XCTAssertTrue(text.contains("return observation.label == text || observation.value as? String == text"))
+        for forbidden in ["try?", "catch", "self.label", "self.value", "ProcessInfo", "print("] {
+            XCTAssertFalse(text.contains(forbidden))
+        }
+        let storage = try Self.contents(of: "Tests/PortavozUITests/UITestStorageUITests.swift")
+        XCTAssertTrue(storage.contains("portavoz-missing-text-proof"))
+        XCTAssertTrue(storage.contains(".waitForLabelOrValue(recordLabel, timeout: 0)"))
+        XCTAssertTrue(storage.contains("search.waitForLabelOrValue(\"\", timeout: 0)"))
+        XCTAssertTrue(storage.contains("XCTAssertEqual(try search.snapshot().value as? String, \"\""))
+
+        let background = try Self.contents(of: "Tests/PortavozUITests/BackgroundWorkUITests.swift")
+        let closeStart = try XCTUnwrap(background.range(of: "let closeDeadline = Date().addingTimeInterval(10)"))
+        let stopClick = try XCTUnwrap(background.range(of: "stop.click()", range: closeStart.upperBound..<background.endIndex))
+        let close = background[closeStart.lowerBound..<stopClick.upperBound]
+        XCTAssertTrue(close.contains("app.windows.containing(.button, identifier: \"settings-category-data\").element"))
+        XCTAssertTrue(close.contains("settings.buttons[\"_XCUI:CloseWindow\"]"))
+        let stable = try XCTUnwrap(close.range(of: "closeSettings.waitForStableFrame("))
+        let native = try XCTUnwrap(close.range(of: "app.hasObservedNativeReceiver("))
+        let deadline = try XCTUnwrap(close.range(of: "Date() <= closeDeadline ? closeSettings : nil"))
+        let click = try XCTUnwrap(close.range(of: "closeSettings.click()"))
+        XCTAssertLessThan(stable.lowerBound, native.lowerBound)
+        XCTAssertLessThan(native.lowerBound, deadline.lowerBound)
+        XCTAssertLessThan(deadline.lowerBound, click.lowerBound)
+        XCTAssertTrue(close.contains("returnedToRecording && Date() <= closeDeadline ? app : nil"))
+        XCTAssertTrue(close.contains("XCTAssertTrue(stopReady)"))
+        XCTAssertTrue(close.contains("try XCTUnwrap(stopReady ? stop : nil"))
+        for forbidden in ["typeKey(", ".firstMatch", ".coordinate(", ".tap(", ".press(", "try?"] {
+            XCTAssertFalse(close.contains(forbidden))
+        }
+    }
+
     func testDistributionNotarizesTheExtractedAppBeforeTheDMG() throws {
         let builder = try Self.contents(of: "scripts/make-dmg.sh")
         let verifier = try Self.contents(of: "scripts/verify-distribution.sh")

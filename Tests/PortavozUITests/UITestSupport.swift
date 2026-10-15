@@ -882,10 +882,15 @@ extension XCUIElement {
         }
     }
 
+    /// Observe the two alternative text attributes together. Absence remains
+    /// an asynchronous false state, while a failed native resolution throws
+    /// instead of authorizing a later input from an indeterminate observation.
     @MainActor
-    func waitForLabelOrValue(_ text: String, timeout: TimeInterval) -> Bool {
-        waitForUITestCondition(timeout: timeout) {
-            self.exists && (self.label == text || self.value as? String == text)
+    func waitForLabelOrValue(_ text: String, timeout: TimeInterval) throws -> Bool {
+        try waitForUITestCondition(timeout: timeout) {
+            guard self.exists else { return false }
+            let observation = try self.snapshot()
+            return observation.label == text || observation.value as? String == text
         }
     }
 

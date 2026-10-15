@@ -3792,7 +3792,10 @@ Recording UI fixtures preserve the requested target-stability duration and all
 input guards while polling fresh geometry more frequently to account for native
 attribute-read latency. Assist-tab selection is read from a fresh resolved
 target snapshot; an unresolved target throws before later field input. The
-negative selection proof performs no input. Related read-only recording
+negative selection proof performs no input. Text label/value alternatives come from
+one fresh fallible target snapshot after the existing asynchronous presence check.
+Missing targets remain false; resolution errors propagate, and already-present
+localized labels or empty field values do not acquire a polling floor. Related read-only recording
 assertions can share one coherent app observation, charging that read to the
 original first deadline and retaining exact live fallbacks. A record action's
 presence and actual localized label likewise share one target observation within
@@ -3813,6 +3816,10 @@ proves the actual record target stably hittable, and rechecks native ownership
 within its original fifteen-second entry deadline before clicking. It does not
 claim to atomically exclude a later foreground change; the existing interruption
 guard remains authoritative and does not dismiss another application's window.
+Closing Settings in that journey targets its unique native close button, not an
+application-wide shortcut whose key window may be the recording. Native admission,
+target stability and the return to recording share the original ten-second
+preparation deadline. A missing outage Stop throws before clicking.
 
 ## Review-first email recap handoff (D327, Aug 2026)
 

@@ -127,16 +127,16 @@ final class RecordingAssistUITests: PortavozUITestCase {
         let note = app.control(withIdentifier: "recording-note-field")
         note.click()
         typeText(noteText, in: app)
-        XCTAssertTrue(note.waitForLabelOrValue(noteText, timeout: 3))
+        XCTAssertTrue(try note.waitForLabelOrValue(noteText, timeout: 3))
         try app.openAssistTab("objectives")
         let objective = app.control(withIdentifier: "recording-objective-field")
         objective.click()
         typeText(objectiveText, in: app)
-        XCTAssertTrue(objective.waitForLabelOrValue(objectiveText, timeout: 3))
+        XCTAssertTrue(try objective.waitForLabelOrValue(objectiveText, timeout: 3))
         try app.openAssistTab("notes")
-        XCTAssertTrue(note.waitForLabelOrValue(noteText, timeout: 3))
+        XCTAssertTrue(try note.waitForLabelOrValue(noteText, timeout: 3))
         try app.openAssistTab("objectives")
-        XCTAssertTrue(objective.waitForLabelOrValue(objectiveText, timeout: 3),
+        XCTAssertTrue(try objective.waitForLabelOrValue(objectiveText, timeout: 3),
                       "changing tabs must not discard an unsubmitted objective")
         let meeting = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
@@ -147,10 +147,10 @@ final class RecordingAssistUITests: PortavozUITestCase {
         XCTAssertTrue(app.control(withIdentifier: "detail-transcript-title").waitForExistenceFast(timeout: 8))
         app.buttons["library-return-to-recording"].click()
         try app.openAssistTab("objectives")
-        XCTAssertTrue(objective.waitForLabelOrValue(objectiveText, timeout: 3),
+        XCTAssertTrue(try objective.waitForLabelOrValue(objectiveText, timeout: 3),
                       "library browsing must not discard the objective draft")
         try app.openAssistTab("notes")
-        let restored = note.waitForLabelOrValue(noteText, timeout: 3)
+        let restored = try note.waitForLabelOrValue(noteText, timeout: 3)
         XCTAssertTrue(restored, "library browsing must not discard the note draft")
         guard restored else { return }
         app.buttons["recording-note-add"].click()
