@@ -12,6 +12,8 @@ final class GlobalHotkey: GlobalHotkeyRegistration {
     private var handlerRef: EventHandlerRef?
     private let onPress: () -> Void
     private let onRelease: () -> Void
+    private static var lastID: UInt32 = 0
+    private let hotKeyID: EventHotKeyID
 
     /// - Parameters:
     ///   - keyCode: a `kVK_*` virtual key code (e.g. `kVK_ANSI_D`).
@@ -26,6 +28,8 @@ final class GlobalHotkey: GlobalHotkeyRegistration {
     ) {
         self.onPress = onPress
         self.onRelease = onRelease
+        Self.lastID &+= 1
+        hotKeyID = EventHotKeyID(signature: OSType(0x5056_4F5A), id: Self.lastID)  // "PVOZ"
 
         var eventTypes = [
             EventTypeSpec(
@@ -40,16 +44,27 @@ final class GlobalHotkey: GlobalHotkeyRegistration {
                 guard let userData else { return noErr }
                 let hotkey = Unmanaged<GlobalHotkey>.fromOpaque(userData).takeUnretainedValue()
                 let kind = GetEventKind(event)
+                var pressed = EventHotKeyID()
+                let status = GetEventParameter(
+                    event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
+                    nil, MemoryLayout<EventHotKeyID>.size, nil, &pressed)
                 // Carbon dispatches on the main thread.
-                MainActor.assumeIsolated {
-                    kind == UInt32(kEventHotKeyReleased) ? hotkey.onRelease() : hotkey.onPress()
+                return MainActor.assumeIsolated {
+                    // Every registration listens on the application target:
+                    // pass another registration's key along the handler chain.
+                    guard status == noErr, pressed.signature == hotkey.hotKeyID.signature,
+                          pressed.id == hotkey.hotKeyID.id else { return OSStatus(eventNotHandledErr) }
+                    if kind == UInt32(kEventHotKeyReleased) {
+                        hotkey.onRelease()
+                    } else {
+                        hotkey.onPress()
+                    }
+                    return noErr
                 }
-                return noErr
             },
             2, &eventTypes, selfPointer, &handlerRef)
         guard installStatus == noErr else { return nil }
 
-        let hotKeyID = EventHotKeyID(signature: OSType(0x5056_4F5A), id: 1)  // "PVOZ"
         let registerStatus = RegisterEventHotKey(
             keyCode, modifiers, hotKeyID, GetApplicationEventTarget(),
             UInt32(kEventHotKeyExclusive), &hotKeyRef)

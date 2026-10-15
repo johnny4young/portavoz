@@ -42,3 +42,61 @@ extension DictationControllerTests {
         }
     }
 }
+
+@MainActor
+extension DictationControllerTests {
+    func testEscapeIsClaimedOnlyWhileCapturingAndCancelsThatSession() async {
+        for text in ["No borres estas notas.", "Don’t delete these notes."] {
+            let harness = DictationControllerHarness(text: text)
+            let keys = CancelKeyRecorder()
+            defer { harness.controller.cancel() }
+            var dependencies = harness.dependencies
+            dependencies.registerCancelKey = keys.register
+
+            harness.controller.toggle(using: dependencies)
+            XCTAssertEqual(keys.active, 1, "Escape is claimed from preparation onward")
+            let ready = await awaitEventually { harness.controller.partialText == text }
+            XCTAssertTrue(ready)
+            keys.press()
+            let cancelled = await awaitEventually { harness.controller.phase == .idle }
+            XCTAssertTrue(cancelled)
+            XCTAssertEqual(keys.active, 0)
+            XCTAssertTrue(harness.insertions.isEmpty)
+
+            harness.controller.toggle(using: dependencies)
+            let restarted = await awaitEventually { harness.controller.partialText == text }
+            XCTAssertTrue(restarted)
+            harness.now = harness.now.addingTimeInterval(1)
+            harness.controller.toggle(using: dependencies)
+            let delivered = await awaitEventually { harness.insertions == [text] }
+            XCTAssertTrue(delivered)
+            XCTAssertEqual(keys.active, 0, "Delivery returns Escape to the destination")
+            keys.press()
+            await Task.yield()
+            XCTAssertEqual(harness.insertions, [text])
+            XCTAssertNotEqual(harness.controller.phase, .idle, "A stale Escape cannot hide the outcome")
+        }
+    }
+}
+
+@MainActor
+private final class CancelKeyRecorder {
+    private final class Registration: GlobalHotkeyRegistration {
+        let onPress: () -> Void
+        var isRegistered = true
+        init(onPress: @escaping () -> Void) { self.onPress = onPress }
+        func unregister() { isRegistered = false }
+    }
+
+    private var registrations: [Registration] = []
+    var active: Int { registrations.filter(\.isRegistered).count }
+
+    func register(_ onPress: @escaping () -> Void) -> (any GlobalHotkeyRegistration)? {
+        let registration = Registration(onPress: onPress)
+        registrations.append(registration)
+        return registration
+    }
+
+    /// Fires the latest callback even after release, like a Carbon event already queued.
+    func press() { registrations.last?.onPress() }
+}

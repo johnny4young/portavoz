@@ -123,6 +123,7 @@ final class DictationController {
     private let panel = DictationPanelController()
     private let presentsPanel: Bool
     private var sessionClock: (() -> Date)?
+    @ObservationIgnored private var cancelKey: (any GlobalHotkeyRegistration)?
 
     init(presentsPanel: Bool = true) {
         self.presentsPanel = presentsPanel
@@ -287,6 +288,7 @@ final class DictationController {
         let sessionID = UUID()
         activeSessionID = sessionID
         sessionClock = dependencies.now
+        armCancelKey(dependencies, sessionID: sessionID)
         showPanel()
 
         let finishCapture = dependencies.beginCapture()
@@ -413,8 +415,9 @@ final class DictationController {
         }
     }
 
-    /// Esc in the panel: throw everything away.
+    /// Esc or the panel's cancel control: throw everything away.
     func cancel() {
+        releaseCancelKey()
         retryDeliveryTask?.cancel()
         retryDeliveryTask = nil
         deliveryID = nil
@@ -477,6 +480,7 @@ final class DictationController {
             return
         }
         measurement?.record(.deliveryStarted)
+        releaseCancelKey()
         phase = .delivering
         showPanel()
         let result = await destination.insert(text)
@@ -489,6 +493,7 @@ final class DictationController {
 
     private func completeSession(id: UUID) {
         guard activeSessionID == id else { return }
+        releaseCancelKey()
         activeSessionID = nil
         textPolicy = .inert
         sessionClock = nil
@@ -512,36 +517,6 @@ final class DictationController {
         dependencies = nil
         phase = .failed(message)
         if autoDismiss { scheduleFeedbackDismiss(after: .seconds(6), wait: wait) }
-    }
-
-    private func cancelFeedbackDismissal() {
-        feedbackID = nil
-        feedbackDismissTask?.cancel()
-        feedbackDismissTask = nil
-    }
-
-    private func scheduleFeedbackDismiss(
-        after delay: Duration,
-        wait: @escaping @MainActor (Duration) async throws -> Void
-    ) {
-        cancelFeedbackDismissal()
-        let id = UUID()
-        feedbackID = id
-        feedbackDismissTask = Task { [weak self] in
-            do {
-                try await wait(delay)
-            } catch {
-                return
-            }
-            guard let self, self.feedbackID == id, !Task.isCancelled else { return }
-            self.feedbackID = nil
-            self.feedbackDismissTask = nil
-            self.deliveryID = nil
-            self.destination = nil
-            self.dependencies = nil
-            self.phase = .idle
-            self.panel.close()
-        }
     }
 
 }
@@ -783,4 +758,55 @@ extension DictationController {
         guard canChangeTextMode else { return }
         textPolicy.mode = mode
     }
+}
+
+// Session-owned auxiliaries: the Escape claim and feedback dismissal.
+private extension DictationController {
+    func armCancelKey(_ dependencies: DictationSessionDependencies, sessionID: UUID) {
+        releaseCancelKey()
+        cancelKey = dependencies.registerCancelKey { [weak self] in
+            // Leave the Carbon callback before its own registration is removed.
+            Task { @MainActor [weak self] in
+                guard let self, self.activeSessionID == sessionID,
+                      self.phase == .preparing || self.phase == .listening else { return }
+                self.cancel()
+            }
+        }
+    }
+
+    func releaseCancelKey() {
+        cancelKey?.unregister()
+        cancelKey = nil
+    }
+
+    func cancelFeedbackDismissal() {
+        feedbackID = nil
+        feedbackDismissTask?.cancel()
+        feedbackDismissTask = nil
+    }
+
+    func scheduleFeedbackDismiss(
+        after delay: Duration,
+        wait: @escaping @MainActor (Duration) async throws -> Void
+    ) {
+        cancelFeedbackDismissal()
+        let id = UUID()
+        feedbackID = id
+        feedbackDismissTask = Task { [weak self] in
+            do {
+                try await wait(delay)
+            } catch {
+                return
+            }
+            guard let self, self.feedbackID == id, !Task.isCancelled else { return }
+            self.feedbackID = nil
+            self.feedbackDismissTask = nil
+            self.deliveryID = nil
+            self.destination = nil
+            self.dependencies = nil
+            self.phase = .idle
+            self.panel.close()
+        }
+    }
+
 }
