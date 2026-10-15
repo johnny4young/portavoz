@@ -6068,9 +6068,13 @@ composition retains the general pasteboard. The first-failure adapter and its
 retry share the same real writer; exact approved text, original proposal,
 receipt and offer assertions remain unchanged. This isolates the user's shared
 clipboard from test effects and external writers without substituting a mock.
-The recording-input fixture proves the actual record button's hittability and
-stable frame before clicking and requires its original live frontier before
-attempting text input; a failed start cannot cascade into unrelated field actions.
+Recording-entry journeys prove the actual record button's hittability and
+stable frame before clicking. The deferred-work journey also reasserts the native
+receiver and rechecks it after target stability within its original fifteen-second
+admission deadline. These are point-in-time observations; the interruption guard
+still refuses a receiver change after admission. The recording-input fixture
+requires its original live frontier before attempting text input; a failed start
+cannot cascade into unrelated field actions.
 Foreground preparation observes both XCTest's state and the declared native
 receiver within its original deadline, rather than treating an activation
 request alone as acknowledgement. The synthetic interruption fixture also
@@ -6080,6 +6084,12 @@ and expose its original window within the existing readiness deadline; a ready
 file alone is not proof of native foreground ownership. Preparation failure
 remains an unqualified control, not an
 expected negative outcome. Keyboard dispatch retains its separate modal guard.
+The Background Work Settings deep-link journey additionally proves its exact
+route, native receiver and canonical search-editor handoff before outside
+scrolling. These observations share the original ten-second entry deadline;
+late or unavailable readiness throws before the wheel helper. Only the known
+editor receives guarded traversal, with its exact value preserved; an unknown
+interruption is never dismissed or identified from geometry.
 Assist-tab traversal similarly requires a stable native target and acknowledged
 selection before callers may address its fields; failures throw instead of
 continuing into a missing control. A fresh target snapshot proves resolution
