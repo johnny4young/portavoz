@@ -3787,6 +3787,13 @@ cleanup and intentional abrupt-recovery steps retain official XCTest termination
 The runner's official/owned diagnostic modes reuse the same built products and
 journeys; the storage proof checks actual exit outcomes and per-launch nonces.
 No cleanup work is excluded from runtime measurement.
+Healthy final cleanup uses bounded direct polling of the same public XCTest
+`notRunning` predicate only when its captured native launch has already ended.
+The original ten-second absolute deadline and bundle-wide native exit fence
+must both pass before scratch removal; every other path retains the original
+SDK wait. Actual live and ended launches characterize the public state getter,
+while the original explicit SDK-state waits, nonce and recovery assertions stay
+in place. This is deadline hardening, not a claim of aggregate runtime savings.
 
 Recording UI fixtures preserve the requested target-stability duration and all
 input guards while polling fresh geometry more frequently to account for native

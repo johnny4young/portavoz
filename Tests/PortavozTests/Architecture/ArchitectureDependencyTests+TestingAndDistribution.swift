@@ -750,6 +750,41 @@ extension ArchitectureDependencyTests {
         }
     }
 
+    func testHealthyFinalCleanupRetainsBoundedPublicStateAndNativeExitProofs() throws {
+        let support = try Self.contents(of: "Tests/PortavozUITests/UITestStorageSupport.swift")
+        let start = try XCTUnwrap(support.range(of: "static func end(ownerID:"))
+        let end = support[start.lowerBound..<support.endIndex]
+        let finish = try XCTUnwrap(end.range(of: "guard finish(application, allowOwnedExit: allowOwnedExit) != .identityLost"))
+        let captured = try XCTUnwrap(end.range(of: "owned.launches[ObjectIdentifier(application)]?.process.isTerminated == true"))
+        let admission = try XCTUnwrap(end.range(of: "if allowOwnedExit, capturedEnded"))
+        let deadline = try XCTUnwrap(end.range(of: "let exitDeadline = Date().addingTimeInterval(10)"))
+        let state = try XCTUnwrap(end.range(of: "application.state == .notRunning"))
+        let timely = try XCTUnwrap(end.range(of: "&& Date() <= exitDeadline"))
+        let native = try XCTUnwrap(end.range(of: "guard exitObserved, application.waitForPortavozProcessExit()"))
+        let removal = try XCTUnwrap(end.range(of: "try owned.scratch.remove()"))
+        XCTAssertLessThan(finish.lowerBound, captured.lowerBound)
+        XCTAssertLessThan(captured.lowerBound, admission.lowerBound)
+        XCTAssertLessThan(admission.lowerBound, deadline.lowerBound)
+        XCTAssertLessThan(deadline.lowerBound, state.lowerBound)
+        XCTAssertLessThan(state.lowerBound, timely.lowerBound)
+        XCTAssertLessThan(timely.lowerBound, native.lowerBound)
+        XCTAssertLessThan(native.lowerBound, removal.lowerBound)
+        XCTAssertTrue(end.contains("exitObserved = waitForUITestCondition(timeout: 10)"))
+        XCTAssertTrue(end.contains("exitObserved = application.wait(for: .notRunning, timeout: 10)"))
+        XCTAssertTrue(end.contains("throw Failure.applicationStillRunning"))
+        for forbidden in ["FINAL_STATE", "ProcessInfo", "print(", "pollInterval:"] {
+            XCTAssertFalse(end.contains(forbidden))
+        }
+        let storage = try Self.contents(of: "Tests/PortavozUITests/UITestStorageUITests.swift")
+        XCTAssertTrue(storage.contains("XCTAssertNotEqual(app.state, .notRunning"))
+        XCTAssertEqual(storage.components(separatedBy: "XCTAssertEqual(app.state, .notRunning").count - 1, 2)
+        XCTAssertEqual(storage.components(separatedBy: "app.wait(for: .notRunning, timeout: 10)").count - 1, 2)
+        let acknowledgedState = "XCTAssertTrue(app.wait(for: .notRunning, timeout: 10))\n        XCTAssertEqual(app.state, .notRunning"
+        XCTAssertEqual(storage.components(separatedBy: acknowledgedState).count - 1, 2,
+                       "the SDK may acknowledge native exit asynchronously; do not assert an immediate state change")
+        XCTAssertTrue(storage.contains("XCTAssertNotEqual(app.launchEnvironment[\"PORTAVOZ_UI_TEST_EXIT_NONCE\"], firstNonce)"))
+    }
+
     func testDistributionNotarizesTheExtractedAppBeforeTheDMG() throws {
         let builder = try Self.contents(of: "scripts/make-dmg.sh")
         let verifier = try Self.contents(of: "scripts/verify-distribution.sh")

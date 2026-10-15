@@ -35,6 +35,8 @@ final class UITestStorageUITests: PortavozUITestCase {
         }
         app.launchPortavoz()
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        XCTAssertNotEqual(app.state, .notRunning,
+                          "a live disposable launch must not authorize stopped-state cleanup")
         XCTAssertThrowsError(try app.buttons["portavoz-missing-selection-proof"]
             .waitForResolvedSelection(timeout: 1),
             "An unresolved selection target must throw, never authorize subsequent input")
@@ -70,6 +72,8 @@ final class UITestStorageUITests: PortavozUITestCase {
             ? .appKitExit : .officialTermination
         XCTAssertEqual(finishUITestApplication(app), expectedExit)
         XCTAssertTrue(app.wait(for: .notRunning, timeout: 10))
+        XCTAssertEqual(app.state, .notRunning,
+                       "the public state predicate must acknowledge the ended launch")
         XCTAssertTrue(app.waitForPortavozProcessExit())
         app.launchPortavoz()
         if UITestStorage.usesOwnedExit {
@@ -80,6 +84,8 @@ final class UITestStorageUITests: PortavozUITestCase {
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         XCTAssertEqual(finishUITestApplication(app), expectedExit)
         XCTAssertTrue(app.wait(for: .notRunning, timeout: 10))
+        XCTAssertEqual(app.state, .notRunning,
+                       "the public state predicate must acknowledge the ended launch")
         XCTAssertTrue(app.waitForPortavozProcessExit())
     }
 }

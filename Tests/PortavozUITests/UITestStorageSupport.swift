@@ -150,8 +150,20 @@ enum UITestStorage {
         // All captured launches finish before a stale proxy observes the
         // bundle's final state; otherwise it can resolve a later owned launch.
         for application in owned.applications {
-            guard application.wait(for: .notRunning, timeout: 10),
-                  application.waitForPortavozProcessExit() else {
+            let capturedEnded = owned.launches[ObjectIdentifier(application)]?.process.isTerminated == true
+            let exitObserved: Bool
+            if allowOwnedExit, capturedEnded {
+                // Keep the public XCTest state predicate, but avoid its coarse
+                // wait API after this exact owned launch has ended. A late
+                // observation cannot authorize scratch removal.
+                let exitDeadline = Date().addingTimeInterval(10)
+                exitObserved = waitForUITestCondition(timeout: 10) {
+                    application.state == .notRunning
+                } && Date() <= exitDeadline
+            } else {
+                exitObserved = application.wait(for: .notRunning, timeout: 10)
+            }
+            guard exitObserved, application.waitForPortavozProcessExit() else {
                 // Preserve scratch if a participant could still be writing.
                 throw Failure.applicationStillRunning
             }
