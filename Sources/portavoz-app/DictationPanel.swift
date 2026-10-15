@@ -143,10 +143,11 @@ private struct DictationStripView: View {
             } else {
                 // Confirmed words are settled; the tail is still volatile, so
                 // it reads gray — it firms up as the engine commits it.
-                (Text(controller.confirmedText)
+                let visible = DictationPanelTranscript.visible(
+                    confirmed: controller.confirmedText, partial: controller.partialText)
+                (Text(visible.confirmed)
                     .foregroundStyle(.primary)
-                    + Text(controller.partialText.isEmpty ? "" : " ")
-                    + Text(controller.partialText)
+                    + Text(visible.partial)
                     .foregroundStyle(.tertiary))
                     .accessibilityIdentifier("dictation-panel-transcript")
                     .font(.body)
