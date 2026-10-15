@@ -591,6 +591,18 @@ One immutable structural projection precomputes row contexts and hidden evidence
 for each observed detail snapshot, avoiding transcript-wide work per rendered
 row.
 
+`MeetingDetailModel` derives an immutable `MeetingDetailTranscriptPresentation`
+on every core delivery and whenever its chapter-title set changes. It retains
+the exact existing composed reading and accepted structural projection across
+unrelated summary, privacy, notes, and playback updates. A failed core read
+keeps the healthy pair; a missing core clears it. Matching core and presentation
+publish together on the main actor without suspension. Rendering, citation
+focus, and playback seeks reuse the same current reading. Same-revision row or
+refinement changes still rebuild; revision identifiers are not cache keys.
+Original composition failure falls back to accepted evidence, and an unedited
+composed reading still has distinct lineage. No persistent or process-global
+cache is introduced.
+
 D407 makes correction presentation a scene-flow invariant rather than a
 transcript-viewport side effect. Activating a visible correction accessory
 captures its text context, structural context, exact accepted reading, and base

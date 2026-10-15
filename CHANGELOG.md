@@ -15,6 +15,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## October 15, 2026
+
+- **⚡ Smoother meeting review** — keeps transcript corrections ready while summaries, notes and playback update.
+
 ## October 13, 2026
 
 - **🎯 Ready-to-play citations** — jump to a cited moment as soon as its audio is ready while optional compression checks finish.
