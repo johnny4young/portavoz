@@ -3554,7 +3554,20 @@ document that observes user-initiated live-scroll events only for its enclosing
 `NSScrollView`, including legacy mouse wheels without a start/end pair.
 Programmatic recentering does not claim reader intent. Audio
 import remains the `ApplicationKit.ImportMeeting` path and preserves automatic
-mixed-language recognition. `make test-ui` covers the player, highlight,
+mixed-language recognition. The Library menu defers its existing application-modal
+`NSOpenPanel.runModal()` to the next main-queue turn so menu tracking can return
+before presentation. A view-owned pending flag prevents overlapping requests and
+is released for every native response; only `.OK` submits selected URLs through
+the unchanged import boundary. The real picker journey cancels and reopens the
+chooser before importing a bundle, preserving original bytes and queue absence
+on cancellation. Native selection, modal keyboard admission, and all original
+import assertions remain in place. The UI runner declares each owned case as
+user-requested process work while still allowing idle system sleep, and releases
+that activity after all cleanup through a function-wide defer. It grants no native
+input authority and changes no acceptance floor or runtime ceiling. Known action
+buttons and scale transcript titles use their concrete accessibility roles with
+framework identifier matching; generic field aliases and absence proofs remain
+unchanged. `make test-ui` covers the player, highlight,
 compression action, and clip-export button; preflight closes stale app
 instances before XCUITest.
 

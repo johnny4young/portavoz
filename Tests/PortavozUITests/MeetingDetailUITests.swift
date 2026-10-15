@@ -23,9 +23,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.staticTexts["Scale baseline · 2 h · 5000 segments"]
                 .waitForExistenceFast(timeout: 30),
             "the disposable 2-hour fixture must navigate to Meeting Detail")
+        let transcriptTitle = app.staticTexts["detail-transcript-title"]
         XCTAssertTrue(
-            app.control(withIdentifier: "detail-transcript-title")
-                .waitForExistenceFast(timeout: 10),
+            transcriptTitle.waitForExistenceFast(timeout: 10),
             "Meeting Detail must render first content for 5,000 segments")
         XCTAssertTrue(
             app.staticTexts["Scale baseline summary revision 1."]
@@ -59,9 +59,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.staticTexts["Scale baseline · 2 h · 20000 segments"]
                 .waitForExistenceFast(timeout: 40),
             "the disposable 20,000-segment fixture must navigate to Meeting Detail")
+        let transcriptTitle = app.staticTexts["detail-transcript-title"]
         XCTAssertTrue(
-            app.control(withIdentifier: "detail-transcript-title")
-                .waitForExistenceFast(timeout: 15),
+            transcriptTitle.waitForExistenceFast(timeout: 15),
             "Meeting Detail must render first content for 20,000 segments")
         let generatedDocument = app.control(withIdentifier: "detail-generated-document")
         XCTAssertTrue(

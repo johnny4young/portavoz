@@ -297,13 +297,14 @@ extension XCUIApplication {
             XCTAssertTrue(
                 openSettingsWindow(),
                 "the Settings command must open the settings window")
-            let general = control(withIdentifier: "settings-category-general")
+            let general = buttons["settings-category-general"]
+            let generalFrame = general.frame
             XCTAssertGreaterThanOrEqual(
-                general.frame.minX,
+                generalFrame.minX,
                 0,
                 "temporary Settings must stay on AppKit's zero screen")
             XCTAssertGreaterThanOrEqual(
-                general.frame.minY,
+                generalFrame.minY,
                 0,
                 "temporary Settings must stay inside the zero screen's visible frame")
         }
@@ -413,7 +414,7 @@ extension XCUIApplication {
         file: StaticString = #filePath,
         line: UInt = #line
     ) throws -> XCUIElement {
-        let button = control(withIdentifier: "recording-assist-tab-\(tab)")
+        let button = buttons["recording-assist-tab-\(tab)"]
         _ = try XCTUnwrap(prepareForInteraction(timeout: timeout) ? self : nil,
                           "Portavoz must own the native receiver before assist-tab input", file: file, line: line)
         _ = try XCTUnwrap(button.waitForStableFrame(timeout: timeout) ? button : nil,
@@ -448,7 +449,7 @@ extension XCUIApplication {
     /// the case where macOS consumes Command-comma only to reactivate Portavoz.
     @MainActor
     func openSettingsWindow(timeout: TimeInterval = 10) -> Bool {
-        let general = control(withIdentifier: "settings-category-general")
+        let general = buttons["settings-category-general"]
         if general.exists {
             guard prepareForInteraction(timeout: timeout) else { return false }
             return general.waitForStableFrame(
@@ -530,7 +531,7 @@ extension XCUIApplication {
         revealing expectedControlIdentifier: String,
         timeout: TimeInterval = 10
     ) -> Bool {
-        let category = control(withIdentifier: identifier)
+        let category = buttons[identifier]
         let categoryList = control(withIdentifier: "settings-category-list")
         let expectedControl = control(withIdentifier: expectedControlIdentifier)
         for attempt in 0..<2 {
@@ -556,7 +557,7 @@ extension XCUIApplication {
         identifier: String,
         inside categoryList: XCUIElement
     ) {
-        let category = control(withIdentifier: identifier)
+        let category = buttons[identifier]
         for _ in 0..<3 {
             // Co-observe the common exact-ID geometry. If SwiftUI exposes only
             // a propagated query alias, retain the original live geometry path

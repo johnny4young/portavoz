@@ -1662,8 +1662,13 @@ extension ArchitectureDependencyTests {
         }
         XCTAssertTrue(settingsCapture.contains(
             "UITestWindowPlacement.positionSettingsWindow"))
-        XCTAssertTrue(uiTestSupport.contains(
-            #"general.frame.minX,"#))
+        XCTAssertEqual(uiTestSupport.components(separatedBy:
+            "let generalFrame = general.frame").count - 1, 1,
+            "read-only coordinates must share one fresh frame, never an input cache")
+        for coordinate in ["minX", "minY"] {
+            XCTAssertTrue(uiTestSupport.contains(
+                "XCTAssertGreaterThanOrEqual(\n                generalFrame.\(coordinate),\n                0,"))
+        }
         XCTAssertTrue(uiTestSupport.contains(
             #"temporary Settings must stay on AppKit's zero screen"#))
         XCTAssertTrue(uiTestSupport.contains(

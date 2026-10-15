@@ -12,6 +12,8 @@ final class UITestStorageUITests: PortavozUITestCase {
 
     @MainActor
     func testSharedScratchProtectsOwnershipAndRoundTripsAppFixtures() throws {
+        XCTAssertTrue(hasActiveUITestRunnerActivity,
+                      "the runner must classify its owned journey without granting native input authority")
         let otherOwner = UUID()
         XCTAssertThrowsError(try UITestStorage.begin(ownerID: otherOwner))
         try UITestStorage.end(ownerID: otherOwner)

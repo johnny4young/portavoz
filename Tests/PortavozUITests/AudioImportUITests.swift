@@ -25,6 +25,13 @@ final class AudioImportUITests: PortavozUITestCase {
         let original = try Data(contentsOf: source)
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
+        // Cancellation must release the pending chooser without admitting a
+        // bundle or changing its original bytes; a second request must work.
+        guard let cancelledPicker = openFilePicker(app: app) else { return }
+        typeKey(.escape, modifierFlags: [], in: app, modalAnchor: "open-panel")
+        XCTAssertTrue(cancelledPicker.waitForDisappearance(timeout: 5))
+        XCTAssertFalse(app.control(withIdentifier: "import-queue-panel").exists)
+        XCTAssertEqual(try Data(contentsOf: source), original)
         guard chooseFiles(app: app, firstFilename: source.lastPathComponent) else { return }
         XCTAssertTrue(app.control(withIdentifier: "detail-transcript-title").waitForExistenceFast(timeout: 10))
         XCTAssertTrue(app.staticTexts[title].waitForExistenceFast(timeout: 5))
@@ -230,24 +237,34 @@ final class AudioImportUITests: PortavozUITestCase {
     }
 
     @MainActor
-    private func chooseFiles(app: XCUIApplication, firstFilename: String = "Audio 00.wav") -> Bool {
+    private func openFilePicker(app: XCUIApplication) -> XCUIElement? {
         let menu = app.control(withIdentifier: "library-record-menu")
         guard menu.waitForHittable(timeout: 5) else {
             XCTFail("The Library must expose the import menu")
-            return false
+            return nil
         }
         menu.click()
         let action = app.menuItems["library-import-audio-button"]
         guard action.waitForExistenceFast(timeout: 5) else {
             XCTFail("The import action must be available in the record menu")
-            return false
+            return nil
+        }
+        guard action.waitForEnabled(timeout: 5) else {
+            XCTFail("The import action must be enabled after the preceding chooser finishes")
+            return nil
         }
         action.click()
         let picker = app.dialogs["open-panel"]
         guard picker.waitForExistenceFast(timeout: 5) else {
             XCTFail("The import action must open the native import picker")
-            return false
+            return nil
         }
+        return picker
+    }
+
+    @MainActor
+    private func chooseFiles(app: XCUIApplication, firstFilename: String = "Audio 00.wav") -> Bool {
+        guard let picker = openFilePicker(app: app) else { return false }
         // The disposable fixture sets only the initial directory, never the
         // selection. Go to Folder and nested-modal ownership remain exercised
         // by the mandatory native interruption controls instead of every batch.
