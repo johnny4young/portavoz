@@ -63,7 +63,7 @@ final class RecordingInputUITests: PortavozUITestCase {
         typeText(text, in: app)
         app.buttons["recording-note-add"].click()
         XCTAssertTrue(app.control(withIdentifier: "recording-input-save-failure").waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(field.waitForLabelOrValue(text, timeout: 2))
+        XCTAssertTrue(try field.waitForLabelOrValue(text, timeout: 2))
         XCTAssertEqual(try fixture.query("SELECT count(*) FROM contextItem"), "0")
         app.buttons["recording-stop"].click()
         XCTAssertTrue(app.control(withIdentifier: "recording-failure").waitForExistenceFast(timeout: 5))

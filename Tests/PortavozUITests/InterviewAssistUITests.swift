@@ -33,7 +33,7 @@ final class InterviewAssistUITests: PortavozUITestCase {
         let expectedQuestion = isSpanish
             ? "¿Qué haría Camila primero durante el incidente?"
             : "What would Jordan do first during the database incident?"
-        XCTAssertTrue(question.waitForLabelOrValue(expectedQuestion, timeout: 10))
+        XCTAssertTrue(try question.waitForLabelOrValue(expectedQuestion, timeout: 10))
 
         let assist = app.control(withIdentifier: "recording-assist-panel")
         XCTAssertTrue(assist.waitForExistenceFast(timeout: 5))
@@ -55,7 +55,7 @@ final class InterviewAssistUITests: PortavozUITestCase {
             ? "1 de 8 objetivos de entrevista"
             : "1 of 8 interview objectives"
         XCTAssertTrue(
-            objectiveCount.waitForLabelOrValue(expectedObjectiveCount, timeout: 5),
+            try objectiveCount.waitForLabelOrValue(expectedObjectiveCount, timeout: 5),
             "objective admission must publish before proving its saved row")
 
         let savedObjective = app.descendants(matching: .any)
