@@ -603,6 +603,17 @@ Original composition failure falls back to accepted evidence, and an unedited
 composed reading still has distinct lineage. No persistent or process-global
 cache is introduced.
 
+Metadata eligibility consumes this same current reading rather than rebuilding
+it. Only an actual eligibility check maps canonical current rows through the
+shared ApplicationKit generation-segment mapping and extracts chapter starts;
+core and chapter-title deliveries add no eager generation work. Displayed
+chapter markers are not a substitute: accepted fallback or overlapping split
+rows can have a different extraction order before the reading sorts its rows.
+Raw/refined material, correction fallback and generation ordering remain exact;
+title-only changes do not alter eligibility. Requests still use the current
+review and the existing one-shot, freshness, cancellation and request-identity
+rules.
+
 D407 makes correction presentation a scene-flow invariant rather than a
 transcript-viewport side effect. Activating a visible correction accessory
 captures its text context, structural context, exact accepted reading, and base
