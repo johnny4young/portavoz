@@ -357,21 +357,33 @@ extension XCUIApplication {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
+        recordingMoreItemReadiness(identifier, timeout: timeout, file: file, line: line).element
+    }
+
+    /// The immediately observed target proof can also serve a read-only
+    /// assertion. Input still resolves the live element through XCTest.
+    @MainActor
+    func recordingMoreItemReadiness(
+        _ identifier: String,
+        timeout: TimeInterval = 8,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> (element: XCUIElement, isHittable: Bool) {
         let panel = control(withIdentifier: "recording-more-panel")
         if !panel.exists {
             let more = control(withIdentifier: "recording-more")
             guard more.waitForHittable(timeout: timeout) else {
                 XCTFail("the recording bar never offered its More panel", file: file, line: line)
-                return panel
+                return (panel, false)
             }
             more.click()
-            _ = panel.waitForExistenceFast(timeout: timeout)
         }
         let item = panel.descendants(matching: .any)[identifier]
-        if !item.waitForHittable(timeout: timeout) {
+        let isHittable = item.waitForHittable(timeout: timeout)
+        if !isHittable {
             XCTFail("the More panel never offered \(identifier)", file: file, line: line)
         }
-        return item
+        return (item, isHittable)
     }
 
     /// Closes the More panel when it is open. Escape goes through the owned
@@ -407,7 +419,7 @@ extension XCUIApplication {
         _ = try XCTUnwrap(button.waitForStableFrame(timeout: timeout) ? button : nil,
                           "the \(tab) assist tab must be hittable and settled", file: file, line: line)
         button.click()
-        _ = try XCTUnwrap(button.waitForSelection(timeout: timeout) ? button : nil,
+        _ = try XCTUnwrap(try button.waitForResolvedSelection(timeout: timeout) ? button : nil,
                           "the \(tab) assist tab must acknowledge selection before field input", file: file, line: line)
         return button
     }
@@ -796,6 +808,14 @@ extension XCUIElement {
         return waitForUITestCondition(timeout: timeout, changed)
     }
 
+    /// A successful fresh target snapshot proves both resolution/presence and
+    /// the selected trait atomically. An indeterminate target throws before
+    /// any following field action instead of using stale input geometry.
+    @MainActor
+    func waitForResolvedSelection(timeout: TimeInterval) throws -> Bool {
+        try waitForUITestCondition(timeout: timeout) { try self.snapshot().isSelected }
+    }
+
     @MainActor
     func waitForSelection(timeout: TimeInterval) -> Bool {
         waitForUITestCondition(timeout: timeout) {
@@ -880,7 +900,10 @@ extension XCUIElement {
     ) -> Bool {
         var candidateFrame: CGRect?
         var stableSince: Date?
-        let stableProbeInterval = stableInterval > 0 ? stableInterval : 0.05
+        let originalProbeInterval = stableInterval > 0 ? stableInterval : 0.05
+        // Native attribute reads also spend stability time. Observe sooner,
+        // but keep the original elapsed-duration acceptance floor below.
+        let stableProbeInterval = min(originalProbeInterval, max(0.05, stableInterval / 2))
         return waitForUITestCondition(
             timeout: timeout,
             pollInterval: stableProbeInterval

@@ -35,6 +35,9 @@ final class UITestStorageUITests: PortavozUITestCase {
         }
         app.launchPortavoz()
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        XCTAssertThrowsError(try app.buttons["portavoz-missing-selection-proof"]
+            .waitForResolvedSelection(timeout: 1),
+            "An unresolved selection target must throw, never authorize subsequent input")
         // Library readiness already consumes the app-written one-shot marker.
         let readyPath = try XCTUnwrap(app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"])
         XCTAssertFalse(FileManager.default.fileExists(atPath: readyPath))

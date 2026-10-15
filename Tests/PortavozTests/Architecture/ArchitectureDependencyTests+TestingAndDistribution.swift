@@ -317,7 +317,22 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(stableFrameBody.contains(
             "guard !currentFrame.isEmpty, self.isHittable"))
         XCTAssertTrue(stableFrameBody.contains(
-            "let stableProbeInterval = stableInterval > 0 ? stableInterval : 0.05"))
+            "stableFor stableInterval: TimeInterval = 0.25"))
+        XCTAssertTrue(stableFrameBody.contains(
+            "let originalProbeInterval = stableInterval > 0 ? stableInterval : 0.05"))
+        XCTAssertTrue(stableFrameBody.contains(
+            "let stableProbeInterval = min(originalProbeInterval, max(0.05, stableInterval / 2))"))
+        for (duration, expected) in [(0.0, 0.05), (0.025, 0.025), (0.05, 0.05), (0.1, 0.05), (0.25, 0.125)] {
+            let original = duration > 0 ? duration : 0.05
+            let probe = min(original, max(0.05, duration / 2))
+            XCTAssertEqual(probe, expected)
+            XCTAssertGreaterThan(probe, 0)
+            XCTAssertLessThanOrEqual(probe, original)
+        }
+        XCTAssertFalse(stableFrameBody.contains(
+            "Date().timeIntervalSince(candidateStableSince) >= stableProbeInterval"))
+        XCTAssertFalse(stableFrameBody.contains("PORTAVOZ_UI_TEST_STABILITY_POLL_MODE"))
+        XCTAssertFalse(stableFrameBody.contains("STABILITY_POLL"))
         XCTAssertTrue(stableFrameBody.contains(
             "pollInterval: stableProbeInterval"))
         XCTAssertFalse(stableFrameBody.contains(
