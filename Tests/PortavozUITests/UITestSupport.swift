@@ -562,8 +562,7 @@ extension XCUIApplication {
             // Co-observe the common exact-ID geometry. If SwiftUI exposes only
             // a propagated query alias, retain the original live geometry path
             // rather than silently skipping its containment check.
-            let viewport: CGRect
-            let row: CGRect
+            var observed: (viewport: CGRect, row: CGRect)?
             if let observation = try? snapshot() {
                 let lists = uiSnapshotMatches({
                     $0.identifier == "settings-category-list" && $0.elementType == .scrollView
@@ -572,18 +571,15 @@ extension XCUIApplication {
                     $0.identifier == identifier && $0.elementType == .button
                 }, in: observation)
                 if lists.count == 1, categories.count == 1 {
-                    viewport = lists[0].frame
-                    row = categories[0].frame
-                } else {
-                    guard categoryList.exists, category.exists else { return }
-                    viewport = categoryList.frame
-                    row = category.frame
+                    observed = (lists[0].frame, categories[0].frame)
                 }
-            } else {
-                guard categoryList.exists, category.exists else { return }
-                viewport = categoryList.frame
-                row = category.frame
             }
+            if observed == nil {
+                guard categoryList.exists, category.exists else { return }
+                observed = (categoryList.frame, category.frame)
+            }
+            guard let observed else { return }
+            let (viewport, row) = observed
             guard !viewport.isEmpty, !row.isEmpty else { return }
             if row.minY >= viewport.minY && row.maxY <= viewport.maxY {
                 return
