@@ -19,9 +19,11 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 - **🎙️ Dictation hears your first word** — the microphone starts the moment you press the shortcut, even while the speech model is still loading, so nothing you say is lost and letting go of push-to-talk early no longer cancels.
 
-- **🔔 Optional dictation sounds** — turn on a short sound when the microphone opens and another when it closes.
+- **🔔 Optional dictation sounds** — turn on a short sound when you start dictating and another when the microphone closes.
 
 - **⚡ Dictation ready at launch** — optionally load the dictation model when Portavoz opens so the first dictation starts faster; it still unloads when idle.
+
+- **✨ Smoother dictation** — dictated words join your text with the right spacing, Esc cancels while you speak, the strip keeps your newest words in view, and a quick second press can no longer interrupt an insertion.
 
 - **⚡ Lighter chapter preparation** — reuses corrected rows instead of rebuilding the transcript for each review update.
 

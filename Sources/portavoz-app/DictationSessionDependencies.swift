@@ -1,5 +1,6 @@
 import AppKit
 import AudioCaptureKit
+import Carbon.HIToolbox
 import Foundation
 import PlatformKit
 import PortavozCore
@@ -32,6 +33,8 @@ struct DictationSessionDependencies {
     var waitForFirstBufferDeadline: @Sendable () async throws -> Void = {
         try await Task.sleep(for: .seconds(5))
     }
+    /// Claims Escape system-wide while capture runs; nil leaves cancel to the panel.
+    var registerCancelKey: (@escaping () -> Void) -> (any GlobalHotkeyRegistration)? = { _ in nil }
 
     func authorizedMicrophone() async throws -> Microphone {
         guard await authorizeMicrophone() else { throw DictationMicrophoneReadiness.Failure.permissionRequired }
@@ -86,6 +89,7 @@ struct DictationSessionDependencies {
             copyText: { TextInserter.copy($0) },
             defaults: services.defaults,
             beginCapture: beginCapture,
+            registerCancelKey: { GlobalHotkey(keyCode: UInt32(kVK_Escape), modifiers: 0, onPress: $0) },
             playCue: DictationSoundCue.player(defaults: services.defaults))
     }
 }

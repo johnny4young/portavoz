@@ -119,13 +119,15 @@ enum TextInserter {
         guard await clipboard.waitForRestoration(on: pasteboard) else { return .refused(.cancelled) }
         if let failure = await failureAfterModifiers(to: target, effects: effects) { return .refused(failure) }
 
-        let baseline = target.readback?.baseline(for: text)
+        let prepared = target.readback?.prepare(text) { target.validate() == nil } ?? (text: text, baseline: nil)
+        let output = prepared.text
+        let baseline = prepared.baseline
         guard !Task.isCancelled else { return .refused(.cancelled) }
         // AX can service a new clipboard owner. Borrow after that inspection,
         // so refusing this attempt restores the latest owner. A clipboard that
         // cannot be captured completely is never replaced: the refusal keeps
         // the output in recovery and leaves the clipboard untouched.
-        guard let loan = clipboard.borrow(text, on: pasteboard) else {
+        guard let loan = clipboard.borrow(output, on: pasteboard) else {
             return .refused(Task.isCancelled ? .cancelled : .clipboardUnavailable)
         }
 
@@ -153,7 +155,7 @@ enum TextInserter {
         clipboard.restoreLater(loan, on: pasteboard, after: restoreDelay)
         // Beyond post, no observation failure can make retry safe.
         guard let baseline, let readback = target.readback else { return .dispatched }
-        return await readback.verify(text, from: baseline, target: target) ? .verified : .dispatched
+        return await readback.verify(output, from: baseline, target: target) ? .verified : .dispatched
     }
 
     @MainActor

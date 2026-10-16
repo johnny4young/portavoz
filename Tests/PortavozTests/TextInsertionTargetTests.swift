@@ -182,6 +182,14 @@ final class TextInsertionTargetTests: XCTestCase {
             portavozIsActive: true, portavozHasKeyWindow: true))
     }
 
+    func testSessionRouteNeverOffersReinsertBecauseItsOwnClickWouldRefuseIt() async {
+        let board = makeBoard()
+        defer { board.releaseGlobally() }
+        let destination = TextInserter.sessionDestination(for: .current, pasteboard: board)
+        XCTAssertFalse(destination.canRetry)
+        XCTAssertEqual(destination.name, NSRunningApplication.current.localizedName)
+    }
+
     func testExplicitCopyWritesTheFullTextToTheChosenBoard() async {
         let board = makeBoard()
         defer { board.releaseGlobally() }
