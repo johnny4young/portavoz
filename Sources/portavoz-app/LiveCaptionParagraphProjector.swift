@@ -41,7 +41,8 @@ enum LiveCaptionParagraphProjector {
                 canGroup(caption.liveUpdateMode),
                 canGroup(projected[index].liveUpdateMode),
                 caption.startTime - projected[index].endTime <= maxGapSeconds,
-                projected[index].text.count + caption.text.count + 1 <= maxCharacters {
+                caption.liveUpdateMode == .tokenContinuation
+                    || projected[index].text.count + caption.text.count + 1 <= maxCharacters {
                 let previous = projected[index]
                 projected[index] = TranscriptSegment(
                     id: previous.id,

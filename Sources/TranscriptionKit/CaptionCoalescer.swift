@@ -122,6 +122,12 @@ public struct CaptionCoalescer: Sendable {
         return false
     }
 
+    /// Whether `segment` would extend the open row instead of starting one.
+    public func extendsOpenRow(_ segment: TranscriptSegment, in captions: [TranscriptSegment]) -> Bool {
+        guard let last = captions.last, last.channel == segment.channel else { return false }
+        return shouldExtend(last, with: segment)
+    }
+
     private static func isRemoteChannel(_ segment: TranscriptSegment) -> Bool {
         segment.channel == .system || segment.channel == .room
     }
@@ -133,6 +139,8 @@ public struct CaptionCoalescer: Sendable {
         // overlap remains mergeable because its start is still at or after
         // the row's original start.
         guard segment.startTime >= last.startTime else { return false }
+        // A subword continues the row's last word; caps and pauses cannot split it.
+        if segment.liveUpdateMode == .tokenContinuation { return true }
         let gap = segment.startTime - last.endTime
         guard gap < maxGapSeconds else { return false }
         guard last.text.count < maxRowCharacters else { return false }
@@ -163,8 +171,9 @@ public struct CaptionCoalescer: Sendable {
             segment.liveUpdateMode == .tokenDelta || segment.liveUpdateMode == .tokenContinuation
                 || text.contains(where: { ".!?…".contains($0) }),
             // A real sentence closer is 1-3 characters ("." / "?!" / "…");
-            // longer runs ("....") are low-signal noise, not punctuation.
-            text.count <= 3
+            // longer runs ("....") are low-signal noise, unless the producer committed them.
+            text.count <= 3 || segment.liveUpdateMode == .tokenDelta
+                || segment.liveUpdateMode == .tokenContinuation
         else { return nil }
 
         captions[captions.count - 1] = TranscriptSegment(
